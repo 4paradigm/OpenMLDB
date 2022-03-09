@@ -216,13 +216,6 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     rocksdb::Status s;
     Dimensions::const_iterator it = dimensions.begin();
     for (; it != dimensions.end(); ++it) {
-        std::shared_ptr<IndexDef> index_def = GetIndex(it->idx());
-        int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
-        if (!index_def) {
-            PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(), it->idx(),
-                  id_, pid_);
-            return false;
-        }
         const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
         uint8_t version = codec::RowView::GetSchemaVersion(data);
         auto decoder = GetVersionDecoder(version);
@@ -230,24 +223,33 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
             PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
             return false;
         }
+        int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
-        auto ts_col = index_def->GetTsColumn();
-        std::string combine_key;
-        if (ts_col) {
-            int64_t ts = 0;
-            if (ts_col->IsAutoGenTs()) {
-                ts = time;
-            } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
+
+        for (const auto& index_def : inner_index->GetIndex()) {
+            if (!index_def) {
+                PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
+                      it->idx(), id_, pid_);
                 return false;
             }
-            if (inner_index->GetIndex().size() > 1) {
-                combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
-            } else {
-                combine_key = CombineKeyTs(it->key(), ts);
+            auto ts_col = index_def->GetTsColumn();
+            std::string combine_key;
+            if (ts_col) {
+                int64_t ts = 0;
+                if (ts_col->IsAutoGenTs()) {
+                    ts = time;
+                } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                    PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
+                    return false;
+                }
+                if (inner_index->GetIndex().size() > 1) {
+                    combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
+                } else {
+                    combine_key = CombineKeyTs(it->key(), ts);
+                }
+                rocksdb::Slice spk = rocksdb::Slice(combine_key);
+                batch.Put(cf_hs_[inner_pos + 1], spk, value);
             }
-            rocksdb::Slice spk = rocksdb::Slice(combine_key);
-            batch.Put(cf_hs_[inner_pos + 1], spk, value);
         }
     }
     s = db_->Write(write_opts_, &batch);

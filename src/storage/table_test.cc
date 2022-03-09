@@ -2025,6 +2025,86 @@ TEST_F(TableTest, MultiDimissionPutTS2Disk) {
     MultiDimissionPutTS2(::openmldb::common::StorageMode::kHDD);
 }
 
+void AbsAndLat(::openmldb::common::StorageMode storageMode) {
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts4", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts5", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts6", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsAndLat, 100, 10);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "test", "ts2", ::openmldb::type::kAbsAndLat, 50, 8);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "test", "ts3", ::openmldb::type::kAbsAndLat, 70, 5);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0, 5);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0, 0);
+    
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {
+            "test" + std::to_string(i % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());                                
+    }
+    
+    for (int i = 0; i <= 5; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+        
+        if (i == 1) {
+            ASSERT_EQ(80, count);
+        } else if (i == 2) {
+            ASSERT_EQ(70, count);
+        } else {
+            ASSERT_EQ(100, count);
+        }
+    }
+
+    delete table;
+}
+
+TEST_F(TableTest, AbsAndLatDisk) {
+    AbsAndLat(::openmldb::common::StorageMode::kHDD);
+}
+
+TEST_F(TableTest, AbsAndLatMem) {
+    AbsAndLat(::openmldb::common::StorageMode::kMemory);
+}
+
 }  // namespace storage
 }  // namespace openmldb
 
