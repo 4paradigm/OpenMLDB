@@ -175,17 +175,31 @@ TEST_F(UdafTest, min_where_test) {
         "min_where", 2147483647, MakeList<int32_t>({}), MakeBoolList({}));
 }
 
-TEST_F(UdafTest, max_where_test) {
+TEST_F(UdafTest, MaxWhereTest) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "max_where", 7, MakeList<int32_t>({7, 5, 6}),
         MakeBoolList({true, false, true}));
 
+    // cond is false or NULL => skiped
     CheckUdf<int32_t, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
         "max_where", 1, MakeList<Nullable<int32_t>>({1, 5, 4, 0}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 
-    CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
-        "max_where", -2147483648, MakeList<int32_t>({}), MakeBoolList({}));
+    // NULL if no data
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({}), MakeList<Nullable<bool>>({}));
+
+    // NULL if no matches
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({1, 9, 3}), MakeList<Nullable<bool>>({false, false, false}));
+
+    // NULL if only NULL value matched
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({nullptr, 3}), MakeList<Nullable<bool>>({true, false}));
+
+    // value is NULL => skiped
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", 3, MakeList<Nullable<int32_t>>({1, nullptr, 3}), MakeList<Nullable<bool>>({true, true, true}));
 }
 
 TEST_F(UdafTest, avg_test) {

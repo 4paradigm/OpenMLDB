@@ -397,21 +397,31 @@ struct MinWhereDef {
 template <typename T>
 struct MaxWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(DataTypeTrait<T>::minimum_value())
-            .update([](UdfResolveContext* ctx, ExprNode* max, ExprNode* elem,
-                       ExprNode* cond) {
+        helper.templates<T, Tuple<bool, T>, T, bool>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::minimum_value()))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto condition =
-                    nm->MakeBinaryExprNode(max, elem, node::kFnOpLt);
-                ExprNode* new_max = nm->MakeCondExpr(condition, elem, max);
-                ExprNode* update = nm->MakeCondExpr(cond, new_max, max);
+                auto acc_is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto elem_is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                auto acc_max = nm->MakeGetFieldExpr(acc, 1);
+                auto acc_lt_elem = nm->MakeBinaryExprNode(acc_max, elem, node::kFnOpLt);
+
+                auto elem_as_tuple = nm->MakeFuncNode("make_tuple", {elem_is_null, elem}, nullptr);
+                ExprNode* new_acc =
+                    nm->MakeCondExpr(acc_is_null, elem_as_tuple, nm->MakeCondExpr(acc_lt_elem, elem_as_tuple, acc));
+                ExprNode* update = nm->MakeCondExpr(cond, new_acc, acc);
                 return update;
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                auto flag = nm->MakeGetFieldExpr(acc, 0);
+                auto cur_max = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(flag, nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()),
+                                        cur_max);
+            });
     }
 };
 
