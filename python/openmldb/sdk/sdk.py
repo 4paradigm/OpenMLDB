@@ -117,6 +117,16 @@ class OpenMLDBSdk(object):
         else:
             self.sdk.RefreshCatalog()
             return True, "ok"
+        
+    def execute_sql(self, db, sql):
+        if not self.sdk:
+            return False, "please init sdk first"
+        status = sql_router_sdk.Status()
+        rs = self.sdk.ExecuteSQL(db, sql, status)
+        if status.code != 0:
+            return False, status.msg
+        else:
+            return True, rs
 
     def getParameterBuilder(self, data):
         logger.debug("getParameterBuilder data type: %s", str(type(data)))
