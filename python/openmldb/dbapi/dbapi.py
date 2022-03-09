@@ -422,9 +422,6 @@ class Cursor(object):
         if insertRE.match(command):
             question_mark_count = command.count("?")
             if question_mark_count > 0:
-                ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(self.db, command)
-                if not ok:
-                    raise DatabaseError("get insert builder fail")
                 # 因为getInsertBatchBuilder获得的对象没有GetSchema方法，所以使用getInsertBatchBuilder获得的对象
                 ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
                 if not ok:
@@ -433,6 +430,9 @@ class Cursor(object):
                 hold_idxs = builder.GetHoleIdx()
                 for i in range(0, len(parameters), batch_number):
                     rows = parameters[i: i + batch_number]
+                    ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(self.db, command)
+                    if not ok:
+                        raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
             else:
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
