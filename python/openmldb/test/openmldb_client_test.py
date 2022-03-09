@@ -86,8 +86,8 @@ class TestOpenMLDBClient(unittest.TestCase):
         (1002, '2020-12-27', 'fujian', 'fuzhou', 3),
         (1003, '2020-12-28', 'jiangxi', 'nanchang', 4),
         (1004, '2020-12-29', 'hubei', 'wuhan', 5),
-        {1005, "2020-12-29", "shandong", "jinan", 6},
-        {1006, "2020-12-30", "fujian", "fuzhou", 7}
+        (1005, "2020-12-29", "shandong", "jinan", 6),
+        (1006, "2020-12-30", "fujian", "fuzhou", 7)
     ]
     self.check_fetchall(connection, expectRows)
     self.check_result(rs, expectRows, 0);
