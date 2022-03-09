@@ -378,8 +378,7 @@ struct MinWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, Tuple<bool, T>, T, bool>()
             .const_init(MakeTuple(true, DataTypeTrait<T>::maximum_value()))
-            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem,
-                       ExprNode* cond) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
@@ -397,10 +396,10 @@ struct MinWhereDef {
             })
             .output([](UdfResolveContext* ctx, ExprNode* acc) {
                 auto nm = ctx->node_manager();
-                auto flag = nm->MakeGetFieldExpr(acc, 0);
-                auto cur_max = nm->MakeGetFieldExpr(acc, 1);
-                return nm->MakeCondExpr(flag, nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()),
-                                        cur_max);
+                auto is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto val = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(is_null,
+                                        nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()), val);
             });
     }
 };
@@ -428,10 +427,10 @@ struct MaxWhereDef {
             })
             .output([](UdfResolveContext* ctx, ExprNode* acc) {
                 auto nm = ctx->node_manager();
-                auto flag = nm->MakeGetFieldExpr(acc, 0);
-                auto cur_max = nm->MakeGetFieldExpr(acc, 1);
-                return nm->MakeCondExpr(flag, nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()),
-                                        cur_max);
+                auto is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto val = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(is_null,
+                                        nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()), val);
             });
     }
 };
