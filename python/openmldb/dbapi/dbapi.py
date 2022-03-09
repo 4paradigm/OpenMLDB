@@ -16,12 +16,15 @@
 # fmt:off
 import sys
 import os
+from typing import List, Union
+
 sys.path.append(os.path.dirname(__file__) + "/..")
 import logging
 from sdk import sdk as sdk_module
 from sdk.sdk import TypeUtil
 from native import sql_router_sdk
 import re
+
 # fmt:on
 
 # Globals
@@ -40,6 +43,7 @@ class Type(object):
     Date = sql_router_sdk.kTypeDate
     String = sql_router_sdk.kTypeString
     Timestamp = sql_router_sdk.kTypeTimestamp
+
 
 fetype_to_py = {
     sql_router_sdk.kTypeBool: Type.Bool,
@@ -74,45 +78,54 @@ class Error(Exception):
     def msg(self):
         return self.message
 
+
 class Warning(Exception):
 
     def __init__(self, message):
         self.message = message
+
 
 class InterfaceError(Error):
 
     def __init__(self, message):
         self.message = message
 
+
 class DatabaseError(Error):
 
     def __init__(self, message):
         self.message = message
+
 
 class DataError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class OperationalError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
+
 
 class IntegrityError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class InternalError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
 
+
 class ProgrammingError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
+
 
 class NotSupportedError(DatabaseError):
 
@@ -127,6 +140,7 @@ class CursorClosedException(Error):
 
     def __str__(self):
         return repr(self.message)
+
 
 class ConnectionClosedException(Error):
 
@@ -159,6 +173,7 @@ class Cursor(object):
                 raise ConnectionClosedException("Connection object is closed")
             else:
                 return func(self, *args, **kwargs)
+
         return func_wrapper
 
     @connected
@@ -173,15 +188,15 @@ class Cursor(object):
         self._resultSet = rs
         self.__schema = rs.GetSchema()
         self.__getMap = {
-          sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
-          sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
-          sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
-          sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
-          sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
-          sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
-          sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-          sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
-          sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
+            sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
+            sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
+            sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
+            sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
+            sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
+            sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
+            sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
+            sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
+            sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
         self.description = [
             (
@@ -273,7 +288,8 @@ class Cursor(object):
                     sql_router_sdk.kTypeDouble: builder.AppendDouble,
                     sql_router_sdk.kTypeString: builder.AppendString,
                     # TODO: align python and java date process, 1900 problem
-                    sql_router_sdk.kTypeDate: lambda x : len(x.split("-")) == 3 and builder.AppendDate(int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                    sql_router_sdk.kTypeDate: lambda x: len(x.split("-")) == 3 and builder.AppendDate(
+                        int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
                     sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
                 }
                 for i in range(len(holdIdxs)):
@@ -327,9 +343,101 @@ class Cursor(object):
         else:
             raise DatabaseError("unsupport sql")
 
+    def __insert_rows(self, rows: List[Union[tuple, dict]], hold_idxs, schema, rows_builder, command):
+        tmp_builder = rows_builder.NewRow()
+        for row in rows:
+            str_size = 0
+            for i in range(len(hold_idxs)):
+                idx = hold_idxs[i]
+                name = schema.GetColumnName(idx)
+                if isinstance(row, tuple):
+                    if isinstance(row[i], str):
+                        str_size += len(row[i])
+                elif isinstance(row, dict):
+                    if name not in row:
+                        raise DatabaseError("col {} data not given".format(name))
+                    if row[name] is None:
+                        if schema.IsColumnNotNull(idx):
+                            raise DatabaseError("column seq {} not allow null".format(name))
+                        continue
+                    col_type = schema.GetColumnType(idx)
+                    if col_type != sql_router_sdk.kTypeString:
+                        continue
+                    if isinstance(row[name], str):
+                        str_size += len(row[name])
+                    else:
+                        raise DatabaseError("{} vale type is not str".format(name))
+                else:
+                    raise DatabaseError(
+                        "parameters type {} does not support: {}, should be tuple or dict".format(type(row), row))
+            tmp_builder.Init(str_size)
+            appendMap = {
+                sql_router_sdk.kTypeBool: tmp_builder.AppendBool,
+                sql_router_sdk.kTypeInt16: tmp_builder.AppendInt16,
+                sql_router_sdk.kTypeInt32: tmp_builder.AppendInt32,
+                sql_router_sdk.kTypeInt64: tmp_builder.AppendInt64,
+                sql_router_sdk.kTypeFloat: tmp_builder.AppendFloat,
+                sql_router_sdk.kTypeDouble: tmp_builder.AppendDouble,
+                sql_router_sdk.kTypeString: tmp_builder.AppendString,
+                # TODO: align python and java date process, 1900 problem
+                sql_router_sdk.kTypeDate: lambda x: len(x.split("-")) == 3 and tmp_builder.AppendDate(
+                    int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
+                sql_router_sdk.kTypeTimestamp: tmp_builder.AppendTimestamp
+            }
+            for i in range(len(hold_idxs)):
+                idx = hold_idxs[i]
+                name = schema.GetColumnName(idx)
+                colType = schema.GetColumnType(idx)
+
+                if type(row) is tuple:
+                    ok = appendMap[colType](row[i])
+                    if not ok:
+                        raise DatabaseError("error at append data seq {}".format(i))
+                elif type(row) is dict:
+                    if row[name] is None:
+                        tmp_builder.AppendNULL()
+                        continue
+                    ok = appendMap[colType](row[name])
+                    if not ok:
+                        raise DatabaseError("error at append data seq {}".format(i))
+                else:
+                    raise DatabaseError("error at append data seq {} for unsupported type".format(i))
+        ok, error = self.connection._sdk.executeInsert(self.db, command, rows_builder)
+        if not ok:
+            raise DatabaseError(error)
+
     @connected
-    def executemany(self, operation, parameters=()):
-        raise NotSupportedError("Unsupported in OpenMLDB")
+    def executemany(self, operation, parameters: Union[List[tuple], tuple, List[dict]] = (), batch_number=200):
+        command = operation.strip(' \t\n\r') if operation else None
+        if command is None:
+            raise Exception("None operation")
+        if isinstance(parameters, tuple):
+            return self.execute(operation, parameters)
+        if command.count("?") == 0:
+            logging.warning(
+                "Only {} is valid, params: {} are invalid, maybe not exists mark '?' in sql".format(operation,
+                                                                                                    parameters))
+            return self.execute(operation, parameters)
+        if isinstance(parameters, list) and len(parameters) == 0:
+            return self.execute(operation, parameters)
+
+        if insertRE.match(command):
+            question_mark_count = command.count("?")
+            if question_mark_count > 0:
+                ok, batch_builder = self.connection._sdk.getInsertBatchBuilder()
+                if not ok:
+                    raise DatabaseError("get insert builder fail")
+                schema = batch_builder.GetSchema()
+                hold_idxs = batch_builder.GetHoleIdx()
+                for i in range(0, len(parameters), batch_number):
+                    rows = parameters[i: i + batch_number]
+                    self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
+            else:
+                ok, error = self.connection._sdk.executeInsert(self.db, command)
+            if not ok:
+                raise DatabaseError(error)
+        else:
+            raise DatabaseError("unsupport sql")
 
     def get_tables(self, db):
         return self.connection._sdk.getTables(db)
@@ -382,11 +490,11 @@ class Cursor(object):
 
     def setoutputsize(self, size, columns=()):
         raise NotSupportedError("Unsupported in OpenMLDB")
-        
+
     @connected
     def fetchall(self):
         return self.fetchmany(size=self.rowcount)
-    
+
     @staticmethod
     def substitute_in_query(string_query, parameters):
         query = string_query
@@ -426,8 +534,8 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
-    def executeRequest(self, sql, parameter): 
-        command = sql.strip(' \t\n\r') 
+    def executeRequest(self, sql, parameter):
+        command = sql.strip(' \t\n\r')
         if selectRE.match(command) == False:
             raise Exception("Invalid opertion for request")
 
@@ -451,6 +559,7 @@ class Cursor(object):
             outputSchemaList.append({"name": col_name, "type": col_type_str})
 
         return outputSchemaList
+
 
 class Connection(object):
 
@@ -476,7 +585,6 @@ class Connection(object):
 
         return func_wrapper
 
-
     def execute(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
@@ -495,7 +603,7 @@ class Connection(object):
     def commit(self):
         """
         openmldb doesn't suppport transactions
-        
+
         So just do nothing to support this method
         """
         pass
@@ -505,6 +613,7 @@ class Connection(object):
 
     def cursor(self):
         return Cursor(self._db, self)
+
 
 # Constructor for creating connection to db
 def connect(db, zk=None, zkPath=None, host=None, port=None):
