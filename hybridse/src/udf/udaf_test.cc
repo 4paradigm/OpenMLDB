@@ -52,6 +52,57 @@ void CheckUdfFail(const std::string &name, T expect, Args... args) {
     ASSERT_FALSE(function.valid());
 }
 
+// simple udaf check, applied when the udaf function accept only one parameter
+template <class Ret, class Arg = Ret>
+void CheckUdafOneParam(const std::string &fn, Ret expect, std::initializer_list<Arg> cols) {
+    CheckUdf(fn, expect, MakeList(cols));
+}
+
+TEST_F(UdafTest, MaxTest) {
+    CheckUdafOneParam<Nullable<int32_t>>("max", nullptr, {});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr, nullptr});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<float>, Nullable<float>>("max", 5.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("max", 5.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", StringRef("abc"), {nullptr, StringRef("abc")});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", StringRef("abc"),
+                                                                {nullptr, StringRef("abc"), StringRef("aaa")});
+}
+
+TEST_F(UdafTest, MinTest) {
+    CheckUdafOneParam<Nullable<int32_t>>("min", nullptr, {});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr, nullptr});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<float>, Nullable<float>>("min", -1.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("min", -1.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", StringRef("abc"), {nullptr, StringRef("abc")});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", StringRef("aaa"),
+                                                                {nullptr, StringRef("abc"), StringRef("aaa")});
+}
+
+TEST_F(UdafTest, CountTest) {
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 0LL, {nullptr});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 0LL, {});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 2, {1, 2});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 2, {1, 2, nullptr});
+
+    CheckUdafOneParam<int64_t, Nullable<int64_t>>("count", 1, {5, nullptr});
+    CheckUdafOneParam<int64_t, Nullable<int64_t>>("count", 1, {5});
+
+    CheckUdafOneParam<int64_t, Nullable<double>>("count", 3, {5.0, 1.0, 2.0});
+
+    CheckUdafOneParam<int64_t, Nullable<StringRef>>("count", 3, {StringRef("c"), StringRef("abc"), StringRef("gc")});
+    CheckUdafOneParam<int64_t, Nullable<StringRef>>("count", 2, {nullptr, StringRef("abc"), StringRef("gc")});
+}
+
+// TODO(aceforeverd): add test for sum ,avg, distinct_count
+
 TEST_F(UdafTest, sum_where_test) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "sum_where", 10, MakeList<int32_t>({4, 5, 6}),
