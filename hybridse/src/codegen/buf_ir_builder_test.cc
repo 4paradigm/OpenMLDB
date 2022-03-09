@@ -111,7 +111,7 @@ int32_t PrintListString(int8_t* input) {
     auto col = column->GetIterator();
     std::cout << "[";
     while (col->Valid()) {
-        ::hybridse::codec::StringRef v = col->GetValue();
+        openmldb::base::StringRef v = col->GetValue();
         col->Next();
         std::string str(v.data_, v.size_);
         std::cout << str << ", ";
@@ -477,10 +477,10 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     }
 }
 
-static bool operator==(const codec::Timestamp& a, const codec::Timestamp& b) {
+static bool operator==(const openmldb::base::Timestamp& a, const openmldb::base::Timestamp& b) {
     return a.ts_ == b.ts_;
 }
-static bool operator!=(const codec::Timestamp& a, const codec::Timestamp& b) {
+static bool operator!=(const openmldb::base::Timestamp& a, const openmldb::base::Timestamp& b) {
     return a.ts_ != b.ts_;
 }
 
@@ -498,7 +498,7 @@ TEST_F(BufIRBuilderTest, native_test_load_string) {
     uint32_t size = 0;
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
-    RunCaseV1<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
+    RunCaseV1<openmldb::base::StringRef>(openmldb::base::StringRef(strlen("1"), strdup("1")),
                                 table, ::hybridse::type::kVarchar, "col6", ptr,
                                 size);
     free(ptr);
@@ -601,7 +601,7 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_string) {
     type::TableDef table;
     BuildT1Buf(table, &ptr, &size);
 
-    codec::StringRef result;
+    openmldb::base::StringRef result;
     bool is_null;
     LoadValue(&result, &is_null, table, ::hybridse::type::kVarchar, "col6", ptr, size);
     ASSERT_EQ(is_null, false);

@@ -306,11 +306,11 @@ int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
         }
         case hybridse::type::kTimestamp: {
             new (data)
-                ColumnImpl<codec::Timestamp>(w, row_idx, col_idx, offset);
+                ColumnImpl<openmldb::base::Timestamp>(w, row_idx, col_idx, offset);
             break;
         }
         case hybridse::type::kDate: {
-            new (data) ColumnImpl<codec::Date>(w, row_idx, col_idx, offset);
+            new (data) ColumnImpl<openmldb::base::Date>(w, row_idx, col_idx, offset);
             break;
         }
         case hybridse::type::kBool: {

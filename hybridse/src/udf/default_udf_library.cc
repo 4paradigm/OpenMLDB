@@ -30,9 +30,9 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 
-using hybridse::codec::Date;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::Date;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 using hybridse::codegen::CodeGenContext;
 using hybridse::codegen::NativeValue;
 using hybridse::common::kCodegenError;
@@ -454,7 +454,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
 
     RegisterExternal("string")
-        .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
+        .args<bool>(static_cast<void (*)(bool, StringRef*)>(
                         udf::v1::bool_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -472,7 +472,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
     RegisterExternal("string")
         .args<Timestamp>(
-            static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
+            static_cast<void (*)(Timestamp*, StringRef*)>(
                 udf::v1::timestamp_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -487,7 +487,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
 
     RegisterExternal("string")
-        .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
+        .args<Date>(static_cast<void (*)(Date*, StringRef*)>(
                         udf::v1::date_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -560,8 +560,8 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterExternal("substring")
         .args<StringRef, int32_t>(
-            static_cast<void (*)(codec::StringRef*, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string))
+            static_cast<void (*)(StringRef*, int32_t,
+                                 StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
             @brief Return a substring from string `str` starting at position `pos `.
@@ -589,8 +589,8 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterExternal("substring")
         .args<StringRef, int32_t, int32_t>(
-            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string))
+            static_cast<void (*)(StringRef*, int32_t, int32_t,
+                                 StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
             @brief Return a substring `len` characters long from string str, starting at position `pos`.
@@ -619,7 +619,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterExternal("strcmp")
         .args<StringRef, StringRef>(
-            static_cast<int32_t (*)(codec::StringRef*, codec::StringRef*)>(
+            static_cast<int32_t (*)(StringRef*, StringRef*)>(
                 udf::v1::strcmp))
         .doc(R"(
             @brief Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
@@ -640,8 +640,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
-            static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
-                                 codec::StringRef*)>(udf::v1::date_format))
+            static_cast<void (*)(Timestamp*, StringRef*,
+                                 StringRef*)>(udf::v1::date_format))
         .return_by_arg(true)
         .doc(R"(
             @brief Formats the datetime value according to the format string.
@@ -654,8 +654,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode)");
     RegisterExternal("date_format")
         .args<Date, StringRef>(
-            static_cast<void (*)(codec::Date*, codec::StringRef*,
-                                 codec::StringRef*)>(udf::v1::date_format))
+            static_cast<void (*)(Date*, StringRef*,
+                                 StringRef*)>(udf::v1::date_format))
         .return_by_arg(true)
         .doc(R"(
             @brief Formats the date value according to the format string.
@@ -670,7 +670,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("like_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
                 udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -717,7 +717,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         )r");
     RegisterExternal("like_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like)))
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
@@ -750,7 +750,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("ilike_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
                 udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -798,7 +798,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         )r");
     RegisterExternal("ilike_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::ilike)))
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
@@ -829,10 +829,10 @@ void DefaultUdfLibrary::InitStringUdf() {
                 @since 0.4.0
         )r");
     RegisterExternal("ucase")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::ucase)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Convert all the characters to uppercase. Note that characters values > 127 are simply returned.
 
@@ -844,10 +844,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.4.0)");
     RegisterExternal("lcase")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::lcase)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::lcase)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Convert all the characters to lowercase. Note that characters with values > 127 are simply returned.
 
@@ -859,10 +859,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.5.0)");
     RegisterExternal("reverse")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::reverse)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::reverse)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Returns the reversed given string.
 
@@ -1535,7 +1535,7 @@ void DefaultUdfLibrary::InitLogicalUdf() {
 
 void DefaultUdfLibrary::InitTypeUdf() {
     RegisterExternal("double")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, double*, bool*)>(
                 v1::string_to_double)))
         .return_by_arg(true)
@@ -1551,7 +1551,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("float")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, float*, bool*)>(
                 v1::string_to_float)))
         .return_by_arg(true)
@@ -1567,7 +1567,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("int32")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int32_t*, bool*)>(
                 v1::string_to_int)))
         .return_by_arg(true)
@@ -1583,7 +1583,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("int64")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int64_t*, bool*)>(
                 v1::string_to_bigint)))
         .return_by_arg(true)
@@ -1600,7 +1600,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @since 0.1.0
         )");
     RegisterExternal("int16")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int16_t*, bool*)>(
                 v1::string_to_smallint)))
         .return_by_arg(true)
@@ -1617,7 +1617,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @since 0.1.0
         )");
     RegisterExternal("bool")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, bool*, bool*)>(
                 v1::string_to_bool)))
         .return_by_arg(true)
@@ -1635,7 +1635,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         )");
 
     RegisterExternal("date")
-        .args<codec::Timestamp>(reinterpret_cast<void*>(
+        .args<Timestamp>(reinterpret_cast<void*>(
             static_cast<void (*)(Timestamp*, Date*, bool*)>(
                 v1::timestamp_to_date)))
         .return_by_arg(true)
@@ -1653,14 +1653,14 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("date")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Date*, bool*)>(
                 v1::string_to_date)))
         .return_by_arg(true)
         .returns<Nullable<Date>>();
 
     RegisterExternal("timestamp")
-        .args<codec::Date>(reinterpret_cast<void*>(
+        .args<Date>(reinterpret_cast<void*>(
             static_cast<void (*)(Date*, Timestamp*, bool*)>(
                 v1::date_to_timestamp)))
         .return_by_arg(true)
@@ -1687,7 +1687,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("timestamp")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
                 v1::string_to_timestamp)))
         .return_by_arg(true)
