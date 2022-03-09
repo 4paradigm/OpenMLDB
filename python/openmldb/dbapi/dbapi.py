@@ -411,8 +411,6 @@ class Cursor(object):
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
             raise Exception("None operation")
-        if isinstance(parameters, tuple):
-            return self.execute(operation, parameters)
         if command.count("?") == 0:
             logging.warning(
                 "Only {} is valid, params: {} are invalid, maybe not exists mark '?' in sql".format(operation,
@@ -424,7 +422,7 @@ class Cursor(object):
         if insertRE.match(command):
             question_mark_count = command.count("?")
             if question_mark_count > 0:
-                ok, batch_builder = self.connection._sdk.getInsertBatchBuilder()
+                ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = batch_builder.GetSchema()
@@ -589,7 +587,7 @@ class Connection(object):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
     def executemany(self):
-        raise  NotSupportedError("Unsupported in OpenMLDB")
+        raise NotSupportedError("Unsupported in OpenMLDB")
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
