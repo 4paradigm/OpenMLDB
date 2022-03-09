@@ -588,6 +588,9 @@ class Connection(object):
     def execute(self):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
+    def executemany(self):
+        raise  NotSupportedError("Unsupported in OpenMLDB")
+
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
         raise NotSupportedError("Unsupported in OpenMLDB")
