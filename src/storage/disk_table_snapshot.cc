@@ -17,9 +17,9 @@
 #include "storage/disk_table_snapshot.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <gflags/gflags.h>
 #include <memory>
 #include <string>
-#include <gflags/gflags.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
