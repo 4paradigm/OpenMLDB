@@ -24,8 +24,10 @@ import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.types.{LongType, StructType}
+import org.apache.spark.sql.types.{LongType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
+
+import scala.collection.mutable
 
 
 object RowProjectPlan {
@@ -70,6 +72,8 @@ object RowProjectPlan {
       inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
     }
 
+    val inputSchema = inputDf.schema
+
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
 
     val outputDf = if (ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
@@ -83,22 +87,49 @@ object RowProjectPlan {
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
 
+        val inputTimestampColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until inputSchema.size) {
+          if (inputSchema(i).dataType == TimestampType) {
+            inputTimestampColIndexes.append(i)
+          }
+        }
+
+        val outputTimestampColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until outputSchema.size) {
+          if (outputSchema(i).dataType == TimestampType) {
+            outputTimestampColIndexes.append(i)
+          }
+        }
+
         partitionIter.map(internalRow => {
-          val inputRowSize = internalRow.asInstanceOf[UnsafeRow].getBytes.size
+
+          // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
+          for (tsColIdx <- inputTimestampColIndexes) {
+            if(!internalRow.isNullAt(tsColIdx)) {
+              internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+            }
+          }
 
           // Create native method input from Spark InternalRow
           val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
 
           // Call native method to compute
-          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, inputRowSize, false)
+          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
 
           // Call methods to generate Spark InternalRow
-          val ouputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+          val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+
+          // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
+          for (tsColIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(tsColIdx)) {
+              // TODO(tobe): warning if over LONG.MAX_VALUE
+              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+            }
+          }
 
           // TODO: Add index column if needed
-
           outputHybridseRow.delete()
-          ouputInternalRow
+          outputInternalRow
         })
 
       })

@@ -162,10 +162,10 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
         internalRow.numFields
       }
 
-      val ouputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
+      val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
         outputSchema.size - inputRowColNum)
 
-      new JoinedRow(ouputInternalRow, inputUnsaferow)
+      new JoinedRow(outputInternalRow, inputUnsaferow)
     } else {
       // Call methods to generate Spark InternalRow
       UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
