@@ -88,20 +88,22 @@ void RemoveData(const std::string& path) {
 
 class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
-        for (int i = 1; i <= 200; i++) {
-            std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
-            RemoveData(path);
-            path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
-            RemoveData(path);
-        }
+        // for (int i = 1; i <= 200; i++) {
+        //     std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
+        //     RemoveData(path);
+        //     path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
+        //     RemoveData(path);
+        // }
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
     }
     virtual void TearDown() {
-        for (int i = 1; i <= 200; i++) {
-            std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
-            RemoveData(path);
-            path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
-            RemoveData(path);
-        }
+        // for (int i = 1; i <= 200; i++) {
+        //     std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
+        //     RemoveData(path);
+        //     path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
+        //     RemoveData(path);
+        // }
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
     }
 };
 
@@ -3446,6 +3448,7 @@ void GetTermPair(::openmldb::common::StorageMode storage_mode) {
     } else {
         snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     }
+    PDLOG(ERROR, "%s", snapshot_file.c_str());
     unlink(snapshot_file.c_str());
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
