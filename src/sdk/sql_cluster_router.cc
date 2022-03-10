@@ -1624,7 +1624,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
             std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
+<<<<<<< HEAD
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+=======
+            auto rs = ExecuteSQLParameterized(db_, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+>>>>>>> 0785d407e (update show global variables)
             if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
