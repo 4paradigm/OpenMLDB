@@ -62,7 +62,7 @@ TEST_F(UdafTest, MaxTest) {
     CheckUdafOneParam<Nullable<int32_t>>("max", nullptr, {});
     CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr});
     CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr, nullptr});
-    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, { 5, 1});
     CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, {nullptr, 5, 1});
     CheckUdafOneParam<Nullable<float>, Nullable<float>>("max", 5.0, {nullptr, 5.0, -1.0});
     CheckUdafOneParam<Nullable<double>, Nullable<double>>("max", 5.0, {nullptr, 5.0, -1.0});
@@ -76,7 +76,7 @@ TEST_F(UdafTest, MinTest) {
     CheckUdafOneParam<Nullable<int32_t>>("min", nullptr, {});
     CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr});
     CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr, nullptr});
-    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {5, 1});
     CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {nullptr, 5, 1});
     CheckUdafOneParam<Nullable<float>, Nullable<float>>("min", -1.0, {nullptr, 5.0, -1.0});
     CheckUdafOneParam<Nullable<double>, Nullable<double>>("min", -1.0, {nullptr, 5.0, -1.0});
