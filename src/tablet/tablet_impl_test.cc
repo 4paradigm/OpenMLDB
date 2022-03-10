@@ -4210,7 +4210,7 @@ void AbsAndLat(::openmldb::common::StorageMode storage_mode) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::api::Dimension* dim = prequest.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i));
+        dim->set_key("test" + std::to_string(i % 10));
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
         PDLOG(ERROR, "puting row ts_col is %u", ts);
