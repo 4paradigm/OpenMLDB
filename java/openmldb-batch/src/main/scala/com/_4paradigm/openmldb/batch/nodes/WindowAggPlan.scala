@@ -17,7 +17,8 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
+  SkewDataFrameUtils, SparkUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
@@ -542,7 +543,8 @@ object WindowAggPlan {
         if (!isValidOrder(orderKey)) {
           None
         } else if (!expandedFlag) {
-          val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx, outputSchema,
+          val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
+            config.unionFlagIdx, outputSchema,
             sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
@@ -604,8 +606,8 @@ object WindowAggPlan {
                 None
               }
             } else {
-              val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn, config.unionFlagIdx,
-                outputSchema, sqlConfig.enableUnsafeRowOptimization)
+              val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
+                config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
               // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
               for (tsColIdx <- outputTimestampColIndexes) {
