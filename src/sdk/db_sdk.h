@@ -67,7 +67,7 @@ class DBSDK {
 
         std::string endpoint, real_endpoint;
         if (!GetNsAddress(&endpoint, &real_endpoint)) {
-            LOG(DFATAL) << "fail to get ns address";
+            DLOG(ERROR) << "fail to get ns address";
             return {};
         }
         ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);

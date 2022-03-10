@@ -274,6 +274,8 @@ class SQLClusterRouter : public SQLRouter {
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
 
+    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() override;
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
