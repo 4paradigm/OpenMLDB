@@ -626,19 +626,21 @@ object WindowAggPlan {
                       // Use Java reflection to get private fields in JoinedRow
                       val joinedRowClass = classOf[JoinedRow]
                       val row1Field = joinedRowClass.getDeclaredField("row1")
-                      val row2Field = joinedRowClass.getDeclaredField("row1")
+                      val row2Field = joinedRowClass.getDeclaredField("row2")
                       row1Field.setAccessible(true)
                       row2Field.setAccessible(true)
                       val row1InternalRow = row1Field.get(row).asInstanceOf[InternalRow]
-                      val row2InternalRow = row1Field.get(row).asInstanceOf[InternalRow]
+                      val row2InternalRow = row2Field.get(row).asInstanceOf[InternalRow]
                       val row1ColNum = row1InternalRow.numFields
+
                       // TODO(tobe): Support JoinedRow within JoinedRow in the future
-                      if (tsColIdx < row1InternalRow.numFields) {
-                        row1InternalRow.setLong(tsColIdx, row1InternalRow.getLong(tsColIdx) * 1000)
+                      if (tsColIdx < row1ColNum) {
+                        row1InternalRow.setLong(tsColIdx, row.getLong(tsColIdx) * 1000)
                       } else {
                         val row2ColIdx = tsColIdx - row1ColNum
-                        row2InternalRow.setLong(row2ColIdx, row2InternalRow.getLong(row2ColIdx) * 1000)
+                        row2InternalRow.setLong(row2ColIdx, row.getLong(tsColIdx) * 1000)
                       }
+
                     case _ =>
                       outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
                   }
