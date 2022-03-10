@@ -380,6 +380,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
+    ::openmldb::cmd::cluster_cli.sr->Init();
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
@@ -387,6 +388,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
+    ::openmldb::cmd::standalone_cli.sr->Init();
 
     ok = RUN_ALL_TESTS();
     ::openmldb::cmd::mc_->Close();
