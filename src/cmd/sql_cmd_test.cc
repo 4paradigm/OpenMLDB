@@ -351,8 +351,8 @@ TEST_P(DBSDKTest, ShowComponents) {
     if (cs->IsClusterMode()) {
         ASSERT_EQ(2, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
-        auto& tablet_eps = mc_->GetTbEndpoint();
-        auto& ns_ep = mc_->GetNsEndpoint();
+        const auto& tablet_eps = mc_->GetTbEndpoint();
+        const auto& ns_ep = mc_->GetNsEndpoint();
         ASSERT_EQ(1, tablet_eps.size());
         ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
@@ -434,24 +434,26 @@ int main(int argc, char** argv) {
     copt.zk_cluster = mc.GetZkCluster();
     copt.zk_path = mc.GetZkPath();
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
-    assert(::openmldb::cmd::cluster_cli.cs->Init());
+    ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
     ::openmldb::cmd::cluster_cli.sr->Init();
+
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
     ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
-    assert(::openmldb::cmd::standalone_cli.cs->Init());
+    ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
 
     ok = RUN_ALL_TESTS();
-    ::openmldb::cmd::mc_->Close();
-    env.Close();
 
     // sr owns relative cs
     delete openmldb::cmd::cluster_cli.sr;
     delete openmldb::cmd::standalone_cli.sr;
+
+    mc.Close();
+    env.Close();
 
     return ok;
 }

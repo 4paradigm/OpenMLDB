@@ -69,8 +69,13 @@ class MiniCluster {
         for (const auto& kv : tb_clients_) {
             delete kv.second;
         }
+
         if (ns_client_) {
             delete ns_client_;
+        }
+
+        for (auto & t : tablets_) {
+            delete t.second;
         }
     }
 
@@ -125,6 +130,7 @@ class MiniCluster {
 
     void Close() {
         ns_.Stop(10);
+
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
         }
@@ -216,6 +222,7 @@ class StandaloneEnv {
             delete ns_client_;
         }
     }
+
     bool SetUp() {
         srand(time(nullptr));
         FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
