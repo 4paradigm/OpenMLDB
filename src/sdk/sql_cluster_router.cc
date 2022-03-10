@@ -3012,7 +3012,7 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 // where
 // - ENDPOINT: IP:PORT or DOMAIN:PORT
 // - ROLE can be 'tablet', 'nameserver', 'taskmanager'
-// - CONNECT_TIME uptime time in milliseconds from epoch
+// - CONNECT_TIME last conncted timestamp from epoch
 // - STATUS can be 'online', 'offline' or 'NULL' (otherwise)
 // - NS_ROLE can be 'master', 'standby', or 'NULL' (for non-namespace component)
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponents(hybridse::sdk::Status* status) {
@@ -3109,7 +3109,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         data[i][1] = "nameserver";
 
         // connect time
-        data[i][2] = std::to_string(::baidu::common::timer::get_micros() / 1000 - it->second);
+        data[i][2] = std::to_string(it->second);
 
         // status
         // offlined nameserver won't register in zookeeper, so there is only online
@@ -3147,8 +3147,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTablets(h
         data[i][0] = tablets[i].endpoint;  // endpoint
         data[i][1] = "tablet";             // role
 
-        // connect time in milliseconds
-        data[i][2] = std::to_string(tablets[i].age);
+        // connecct time
+        data[i][2] = std::to_string(::baidu::common::timer::get_micros() / 1000 - tablets[i].age);
 
         // state
         if (tablets[i].state == "kHealthy") {
@@ -3188,7 +3188,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     // TODO(#1417): return multiple rows
     const auto& schema = GetComponetSchema();
     std::vector<std::vector<std::string>> data = {
-        {endpoint, "taskmanager", std::to_string(::baidu::common::timer::get_micros() / 1000 - stat.ctime), "online",
+        {endpoint, "taskmanager", std::to_string(stat.ctime), "online",
          "NULL"}};
 
     return ResultSetSQL::MakeResultSet(schema, data, status);
