@@ -1034,7 +1034,13 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
 
     ::llvm::Module* module = ctx_->GetModule();
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    size_t slice_idx = ctx_->schemas_context()->GetRowFormat()->GetSliceId(schema_idx);
+
+    size_t slice_idx = schema_idx;
+    if (ctx_->schemas_context() != nullptr && ctx_->schemas_context()->GetRowFormat() != nullptr) {
+        // TODO: check schema contest and make sure it is built for unit tests
+        slice_idx = ctx_->schemas_context()->GetRowFormat()->GetSliceId(schema_idx);
+    }
+
     auto slice_idx_value = builder.getInt64(slice_idx);
     auto get_slice_func = module->getOrInsertFunction(
         "hybridse_storage_get_row_slice",
