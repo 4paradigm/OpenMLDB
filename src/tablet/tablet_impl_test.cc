@@ -6108,7 +6108,11 @@ void DumpIndex(::openmldb::common::StorageMode storage_mode) {
         column_key->set_ts_name("ts2");
         ::openmldb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
-        ASSERT_EQ(0, dump_response.code());
+        if (storage_mode == openmldb::common::kMemory) {
+            ASSERT_EQ(0, dump_response.code());
+        } else {
+            ASSERT_EQ(701, dump_response.code());
+        }
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
 }
@@ -6320,51 +6324,56 @@ void AddIndex(::openmldb::common::StorageMode storage_mode) {
     SchemaCodec::SetIndex(add_index_request.mutable_column_key(), "mcc", "mcc", "ts1",
             ::openmldb::type::kAbsoluteTime, 20, 0);
     tablet.AddIndex(NULL, &add_index_request, &add_index_response, &closure);
-    ASSERT_EQ(0, response.code());
 
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t key_base = 10000;
-    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
-    for (int i = 0; i < 10; i++) {
-        uint64_t ts_value = cur_time - 10 * 60 * 1000 - i;
-        uint64_t ts1_value = cur_time - i;
-        std::vector<std::string> row = {"card" + std::to_string(key_base + i),
-                "mcc" + std::to_string(key_base + i), "12", std::to_string(ts_value), std::to_string(ts1_value)};
-        ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("card" + std::to_string(key_base + i));
-        dim = prequest.add_dimensions();
-        dim->set_idx(1);
-        dim->set_key("mcc" + std::to_string(key_base + i));
-        auto value = prequest.mutable_value();
-        sdk_codec.EncodeRow(row, value);
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        prequest.set_time(cur_time);
-        ::openmldb::api::PutResponse presponse;
-        tablet.Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(0, presponse.code());
+    if (storage_mode != openmldb::common::kMemory) {
+        ASSERT_EQ(145, add_index_response.code());
+    } else {
+        ASSERT_EQ(0, add_index_response.code());
+
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        uint64_t key_base = 10000;
+        ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts_value = cur_time - 10 * 60 * 1000 - i;
+            uint64_t ts1_value = cur_time - i;
+            std::vector<std::string> row = {"card" + std::to_string(key_base + i), "mcc" + std::to_string(key_base + i),
+                                            "12", std::to_string(ts_value), std::to_string(ts1_value)};
+            ::openmldb::api::PutRequest prequest;
+            ::openmldb::api::Dimension* dim = prequest.add_dimensions();
+            dim->set_idx(0);
+            dim->set_key("card" + std::to_string(key_base + i));
+            dim = prequest.add_dimensions();
+            dim->set_idx(1);
+            dim->set_key("mcc" + std::to_string(key_base + i));
+            auto value = prequest.mutable_value();
+            sdk_codec.EncodeRow(row, value);
+            prequest.set_tid(id);
+            prequest.set_pid(1);
+            prequest.set_time(cur_time);
+            ::openmldb::api::PutResponse presponse;
+            tablet.Put(NULL, &prequest, &presponse, &closure);
+            ASSERT_EQ(0, presponse.code());
+        }
+        ::openmldb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(1);
+        sr.set_pk("card10005");
+        sr.set_idx_name("card");
+        sr.set_st(0);
+        sr.set_et(0);
+        ::openmldb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, (signed)srp.count());
+
+        sr.set_pk("mcc10005");
+        sr.set_idx_name("mcc");
+        sr.set_st(0);
+        sr.set_et(0);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, (signed)srp.count());
     }
-    ::openmldb::api::ScanRequest sr;
-    sr.set_tid(id);
-    sr.set_pid(1);
-    sr.set_pk("card10005");
-    sr.set_idx_name("card");
-    sr.set_st(0);
-    sr.set_et(0);
-    ::openmldb::api::ScanResponse srp;
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, (signed)srp.count());
-
-    sr.set_pk("mcc10005");
-    sr.set_idx_name("mcc");
-    sr.set_st(0);
-    sr.set_et(0);
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, (signed)srp.count());
 }
 
 TEST_F(TabletImplTest, AddIndexDisk) {
