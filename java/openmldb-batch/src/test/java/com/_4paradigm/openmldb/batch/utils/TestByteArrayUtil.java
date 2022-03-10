@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.utils;
 
 import org.testng.annotations.Test;
 
-public class TestByteArrayUtils {
+public class TestByteArrayUtil {
 
     @Test
     public void testBytesToString() {

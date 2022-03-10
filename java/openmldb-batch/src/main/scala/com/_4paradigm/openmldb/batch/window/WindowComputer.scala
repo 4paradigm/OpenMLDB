@@ -138,14 +138,13 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   def unsafeCompute(internalRow: InternalRow, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int,
                     outputSchema: StructType, enableUnsafeRowFormat: Boolean): InternalRow = {
     val inputUnsaferow = internalRow.asInstanceOf[UnsafeRow]
-    val inputRowSize = inputUnsaferow.getBytes.size
 
     // Create native method input from Spark InternalRow
     val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
 
     // Call native method to compute
     val outputHybridseRow  =
-      CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, inputRowSize, true, appendSlices, window)
+      CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
 
     // TODO: Support append slice in JIT function instead of merge in offline
     val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {
@@ -155,11 +154,6 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
        * 1. C WindowProject will only return the newly added columns.
        * 1. Only get the output row without input row and calculate the size.
        * 2. Join the output row and input row.
-       */
-      /* TODO: There is some bug of JoinedRow to DataFrame which causes OOM, OOM if we return inputUnsaferow
-      val ouputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size -
-        internalRow.numFields)
-      new JoinedRow(ouputInternalRow, inputUnsaferow)
        */
 
       val inputRowColNum = if (unionFlagIdx >= 0) {

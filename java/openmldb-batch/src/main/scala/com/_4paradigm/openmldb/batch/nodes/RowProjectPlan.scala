@@ -141,6 +141,7 @@ object RowProjectPlan {
           // Release swig jni objects
           nativeInputRow.delete()
           outputNativeRow.delete()
+          emptyParameter.delete()
 
           // Append the index column if needed
           if (projectConfig.keepIndexColumn) {
