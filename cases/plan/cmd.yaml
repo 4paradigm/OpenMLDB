@@ -478,6 +478,30 @@ cases:
             +-expr[primary]
               +-value: yyyy
               +-type: string
+  - id: set global to int
+    sql: SET GLOBAL var1 = 100;
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: GlobalSystemVariable
+          +-key: var1
+          +-value:
+            +-expr[primary]
+              +-value: 100
+              +-type: int32
+
+  - id: set session to string
+    sql: SET SESSION var2 = '100';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: var2
+          +-value:
+            +-expr[primary]
+              +-value: 100
+              +-type: string
+
   - id: show_variables
     sql: SHOW VARIABLES;
     expect:
