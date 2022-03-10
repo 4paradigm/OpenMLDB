@@ -1423,7 +1423,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             auto ok = ns_ptr->ShowDatabase(&dbs, msg);
             if (ok) {
                 std::vector<std::vector<std::string>> values;
-                ;
                 for (const auto& val : dbs) {
                     std::vector<std::string> vec = {val};
                     values.emplace_back(std::move(vec));
@@ -1442,7 +1441,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             auto tables = cluster_sdk_->GetTables(db);
             std::vector<std::vector<std::string>> values;
-            ;
             for (auto it = tables.begin(); it != tables.end(); ++it) {
                 std::vector<std::string> vec = {(*it)->name()};
                 values.emplace_back(std::move(vec));
