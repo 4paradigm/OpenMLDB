@@ -3066,7 +3066,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
             return {};
         }
 
-        std::vector<std::vector<std::string>> data = {{endpoint, "nameserver", "ctime(fixme)", "online", "master"}};
+        // TODO(aceforeverd): support connect time for ns in standalone mode
+        std::vector<std::vector<std::string>> data = {{endpoint, "nameserver", "0", "online", "master"}};
 
         return ResultSetSQL::MakeResultSet(schema, data, status);
     }
