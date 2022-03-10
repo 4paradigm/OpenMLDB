@@ -174,6 +174,15 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     remove(file_path.c_str());
 }
 
+TEST_F(SqlCmdTest, show_deployment) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("show deployment aa", &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "Please enter database first");
+}
+
 TEST_P(DBSDKTest, deploy) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -371,6 +380,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
+    ::openmldb::cmd::cluster_cli.sr->Init();
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
@@ -378,6 +388,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
+    ::openmldb::cmd::standalone_cli.sr->Init();
 
     ok = RUN_ALL_TESTS();
     ::openmldb::cmd::mc_->Close();

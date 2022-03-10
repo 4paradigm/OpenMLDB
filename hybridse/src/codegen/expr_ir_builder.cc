@@ -833,7 +833,7 @@ Status ExprIRBuilder::BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* exp
 
     // target node
     const auto target_node = expr->GetChild(0);
-    auto arg_0 = nm->MakeExprIdNode("proxy_arg_1");
+    auto arg_0 = nm->MakeExprIdNode("proxy_arg_0");
     arg_0->SetOutputType(target_node->GetOutputType());
     arg_0->SetNullable(target_node->nullable());
     proxy_args.push_back(arg_0);
