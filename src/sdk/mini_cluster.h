@@ -65,6 +65,7 @@ class MiniCluster {
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
     ~MiniCluster() = default;
+
     bool SetUp(int tablet_num = 2) {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
@@ -105,6 +106,7 @@ class MiniCluster {
             LOG(WARNING) << "fail to init ns client";
             return false;
         }
+        ns_endpoint_ = ns_endpoint;
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_ << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;
         for (auto tb_endpoint : tb_endpoints_) {
@@ -151,6 +153,8 @@ class MiniCluster {
 
     const std::vector<std::string>& GetTbEndpoint() const { return tb_endpoints_; }
 
+    const std::string& GetNsEndpoint() const { return ns_endpoint_; }
+
  private:
     bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
@@ -187,6 +191,7 @@ class MiniCluster {
     brpc::Server ns_;
     int32_t tablet_num_;
     brpc::Server tb_servers_[MAX_TABLET_NUM];
+    std::string ns_endpoint_;
     std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;
@@ -229,6 +234,7 @@ class StandaloneEnv {
             LOG(WARNING) << "fail to init ns client";
             return false;
         }
+        ns_endpoint_ = ns_endpoint;
         LOG(INFO) << "start standalone env";
         LOG(INFO) << "----- ns " << ns_endpoint;
         LOG(INFO) << "----- tb " << tb_endpoint_;
@@ -250,6 +256,8 @@ class StandaloneEnv {
     uint64_t GetNsPort() const { return ns_port_; }
 
     const std::string& GetTbEndpoint() const { return tb_endpoint_; }
+
+    const std::string& GetNsEndpoint() const { return ns_endpoint_; }
 
  private:
     uint64_t GenRand() { return rand() % 1000 + 10000; }
@@ -282,6 +290,7 @@ class StandaloneEnv {
 
     brpc::Server ns_;
     brpc::Server tb_server_;
+    std::string ns_endpoint_;
     std::string tb_endpoint_;
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;

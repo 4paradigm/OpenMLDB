@@ -3043,6 +3043,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
+        // TODO(aceforeverd): get ns in standalone mode
         status->code = hybridse::common::kRunError;
         status->msg = "show nameservers not support in standalone mode";
         return {};
@@ -3099,7 +3100,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         // ns_role
         // NSs runs as mater/standby mode
         if (i == 0) {
-            data[i][5] = "leader";
+            data[i][5] = "master";
         } else {
             data[i][5] = "standby";
         }
