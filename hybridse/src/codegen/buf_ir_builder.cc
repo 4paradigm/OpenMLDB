@@ -66,27 +66,33 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* slice_ptr,
     switch (data_type.base_) {
         case ::hybridse::node::kBool: {
             llvm::Type* bool_ty = builder.getInt1Ty();
-            return BuildGetPrimaryField("hybridse_storage_get_bool_field", row_ptr, row_format_corrected_col_idx, offset, bool_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_bool_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, bool_ty, output);
         }
         case ::hybridse::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
-            return BuildGetPrimaryField("hybridse_storage_get_int16_field", row_ptr, row_format_corrected_col_idx, offset, i16_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_int16_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, i16_ty, output);
         }
         case ::hybridse::node::kInt32: {
             llvm::Type* i32_ty = builder.getInt32Ty();
-            return BuildGetPrimaryField("hybridse_storage_get_int32_field", row_ptr, row_format_corrected_col_idx, offset, i32_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_int32_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, i32_ty, output);
         }
         case ::hybridse::node::kInt64: {
             llvm::Type* i64_ty = builder.getInt64Ty();
-            return BuildGetPrimaryField("hybridse_storage_get_int64_field", row_ptr, row_format_corrected_col_idx, offset, i64_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_int64_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, i64_ty, output);
         }
         case ::hybridse::node::kFloat: {
             llvm::Type* float_ty = builder.getFloatTy();
-            return BuildGetPrimaryField("hybridse_storage_get_float_field", row_ptr, row_format_corrected_col_idx, offset, float_ty, output);
+            return BuildGetPrimaryField("hybridse_storage_get_float_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, float_ty, output);
         }
         case ::hybridse::node::kDouble: {
             llvm::Type* double_ty = builder.getDoubleTy();
-            return BuildGetPrimaryField("hybridse_storage_get_double_field", row_ptr, row_format_corrected_col_idx, offset, double_ty,
+            return BuildGetPrimaryField("hybridse_storage_get_double_field", row_ptr, row_format_corrected_col_idx,
+                                        offset, double_ty,
                                         output);
         }
         case ::hybridse::node::kTimestamp: {
@@ -125,8 +131,8 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* slice_ptr,
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset " << str_info.str_next_offset
                        << " for col " << col_idx;
-            return BuildGetStringField(str_info.idx, offset, str_info.str_next_offset, str_info.str_start_offset, row_ptr,
-                                       row_size, output);
+            return BuildGetStringField(str_info.idx, offset, str_info.str_next_offset, str_info.str_start_offset,
+                                       row_ptr, row_size, output);
         }
         default: {
             LOG(WARNING) << "fail to get col for type: " << data_type.GetName();

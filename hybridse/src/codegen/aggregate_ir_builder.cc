@@ -673,7 +673,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
     std::unordered_map<size_t, std::pair<::llvm::Value*, ::llvm::Value*>>
         used_slices;
-    
+
     // compute current row's slices
     for (auto& pair : agg_col_infos_) {
         size_t schema_idx = pair.second.schema_idx;

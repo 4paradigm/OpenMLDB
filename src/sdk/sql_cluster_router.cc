@@ -2117,7 +2117,7 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
         return "";
     }
 
-    // TODO: Need to pass ::openmldb::base::Status* for TaskManagerClient
+    // TODO(tobe): Need to pass ::openmldb::base::Status* for TaskManagerClient
     auto openmldbStatus =  std::make_shared<::openmldb::base::Status>();
     auto log = taskmanager_client_ptr->GetJobLog(id, openmldbStatus.get());
     status->code = openmldbStatus->code;
@@ -2853,8 +2853,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
-                                                          const std::set<std::pair<std::string, std::string>>& table_pair,
-                                                          const std::string& select_sql) {
+        const std::set<std::pair<std::string, std::string>>& table_pair,
+        const std::string& select_sql) {
     auto iter = deploy_node->Options()->find("long_windows");
     std::string long_window_param = "";
     if (iter != deploy_node->Options()->end()) {

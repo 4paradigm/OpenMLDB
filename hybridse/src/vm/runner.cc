@@ -1997,8 +1997,8 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                 key_str = index_key_gen_.Gen(left_row, parameter);
             }
             if (left_key_gen_.Valid()) {
-                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) : key_str.append("|").append
-                                                                                     (left_key_gen_.Gen(left_row, parameter));
+                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) :
+                                          key_str.append("|").append(left_key_gen_.Gen(left_row, parameter));
             }
             auto right_table = right->GetSegment(key_str);
             auto left_key_str = std::string(

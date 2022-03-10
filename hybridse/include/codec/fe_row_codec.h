@@ -219,7 +219,7 @@ class SliceFormat {
 
 class RowFormat {
  public:
-    virtual ~RowFormat() {};
+    virtual ~RowFormat() {}
     virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
     virtual const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual size_t GetSliceId(size_t schema_idx) const = 0;

@@ -860,7 +860,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.5.0)");
     RegisterExternal("reverse")
         .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::reverse)))
+            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>
+                                    (udf::v1::reverse)))
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(

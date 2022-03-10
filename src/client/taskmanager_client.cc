@@ -98,7 +98,7 @@ namespace client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO: Set map of config
+    // TODO(tobe): Set map of config
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
