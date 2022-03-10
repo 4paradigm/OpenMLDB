@@ -1512,8 +1512,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(
         case hybridse::node::kCmdShowDeployment: {
             std::string db_name, deploy_name;
             auto& args = cmd_node->GetArgs();
-            if (!ParseNamesFromArgs(db, args, &db_name, &deploy_name).IsOK()) {
-                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+            *status = ParseNamesFromArgs(db, args, &db_name, &deploy_name);
+            if (!status->IsOK()) {
                 return {};
             }
             std::vector<api::ProcedureInfo> sps;
