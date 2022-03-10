@@ -174,6 +174,15 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     remove(file_path.c_str());
 }
 
+TEST_F(SqlCmdTest, show_deployment) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("show deployment aa", &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "Please enter database first");
+}
+
 TEST_P(DBSDKTest, deploy) {
     auto cli = GetParam();
     cs = cli->cs;
