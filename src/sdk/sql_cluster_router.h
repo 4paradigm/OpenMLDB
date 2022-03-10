@@ -180,6 +180,8 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTaskManagers(hybridse::sdk::Status* status);
 
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowApiServers(hybridse::sdk::Status* status);
+
 
     bool RefreshCatalog() override;
 

@@ -3040,6 +3040,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
         LOG(WARNING) << "[WARN]: show taskmanagers, code: " << status->code << ", msg: " << status->msg;
     }
 
+    auto api_servres = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowApiServers(status));
+    if (api_servres != nullptr && status->IsOK()) {
+        data.push_back(std::move(api_servres));
+    } else {
+        LOG(WARNING) << "[WARN]: show api servers, code: " << status->code << ", msg: " << status->msg;
+    }
+
     status->code = hybridse::common::kOk;
     return MultipleResultSetSQL::MakeResultSet(data, 0, status);
 }
@@ -3178,13 +3185,18 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     }
 
     // taskmanager only registered leader on zk, return one row only currently
-    // TODO(aceforeverd): return multiple rows
+    // TODO(#1417): return multiple rows
     const auto& schema = GetComponetSchema();
     std::vector<std::vector<std::string>> data = {
         {endpoint, "taskmanager", std::to_string(::baidu::common::timer::get_micros() / 1000 - stat.ctime), "online",
          "NULL"}};
 
     return ResultSetSQL::MakeResultSet(schema, data, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServers(hybridse::sdk::Status* status) {
+    // TODO(#1416): support show api servers
+    return {};
 }
 
 }  // namespace sdk
