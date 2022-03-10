@@ -461,6 +461,29 @@ class Tablet {
         const std::vector<Row>& in_rows, const bool request_is_common,
         const bool is_procedure, const bool is_debug) = 0;
 };
+struct AggrTableInfo {
+    std::string aggr_table;
+    std::string aggr_db;
+    std::string base_db;
+    std::string base_table;
+    std::string aggr_func;
+    std::string aggr_col;
+    std::string partition_cols;
+    std::string order_by_col;
+    std::string bucket_size;
+
+    bool operator==(const AggrTableInfo& rhs) const {
+        return aggr_table == rhs.aggr_table &&
+            aggr_db == rhs.aggr_db &&
+            base_db == rhs.base_db &&
+            base_table == rhs.base_table &&
+            aggr_func == rhs.aggr_func &&
+            aggr_col == rhs.aggr_col &&
+            partition_cols == rhs.partition_cols &&
+            order_by_col == rhs.order_by_col &&
+            bucket_size == rhs.bucket_size;
+    }
+};
 
 /// \brief A Catalog handler which defines a set of operation for, e.g,
 /// database, table and index management.
@@ -489,6 +512,16 @@ class Catalog {
     virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
         return nullptr;
+    }
+
+    virtual std::vector<AggrTableInfo> GetAggrTables(
+        const std::string& base_db,
+        const std::string& base_table,
+        const std::string& aggr_func,
+        const std::string& aggr_col,
+        const std::string& partition_cols,
+        const std::string& order_col) {
+        return std::vector<AggrTableInfo>();
     }
 };
 
