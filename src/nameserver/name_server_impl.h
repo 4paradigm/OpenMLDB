@@ -355,6 +355,7 @@ class NameServerImpl : public NameServer {
 
     base::Status CreateSystemTable(const std::string& table_name, SystemTableType table_type);
 
+    base::Status InitGlobalVarTable();
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper

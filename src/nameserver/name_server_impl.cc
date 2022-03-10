@@ -34,6 +34,7 @@
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
+#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -5490,6 +5491,7 @@ void NameServerImpl::OnLocked() {
                 LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
                 exit(1);
             }
+            InitGlobalVarTable();
         }
     }
     running_.store(true, std::memory_order_release);
@@ -10200,6 +10202,58 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     }
     LOG(INFO) << "create system table ok. name is " << table_name;
     return {};
+}
+
+base::Status NameServerImpl::InitGlobalVarTable() {
+    std::map<std::string, std::string> default_value = {
+        {"execute_mode", "online"},
+        {"enable_trace", "true"},
+    };
+    // get table_info
+    std::string db = INFORMATION_SCHEMA_DB;
+    std::string table = GLOBAL_VARIABLE_NAME;
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(table, db, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+    }
+    // encode row && dimensions
+    std::vector<std::string> rows;
+    std::vector<std::vector<std::pair<std::string, uint32_t>>> rows_dimensions;
+    for (auto iter = default_value.begin(); iter != default_value.end(); iter++) {
+        std::string row;
+        std::vector<std::string> vec;
+        vec.push_back(iter->first);
+        vec.push_back(iter->second);
+        codec::RowCodec::EncodeRow(vec, table_info->column_desc(), 1, row);
+        rows.push_back(row);
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        // only one index in system table
+        dimensions.push_back(std::make_pair(iter->first, 0));
+        rows_dimensions.push_back(dimensions);
+    }
+    // insert value
+    uint32_t tid = table_info->tid();
+    uint32_t pid_num = table_info->table_partition_size();
+    for (int i = 0; i < default_value.size(); i++) {
+        std::string row = rows[i];
+        std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
+        uint32_t pid;
+        if (pid_num > 0) {
+            pid = (uint32_t)(::openmldb::base::hash64(dimensions[0].first) % pid_num);
+        }
+        // system table only have one partition, so table_partition(0) can be used
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(0).partition_meta(meta_idx).is_leader()) {
+                uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+                std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
+                auto table_ptr = GetTablet(endpoint);
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                    LOG(WARNING) << "fail to make a put request to table. tid " + std::to_string(tid);
+                    return {};
+                }
+            }
+        }
+    }
 }
 
 void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* controller,
