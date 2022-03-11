@@ -357,7 +357,7 @@ class Cursor(object):
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
             else:
-                ok, error = self.connection._sdk.executeInsert(self.db, command)
+                ok, error = self.connection._sdk.execute_sql(self.db, command)
                 if not ok:
                     raise DatabaseError(error)
         else:
