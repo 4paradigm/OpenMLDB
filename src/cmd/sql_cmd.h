@@ -1303,7 +1303,7 @@ void HandleSQL(const std::string& sql) {
             return;
         }
         case hybridse::node::kPlanTypeInsert: {
-            if (!IsOnlineMode()) {
+            if (cs->IsClusterMode() && !IsOnlineMode()) {
                 // Not support for inserting into offline storage
                 std::cout << "ERROR: Can not insert in offline mode, please set @@SESSION.execute_mode='online'"
                           << std::endl;
@@ -1333,7 +1333,7 @@ void HandleSQL(const std::string& sql) {
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            if (IsOnlineMode()) {
+            if (!cs->IsClusterMode() || IsOnlineMode()) {
                 // Run online query
                 ::hybridse::sdk::Status status;
                 auto rs = sr->ExecuteSQL(db, sql, &status);
