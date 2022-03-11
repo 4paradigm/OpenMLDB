@@ -25,7 +25,7 @@ test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
 cd "$THIRDSRC/zookeeper-3.4.14"
 if [[ "$OSTYPE" =~ ^darwin ]]; then
-  netstat | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
+  lsof | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 elif [[ "$OSTYPE" =~ ^linux ]]; then
   netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 fi
