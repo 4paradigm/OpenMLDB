@@ -219,7 +219,7 @@ void MultiDimissionPut0(::openmldb::common::StorageMode storageMode) {
         ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
     }
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
-    delete table; 
+    delete table;
 }
 
 TEST_F(TableTest, MultiDimissionPut0Mem) {
@@ -760,7 +760,7 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     ASSERT_EQ(9523, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk4", it->GetPK().c_str());
-    ASSERT_EQ(9524, (int64_t)it->GetKey());    
+    ASSERT_EQ(9524, (int64_t)it->GetKey());
 
     delete it;
 
@@ -2012,9 +2012,9 @@ void MultiDimissionPutTS2(::openmldb::common::StorageMode storageMode) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(100, (int64_t)it->GetKey());
-    
+
     delete it;
-    delete table; 
+    delete table;
 }
 
 TEST_F(TableTest, MultiDimissionPutTS2Mem) {
@@ -2055,7 +2055,7 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0, 5);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50, 0);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0, 0);
-    
+
     Table* table = CreateTable(table_meta, table_path);
     table->Init();
     codec::SDKCodec codec(table_meta);
@@ -2073,9 +2073,9 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
         dim->set_key(row[0]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());                                
+        table->Put(0, value, request.dimensions());
     }
-    
+
     for (int i = 0; i <= 5; i++) {
         TableIterator* it = table->NewTraverseIterator(i);
         it->SeekToFirst();
@@ -2084,7 +2084,7 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
             it->Next();
             count++;
         }
-        
+
         if (i == 1) {
             ASSERT_EQ(80, count);
         } else if (i == 2) {

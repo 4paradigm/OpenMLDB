@@ -331,7 +331,7 @@ TEST_F(DiskTableTest, LongPut) {
             std::string rawValue1;
             decoder->GetStrValue(data, 0, &rawValue1);
             ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", rawValue1);
-            
+
             data = reinterpret_cast<const int8_t*>(value1.data());
             version = codec::RowView::GetSchemaVersion(data);
             decoder = table->GetVersionDecoder(version);
@@ -982,7 +982,7 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
             if (idx == 50 && i > 2) {
                 break;
             }
-            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i), 
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
                                             std::to_string(cur_time - i), std::to_string(cur_time - i)};
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
@@ -1006,7 +1006,7 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
         for (int i = 0; i < 10; i++) {
-            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i), 
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
                                             std::to_string(cur_time - i), std::to_string(cur_time - i)};
             std::string e_value;
             ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
@@ -1041,7 +1041,7 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
         for (int i = 0; i < 10; i++) {
-            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i), 
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
                                             std::to_string(cur_time - i), std::to_string(cur_time - i)};
             std::string e_value;
             ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
