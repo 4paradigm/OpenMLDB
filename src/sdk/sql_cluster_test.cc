@@ -845,6 +845,22 @@ TEST_F(SQLClusterTest, GetTableSchema) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
+
+TEST_F(SQLClusterTest, GlobalVariable) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db, "show global variables", &status));
+    std::string ddl = "SET @@global.enable_trace='true';";
+    auto res = router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(res);
+}
+
 TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
     auto sql_case = GetParam();
     if (!IsBatchSupportMode(sql_case.mode())) {

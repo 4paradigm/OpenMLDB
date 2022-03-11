@@ -2411,11 +2411,32 @@ bool SQLClusterRouter::IsEnableTrace() {
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
-    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
-        return {::hybridse::common::StatusCode::kCmdError, "global system variable is unsupported"};
-    }
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        std::string value = node->Value()->GetExprString();
+        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        if (key != "execute_mode" && key != "enable_trace") {
+            return {::hybridse::common::StatusCode::kCmdError, "no global variable " + key};
+        }
+        if (key == "execute_mode") {
+            if (value != "online" && value != "offline") {
+                return {::hybridse::common::StatusCode::kCmdError, "the value of execute_mode must be online|offline"};
+            }
+        } else if (key == "enable_trace") {
+            if (value != "true" && value != "false") {
+                return {::hybridse::common::StatusCode::kCmdError, "the value of enable_trace must be true|false"};
+            }
+        }
+        hybridse::sdk::Status status;
+        std::string sql = "INSERT INTO GLOBAL_VARIABLES values(" + key + ", " + value + ");";
+        ExecuteInsert("INFORMATION_SCHEMA", sql, &status);
+        if (status.code != 0) {
+            std::cout << "ERROR:" << status.msg << std::endl;
+        }
+        return {};
+    }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find(node->Key());
     if (it == session_variables_.end()) {
