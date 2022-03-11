@@ -127,7 +127,13 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
     @Override
     public WriterCommitMessage commit() throws IOException {
         try {
-            preparedStatement.executeBatch();
+            int[] rc = preparedStatement.executeBatch();
+            for(int i = 0; i < rc.length; i++) {
+                int code = rc[i];
+                if (code < 0) {
+                    throw new SQLException( message + ". Response code: " + code);
+                } 
+            }
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
