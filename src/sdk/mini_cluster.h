@@ -64,7 +64,21 @@ class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
-    ~MiniCluster() = default;
+
+    ~MiniCluster() {
+        for (const auto& kv : tb_clients_) {
+            delete kv.second;
+        }
+
+        if (ns_client_) {
+            delete ns_client_;
+        }
+
+        for (auto & t : tablets_) {
+            delete t.second;
+        }
+    }
+
     bool SetUp(int tablet_num = 2) {
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
@@ -105,6 +119,7 @@ class MiniCluster {
             LOG(WARNING) << "fail to init ns client";
             return false;
         }
+        ns_endpoint_ = ns_endpoint;
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_ << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;
         for (auto tb_endpoint : tb_endpoints_) {
@@ -115,11 +130,9 @@ class MiniCluster {
 
     void Close() {
         ns_.Stop(10);
+
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
-        }
-        for (const auto& kv : tb_clients_) {
-            delete kv.second;
         }
     }
 
@@ -150,6 +163,8 @@ class MiniCluster {
     }
 
     const std::vector<std::string>& GetTbEndpoint() const { return tb_endpoints_; }
+
+    const std::string& GetNsEndpoint() const { return ns_endpoint_; }
 
  private:
     bool StartTablet(brpc::Server* tb_server) {
@@ -187,6 +202,7 @@ class MiniCluster {
     brpc::Server ns_;
     int32_t tablet_num_;
     brpc::Server tb_servers_[MAX_TABLET_NUM];
+    std::string ns_endpoint_;
     std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;
@@ -198,7 +214,15 @@ class MiniCluster {
 class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
-    ~StandaloneEnv() = default;
+    ~StandaloneEnv() {
+        if (tb_client_) {
+            delete tb_client_;
+        }
+        if (ns_client_) {
+            delete ns_client_;
+        }
+    }
+
     bool SetUp() {
         srand(time(nullptr));
         FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
@@ -229,6 +253,7 @@ class StandaloneEnv {
             LOG(WARNING) << "fail to init ns client";
             return false;
         }
+        ns_endpoint_ = ns_endpoint;
         LOG(INFO) << "start standalone env";
         LOG(INFO) << "----- ns " << ns_endpoint;
         LOG(INFO) << "----- tb " << tb_endpoint_;
@@ -238,18 +263,17 @@ class StandaloneEnv {
     void Close() {
         ns_.Stop(10);
         tb_server_.Stop(10);
-        delete tb_client_;
     }
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
 
-    ::openmldb::client::TabletClient* GetTabletClient() {
-        return tb_client_;
-    }
+    ::openmldb::client::TabletClient* GetTabletClient() { return tb_client_; }
 
     uint64_t GetNsPort() const { return ns_port_; }
 
     const std::string& GetTbEndpoint() const { return tb_endpoint_; }
+
+    const std::string& GetNsEndpoint() const { return ns_endpoint_; }
 
  private:
     uint64_t GenRand() { return rand() % 1000 + 10000; }
@@ -282,6 +306,7 @@ class StandaloneEnv {
 
     brpc::Server ns_;
     brpc::Server tb_server_;
+    std::string ns_endpoint_;
     std::string tb_endpoint_;
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;

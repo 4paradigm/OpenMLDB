@@ -87,6 +87,10 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
+endif()
+
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
 find_library(PROTOBUF_LIBRARY protobuf)
@@ -138,10 +142,6 @@ if (COVERAGE_ENABLE)
     include(CodeCoverage)
     APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
-
-if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
-endif()
 
 if (DEFINED ENV{CI})
   # suppress useless maven log (e.g download log) on CI environment

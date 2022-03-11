@@ -87,6 +87,8 @@ class ZkClient {
     bool GetNodeValueUnLocked(const std::string& node,
                               std::string& value);  // NOLINT
 
+    bool GetNodeValueAndStat(const char* node, std::string* value, Stat* stat);
+
     bool SetNodeValue(const std::string& node, const std::string& value);
 
     bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);

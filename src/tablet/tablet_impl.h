@@ -41,6 +41,7 @@
 #include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
+#include "sdk/sql_cluster_router.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -424,6 +425,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::string notify_path_;
     std::string sp_root_path_;
     ::openmldb::type::StartupMode startup_mode_;
+
+    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
 };
 
 }  // namespace tablet

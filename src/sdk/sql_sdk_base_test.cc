@@ -270,7 +270,7 @@ void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_vie
                 ASSERT_TRUE(request_row->AppendString(row_view->GetStringUnsafe(i)));
                 break;
             default: {
-                FAIL() << "Fail conver hybridse row to fedb sdk request row";
+                FAIL() << "Fail conver hybridse row to OpenMLDB sdk request row";
                 return;
             }
         }

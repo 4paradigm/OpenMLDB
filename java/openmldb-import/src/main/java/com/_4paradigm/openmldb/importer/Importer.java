@@ -209,7 +209,7 @@ public class Importer {
         reader.enableCheckHeader(tableMetaData);
         try {
             CSVRecord record;
-            int rowCount = 0;
+            long rowCount = 0;
             while ((record = reader.next()) != null) {
                 Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
                 rowCount++;
@@ -221,7 +221,7 @@ public class Importer {
                     generators.get(pid).feed(new BulkLoadGenerator.FeedItem(dims, tsIdxSet, record));
                 }
             }
-            logger.debug("total rows of " {} : {}", record, rowCount);
+            System.out.println("Total read rows: " + rowCount);
         } catch (Exception e) {
             logger.error("feeding failed, {}", e.getMessage());
         }
