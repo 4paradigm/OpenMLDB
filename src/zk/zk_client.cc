@@ -347,6 +347,17 @@ bool ZkClient::GetNodeValueUnLocked(const std::string& node, std::string& value)
     return false;
 }
 
+bool ZkClient::GetNodeValueAndStat(const char* node, std::string* value, Stat* stat) {
+    std::lock_guard<std::mutex> lock(mu_);
+    DCHECK(value != nullptr && stat != nullptr);
+    int buffer_len = ZK_MAX_BUFFER_SIZE;
+    if (zoo_get(zk_, node, 0, buffer_, &buffer_len, stat) == ZOK) {
+        value->assign(buffer_, buffer_len);
+        return true;
+    }
+    return false;
+}
+
 bool ZkClient::DeleteNode(const std::string& node) {
     std::lock_guard<std::mutex> lock(mu_);
     if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
