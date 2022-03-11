@@ -207,7 +207,6 @@ class StandAloneSDK : public DBSDK {
 
     bool GlobalVarNotify() const override { return false; }
 
- protected:
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override {
