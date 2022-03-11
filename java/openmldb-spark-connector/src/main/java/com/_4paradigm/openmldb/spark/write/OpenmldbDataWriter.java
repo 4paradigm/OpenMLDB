@@ -131,7 +131,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             for(int i = 0; i < rc.length; i++) {
                 int code = rc[i];
                 if (code < 0) {
-                    throw new SQLException( message + ". Response code: " + code);
+                    throw new SQLException("List of " + i + " insert fail. Response code: " + code);
                 } 
             }
             preparedStatement.close();
