@@ -34,19 +34,19 @@ import org.testng.annotations.Test;
 @Slf4j
 @Feature("deploy")
 public class DeploymentTest extends FedbTest {
-    @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
-    @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
     @Story("show")
     public void testShow(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
-    @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
     @Story("drop")
     public void testDrop(SQLCase testCase){
