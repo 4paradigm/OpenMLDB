@@ -188,8 +188,10 @@ TEST_P(DBSDKTest, Select) {
     cs = cli->cs;
     sr = cli->sr;
     hybridse::sdk::Status status;
-    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
     std::string db = "db" + GenRand();
     sr->ExecuteSQL("create database " + db + ";", &status);
     ASSERT_TRUE(status.IsOK());
