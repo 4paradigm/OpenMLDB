@@ -677,7 +677,13 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     // compute current row's slices
     for (auto& pair : agg_col_infos_) {
         size_t schema_idx = pair.second.schema_idx;
-        size_t slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+
+        size_t slice_idx = schema_idx;
+        // TODO(tobe): Check row format before getting
+        if (schema_context_->GetRowFormat() != nullptr) {
+            slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+        }
+
         auto iter = used_slices.find(slice_idx);
         if (iter == used_slices.end()) {
             ::llvm::Value* idx_value =
@@ -697,7 +703,12 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         std::string col_key = info.GetColKey();
         if (cur_row_fields_dict.find(col_key) == cur_row_fields_dict.end()) {
             size_t schema_idx = info.schema_idx;
-            size_t slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+            size_t slice_idx = schema_idx;
+            // TODO(tobe): Check row format before getting
+            if (schema_context_->GetRowFormat() != nullptr) {
+                slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+            }
+
             auto& slice_info = used_slices[slice_idx];
 
             ScopeVar dummy_scope_var;

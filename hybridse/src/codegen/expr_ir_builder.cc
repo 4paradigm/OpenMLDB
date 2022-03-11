@@ -1036,7 +1036,7 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
 
     size_t slice_idx = schema_idx;
-    if (ctx_->schemas_context() != nullptr && ctx_->schemas_context()->GetRowFormat() != nullptr) {
+    if (ctx_->schemas_context()->GetRowFormat() != nullptr) {
         // TODO(tobe): check schema contest and make sure it is built for unit tests
         slice_idx = ctx_->schemas_context()->GetRowFormat()->GetSliceId(schema_idx);
     }
