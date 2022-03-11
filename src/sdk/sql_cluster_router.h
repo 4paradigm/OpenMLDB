@@ -33,6 +33,7 @@
 #include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
+#include "nameserver/system_table.h"
 
 namespace openmldb {
 namespace sdk {

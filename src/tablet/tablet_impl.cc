@@ -3808,24 +3808,23 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
-    auto table_handler = catalog_->GetTable("INFORMATION_SCHEMA", "GLOBAL_VARIABLES");
-    auto sc = table_handler->GetSchema();
-    auto iter = table_handler->GetIterator();
-    Schema* schema;
-    schema::SchemaAdapter::ConvertSchema(*sc, schema);
-    while (iter->Valid()) {
-        codec::RowView view(*schema);
-        char* ch = NULL;
-        uint32_t length = 0;
-        view.GetValue((iter->GetValue().buf()), 0, &ch, &length);
-        std::string key(ch, length);
-        ch = NULL;
-        length = 0;
-        view.GetValue((iter->GetValue().buf()), 1, &ch, &length);
-        std::string value(ch, length);
-        global_variables_[key] = value;
-        iter->Next();
+    std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+    std::string table = openmldb::nameserver::GLOBAL_VARIABLE_NAME;
+    std::string sql = "select * from " + table;
+    hybridse::sdk::Status status;
+    auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    if (!status.IsOK()) {
+        LOG(ERROR) << "update global var table failed: " << status.msg;
+        return;
     }
+    std::string key;
+    std::string value;
+    while (rs->Next()) {
+        key = rs->GetStringUnsafe(0);
+        value = rs->GetStringUnsafe(1);
+        global_variables_[key] = value;
+    }
+    return;
 }
 
 void TabletImpl::RefreshTableInfo() {

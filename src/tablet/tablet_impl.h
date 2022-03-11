@@ -42,6 +42,7 @@
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 #include "sdk/sql_cluster_router.h"
+#include "nameserver/system_table.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;

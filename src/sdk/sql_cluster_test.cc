@@ -867,14 +867,10 @@ TEST_F(SQLClusterTest, GlobalVariable) {
     tables.clear();
 
     ::hybridse::sdk::Status status;
-    ASSERT_TRUE(router->ExecuteSQL("show global variables", &status));
-    std::string sql = "SET @@global.enable_trace='true';";
+    std::string sql = "set @@global.enable_trace='true';";
     auto res = router->ExecuteSQL(sql, &status);
     ASSERT_TRUE(res);
-    res = router->ExecuteSQL(nameserver::GLOBAL_VARIABLE_NAME,
-                             "select * from GLOBAL_VARIABLES where Variable_name = enable_trace", &status);
-    ASSERT_TRUE(res);
-    ASSERT_EQ("true", res->GetRowString());
+    ASSERT_TRUE(router->ExecuteSQL("show global variables", &status));
 }
 
 TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
