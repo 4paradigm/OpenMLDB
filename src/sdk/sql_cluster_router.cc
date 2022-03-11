@@ -2460,12 +2460,7 @@ bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, co
     if (interactive_) {
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;
-        std::cin 
-          
-          
-          
-          
-          input;
+        std::cin >> input;
         std::transform(input.begin(), input.end(), input.begin(), ::tolower);
         if (input != "yes") {
             printf("'Drop %s' cmd is canceled!\n", name.c_str());
