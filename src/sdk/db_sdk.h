@@ -51,6 +51,9 @@ class DBSDK {
     virtual bool Init() = 0;
 
     virtual bool IsClusterMode() const = 0;
+
+    virtual zk::ZkClient* GetZkClient() = 0;
+
     bool Refresh() { return BuildCatalog(); }
 
     inline uint64_t GetClusterVersion() { return cluster_version_.load(std::memory_order_relaxed); }
@@ -121,8 +124,9 @@ class DBSDK {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
     virtual bool TriggerNotify() const = 0;
 
- protected:
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
+
+ protected:
     virtual bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) = 0;
     // build client_manager, then create a new catalog, replace the catalog in engine
     virtual bool BuildCatalog() = 0;
@@ -155,9 +159,13 @@ class ClusterSDK : public DBSDK {
     bool IsClusterMode() const override { return true; }
     bool TriggerNotify() const override;
 
+    zk::ZkClient* GetZkClient() override { return zk_client_; }
+    const ClusterOptions& GetClusterOptions() const { return options_; }
+
+    bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
+
  protected:
     bool BuildCatalog() override;
-    bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
     bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override;
 
  private:
@@ -184,11 +192,16 @@ class StandAloneSDK : public DBSDK {
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
 
+    zk::ZkClient* GetZkClient() override { return nullptr; }
+
     bool IsClusterMode() const override { return false; }
 
     bool TriggerNotify() const override { return false; }
 
- protected:
+    const std::string& GetHost() const { return host_; }
+
+    int GetPort() const { return port_; }
+
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override {
@@ -198,6 +211,8 @@ class StandAloneSDK : public DBSDK {
         *real_endpoint = ss.str();
         return true;
     }
+
+ protected:
 
     bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override {
         // Standalone mode does not provide TaskManager service

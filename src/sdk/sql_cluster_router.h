@@ -170,6 +170,19 @@ class SQLClusterRouter : public SQLRouter {
                                                                      std::shared_ptr<SQLRequestRowBatch> row_batch,
                                                                      ::hybridse::sdk::Status* status) override;
 
+    /// utility functions to query registered components in the current DBMS
+    //
+    /// \param status result status, will set status.code to error if error happens
+    /// \return ResultSet of components of that type, or empty ResultSet if error happend
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowNameServers(hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTablets(hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTaskManagers(hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowApiServers(hybridse::sdk::Status* status);
+
+
     bool RefreshCatalog() override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
@@ -343,6 +356,14 @@ class SQLClusterRouter : public SQLRouter {
                                 const std::string& aggr_func, const std::string& aggr_col,
                                 const std::string& partition_col, const std::string& order_col,
                                 const std::string& bucket_size);
+
+    ///
+    /// \brief Query all registered components, aka tablet, nameserver, task manager,
+    /// which is required by `SHOW COMPONENTS` statement
+    ///
+    /// \param status result status
+    /// \return ResultSet represent all components, each row represent one component
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowComponents(hybridse::sdk::Status* status);
 
  private:
     SQLRouterOptions options_;
