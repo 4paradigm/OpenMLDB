@@ -3449,12 +3449,22 @@ void GetTermPair(::openmldb::common::StorageMode storage_mode) {
         snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     }
     PDLOG(ERROR, "%s", snapshot_file.c_str());
-    unlink(snapshot_file.c_str());
+    if (storage_mode == openmldb::common::kMemory) {
+        unlink(snapshot_file.c_str());
+    } else {
+        ::openmldb::base::RemoveDirRecursive(snapshot_file.c_str());
+    }
+    
+    // PDLOG(ERROR, "%d %d %s", unlink(snapshot_file.c_str()), errno, strerror(errno));
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, (signed)pair_response.offset());
     FLAGS_make_snapshot_threshold_offset = offset;
+
+    if (storage_mode == openmldb::common::kMemory) {
+        unlink(manifest_file.c_str());
+    }
 }
 
 TEST_F(TabletImplTest, GetTermPairDisk) {
