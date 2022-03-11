@@ -209,10 +209,11 @@ public class Importer {
         reader.enableCheckHeader(tableMetaData);
         try {
             CSVRecord record;
-            long rowCount = 0;
+            int rowCount = 0;
             while ((record = reader.next()) != null) {
-                Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
+                // integer gets added at the start of iteration for each line.
                 rowCount++;
+                Map<Integer, List<Tablet.Dimension>> dims = buildDimensions(record, keyIndexMap, tableMetaData.getPartitionNum());
 
                 // distribute the row to the bulk load generators for each MemTable(tid, pid)
                 for (Integer pid : dims.keySet()) {
@@ -221,7 +222,9 @@ public class Importer {
                     generators.get(pid).feed(new BulkLoadGenerator.FeedItem(dims, tsIdxSet, record));
                 }
             }
-            System.out.println("Total read rows: " + rowCount);
+
+            // after while loop is finished, print out number of lines gone through.
+            logger.debug("Total rows of " {} : {}", record, rows);
         } catch (Exception e) {
             logger.error("feeding failed, {}", e.getMessage());
         }
