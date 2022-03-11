@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.3] - 2022-03-15
+
+### Features
+
+- Print import rows count after importing finished in DataImportor. (#1401 @Manny-op)
+- Refact the code:
+  - Remove `set` from src/base. (#1366 @Cupid0320)
+  - Remove steps/init_env.sh and test-common folder. (#1378 @wuteek)
+  - Remove `PZFPGA_ENABLE` macro in cmd/openmldb.cc. (#1418 @prashantpaidi)
+  - Rename `fedb` to `OpenMLDB`. (#1420 @shiyoubun)
+
+### Bug Fixes
+- Write null to non-null column failed. (#1341 @vagetablechicken)
+- Compare int with null in TaskManager. (#1379 @wuteek)
+- Compiling warnnings about different signedness comparison. (#1384 jasleon)
+- `max_where` and `min_where` results are abnormal if there are no rows matched. (#1403 @aceforeverd)
+- `insert` and `select` execute failed on standalone mode. (#1426 @dl239)
+
 ## [0.4.2] - 2022-03-01
 
 ### Features
@@ -148,6 +166,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.4.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.3.0...v0.4.0
