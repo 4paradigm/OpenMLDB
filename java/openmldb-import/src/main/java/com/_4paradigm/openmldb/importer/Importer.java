@@ -224,7 +224,7 @@ public class Importer {
             }
 
             // after while loop is finished, print out number of lines gone through.
-            logger.debug("Total rows of " {} : {}", record, rows);
+            logger.debug("Total rows of " {} : {}", record, rowCount);
         } catch (Exception e) {
             logger.error("feeding failed, {}", e.getMessage());
         }
