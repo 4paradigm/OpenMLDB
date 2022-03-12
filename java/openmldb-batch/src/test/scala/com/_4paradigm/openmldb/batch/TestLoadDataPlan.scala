@@ -85,18 +85,24 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     cols.add(col)
 
     val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
-    val df = autoLoad(cols, getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
-      testFile)
+    val df = autoLoad( getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
+      testFile, "csv", cols)
     df.show()
     val l = df.select("ts").rdd.map(r => r(0)).collect.toList
     l.toString() should equal("List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
 
     val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
-    val df2 = autoLoad(cols, getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
-      testFile2)
+    val df2 = autoLoad( getSparkSession.read.format("csv").option("header", "true").option("nullValue", "null"),
+      testFile2, "csv", cols)
     df2.show()
     val l2 = df2.select("ts").rdd.map(r => r(0)).collect.toList
     l2.toString() should equal("List(null, null, 2022-02-01 09:00:00.0, null)")
+
+    // won't try to parse timestamp format when loading parquet
+    val testFile3 = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
+    val df3 = autoLoad(getSparkSession.read.format("parquet").option("header", "true").option("nullValue", "null"),
+      testFile3,"parquet", cols)
+    df3.show()
   }
 
   ignore("Test Load to Openmldb Offline Storage") {
