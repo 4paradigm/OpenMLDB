@@ -665,6 +665,8 @@ TEST_F(CodecTest, SparkUnsaferowBitMapSizeTest) {
     ASSERT_EQ(BitMapSize(9), 8);
     ASSERT_EQ(BitMapSize(20), 8);
     ASSERT_EQ(BitMapSize(65), 16);
+
+    FLAGS_enable_spark_unsaferow_format = false;
 }
 TEST_F(CodecTest, SparkUnsaferowRowFormatTest) {
     FLAGS_enable_spark_unsaferow_format = true;
@@ -704,6 +706,8 @@ TEST_F(CodecTest, SparkUnsaferowRowFormatTest) {
             }
         }
     }
+
+    FLAGS_enable_spark_unsaferow_format = false;
 }
 
 }  // namespace codec

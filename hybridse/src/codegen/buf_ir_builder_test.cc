@@ -607,6 +607,8 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_string) {
     ASSERT_EQ(is_null, false);
 
     free(ptr);
+
+    FLAGS_enable_spark_unsaferow_format = false;
 }
 TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_int64_col) {
     FLAGS_enable_spark_unsaferow_format = true;
@@ -618,6 +620,8 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_native_test_load_int64_col) {
                             rows, &ptr);
     RunColCase<int64_t>(64 * 5, table, ::hybridse::type::kInt64, "col5", ptr);
     free(ptr);
+
+    FLAGS_enable_spark_unsaferow_format = false;
 }
 TEST_F(BufIRBuilderTest, spark_unsaferow_encode_ir_builder) {
     FLAGS_enable_spark_unsaferow_format = true;
@@ -637,6 +641,8 @@ TEST_F(BufIRBuilderTest, spark_unsaferow_encode_ir_builder) {
     ASSERT_EQ(64.1, row_view.GetDoubleUnsafe(3));
     ASSERT_EQ(64, row_view.GetInt64Unsafe(4));
     free(ptr);
+
+    FLAGS_enable_spark_unsaferow_format = false;
 }
 
 }  // namespace codegen
