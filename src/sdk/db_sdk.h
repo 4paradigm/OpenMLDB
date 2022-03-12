@@ -107,7 +107,11 @@ class DBSDK {
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
-    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> GetTables(const std::string& db);
+
+    /// \brief Get a read-only list of TableInfo for specific database
+    ///  if db is empty, all tables will shown
+    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo const>> GetTables(const std::string& db);
+
     std::vector<std::string> GetAllTables();
     std::vector<std::string> GetTableNames(const std::string& db);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet();

@@ -365,6 +365,10 @@ class SQLClusterRouter : public SQLRouter {
     /// \return ResultSet represent all components, each row represent one component
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowComponents(hybridse::sdk::Status* status);
 
+    /// internal implementation for SQL 'SHOW TABLE STATUS'
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
+                                                                     hybridse::sdk::Status* status);
+
  private:
     SQLRouterOptions options_;
     StandaloneOptions standalone_options_;

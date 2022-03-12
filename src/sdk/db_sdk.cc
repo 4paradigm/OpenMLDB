@@ -284,9 +284,18 @@ std::shared_ptr<::openmldb::nameserver::TableInfo> DBSDK::GetTableInfo(const std
     return table_info;
 }
 
-std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables(const std::string& db) {
+std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo const>> DBSDK::GetTables(const std::string& db) {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> tables;
+    std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo const>> tables;
+    if (db.empty()) {
+        for (auto& kv : table_to_tablets_) {
+            for (auto& kkv : kv.second) {
+                tables.push_back(kkv.second);
+            }
+        }
+        return tables;
+    }
+
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
         return tables;

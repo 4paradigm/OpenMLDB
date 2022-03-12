@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include "absl/strings/string_view.h"
 #include "base/status.h"
 #include "gflags/gflags.h"
 #include "proto/common.pb.h"
@@ -36,13 +37,17 @@ constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 
 
 constexpr const char* INFORMATION_SCHEMA_DB = "INFORMATION_SCHEMA";
-constexpr const char* GLOBAL_VARIABLE_NAME = "GLOBAL_VARIABLES";
+constexpr const char* GLOBAL_VARIABLES = "GLOBAL_VARIABLES";
 
 enum class SystemTableType {
     kJobInfo = 1,
     KPreAggMetaInfo = 2,
     kGlobalVariable = 3,
 };
+
+inline bool IsHiddenDb(absl::string_view db) {
+    return db == INFORMATION_SCHEMA_DB || db == INTERNAL_DB || db == PRE_AGG_DB;
+}
 
 class SystemTable {
  public:

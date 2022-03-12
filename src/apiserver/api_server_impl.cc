@@ -505,7 +505,7 @@ void APIServerImpl::RegisterGetTable() {
                       writer.Member("msg") & std::string("ok");
                       writer.Member("tables");
                       writer.StartArray();
-                      for (std::shared_ptr<::openmldb::nameserver::TableInfo> table : tables) {
+                      for (auto table : tables) {
                           writer << table;
                       }
                       writer.EndArray();
@@ -842,7 +842,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
     return ar.EndArray();
 }
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info) {  // NOLINT
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo const> info) {  // NOLINT
     ar.StartObject();
     if (info->has_name()) {
         ar.Member("name") & info->name();

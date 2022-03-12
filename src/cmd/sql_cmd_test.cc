@@ -171,6 +171,9 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
+    router->ExecuteSQL("drop table " + name, &status);
+    router->DropDB(db, &status);
+    ASSERT_TRUE(status.IsOK());
     remove(file_path.c_str());
 }
 
@@ -208,6 +211,7 @@ TEST_P(DBSDKTest, Deploy) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
 
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
@@ -237,6 +241,7 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, DeployOptions) {
@@ -263,6 +268,7 @@ TEST_P(DBSDKTest, DeployOptions) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, DeployLongWindows) {
@@ -291,6 +297,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, CreateWithoutIndexCol) {
@@ -307,6 +314,7 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, ShowGlobalVaraibles) {
@@ -354,7 +362,7 @@ TEST_P(DBSDKTest, ShowComponents) {
         const auto& tablet_eps = mc_->GetTbEndpoint();
         const auto& ns_ep = mc_->GetNsEndpoint();
         ASSERT_EQ(1, tablet_eps.size());
-        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+        ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
                              rs.get());
@@ -363,13 +371,29 @@ TEST_P(DBSDKTest, ShowComponents) {
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         const auto& tablet_ep = env.GetTbEndpoint();
         const auto& ns_ep = env.GetNsEndpoint();
-        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+        ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_ep, "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
                              rs.get());
     }
 
     HandleSQL("show components");
+}
+
+TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    EXPECT_EQ(10, rs->GetSchema()->GetColumnCnt());
+    if (cs->IsClusterMode()) {
+        // TODO(aceforeverd): standalone mode's table map do not refresh correctly
+        // skip temporarily
+        EXPECT_EQ(0, rs->Size());
+    }
+    HandleSQL("show table status");
 }
 
 /* TODO: Only run test in standalone mode
