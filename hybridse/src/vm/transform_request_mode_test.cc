@@ -63,7 +63,8 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SqlCase> {
 };
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformRequestModeTest);
-void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql, std::string exp) {
+void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql, std::string exp,
+                       const std::unordered_map<std::string, std::string>* options = nullptr) {
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
 
     boost::to_lower(sql);
@@ -81,9 +82,14 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    RequestModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false);
+    RequestModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib, {},
+                                     false, false, false, true, options);
 
     transform.AddDefaultPasses();
+    if (options && options->count(LONG_WINDOWS)) {
+        transform.AddPass(passes::kPassSplitAggregationOptimized);
+        transform.AddPass(passes::kPassLongWindowOptimized);
+    }
     PhysicalOpNode* physical_plan = nullptr;
     auto s = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     ASSERT_TRUE(s.isOK()) << s;
@@ -402,6 +408,38 @@ INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOp
                        "            DATA_PROVIDER(type=Partition, table=t3, index=index1_t3)\n"
                        "      DATA_PROVIDER(request=t1)\n"
                        "      DATA_PROVIDER(type=Partition, table=t1, index=index1)")));
+
+INSTANTIATE_TEST_SUITE_P(RequestSplitAggregationOptimized, TransformRequestModePassOptimizedTest,
+                        testing::Values(
+                            // 0
+        std::make_pair(
+            "SELECT col1, sum(col2) OVER w1, col2+1, add(col2, col1), count(col2) OVER w1, "
+            "sum(col2) over w2 as w1_col2_sum , sum(col2) over w3 FROM t1\n"
+            "WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3m PRECEDING AND CURRENT ROW),"
+            "w2 AS (PARTITION BY col1,col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),"
+            "w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);",
+            "SIMPLE_PROJECT(sources=(col1, sum(col2)over w1, col2 + 1, add(col2, col1), "
+            "count(col2)over w1, w1_col2_sum, sum(col2)over w3))\n"
+            "  REQUEST_JOIN(type=kJoinTypeConcat)\n"
+            "    REQUEST_JOIN(type=kJoinTypeConcat)\n"
+            "      REQUEST_JOIN(type=kJoinTypeConcat)\n"
+            "        PROJECT(type=Aggregation)\n"
+            "          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+            "            DATA_PROVIDER(request=t1)\n"
+            "            DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+            "        PROJECT(type=Aggregation)\n"
+            "          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+            "            DATA_PROVIDER(request=t1)\n"
+            "            DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+            "      PROJECT(type=Aggregation)\n"
+            "        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+            "          DATA_PROVIDER(request=t1)\n"
+            "          DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+            "    PROJECT(type=Aggregation)\n"
+            "      REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1,col2))\n"
+            "        DATA_PROVIDER(request=t1)\n"
+            "        DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
+
 TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     auto in_out = GetParam();
     hybridse::type::TableDef table_def;
@@ -464,6 +502,34 @@ TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     }
     catalog->AddDatabase(db2);
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
+}
+
+TEST_P(TransformRequestModePassOptimizedTest, LongWindowOptimizedTest) {
+    auto in_out = GetParam();
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+    hybridse::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    auto catalog = BuildSimpleCatalog(db);
+
+    std::unordered_map<std::string, std::string> options;
+    options[LONG_WINDOWS] = "w1:1000, w2";
+    PhysicalPlanCheck(catalog, in_out.first, in_out.second, &options);
 }
 
 }  // namespace vm

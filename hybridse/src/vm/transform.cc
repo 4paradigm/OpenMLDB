@@ -35,6 +35,8 @@
 #include "passes/physical/limit_optimized.h"
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/window_column_pruning.h"
+#include "passes/physical/long_window_optimized.h"
+#include "passes/physical/split_aggregation_optimized.h"
 
 namespace hybridse {
 namespace vm {
@@ -51,6 +53,8 @@ using hybridse::passes::LimitOptimized;
 using hybridse::passes::PhysicalPlanPassType;
 using hybridse::passes::SimpleProjectOptimized;
 using hybridse::passes::WindowColumnPruning;
+using hybridse::passes::LongWindowOptimized;
+using hybridse::passes::SplitAggregationOptimized;
 
 std::ostream& operator<<(std::ostream& output,
                          const hybridse::vm::LogicalOp& thiz) {
@@ -63,7 +67,8 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
                                            const codec::Schema* parameter_types, ::llvm::Module* module,
                                            const udf::UdfLibrary* library, bool cluster_optimized_mode,
                                            bool enable_expr_opt, bool enable_window_parallelization,
-                                           bool enable_window_column_pruning)
+                                           bool enable_window_column_pruning,
+                                           const std::unordered_map<std::string, std::string>* options)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -73,7 +78,7 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
       enable_batch_window_parallelization_(enable_window_parallelization),
       enable_batch_window_column_pruning_(enable_window_column_pruning),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt) {}
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -888,6 +893,7 @@ Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* n
 }
 
 bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
+    DLOG(INFO) << "AddPass " << passes::PhysicalPlanPassTypeName(type);
     passes.push_back(type);
     return true;
 }
@@ -1307,6 +1313,16 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
             }
             case PhysicalPlanPassType::kPassLimitOptimized: {
                 LimitOptimized pass(&plan_ctx_);
+                transformed = pass.Apply(cur_op, &new_op);
+                break;
+            }
+            case PhysicalPlanPassType::kPassSplitAggregationOptimized: {
+                SplitAggregationOptimized split_pass(&plan_ctx_);
+                transformed = split_pass.Apply(cur_op, &new_op);
+                break;
+            }
+            case PhysicalPlanPassType::kPassLongWindowOptimized: {
+                LongWindowOptimized pass(&plan_ctx_);
                 transformed = pass.Apply(cur_op, &new_op);
                 break;
             }
@@ -2024,9 +2040,10 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
                                                const codec::Schema* parameter_types, ::llvm::Module* module,
                                                udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
                                                const bool cluster_optimized, const bool enable_batch_request_opt,
-                                               bool enable_expr_opt, bool performance_sensitive)
+                                               bool enable_expr_opt, bool performance_sensitive,
+                                               const std::unordered_map<std::string, std::string>* options)
     : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, cluster_optimized,
-                           enable_expr_opt, true, false),
+                           enable_expr_opt, true, false, options),
       enable_batch_request_opt_(enable_batch_request_opt), performance_sensitive_(performance_sensitive) {
     batch_request_info_.common_column_indices = common_column_indices;
 }

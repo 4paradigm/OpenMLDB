@@ -24,6 +24,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/fe_row_codec.h"
@@ -39,6 +40,8 @@ namespace hybridse {
 namespace vm {
 
 using ::hybridse::codec::Row;
+
+static const char* LONG_WINDOWS = "long_windows";
 
 class Engine;
 /// \brief An options class for controlling engine behaviour.
@@ -180,11 +183,20 @@ class RunSession {
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 
+    const std::shared_ptr<const std::unordered_map<std::string, std::string>>& GetOptions() const {
+        return options_;
+    }
+
+    void SetOptions(const std::shared_ptr<std::unordered_map<std::string, std::string>>& options) {
+        options_ = options;
+    }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
+    std::shared_ptr<const std::unordered_map<std::string, std::string>> options_ = nullptr;
     friend Engine;
 };
 

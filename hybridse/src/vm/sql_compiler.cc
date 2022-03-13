@@ -32,6 +32,7 @@
 #include "udf/default_udf_library.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
+#include "vm/engine.h"
 
 using ::hybridse::base::Status;
 using hybridse::common::kPlanError;
@@ -161,7 +162,8 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
                                                PhysicalOpNode** output) {
     vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
                                          ctx->is_cluster_optimized, ctx->enable_expr_optimize,
-                                         ctx->enable_batch_window_parallelization, ctx->enable_window_column_pruning);
+                                         ctx->enable_batch_window_parallelization, ctx->enable_window_column_pruning,
+                                         ctx->options.get());
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan batch mode");
     ctx->schema = *(*output)->GetOutputSchema();
@@ -174,8 +176,12 @@ Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybrid
                                                  PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
                                            ctx->is_cluster_optimized, false, ctx->enable_expr_optimize,
-                                           enable_request_performance_sensitive);
+                                           enable_request_performance_sensitive, ctx->options.get());
     transformer.AddDefaultPasses();
+    if (ctx->options->count(LONG_WINDOWS)) {
+        transformer.AddPass(passes::kPassSplitAggregationOptimized);
+        transformer.AddPass(passes::kPassLongWindowOptimized);
+    }
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to transform physical plan on request mode");
 
@@ -194,7 +200,7 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
                                            ctx->batch_request_info.common_column_indices,
                                            ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
-                                           ctx->enable_expr_optimize, true);
+                                           ctx->enable_expr_optimize, true, ctx->options.get());
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
