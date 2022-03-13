@@ -305,7 +305,8 @@ bool TabletImpl::RegisterZK() {
         if (zk_client_->IsExistNode(globalvar_changed_notify_path_) != 0) {
             zk_client_->CreateNode(globalvar_changed_notify_path_, "1");
         }
-        if (!zk_client_->WatchItem(globalvar_changed_notify_path_, boost::bind(&TabletImpl::UpdateGlobalVarTable, this))) {
+        if (!zk_client_->WatchItem(globalvar_changed_notify_path_,
+                                   boost::bind(&TabletImpl::UpdateGlobalVarTable, this))) {
             LOG(WARNING) << "add global var changed watcher failed";
             return false;
         }
