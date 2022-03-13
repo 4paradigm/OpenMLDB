@@ -18,7 +18,7 @@ syntax = "proto2";
 
 import "type.proto";
 import "common.proto";
-// import "google/protobuf/type.proto";
+import "google/protobuf/type.proto";
 package openmldb.api;
 
 option cc_generic_services = true;
