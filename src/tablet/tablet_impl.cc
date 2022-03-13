@@ -155,7 +155,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     globalvar_changed_notify_path_ = zk_path + "/global_variable/changed";
-    global_variables_.emplace("execute", "offline");
+    global_variables_.emplace("execute_mode", "offline");
     global_variables_.emplace("enable_trace", "false");
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
@@ -3813,7 +3813,7 @@ void TabletImpl::UpdateGlobalVarTable() {
     std::string sql = "select * from " + table;
     hybridse::sdk::Status status;
     auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-    if (!status.IsOK()) {
+    if (status.code != 0) {
         LOG(ERROR) << "update global var table failed: " << status.msg;
         return;
     }

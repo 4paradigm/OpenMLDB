@@ -869,7 +869,7 @@ TEST_F(SQLClusterTest, GlobalVariable) {
     ::hybridse::sdk::Status status;
     std::string sql = "set @@global.enable_trace='true';";
     auto res = router->ExecuteSQL(sql, &status);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(0, status.code);
     ASSERT_TRUE(router->ExecuteSQL("show global variables", &status));
 }
 
