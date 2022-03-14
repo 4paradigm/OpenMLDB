@@ -918,9 +918,9 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
             return nm->MakeConstNode(GetDataType());
         }
-        
+
         default:
-            LOG(ERROR) << "Unsupported Data type";
+            LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
             return nullptr;
     }
 }
