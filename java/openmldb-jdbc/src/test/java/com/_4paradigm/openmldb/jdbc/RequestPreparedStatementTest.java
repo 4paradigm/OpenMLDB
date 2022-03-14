@@ -153,7 +153,7 @@ public class RequestPreparedStatementTest {
             List<Integer> list = new ArrayList<Integer>();
             pstmt = executor.getBatchRequestPreparedStmt(dbname, selectSql, list);
             int batchSize = 5;
-            for (int idx = 0; batchSize < 5; idx++) {
+            for (int idx = 0; idx < batchSize; idx++) {
                 pstmt.setString(1, "bb");
                 pstmt.setInt(2, 24);
                 pstmt.setLong(3, 34l);
