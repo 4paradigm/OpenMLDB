@@ -39,7 +39,7 @@ class PhysicalPlanContext {
                         const std::shared_ptr<Catalog>& catalog,
                         const codec::Schema* parameter_types,
                         bool enable_expr_opt,
-                        const std::unordered_map<std::string, std::string>* options)
+                        const std::unordered_map<std::string, std::string>* options = nullptr)
         : nm_(nm),
           library_(library),
           db_(db),

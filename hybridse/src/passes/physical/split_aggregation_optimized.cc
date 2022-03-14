@@ -23,6 +23,11 @@ namespace passes {
 SplitAggregationOptimized::SplitAggregationOptimized(PhysicalPlanContext* plan_ctx) : TransformUpPysicalPass(plan_ctx) {
     std::vector<std::string> windows;
     const auto* options = plan_ctx_->GetOptions();
+    if (!options) {
+        LOG(ERROR) << "plan_ctx option is empty";
+        return;
+    }
+
     boost::split(windows, options->at(vm::LONG_WINDOWS), boost::is_any_of(","));
     for (auto& w : windows) {
         std::vector<std::string> window_info;
@@ -35,6 +40,11 @@ SplitAggregationOptimized::SplitAggregationOptimized(PhysicalPlanContext* plan_c
 bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
     if (vm::kPhysicalOpProject != in->GetOpType()) {
+        return false;
+    }
+
+    if (long_windows_.empty()) {
+        LOG(ERROR) << "Long Windows is empty";
         return false;
     }
 
