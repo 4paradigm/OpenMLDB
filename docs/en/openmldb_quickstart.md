@@ -8,7 +8,7 @@ This tutorial provides a quick start guide for OpenMLDB. By establishing a datab
 
 This tutorial is developed and deployed based on the OpenMLDB CLI, so first you need to download the sample data and start the OpenMLDB CLI. We recommend using the prepared docker image for a quick experience
 
-:bulb: If you want to compile and install it yourself, you can refer to our [installation and deployment documentation](../deploy/content.md).
+:bulb: If you want to compile and install it yourself, you can refer to our [installation and deployment documentation](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/deploy/install_deploy.md).
 
 ### 1.1 Mirror preparation
 
