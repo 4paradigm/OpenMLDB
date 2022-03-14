@@ -123,7 +123,5 @@ int main(int argc, char** argv) {
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
     // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
-    // TODO(tobe): Disable tests which fails in CICD
-    //return RUN_ALL_TESTS();
-    return 0;
+    return RUN_ALL_TESTS();
 }
