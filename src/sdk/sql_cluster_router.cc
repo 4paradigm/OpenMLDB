@@ -3253,7 +3253,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // else: show table status in current database, include hidden database
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
                                                                                    hybridse::sdk::Status* status) {
-    // auto tables = cluster_sdk_->GetTables(db);
+    // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
     cluster_sdk_->GetNsClient()->ShowTable("", "", true, tables, msg);

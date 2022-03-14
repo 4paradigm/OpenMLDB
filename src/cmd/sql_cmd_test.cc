@@ -21,6 +21,9 @@
 #include <memory>
 #include <string>
 
+#include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -46,7 +49,7 @@ inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::s
     hybridse::sdk::Status status;
     for (auto sql : sqls) {
         sr->ExecuteSQL(std::string(sql), &status);
-        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << "failed: " << status.msg;
+        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
     }
 }
 
@@ -414,15 +417,25 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     cs = cli->cs;
     sr = cli->sr;
 
+    std::string db_name = absl::StrCat("db_", GenRand());
+    std::string tb_name = absl::StrCat("tb_", GenRand());
+
     // prepare data
-    ProcessSQLs(sr, {
-                        "set @@execute_mode = 'online'",
-                        "create database test2;",
-                        "use test2;",
-                        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, "
-                        "index(ts=c7));",
-                        "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");",
-                    });
+    ProcessSQLs(
+        sr,
+        {
+            "set @@execute_mode = 'online'",
+            absl::StrCat("create database ", db_name, ";"),
+            absl::StrCat("use ", db_name, ";"),
+            absl::StrCat(
+                "create table ", tb_name,
+                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+            absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
+        });
+
+    // sleep for 10s, name server should updated TableInfo in schedule
+    // default schedule interval is 2s
+    absl::SleepFor(absl::Seconds(10));
 
     // test
     hybridse::sdk::Status status;
@@ -431,13 +444,13 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     if (cs->IsClusterMode()) {
         ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
                                "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                              {{}, "trans", "test2", "memory", "1", {}, {}, "1", "0", "1"}},
+                              {{}, tb_name, db_name, "memory", "1", {}, {}, "1", "0", "1"}},
                              rs.get());
     }
     HandleSQL("show table status");
 
     // teardown
-    ProcessSQLs(sr, {"drop table trans", "drop database test2"});
+    ProcessSQLs(sr, {absl::StrCat("drop table ", tb_name), absl::StrCat("drop database ", db_name)});
 }
 
 /* TODO: Only run test in standalone mode
