@@ -5,7 +5,7 @@
 ### Features
 
 - Add the output of the number of rows imported after successfully importing data (#1401 @Manny-op)
-- Code Refactoring (#1366 @Cupid0320; #1378 @wuteek; #1418 @prashantpaidi; #1420 @shiyoubun)
+- Code Refactoring (#1366 @Cupid0320; #1378 @wuteek; #1418 @prashantpaidi; #1420 @shiyoubun; #1422 @vagetablechicken)
 
 ### Bug Fixes
 - Writing null to a non-null column fails. (#1341 @vagetablechicken)
