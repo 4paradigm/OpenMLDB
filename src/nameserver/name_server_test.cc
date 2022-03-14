@@ -596,7 +596,7 @@ TEST_F(NameServerImplTest, OfflineMem) {
     Offline(openmldb::common::kMemory);
 }
 
-TEST_F(NameServerImplTest, SetTablePartition) {
+void SetTablePartition(openmldb::common::StorageMode storage_mode) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -653,6 +653,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
@@ -712,6 +713,14 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 
     delete nameserver;
     delete tablet;
+}
+
+TEST_F(NameServerImplTest, SetTablePartitionDisk) {
+    SetTablePartition(openmldb::common::kHDD);
+}
+
+TEST_F(NameServerImplTest, SetTablePartitionMem) {
+    SetTablePartition(openmldb::common::kMemory);
 }
 
 TEST_F(NameServerImplTest, CancelOP) {
