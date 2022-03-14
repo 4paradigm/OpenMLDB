@@ -64,6 +64,16 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
+
+class DiskTestEnvironment : public ::testing::Environment{
+    virtual void SetUp() {
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    }
+    virtual void TearDown() {
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    }
+};
+
 class NameServerImplTest : public ::testing::Test {
  public:
     NameServerImplTest() {}
@@ -192,9 +202,12 @@ void MakesnapshotTask(::openmldb::common::StorageMode storage_mode) {
         snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
     }
     std::vector<std::string> vec;
+    std::vector<std::string> sub;
     int cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
+    int cnt2 = ::openmldb::base::GetSubDir(snapshot_path, sub);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, (int64_t)vec.size());
+    ASSERT_EQ(0, cnt2);
+    ASSERT_EQ(2, (int64_t)vec.size() + (int64_t)sub.size());
 
     std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name;
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -265,9 +278,12 @@ void MakesnapshotTask(::openmldb::common::StorageMode storage_mode) {
         snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
     }
     vec.clear();
+    sub.clear();
     cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
+    cnt2 = ::openmldb::base::GetSubDir(snapshot_path, sub);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, (int64_t)vec.size());
+    ASSERT_EQ(0, cnt2);
+    ASSERT_EQ(2, (int64_t)vec.size() + (int64_t)sub.size());
 
     table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -444,7 +460,7 @@ TEST_F(NameServerImplTest, CreateTableMem) {
     CreateTable(::openmldb::common::kMemory);
 }
 
-TEST_F(NameServerImplTest, Offline) {
+void Offline(openmldb::common::StorageMode storage_mode) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_auto_failover = true;
@@ -467,7 +483,10 @@ TEST_F(NameServerImplTest, Offline) {
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
+    std::string old_db_root_path = FLAGS_db_root_path;
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
@@ -487,6 +506,8 @@ TEST_F(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
+    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
+    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
@@ -512,6 +533,7 @@ TEST_F(NameServerImplTest, Offline) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -560,6 +582,18 @@ TEST_F(NameServerImplTest, Offline) {
     delete nameserver;
     delete tablet;
     delete tablet2;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    ::openmldb::base::RemoveDirRecursive(tmp_hdd_root_path);
+    FLAGS_hdd_root_path = old_hdd_root_path;
+}
+
+TEST_F(NameServerImplTest, OfflineDisk) {
+    Offline(openmldb::common::kHDD);
+}
+
+TEST_F(NameServerImplTest, OfflineMem) {
+    Offline(openmldb::common::kMemory);
 }
 
 TEST_F(NameServerImplTest, SetTablePartition) {
@@ -1553,6 +1587,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(new ::openmldb::nameserver::DiskTestEnvironment);
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));

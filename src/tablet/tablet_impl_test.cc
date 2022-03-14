@@ -6138,8 +6138,8 @@ TEST_F(TabletImplTest, DumpIndexMem) {
     DumpIndex(::openmldb::common::StorageMode::kMemory);
 }
 
-// TODO(litongxin)
-TEST_F(TabletImplTest,  SendIndexData) {
+// SendIndexData only support MemTable
+TEST_F(TabletImplTest,  SendIndexDataMem) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -6297,9 +6297,9 @@ void BulkLoad(openmldb::common::StorageMode storage_mode) {
 }
 
 // TODO(tongxin): SIGSEGV
-// TEST_F(TabletImplTest, BulkLoadDisk) {
-//     BulkLoad(::openmldb::common::StorageMode::kHDD);
-// }
+TEST_F(TabletImplTest, BulkLoadDisk) {
+    BulkLoad(::openmldb::common::StorageMode::kHDD);
+}
 
 TEST_F(TabletImplTest, BulkLoadMem) {
     BulkLoad(::openmldb::common::StorageMode::kMemory);
