@@ -203,7 +203,6 @@ class TestOpenMLDBClient(unittest.TestCase):
   def check_exectute_many(self,connection,sql):
       connection.execute(sql,[{"col1":1005, "col2":"2020-12-29", "col3":"shandong", "col4":"jinan", "col5":6},
                               {"col1":1006, "col2":"2020-12-30", "col3":"fujian", "col4":"fuzhou", "col5":7}]);
-      self.assertTrue(True)
 
   def check_fetchmany(self,connection):
     result = connection.execute("select * from tsql1010;")
