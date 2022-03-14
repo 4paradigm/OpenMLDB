@@ -58,6 +58,15 @@ class SqlCmdTest : public ::testing::Test {
 
 class DBSDKTest : public ::testing::TestWithParam<CLI*> {};
 
+TEST_F(SqlCmdTest, showDeployment) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("show deployment aa", &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "Please enter database first");
+}
+
 TEST_F(SqlCmdTest, SelectIntoOutfile) {
     sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -174,13 +183,35 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     remove(file_path.c_str());
 }
 
-TEST_F(SqlCmdTest, show_deployment) {
-    auto cli = cluster_cli;
-    auto sr = cli.sr;
-    ::hybridse::sdk::Status status;
-    sr->ExecuteSQL("show deployment aa", &status);
-    ASSERT_FALSE(status.IsOK());
-    ASSERT_EQ(status.msg, "Please enter database first");
+TEST_P(DBSDKTest, Select) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
+    std::string db = "db" + GenRand();
+    sr->ExecuteSQL("create database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");";
+    sr->ExecuteSQL(insert_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL("select * from trans", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, rs->Size());
+    sr->ExecuteSQL("drop table trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("drop database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
 }
 
 TEST_P(DBSDKTest, Deploy) {
