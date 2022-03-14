@@ -8,7 +8,7 @@
 - Code Refactoring (#1366 @Cupid0320; #1378 @wuteek; #1418 @prashantpaidi; #1420 @shiyoubun; #1422 @vagetablechicken)
 
 ### Bug Fixes
-- Writing null to a non-null column fails. (#1341 @vagetablechicken)
+- Loading online data with "not null" columns in Spark fails. (#1341 @vagetablechicken)
 - `max_where` and `min_where` results are incorrect if there is no rows matched. (#1403 @aceforeverd)
 - The `insert` and `select` execution of the standalone version fails. (#1426 @dl239)
 - Other minor bug fixes (#1379 @wuteek; #1384 jasleon)
