@@ -3253,28 +3253,33 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // else: show table status in current database, include hidden database
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
                                                                                    hybridse::sdk::Status* status) {
-    auto tables = cluster_sdk_->GetTables(db);
+    // auto tables = cluster_sdk_->GetTables(db);
+    std::vector<nameserver::TableInfo> tables;
+    std::string msg;
+    cluster_sdk_->GetNsClient()->ShowTable("", "", true, tables, msg);
+
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
 
-    std::for_each(tables.cbegin(), tables.cend(), [&data](std::shared_ptr<const nameserver::TableInfo> tinfo) {
-        if (nameserver::IsHiddenDb(tinfo->db())) {
+    std::for_each(tables.cbegin(), tables.cend(), [&data](const nameserver::TableInfo& tinfo) {
+        if (nameserver::IsHiddenDb(tinfo.db())) {
             return;
         }
-        auto tid = tinfo->tid();
-        auto table_name = tinfo->name();
-        auto db = tinfo->db();
+        auto tid = tinfo.tid();
+        auto table_name = tinfo.name();
+        auto db = tinfo.db();
         // TODO(aceforeverd): support disk type
         std::string storage_type = "memory";
-        auto partition_num = tinfo->partition_num();
-        auto replica_num = tinfo->replica_num();
+        auto partition_num = tinfo.partition_num();
+        auto replica_num = tinfo.replica_num();
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
         uint32_t partition_unalive = 0;
-        for (auto& partition_info : tinfo->table_partition()) {
-            rows += partition_info.record_cnt();
+        for (auto& partition_info : tinfo.table_partition()) {
+            // rows += partition_info.record_cnt();
             mem_bytes += partition_info.record_byte_size();
             disk_bytes += partition_info.diskused();
             for (auto& meta : partition_info.partition_meta()) {
+                rows += meta.record_cnt();
                 if (!meta.is_alive()) {
                     partition_unalive++;
                 }

@@ -42,6 +42,14 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
+inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
+    hybridse::sdk::Status status;
+    for (auto sql : sqls) {
+        sr->ExecuteSQL(std::string(sql), &status);
+        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << "failed: " << status.msg;
+    }
+}
+
 struct CLI {
     ::openmldb::sdk::DBSDK* cs = nullptr;
     ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
@@ -342,7 +350,7 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std
             if (expect[idx][i].has_value()) {
                 std::string val;
                 EXPECT_TRUE(rs->GetAsString(i, val));
-                EXPECT_EQ(expect[idx][i].value(), val);
+                EXPECT_EQ(expect[idx][i].value(), val) << "expect[" << idx << "][" << i << "]";
             }
         }
     }
@@ -391,9 +399,45 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     if (cs->IsClusterMode()) {
         // TODO(aceforeverd): standalone mode's table map do not refresh correctly
         // skip temporarily
-        EXPECT_EQ(0, rs->Size());
+        ExpectResultSetStrEq(
+            {
+                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                 "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
+            },
+            rs.get());
     }
     HandleSQL("show table status");
+}
+
+TEST_P(DBSDKTest, ShowTableStatusWithData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    // prepare data
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        "create database test2;",
+                        "use test2;",
+                        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, "
+                        "index(ts=c7));",
+                        "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");",
+                    });
+
+    // test
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    if (cs->IsClusterMode()) {
+        ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                               "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
+                              {{}, "trans", "test2", "memory", "1", {}, {}, "1", "0", "1"}},
+                             rs.get());
+    }
+    HandleSQL("show table status");
+
+    // teardown
+    ProcessSQLs(sr, {"drop table trans", "drop database test2"});
 }
 
 /* TODO: Only run test in standalone mode
