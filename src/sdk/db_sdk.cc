@@ -40,7 +40,7 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       table_root_path_(options.zk_path + "/table/db_table_data"),
       sp_root_path_(options.zk_path + "/store_procedure/db_sp_data"),
       notify_path_(options.zk_path + "/table/notify"),
-      globalvar_changed_notify_path_(options.zk_path + "/global_variable/changed"),
+      globalvar_changed_notify_path_(notify_path_ + "/global_variable"),
       zk_client_(nullptr),
       pool_(1) {}
 

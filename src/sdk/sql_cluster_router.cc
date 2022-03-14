@@ -2416,18 +2416,6 @@ bool SQLClusterRouter::IsEnableTrace() {
     if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
         std::string value = node->Value()->GetExprString();
         std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-        if (key != "execute_mode" && key != "enable_trace") {
-            return {::hybridse::common::StatusCode::kCmdError, "no global variable " + key};
-        }
-        if (key == "execute_mode") {
-            if (value != "online" && value != "offline") {
-                return {::hybridse::common::StatusCode::kCmdError, "the value of execute_mode must be online|offline"};
-            }
-        } else if (key == "enable_trace") {
-            if (value != "true" && value != "false") {
-                return {::hybridse::common::StatusCode::kCmdError, "the value of enable_trace must be true|false"};
-            }
-        }
         hybridse::sdk::Status status;
         std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {

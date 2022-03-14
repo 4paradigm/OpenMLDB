@@ -431,7 +431,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     ::openmldb::type::StartupMode startup_mode_;
 
     std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
-    std::map<std::string, std::string> global_variables_;
+    std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 };
 
 }  // namespace tablet

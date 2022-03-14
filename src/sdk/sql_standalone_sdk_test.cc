@@ -805,6 +805,26 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
         ASSERT_EQ(rs->Size(), 0);
     }
 }
+
+TEST_F(SQLSDKTest, GlobalVariable) {
+    auto router = router_;
+    ::hybridse::sdk::Status status;
+    std::string sql = "set @@global.enable_trace='true';";
+    auto res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    sql = "set @@global.execute_mode='online';";
+    res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    auto rs = router->ExecuteSQL("show global variables", &status);
+    ASSERT_EQ(2, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+    ASSERT_EQ("true", rs->GetStringUnsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+    ASSERT_EQ("online", rs->GetStringUnsafe(1));
+}
+
 }  // namespace sdk
 }  // namespace openmldb
 

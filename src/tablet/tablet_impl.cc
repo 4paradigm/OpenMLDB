@@ -154,9 +154,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
-    globalvar_changed_notify_path_ = zk_path + "/global_variable/changed";
-    global_variables_.emplace("execute_mode", "offline");
-    global_variables_.emplace("enable_trace", "false");
+    globalvar_changed_notify_path_ = notify_path_ + "/global_variable";
+    global_variables_->emplace("execute_mode", "offline");
+    global_variables_->emplace("enable_trace", "false");
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
     if (!zk_cluster.empty()) {
@@ -3818,13 +3818,16 @@ void TabletImpl::UpdateGlobalVarTable() {
         LOG(ERROR) << "update global var table failed: " << status.msg;
         return;
     }
+    auto old_global_var = std::atomic_load_explicit(&global_variables_, std::memory_order_relaxed);
+    auto new_global_var = std::make_shared<std::map<std::string, std::string>>(*old_global_var);
     std::string key;
     std::string value;
     while (rs->Next()) {
         key = rs->GetStringUnsafe(0);
         value = rs->GetStringUnsafe(1);
-        global_variables_[key] = value;
+        (*new_global_var)[key] = value;
     }
+    std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
     return;
 }
 
