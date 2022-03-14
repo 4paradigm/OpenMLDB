@@ -52,6 +52,57 @@ void CheckUdfFail(const std::string &name, T expect, Args... args) {
     ASSERT_FALSE(function.valid());
 }
 
+// simple udaf check, applied when the udaf function accept only one parameter
+template <class Ret, class Arg = Ret>
+void CheckUdafOneParam(const std::string &fn, Ret expect, std::initializer_list<Arg> cols) {
+    CheckUdf(fn, expect, MakeList(cols));
+}
+
+TEST_F(UdafTest, MaxTest) {
+    CheckUdafOneParam<Nullable<int32_t>>("max", nullptr, {});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("max", nullptr, {nullptr, nullptr});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, { 5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("max", 5, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<float>, Nullable<float>>("max", 5.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("max", 5.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", StringRef("abc"), {nullptr, StringRef("abc")});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("max", StringRef("abc"),
+                                                                {nullptr, StringRef("abc"), StringRef("aaa")});
+}
+
+TEST_F(UdafTest, MinTest) {
+    CheckUdafOneParam<Nullable<int32_t>>("min", nullptr, {});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<int32_t>, Nullable<int32_t>>("min", nullptr, {nullptr, nullptr});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {5, 1});
+    CheckUdafOneParam<Nullable<int64_t>, Nullable<int64_t>>("min", 1, {nullptr, 5, 1});
+    CheckUdafOneParam<Nullable<float>, Nullable<float>>("min", -1.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("min", -1.0, {nullptr, 5.0, -1.0});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", StringRef("abc"), {nullptr, StringRef("abc")});
+    CheckUdafOneParam<Nullable<StringRef>, Nullable<StringRef>>("min", StringRef("aaa"),
+                                                                {nullptr, StringRef("abc"), StringRef("aaa")});
+}
+
+TEST_F(UdafTest, CountTest) {
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 0LL, {nullptr});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 0LL, {});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 2, {1, 2});
+    CheckUdafOneParam<int64_t, Nullable<int32_t>>("count", 2, {1, 2, nullptr});
+
+    CheckUdafOneParam<int64_t, Nullable<int64_t>>("count", 1, {5, nullptr});
+    CheckUdafOneParam<int64_t, Nullable<int64_t>>("count", 1, {5});
+
+    CheckUdafOneParam<int64_t, Nullable<double>>("count", 3, {5.0, 1.0, 2.0});
+
+    CheckUdafOneParam<int64_t, Nullable<StringRef>>("count", 3, {StringRef("c"), StringRef("abc"), StringRef("gc")});
+    CheckUdafOneParam<int64_t, Nullable<StringRef>>("count", 2, {nullptr, StringRef("abc"), StringRef("gc")});
+}
+
+// TODO(aceforeverd): add test for sum ,avg, distinct_count
+
 TEST_F(UdafTest, sum_where_test) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "sum_where", 10, MakeList<int32_t>({4, 5, 6}),
@@ -111,7 +162,7 @@ TEST_F(UdafTest, avg_where_test_3) {
         "avg_where", 0.0 / 0, MakeList<int32_t>({}), MakeBoolList({}));
 }
 
-TEST_F(UdafTest, min_where_test) {
+TEST_F(UdafTest, MinWhereTest) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "min_where", 4, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
@@ -120,21 +171,49 @@ TEST_F(UdafTest, min_where_test) {
         "min_where", 7, MakeList<Nullable<int32_t>>({7, 5, 4, 8}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 
-    CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
-        "min_where", 2147483647, MakeList<int32_t>({}), MakeBoolList({}));
+    // NULL if no data
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "min_where", nullptr, MakeList<Nullable<int32_t>>({}), MakeList<Nullable<bool>>({}));
+
+    // NULL if no matches
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "min_where", nullptr, MakeList<Nullable<int32_t>>({1, 9, 3}), MakeList<Nullable<bool>>({false, false, false}));
+
+    // NULL if only NULL value matched
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "min_where", nullptr, MakeList<Nullable<int32_t>>({nullptr, 3, nullptr}),
+        MakeList<Nullable<bool>>({true, false, true}));
+
+    // value is NULL => skiped, only pickup not null
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "min_where", 1, MakeList<Nullable<int32_t>>({1, nullptr, 3}), MakeList<Nullable<bool>>({true, true, true}));
 }
 
-TEST_F(UdafTest, max_where_test) {
+TEST_F(UdafTest, MaxWhereTest) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "max_where", 7, MakeList<int32_t>({7, 5, 6}),
         MakeBoolList({true, false, true}));
 
+    // cond is false or NULL => skiped
     CheckUdf<int32_t, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
         "max_where", 1, MakeList<Nullable<int32_t>>({1, 5, 4, 0}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 
-    CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
-        "max_where", -2147483648, MakeList<int32_t>({}), MakeBoolList({}));
+    // NULL if no data
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({}), MakeList<Nullable<bool>>({}));
+
+    // NULL if no matches
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({1, 9, 3}), MakeList<Nullable<bool>>({false, false, false}));
+
+    // NULL if only NULL value matched
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", nullptr, MakeList<Nullable<int32_t>>({nullptr, 3}), MakeList<Nullable<bool>>({true, false}));
+
+    // value is NULL => skiped, only pickup not null
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "max_where", 3, MakeList<Nullable<int32_t>>({1, nullptr, 3}), MakeList<Nullable<bool>>({true, true, true}));
 }
 
 TEST_F(UdafTest, avg_test) {

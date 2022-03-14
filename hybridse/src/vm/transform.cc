@@ -1949,7 +1949,7 @@ Status BatchModeTransformer::CheckPartitionColumn(const node::ExprListNode* part
     if (partition == nullptr) {
         return Status::OK();
     }
-    for (int i = 0; i < partition->GetChildNum(); ++i) {
+    for (uint32_t i = 0; i < partition->GetChildNum(); ++i) {
         const auto child = partition->GetChild(i);
         switch (child->GetExprType()) {
             case node::kExprColumnRef: {
