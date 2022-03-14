@@ -804,6 +804,7 @@ void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl
     }
     for (uint64_t i = 0; i < services.size(); i++) {
         FLAGS_db_root_path = "/tmp/test4" + ::openmldb::test::GenRand();
+        FLAGS_hdd_root_path = "/tmp/hdd/test4" + openmldb::test::GenRand();
         port += 500;
         FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
 
@@ -856,7 +857,9 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     return;
 }
 
-TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
+void AddAndRemoveReplicaCluster(openmldb::common::StorageMode storage_mode) {
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
+
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -961,6 +964,7 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
+    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
@@ -1021,9 +1025,22 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
+    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
+TEST_F(NameServerImplTest, AddAndRemoveReplicaClusterDisk) {
+    AddAndRemoveReplicaCluster(openmldb::common::kHDD);
+}
+
+TEST_F(NameServerImplTest, AddAndRemoveReplicaClusterMem) {
+    AddAndRemoveReplicaCluster(openmldb::common::kMemory);
+}
+
+void SyncTableReplicaCluster(openmldb::common::StorageMode storage_mode) {
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
+
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -1124,6 +1141,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     TableInfo* table_info = create_table_request.mutable_table_info();
     string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
@@ -1178,6 +1196,17 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
+    FLAGS_hdd_root_path = old_hdd_root_path;
+}
+
+TEST_F(NameServerImplTest, SyncTableReplicaClusterDisk) {
+    SyncTableReplicaCluster(openmldb::common::kHDD);
+}
+
+TEST_F(NameServerImplTest, SyncTableReplicaClusterMem) {
+    SyncTableReplicaCluster(openmldb::common::kMemory);
 }
 
 /* TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
@@ -1499,7 +1528,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     }
 } */
 
-TEST_F(NameServerImplTest, ShowCatalogVersion) {
+void ShowCatalogVersion(::openmldb::common::StorageMode storage_mode) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -1526,6 +1555,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1563,6 +1593,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1590,6 +1621,14 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
         PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
     }
+}
+
+TEST_F(NameServerImplTest, ShowCatalogVersionDisk) {
+    ShowCatalogVersion(openmldb::common::kHDD);
+}
+
+TEST_F(NameServerImplTest, ShowCatalogVersionMem) {
+    ShowCatalogVersion(openmldb::common::kMemory);
 }
 
 }  // namespace nameserver
