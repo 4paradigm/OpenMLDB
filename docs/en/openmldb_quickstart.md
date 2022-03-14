@@ -49,7 +49,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 The following screenshots show the correct execution of the above docker commands and the correct startup of the OpenMLDB CLI
 
-![image-20220111142406534](./images/cli.png)
+![image-20220111142406534](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/quickstart/images/cli.png)
 
 ### 2.2 Basic usage process
 
@@ -188,7 +188,7 @@ The above differences will be demonstrated based on examples in the following tu
 
 The following screenshot shows the screen after the cluster version of the OpenMLDB CLI is correctly started
 
-![image-20220111141358808](./images/cli_cluster.png)
+![image-20220111141358808](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/quickstart/images/cli_cluster.png)
 
 ### 3.3 Basic usage process
 
