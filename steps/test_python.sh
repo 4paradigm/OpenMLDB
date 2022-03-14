@@ -29,7 +29,10 @@ if [[ "$OSTYPE" =~ ^darwin ]]; then
 elif [[ "$OSTYPE" =~ ^linux ]]; then
   netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
 fi
-./bin/zkServer.sh start && cd "$ROOT_DIR"
+cd /bin
+mount -uw /
+./zkServer.sh start
+cd "$ROOT_DIR"
 echo "zk started"
 sleep 5
 cd onebox && sh start_onebox.sh && cd "$ROOT_DIR"
