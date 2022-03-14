@@ -322,7 +322,6 @@ cases:
   - id: 7
     desc: select const number with placeholder
     mode: request-unsupport
-    tags: ["TODO", "@tobe @qiliguo, fail when refactoring row format"]
     db: db1
     sql: |
       select ? as id, ? as col1, ? as col2;

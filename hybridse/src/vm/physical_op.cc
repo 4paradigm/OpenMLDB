@@ -281,7 +281,10 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
     SchemasContext empty_schemas_ctx;
-    return InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source);
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
+    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
+                 "Fail to initialize function def of const project node");
+    return Status::OK();
 }
 
 int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
