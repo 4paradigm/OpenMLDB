@@ -129,7 +129,7 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
 JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key);
 
-JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo const> info);  // NOLINT
+JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
 
 }  // namespace apiserver
 }  // namespace openmldb

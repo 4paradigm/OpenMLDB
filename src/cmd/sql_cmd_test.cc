@@ -76,7 +76,7 @@ struct CellExpectInfo {
 };
 
 // expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j] is not set, assert will skip
+// if expect[i][j].(expect_|expect_not_) is not set, assert will skip
 inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect,
                                  hybridse::sdk::ResultSet* rs) {
     ASSERT_EQ(expect.size(), rs->Size() + 1);
@@ -100,10 +100,6 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>&
             }
         }
     }
-
-    CellExpectInfo i = "abc";
-    std::string v = "xxx";
-    CellExpectInfo info = v;
 }
 
 struct CLI {
@@ -468,12 +464,78 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     ASSERT_EQ(status.code, 0);
     ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
                            "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                          {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {}, "1", "0", "1"}},
+                          {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
                          rs.get());
     HandleSQL("show table status");
 
     // teardown
     ProcessSQLs(sr, {absl::StrCat("drop table ", tb_name), absl::StrCat("drop database ", db_name)});
+}
+
+// show table status after use db
+TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    std::string db1_name = absl::StrCat("db1_", GenRand());
+    std::string tb1_name = absl::StrCat("tb1_", GenRand());
+    std::string db2_name = absl::StrCat("db2_", GenRand());
+    std::string tb2_name = absl::StrCat("tb2_", GenRand());
+
+    // prepare data
+    ProcessSQLs(
+        sr,
+        {
+            "set @@execute_mode = 'online'",
+            absl::StrCat("create database ", db1_name, ";"),
+            absl::StrCat("use ", db1_name, ";"),
+            absl::StrCat(
+                "create table ", tb1_name,
+                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+            absl::StrCat("insert into ", tb1_name, " values (1, 'aaa', 1635247427000);"),
+
+            absl::StrCat("create database ", db2_name, ";"),
+            absl::StrCat("use ", db2_name),
+            absl::StrCat(
+                "create table ", tb2_name,
+                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+            absl::StrCat("insert into ", tb2_name, " values (2, 'aaa', 1635247427000);"),
+        });
+
+    // sleep for 10s, name server should updated TableInfo in schedule
+    // default schedule interval is 2s
+    absl::SleepFor(absl::Seconds(10));
+
+    // test
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
+                          {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
+                         rs.get());
+
+    sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK());
+    rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
+                          {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
+                         rs.get());
+
+    // teardown
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db1_name, ";"),
+                        absl::StrCat("drop table ", tb1_name),
+                        absl::StrCat("drop database ", db1_name),
+                        absl::StrCat("use ", db2_name),
+                        absl::StrCat("drop table ", tb2_name),
+                        absl::StrCat("drop database ", db2_name),
+                    });
 }
 
 /* TODO: Only run test in standalone mode

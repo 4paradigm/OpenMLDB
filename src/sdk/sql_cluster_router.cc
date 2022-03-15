@@ -3237,13 +3237,17 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 }
 
 // output schema:
-// - Table_id
+// - Table_id: tid
 // - Table_name
 // - Database_name
 // - Storage_type: memory/disk
 // - Rows: number of rows
-// - Memory_data_size:
-// - Disk_data_size:
+// - Memory_data_size: Memory space in bytes taken or related to a table.
+//    1. memory: table data + index
+//    2. SSD/HDD: rocksdb’s table memory
+// - Disk_data_size: disk space in bytes taken by a table in bytes
+//    1. memory:  binlog + snapshot
+//    2. SSD/HDD: binlog + rocksdb data (sst files), wal files and checkpoints are not included
 // - Partition: partition number
 // - partition_unalive: partition number that is unalive
 // - Replica: replica number
@@ -3261,8 +3265,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
 
-    std::for_each(tables.cbegin(), tables.cend(), [&data](const nameserver::TableInfo& tinfo) {
+    std::for_each(tables.cbegin(), tables.cend(), [&data, &db](const nameserver::TableInfo& tinfo) {
         if (nameserver::IsHiddenDb(tinfo.db())) {
+            return;
+        }
+        if (!db.empty() && db != tinfo.db()) {
             return;
         }
         auto tid = tinfo.tid();
@@ -3275,11 +3282,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
         uint32_t partition_unalive = 0;
         for (auto& partition_info : tinfo.table_partition()) {
-            // rows += partition_info.record_cnt();
+            rows += partition_info.record_cnt();
             mem_bytes += partition_info.record_byte_size();
             disk_bytes += partition_info.diskused();
             for (auto& meta : partition_info.partition_meta()) {
-                rows += meta.record_cnt();
                 if (!meta.is_alive()) {
                     partition_unalive++;
                 }
