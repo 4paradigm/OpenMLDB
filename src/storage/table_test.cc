@@ -326,7 +326,7 @@ TEST_P(TableTest, Iterator_GetSize) {
 TEST_P(TableTest, SchedGcHead) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented. 
+    // some functions with disktable mode in this test have not been implemented.
     // refer to issue #1238
     if (storageMode == openmldb::common::kHDD) {
         return;
@@ -436,7 +436,7 @@ TEST_P(TableTest, SchedGcHead1) {
 TEST_P(TableTest, SchedGc) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented. 
+    // some functions with disktable mode in this test have not been implemented.
     // refer to issue #1238
     if (storageMode == openmldb::common::kHDD) {
         return;
@@ -487,7 +487,7 @@ TEST_P(TableTest, SchedGc) {
 TEST_P(TableTest, TableDataCnt) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented. 
+    // some functions with disktable mode in this test have not been implemented.
     // refer to issue #1238
     if (storageMode == openmldb::common::kHDD) {
         return;
@@ -1218,7 +1218,7 @@ TEST_P(TableTest, AbsOrLatSetGet) {
 TEST_P(TableTest, GcAbsOrLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented. 
+    // some functions with disktable mode in this test have not been implemented.
     // refer to issue #1238
     if (storageMode == openmldb::common::kHDD) {
         return;
@@ -1369,7 +1369,7 @@ TEST_P(TableTest, GcAbsOrLat) {
 TEST_P(TableTest, GcAbsAndLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented. 
+    // some functions with disktable mode in this test have not been implemented.
     // refer to issue #1238
     if (storageMode == openmldb::common::kHDD) {
         return;
