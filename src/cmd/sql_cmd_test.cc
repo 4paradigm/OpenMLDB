@@ -58,7 +58,16 @@ class SqlCmdTest : public ::testing::Test {
 
 class DBSDKTest : public ::testing::TestWithParam<CLI*> {};
 
-TEST_F(SqlCmdTest, select_into_outfile) {
+TEST_F(SqlCmdTest, showDeployment) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("show deployment aa", &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "Please enter database first");
+}
+
+TEST_F(SqlCmdTest, SelectIntoOutfile) {
     sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -174,7 +183,38 @@ TEST_F(SqlCmdTest, select_into_outfile) {
     remove(file_path.c_str());
 }
 
-TEST_P(DBSDKTest, deploy) {
+TEST_P(DBSDKTest, Select) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
+    std::string db = "db" + GenRand();
+    sr->ExecuteSQL("create database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");";
+    sr->ExecuteSQL(insert_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL("select * from trans", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, rs->Size());
+    sr->ExecuteSQL("drop table trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("drop database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -204,7 +244,7 @@ TEST_P(DBSDKTest, deploy) {
     ASSERT_FALSE(status.IsOK());
 }
 
-TEST_P(DBSDKTest, deploy_col) {
+TEST_P(DBSDKTest, DeployCol) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -230,7 +270,7 @@ TEST_P(DBSDKTest, deploy_col) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_P(DBSDKTest, deploy_options) {
+TEST_P(DBSDKTest, DeployOptions) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -256,7 +296,7 @@ TEST_P(DBSDKTest, deploy_options) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_P(DBSDKTest, deploy_long_windows) {
+TEST_P(DBSDKTest, DeployLongWindows) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -284,7 +324,7 @@ TEST_P(DBSDKTest, deploy_long_windows) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_P(DBSDKTest, create_without_index_col) {
+TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -300,11 +340,67 @@ TEST_P(DBSDKTest, create_without_index_col) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
-TEST_P(DBSDKTest, show) {
+TEST_P(DBSDKTest, ShowGlobalVaraibles) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
     HandleSQL("show global variables");
+}
+
+// expect the output of a ResultSet, first row is schema, all compared in string
+// if expect[i][j] is not set, assert will skip
+inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect,
+                                 hybridse::sdk::ResultSet* rs) {
+    ASSERT_EQ(expect.size(), rs->Size() + 1);
+    size_t idx = 0;
+    // schema check
+    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
+    for (size_t i = 0; i < expect[idx].size(); ++i) {
+        ASSERT_TRUE(expect[idx][i].has_value());
+        EXPECT_EQ(expect[idx][i].value(), rs->GetSchema()->GetColumnName(i));
+    }
+
+    while (++idx < expect.size() && rs->Next()) {
+        for (size_t i = 0; i < expect[idx].size(); ++i) {
+            if (expect[idx][i].has_value()) {
+                std::string val;
+                EXPECT_TRUE(rs->GetAsString(i, val));
+                EXPECT_EQ(expect[idx][i].value(), val);
+            }
+        }
+    }
+}
+
+TEST_P(DBSDKTest, ShowComponents) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show components", &status);
+    ASSERT_EQ(status.code, 0);
+
+    if (cs->IsClusterMode()) {
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
+        const auto& tablet_eps = mc_->GetTbEndpoint();
+        const auto& ns_ep = mc_->GetNsEndpoint();
+        ASSERT_EQ(1, tablet_eps.size());
+        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                              {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
+                              {ns_ep, "nameserver", {}, "online", "master"}},
+                             rs.get());
+    } else {
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
+        const auto& tablet_ep = env.GetTbEndpoint();
+        const auto& ns_ep = env.GetNsEndpoint();
+        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+                              {tablet_ep, "tablet", {}, "online", "NULL"},
+                              {ns_ep, "nameserver", {}, "online", "master"}},
+                             rs.get());
+    }
+
+    HandleSQL("show components");
 }
 
 /* TODO: Only run test in standalone mode
@@ -371,15 +467,24 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
+    ::openmldb::cmd::cluster_cli.sr->Init();
+
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-
     ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
+    ::openmldb::cmd::standalone_cli.sr->Init();
 
     ok = RUN_ALL_TESTS();
-    ::openmldb::cmd::mc_->Close();
+
+    // sr owns relative cs
+    delete openmldb::cmd::cluster_cli.sr;
+    delete openmldb::cmd::standalone_cli.sr;
+
+    mc.Close();
+    env.Close();
+
     return ok;
 }

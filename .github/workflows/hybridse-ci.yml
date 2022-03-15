@@ -18,6 +18,7 @@ on:
 env:
   HYBRIDSE_PATH: hybridse
   CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
+  CTEST_OUTPUT_ON_FAILURE: ON
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
 
 jobs:

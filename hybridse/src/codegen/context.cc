@@ -18,6 +18,8 @@
 #include <memory>
 #include "glog/logging.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace codegen {
 
@@ -162,8 +164,20 @@ CodeGenContext::CodeGenContext(::llvm::Module* module,
       llvm_ir_builder_(*llvm_ctx_),
       schemas_context_(schemas_context),
       parameter_types_(parameter_types),
-      parameter_row_format_(parameter_types),
-      node_manager_(node_manager) {}
+      node_manager_(node_manager) {
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        parameter_row_format_ = new codec::SingleSliceRowFormat(parameter_types);
+    } else {
+        parameter_row_format_ = new codec::MultiSlicesRowFormat(parameter_types);
+    }
+}
+
+CodeGenContext::~CodeGenContext() {
+    if (parameter_row_format_) {
+        delete parameter_row_format_;
+    }
+}
 
 ::llvm::Function* CodeGenContext::GetCurrentFunction() const {
     return current_llvm_function_;
@@ -193,7 +207,7 @@ const vm::SchemasContext* CodeGenContext::schemas_context() const {
 const codec::Schema* CodeGenContext::parameter_types() const {
     return parameter_types_;
 }
-const codec::RowFormat& CodeGenContext::parameter_row_format() const {
+const codec::RowFormat* CodeGenContext::parameter_row_format() const {
     return parameter_row_format_;
 }
 node::NodeManager* CodeGenContext::node_manager() const {

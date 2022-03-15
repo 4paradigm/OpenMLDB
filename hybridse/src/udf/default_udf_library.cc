@@ -376,42 +376,62 @@ struct AvgWhereDef {
 template <typename T>
 struct MinWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(DataTypeTrait<T>::maximum_value())
-            .update([](UdfResolveContext* ctx, ExprNode* min, ExprNode* elem,
-                       ExprNode* cond) {
+        helper.templates<T, Tuple<bool, T>, T, bool>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::maximum_value()))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto condition =
-                    nm->MakeBinaryExprNode(min, elem, node::kFnOpGt);
-                ExprNode* new_min = nm->MakeCondExpr(condition, elem, min);
-                ExprNode* update = nm->MakeCondExpr(cond, new_min, min);
+                auto acc_is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto elem_is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                auto acc_min = nm->MakeGetFieldExpr(acc, 1);
+                auto elem_lt_acc_and_not_null = nm->MakeBinaryExprNode(elem, acc_min, node::kFnOpLt);
+
+                auto elem_as_tuple = nm->MakeFuncNode("make_tuple", {elem_is_null, elem}, nullptr);
+                ExprNode* new_acc = nm->MakeCondExpr(acc_is_null, elem_as_tuple,
+                                                     nm->MakeCondExpr(elem_lt_acc_and_not_null, elem_as_tuple, acc));
+                ExprNode* update = nm->MakeCondExpr(cond, new_acc, acc);
                 return update;
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                auto is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto val = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(is_null,
+                                        nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()), val);
+            });
     }
 };
 
 template <typename T>
 struct MaxWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(DataTypeTrait<T>::minimum_value())
-            .update([](UdfResolveContext* ctx, ExprNode* max, ExprNode* elem,
-                       ExprNode* cond) {
+        helper.templates<T, Tuple<bool, T>, T, bool>()
+            .const_init(MakeTuple(true, DataTypeTrait<T>::minimum_value()))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
                 auto nm = ctx->node_manager();
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto condition =
-                    nm->MakeBinaryExprNode(max, elem, node::kFnOpLt);
-                ExprNode* new_max = nm->MakeCondExpr(condition, elem, max);
-                ExprNode* update = nm->MakeCondExpr(cond, new_max, max);
+                auto acc_is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto elem_is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                auto acc_max = nm->MakeGetFieldExpr(acc, 1);
+                auto elem_gt_acc_and_not_null = nm->MakeBinaryExprNode(elem, acc_max, node::kFnOpGt);
+
+                auto elem_as_tuple = nm->MakeFuncNode("make_tuple", {elem_is_null, elem}, nullptr);
+                ExprNode* new_acc = nm->MakeCondExpr(acc_is_null, elem_as_tuple,
+                                                     nm->MakeCondExpr(elem_gt_acc_and_not_null, elem_as_tuple, acc));
+                ExprNode* update = nm->MakeCondExpr(cond, new_acc, acc);
                 return update;
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                auto is_null = nm->MakeGetFieldExpr(acc, 0);
+                auto val = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(is_null,
+                                        nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(), nm->MakeConstNode()), val);
+            });
     }
 };
 
@@ -860,7 +880,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.5.0)");
     RegisterExternal("reverse")
         .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::reverse)))
+            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>
+                                    (udf::v1::reverse)))
         .return_by_arg(true)
         .returns<Nullable<codec::StringRef>>()
         .doc(R"(

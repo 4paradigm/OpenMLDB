@@ -68,6 +68,9 @@
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>
         <eclipse.jdt.version>4.13.0</eclipse.jdt.version>
+        <scoverage.plugin.version>1.4.11</scoverage.plugin.version>
+        <surefire.plugin.version>3.0.0-M5</surefire.plugin.version>
+        <jacoco.plugin.version>0.8.7</jacoco.plugin.version>
     </properties>
 
     <dependencies>
@@ -167,7 +170,7 @@
             <plugin>
               <groupId>org.jacoco</groupId>
               <artifactId>jacoco-maven-plugin</artifactId>
-              <version>0.8.7</version>
+              <version>${jacoco.plugin.version}</version>
               <executions>
                   <execution>
                       <goals>
@@ -215,9 +218,10 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.0.0-M5</version>
+                    <version>${surefire.plugin.version}</version>
                     <configuration>
                       <reuseForks>false</reuseForks>
+                      <!-- forkCount > 0 and argLine required to work well with jacoco -->
                       <forkCount>1</forkCount>
                       <argLine>@{argLine} -Xmx4G</argLine>
                     </configuration>
@@ -230,16 +234,7 @@
                 <plugin>
                     <groupId>org.scoverage</groupId>
                     <artifactId>scoverage-maven-plugin</artifactId>
-                    <version>1.4.11</version>
-                    <!-- <executions> -->
-                    <!--     <execution> -->
-                    <!--         <id>scoverage-report</id> -->
-                    <!--         <phase>prepare-package</phase> -->
-                    <!--         <goals> -->
-                    <!--             <goal>report</goal> -->
-                    <!--         </goals> -->
-                    <!--     </execution> -->
-                    <!-- </executions> -->
+                    <version>${scoverage.plugin.version}</version>
                 </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
@@ -397,10 +392,15 @@
                     <injectAllReactorProjects>true</injectAllReactorProjects>
                   </configuration>
                 </plugin>
+                <!-- site lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#site_Lifecycle -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-site-plugin</artifactId>
-                    <version>3.9.1</version>
+                    <version>3.11.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>3.2.2</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -427,7 +427,40 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.2.2</version>
+                <version>4.5.3.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>${surefire.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.plugin.version}</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>report</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <!-- additionally generate aggregated SCoverage report for root module -->
+                    <aggregate>true</aggregate>
+                </configuration>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>report</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
             </plugin>
         </plugins>
     </reporting>

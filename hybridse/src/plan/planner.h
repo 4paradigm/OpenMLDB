@@ -54,6 +54,7 @@ class Planner {
                       std::vector<const node::WindowDefNode *> *windows);
 
     static int GetPlanTreeLimitCount(node::PlanNode *node);
+
  protected:
     const bool is_batch_mode_;
     const bool is_cluster_optimized_;
