@@ -53,6 +53,59 @@ inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::s
     }
 }
 
+// expect object for ResultSet cell
+struct CellExpectInfo {
+    CellExpectInfo() {}
+
+    CellExpectInfo(const char* buf) : expect_(buf) {}  // NOLINT
+
+    CellExpectInfo(const std::string& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
+        : expect_(expect), expect_not_(expect_not) {}
+
+    // result string for target cell to match exactly
+    // if empty, do not check
+    std::optional<std::string const> expect_;
+
+    // what string target cell string should not match
+    // if empty, do not check
+    std::optional<std::string const> expect_not_;
+};
+
+// expect the output of a ResultSet, first row is schema, all compared in string
+// if expect[i][j] is not set, assert will skip
+inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect,
+                                 hybridse::sdk::ResultSet* rs) {
+    ASSERT_EQ(expect.size(), rs->Size() + 1);
+    size_t idx = 0;
+    // schema check
+    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
+    for (size_t i = 0; i < expect[idx].size(); ++i) {
+        ASSERT_TRUE(expect[idx][i].expect_.has_value());
+        EXPECT_EQ(expect[idx][i].expect_.value(), rs->GetSchema()->GetColumnName(i));
+    }
+
+    while (++idx < expect.size() && rs->Next()) {
+        for (size_t i = 0; i < expect[idx].size(); ++i) {
+            std::string val;
+            EXPECT_TRUE(rs->GetAsString(i, val));
+            if (expect[idx][i].expect_.has_value()) {
+                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
+            }
+            if (expect[idx][i].expect_not_.has_value()) {
+                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
+            }
+        }
+    }
+
+    CellExpectInfo i = "abc";
+    std::string v = "xxx";
+    CellExpectInfo info = v;
+}
+
 struct CLI {
     ::openmldb::sdk::DBSDK* cs = nullptr;
     ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
@@ -335,30 +388,6 @@ TEST_P(DBSDKTest, ShowGlobalVaraibles) {
     HandleSQL("show global variables");
 }
 
-// expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j] is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect,
-                                 hybridse::sdk::ResultSet* rs) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
-    size_t idx = 0;
-    // schema check
-    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (size_t i = 0; i < expect[idx].size(); ++i) {
-        ASSERT_TRUE(expect[idx][i].has_value());
-        EXPECT_EQ(expect[idx][i].value(), rs->GetSchema()->GetColumnName(i));
-    }
-
-    while (++idx < expect.size() && rs->Next()) {
-        for (size_t i = 0; i < expect[idx].size(); ++i) {
-            if (expect[idx][i].has_value()) {
-                std::string val;
-                EXPECT_TRUE(rs->GetAsString(i, val));
-                EXPECT_EQ(expect[idx][i].value(), val) << "expect[" << idx << "][" << i << "]";
-            }
-        }
-    }
-}
-
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -399,16 +428,12 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
     EXPECT_EQ(10, rs->GetSchema()->GetColumnCnt());
-    if (cs->IsClusterMode()) {
-        // TODO(aceforeverd): standalone mode's table map do not refresh correctly
-        // skip temporarily
-        ExpectResultSetStrEq(
-            {
-                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                 "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-            },
-            rs.get());
-    }
+    ExpectResultSetStrEq(
+        {
+            {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+             "Partition", "Partition_unalive", "Replica"},
+        },
+        rs.get());
     HandleSQL("show table status");
 }
 
@@ -441,12 +466,10 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    if (cs->IsClusterMode()) {
-        ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                               "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                              {{}, tb_name, db_name, "memory", "1", {}, {}, "1", "0", "1"}},
-                             rs.get());
-    }
+    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
+                          {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {}, "1", "0", "1"}},
+                         rs.get());
     HandleSQL("show table status");
 
     // teardown
