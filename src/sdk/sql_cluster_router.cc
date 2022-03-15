@@ -1634,14 +1634,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
-            ShowJobs(false, job_infos);
-            std::stringstream ss;
-            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            std::vector<std::vector<std::string>> result;
-            std::vector<std::string> vec = {ss.str()};
-            result.emplace_back(std::move(vec));
-            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
+            std::string db = "__INTERNAL_DB";
+            std::string sql = "SELECT * FROM JOB_INFO";
+            ::hybridse::sdk::Status status;
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+            if (status.code != 0) {
+                std::cout << "ERROR: " << status.msg << std::endl;
+                return {};
+            }
+            return rs;
         }
         case hybridse::node::kCmdShowJob: {
             int job_id;
