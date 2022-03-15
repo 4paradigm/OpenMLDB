@@ -8,7 +8,7 @@ This tutorial provides a quick start guide for OpenMLDB. By establishing a datab
 
 This tutorial is developed and deployed based on the OpenMLDB CLI, so first you need to download the sample data and start the OpenMLDB CLI. We recommend using the prepared docker image for a quick experience
 
-:bulb: If you want to compile and install it yourself, you can refer to our [installation and deployment documentation](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/deploy/install_deploy.md).
+:bulb: To compile and install it yourself, you can refer to our [installation and deployment documentation](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/deploy/install_deploy.md).
 
 ### 1.1 Mirror preparation
 
@@ -123,7 +123,7 @@ After going online, you can view the deployed SQL solution through the command `
 1 row in set
 ```
 
-:bulb: Note that the standalone version of this tutorial uses the same data for offline and online feature calculation. During deployment, offline data is automatically switched to online data for online computing. If you want to use a different dataset, you can do a data update on this basis, or re-import a new dataset before deployment.
+:bulb: Notice, the standalone version of this tutorial uses the same data for offline and online feature calculation. During deployment, offline data is automatically switched to online data for online computing. If you want to use a different dataset, you can do a data update on this basis, or re-import a new dataset before deployment.
 
 #### 2.2.5 Exit the CLI
 
@@ -131,7 +131,7 @@ After going online, you can view the deployed SQL solution through the command `
 > quit;
 ```
 
-So far, you have completed all the development and deployment work based on OpenMLDB CLI, and have returned to the operating system command line.
+Up to this point, you have completed all the development and deployment work based on OpenMLDB CLI, and have returned to the operating system command line.
 
 #### 2.2.6 Real-time feature calculation
 
@@ -242,7 +242,7 @@ Next, import the previously downloaded sample data (which has been downloaded in
 
 Notice, the `LOAD DATA` command is non-blocking, and you can view the task progress through offline task management commands such as `SHOW JOBS`.
 
-If you want to preview the data, you can also use the `SELECT` statement, but this command is also a non-blocking command in offline mode. You need to view the log for query results, which will not be expanded here.
+To preview the data, you can also use the `SELECT` statement, but this command is also a non-blocking command in offline mode. You need to view the log for query results, which will not be expanded here.
 
 #### 3.3.3 Offline feature calculation
 
@@ -278,7 +278,7 @@ After going online, you can view the deployed SQL solution through the command `
 
 #### 3.3.5 Online data preparation
 
-First, please switch to **Online** execution mode. In this mode, only online data import/insert and query operations are processed. Then in the online mode, import the previously downloaded sample data (downloaded in [1.2 Sample Data] (#1.2-Sample Data)) as online data for online feature calculation.
+First, switch to **Online** execution mode. In this mode, only online data import/insert and query operations are processed. Then in the online mode, import the previously downloaded sample data (downloaded in [1.2 Sample Data] (#1.2-Sample Data)) as online data for online feature calculation.
 
 ```sql
 > USE demo_db;
@@ -321,7 +321,7 @@ After waiting for the task to complete, preview the online data:
 > quit;
 ```
 
-So far, you have completed all the development and deployment work based on the cluster version of OpenMLDB CLI, and have returned to the operating system command line.
+Up to this point, you have completed all the development and deployment work based on the cluster version of OpenMLDB CLI, and have returned to the operating system command line.
 
 #### 3.3.7 Real-time feature calculation
 
