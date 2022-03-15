@@ -67,7 +67,7 @@ The workflow of the standalone version of OpenMLDB generally includes several st
 
 #### 2.2.2 Data preparation
 
-Import the previously downloaded sample data (download the saved data in [1.2 Sample Data](#1.2-Sample Data)) as training data for offline and online feature calculation.
+Import the previously downloaded sample data (the saved data in [1.2 Sample Data](#1.2-Sample Data)) as training data for offline and online feature calculation.
 
 ⚠️ Note: The standalone version can use the same data for offline and online feature calculation. Of course, users can also manually import different data for offline and online. For simplicity, the standalone version of this tutorial uses the same data for offline and online calculations.
 
@@ -232,7 +232,7 @@ Check out the datasheet:
 
 First, please switch to offline execution mode. In this mode, only offline data import/insert and query operations are processed.
 
-Next, import the previously downloaded sample data (which has been downloaded in [1.2 Sample Data] (#1.2 - Sample Data)) as offline data for offline feature calculation.
+Next, import the previously downloaded sample data (which downloaded in [1.2 Sample Data] (#1.2 - Sample Data)) as offline data for offline feature calculation.
 
 ```sql
 > USE demo_db;
