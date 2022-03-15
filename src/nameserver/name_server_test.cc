@@ -65,15 +65,6 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-class DiskTestEnvironment : public ::testing::Environment{
-    virtual void SetUp() {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    }
-    virtual void TearDown() {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    }
-};
-
 class NameServerImplTest : public ::testing::Test {
  public:
     NameServerImplTest() {}
@@ -1647,7 +1638,6 @@ TEST_F(NameServerImplTest, ShowCatalogVersionMem) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new ::openmldb::nameserver::DiskTestEnvironment);
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
