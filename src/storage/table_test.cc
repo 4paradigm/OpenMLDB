@@ -1833,13 +1833,7 @@ void TSColIDLength(::openmldb::common::StorageMode storageMode) {
         it->Next();
     }
 
-    // Wrong result in disktable with ts_col's id greater than 255
-    // refer to issue #1394 for more information
-    if (storageMode == ::openmldb::common::kMemory) {
-        ASSERT_EQ(10, count);
-    } else {
-        ASSERT_EQ(20, count);
-    }
+    ASSERT_EQ(10, count);
     delete table;
 }
 
