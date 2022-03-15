@@ -3270,12 +3270,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     data.reserve(tables.size());
 
     std::for_each(tables.cbegin(), tables.cend(), [&data, &db](const nameserver::TableInfo& tinfo) {
-        if (nameserver::IsHiddenDb(tinfo.db())) {
+        if (!db.empty()) {
+            // rule 1: selected a db, show tables only inside the db
+            if (db != tinfo.db()) {
+                return;
+            }
+        } else if (nameserver::IsHiddenDb(tinfo.db())) {
+            // rule 2: if no db selected, show all tables except those in hidden db
             return;
         }
-        if (!db.empty() && db != tinfo.db()) {
-            return;
-        }
+
         auto tid = tinfo.tid();
         auto table_name = tinfo.name();
         auto db = tinfo.db();
