@@ -1,6 +1,6 @@
 # OpenMLDB Quick Start
 
-This tutorial provides a quick start guide for OpenMLDB. Basic steps are: create database, import data, offline feature calculation, deploy SQL, online real-time feature calculation, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
+This tutorial provides a quick start guide for OpenMLDB. Basic steps are: create database, import data, offline feature extraction, deploy SQL, online real-time feature extraction, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
 
 ## 1. Environment and data preparation
 
@@ -53,7 +53,7 @@ The following screenshots show the correct execution of the above docker command
 
 ### 2.2 Basic usage process
 
-The workflow of the standalone version of OpenMLDB generally includes several stages: database and table establishment, data preparation, offline feature calculation, SQL solution online, and online real-time feature calculation.
+The workflow of the standalone version of OpenMLDB generally includes several stages: database and table establishment, data preparation, offline feature extraction, SQL solution online, and online real-time feature extraction.
 
 :bulb: Unless otherwise specified, the commands shown below are executed under the standalone version of OpenMLDB CLI by default (CLI commands start with the prompt `>` for distinction).
 
@@ -67,9 +67,9 @@ The workflow of the standalone version of OpenMLDB generally includes several st
 
 #### 2.2.2 Data preparation
 
-Import the previously downloaded sample data (the saved data in [1.2 Sample Data](#1.2-Sample Data)) as training data for offline and online feature calculation.
+Import the previously downloaded sample data (the saved data in [1.2 Sample Data](#1.2-Sample Data)) as training data for offline and online feature extraction.
 
-⚠️ Note: The standalone version can use the same data for offline and online feature calculation. Of course, users can also manually import different data for offline and online. For simplicity, the standalone version of this tutorial uses the same data for offline and online calculations.
+⚠️ Note: The standalone version can use the same data for offline and online feature extraction. Of course, users can also manually import different data for offline and online. For simplicity, the standalone version of this tutorial uses the same data for offline and online extraction.
 
 ```sql
 > LOAD DATA INFILE 'data/data.csv' INTO TABLE demo_table1;
@@ -95,7 +95,7 @@ Preview data
  ----- ---- ---- ---------- ----------- --------------- - -------------
 ```
 
-#### 2.2.3 Offline feature calculation
+#### 2.2.3 Offline feature extraction
 
 Execute SQL for feature extraction, and store the generated features in a file for subsequent model training.
 
@@ -105,7 +105,7 @@ Execute SQL for feature extraction, and store the generated features in a file f
 
 #### 2.2.4 SQL solution deploy
 
-Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature calculation SQL solution.
+Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature extraction SQL solution.
 
 ```sql
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -123,7 +123,7 @@ After going online, you can view the deployed SQL solution through the command `
 1 row in set
 ```
 
-:bulb: Notice, the standalone version of this tutorial uses the same data for offline and online feature calculation. During deployment, offline data is automatically switched to online data for online computing. If you want to use a different dataset, you can do a data update on this basis, or re-import a new dataset before deployment.
+:bulb: Notice, the standalone version of this tutorial uses the same data for offline and online feature extraction. During deployment, offline data is automatically switched to online data for online computing. If you want to use a different dataset, you can do a data update on this basis, or re-import a new dataset before deployment.
 
 #### 2.2.5 Exit the CLI
 
@@ -133,7 +133,7 @@ After going online, you can view the deployed SQL solution through the command `
 
 Up to this point, you have completed all the development and deployment work based on OpenMLDB CLI, and have returned to the operating system command line.
 
-#### 2.2.6 Real-time feature calculation
+#### 2.2.6 Real-time feature extraction
 
 Real-time online services can be provided through the following Web APIs:
 
@@ -155,9 +155,9 @@ The following is the expected return result for this query (the computed feature
 ```json
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
-\* The api server executes the request, which can support batch requests, and the "input" field supports arrays. The request calculation is performed separately for each line of input. For detailed parameter formats, see [RESTful API](../reference/rest_api.md).
+\* The api server executes the request, which can support batch requests, and the "input" field supports arrays. The request extraction is performed separately for each line of input. For detailed parameter formats, see [RESTful API](../reference/rest_api.md).
 
-\* For the description of the request result, see "3.3.8 Result description of real-time feature calculation" at the end of the article.
+\* For the description of the request result, see "3.3.8 Result description of real-time feature extraction" at the end of the article.
 
 ## 3. Get started with cluster version of OpenMLDB
 
@@ -192,7 +192,7 @@ The following screenshot shows the screen after the cluster version of the OpenM
 
 ### 3.3 Basic usage process
 
-The workflow of the cluster version of OpenMLDB generally includes several stages: database and table creation, offline data preparation, offline feature calculation, SQL solution online, online data preparation, and online real-time feature calculation.
+The workflow of the cluster version of OpenMLDB generally includes several stages: database and table creation, offline data preparation, offline feature extraction, SQL solution online, online data preparation, and online real-time feature extraction.
 
 The cluster version of OpenMLDB needs to manage offline data and online data separately. Therefore, after completing the SQL solution online, you must do the online data preparation steps.
 
@@ -232,7 +232,7 @@ Check out the datasheet:
 
 First, please switch to offline execution mode. In this mode, only offline data import/insert and query operations are processed.
 
-Next, import the previously downloaded sample data (which downloaded in [1.2 Sample Data] (#1.2 - Sample Data)) as offline data for offline feature calculation.
+Next, import the previously downloaded sample data (which downloaded in [1.2 Sample Data] (#1.2 - Sample Data)) as offline data for offline feature extraction.
 
 ```sql
 > USE demo_db;
@@ -244,7 +244,7 @@ Notice, the `LOAD DATA` command is non-blocking, and you can view the task progr
 
 To preview the data, you can also use the `SELECT` statement, but this command is also a non-blocking command in offline mode. You need to view the log for query results, which will not be expanded here.
 
-#### 3.3.3 Offline feature calculation
+#### 3.3.3 Offline feature extraction
 
 Execute SQL for feature extraction, and store the generated features in a file for subsequent model training.
 
@@ -258,7 +258,7 @@ Notice, the `SELECT INTO` command in offline mode is non-blocking, and you can v
 
 #### 3.3.4 SQL solution online
 
-Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature calculation SQL solution.
+Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature extraction SQL solution.
 
 ```sql
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -278,7 +278,7 @@ After going online, you can view the deployed SQL solution through the command `
 
 #### 3.3.5 Online data preparation
 
-First, switch to **Online** execution mode. In this mode, only online data import/insert and query operations are processed. Then in the online mode, import the previously downloaded sample data (downloaded in [1.2 Sample Data] (#1.2-Sample Data)) as online data for online feature calculation.
+First, switch to **Online** execution mode. In this mode, only online data import/insert and query operations are processed. Then in the online mode, import the previously downloaded sample data (downloaded in [1.2 Sample Data] (#1.2-Sample Data)) as online data for online feature extraction.
 
 ```sql
 > USE demo_db;
@@ -323,7 +323,7 @@ After waiting for the task to complete, preview the online data:
 
 Up to this point, you have completed all the development and deployment work based on the cluster version of OpenMLDB CLI, and have returned to the operating system command line.
 
-#### 3.3.7 Real-time feature calculation
+#### 3.3.7 Real-time feature extraction
 
 Notice: warning:: According to the default deployment configuration, the http port for apiserver deployment is 9080.
 
@@ -349,13 +349,13 @@ The following is the expected return result for this query (the computed feature
 
 ```
 
-#### 3.3.8 Result description of real-time feature calculation
+#### 3.3.8 Result description of real-time feature extraction
 
-Real-time request (deployment execution) is SQL execution in request mode (request mode). Unlike batch mode (batch mode), request mode will only perform SQL calculations on request rows. In the previous example, the POST input is used as the request line, assuming this line of data exists in the table demo_table1, and execute SQL on it:
+Real-time request (deployment execution) is SQL execution in request mode (request mode). Unlike batch mode (batch mode), request mode will only perform SQL extractions on request rows. In the previous example, the POST input is used as the request line, assuming this line of data exists in the table demo_table1, and execute SQL on it:
 ```
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-The specific calculation logic is as follows (the actual calculation will be optimized to reduce the amount of calculation):
+The specific extraction logic is as follows (the actual extraction will be optimized to reduce the amount of extraction):
 1. According to the request line and the `PARTITION BY` partition of the window, filter out the lines whose c1 is "aaa", and sort them according to c6 from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. Among them, the first row after the request behavior is sorted.
 ```
  ----- ---- ---- ---------- ----------- --------------- - -------------
