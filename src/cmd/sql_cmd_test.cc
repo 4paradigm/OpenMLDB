@@ -77,8 +77,7 @@ struct CellExpectInfo {
 
 // expect the output of a ResultSet, first row is schema, all compared in string
 // if expect[i][j].(expect_|expect_not_) is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect,
-                                 hybridse::sdk::ResultSet* rs) {
+inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
     ASSERT_EQ(expect.size(), rs->Size() + 1);
     size_t idx = 0;
     // schema check
@@ -423,11 +422,10 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    EXPECT_EQ(10, rs->GetSchema()->GetColumnCnt());
     ExpectResultSetStrEq(
         {
             {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-             "Partition", "Partition_unalive", "Replica"},
+             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
         },
         rs.get());
     HandleSQL("show table status");
@@ -442,17 +440,14 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     std::string tb_name = absl::StrCat("tb_", GenRand());
 
     // prepare data
-    ProcessSQLs(
-        sr,
-        {
-            "set @@execute_mode = 'online'",
-            absl::StrCat("create database ", db_name, ";"),
-            absl::StrCat("use ", db_name, ";"),
-            absl::StrCat(
-                "create table ", tb_name,
-                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
-            absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
-        });
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                    absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
+                });
 
     // sleep for 10s, name server should updated TableInfo in schedule
     // default schedule interval is 2s
@@ -462,10 +457,11 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                          {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
-                         rs.get());
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
     HandleSQL("show table status");
 
     // teardown
@@ -485,23 +481,18 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
 
     // prepare data
     ProcessSQLs(
-        sr,
-        {
-            "set @@execute_mode = 'online'",
-            absl::StrCat("create database ", db1_name, ";"),
-            absl::StrCat("use ", db1_name, ";"),
-            absl::StrCat(
-                "create table ", tb1_name,
-                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
-            absl::StrCat("insert into ", tb1_name, " values (1, 'aaa', 1635247427000);"),
+        sr, {
+                "set @@execute_mode = 'online'",
+                absl::StrCat("create database ", db1_name, ";"),
+                absl::StrCat("use ", db1_name, ";"),
+                absl::StrCat("create table ", tb1_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                absl::StrCat("insert into ", tb1_name, " values (1, 'aaa', 1635247427000);"),
 
-            absl::StrCat("create database ", db2_name, ";"),
-            absl::StrCat("use ", db2_name),
-            absl::StrCat(
-                "create table ", tb2_name,
-                " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
-            absl::StrCat("insert into ", tb2_name, " values (2, 'aaa', 1635247427000);"),
-        });
+                absl::StrCat("create database ", db2_name, ";"),
+                absl::StrCat("use ", db2_name),
+                absl::StrCat("create table ", tb2_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                absl::StrCat("insert into ", tb2_name, " values (2, 'aaa', 1635247427000);"),
+            });
 
     // sleep for 10s, name server should updated TableInfo in schedule
     // default schedule interval is 2s
@@ -513,19 +504,21 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
     ASSERT_TRUE(status.IsOK());
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                          {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
-                         rs.get());
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
 
     sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
     ASSERT_TRUE(status.IsOK());
     rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq({{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                           "Disk_data_size", "Partition", "Partition_unalive", "Replica"},
-                          {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1"}},
-                         rs.get());
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
 
     // teardown
     ProcessSQLs(sr, {

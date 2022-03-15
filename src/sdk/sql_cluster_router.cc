@@ -3231,8 +3231,9 @@ std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name", "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",     "Partition_unalive", "Replica"};
+        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
+        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
+        "Offline_path",     "Offline_format", "Offline_deep_copy"};
     return schema;
 }
 
@@ -3251,6 +3252,9 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // - Partition: partition number
 // - partition_unalive: partition number that is unalive
 // - Replica: replica number
+// - Offline_path: data path for offline data
+// - Offline_format: format for offline data
+// - Offline_deep_copy: deep copy option for offline data
 //
 // if db is empty:
 //   show table status in all databases except hidden databases
@@ -3292,9 +3296,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
             }
         }
 
+        std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
+        if (tinfo.has_offline_table_info()) {
+            offline_path = tinfo.offline_table_info().path();
+            offline_format = tinfo.offline_table_info().format();
+            offline_deep_copy = std::to_string(tinfo.offline_table_info().deep_copy());
+        }
+
         data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
-                        std::to_string(partition_unalive), std::to_string(replica_num)});
+                        std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
+                        offline_deep_copy});
     });
 
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
