@@ -2186,6 +2186,7 @@ Status RequestModeTransformer::ValidateRequestTable(
         case vm::kPhysicalOpUnion:
         case vm::kPhysicalOpPostRequestUnion:
         case vm::kPhysicalOpRequestUnion:
+        case vm::kPhysicalOpRequestAggUnion:
         case vm::kPhysicalOpRequestJoin: {
             vm::PhysicalOpNode* left_primary_source = nullptr;
             CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), &left_primary_source))

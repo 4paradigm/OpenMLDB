@@ -37,6 +37,7 @@ using hybridse::vm::PhysicalProjectNode;
 using hybridse::vm::PhysicalRenameNode;
 using hybridse::vm::PhysicalRequestJoinNode;
 using hybridse::vm::PhysicalRequestUnionNode;
+using hybridse::vm::PhysicalRequestAggUnionNode;
 using hybridse::vm::PhysicalSimpleProjectNode;
 using hybridse::vm::PhysicalWindowAggrerationNode;
 using hybridse::vm::ProjectType;
@@ -121,8 +122,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             break;
         }
         case PhysicalOpType::kPhysicalOpRequestUnion: {
-            PhysicalRequestUnionNode* union_op =
-                dynamic_cast<PhysicalRequestUnionNode*>(in);
+            PhysicalRequestUnionNode* union_op = dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
 
             if (!union_op->instance_not_in_window()) {
@@ -147,6 +147,23 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                             window_union.first, &window.partition_,
                             &window.index_key_, &window.sort_, &new_producer)) {
                         window_union.first = new_producer;
+                    }
+                }
+            }
+            return true;
+        }
+        case PhysicalOpType::kPhysicalOpRequestAggUnion: {
+            PhysicalRequestAggUnionNode* union_op = dynamic_cast<PhysicalRequestAggUnionNode*>(in);
+            PhysicalOpNode* new_producer;
+
+            if (!union_op->instance_not_in_window()) {
+                if (KeysAndOrderFilterOptimized(
+                        union_op->schemas_ctx(), union_op->GetProducer(1),
+                        &union_op->window_.partition_,
+                        &union_op->window_.index_key_, &union_op->window_.sort_,
+                        &new_producer)) {
+                    if (!ResetProducer(plan_ctx_, union_op, 1, new_producer)) {
+                        return false;
                     }
                 }
             }

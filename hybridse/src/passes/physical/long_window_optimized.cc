@@ -13,9 +13,10 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+#include "passes/physical/long_window_optimized.h"
+#include <absl/strings/str_cat.h>
 #include <string>
 #include <vector>
-#include "passes/physical/long_window_optimized.h"
 #include "vm/engine.h"
 
 namespace hybridse {
@@ -44,46 +45,165 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
         return false;
     }
 
+    auto project_op = dynamic_cast<vm::PhysicalProjectNode*>(in);
+    if (project_op->project_type_ != vm::kAggregation) {
+        return false;
+    }
+
+    auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
+    // TODO(zhanghao): we only support transform PhysicalAggrerationNode with one and only one window aggregation op
+    // we may remove this constraint in a later optimization
+    if (!VerifySingleAggregation(project_op)) {
+        return false;
+    }
+
+    // this case shouldn't happen as we add the LongWindowOptimized pass only when `long_windows` option exists
     if (long_windows_.empty()) {
         LOG(ERROR) << "Long Windows is empty";
         return false;
     }
 
-    if (vm::kPhysicalOpProject == in->GetOpType()) {
-        auto project_op = dynamic_cast<vm::PhysicalProjectNode*>(in);
-        if (project_op->project_type_ == vm::kAggregation) {
-            auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
-            const auto& projects = project_aggr_op->project();
-            //           auto fn = projects.fn_info().fn_def();
-            //           auto* expr_list = dynamic_cast<node::ExprListNode*>(fn->body());
-            //           for (auto expr : expr_list->children_) {
-            //               LOG(WARNING) << "fn expr " << expr->GetExprString() << "; " <<
-            //               ExprTypeName(expr->GetExprType());
-            //           }
-            //           LOG(WARNING) << "fn = " << project_aggr_op->GetFnInfos()[0]->fn_name() << ": " <<
-            //           fn->GetTreeString();
-            for (int i = 0; i < projects.size(); i++) {
-                const auto* expr = projects.GetExpr(i);
-                if (expr->GetExprType() == node::kExprCall) {
-                    LOG(WARNING) << "expr call = " << expr->GetExprString();
-                    const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
-                    const auto* window = call_expr->GetOver();
-                    if (window == nullptr) continue;
+    const auto& projects = project_aggr_op->project();
+    for (int i = 0; i < projects.size(); i++) {
+        const auto* expr = projects.GetExpr(i);
+        if (expr->GetExprType() == node::kExprCall) {
+            const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
+            const auto* window = call_expr->GetOver();
+            if (window == nullptr) continue;
 
-                    // skip ANONYMOUS_WINDOW
-                    if (!window->GetName().empty()) {
-                        LOG(WARNING) << "func name = " << call_expr->GetFnDef()->GetName()
-                                     << ", win name = " << window->GetName();
-                    }
-                } else {
-                    LOG(WARNING) << "non expr call = " << expr->GetExprString() << "; "
-                                 << ExprTypeName(expr->GetExprType());
+            // skip ANONYMOUS_WINDOW
+            if (!window->GetName().empty()) {
+                if (long_windows_.count(window->GetName())) {
+                    return OptimizeWithPreAggr(project_aggr_op, i, output);
                 }
             }
         }
     }
 
     return true;
+}
+
+bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, int idx, PhysicalOpNode** output) {
+    *output = in;
+
+    if (in->producers()[0]->GetOpType() != vm::kPhysicalOpRequestUnion) {
+        return false;
+    }
+    auto req_union_op = dynamic_cast<vm::PhysicalRequestUnionNode*>(in->producers()[0]);
+    if (!req_union_op->window_unions_.Empty()) {
+        LOG(WARNING) << "Not support optimization of RequestUnionOp with window unions";
+        return false;
+    }
+    auto orig_data_provider = dynamic_cast<vm::PhysicalDataProviderNode*>(req_union_op->GetProducer(1));
+    auto aggr_op = dynamic_cast<const node::CallExprNode*>(in->project().GetExpr(idx));
+    auto window = aggr_op->GetOver();
+
+    const std::string& db_name = orig_data_provider->GetDb();
+    const std::string& table_name = orig_data_provider->GetName();
+    std::string func_name = aggr_op->GetFnDef()->GetName();
+    std::string aggr_col = ConcatExprList(aggr_op->children_);
+    std::string partition_col;
+    if (window->GetPartitions()) {
+        partition_col = ConcatExprList(window->GetPartitions()->children_);
+    } else {
+        partition_col = ConcatExprList(req_union_op->window().partition().keys()->children_);
+    }
+
+    std::string order_col;
+    if (window->GetOrders()) {
+        order_col = ConcatExprList(window->GetOrders()->children_);
+    } else {
+        auto orders = req_union_op->window().sort().orders()->order_expressions();
+        for (int i = 0; i < orders->GetChildNum(); i++) {
+            auto order = dynamic_cast<node::OrderExpression*>(orders->GetChild(i));
+            if (order == nullptr || order->expr() == nullptr) {
+                LOG(ERROR) << "OrderBy col is empty";
+                return false;
+            }
+            if (order_col.empty()) {
+                order_col = order->expr()->GetExprString();
+            } else {
+                order_col = absl::StrCat(order_col, ",", order->expr()->GetExprString());
+            }
+        }
+    }
+
+    auto table_infos = catalog_->GetAggrTables(db_name, table_name, func_name, aggr_col, partition_col, order_col);
+    if (table_infos.empty()) {
+        LOG(WARNING) << absl::StrCat("No Pre-aggregation tables exists for ",
+                                     db_name, ".", table_name, ": ", func_name, "(", aggr_col, ")",
+                                     " partition by ", partition_col, " order by ", order_col);
+        return false;
+    }
+
+    // TODO(zhanghao): optimize the selection of the best pre-aggregation tables
+    auto table = catalog_->GetTable(table_infos[0].aggr_db, table_infos[0].aggr_table);
+
+    vm::PhysicalTableProviderNode* aggr = nullptr;
+    auto status = plan_ctx_->CreateOp<vm::PhysicalTableProviderNode>(&aggr, table);
+    if (!status.isOK()) {
+        LOG(ERROR) << "Fail to create PhysicalTableProviderNode for pre-aggregation table: " << status;
+        return false;
+    }
+
+    auto request = req_union_op->GetProducer(0);
+    auto raw = req_union_op->GetProducer(1);
+    vm::PhysicalRequestAggUnionNode* request_aggr_union = nullptr;
+    status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(&request_aggr_union,
+                                                                  request,
+                                                                  raw,
+                                                                  aggr,
+                                                                  req_union_op->window(),
+                                                                  req_union_op->instance_not_in_window(),
+                                                                  req_union_op->exclude_current_time(),
+                                                                  req_union_op->output_request_row());
+    if (!status.isOK()) {
+        LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
+        return false;
+    }
+
+    vm::PhysicalReduceAggregationNode* reduce_aggr = nullptr;
+    auto condition = in->having_condition_.condition();
+    if (condition) {
+        condition = condition->DeepCopy(plan_ctx_->node_manager());
+    }
+
+    status = plan_ctx_->CreateOp<vm::PhysicalReduceAggregationNode>(
+        &reduce_aggr, request_aggr_union, in->project(), condition);
+    if (!status.isOK()) {
+        LOG(ERROR) << "Fail to create PhysicalReduceAggregationNode: " << status;
+        return false;
+    }
+    *output = reduce_aggr;
+    return true;
+}
+
+bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
+    const auto& projects = op->project();
+    int aggr_counter = 0;
+    for (int i = 0; i < projects.size(); i++) {
+        const auto* expr = projects.GetExpr(i);
+        if (expr->GetExprType() == node::kExprCall) {
+            const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
+            const auto* window = call_expr->GetOver();
+            if (window != nullptr) {
+                aggr_counter++;
+            }
+        }
+    }
+    return aggr_counter == 1;
+}
+
+std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
+    std::string str = "";
+    for (const auto expr : exprs) {
+        if (str.empty()) {
+            str = absl::StrCat(str, expr->GetExprString());
+        } else {
+            str = absl::StrCat(str, delimiter, expr->GetExprString());
+        }
+    }
+    return str;
 }
 
 }  // namespace passes

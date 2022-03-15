@@ -527,6 +527,30 @@ void PhysicalAggrerationNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
+void PhysicalReduceAggregationNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(type=" << ProjectTypeName(project_type_);
+    output << ": ";
+    for (int i = 0; i < project_.size(); i++) {
+        output << project_.GetExpr(i)->GetExprString();
+        if (project_.GetFrame(i)) {
+            output << " (" << project_.GetFrame(i)->GetExprString() << ")";
+        }
+        if (i < project_.size() - 1) output << ", ";
+    }
+    if (having_condition_.ValidCondition()) {
+        output << ", having_" << having_condition_.ToString();
+    }
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -1169,6 +1193,48 @@ base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
         schemas_ctx_.Merge(0, producers_[1]->schemas_ctx());
     }
     return Status::OK();
+}
+
+void PhysicalRequestAggUnionNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(";
+    if (!output_request_row_) {
+        output << "EXCLUDE_REQUEST_ROW, ";
+    }
+    if (exclude_current_time_) {
+        output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    output << window_.ToString() << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+void PhysicalRequestAggUnionNode::PrintChildren(std::ostream& output, const std::string& tab) const {
+    if (3 != producers_.size() || nullptr == producers_[0] || nullptr == producers_[1] || nullptr == producers_[2]) {
+        LOG(WARNING) << "fail to print PhysicalRequestAggUnionNode children";
+        return;
+    }
+    producers_[0]->Print(output, tab + INDENT);
+    for (int i = 1; i < producers_.size(); i++) {
+        output << "\n";
+        producers_[i]->Print(output, tab + INDENT);
+    }
+}
+
+base::Status PhysicalRequestAggUnionNode::InitSchema(PhysicalPlanContext* ctx) {
+    CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
+    schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    if (output_request_row()) {
+        schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
+    } else {
+        schemas_ctx_.Merge(0, producers_[1]->schemas_ctx());
+    }
+    return Status::OK();
+}
+
+PhysicalRequestAggUnionNode* PhysicalRequestAggUnionNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestAggUnionNode*>(node);
 }
 
 base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {

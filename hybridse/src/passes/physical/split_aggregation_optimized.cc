@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "passes/physical/split_aggregation_optimized.h"
+#include <vector>
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 
@@ -83,6 +84,7 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     *output = in;
 
     if (!IsSplitable(in)) {
+        LOG(WARNING) << in->GetTreeString() << " is not splitable";
         return false;
     }
 
@@ -148,8 +150,13 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
 }
 
 bool SplitAggregationOptimized::IsSplitable(vm::PhysicalAggrerationNode* op) {
-    // TODO(zhanghao): currently we only split the aggregation project that depends on a physical table
-    return op->project().size() > 1 && op->producers()[0]->GetOpType() == vm::kPhysicalOpRequestUnion;
+    // TODO(zhanghao): currently we only split the aggregation project that depends on a single physical table
+    if (op->project().size() <= 1 || op->producers()[0]->GetOpType() != vm::kPhysicalOpRequestUnion) {
+        return false;
+    }
+
+    auto req_union_op = dynamic_cast<vm::PhysicalRequestUnionNode*>(op->producers()[0]);
+    return req_union_op->window_unions_.Empty();
 }
 
 }  // namespace passes

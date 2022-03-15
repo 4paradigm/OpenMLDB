@@ -18,6 +18,7 @@
 
 #include <set>
 #include <string>
+#include <vector>
 #include "passes/physical/transform_up_physical_pass.h"
 
 namespace hybridse {
@@ -30,6 +31,9 @@ class LongWindowOptimized : public TransformUpPysicalPass {
 
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output) override;
+    bool VerifySingleAggregation(vm::PhysicalProjectNode* op);
+    bool OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, int idx, PhysicalOpNode** output);
+    static std::string ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter = ",");
 
     std::set<std::string> long_windows_;
 };
