@@ -858,6 +858,58 @@ TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
     LOG(INFO) << "Finish SqlSdkDistributeBatchTest: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
+TEST_F(SQLClusterTest, GlobalVariable) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+
+    auto ns_client = mc_->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    tables.clear();
+    ASSERT_TRUE(
+        ns_client->ShowTable(nameserver::GLOBAL_VARIABLE_NAME, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ(nameserver::GLOBAL_VARIABLE_NAME, tables[0].name().c_str());
+    tables.clear();
+
+    ::hybridse::sdk::Status status;
+    std::string sql = "set @@global.enable_trace='true';";
+    auto res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    sql = "set @@global.execute_mode='online';";
+    res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    auto rs = router->ExecuteSQL("show global variables", &status);
+    ASSERT_EQ(2, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+    ASSERT_EQ("true", rs->GetStringUnsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+    ASSERT_EQ("online", rs->GetStringUnsafe(1));
+
+    sql = "set GLOBAL enable_trace='false';";
+    res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    sql = "set GLOBAL execute_mode='offline';";
+    res = router->ExecuteSQL(sql, &status);
+    ASSERT_EQ(0, status.code);
+    rs = router->ExecuteSQL("show global variables", &status);
+    ASSERT_EQ(2, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+    ASSERT_EQ("false", rs->GetStringUnsafe(1));
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+    ASSERT_EQ("offline", rs->GetStringUnsafe(1));
+}
+
 TEST_F(SQLClusterTest, GetPreAggrTable) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
