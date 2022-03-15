@@ -919,6 +919,8 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             return nm->MakeConstNode(GetDataType());
         }
     }
+    LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
+    return nullptr;
 }
 
 ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {
