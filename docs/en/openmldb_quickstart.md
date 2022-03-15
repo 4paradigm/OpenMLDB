@@ -1,6 +1,6 @@
 # OpenMLDB Quick Start
 
-This tutorial provides a quick start guide for OpenMLDB. By establishing a database, importing data, offline feature calculation, SQL solution online, and online real-time feature calculation, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
+This tutorial provides a quick start guide for OpenMLDB. Basic steps are: create database, import data, offline feature calculation, deploy SQL, online real-time feature calculation, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
 
 ## 1. Environment and data preparation
 
