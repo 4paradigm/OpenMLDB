@@ -26,14 +26,10 @@ cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
 cd "$THIRDSRC/zookeeper-3.4.14"
 if [[ "$OSTYPE" =~ ^darwin ]]; then
   lsof -ni | grep 6181 | awk '{print $2}'| xargs -I{} kill -9 {}
-  cd /bin
-  mount -uw /
-  ./zkServer.sh start
 elif [[ "$OSTYPE" =~ ^linux ]]; then
   netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
-  ./bin/zkServer.sh start
 fi
-cd "$ROOT_DIR"
+./bin/zkServer.sh start && cd "$ROOT_DIR"
 echo "zk started"
 sleep 5
 cd onebox && sh start_onebox.sh && cd "$ROOT_DIR"
