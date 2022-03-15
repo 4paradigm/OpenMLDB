@@ -1144,11 +1144,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
 }
 
 bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) {
+    std::cout << "sql  " << sql << std::endl;
     if (status == NULL) return false;
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     std::vector<DefaultValueMap> default_maps;
     std::vector<uint32_t> str_lengths;
     if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths)) {
+        std::cout << "status.msg" << status->msg << std::endl;
         status->code = 1;
         LOG(WARNING) << "Fail to execute insert statement: " << status->msg;
         return false;
@@ -1620,11 +1622,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"Variable_name", "Value"}, items, status);
         }
         case hybridse::node::kCmdShowGlobalVariables: {
-            std::string db_ = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+            std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
             std::string table = openmldb::nameserver::GLOBAL_VARIABLE_NAME;
             std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
-            auto rs = ExecuteSQLParameterized(db_, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
             if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
@@ -2419,10 +2421,10 @@ bool SQLClusterRouter::IsEnableTrace() {
         hybridse::sdk::Status status;
         std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
-            return {::hybridse::common::StatusCode::kCmdError, "set global variable failed"};
+            return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
         }
         if (!cluster_sdk_->GlobalVarNotify()) {
-            return {::hybridse::common::StatusCode::kCmdError, "zk globlvar node not update"};
+            return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
         return {};
     }

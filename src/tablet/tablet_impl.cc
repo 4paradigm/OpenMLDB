@@ -154,7 +154,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
-    globalvar_changed_notify_path_ = notify_path_ + "/global_variable";
+    globalvar_changed_notify_path_ = zk_path + "/notify/global_variable";
     global_variables_ = std::make_shared<std::map<std::string, std::string>>();
     global_variables_->emplace("execute_mode", "offline");
     global_variables_->emplace("enable_trace", "false");
