@@ -20,8 +20,6 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 
 class TestUnsafeGroupby extends SparkTestSuite {
 
