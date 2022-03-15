@@ -3309,6 +3309,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                         offline_deep_copy});
     });
 
+    // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 
