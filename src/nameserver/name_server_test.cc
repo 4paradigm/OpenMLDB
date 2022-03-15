@@ -302,6 +302,7 @@ void MakesnapshotTask(::openmldb::common::StorageMode storage_mode) {
     ASSERT_FALSE(ok);
 
     FLAGS_make_snapshot_threshold_offset = old_offset;
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
 }
 
 TEST_F(NameServerImplTest, MakesnapshotTaskDisk) {
@@ -450,6 +451,10 @@ void CreateTable(::openmldb::common::StorageMode storage_mode) {
     ASSERT_EQ(0, response.code());
     delete nameserver;
     delete tablet;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_2");
 }
 
 TEST_F(NameServerImplTest, CreateTableDisk) {
@@ -713,6 +718,10 @@ void SetTablePartition(openmldb::common::StorageMode storage_mode) {
 
     delete nameserver;
     delete tablet;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_2");
 }
 
 TEST_F(NameServerImplTest, SetTablePartitionDisk) {
@@ -1621,6 +1630,9 @@ void ShowCatalogVersion(::openmldb::common::StorageMode storage_mode) {
         ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
         PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
     }
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
 }
 
 TEST_F(NameServerImplTest, ShowCatalogVersionDisk) {
