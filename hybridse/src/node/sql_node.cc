@@ -1251,6 +1251,9 @@ bool ExprIsSimple(const ExprNode *expr) {
         case node::kExprColumnRef: {
             return true;
         }
+        case node::kExprAll: {
+            return true;
+        }
         default: {
             return false;
         }
