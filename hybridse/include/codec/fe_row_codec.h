@@ -200,10 +200,10 @@ struct StringColInfo : public ColInfo {
           str_start_offset(str_start_offset) {}
 };
 
-class RowFormat {
+class SliceFormat {
  public:
-    explicit RowFormat(const hybridse::codec::Schema* schema);
-    virtual ~RowFormat() {}
+    explicit SliceFormat(const hybridse::codec::Schema* schema);
+    virtual ~SliceFormat() {}
 
     bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
 
@@ -215,6 +215,90 @@ class RowFormat {
     std::map<std::string, size_t> infos_dict_;
     std::map<uint32_t, uint32_t> next_str_pos_;
     uint32_t str_field_start_offset_;
+};
+
+class RowFormat {
+ public:
+    virtual ~RowFormat() {}
+    virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
+    virtual const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const = 0;
+    virtual size_t GetSliceId(size_t schema_idx) const = 0;
+};
+
+class MultiSlicesRowFormat : public RowFormat {
+ public:
+    explicit MultiSlicesRowFormat(const Schema* schema) {
+        slice_formats_.emplace_back(SliceFormat(schema));
+    }
+
+    ~MultiSlicesRowFormat() {
+        slice_formats_.clear();
+    }
+
+    explicit MultiSlicesRowFormat(const std::vector<const Schema*>& schemas) {
+        for (auto schema : schemas) {
+            slice_formats_.emplace_back(SliceFormat(schema));
+        }
+    }
+
+    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
+        return slice_formats_[schema_idx].GetStringColumnInfo(idx, res);
+    }
+
+    const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_formats_[schema_idx].GetColumnInfo(idx);
+    }
+
+    size_t GetSliceId(size_t schema_idx) const override {
+        return schema_idx;
+    }
+
+ private:
+    std::vector<SliceFormat> slice_formats_;
+};
+
+class SingleSliceRowFormat : public RowFormat {
+ public:
+    explicit SingleSliceRowFormat(const Schema* schema) {
+        slice_format_ = new SliceFormat(schema);
+        offsets_.emplace_back(0);
+    }
+
+    ~SingleSliceRowFormat() {
+        offsets_.clear();
+        if (slice_format_) {
+            delete slice_format_;
+        }
+    }
+
+    explicit SingleSliceRowFormat(const std::vector<const Schema*>& schemas) {
+        int offset = 0;
+        for (auto schema : schemas) {
+            offsets_.emplace_back(offset);
+            offset += schema->size();
+            // Merge schema and make sure it is appended
+            merged_schema_.MergeFrom(*schema);
+        }
+
+        slice_format_ = new SliceFormat(&merged_schema_);
+    }
+
+    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
+        return slice_format_->GetStringColumnInfo(offsets_[schema_idx] + idx, res);
+    }
+
+    const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_format_->GetColumnInfo(offsets_[schema_idx] + idx);
+    }
+
+    size_t GetSliceId(size_t schema_idx) const override {
+        return 0;
+    }
+
+ private:
+    std::vector<size_t> offsets_;
+    SliceFormat* slice_format_;
+    Schema merged_schema_;
 };
 
 }  // namespace codec

@@ -908,7 +908,7 @@ int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
                                  length);
 }
 
-RowFormat::RowFormat(const hybridse::codec::Schema* schema)
+SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
     : schema_(schema), infos_(), next_str_pos_(), str_field_start_offset_(0) {
     if (nullptr == schema) {
         return;
@@ -959,11 +959,11 @@ RowFormat::RowFormat(const hybridse::codec::Schema* schema)
     str_field_start_offset_ = offset;
 }
 
-const ColInfo* RowFormat::GetColumnInfo(size_t idx) const {
+const ColInfo* SliceFormat::GetColumnInfo(size_t idx) const {
     return idx < infos_.size() ? &infos_[idx] : nullptr;
 }
 
-bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
+bool SliceFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
     if (nullptr == res) {
         LOG(WARNING) << "input args have null";
         return false;
@@ -982,7 +982,7 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
         next_offset = nit->second;
     } else {
         if (FLAGS_enable_spark_unsaferow_format) {
-            // Do not need to get next offset for UnsafeRowOpt
+            // No need to get next offset for UnsafeRowOpt and ignore the warning
         } else {
             LOG(WARNING) << "fail to get string field next offset";
             return false;

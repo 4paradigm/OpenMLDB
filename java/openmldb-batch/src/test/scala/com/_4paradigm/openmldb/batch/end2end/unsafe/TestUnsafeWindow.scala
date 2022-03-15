@@ -26,6 +26,7 @@ class TestUnsafeWindow extends SparkTestSuite {
   override def customizedBefore(): Unit = {
     val spark = getSparkSession
     spark.conf.set("spark.openmldb.unsaferow.opt", true)
+    spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
   }
 
   test("Test unsafe window") {
@@ -52,6 +53,7 @@ class TestUnsafeWindow extends SparkTestSuite {
   override def customizedAfter(): Unit = {
     val spark = getSparkSession
     spark.conf.set("spark.openmldb.unsaferow.opt", false)
+    spark.conf.set("spark.openmldb.opt.unsaferow.window", false)
   }
 
 }

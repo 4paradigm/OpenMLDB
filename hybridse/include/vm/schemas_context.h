@@ -172,9 +172,9 @@ class SchemasContext {
     const PhysicalOpNode* GetRoot() const;
 
     /**
-     * Get detailed format for `idx`th schema source.
+     * Get detailed format.
      */
-    const codec::RowFormat* GetRowFormat(size_t idx) const;
+    const codec::RowFormat* GetRowFormat() const;
 
     /**
      * Get `idx`th schema source.
@@ -267,7 +267,7 @@ class SchemasContext {
     std::vector<SchemaSource*> schema_sources_;
 
     // detailed schema format info
-    std::vector<codec::RowFormat> row_formats_;
+    codec::RowFormat* row_format_ = nullptr;
 
     // owned schema object
     codec::Schema owned_concat_output_schema_;
