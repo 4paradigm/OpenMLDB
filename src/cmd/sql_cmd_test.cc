@@ -126,16 +126,6 @@ TEST_F(SqlCmdTest, showDeployment) {
     ASSERT_EQ(status.msg, "Please enter database first");
 }
 
-TEST_F(SqlCmdTest, SqlCommand) {
-    auto cli = cluster_cli;
-    auto sr = cli.sr;
-    hybridse::sdk::Status status;
-    sr->ExecuteSQL("show databases;    ", &status);
-    ASSERT_TRUE(status.IsOK());
-    sr->ExecuteSQL("show databases;    show", &status);
-    ASSERT_FALSE(status.IsOK());
-}
-
 TEST_F(SqlCmdTest, SelectIntoOutfile) {
     sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();

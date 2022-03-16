@@ -158,10 +158,13 @@ void Shell() {
             std::string::size_type buffer_size = buffer.size();
             std::string after_semicolon_sql = buffer.substr(last_semicolon + 1, buffer_size);
             absl::string_view input(after_semicolon_sql);
-            while (!absl::ConsumePrefix(&input, " ")) {
-                buffer = buffer.substr(0, last_semicolon + 1);
-                buffer = buffer + after_semicolon_sql;
+            while (true) {
+                if (!absl::ConsumePrefix(&input, " ")) {
+                    break;
+                }
             }
+            buffer = buffer.substr(0, last_semicolon + 1);
+            buffer = buffer + std::string(input);
         }
         sql.append(buffer);
         if (sql.length() == 4 || sql.length() == 5) {
