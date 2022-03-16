@@ -21,6 +21,41 @@
 namespace hybridse {
 namespace vm {
 
+void BuildAggTableDef(::hybridse::type::TableDef& table, const std::string& aggr_table, const std::string& aggr_db) {
+    table.set_name(aggr_table);
+    table.set_catalog(aggr_db);
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("key");
+    }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kTimestamp);
+        column->set_name("ts_start");
+    }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kTimestamp);
+        column->set_name("ts_end");
+    }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt32);
+        column->set_name("num_rows");
+    }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("aggr_val");
+    }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kInt64);
+        column->set_name("binlog_offset");
+    }
+}
+
 void BuildTableDef(::hybridse::type::TableDef& table) {  // NOLINT
     table.set_name("t1");
     table.set_catalog("db");

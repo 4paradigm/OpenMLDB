@@ -18,6 +18,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "proto/sql_procedure.pb.h"
 #include "sdk/base.h"

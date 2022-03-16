@@ -30,6 +30,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
