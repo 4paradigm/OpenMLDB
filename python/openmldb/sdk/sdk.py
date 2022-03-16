@@ -127,6 +127,11 @@ class OpenMLDBSdk(object):
             return False, status.msg
         else:
             return True, rs
+        
+    def is_Online_Mode(self):
+        if not self.sdk:
+            return False, "please init sdk first"
+        return self.sdk.IsOnlineMode()
 
     def getParameterBuilder(self, data):
         logger.debug("getParameterBuilder data type: %s", str(type(data)))
