@@ -1144,13 +1144,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
 }
 
 bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) {
-    std::cout << "sql  " << sql << std::endl;
     if (status == NULL) return false;
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     std::vector<DefaultValueMap> default_maps;
     std::vector<uint32_t> str_lengths;
     if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths)) {
-        std::cout << "status.msg" << status->msg << std::endl;
         status->code = 1;
         LOG(WARNING) << "Fail to execute insert statement: " << status->msg;
         return false;
