@@ -61,8 +61,30 @@ TEST_F(SystemTableTest, SystemTable) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client.ShowTable("", INTERNAL_DB, false, tables, msg));
+    ASSERT_EQ(2, tables.size());
+    tables.clear();
+    // deny drop system table
+    ASSERT_FALSE(ns_client.DropDatabase(INTERNAL_DB, msg));
+
+    ASSERT_TRUE(ns_client.ShowTable(JOB_INFO_NAME, INTERNAL_DB, false, tables, msg));
     ASSERT_EQ(1, tables.size());
     ASSERT_STREQ("JOB_INFO", tables[0].name().c_str());
+    tables.clear();
+
+    ASSERT_TRUE(ns_client.ShowTable(PRE_AGG_META_NAME, INTERNAL_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ("PRE_AGG_META_INFO", tables[0].name().c_str());
+    tables.clear();
+
+    ASSERT_TRUE(ns_client.ShowTable("", INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    tables.clear();
+    ASSERT_FALSE(ns_client.DropDatabase(INFORMATION_SCHEMA_DB, msg));
+
+    ASSERT_TRUE(ns_client.ShowTable(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, false, tables, msg));
+    ASSERT_EQ(1, tables.size());
+    ASSERT_STREQ("GLOBAL_VARIABLES", tables[0].name().c_str());
+    tables.clear();
 }
 
 }  // namespace nameserver

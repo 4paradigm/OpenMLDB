@@ -133,6 +133,22 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
 
+    // test stmt with db name prefix
+    ddl = "create table " + db + "." + name + "(col1 string, col2 bigint, index(key=col1, ts=col2));";
+    insert = "insert into " + db + "." + name + " values('hello', 1590);";
+    select = "select * from " + db + "." + name + ";";
+    ok = router->ExecuteDDL("", ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ok = router->ExecuteInsert("", insert, &status);
+
+    rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_TRUE(rs != nullptr);
+    ASSERT_EQ(1, rs->Size());
+    ok = router->ExecuteDDL("", "drop table " + db + "." + name + ";", &status);
+    ASSERT_TRUE(ok);
+
     std::string ddl_fake = "create table " + name +
                            "("
                            "col1 int, col2 bigint,"
@@ -327,21 +343,25 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
 
     // normal insert
     std::string insert1 = "insert into " + name + "(col3, col4) values('hello', 1000);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert1, &status);
     ASSERT_TRUE(ok);
 
     // col3 shouldn't be null
     std::string insert2 = "insert into " + name + "(col4) values(1000);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert2, &status);
     ASSERT_FALSE(ok);
 
     // col5 not exist
     std::string insert3 = "insert into " + name + "(col5) values(1000);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert3, &status);
     ASSERT_FALSE(ok);
 
     // duplicate col4
     std::string insert4 = "insert into " + name + "(col4, col4) values(1000, 1000);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert4, &status);
     ASSERT_FALSE(ok);
 
@@ -351,6 +371,7 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     ASSERT_TRUE(r5->Init(0));
     ASSERT_TRUE(r5->AppendInt32(123));
     ASSERT_TRUE(r5->AppendInt64(1001));
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert5, r5, &status);
     ASSERT_TRUE(ok);
 
@@ -358,8 +379,9 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     // col3, col2) value (?, 'hello', ?);
 
     std::string select = "select * from " + name + ";";
+    status = ::hybridse::sdk::Status();
     auto rs = router->ExecuteSQL(db, select, &status);
-    ASSERT_FALSE(rs == nullptr);
+    ASSERT_FALSE(rs == nullptr) << status.msg << "\n" << status.trace;
 
     ASSERT_EQ(2, rs->Size());
     ASSERT_TRUE(rs->Next());
@@ -544,51 +566,62 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
                       "("
                       "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
                       "int NOT NULL, index(key=(col1, col4), ts=col2));";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     std::string insert1 = "insert into " + name + " values(?, ?, ?, ?);";
+    status = ::hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendString("hello"));
     ASSERT_TRUE(r1->AppendInt64(1000));
     ASSERT_TRUE(r1->AppendDate(2020, 7, 13));
     ASSERT_TRUE(r1->AppendInt32(123));
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert1, r1, &status);
     ASSERT_TRUE(ok);
 
     std::string insert2 = "insert into " + name + " values('hello', ?, ?, ?);";
+    status = ::hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt64(1001));
     ASSERT_TRUE(r2->AppendDate(2020, 7, 20));
     ASSERT_TRUE(r2->AppendInt32(456));
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert2, r2, &status);
     ASSERT_TRUE(ok);
 
     std::string insert3 = "insert into " + name + " values(?, ?, ?, 789);";
+    status = ::hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_TRUE(r3->Init(5));
     ASSERT_TRUE(r3->AppendString("hello"));
     ASSERT_TRUE(r3->AppendInt64(1002));
     ASSERT_TRUE(r3->AppendDate(2020, 7, 22));
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert3, r3, &status);
     ASSERT_TRUE(ok);
 
     std::string insert4 = "insert into " + name + " values('hello', ?, ?, 000);";
+    status = ::hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_TRUE(r4->Init(0));
     ASSERT_TRUE(r4->AppendInt64(1003));
     ASSERT_TRUE(r4->AppendDate(2020, 7, 22));
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert4, r4, &status);
     ASSERT_TRUE(ok);
 
     std::string insert5 = "insert into " + name + " values('hello', 1004, '2020-07-31', 001);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert5, &status);
     ASSERT_TRUE(ok);
 
     std::string insert6 = "insert into " + name + " values('hello', 1004, '2020-07-31', ?);";
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert6, &status);
     ASSERT_FALSE(ok);
 
@@ -596,8 +629,9 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     int32_t month;
     int32_t day;
     std::string select = "select * from " + name + ";";
+    status = ::hybridse::sdk::Status();
     auto rs = router->ExecuteSQL(db, select, &status);
-    ASSERT_TRUE(nullptr != rs);
+    ASSERT_TRUE(nullptr != rs) << status.msg;
     ASSERT_EQ(5, rs->Size());
 
     ASSERT_TRUE(rs->Next());
@@ -647,6 +681,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
 
     ASSERT_FALSE(rs->Next());
 
+    status = ::hybridse::sdk::Status();
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -675,6 +710,8 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
 
     // test null
     std::string insert1 = "insert into " + name + " values(?, ?, ?, ?, ?, ?, ?);";
+
+    status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r1 = router->GetInsertRow(db, insert1, &status);
 
     // test schema
@@ -702,29 +739,35 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(r1->AppendDate(2020, 7, 13));
     ASSERT_TRUE(r1->AppendNULL());
     // appendnull automatically
+    status = hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert1, r1, &status);
     ASSERT_TRUE(ok);
 
     // test int convert and float convert
     std::string insert2 = "insert into " + name + " values('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
+    status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r2 = router->GetInsertRow(db, insert2, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt64(1001));
+    status = hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert2, r2, &status);
     ASSERT_TRUE(ok);
 
     // test int to float
     std::string insert3 = "insert into " + name + " values('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
+    status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r3 = router->GetInsertRow(db, insert3, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(r3->Init(0));
     ASSERT_TRUE(r3->AppendInt64(1002));
+    status = hybridse::sdk::Status();
     ok = router->ExecuteInsert(db, insert3, r3, &status);
     ASSERT_TRUE(ok);
 
     // test float to int
     std::string insert4 = "insert into " + name + " values('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
+    status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r4 = router->GetInsertRow(db, insert4, &status);
     ASSERT_EQ(status.code, 1);
 
@@ -732,6 +775,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     int32_t month;
     int32_t day;
     std::string select = "select * from " + name + ";";
+    status = hybridse::sdk::Status();
     auto rs = router->ExecuteSQL(db, select, &status);
     ASSERT_EQ(3, rs->Size());
 
@@ -773,8 +817,10 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
 
     ASSERT_FALSE(rs->Next());
 
+    status = hybridse::sdk::Status();
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
+    status = hybridse::sdk::Status();
     ok = router->DropDB(db, &status);
     ASSERT_TRUE(ok);
 }

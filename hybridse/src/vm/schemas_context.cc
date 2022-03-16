@@ -19,6 +19,8 @@
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace vm {
 
@@ -141,7 +143,10 @@ void SchemasContext::Clear() {
         delete ptr;
     }
     schema_sources_.clear();
-    row_formats_.clear();
+    if (row_format_) {
+        delete row_format_;
+        row_format_ = nullptr;
+    }
     owned_concat_output_schema_.Clear();
 }
 
@@ -475,8 +480,8 @@ bool SchemasContext::IsColumnAmbiguous(const std::string& column_name) const {
     return column_id_set.size() != 1;
 }
 
-const codec::RowFormat* SchemasContext::GetRowFormat(size_t idx) const {
-    return idx < row_formats_.size() ? &row_formats_[idx] : nullptr;
+const codec::RowFormat* SchemasContext::GetRowFormat() const {
+    return row_format_;
 }
 
 const std::string& SchemasContext::GetName() const {
@@ -510,19 +515,30 @@ const codec::Schema* SchemasContext::GetOutputSchema() const {
 }
 
 bool SchemasContext::CheckBuild() const {
-    return row_formats_.size() == schema_sources_.size();
+    return row_format_ != nullptr;
 }
 
 void SchemasContext::Build() {
     // initialize detailed formats
-    row_formats_.clear();
+    if (row_format_) {
+        delete row_format_;
+        row_format_ = nullptr;
+    }
+    std::vector<const hybridse::codec::Schema*> schemas;
     for (const auto& source : schema_sources_) {
         if (source->GetSchema() == nullptr) {
             LOG(WARNING) << "Source schema is null";
             return;
         }
-        row_formats_.emplace_back(codec::RowFormat(source->GetSchema()));
+        schemas.emplace_back(source->GetSchema());
     }
+
+    if (FLAGS_enable_spark_unsaferow_format) {
+        row_format_ = new codec::SingleSliceRowFormat(schemas);
+    } else {
+        row_format_ = new codec::MultiSlicesRowFormat(schemas);
+    }
+
     // initialize mappings
     column_id_map_.clear();
     column_name_map_.clear();

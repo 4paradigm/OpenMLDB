@@ -642,6 +642,12 @@ TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
         OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
         )sql";
     expect_converted(sql1);
+
+    const std::string sql2 = R"sql(
+        CREATE INDEX index1 ON db1.t1 (col1, col2)
+        OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
+        )sql";
+    expect_converted(sql2);
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexFailTest) {
@@ -699,6 +705,12 @@ TEST_F(ASTNodeConverterTest, ConvertInsertStmtOKTest) {
     {
         const std::string sql = R"sql(
         INSERT into t1 values (1, 2L, ?, ?, "hello", ?, ?)
+        )sql";
+        expect_converted(sql);
+    }
+    {
+        const std::string sql = R"sql(
+        INSERT into db1.t1 values (1, 2L, 3.0f, 4.0, "hello", "world", "2021-05-23")
         )sql";
         expect_converted(sql);
     }

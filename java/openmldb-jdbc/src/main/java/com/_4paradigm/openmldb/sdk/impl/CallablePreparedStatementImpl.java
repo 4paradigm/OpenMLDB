@@ -34,6 +34,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         dataBuild();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.CallProcedure(db, spName, currentRow, status);
@@ -56,6 +57,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     @Override
     public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
+        checkExecutorClosed();
         dataBuild();
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallProcedure(db, spName, unit.toMillis(timeOut), currentRow, status);

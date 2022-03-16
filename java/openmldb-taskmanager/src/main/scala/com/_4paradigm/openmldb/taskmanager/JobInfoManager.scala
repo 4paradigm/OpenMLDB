@@ -52,11 +52,9 @@ object JobInfoManager {
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
     val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
-    // TODO: Require endTime is not null for insert sql
-    val defaultEndTime = startTime
 
     // TODO: Parse if run in yarn or local
-    val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, defaultEndTime, parameter, cluster, "", "")
+    val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, null, parameter, cluster, "", "")
     jobInfo.sync()
     jobInfo
   }
@@ -69,7 +67,8 @@ object JobInfoManager {
   def getAllJobs(): List[JobInfo] = {
     val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
-    resultSetToJobs(rs)
+    // TODO: Reorder in output, use orderby desc if SQL supported
+    resultSetToJobs(rs).sortWith(_.getId > _.getId)
   }
 
   def getUnfinishedJobs(): List[JobInfo] = {
@@ -88,7 +87,7 @@ object JobInfoManager {
       }
     }
 
-    jobs.toList
+    jobs.toList.sortWith(_.getId > _.getId)
   }
 
   def stopJob(jobId: Int): JobInfo = {

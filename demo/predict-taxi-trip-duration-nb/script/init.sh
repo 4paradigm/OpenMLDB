@@ -22,7 +22,8 @@ if [ $# -gt 0 ]; then
 fi
 pkill python3
 rm -rf /tmp/*
-cd /work/openmldb && rm -rf logs* && rm -rf db*
+rm -rf /work/openmldb/logs*
+rm -rf /work/openmldb/db*
 sleep 2
 if [[ "$MODE" = "standalone" ]]; then
     python3 convert_data.py < data/taxi_tour_table_train_simple.csv  > ./data/taxi_tour.csv

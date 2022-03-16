@@ -1,3 +1,4 @@
+# This workflow make compile docker image for OpenMLDB
 name: HybridSQL Docker
 
 on:
@@ -5,8 +6,13 @@ on:
     branches:
       - main
 
+    paths:
+      - .github/workflows/hybridsql-docker.yml
+      - docker/Dockerfile
+      - docker/**/*.sh
+
     tags:
-      - docker-*
+      - v*
 
   # Run tests for any PRs.
   pull_request:
@@ -47,7 +53,7 @@ jobs:
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
 
           # Strip "docker" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^docker-//')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
           [ "$VERSION" == "main" ] && VERSION=latest
@@ -92,7 +98,7 @@ jobs:
         with:
           context: docker
           push: ${{ env.PUSH }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.GHCR_TAG }}
             ${{ env.DOCKERHUB_TAG }}

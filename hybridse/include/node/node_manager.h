@@ -142,7 +142,8 @@ class NodeManager {
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SqlNode *MakeLimitNode(int count);
 
-    SqlNode *MakeInsertTableNode(const std::string &table_name,
+    SqlNode *MakeInsertTableNode(const std::string &db_name,
+                                 const std::string &table_name,
                                  const ExprListNode *column_names,
                                  const ExprListNode *values);
     SqlNode *MakeCreateTableNode(bool op_if_not_exist,
@@ -253,13 +254,14 @@ class NodeManager {
     SqlNode *MakeCmdNode(node::CmdType cmd_type, const std::string &index_name,
                          const std::string &table_name);
     SqlNode *MakeCreateIndexNode(const std::string &index_name,
+                                 const std::string &db_name,
                                  const std::string &table_name,
                                  ColumnIndexNode *index);
 
-    DeployNode *MakeDeployStmt(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
-                            bool if_not_exist);
-    DeployPlanNode *MakeDeployPlanNode(const std::string& name, const SqlNode* stmt,
-                                       const std::string& stmt_str, bool if_not_exist);
+    DeployNode *MakeDeployStmt(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                               const std::shared_ptr<OptionsMap> options, bool if_not_exist);
+    DeployPlanNode *MakeDeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                                       const std::shared_ptr<OptionsMap> options, bool if_not_exist);
 
     // create a delete job node
     DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);

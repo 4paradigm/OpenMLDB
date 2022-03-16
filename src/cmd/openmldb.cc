@@ -70,7 +70,7 @@ DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "Set the command");
-DEFINE_bool(interactive, true, "Set the interactive");
+DECLARE_bool(interactive);
 
 DECLARE_string(openmldb_log_dir);
 DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");
@@ -266,12 +266,7 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-#ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga",
-          real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
-#else
     PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
-#endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -326,7 +321,6 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
             printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
             return -1;
         }
-
     }
     std::cout << "Put ok" << std::endl;
     return 0;
@@ -1100,9 +1094,9 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::openmldb:
         return;
     }
 
-    ::openmldb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc());
+    ::openmldb::cmd::PrintSchema(tables[0].column_desc(), tables[0].added_column_desc(), std::cout);
     printf("\n#ColumnKey\n");
-    ::openmldb::cmd::PrintColumnKey(tables[0].column_key());
+    ::openmldb::cmd::PrintColumnKey(tables[0].column_key(), std::cout);
 }
 
 void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -3467,14 +3461,6 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
             } else {
                 value.assign(it->GetValue().data(), it->GetValue().size());
             }
-            if (table_meta.added_column_desc_size() == 0) {
-                ::openmldb::codec::RowCodec::DecodeRow(
-                    columns.size(), ::openmldb::base::Slice(value), &row);
-            } else {
-                ::openmldb::codec::RowCodec::DecodeRow(
-                    columns.size() - table_meta.added_column_desc_size(),
-                    columns.size(), ::openmldb::base::Slice(value), &row);
-            }
         }
         tp.AddRow(row);
         index++;
@@ -3656,9 +3642,9 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::openmldb::c
         return;
     }
     if (table_meta.column_desc_size() > 0) {
-        ::openmldb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc());
+        ::openmldb::cmd::PrintSchema(table_meta.column_desc(), table_meta.added_column_desc(), std::cout);
         printf("\n#ColumnKey\n");
-        ::openmldb::cmd::PrintColumnKey(table_meta.column_key());
+        ::openmldb::cmd::PrintColumnKey(table_meta.column_key(), std::cout);
     } else {
         std::cout << "No schema for table" << std::endl;
     }
@@ -3780,14 +3766,6 @@ void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client:
     row.clear();
     row.push_back("1");
     row.push_back(std::to_string(ts));
-    if (table_meta.added_column_desc_size() == 0) {
-        ::openmldb::codec::RowCodec::DecodeRow(raw.size(),
-                                            ::openmldb::base::Slice(value), &row);
-    } else {
-        ::openmldb::codec::RowCodec::DecodeRow(
-            raw.size() - table_meta.added_column_desc_size(), raw.size(),
-            ::openmldb::base::Slice(value), &row);
-    }
     tp.AddRow(row);
     tp.Print(true);*/
 }

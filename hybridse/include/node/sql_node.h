@@ -17,19 +17,19 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 #define HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 
-#include <glog/logging.h>
-
 #include <iostream>
 #include <map>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
+#include "glog/logging.h"
 #include "node/expr_node.h"
 #include "node/node_base.h"
 #include "node/node_enum.h"
@@ -49,55 +49,7 @@ typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
 
-inline const std::string CmdTypeName(const CmdType &type) {
-    switch (type) {
-        case kCmdShowDatabases:
-            return "show databases";
-        case kCmdShowTables:
-            return "show tables";
-        case kCmdUseDatabase:
-            return "use database";
-        case kCmdDropDatabase:
-            return "drop database";
-        case kCmdCreateDatabase:
-            return "create database";
-        case kCmdDescTable:
-            return "desc table";
-        case kCmdDropTable:
-            return "drop table";
-        case kCmdShowProcedures:
-            return "show procedures";
-        case kCmdShowCreateSp:
-            return "show create procedure";
-        case kCmdDropSp:
-            return "drop procedure";
-        case kCmdDropIndex:
-            return "drop index";
-        case kCmdExit:
-            return "exit";
-        case kCmdCreateIndex:
-            return "create index";
-        case kCmdShowDeployment:
-            return "show deployment";
-        case kCmdShowDeployments:
-            return "show deployments";
-        case kCmdDropDeployment:
-            return "drop deployment";
-        case kCmdShowJob:
-            return "show job";
-        case kCmdShowJobs:
-            return "show jobs";
-        case kCmdStopJob:
-            return "stop job";
-        case kCmdShowGlobalVariables:
-            return "show global variables";
-        case kCmdShowSessionVariables:
-            return "show session variables";
-        case kCmdUnknown:
-            return "unknown cmd type";
-    }
-    return "undefined cmd type";
-}
+absl::string_view CmdTypeName(const CmdType type);
 
 inline const std::string ExplainTypeName(const ExplainType &explain_type) {
     switch (explain_type) {
@@ -857,7 +809,9 @@ class ConstNode : public ExprNode {
         }
     }
 
-    ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) { val_.vlong = val; }
+    explicit ConstNode(int64_t val, DataType time_type) : ExprNode(kExprPrimary), data_type_(time_type) {
+        val_.vlong = val;
+    }
 
     ~ConstNode() {
         if (data_type_ == hybridse::node::kVarchar) {
@@ -1816,18 +1770,22 @@ class ColumnDefNode : public SqlNode {
 
 class InsertStmt : public SqlNode {
  public:
-    InsertStmt(const std::string &table_name, const std::vector<std::string> &columns,
+    InsertStmt(const std::string &db_name,
+               const std::string &table_name,
+               const std::vector<std::string> &columns,
                const std::vector<ExprNode *> &values)
         : SqlNode(kInsertStmt, 0, 0),
+          db_name_(db_name),
           table_name_(table_name),
           columns_(columns),
           values_(values),
           is_all_(columns.empty()) {}
 
-    InsertStmt(const std::string &table_name, const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), table_name_(table_name), values_(values), is_all_(true) {}
+    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values)
+        : SqlNode(kInsertStmt, 0, 0), db_name_(db_name), table_name_(table_name), values_(values), is_all_(true) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    const std::string db_name_;
     const std::string table_name_;
     const std::vector<std::string> columns_;
     const std::vector<ExprNode *> values_;
@@ -2167,11 +2125,14 @@ class SetNode : public SqlNode {
 
 class CreateIndexNode : public SqlNode {
  public:
-    explicit CreateIndexNode(const std::string &index_name, const std::string &table_name, ColumnIndexNode *index)
-        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name), table_name_(table_name), index_(index) {}
+    explicit CreateIndexNode(const std::string &index_name, const std::string &db_name,
+                             const std::string &table_name, ColumnIndexNode *index)
+        : SqlNode(kCreateIndexStmt, 0, 0), index_name_(index_name),
+          db_name_(db_name), table_name_(table_name), index_(index) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string index_name_;
+    const std::string db_name_;
     const std::string table_name_;
     node::ColumnIndexNode *index_;
 };
@@ -2188,14 +2149,21 @@ class ExplainNode : public SqlNode {
 
 class DeployNode : public SqlNode {
  public:
-    explicit DeployNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str, bool if_not_exists)
-        : SqlNode(kDeployStmt, 0, 0), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exists_(if_not_exists) {}
+    explicit DeployNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                        const std::shared_ptr<OptionsMap> options, bool if_not_exists)
+        : SqlNode(kDeployStmt, 0, 0),
+          name_(name),
+          stmt_(stmt),
+          stmt_str_(stmt_str),
+          if_not_exists_(if_not_exists),
+          options_(options) {}
     ~DeployNode() {}
 
     const std::string& Name() const { return name_; }
     const SqlNode* Stmt() const { return stmt_; }
     const bool IsIfNotExists() const { return if_not_exists_; }
     const std::string& StmtStr() const { return stmt_str_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
@@ -2204,6 +2172,7 @@ class DeployNode : public SqlNode {
     const SqlNode* stmt_ = nullptr;
     const std::string stmt_str_;
     const bool if_not_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
 };
 
 class FnParaNode : public FnNode {

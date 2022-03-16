@@ -22,34 +22,34 @@ if(TESTING_ENABLE)
     set(HYBRIDSE_CASE_LIBS base_test yaml-cpp)
 
     add_executable(db_sdk_test db_sdk_test.cc)
-    target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
+    target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
 
     add_executable(sql_router_test sql_router_test.cc)
-    target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark gtest)
+    target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
 
     add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
-    target_link_libraries(sql_standalone_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_standalone_sdk_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
-    target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_sdk_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_cluster_test sql_cluster_test.cc)
-    target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_cluster_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
-    target_link_libraries(sql_request_row_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} ${ZETASQL_LIBS} benchmark_main benchmark gtest)
+    target_link_libraries(sql_request_row_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} ${ZETASQL_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
 
     add_executable(mini_cluster_batch_bm mini_cluster_batch_bm.cc)
-    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(mini_cluster_request_batch_bm mini_cluster_request_batch_bm.cc)
-    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 
     add_executable(mini_cluster_request_bm mini_cluster_request_bm.cc)
-    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark gtest ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
 endif()
 
-set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${ZETASQL_LIBS})
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
@@ -67,6 +67,8 @@ if(SQL_PYSDK_ENABLE)
             SOURCES sql_router_sdk.i)
     target_include_directories(sql_router_sdk PRIVATE ${Python3_INCLUDE_DIRS})
     target_link_libraries(sql_router_sdk ${SDK_LIBS})
+
+    # Python in MacOS does not support load dylib file
     if(APPLE)
       set_target_properties(sql_router_sdk PROPERTIES
                SUFFIX ".so")
@@ -99,44 +101,26 @@ if(SQL_PYSDK_ENABLE)
     search_python_module(wheel)
 
     if(APPLE)
-        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-                COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-                # Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905
-                COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
-                COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-                COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name macosx_10_15_x86_64
-                BYPRODUCTS
-                python/sqlalchemy-openmldb
+        set(PYTHON_PLATFORM macosx_10_15_x86_64)
+        add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb/native/
+                COMMAND echo "Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905")
+    else()
+        set(PYTHON_PLATFORM manylinux1_x86_64)
+        add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb/native/
+            COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb/native/_sql_router_sdk.so)
+    endif()
+
+    add_custom_target(cp_python_sdk_so ALL DEPENDS strip_python_so
+            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${PROJECT_SOURCE_DIR}/python/openmldb/native/
+            COMMENT "copy generated native library and sql_router_sdk python file to python project"
+            COMMAND cd ${PROJECT_SOURCE_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name ${PYTHON_PLATFORM}
+            BYPRODUCTS
                 python/build
                 python/dist
-                python/sqlalchemy-openmldb.egg-info
-                )
-    else()
-        add_custom_target(sqlalchemy_openmldb DEPENDS sql_router_sdk
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/__init__.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/saopenmldb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/saopenmldb.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_openmldbapi.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/sqlalchemy_openmldb/openmldbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/__init__.py
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/openmldb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/driver.py
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/openmldb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi
-            COMMAND strip ${CMAKE_BINARY_DIR}/python/sqlalchemy_openmldb/openmldbapi/_sql_router_sdk.so
-            COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/python/sqlalchemy-openmldb/setup.py ${CMAKE_BINARY_DIR}/python/
-            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
-            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name manylinux1_x86_64
-            BYPRODUCTS
-              python/sqlalchemy-openmldb
-              python/build
-              python/dist
-              python/sqlalchemy-openmldb.egg-info
-        )
-    endif()
+                python/sqlalchemy-openmldb.egg-info)
+
 endif()
 
 if(SQL_JAVASDK_ENABLE)
@@ -145,8 +129,7 @@ if(SQL_JAVASDK_ENABLE)
     message(STATUS "Found Java: ${Java_JAVA_EXECUTABLE} (found version \"${Java_VERSION_STRING}\")")
     find_package(JNI REQUIRED)
     message(STATUS "Found JNI: ${JNI_FOUND}")
-    # Find maven
-    find_program(MAVEN_EXECUTABLE mvn)
+
     set_property(SOURCE sql_router_sdk.i PROPERTY COMPILE_OPTIONS -package com._4paradigm.openmldb)
     swig_add_library(sql_jsdk
             TYPE SHARED
@@ -158,9 +141,9 @@ if(SQL_JAVASDK_ENABLE)
 
     add_dependencies(sql_jsdk hybridse_jsdk_core_static)
     if(APPLE)
-        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} boost_filesystem)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,-force_load $<TARGET_FILE:hybridse_jsdk_core_static>" ${SDK_LIBS} ${Boost_filesystem_LIBRARY})
     else()
-        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} boost_filesystem)
+        target_link_libraries(sql_jsdk PRIVATE "-Wl,--whole-archive $<TARGET_FILE:hybridse_jsdk_core_static> -Wl,--no-whole-archive" ${SDK_LIBS} ${Boost_filesystem_LIBRARY})
     endif()
 
     if(APPLE)
@@ -180,7 +163,7 @@ if(SQL_JAVASDK_ENABLE)
     add_dependencies(cp_native_so cp_hybridse_native_so)
 
     add_custom_target(sql_javasdk_package ALL
-        COMMAND ${MAVEN_EXECUTABLE} clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        COMMAND ./mvnw clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
 

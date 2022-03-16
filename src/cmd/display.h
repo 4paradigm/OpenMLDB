@@ -26,8 +26,8 @@
 #include <vector>
 
 #include "base/texttable.h"
+#include "boost/regex.hpp"
 #include "cmd/sdk_iterator.h"
-#include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
@@ -35,7 +35,9 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
+#include "sdk/base_impl.h"
 #include "storage/segment.h"
+#include "vm/catalog.h"
 
 DECLARE_uint32(max_col_display_length);
 
@@ -54,7 +56,8 @@ static void TransferString(std::vector<std::string>* vec) {
 
 __attribute__((unused)) static void PrintSchema(
     const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc,
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& added_column_desc) {
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& added_column_desc,
+    std::ostream& stream) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("Field");
@@ -83,16 +86,18 @@ __attribute__((unused)) static void PrintSchema(
         t.add(column.not_null() ? "NO" : "YES");
         t.end_of_row();
     }
-    std::cout << t;
+    stream << t;
 }
 
 __attribute__((unused)) static void PrintSchema(
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc_field) {
-    PrintSchema(column_desc_field, {});
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>& column_desc_field,
+    std::ostream& stream) {
+    PrintSchema(column_desc_field, {}, stream);
 }
 
 __attribute__((unused)) static void PrintColumnKey(
-    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key_field) {
+    const google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key_field,
+    std::ostream& stream) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
     t.add("#");
     t.add("name");
@@ -138,7 +143,7 @@ __attribute__((unused)) static void PrintColumnKey(
 
         t.end_of_row();
     }
-    std::cout << t;
+    stream << t;
 }
 
 __attribute__((unused)) static void ShowTableRows(bool is_compress, ::openmldb::codec::SDKCodec* codec,
@@ -423,6 +428,239 @@ __attribute__((unused)) static void PrintDatabase(const std::vector<std::string>
     }
     tp.Print(true);
 }
+
+__attribute__((unused)) static void PrintOfflineTableInfo(
+        const ::openmldb::nameserver::OfflineTableInfo& offline_table_info,
+        std::ostream& stream) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+
+    t.add("Offline path");
+    t.add("Format");
+    t.add("Deep copy");
+    t.add("Options");
+    t.end_of_row();
+
+    auto& options = offline_table_info.options();
+    std::string optionStr;
+    bool first = true;
+    for (auto& pair : options) {
+        if (first) {
+            optionStr += pair.first + ":" + pair.second;
+            first = false;
+        } else {
+            optionStr += ", " + pair.first + ":" + pair.second;
+        }
+    }
+
+    t.add(offline_table_info.path());
+    t.add(offline_table_info.format());
+    t.add(offline_table_info.deep_copy() ? "true" : "false");
+    t.add(optionStr);
+    t.end_of_row();
+
+    stream << t << std::endl;
+}
+
+__attribute__((unused)) static void PrintTableIndex(const ::hybridse::vm::IndexList& index_list,
+        std::ostream& stream) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+    t.add("#");
+    t.add("name");
+    t.add("keys");
+    t.add("ts");
+    t.add("ttl");
+    t.add("ttl_type");
+    t.end_of_row();
+    for (int i = 0; i < index_list.size(); i++) {
+        const ::hybridse::type::IndexDef& index = index_list.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(index.name());
+        t.add(index.first_keys(0));
+        const std::string& ts_name = index.second_key();
+        if (ts_name.empty()) {
+            t.add("-");
+        } else {
+            t.add(index.second_key());
+        }
+        std::ostringstream oss;
+        for (int ttl_idx = 0; ttl_idx < index.ttl_size(); ttl_idx++) {
+            oss << index.ttl(ttl_idx);
+            if (ttl_idx != index.ttl_size() - 1) {
+                oss << "m,";
+            }
+        }
+        t.add(oss.str());
+        if (index.ttl_type() == ::hybridse::type::kTTLTimeLive) {
+            t.add("kAbsolute");
+        } else if (index.ttl_type() == ::hybridse::type::kTTLCountLive) {
+            t.add("kLatest");
+        } else if (index.ttl_type() == ::hybridse::type::kTTLTimeLiveAndCountLive) {
+            t.add("kAbsAndLat");
+        } else {
+            t.add("kAbsOrLat");
+        }
+        t.end_of_row();
+    }
+    stream << t;
+}
+
+__attribute__((unused)) static void PrintTableSchema(const ::hybridse::vm::Schema& schema,
+        std::ostream& stream) {
+    if (schema.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+    t.add("#");
+    t.add("Field");
+    t.add("Type");
+    t.add("Null");
+    t.end_of_row();
+
+    for (auto i = 0; i < schema.size(); i++) {
+        const auto& column = schema.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        t.add(::hybridse::type::Type_Name(column.type()));
+        t.add(column.is_not_null() ? "NO" : "YES");
+        t.end_of_row();
+    }
+    stream << t;
+}
+
+__attribute__((unused)) static void PrintItemTable(const std::vector<std::string>& head,
+                    const std::vector<std::vector<std::string>>& items, bool transpose,
+                    std::ostream& stream) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    DLOG(INFO) << "table size " << items.size() << "-" << items[0].size();
+    DCHECK(transpose ? (head.size() == items.size()) : (head.size() == items[0].size()));
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+    std::for_each(head.begin(), head.end(), [&t](auto& item) { t.add(item); });
+    t.end_of_row();
+    if (transpose) {
+        // flip along the major diagonal (top left to bottom right)
+        for (size_t i = 0; i < items[0].size(); ++i) {
+            // print the i column
+            std::for_each(items.begin(), items.end(), [&t, &i](auto& row) { t.add(row[i]); });
+            t.end_of_row();
+        }
+    } else {
+        for (const auto& line : items) {
+            std::for_each(line.begin(), line.end(), [&t](auto& item) { t.add(item); });
+            t.end_of_row();
+        }
+    }
+
+    stream << t;
+    auto items_size = transpose ? items[0].size() : items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+
+__attribute__((unused)) static void PrintItemTable(const std::vector<std::string>& head,
+                    const std::vector<std::vector<std::string>>& items,
+                    std::ostream& stream) {
+    PrintItemTable(head, items, false, stream);
+}
+
+__attribute__((unused)) static void PrintProcedureSchema(const std::string& head,
+        const ::hybridse::sdk::Schema& sdk_schema,
+        std::ostream& stream) {
+    try {
+        const auto& schema_impl = dynamic_cast<const ::hybridse::sdk::SchemaImpl&>(sdk_schema);
+        auto& schema = schema_impl.GetSchema();
+        if (schema.empty()) {
+            stream << "Empty set" << std::endl;
+            return;
+        }
+        stream << "# " << head << std::endl;
+
+        ::hybridse::base::TextTable t('-', ' ', ' ');
+        t.add("#");
+        t.add("Field");
+        t.add("Type");
+        t.add("IsConstant");
+        t.end_of_row();
+
+        for (auto i = 0; i < schema.size(); i++) {
+            const auto& column = schema.Get(i);
+            t.add(std::to_string(i + 1));
+            t.add(column.name());
+            t.add(::hybridse::type::Type_Name(column.type()));
+            t.add(column.is_constant() ? "YES" : "NO");
+            t.end_of_row();
+        }
+        stream << t << std::endl;
+    } catch (std::bad_cast&) {
+        return;
+    }
+}
+
+__attribute__((unused)) static void PrintProcedureInfo(
+        const hybridse::sdk::ProcedureInfo& sp_info,
+        std::ostream& stream) {
+    std::vector<std::string> vec{sp_info.GetDbName(), sp_info.GetSpName()};
+
+    std::string type_name = "SP";
+    std::string sql = sp_info.GetSql();
+
+    if (sp_info.GetType() == hybridse::sdk::kReqDeployment) {
+        type_name = "Deployment";
+        std::string pattern_sp = "CREATE PROCEDURE";
+        sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
+        std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
+        sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
+    }
+
+    PrintItemTable({"DB", type_name}, {vec}, stream);
+    std::vector<std::string> items{sql};
+    PrintItemTable({"SQL"}, {items}, true, stream);
+    PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), stream);
+    PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), stream);
+}
+
+__attribute__((unused)) static void PrintJobInfos(
+        const std::vector<::openmldb::taskmanager::JobInfo>& job_infos,
+        std::ostream& stream) {
+    ::hybridse::base::TextTable t('-', ' ', ' ');
+
+    t.add("id");
+    t.add("job_type");
+    t.add("state");
+    t.add("start_time");
+    t.add("end_time");
+    t.add("parameter");
+    t.add("cluster");
+    t.add("application_id");
+    t.add("error");
+
+    t.end_of_row();
+
+    for (auto& job_info : job_infos) {
+        // request.add_endpoint_group(endpoint);
+        t.add(std::to_string(job_info.id()));
+        t.add(job_info.job_type());
+        t.add(job_info.state());
+        t.add(std::to_string(job_info.start_time()));
+        t.add(std::to_string(job_info.end_time()));
+        t.add(job_info.parameter());
+        t.add(job_info.cluster());
+        t.add(job_info.application_id());
+        t.add(job_info.error());
+        t.end_of_row();
+    }
+
+    stream << t << std::endl;
+    stream << job_infos.size() << " jobs in set" << std::endl;
+}
+
 
 }  // namespace cmd
 }  // namespace openmldb

@@ -19,10 +19,12 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/status.h"
 #include "catalog/sdk_catalog.h"
 #include "codec/fe_schema_codec.h"
+#include "codec/row_codec.h"
 #include "glog/logging.h"
 #include "schema/schema_adapter.h"
 
@@ -31,14 +33,34 @@ namespace sdk {
 
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
-    : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr) {}
+    : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr),
+        io_buf_() {}
+
+ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt,
+                           const std::shared_ptr<butil::IOBuf>& io_buf)
+    : schema_(schema), record_cnt_(record_cnt), cntl_(), result_set_base_(nullptr), io_buf_(io_buf) {
+    if (io_buf_) {
+        buf_size_ = io_buf_->length();
+    }
+}
 
 ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
     std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view(new ::hybridse::sdk::RowIOBufView(schema_));
     DLOG(INFO) << "init result set sql with record cnt " << record_cnt_ << " buf size " << buf_size_;
-    result_set_base_ = new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
+    if (result_set_base_) {
+        delete result_set_base_;
+        result_set_base_ = nullptr;
+    }
+    if (cntl_) {
+        butil::IOBuf& buf = cntl_->response_attachment();
+        result_set_base_ = new ResultSetBase(&buf, record_cnt_, buf_size_, std::move(row_view), schema_);
+    } else if (io_buf_) {
+        result_set_base_ = new ResultSetBase(io_buf_.get(), record_cnt_, buf_size_, std::move(row_view), schema_);
+    } else {
+        return false;
+    }
     return true;
 }
 
@@ -102,6 +124,35 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         }
         return rs;
     }
+}
+
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        ::hybridse::sdk::Status* status) {
+    auto com_schema = ::openmldb::schema::SchemaAdapter::BuildSchema(fields);
+    auto io_buf = std::make_shared<butil::IOBuf>();
+    std::string buf;
+    for (const auto& row : records) {
+        buf.clear();
+        auto ret = ::openmldb::codec::RowCodec::EncodeRow(row, com_schema, 0, buf);
+        if (!ret.OK()) {
+            *status = {::hybridse::common::StatusCode::kCmdError, ret.msg};
+            return {};
+        }
+        io_buf->append(buf);
+    }
+    ::hybridse::vm::Schema schema;
+    if (!::openmldb::schema::SchemaAdapter::ConvertSchema(com_schema, &schema)) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "fail to convert schema"};
+        return {};
+    }
+    *status = {};
+    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, records.size(), io_buf);
+    if (rs->Init()) {
+        return rs;
+    }
+    *status = {::hybridse::common::StatusCode::kCmdError, "fail to init ResultSetSQL"};
+    return {};
 }
 
 }  // namespace sdk

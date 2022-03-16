@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 #include "plan/plan_api.h"
+
 #include "planv2/planner_v2.h"
 #include "zetasql/public/error_helpers.h"
 #include "zetasql/public/error_location.pb.h"
+
 namespace hybridse {
 namespace plan {
+
 using hybridse::plan::SimplePlannerV2;
+
 bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &plan_trees, NodeManager *node_manager,
                                        Status &status, bool is_batch_mode, bool is_cluster,
                                        bool enable_batch_window_parallelization) {
@@ -40,8 +44,8 @@ bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &pla
     }
     DLOG(INFO) << "\n" << parser_output->script()->DebugString();
     const zetasql::ASTScript *script = parser_output->script();
-    SimplePlannerV2 *planner_ptr =
-        new SimplePlannerV2(node_manager, is_batch_mode, is_cluster, enable_batch_window_parallelization);
+    auto planner_ptr =
+        std::make_unique<SimplePlannerV2>(node_manager, is_batch_mode, is_cluster, enable_batch_window_parallelization);
     status = planner_ptr->CreateASTScriptPlan(script, plan_trees);
     return status.isOK();
 }

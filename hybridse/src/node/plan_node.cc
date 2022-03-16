@@ -677,8 +677,6 @@ void QueryPlanNode::Print(std::ostream &output,
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
     }
-    output << "\n";
-    PrintPlanNode(output, org_tab + INDENT, children_[0], "", true);
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
     return UnaryPlanNode::Equals(node);
@@ -709,6 +707,8 @@ void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     PrintValue(output, new_tab, IsIfNotExists() ? "true": "false", "if_not_exists", false);
     output << "\n";
     PrintValue(output, new_tab, Name(), "name", false);
+    output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", false);
     output << "\n";
     PrintSqlNode(output, new_tab, Stmt(), "stmt", true);
 }

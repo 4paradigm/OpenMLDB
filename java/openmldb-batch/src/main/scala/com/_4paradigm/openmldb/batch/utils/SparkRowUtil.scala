@@ -16,25 +16,66 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.sdk.{HybridSeException, UnsupportedHybridSeException}
+import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.proto.Type
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{
-  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, TimestampType
-}
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructType, TimestampType}
 
 object SparkRowUtil {
 
-  def getLongFromIndex(keyIdx: Int, sparkType: DataType, row: Row): Long = {
-    sparkType match {
-      case ShortType => row.getShort(keyIdx).toLong
-      case IntegerType => row.getInt(keyIdx).toLong
-      case LongType => row.getLong(keyIdx)
-      case TimestampType => row.getTimestamp(keyIdx).getTime
-      case DateType => row.getDate(keyIdx).getTime
-      case _ =>
-        throw new HybridSeException(s"Illegal window key type: $sparkType")
+  def rowToString(schema: StructType, row: Row): String = {
+    val rowStr = new StringBuilder("Spark row: ")
+    (0 until schema.size).foreach(i => {
+      if (i == 0) {
+        rowStr ++= s"${schema(i).dataType}: ${getColumnStringValue(schema, row, i)}"
+      } else {
+        rowStr ++= s", ${schema(i).dataType}: ${getColumnStringValue(schema, row, i)}"
+      }
+    })
+    rowStr.toString()
+  }
+
+  /**
+   * Get the string value of the specified column.
+   *
+   * @param row
+   * @param index
+   * @return
+   */
+  def getColumnStringValue(schema: StructType, row: Row, index: Int): String = {
+    if (row.isNullAt(index)) {
+      "null"
+    } else {
+      val colType = schema(index).dataType
+      colType match {
+        case BooleanType => String.valueOf(row.getBoolean(index))
+        case ShortType => String.valueOf(row.getShort(index))
+        case DoubleType => String.valueOf(row.getDouble(index))
+        case IntegerType => String.valueOf(row.getInt(index))
+        case LongType => String.valueOf(row.getLong(index))
+        case TimestampType => String.valueOf(row.getTimestamp(index))
+        case DateType => String.valueOf(row.getDate(index))
+        case StringType => row.getString(index)
+        case _ =>
+          throw new HybridSeException(s"Unsupported data type: $colType")
+      }
+    }
+  }
+
+  def getLongFromIndex(keyIdx: Int, colType: DataType, row: Row): java.lang.Long = {
+    if (row.isNullAt(keyIdx)) {
+      null
+    } else {
+      colType match {
+        case ShortType => row.getShort(keyIdx).toLong
+        case IntegerType => row.getInt(keyIdx).toLong
+        case LongType => row.getLong(keyIdx)
+        case TimestampType => row.getTimestamp(keyIdx).getTime
+        case DateType => row.getDate(keyIdx).getTime
+        case _ =>
+          throw new HybridSeException(s"Illegal window key type: $colType")
+      }
     }
   }
 

@@ -24,13 +24,13 @@ target_link_libraries(hybridse_planner_v2 ${ZETASQL_LIBS} hybridse_core glog)
 
 
 add_executable(ast_node_converter_test ast_node_converter_test.cc)
-target_link_libraries(ast_node_converter_test gtest hybridse_planner_v2 hybridse_core glog
+target_link_libraries(ast_node_converter_test ${GTEST_LIBRARIES} hybridse_planner_v2 hybridse_core ${GLOG_LIBRARY}
         ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
 add_test(ast_node_converter_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ast_node_converter_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ast_node_converter_test.xml)
 list(APPEND test_list planner_v2_test)
 
 add_executable(planner_v2_test planner_v2_test.cc)
-target_link_libraries(planner_v2_test gtest hybridse_planner_v2 hybridse_core glog
+target_link_libraries(planner_v2_test ${GTEST_LIBRARIES} hybridse_planner_v2 hybridse_core ${GLOG_LIBRARY}
         ${ZETASQL_LIBS} ${GTEST_LIBRARIES})
 
 add_test(planner_v2_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/planner_v2_test --gtest_output=xml:${CMAKE_BINARY_DIR}/planner_v2_test.xml)

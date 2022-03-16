@@ -84,14 +84,11 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
 
     // Support Spark UnsafeRow format
     if (FLAGS_enable_spark_unsaferow_format) {
-        // For UnsafeRow opt, str_start_offset is the nullbitmap size
-        const uint32_t bitmap_size = str_start_offset;
-        const int8_t* row_with_col_offset = row + HEADER_LENGTH + bitmap_size + col_idx * 8;
+        // Notice that for UnsafeRowOpt field_offset should be the actual offset of string column
 
-        // For Spark UnsafeRow, the first 32 bits is for length and the last
-        // 32 bits is for offset.
-        *size = *(reinterpret_cast<const uint32_t*>(row_with_col_offset));
-        uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row_with_col_offset + 4)) + HEADER_LENGTH;
+        // For Spark UnsafeRow, the first 32 bits is for length and the last 32 bits is for offset.
+        *size = *(reinterpret_cast<const uint32_t*>(row + field_offset));
+        uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row + field_offset + 4)) + HEADER_LENGTH;
         *data = reinterpret_cast<const char*>(row + str_value_offset);
 
         return 0;
@@ -188,6 +185,14 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset) {
+    if (is_null) {
+        AppendNullBit(buf_ptr, col_idx, true);
+        size_t str_addr_length = GetAddrLength(buf_size);
+        FillNullStringOffset(buf_ptr, str_start_offset, str_addr_length,
+                             str_field_offset, str_body_offset);
+        return str_body_offset;
+    }
+
     if (FLAGS_enable_spark_unsaferow_format) {
         // TODO(chenjing): Refactor to support multiple codec instead of reusing the variable
         // For UnsafeRow opt, str_start_offset is the nullbitmap size
@@ -203,14 +208,6 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
         }
 
         return str_body_offset + size;
-    }
-
-    if (is_null) {
-        AppendNullBit(buf_ptr, col_idx, true);
-        size_t str_addr_length = GetAddrLength(buf_size);
-        FillNullStringOffset(buf_ptr, str_start_offset, str_addr_length,
-                             str_field_offset, str_body_offset);
-        return str_body_offset;
     }
 
     uint32_t str_offset = str_start_offset + str_field_offset * str_addr_space;

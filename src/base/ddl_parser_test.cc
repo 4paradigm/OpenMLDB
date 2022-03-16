@@ -468,6 +468,190 @@ TEST_F(DDLParserTest, getOutputSchema) {
     ASSERT_EQ(output_schema->GetColumnName(0), "w1_rank_sum");
     ASSERT_EQ(output_schema->GetColumnType(0), hybridse::sdk::DataType::kTypeInt32);
 }
+
+TEST_F(DDLParserTest, extractLongWindow) {
+    {
+        // normal case
+        std::string query =
+            "SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 1);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[0].partition_col_, "c1");
+        ASSERT_EQ(window_infos[0].order_col_, "c6");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+    }
+
+    {
+        // no long window
+        std::string query =
+            "SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w2"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 0);
+    }
+
+    {
+        // multi long windows
+        std::string query =
+            "SELECT id, sum(c1) over w1 as m1, max(c2) over w1 as m2, min(c3) over w1 as m3, "
+            "avg(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6 "
+            "FROM table1 "
+            "WINDOW w1 AS (PARTITION BY k1 ORDER BY k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW), "
+            "w2 AS (PARTITION BY k2 ORDER BY k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW) ";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1d";
+        window_map["w2"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 6);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c1");
+        ASSERT_EQ(window_infos[0].partition_col_, "k1");
+        ASSERT_EQ(window_infos[0].order_col_, "k3");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1d");
+
+        ASSERT_EQ(window_infos[1].window_name_, "w1");
+        ASSERT_EQ(window_infos[1].aggr_func_, "max");
+        ASSERT_EQ(window_infos[1].aggr_col_, "c2");
+        ASSERT_EQ(window_infos[1].partition_col_, "k1");
+        ASSERT_EQ(window_infos[1].order_col_, "k3");
+        ASSERT_EQ(window_infos[1].bucket_size_, "1d");
+
+        ASSERT_EQ(window_infos[2].window_name_, "w1");
+        ASSERT_EQ(window_infos[2].aggr_func_, "min");
+        ASSERT_EQ(window_infos[2].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[2].partition_col_, "k1");
+        ASSERT_EQ(window_infos[2].order_col_, "k3");
+        ASSERT_EQ(window_infos[2].bucket_size_, "1d");
+
+        ASSERT_EQ(window_infos[3].window_name_, "w2");
+        ASSERT_EQ(window_infos[3].aggr_func_, "avg");
+        ASSERT_EQ(window_infos[3].aggr_col_, "c4");
+        ASSERT_EQ(window_infos[3].partition_col_, "k2");
+        ASSERT_EQ(window_infos[3].order_col_, "k4");
+        ASSERT_EQ(window_infos[3].bucket_size_, "1000");
+
+        ASSERT_EQ(window_infos[4].window_name_, "w2");
+        ASSERT_EQ(window_infos[4].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[4].aggr_col_, "c5");
+        ASSERT_EQ(window_infos[4].partition_col_, "k2");
+        ASSERT_EQ(window_infos[4].order_col_, "k4");
+        ASSERT_EQ(window_infos[4].bucket_size_, "1000");
+
+        ASSERT_EQ(window_infos[5].window_name_, "w2");
+        ASSERT_EQ(window_infos[5].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[5].aggr_col_, "c6");
+        ASSERT_EQ(window_infos[5].partition_col_, "k2");
+        ASSERT_EQ(window_infos[5].order_col_, "k4");
+        ASSERT_EQ(window_infos[5].bucket_size_, "1000");
+    }
+
+    {
+        // multi long windows
+        std::string query =
+            "SELECT id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3, "
+            "sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6 "
+            "FROM table1 "
+            "WINDOW w1 AS (PARTITION BY k1 ORDER BY k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW), "
+            "w2 AS (PARTITION BY k2,k3 ORDER BY k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW) ";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w2"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 3);
+
+        ASSERT_EQ(window_infos[0].window_name_, "w2");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c4");
+        ASSERT_EQ(window_infos[0].partition_col_, "k2,k3");
+        ASSERT_EQ(window_infos[0].order_col_, "k4");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+
+        ASSERT_EQ(window_infos[1].window_name_, "w2");
+        ASSERT_EQ(window_infos[1].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[1].aggr_col_, "c5");
+        ASSERT_EQ(window_infos[1].partition_col_, "k2,k3");
+        ASSERT_EQ(window_infos[1].order_col_, "k4");
+        ASSERT_EQ(window_infos[1].bucket_size_, "1000");
+
+        ASSERT_EQ(window_infos[2].window_name_, "w2");
+        ASSERT_EQ(window_infos[2].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[2].aggr_col_, "c6");
+        ASSERT_EQ(window_infos[2].partition_col_, "k2,k3");
+        ASSERT_EQ(window_infos[2].order_col_, "k4");
+        ASSERT_EQ(window_infos[2].bucket_size_, "1000");
+    }
+
+    {
+        // anonymous window
+        auto query =
+            "SELECT id, pk1, col1, std_ts,\n"
+            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as "
+            "w1_col1_sum,\n"
+            "      sum(col1) OVER w2 as w2_col1_sum,\n"
+            "      sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts"
+            " ROWS_RANGE BETWEEN 30s PRECEDING AND CURRENT ROW) as "
+            "w3_col1_sum\n"
+            "      FROM t1\n"
+            "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w2"] = "1d";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 1);
+
+        ASSERT_EQ(window_infos[0].window_name_, "w2");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "col1");
+        ASSERT_EQ(window_infos[0].partition_col_, "pk1");
+        ASSERT_EQ(window_infos[0].order_col_, "std_ts");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1d");
+    }
+
+    {
+        // with limit
+        std::string query =
+            "SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) limit 10;";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 1);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "sum");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[0].partition_col_, "c1");
+        ASSERT_EQ(window_infos[0].order_col_, "c6");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+    }
+}
 }  // namespace openmldb::base
 
 int main(int argc, char** argv) {

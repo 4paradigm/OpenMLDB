@@ -3902,6 +3902,22 @@ void TabletImpl::RefreshTableInfo() {
             }
         }
     }
+
+    if (!sr_) {
+        PDLOG(INFO, "Init ClusterSDK in tablet server");
+        ::openmldb::sdk::ClusterOptions copt;
+        copt.zk_cluster = zk_cluster_;
+        copt.zk_path = zk_path_;
+        auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
+        bool ok = cs->Init();
+        if (!ok) {
+            PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
+        }
+        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
+    }
+    // refresh the pre-aggr tables info
+    auto entries = sr_->GetAggrTables();
+    catalog_->RefreshAggrTables(entries);
 }
 
 int TabletImpl::CheckDimessionPut(const ::openmldb::api::PutRequest* request, uint32_t idx_cnt) {
@@ -4711,6 +4727,9 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map, std::memory_order_release);
     DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
+    for (const auto& kv : *tmp_real_ep_map) {
+        LOG(INFO) << "update real endpoint: " << kv.first << " : " << kv.second;
+    }
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");

@@ -14,12 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# support version syntax is X.Y.Z[.{pre-prelease-identifier}] where it could be:
+# Usage:
+#  ./prepare_release.sh ${version-number}
+#
+# Requirements:
+# - sed
+# - java & maven
+#
+# supported {version-number} syntax is X.Y.Z[.{pre-prelease-identifier}] where it could be:
 #  - semVer: X.Y.Z    # final release
 #  - X.Y.Z.(a|alpha)N # alpha release
 #  - X.Y.Z.(b|beta)N  # beta release
 #  - X.Y.Z.(r|rc)N    # release candidate
-#  Note other version like 'X.Y.Z-rc1' may not work, don't use
+#  NOTE: other version like 'X.Y.Z-rc1' may not work, don't use
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -49,6 +56,12 @@ sed -i"" -e "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${
 sed -i"" -e "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
 
+# tweak java sdk version
+pushd java/
+./prepare_release.sh "$VERSION"
+popd
+
+# tweak python sdk version
 PY_VERSION=$VERSION
 if [[ ${#ARR[@]} -gt 3 ]]; then
     # has {pre-prelease-identifier}
@@ -58,4 +71,4 @@ fi
 
 # version in python sdk
 echo -e "${GREEN}setting py version to $PY_VERSION${NC}"
-sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/sqlalchemy-openmldb/setup.py
+sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/setup.py

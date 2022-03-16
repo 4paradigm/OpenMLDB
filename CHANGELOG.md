@@ -1,5 +1,55 @@
 # Changelog
 
+## [0.4.3] - 2022-03-15
+
+### Features
+
+- Add the output of the number of rows imported after successfully importing data (#1401 @Manny-op)
+- Code Refactoring (#1366 @Cupid0320; #1378 @wuteek; #1418 @prashantpaidi; #1420 @shiyoubun; #1422 @vagetablechicken)
+
+### Bug Fixes
+- Loading online data with "not null" columns in Spark fails. (#1341 @vagetablechicken)
+- `max_where` and `min_where` results are incorrect if there is no rows matched. (#1403 @aceforeverd)
+- The `insert` and `select` execution of the standalone version fails. (#1426 @dl239)
+- Other minor bug fixes (#1379 @wuteek; #1384 jasleon)
+
+## [0.4.2] - 2022-03-01
+
+### Features
+- Support timestamps in `long int` when importing a csv file (#1237 @vagetablechicken)
+- Change the default execution mode in CLI from `online` to `offline` (#1332 @dl239)
+- Enhancements for the Python SDK:
+  - Support `fetchmany` and `fetchall` in Python SDK (#1215 @HuilinWu2)
+  - Support fetching logs of TaskManager jobs in Python SDK and APIs (#1214 @tobegit3hub)
+  - Support fetching the schema of result sets in Python SDK (#1194 @tobegit3hub)
+  - Support the SQL magic function in Jupyter Notebook when using the Python SDK. (#1164 @HuilinWu2)
+- Enhancements for the TaskManager:
+  - Taskmanager can find the local batchjob jar if the path is not configured. (#1250 @tobegit3hub)
+  - Support the Yarn-client mode in TaskManager (#1265 @tobegit3hub)
+  - Support correctness checking for TaskManager's configuration (#1262 @tobegit3hub)
+  - Support reordering for the task list (#1256 @tobegit3hub)
+- Add new UDF functions of `lower` and `lcase` (#1192 @Liu-2001)
+- Offline queries that do not execute on tables will run successfully even when the connection fails. (#1264 @tobegit3hub) 
+
+### Bug Fixes
+- Offline data import fails when the timestamp value is `null`. (#1274 @tobegit3hub)
+- Start time of TaskManager jobs in CLI is null. (#1272 @tobegit3hub)
+- LAST JOIN may fail in the cluster version under certain circumstances. (#1226 @dl239)
+- Invalid SQL may run successfully. (#1208 @aceforeverd)
+
+## [0.4.1] - 2022-02-09
+
+### Features
+- Improve CLI error messages and support the 'enable_trace' system variable (#1129 @jingchen2222)
+
+### Bug Fixes
+- CLI coredumps when it fails to connect to a nameserver. (#1166 @keyu813)
+- Java SDK has the issue of memory leaks. (#1148 @dl239)
+- The startup fails if a pid file exists. (#1108 @dl239)
+- There are incorrect values for the column with the date type when loading data into an online table. (#1103 @yabg-shuai666)
+- Offline data import for the CSV format may cause incorrect results. (#1100 @yabg-shuai666)
+- 'Offline path' cannot be displayed after importing offline data. (#1172 @vagetablechicken)
+
 ## [0.4.0] - 2022-01-14
 
 ### Highlights
@@ -25,7 +75,7 @@
 - Support string delimiters and quotes (#668 @ZackeryWang)
 - Add a new `lru_cache` to support upsert (#795 @vagetablechicken)
 - Support adding index with any `ts_col` (#828 @dl239)
-- Improve the `ts` packing in `sql_insert_now` (#955,#938 @vagetablechicken)
+- Improve the `ts` packing in `sql_insert_now` (#944 ,#974 @keyu813)
 - Improve documentations (#952 #885 @mahengyang; #834 @Nicholas-SR; #792,#1058,#1002,#872,#836,#792 @lumianph; #844,#782 @jingchen2222; #1022,#805 @aceforeverd)
 - Other minor updates (#1073 @dl239)
 
@@ -34,8 +84,6 @@
 #847, #831, #647, #934, #953, #1015, #982, #927, #994, #1008, #1028, #1019, #779, #855, #350, #631, #1074, #1073, #1081
 
 @nautaa, @Nicholas-SR, @aceforeverd, @dl239, @jingchen2222, @tobegit3hub, @keyu813
-
-
 
 ## [0.3.0] - 2021-11-05
 
@@ -113,6 +161,9 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.4.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/4paradigm/OpenMLDB/compare/0.2.2...v0.2.3

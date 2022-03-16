@@ -15,6 +15,8 @@
  */
 
 #include "client/taskmanager_client.h"
+#include <vector>
+#include <map>
 
 DECLARE_int32(request_timeout_ms);
 
@@ -96,7 +98,7 @@ namespace client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO: Set map of config
+    // TODO(tobe): Set map of config
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
@@ -203,6 +205,29 @@ namespace client {
     } else {
         return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
     }
+}
+
+std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status* status) {
+    ::openmldb::taskmanager::GetJobLogRequest request;
+    ::openmldb::taskmanager::GetJobLogResponse response;
+
+    request.set_id(id);
+
+    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::GetJobLog, &request,
+                                  &response, FLAGS_request_timeout_ms, 1);
+
+    if (ok) {
+        status->code = response.code();
+        status->msg = response.msg();
+        if (response.code() == 0) {
+            if (response.has_log()) {
+                return response.log();
+            }
+        }
+    }
+    status->code = -1;
+    status->msg = "Fail to request TaskManager server";
+    return "";
 }
 
 }  // namespace client

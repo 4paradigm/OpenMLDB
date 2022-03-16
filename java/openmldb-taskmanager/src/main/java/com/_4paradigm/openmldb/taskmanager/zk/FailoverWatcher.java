@@ -91,6 +91,7 @@ public class FailoverWatcher implements Watcher {
    */
   protected void initZnode() {
     try {
+      ZooKeeperUtil.createAndFailSilent(this, TaskManagerConfig.ZK_ROOT_PATH);
       ZooKeeperUtil.createAndFailSilent(this, baseZnode);
     } catch (Exception e) {
       LOG.fatal("Error to create znode " + baseZnode

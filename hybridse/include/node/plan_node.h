@@ -476,15 +476,17 @@ class DeletePlanNode : public LeafPlanNode {
 
 class DeployPlanNode : public LeafPlanNode {
  public:
-    explicit DeployPlanNode(const std::string& name, const SqlNode* stmt, const std::string& stmt_str,
-                            bool if_not_exist)
-        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str), if_not_exist_(if_not_exist) {}
+    explicit DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                            const std::shared_ptr<OptionsMap> options, bool if_not_exist)
+        : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str),
+        options_(options), if_not_exist_(if_not_exist) {}
     ~DeployPlanNode() {}
 
     const std::string& Name() const { return name_; }
     const SqlNode* Stmt() const { return stmt_; }
     bool IsIfNotExists() const { return if_not_exist_; }
     const std::string& StmtStr() const { return stmt_str_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
 
     void Print(std::ostream& output, const std::string& tab) const override;
 
@@ -492,6 +494,8 @@ class DeployPlanNode : public LeafPlanNode {
     const std::string name_;
     const SqlNode* stmt_ = nullptr;
     const std::string stmt_str_;
+    // optional options for deploy, e.g., long window options
+    const std::shared_ptr<OptionsMap> options_;
     const bool if_not_exist_ = false;
 };
 

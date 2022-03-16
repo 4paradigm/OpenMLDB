@@ -270,7 +270,7 @@ void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_vie
                 ASSERT_TRUE(request_row->AppendString(row_view->GetStringUnsafe(i)));
                 break;
             default: {
-                FAIL() << "Fail conver hybridse row to fedb sdk request row";
+                FAIL() << "Fail conver hybridse row to OpenMLDB sdk request row";
                 return;
             }
         }
@@ -733,7 +733,8 @@ void SQLSDKBatchRequestQueryTest::DistributeRunBatchRequestProcedureModeSDK(
 }
 void SQLSDKClusterOnlineBatchQueryTest::DistributeRunBatchModeSDK(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                                                   std::shared_ptr<SQLRouter> router,
-                                                                  const std::vector<std::string>& tbEndpoints, const int partition_num) {
+                                                                  const std::vector<std::string>& tbEndpoints,
+                                                                  const int partition_num) {
     hybridse::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, partition_num);

@@ -25,6 +25,7 @@
 #include "json2pb/rapidjson.h"
 #include "sdk/mini_cluster.h"
 
+
 namespace openmldb::apiserver {
 
 class APIServerTestEnv : public testing::Environment {
@@ -69,6 +70,7 @@ class APIServerTestEnv : public testing::Environment {
 
         hybridse::sdk::Status status;
         ASSERT_TRUE(cluster_remote != nullptr);
+        cluster_remote->ExecuteSQL("SET @@execute_mode='online';", &status);
 
         db = "api_server_test";
         cluster_remote->DropDB(db, &status);

@@ -15,9 +15,11 @@
  */
 
 #include "planv2/planner_v2.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "plan/plan_api.h"
@@ -1568,6 +1570,7 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
     EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
   +-if_not_exists: true
   +-name: foo
+  +-options: <nil>
   +-stmt:
     +-node[kQuery]: kQuerySelect
       +-distinct_opt: false
@@ -1597,6 +1600,54 @@ TEST_F(PlannerV2Test, DeployPlanNodeTest) {
 FROM
   t1
 )sql", deploy_stmt->StmtStr().c_str());
+}
+
+TEST_F(PlannerV2Test, DeployPlanNodeWithOptionsTest) {
+    const std::string sql = "DEPLOY IF NOT EXISTS foo OPTIONS(long_windows='w1:100s') SELECT col1 from t1;";
+    node::PlanNodeList plan_trees;
+    base::Status status;
+    NodeManager nm;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &nm, status));
+    ASSERT_EQ(1, plan_trees.size());
+    EXPECT_STREQ(R"sql(+-[kPlanTypeDeploy]
+  +-if_not_exists: true
+  +-name: foo
+  +-options:
+  |  +-long_windows:
+  |    +-expr[primary]
+  |      +-value: w1:100s
+  |      +-type: string
+  +-stmt:
+    +-node[kQuery]: kQuerySelect
+      +-distinct_opt: false
+      +-where_expr: null
+      +-group_expr_list: null
+      +-having_expr: null
+      +-order_expr_list: null
+      +-limit: null
+      +-select_list[list]:
+      |  +-0:
+      |    +-node[kResTarget]
+      |      +-val:
+      |      |  +-expr[column ref]
+      |      |    +-relation_name: <nil>
+      |      |    +-column_name: col1
+      |      +-name: <nil>
+      +-tableref_list[list]:
+      |  +-0:
+      |    +-node[kTableRef]: kTable
+      |      +-table: t1
+      |      +-alias: <nil>
+      +-window_list: [])sql",
+                 plan_trees.front()->GetTreeString().c_str());
+    auto deploy_stmt = dynamic_cast<node::DeployPlanNode *>(plan_trees.front());
+    ASSERT_TRUE(deploy_stmt != nullptr);
+    EXPECT_STREQ(R"sql(SELECT
+  col1
+FROM
+  t1
+)sql",
+                 deploy_stmt->StmtStr().c_str());
 }
 
 TEST_F(PlannerV2Test, LoadDataPlanNodeTest) {
@@ -1642,15 +1693,6 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   |            +-[0]c2: c2
   |  +-[kTablePlan]
   |    +-table: t0
-  |    +-[kProjectPlan]
-  |      +-table: t0
-  |      +-project_list_vec[list]:
-  |        +-[kProjectList]
-  |          +-projects on table [list]:
-  |            +-[kProjectNode]
-  |              +-[0]c2: c2
-  |    +-[kTablePlan]
-  |      +-table: t0
   +-options:
   |  +-key:
   |    +-expr[primary]
@@ -1735,21 +1777,20 @@ class PlannerV2ErrorTest : public ::testing::TestWithParam<SqlCase> {
     NodeManager *manager_;
 };
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlannerV2ErrorTest);
+
 INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_unsupport_sql.yaml", FILTERS)));
-
 INSTANTIATE_TEST_SUITE_P(SqlErrorRequestQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_request_query.yaml", FILTERS)));
 
 TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto &sql_case = GetParam();
+    auto &sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "request-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for request mode error test";
         return;
     }
     base::Status status;
@@ -1757,13 +1798,12 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
 }
 TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto& sql_case = GetParam();
+    auto& sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "request-unsupport") ||
         boost::contains(sql_case.mode(), "cluster-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for cluster request mode error test";
         return;
     }
     base::Status status;
@@ -1771,18 +1811,16 @@ TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
 }
 TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
-    auto sql_case = GetParam();
-    std::string sqlstr = sql_case.sql_str();
-    std::cout << sqlstr << std::endl;
+    auto& sql_case = GetParam();
+    auto& sqlstr = sql_case.sql_str();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "batch-unsupport")) {
-        LOG(INFO) << "Skip mode " << sql_case.mode();
+        LOG(INFO) << "Skip mode " << sql_case.mode() << " for batch mode error test";
         return;
     }
     base::Status status;
     node::PlanNodeList plan_trees;
     ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
-    LOG(INFO) << status;
 }
 
 TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {
@@ -1991,7 +2029,6 @@ TEST_F(PlannerV2Test, GetPlanLimitCnt) {
         R"(
         SELECT COL1 from t1 last join (SELECT COL1, COL2 FROM t2 LIMIT 5) as t22 on t1.col1 = t22.col1 LIMIT 10;
         )", 10);
-
 }
 }  // namespace plan
 }  // namespace hybridse

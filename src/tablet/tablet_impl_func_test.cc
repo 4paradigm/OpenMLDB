@@ -24,7 +24,6 @@
 #include "base/glog_wapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
-#include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/timer.h"

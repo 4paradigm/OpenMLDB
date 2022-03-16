@@ -7,7 +7,7 @@
 	<parent>
 		<artifactId>openmldb-parent</artifactId>
 		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.4.0-SNAPSHOT</version>
+		<version>0.5.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>openmldb-batch</artifactId>
@@ -38,8 +38,7 @@
 		<hadoop.version>2.7.4</hadoop.version>
 		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
-		<default.project.version>0.3.2</default.project.version>
-		<default.hybridse.sdk.version>0.4.0</default.hybridse.sdk.version>
+		<default.project.version>0.4.0</default.project.version>
 	</properties>
 
 	<profiles>
@@ -50,37 +49,22 @@
 			</activation>
 			<properties>
 				<revision>${default.project.version}-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>macos</id>
 			<properties>
 				<revision>${default.project.version}-macos-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-macos-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 		<profile>
 			<id>allinone</id>
 			<properties>
 				<revision>${default.project.version}-allinone-SNAPSHOT</revision>
-				<hybridseCommonVersionFromProfile>${default.hybridse.sdk.version}-allinone-SNAPSHOT</hybridseCommonVersionFromProfile>
 			</properties>
 		</profile>
 	</profiles>
 	<dependencies>
-		<dependency>
-			<groupId>com.4paradigm.openmldb</groupId>
-			<artifactId>hybridse-native</artifactId>
-			<version>${variant.native.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.4paradigm.openmldb</groupId>
-			<artifactId>hybridse-sdk</artifactId>
-			<version>${project.parent.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
@@ -112,24 +96,24 @@
 			<version>3.0.0</version>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>6.14.3</version>
-            <scope>test</scope>
-        </dependency>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>6.14.3</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.openjdk.jmh</groupId>
 			<artifactId>jmh-core</artifactId>
 			<version>1.19</version>
 			<scope>provided</scope>
 		</dependency>
-        <dependency>
-            <groupId>org.openjdk.jmh</groupId>
-            <artifactId>jmh-generator-annprocess</artifactId>
-            <version>1.19</version>
-            <scope>provided</scope>
-        </dependency>
+		<dependency>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-generator-annprocess</artifactId>
+			<version>1.19</version>
+			<scope>provided</scope>
+		</dependency>
 
 		<!-- Use for draw graph with graphviz -->
 		<dependency>
@@ -160,13 +144,46 @@
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-common</artifactId>
 			<version>${hadoop.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.sun.jersey</groupId>
+					<artifactId>jersey-core</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.sun.jersey</groupId>
+					<artifactId>jersey-server</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>javax.servlet</groupId>
+					<artifactId>servlet-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
         <!-- OpenMLDB -->
+	    <dependency>
+		    <groupId>com.4paradigm.openmldb</groupId>
+		    <artifactId>hybridse-sdk</artifactId>
+		    <version>${project.parent.version}</version>
+	    </dependency>
+
+		<dependency>
+			<groupId>com.4paradigm.openmldb</groupId>
+			<artifactId>openmldb-native</artifactId>
+			<version>${variant.native.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
             <version>${project.parent.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.4paradigm.openmldb</groupId>
+					<artifactId>openmldb-native</artifactId>
+				</exclusion>
+			</exclusions>
         </dependency>
 
         <dependency>
@@ -211,11 +228,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.7.0</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -231,38 +243,6 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
-				<version>3.2.1</version>
-				<configuration>
-					<scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<jvmArgs>
-						<jvmArg>-Xms2048m</jvmArg>
-						<jvmArg>-Xmx2048m</jvmArg>
-					</jvmArgs>
-					<args>
-						<arg>-deprecation</arg>
-						<arg>-feature</arg>
-						<arg>-g:vars</arg>
-					</args>
-				</configuration>
-				<executions>
-					<execution>
-						<id>add-source</id>
-						<phase>pre-site</phase>
-						<goals>
-							<goal>add-source</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>scala-compile-first</id>
-						<phase>process-resources</phase>
-						<goals>
-							<goal>add-source</goal>
-							<goal>compile</goal>
-							<goal>testCompile</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.scalatest</groupId>
@@ -344,7 +324,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
-				<version>3.9.1</version>
 			</plugin>
 
 			<!-- Check Java style -->
@@ -395,36 +374,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.6</version>
-				<executions>
-					<execution>
-						<id>prepare-agent</id>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>report</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>report</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>post-unit-test</id>
-						<phase>test</phase>
-						<goals>
-							<goal>report</goal>
-						</goals>
-						<configuration>
-							<dataFile>target/jacoco.exec</dataFile>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -435,13 +384,28 @@
 			<plugin>
 				<groupId>pl.project13.maven</groupId>
 				<artifactId>git-commit-id-plugin</artifactId>
+				<version>2.2.4</version>
+				<executions>
+					<execution>
+						<id>get-the-git-infos</id>
+						<goals>
+							<goal>revision</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<generateGitPropertiesFilename>${project.build.outputDirectory}/openmldb_git.properties</generateGitPropertiesFilename>
+					<injectAllReactorProjects>true</injectAllReactorProjects>
+					<dateFormat>yyyy.MM.dd HH:mm:ss</dateFormat>
+					<verbose>true</verbose>
+					<generateGitPropertiesFile>true</generateGitPropertiesFile>
+				</configuration>
 			</plugin>
 
 			<!-- Generate report for spotbugs -->
 			<plugin>
 				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.2.2</version>
 				<configuration>
 					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
 					<failOnError>true</failOnError>
@@ -449,7 +413,7 @@
 				</configuration>
 				<executions>
 					<execution>
-						<phase>package</phase>
+						<phase>prepare-package</phase>
 						<goals>
 							<goal>check</goal>
 						</goals>
@@ -477,22 +441,5 @@
 		</pluginManagement>
 	</build>
 
-	<reporting>
-		<plugins>
-			<!-- Generate report for jacoco -->
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<reportSets>
-					<reportSet>
-						<reports>
-							<report>report</report>
-						</reports>
-					</reportSet>
-				</reportSets>
-			</plugin>
-
-		</plugins>
-	</reporting>
-
+	<!-- use the same reporting in parent pom -->
 </project>

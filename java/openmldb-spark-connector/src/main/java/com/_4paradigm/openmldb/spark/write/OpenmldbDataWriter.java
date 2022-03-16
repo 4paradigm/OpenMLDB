@@ -110,7 +110,9 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
                     preparedStatement.setString(i + 1, record.getString(i));
                     break;
                 case Types.DATE:
-                    preparedStatement.setDate(i + 1, new Date(record.getInt(i)));
+                    // the new Date() parameter is the number of milliseconds elapsed since January 1, 1970 00:00:00 GMT
+                    // where record.getInt(i) gets the number of days elapsed, and 86400000 is the number of milliseconds in a day.
+                    preparedStatement.setDate(i + 1, new Date(record.getInt(i) * 86400000l));
                     break;
                 case Types.TIMESTAMP:
                     // record.getLong(spark sql TimestampType) gets us timestamp, and sql timestamp unit is ms
@@ -125,7 +127,13 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
     @Override
     public WriterCommitMessage commit() throws IOException {
         try {
-            preparedStatement.executeBatch();
+            int[] rc = preparedStatement.executeBatch();
+            for(int i = 0; i < rc.length; i++) {
+                int code = rc[i];
+                if (code < 0) {
+                    throw new SQLException("insert failed. result code: " + code);
+                } 
+            }
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
