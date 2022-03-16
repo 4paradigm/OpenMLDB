@@ -251,8 +251,14 @@ base::Status NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_
 }
 
 bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, std::string& msg) {
+    CreateTable(table_info, false, msg);
+}
+
+bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, const bool create_if_not_exist,
+                           std::string& msg) {
     ::openmldb::nameserver::CreateTableRequest request;
     ::openmldb::nameserver::GeneralResponse response;
+    request.set_create_if_not_exist(create_if_not_exist);
     ::openmldb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
     table_info_r->CopyFrom(table_info);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,

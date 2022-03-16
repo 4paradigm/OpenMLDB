@@ -108,6 +108,7 @@ message CreateTableRequest {
     required TableInfo table_info = 1;
     optional ZoneInfo zone_info = 2;
     optional openmldb.api.TaskInfo task_info = 3;
+    optional bool create_if_not_exist = 4 [default = false];
 }
 
 message DropTableRequest {
