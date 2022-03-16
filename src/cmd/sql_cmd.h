@@ -27,7 +27,6 @@
 #include <vector>
 
 #include "absl/strings/match.h"
-#include "absl/strings/strip.h"
 #include "base/linenoise.h"
 #include "boost/regex.hpp"
 #include "base/texttable.h"
