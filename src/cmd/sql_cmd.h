@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+#include "absl/strings/strip.h"
 #include "base/linenoise.h"
 #include "boost/regex.hpp"
 #include "base/texttable.h"
@@ -151,17 +152,14 @@ void Shell() {
                 continue;
             }
         }
+        // trim space after last semicolon in sql
         if (buffer.find_last_of(';') != std::string::npos && buffer.back() != ';') {
             std::string::size_type last_semicolon = buffer.find_last_of(';');
             std::string::size_type buffer_size = buffer.size();
             std::string after_semicolon_sql = buffer.substr(last_semicolon + 1, buffer_size);
             boost::trim(after_semicolon_sql);
-            if (after_semicolon_sql.empty()) {
-                buffer = buffer.substr(0, last_semicolon + 1);
-            } else {
-                std::cout << "There should be no characters after the last semicolon in sql" << std::endl;
-                continue;
-            }
+            buffer = buffer.substr(0, last_semicolon + 1);
+            buffer = buffer + after_semicolon_sql;
         }
         sql.append(buffer);
         if (sql.length() == 4 || sql.length() == 5) {
