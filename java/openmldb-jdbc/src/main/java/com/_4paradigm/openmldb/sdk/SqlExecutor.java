@@ -65,9 +65,9 @@ public interface SqlExecutor {
     PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                   List<Integer> commonColumnIndices) throws SQLException;
 
-    CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException;
+    CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException;
 
-    CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException;
+    CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException;
 
     Schema getInputSchema(String dbName, String sql) throws SQLException;
 
