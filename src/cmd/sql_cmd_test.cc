@@ -450,6 +450,8 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    sr->SetDatabase("");
+
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
@@ -462,7 +464,8 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     HandleSQL("show table status");
 }
 
-TEST_P(DBSDKTest, ShowTableStatusWithData) {
+// show table status when no database is selected
+TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -479,6 +482,8 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
                     absl::StrCat("create table ", tb_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
                     absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
                 });
+    // reset to empty db
+    sr->SetDatabase("");
 
     // sleep for 10s, name server should updated TableInfo in schedule
     // default schedule interval is 2s
@@ -496,7 +501,9 @@ TEST_P(DBSDKTest, ShowTableStatusWithData) {
     HandleSQL("show table status");
 
     // teardown
-    ProcessSQLs(sr, {absl::StrCat("drop table ", tb_name), absl::StrCat("drop database ", db_name)});
+    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                     absl::StrCat("drop database ", db_name)});
+    sr->SetDatabase("");
 }
 
 // show table status after use db
@@ -585,6 +592,8 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
                         absl::StrCat("drop table ", tb2_name),
                         absl::StrCat("drop database ", db2_name),
                     });
+
+    sr->SetDatabase("");
 }
 
 /* TODO: Only run test in standalone mode
