@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+#include "absl/strings/strip.h"
 #include "base/linenoise.h"
 #include "boost/regex.hpp"
 #include "base/texttable.h"
@@ -156,9 +157,11 @@ void Shell() {
             std::string::size_type last_semicolon = buffer.find_last_of(';');
             std::string::size_type buffer_size = buffer.size();
             std::string after_semicolon_sql = buffer.substr(last_semicolon + 1, buffer_size);
-            boost::trim(after_semicolon_sql);
-            buffer = buffer.substr(0, last_semicolon + 1);
-            buffer = buffer + after_semicolon_sql;
+            absl::string_view input(after_semicolon_sql);
+            while (!absl::ConsumePrefix(&input, " ")) {
+                buffer = buffer.substr(0, last_semicolon + 1);
+                buffer = buffer + after_semicolon_sql;
+            }
         }
         sql.append(buffer);
         if (sql.length() == 4 || sql.length() == 5) {
