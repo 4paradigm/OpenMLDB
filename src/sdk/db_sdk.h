@@ -205,7 +205,7 @@ class StandAloneSDK : public DBSDK {
 
     int GetPort() const { return port_; }
 
-    bool GlobalVarNotify() const override { return false; }
+    bool GlobalVarNotify() const override { return true; }
 
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
