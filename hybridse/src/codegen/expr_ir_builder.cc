@@ -500,7 +500,7 @@ Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* 
     size_t schema_idx = 0;
     CHECK_STATUS(ExtractSliceFromRow(parameter_row, schema_idx, &slice_ptr, &slice_size))
     BufNativeIRBuilder buf_builder(
-        schema_idx, &ctx_->parameter_row_format(),
+        schema_idx, ctx_->parameter_row_format(),
         ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     CHECK_TRUE(
         buf_builder.BuildGetField(parameter->position()-1, slice_ptr, slice_size, output),
@@ -924,7 +924,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(
         ::llvm::Value* slice_size = nullptr;
         CHECK_STATUS(ExtractSliceFromRow(input_value, schema_idx, &slice_ptr, &slice_size))
         BufNativeIRBuilder buf_builder(
-            schema_idx, schemas_context->GetRowFormat(schema_idx),
+            schema_idx, schemas_context->GetRowFormat(),
             ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
         CHECK_TRUE(
             buf_builder.BuildGetField(col_idx, slice_ptr, slice_size, output),
@@ -1034,7 +1034,14 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
 
     ::llvm::Module* module = ctx_->GetModule();
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    auto slice_idx_value = builder.getInt64(schema_idx);
+
+    size_t slice_idx = schema_idx;
+    if (ctx_->schemas_context()->GetRowFormat() != nullptr) {
+        // TODO(tobe): check schema contest and make sure it is built for unit tests
+        slice_idx = ctx_->schemas_context()->GetRowFormat()->GetSliceId(schema_idx);
+    }
+
+    auto slice_idx_value = builder.getInt64(slice_idx);
     auto get_slice_func = module->getOrInsertFunction(
         "hybridse_storage_get_row_slice",
         ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));

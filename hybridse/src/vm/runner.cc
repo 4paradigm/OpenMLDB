@@ -26,6 +26,8 @@
 #include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 
+DECLARE_bool(enable_spark_unsaferow_format);
+
 namespace hybridse {
 namespace vm {
 #define MAX_DEBUG_BATCH_SiZE 5
@@ -892,9 +894,15 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
         window->PopFrontData();
     }
     if (append_slices > 0) {
-        return Row(base::RefCountedSlice::CreateManaged(
-                       out_buf, RowView::GetSize(out_buf)),
-                   append_slices, row);
+        if (FLAGS_enable_spark_unsaferow_format) {
+            // For UnsafeRowOpt, do not merge input row and return the single slice output row only
+            return Row(base::RefCountedSlice::CreateManaged(
+                out_buf, RowView::GetSize(out_buf)));
+        } else {
+            return Row(base::RefCountedSlice::CreateManaged(
+                           out_buf, RowView::GetSize(out_buf)),
+                       append_slices, row);
+        }
     } else {
         return Row(base::RefCountedSlice::CreateManaged(
             out_buf, RowView::GetSize(out_buf)));
@@ -1989,8 +1997,8 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
                 key_str = index_key_gen_.Gen(left_row, parameter);
             }
             if (left_key_gen_.Valid()) {
-                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) : key_str.append("|").append
-                                                                                     (left_key_gen_.Gen(left_row, parameter));
+                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) :
+                                          key_str.append("|").append(left_key_gen_.Gen(left_row, parameter));
             }
             auto right_table = right->GetSegment(key_str);
             auto left_key_str = std::string(

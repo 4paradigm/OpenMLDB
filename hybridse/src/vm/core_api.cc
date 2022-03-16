@@ -227,6 +227,7 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+    // TODO(tobe): do not need to pass parameter row for offline
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
     int8_t* buf = nullptr;
     uint32_t ret = udf(0, row_ptr, nullptr, parameter_ptr, &buf);
