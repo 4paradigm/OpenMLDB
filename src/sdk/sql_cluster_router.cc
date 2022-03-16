@@ -1620,10 +1620,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"Variable_name", "Value"}, items, status);
         }
         case hybridse::node::kCmdShowGlobalVariables: {
-            std::string db_ = "INFORMATION_SCHEMA";
-            std::string sql = "select * from GLOBAL_VARIABLES";
+            std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+            std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
+            std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
-            auto rs = ExecuteSQL(db_, sql, &status);
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
             if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
@@ -2182,7 +2183,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
     hybridse::node::PlanNodeList plan_trees;
     hybridse::base::Status sql_status;
     hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
-
     if (sql_status.code != 0) {
         *status = {::hybridse::common::StatusCode::kCmdError, sql_status.msg};
         return {};
@@ -2411,11 +2411,21 @@ bool SQLClusterRouter::IsEnableTrace() {
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
-    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
-        return {::hybridse::common::StatusCode::kCmdError, "global system variable is unsupported"};
-    }
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        std::string value = node->Value()->GetExprString();
+        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        hybridse::sdk::Status status;
+        std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
+        if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
+            return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
+        }
+        if (!cluster_sdk_->GlobalVarNotify()) {
+            return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
+        }
+        return {};
+    }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find(node->Key());
     if (it == session_variables_.end()) {

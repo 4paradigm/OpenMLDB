@@ -407,13 +407,6 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, ShowGlobalVaraibles) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("show global variables");
-}
-
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -594,6 +587,57 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
                     });
 
     sr->SetDatabase("");
+}
+
+TEST_P(DBSDKTest, GlobalVariable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    auto ns_client = cs->GetNsClient();
+
+    if (cs->IsClusterMode()) {
+        std::vector<::openmldb::nameserver::TableInfo> tables;
+        std::string msg;
+        ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+        ASSERT_EQ(1, tables.size());
+        tables.clear();
+        ASSERT_TRUE(
+            ns_client->ShowTable(nameserver::GLOBAL_VARIABLES, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+        ASSERT_EQ(1, tables.size());
+        ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
+        tables.clear();
+
+        ::hybridse::sdk::Status status;
+        std::string sql = "set @@global.enable_trace='true';";
+        auto res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        sql = "set @@global.execute_mode='online';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        auto rs = sr->ExecuteSQL("show global variables", &status);
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+        ASSERT_EQ("true", rs->GetStringUnsafe(1));
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+        ASSERT_EQ("online", rs->GetStringUnsafe(1));
+
+        sql = "set GLOBAL enable_trace='false';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        sql = "set GLOBAL execute_mode='offline';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        rs = sr->ExecuteSQL("show global variables", &status);
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+        ASSERT_EQ("false", rs->GetStringUnsafe(1));
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
+    }
 }
 
 /* TODO: Only run test in standalone mode
