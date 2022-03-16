@@ -67,17 +67,17 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From offlin
 
 ## 5. Build & Install
 
-:point_right: [Read more](docs/en/compile.md)
+:point_right: [Read more](https://openmldb.ai/docs/zh/dev/deploy/index.html)
 
 ## 6. QuickStart
 
 **Cluster and Standalone Versions**
 
-OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://docs.openmldb.ai/v/0.4/content-2/standalone_vs_cluster)  for details. 
+OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/zh/dev/tutorial/standalone_vs_cluster.html)  for details. 
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](https://docs.openmldb.ai/v/0.4/content-1/openmldb_quickstart)
+:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/zh/dev/quickstart/openmldb_quickstart.html)
 
 ## 7. Use Cases
 
@@ -85,30 +85,25 @@ We are making efforts to build a list of real-world use cases based on OpenMLDB 
 
 | Application                                                  | Tools              | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://docs.openmldb.ai/use_case/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/dev/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
 
 ## 8. Documentation
 
-We have released the Chinese version of the full documentation, you can find it here:
-
-- The main site: [https://docs.openmldb.ai/](https://docs.openmldb.ai/)
-- The mirror site in China: [http://docs-cn.openmldb.ai/](http://docs-cn.openmldb.ai/)
-
-We are working on the English documentation, and it will be released very soon.
+- Chinese documentations: [https://openmldb.ai/docs/zh](https://openmldb.ai/docs/zh)
+- English documentations: coming soon
 
 ## 9. Roadmap
 
 | Version | Est. release date | Highlight features                                           |
 | ------- | ----------------- | ------------------------------------------------------------ |
-| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- The online storage engine supports external storage devices. |
+| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- The online storage engine supports external storage devices.<br />- UDF support |
 
 Furthermore, there are a few important features on the development roadmap but have not been scheduled yet. We appreciate any feedbacks on those features.
 
 - A cloud-native OpenMLDB
-- Adaptors to open-source machine learning lifecycle management platforms, such as MLflow and Airflow
-- Fast recovery based on Intel® Optane™ Persistent Memory
+- Adaptors to open-source machine learning lifecycle management platforms, such as Airflow
 - Automatic feature extraction
-- Lightweight OpenMLDB for edge computing
+- A lightweight OpenMLDB for edge computing
 
 ## 10. Contributors
 
@@ -125,7 +120,7 @@ Let's clap hands for our community contributors :clap:
 
 ## 11. Community
 
-- **Website**: [https://openmldb.ai/](https://openmldb.ai) (coming soon)
+- **Website**: [https://openmldb.ai/en](https://openmldb.ai/en)
 
 - **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 
@@ -133,19 +128,17 @@ Let's clap hands for our community contributors :clap:
 
 - **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: If you are a serious developer, you are most welcome to join our discussion on GitHub. The GitHub Issues is used to report bugs and collect new requirements. The GitHub Discussions is mostly used by our project maintainers to publish and comment RFCs.
 
+- **[Blogs (English)](https://openmldb.medium.com/)**
+
 - [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
 
 - **WeChat Groups (Chinese)**:
 
   <img src="images/wechat.png" alt="img" width=120 />  
 
-## 12. Publications & Blogs
+## 12. Publications
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
-- [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
-- [Predictive maintenance — 5 minutes demo of an end to end machine learning project](https://towardsdatascience.com/predictive-maintenance-5minutes-demo-of-an-end-to-end-machine-learning-project-60941f1c9793)
-- [Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
-- [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
 ## 13. [The User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 
