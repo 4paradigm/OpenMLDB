@@ -177,11 +177,11 @@ Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybrid
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
                                            ctx->is_cluster_optimized, false, ctx->enable_expr_optimize,
                                            enable_request_performance_sensitive, ctx->options.get());
-    transformer.AddDefaultPasses();
-    if (ctx->options->count(LONG_WINDOWS)) {
+    if (ctx->options && ctx->options->count(LONG_WINDOWS)) {
         transformer.AddPass(passes::kPassSplitAggregationOptimized);
         transformer.AddPass(passes::kPassLongWindowOptimized);
     }
+    transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
                  "Fail to transform physical plan on request mode");
 
