@@ -280,7 +280,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool NotifyTableChange() override;
 
-    bool IsOnlineMode();
+    bool IsOnlineMode() override;
     bool IsEnableTrace();
 
     std::string GetDatabase();
