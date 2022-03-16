@@ -17,14 +17,13 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
-  SkewDataFrameUtils, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.JoinedRow
-import org.apache.spark.sql.types.{LongType, StructType, TimestampType}
+import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
@@ -111,6 +110,20 @@ object WindowAggPlan {
       for (i <- 0 until outputSchema.size) {
         if (outputSchema(i).dataType == TimestampType) {
           outputTimestampColIndexes.append(i)
+        }
+      }
+
+      val inputDateColIndexes = mutable.ArrayBuffer[Int]()
+      for (i <- 0 until inputSchema.size) {
+        if (inputSchema(i).dataType == DateType) {
+          inputDateColIndexes.append(i)
+        }
+      }
+
+      val outputDateColIndexes = mutable.ArrayBuffer[Int]()
+      for (i <- 0 until outputSchema.size) {
+        if (outputSchema(i).dataType == DateType) {
+          outputDateColIndexes.append(i)
         }
       }
 
