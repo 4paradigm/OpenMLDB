@@ -3811,7 +3811,7 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
-    std::string table = openmldb::nameserver::GLOBAL_VARIABLE_NAME;
+    std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
     hybridse::sdk::Status status;
     auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);

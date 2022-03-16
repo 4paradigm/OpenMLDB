@@ -1621,7 +1621,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdShowGlobalVariables: {
             std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
-            std::string table = openmldb::nameserver::GLOBAL_VARIABLE_NAME;
+            std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
             std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
