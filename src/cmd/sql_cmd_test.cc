@@ -587,7 +587,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
                     });
 
     sr->SetDatabase("");
-
+}
 /* TODO: Only run test in standalone mode
 TEST_P(DBSDKTest, load_data) {
     auto cli = GetParam();
