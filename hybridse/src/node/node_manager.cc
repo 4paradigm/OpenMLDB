@@ -929,6 +929,15 @@ CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
     return node_ptr;
 }
 
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
+                                                     const std::string &table_name,
+                                                     int replica_num, int partition_num,
+                                                     const NodePointVector &column_list,
+                                                     const NodePointVector &partition_meta_list) {
+    return MakeCreateTablePlanNode(db_name, table_name, replica_num, partition_num, column_list, partition_meta_list,
+                                   false);
+}
+
 CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(const std::string &sp_name,
                                                                   const NodePointVector &input_parameter_list,
                                                                   const PlanNodeList &inner_plan_node_list) {

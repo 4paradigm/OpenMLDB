@@ -340,6 +340,25 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
 }
 
+TEST_P(DBSDKTest, CreateIfNotExists) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("create database test2;");
+    HandleSQL("use test2;");
+    std::string create_sql = "create table if not exists trans (col1 string);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    // Run create again and do not get error
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+}
+
 TEST_P(DBSDKTest, ShowGlobalVaraibles) {
     auto cli = GetParam();
     cs = cli->cs;
