@@ -57,6 +57,12 @@ class Aggregator {
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
+    AggrType GetAggrType() const { return aggr_type_; }
+
+    WindowType GetWindowType() const { return window_type_; }
+
+    uint32_t GetWindowSize() const { return window_size_; }
+
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
@@ -98,6 +104,9 @@ class Aggregator {
 
  protected:
     WindowType window_type_;
+
+    // for kRowsNum, window_size_ is the rows num in mini window
+    // for kRowsRange, window size is the time interval in mini window
     int32_t window_size_;
 };
 

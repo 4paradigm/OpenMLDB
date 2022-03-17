@@ -603,7 +603,7 @@ TEST_F(SQLClusterTest, Aggregator) {
     ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
     ASSERT_EQ(tables.size(), 1);
 
-    std::string deploy_sql = "deploy test1 options(long_windows='w1:2') select col1,"
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1,"
                              " sum(col3) over w1 as w1_sum_col3 from " + base_table +
                              " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
                              " ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
@@ -619,7 +619,7 @@ TEST_F(SQLClusterTest, Aggregator) {
         ASSERT_TRUE(ok);
     }
 
-    std::string result_sql = "select * from pre_test1_w1_sum_col3;";
+    std::string result_sql = "select * from pre_test_aggr_w1_sum_col3;";
 
     auto rs = router->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
@@ -636,8 +636,8 @@ TEST_F(SQLClusterTest, Aggregator) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test1", msg));
-    std::string pre_aggr_table = "pre_test1_w1_sum_col3";
+    ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_sum_col3";
     ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);

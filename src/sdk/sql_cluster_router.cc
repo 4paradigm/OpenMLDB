@@ -3012,14 +3012,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             if (!found_idx) {
                 return {base::ReturnCode::kError, "index that associate to aggregator not found"};
             }
-
             for (uint32_t pid = 0; pid < tablets.size(); ++pid) {
                 auto tablet_client = tablets[pid]->GetClient();
                 if (tablet_client == nullptr) {
                     return {base::ReturnCode::kError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
-                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);                
+                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);
             }
         }
     }

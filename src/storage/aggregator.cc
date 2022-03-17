@@ -176,7 +176,6 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
 
 bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) {
     char* ch = NULL;
-    uint32_t cn_length = 0;
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
