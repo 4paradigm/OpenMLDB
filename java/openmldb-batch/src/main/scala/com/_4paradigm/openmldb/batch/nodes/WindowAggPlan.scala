@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUt
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
+import com._4paradigm.openmldb.common.codec.CodecUtil
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.JoinedRow
 import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
@@ -132,14 +133,14 @@ object WindowAggPlan {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
             unsafeWindowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig, outputSchema,
-              inputTimestampColIndexes, outputTimestampColIndexes)
+              inputTimestampColIndexes, outputTimestampColIndexes, inputDateColIndexes, outputDateColIndexes)
         }
       } else {
         zippedRdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
             unsafeWindowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema, inputTimestampColIndexes,
-              outputTimestampColIndexes)
+              outputTimestampColIndexes, inputDateColIndexes, outputDateColIndexes)
         }
       }
 
@@ -314,7 +315,9 @@ object WindowAggPlan {
                           config: WindowAggConfig,
                           outputSchema: StructType,
                           inputTimestampColIndexes: mutable.ArrayBuffer[Int],
-                          outputTimestampColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
+                          outputTimestampColIndexes: mutable.ArrayBuffer[Int],
+                          inputDateColIndexes: mutable.ArrayBuffer[Int],
+                          outputDateColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
@@ -332,9 +335,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -352,10 +361,16 @@ object WindowAggPlan {
             config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -372,9 +387,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -388,10 +409,16 @@ object WindowAggPlan {
             config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -521,7 +548,9 @@ object WindowAggPlan {
                                        config: WindowAggConfig,
                                        outputSchema: StructType,
                                        inputTimestampColIndexes: mutable.ArrayBuffer[Int],
-                                       outputTimestampColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
+                                       outputTimestampColIndexes: mutable.ArrayBuffer[Int],
+                                       inputDateColIndexes: mutable.ArrayBuffer[Int],
+                                       outputDateColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
 
@@ -540,9 +569,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -561,10 +596,16 @@ object WindowAggPlan {
             sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -581,9 +622,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -604,10 +651,16 @@ object WindowAggPlan {
                   config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
                 // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-                for (tsColIdx <- outputTimestampColIndexes) {
-                  if(!outputInternalRow.isNullAt(tsColIdx)) {
+                for (colIdx <- outputTimestampColIndexes) {
+                  if(!outputInternalRow.isNullAt(colIdx)) {
                     // TODO(tobe): warning if over LONG.MAX_VALUE
-                    outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+                    outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+                  }
+                }
+
+                for (colIdx <- outputDateColIndexes) {
+                  if(!outputInternalRow.isNullAt(colIdx)) {
+                    outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
                   }
                 }
 
@@ -658,6 +711,12 @@ object WindowAggPlan {
                       outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
                   }
 
+                }
+              }
+
+              for (colIdx <- outputDateColIndexes) {
+                if(!outputInternalRow.isNullAt(colIdx)) {
+                  outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
                 }
               }
 

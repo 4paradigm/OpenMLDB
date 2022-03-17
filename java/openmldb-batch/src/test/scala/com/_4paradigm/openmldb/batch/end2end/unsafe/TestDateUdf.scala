@@ -18,11 +18,12 @@ package com._4paradigm.openmldb.batch.end2end.unsafe
 
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DateType, IntegerType, StructField, StructType, TimestampType}
 
-import java.sql.{Date, Timestamp}
+import java.sql.Date
 
 class TestDateUdf extends SparkTestSuite {
 
@@ -31,6 +32,40 @@ class TestDateUdf extends SparkTestSuite {
     spark.conf.set("spark.openmldb.unsaferow.opt", true)
     spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
     spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
+  }
+
+  test("Test simple project with date columns") {
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val df = DataUtil.getAllTypesDfWithNull(spark)
+    sess.registerTable("t1", df)
+    df.createOrReplaceTempView("t1")
+
+    val sqlText = "SELECT date_col FROM t1"
+
+    val outputDf = sess.sql(sqlText)
+    outputDf.show()
+    val sparksqlOutputDf = sess.sparksql(sqlText)
+    sparksqlOutputDf.show()
+    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+  }
+
+  test("Test project with date columns") {
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val df = DataUtil.getAllTypesDfWithNull(spark)
+    sess.registerTable("t1", df)
+    df.createOrReplaceTempView("t1")
+
+    val sqlText = "SELECT int_col + 1 as int_add_one, date_col FROM t1"
+
+    val outputDf = sess.sql(sqlText)
+    outputDf.show()
+    val sparksqlOutputDf = sess.sparksql(sqlText)
+    sparksqlOutputDf.show()
+    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
   test("Test udf of date for project") {
@@ -90,10 +125,8 @@ class TestDateUdf extends SparkTestSuite {
      """.stripMargin
 
     val outputDf = sess.sql(sqlText)
-    outputDf.show()
     val sparksqlOutputDf = sess.sparksql(sqlText)
-    sparksqlOutputDf.show()
-    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
   override def customizedAfter(): Unit = {
