@@ -1636,10 +1636,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         case hybridse::node::kCmdShowJobs: {
             std::string db = "__INTERNAL_DB";
             std::string sql = "SELECT * FROM JOB_INFO";
-            ::hybridse::sdk::Status status;
-            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-            if (status.code != 0) {
-                std::cout << "ERROR: " << status.msg << std::endl;
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+            if (status->code != 0) {
                 return {};
             }
             return rs;
