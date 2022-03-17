@@ -62,10 +62,8 @@ class TestDateUdf extends SparkTestSuite {
     val sqlText = "SELECT int_col + 1 as int_add_one, date_col FROM t1"
 
     val outputDf = sess.sql(sqlText)
-    outputDf.show()
     val sparksqlOutputDf = sess.sparksql(sqlText)
-    sparksqlOutputDf.show()
-    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
   test("Test udf of date for project") {

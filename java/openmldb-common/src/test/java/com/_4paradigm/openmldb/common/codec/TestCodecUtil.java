@@ -28,7 +28,7 @@ public class TestCodecUtil {
         Date date = Date.valueOf("1970-01-02");
         int expectDateInt = 4587522;
         int dateInt = CodecUtil.dateToDateInt(date);
-        Assert.assertEquals(expectDateInt, dateInt);
+        Assert.assertEquals(dateInt, expectDateInt);
     }
 
     @Test
@@ -36,7 +36,7 @@ public class TestCodecUtil {
         int days = 1;
         int expectDateInt = 4587522;
         int dateInt = CodecUtil.daysToDateInt(days);
-        Assert.assertEquals(expectDateInt, dateInt);
+        Assert.assertEquals(dateInt, expectDateInt);
     }
 
     @Test
@@ -44,7 +44,7 @@ public class TestCodecUtil {
         int dateInt = 4587522;
         Date expectDate = Date.valueOf("1970-01-02");
         Date date = CodecUtil.dateIntToDate(dateInt);
-        Assert.assertEquals(expectDate, date);
+        Assert.assertEquals(date, expectDate);
     }
 
     @Test
@@ -52,7 +52,7 @@ public class TestCodecUtil {
         int dateInt = 4587522;
         int expectDays = 1;
         int days = CodecUtil.dateIntToDays(dateInt);
-        Assert.assertEquals(expectDays, days);
+        Assert.assertEquals(days, expectDays);
     }
 
     // Test the combination of dateToDateInt and dateIntToDate
@@ -61,7 +61,7 @@ public class TestCodecUtil {
         Date date = Date.valueOf("1970-01-02");
         Date expectDate = Date.valueOf("1970-01-02");
         Date actualDate = CodecUtil.dateIntToDate(CodecUtil.dateToDateInt(date));
-        Assert.assertEquals(expectDate, actualDate);
+        Assert.assertEquals(actualDate, expectDate);
     }
 
     // Test the combination of daysToDateInt and dateIntToDays
@@ -70,7 +70,13 @@ public class TestCodecUtil {
         int days = 10;
         int expectDays = 10;
         int actualDays = CodecUtil.dateIntToDays(CodecUtil.daysToDateInt(days));
-        Assert.assertEquals(expectDays, actualDays);
+        Assert.assertEquals(actualDays, expectDays);
+
+
+        days = 0;
+        expectDays = 0;
+        actualDays = CodecUtil.dateIntToDays(CodecUtil.daysToDateInt(days));
+        Assert.assertEquals(actualDays, expectDays);
     }
 
 }

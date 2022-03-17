@@ -155,7 +155,7 @@ public class CodecUtil {
      */
     public static int dateIntToDays(int dateInt) {
         Date date = dateIntToDate(dateInt);
-        return (int)(date.getTime() / 86400000L) + 1;
+        return (int)Math.ceil(date.getTime() / 86400000.0);
     }
 
 }
