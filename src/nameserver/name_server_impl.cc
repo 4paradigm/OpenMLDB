@@ -5496,8 +5496,8 @@ void NameServerImpl::OnLocked() {
         }
         if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
             if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(GLOBAL_VARIABLE_NAME, SystemTableType::kGlobalVariable).OK()) {
-                LOG(FATAL) << "create system table" << GLOBAL_VARIABLE_NAME << "failed";
+                !CreateSystemTable(GLOBAL_VARIABLES, SystemTableType::kGlobalVariable).OK()) {
+                LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
                 exit(1);
             }
         }
