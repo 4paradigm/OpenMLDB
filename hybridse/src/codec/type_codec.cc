@@ -185,7 +185,6 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      int8_t* val, uint32_t size, int8_t is_null,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset) {
-
     if (is_null) {
         AppendNullBit(buf_ptr, col_idx, true);
         size_t str_addr_length = GetAddrLength(buf_size);

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.3] - 2022-03-15
+
+### Features
+
+- Add the output of the number of rows imported after successfully importing data (#1401 @Manny-op)
+- Code Refactoring (#1366 @Cupid0320; #1378 @wuteek; #1418 @prashantpaidi; #1420 @shiyoubun; #1422 @vagetablechicken)
+
+### Bug Fixes
+- Loading online data with "not null" columns in Spark fails. (#1341 @vagetablechicken)
+- `max_where` and `min_where` results are incorrect if there is no rows matched. (#1403 @aceforeverd)
+- The `insert` and `select` execution of the standalone version fails. (#1426 @dl239)
+- Other minor bug fixes (#1379 @wuteek; #1384 jasleon)
+
 ## [0.4.2] - 2022-03-01
 
 ### Features
@@ -148,6 +161,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.4.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.3.0...v0.4.0

@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "codec/fe_row_codec.h"
@@ -913,6 +914,7 @@ TEST_F(SQLClusterTest, GetTableSchema) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
+
 TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
     auto sql_case = GetParam();
     if (!IsBatchSupportMode(sql_case.mode())) {
@@ -923,6 +925,50 @@ TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchModeSDK(sql_case, router_, mc_->GetTbEndpoint());
     LOG(INFO) << "Finish SqlSdkDistributeBatchTest: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_F(SQLClusterTest, GetPreAggrTable) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    SetOnlineMode(router);
+    ASSERT_TRUE(router != nullptr);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ::hybridse::sdk::Status status;
+    std::vector<::hybridse::vm::AggrTableInfo> table_infos;
+    ::hybridse::vm::AggrTableInfo info = {"aggr_t1", "aggr_db", "base_db", "base_t1",
+                                          "sum", "col1", "col2", "col3", "1000"};
+    table_infos.emplace_back(info);
+    info = {"aggr_t1", "aggr_db", "base_db", "base_t2", "sum",
+            "col1", "col2", "col3", "1000"};
+    table_infos.emplace_back(info);
+
+    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    for (const auto& info : table_infos) {
+        std::string insert_sql =
+            absl::StrCat("insert into ", meta_table, " values(", "'", info.aggr_table, "', '", info.aggr_db, "', '",
+                         info.base_db, "', '", info.base_table, "', '", info.aggr_func, "', '", info.aggr_col, "', '",
+                         info.partition_cols, "', '", info.order_by_col, "', '", info.bucket_size, "'", ");");
+        bool ok = router->ExecuteInsert(meta_db, insert_sql, &status);
+        ASSERT_EQ(0, static_cast<int>(status.code));
+        ASSERT_TRUE(ok);
+    }
+
+    auto res = router->GetAggrTables();
+    ASSERT_GE(res.size(), 2);
+    for (const auto& info : table_infos) {
+        bool found = false;
+        for (const auto& res_info : res) {
+            if (info == res_info) {
+                found = true;
+                break;
+            }
+        }
+        ASSERT_TRUE(found);
+    }
 }
 
 }  // namespace sdk

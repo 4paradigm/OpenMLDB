@@ -126,8 +126,9 @@ object WindowAggPlanUtil {
                             node: PhysicalWindowAggrerationNode,
                             keepIndexColumn: Boolean
                            ): WindowAggConfig = {
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0), isUnsafeRowOpt)
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
     val inputSchema = HybridseUtil.getSparkSchema(node.GetProducer(0).GetOutputSchema())
 
     // process window op

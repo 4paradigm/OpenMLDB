@@ -185,13 +185,13 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException {
-        return new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
+        return new CallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
-        return new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException {
+        return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override
