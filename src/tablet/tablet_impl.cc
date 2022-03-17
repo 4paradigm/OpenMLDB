@@ -638,7 +638,8 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         replicator->AppendEntry(entry);
     } while (false);
 
-    ok = UpdateAggrs(request->tid(), request->pid(), request->value(), request->dimensions(), replicator->GetLogOffset());
+    ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
+                     request->dimensions(), replicator->GetLogOffset());
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kError);
         response->set_msg("update aggr failed");
@@ -3768,7 +3769,7 @@ std::shared_ptr<Aggrs> TabletImpl::GetAggregators(uint32_t tid, uint32_t pid) {
 
 std::shared_ptr<Aggrs> TabletImpl::GetAggregatorsUnLock(uint32_t tid, uint32_t pid) {
     uint64_t uid = (uint64_t) tid << 32 | pid;
-    if(aggregators_.find(uid) == aggregators_.end()) {
+    if (aggregators_.find(uid) == aggregators_.end()) {
         return std::shared_ptr<Aggrs>();
     }
     return aggregators_.at(uid);

@@ -18,7 +18,6 @@
 
 #include "base/glog_wapper.h"
 #include "base/strings.h"
-#include "codec/codec.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
 #include "storage/table.h"
@@ -52,13 +51,7 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
     dimension->set_idx(0);
 }
 
-SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-                             std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
-                             const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye,
-                             uint32_t window_size)
-    : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
-
-bool SumAggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
+bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
     codec::RowView row_view(base_table_schema_, reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str())), row.size());
     int64_t cur_ts;
     row_view.GetInt64(ts_col_idx_, &cur_ts);
@@ -69,7 +62,6 @@ bool SumAggregator::Update(const std::string& key, const std::string& row, const
     if (aggr_buffer.ts_begin_ == 0) {
         aggr_buffer.ts_begin_ = cur_ts;
     }
-
     // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
     if (cur_ts < aggr_buffer.ts_begin_) {
         auto it = aggr_table_->NewTraverseIterator(0);
@@ -91,51 +83,9 @@ bool SumAggregator::Update(const std::string& key, const std::string& row, const
             row_builder.SetString(0, key.c_str(), key.size());
             row_builder.SetInt32(3, origin_cnt + 1);
             row_builder.SetInt64(5, offset);
-            switch (aggr_col_type_) {
-                case DataType::kSmallInt: {
-                    int16_t origin_val = *reinterpret_cast<int16_t*>(ch);
-                    int16_t val;
-                    row_view.GetInt16(aggr_col_idx_, &val);
-                    int16_t new_val = origin_val + val;
-                    row_builder.SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int16_t));
-                    break;
-                }
-                case DataType::kInt: {
-                    int32_t origin_val = *reinterpret_cast<int32_t*>(ch);
-                    int32_t val;
-                    row_view.GetInt32(aggr_col_idx_, &val);
-                    int32_t new_val = origin_val + val;
-                    row_builder.SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int32_t));
-                    break;
-                }
-                case DataType::kBigInt: {
-                    int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-                    int64_t val;
-                    row_view.GetInt64(aggr_col_idx_, &val);
-                    int64_t new_val = origin_val + val;
-                    row_builder.SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int64_t));
-                    break;
-                }
-                case DataType::kFloat: {
-                    float origin_val = *reinterpret_cast<float*>(ch);
-                    float val;
-                    row_view.GetFloat(aggr_col_idx_, &val);
-                    float new_val = origin_val + val;
-                    row_builder.SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(float));
-                    break;
-                }
-                case DataType::kDouble: {
-                    double origin_val = *reinterpret_cast<double*>(ch);
-                    double val;
-                    row_view.GetDouble(aggr_col_idx_, &val);
-                    double new_val = origin_val + val;
-                    row_builder.SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(double));
-                    break;
-                }
-                default: {
-                    PDLOG(WARNING, "unsupported data type");
-                    return false;
-                }
+            bool ok = UpdateAggrVal(&row_view, &row_builder);
+            if (!ok) {
+                return false;
             }
             int64_t time = ::baidu::common::timer::get_micros() / 1000;
             dimensions_.Mutable(0)->set_key(key);
@@ -143,45 +93,12 @@ bool SumAggregator::Update(const std::string& key, const std::string& row, const
         }
         return true;
     }
-
     aggr_buffer.aggr_cnt_++;
     aggr_buffer.binlog_offset_ = offset;
     aggr_buffer.ts_end_ = cur_ts;
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt: {
-            int16_t val;
-            row_view.GetInt16(aggr_col_idx_, &val);
-            aggr_buffer.aggr_val_.vsmallint += val;
-            break;
-        }
-        case DataType::kInt: {
-            int32_t val;
-            row_view.GetInt32(aggr_col_idx_, &val);
-            aggr_buffer.aggr_val_.vint += val;
-            break;
-        }
-        case DataType::kBigInt: {
-            int64_t val;
-            row_view.GetInt64(aggr_col_idx_, &val);
-            aggr_buffer.aggr_val_.vlong += val;
-            break;
-        }
-        case DataType::kFloat: {
-            float val;
-            row_view.GetFloat(aggr_col_idx_, &val);
-            aggr_buffer.aggr_val_.vfloat += val;
-            break;
-        }
-        case DataType::kDouble: {
-            double val;
-            row_view.GetDouble(aggr_col_idx_, &val);
-            aggr_buffer.aggr_val_.vdouble += val;
-            break;
-        }
-        default: {
-            PDLOG(WARNING, "unsupported data type");
-            return false;
-        }
+    bool ok = UpdateAggrVal(&row_view, &aggr_buffer);
+    if (!ok) {
+        return false;
     }
 
     if (window_type_ == WindowType::kRowsNum) {
@@ -200,7 +117,7 @@ bool SumAggregator::Update(const std::string& key, const std::string& row, const
     return true;
 }
 
-void SumAggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
+void Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
     std::string encoded_row;
     codec::RowBuilder row_builder(aggr_table_schema_);
     std::string aggr_val;
@@ -257,6 +174,104 @@ void SumAggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& bu
     latest_val.ts_begin_ = latest_ts;
 
     return;
+}
+
+SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                             std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
+                             const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye,
+                             uint32_t window_size)
+    : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
+
+bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) {
+    char* ch = NULL;
+    uint32_t cn_length = 0;
+    switch (aggr_col_type_) {
+        case DataType::kSmallInt: {
+            int16_t origin_val = *reinterpret_cast<int16_t*>(ch);
+            int16_t val;
+            row_view->GetInt16(aggr_col_idx_, &val);
+            int16_t new_val = origin_val + val;
+            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int16_t));
+            break;
+        }
+        case DataType::kInt: {
+            int32_t origin_val = *reinterpret_cast<int32_t*>(ch);
+            int32_t val;
+            row_view->GetInt32(aggr_col_idx_, &val);
+            int32_t new_val = origin_val + val;
+            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int32_t));
+            break;
+        }
+        case DataType::kBigInt: {
+            int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
+            int64_t val;
+            row_view->GetInt64(aggr_col_idx_, &val);
+            int64_t new_val = origin_val + val;
+            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int64_t));
+            break;
+        }
+        case DataType::kFloat: {
+            float origin_val = *reinterpret_cast<float*>(ch);
+            float val;
+            row_view->GetFloat(aggr_col_idx_, &val);
+            float new_val = origin_val + val;
+            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(float));
+            break;
+        }
+        case DataType::kDouble: {
+            double origin_val = *reinterpret_cast<double*>(ch);
+            double val;
+            row_view->GetDouble(aggr_col_idx_, &val);
+            double new_val = origin_val + val;
+            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(double));
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) {
+    switch (aggr_col_type_) {
+        case DataType::kSmallInt: {
+            int16_t val;
+            row_view->GetInt16(aggr_col_idx_, &val);
+            aggr_buffer->aggr_val_.vsmallint += val;
+            break;
+        }
+        case DataType::kInt: {
+            int32_t val;
+            row_view->GetInt32(aggr_col_idx_, &val);
+            aggr_buffer->aggr_val_.vint += val;
+            break;
+        }
+        case DataType::kBigInt: {
+            int64_t val;
+            row_view->GetInt64(aggr_col_idx_, &val);
+            aggr_buffer->aggr_val_.vlong += val;
+            break;
+        }
+        case DataType::kFloat: {
+            float val;
+            row_view->GetFloat(aggr_col_idx_, &val);
+            aggr_buffer->aggr_val_.vfloat += val;
+            break;
+        }
+        case DataType::kDouble: {
+            double val;
+            row_view->GetDouble(aggr_col_idx_, &val);
+            aggr_buffer->aggr_val_.vdouble += val;
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type");
+            return false;
+        }
+    }
+    return true;
 }
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,

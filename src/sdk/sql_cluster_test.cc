@@ -613,7 +613,8 @@ TEST_F(SQLClusterTest, Aggregator) {
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
 
     for (int i = 1; i <= 10; i++) {
-        std::string insert = "insert into " + base_table + " values('str', " + std::to_string(i) + ", " + std::to_string(i) +");";
+        std::string insert = "insert into " + base_table + " values('str', " +
+                             std::to_string(i) + ", " + std::to_string(i) +");";
         ok = router->ExecuteInsert(base_db, insert, &status);
         ASSERT_TRUE(ok);
     }
@@ -622,7 +623,7 @@ TEST_F(SQLClusterTest, Aggregator) {
 
     auto rs = router->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
-    
+
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str", rs->GetStringUnsafe(0));
@@ -631,7 +632,7 @@ TEST_F(SQLClusterTest, Aggregator) {
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
-        ASSERT_EQ(i * 4 - 1,aggr_val);
+        ASSERT_EQ(i * 4 - 1, aggr_val);
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 

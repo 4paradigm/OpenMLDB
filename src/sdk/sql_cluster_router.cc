@@ -3019,8 +3019,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                     return {base::ReturnCode::kError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
-                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);
-                
+                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);                
             }
         }
     }

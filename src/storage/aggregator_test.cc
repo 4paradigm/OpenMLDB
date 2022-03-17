@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include "common/timer.h"
-#include "gtest/gtest.h"
 #include "storage/aggregator.h"
 #include "codec/schema_codec.h"
+#include "common/timer.h"
+#include "gtest/gtest.h"
 #include "storage/mem_table.h"
 namespace openmldb {
 namespace storage {
@@ -56,7 +56,8 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "agg_val", openmldb::type::DataType::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "binlog_offset", openmldb::type::DataType::kBigInt);
 
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0,
+                          0);
 }
 
 TEST_F(AggregatorTest, CreateAggregator) {
@@ -72,7 +73,6 @@ TEST_F(AggregatorTest, CreateAggregator) {
     auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1d");
     ASSERT_TRUE(aggr != nullptr);
 }
-
 
 }  // namespace storage
 }  // namespace openmldb

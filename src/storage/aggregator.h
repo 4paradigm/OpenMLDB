@@ -53,7 +53,7 @@ class Aggregator {
 
     ~Aggregator() = default;
 
-    virtual bool Update(const std::string& key, const std::string& row, const uint64_t& offset) { return false; }
+    bool Update(const std::string& key, const std::string& row, const uint64_t& offset);
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -77,7 +77,7 @@ class Aggregator {
         int32_t aggr_cnt_;
         uint64_t binlog_offset_;
         AggrBuffer() : aggr_val_(), ts_begin_(0), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
-        void clear() { memset(this, 0, sizeof(AggrBuffer)); };
+        void clear() { memset(this, 0, sizeof(AggrBuffer)); }
     };
 
     std::unordered_map<std::string, AggrBuffer> aggr_buffer_map_;
@@ -85,8 +85,11 @@ class Aggregator {
     std::shared_ptr<Table> aggr_table_;
     Dimensions dimensions_;
 
+    void FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
+
  private:
-    virtual void FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer) = 0;
+    virtual bool UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) { return false; }
+    virtual bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) { return false; }
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -106,10 +109,9 @@ class SumAggregator : public Aggregator {
 
     ~SumAggregator() = default;
 
-    bool Update(const std::string& key, const std::string& row, const uint64_t& offset) override;
-
  private:
-    void FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer) override;
+    bool UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) override;
+    bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
