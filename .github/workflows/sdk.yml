@@ -340,6 +340,6 @@ jobs:
       - name: Publish Linux UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: linux-ut-result-*/**/*.xml
+          files: linux-ut-result-*/**/*.xml && mac-ut-result-*/**/*.xml
           check_name: SDK Test Report
           comment_title: SDK Test Report
