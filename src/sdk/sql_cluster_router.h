@@ -33,6 +33,7 @@
 #include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
+#include "nameserver/system_table.h"
 
 namespace openmldb {
 namespace sdk {
@@ -280,7 +281,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool NotifyTableChange() override;
 
-    bool IsOnlineMode();
+    bool IsOnlineMode() override;
     bool IsEnableTrace();
 
     std::string GetDatabase();
@@ -364,6 +365,10 @@ class SQLClusterRouter : public SQLRouter {
     /// \param status result status
     /// \return ResultSet represent all components, each row represent one component
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowComponents(hybridse::sdk::Status* status);
+
+    /// internal implementation for SQL 'SHOW TABLE STATUS'
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
+                                                                     hybridse::sdk::Status* status);
 
  private:
     SQLRouterOptions options_;

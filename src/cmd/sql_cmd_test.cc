@@ -21,6 +21,9 @@
 #include <memory>
 #include <string>
 
+#include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -40,6 +43,62 @@ namespace cmd {
 ::openmldb::sdk::MiniCluster* mc_;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
+
+inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
+    hybridse::sdk::Status status;
+    for (auto sql : sqls) {
+        sr->ExecuteSQL(std::string(sql), &status);
+        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
+    }
+}
+
+// expect object for ResultSet cell
+struct CellExpectInfo {
+    CellExpectInfo() {}
+
+    CellExpectInfo(const char* buf) : expect_(buf) {}  // NOLINT
+
+    CellExpectInfo(const std::string& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
+        : expect_(expect), expect_not_(expect_not) {}
+
+    // result string for target cell to match exactly
+    // if empty, do not check
+    std::optional<std::string const> expect_;
+
+    // what string target cell string should not match
+    // if empty, do not check
+    std::optional<std::string const> expect_not_;
+};
+
+// expect the output of a ResultSet, first row is schema, all compared in string
+// if expect[i][j].(expect_|expect_not_) is not set, assert will skip
+inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
+    ASSERT_EQ(expect.size(), rs->Size() + 1);
+    size_t idx = 0;
+    // schema check
+    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
+    for (size_t i = 0; i < expect[idx].size(); ++i) {
+        ASSERT_TRUE(expect[idx][i].expect_.has_value());
+        EXPECT_EQ(expect[idx][i].expect_.value(), rs->GetSchema()->GetColumnName(i));
+    }
+
+    while (++idx < expect.size() && rs->Next()) {
+        for (size_t i = 0; i < expect[idx].size(); ++i) {
+            std::string val;
+            EXPECT_TRUE(rs->GetAsString(i, val));
+            if (expect[idx][i].expect_.has_value()) {
+                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
+            }
+            if (expect[idx][i].expect_not_.has_value()) {
+                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
+            }
+        }
+    }
 }
 
 struct CLI {
@@ -180,6 +239,9 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
+    router->ExecuteSQL("drop table " + name, &status);
+    router->DropDB(db, &status);
+    ASSERT_TRUE(status.IsOK());
     remove(file_path.c_str());
 }
 
@@ -239,6 +301,7 @@ TEST_P(DBSDKTest, Deploy) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
 
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
@@ -268,6 +331,7 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, DeployOptions) {
@@ -294,6 +358,7 @@ TEST_P(DBSDKTest, DeployOptions) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, DeployLongWindows) {
@@ -322,6 +387,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, CreateWithoutIndexCol) {
@@ -338,37 +404,7 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-}
-
-TEST_P(DBSDKTest, ShowGlobalVaraibles) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("show global variables");
-}
-
-// expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j] is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect,
-                                 hybridse::sdk::ResultSet* rs) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
-    size_t idx = 0;
-    // schema check
-    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (size_t i = 0; i < expect[idx].size(); ++i) {
-        ASSERT_TRUE(expect[idx][i].has_value());
-        EXPECT_EQ(expect[idx][i].value(), rs->GetSchema()->GetColumnName(i));
-    }
-
-    while (++idx < expect.size() && rs->Next()) {
-        for (size_t i = 0; i < expect[idx].size(); ++i) {
-            if (expect[idx][i].has_value()) {
-                std::string val;
-                EXPECT_TRUE(rs->GetAsString(i, val));
-                EXPECT_EQ(expect[idx][i].value(), val);
-            }
-        }
-    }
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
 TEST_P(DBSDKTest, ShowComponents) {
@@ -385,7 +421,7 @@ TEST_P(DBSDKTest, ShowComponents) {
         const auto& tablet_eps = mc_->GetTbEndpoint();
         const auto& ns_ep = mc_->GetNsEndpoint();
         ASSERT_EQ(1, tablet_eps.size());
-        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+        ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
                              rs.get());
@@ -394,13 +430,214 @@ TEST_P(DBSDKTest, ShowComponents) {
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         const auto& tablet_ep = env.GetTbEndpoint();
         const auto& ns_ep = env.GetNsEndpoint();
-        ExpectResultSetStrEq({{"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"},
+        ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_ep, "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
                              rs.get());
     }
 
     HandleSQL("show components");
+}
+
+TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    sr->SetDatabase("");
+
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq(
+        {
+            {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+        },
+        rs.get());
+    HandleSQL("show table status");
+}
+
+// show table status when no database is selected
+TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    std::string db_name = absl::StrCat("db_", GenRand());
+    std::string tb_name = absl::StrCat("tb_", GenRand());
+
+    // prepare data
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                    absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
+                });
+    // reset to empty db
+    sr->SetDatabase("");
+
+    // sleep for 10s, name server should updated TableInfo in schedule
+    // default schedule interval is 2s
+    absl::SleepFor(absl::Seconds(10));
+
+    // test
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
+    HandleSQL("show table status");
+
+    // teardown
+    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                     absl::StrCat("drop database ", db_name)});
+    sr->SetDatabase("");
+}
+
+// show table status after use db
+TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    std::string db1_name = absl::StrCat("db1_", GenRand());
+    std::string tb1_name = absl::StrCat("tb1_", GenRand());
+    std::string db2_name = absl::StrCat("db2_", GenRand());
+    std::string tb2_name = absl::StrCat("tb2_", GenRand());
+
+    // prepare data
+    ProcessSQLs(
+        sr, {
+                "set @@execute_mode = 'online'",
+                absl::StrCat("create database ", db1_name, ";"),
+                absl::StrCat("use ", db1_name, ";"),
+                absl::StrCat("create table ", tb1_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                absl::StrCat("insert into ", tb1_name, " values (1, 'aaa', 1635247427000);"),
+
+                absl::StrCat("create database ", db2_name, ";"),
+                absl::StrCat("use ", db2_name),
+                absl::StrCat("create table ", tb2_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                absl::StrCat("insert into ", tb2_name, " values (2, 'aaa', 1635247427000);"),
+            });
+
+    // sleep for 10s, name server should updated TableInfo in schedule
+    // default schedule interval is 2s
+    absl::SleepFor(absl::Seconds(10));
+
+    // test
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
+
+    sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK());
+    rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
+
+    // show only tables inside hidden db
+    // TODO(#1458): hidden db should create on standalone mode as well
+    if (cs->IsClusterMode()) {
+        HandleSQL("use INFORMATION_SCHEMA");
+        rs = sr->ExecuteSQL("show table status", &status);
+        ASSERT_EQ(status.code, 0);
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+              "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+             {{},
+              nameserver::GLOBAL_VARIABLES,
+              nameserver::INFORMATION_SCHEMA_DB,
+              "memory",
+              {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+              {},
+              {},
+              "1",
+              "0",
+              "1",
+              "NULL",
+              "NULL",
+              "NULL"}},
+            rs.get());
+    }
+
+    // teardown
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db1_name, ";"),
+                        absl::StrCat("drop table ", tb1_name),
+                        absl::StrCat("drop database ", db1_name),
+                        absl::StrCat("use ", db2_name),
+                        absl::StrCat("drop table ", tb2_name),
+                        absl::StrCat("drop database ", db2_name),
+                    });
+
+    sr->SetDatabase("");
+}
+
+TEST_P(DBSDKTest, GlobalVariable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    auto ns_client = cs->GetNsClient();
+
+    if (cs->IsClusterMode()) {
+        std::vector<::openmldb::nameserver::TableInfo> tables;
+        std::string msg;
+        ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+        ASSERT_EQ(1, tables.size());
+        tables.clear();
+        ASSERT_TRUE(
+            ns_client->ShowTable(nameserver::GLOBAL_VARIABLES, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
+        ASSERT_EQ(1, tables.size());
+        ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
+        tables.clear();
+
+        ::hybridse::sdk::Status status;
+        std::string sql = "set @@global.enable_trace='true';";
+        auto res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        sql = "set @@global.execute_mode='online';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        auto rs = sr->ExecuteSQL("show global variables", &status);
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+        ASSERT_EQ("true", rs->GetStringUnsafe(1));
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+        ASSERT_EQ("online", rs->GetStringUnsafe(1));
+
+        sql = "set GLOBAL enable_trace='false';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        sql = "set GLOBAL execute_mode='offline';";
+        res = sr->ExecuteSQL(sql, &status);
+        ASSERT_EQ(0, status.code);
+        rs = sr->ExecuteSQL("show global variables", &status);
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+        ASSERT_EQ("false", rs->GetStringUnsafe(1));
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
+    }
 }
 
 /* TODO: Only run test in standalone mode
