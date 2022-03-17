@@ -50,6 +50,8 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String JOB_LOG_PATH;
+    public static boolean TRACK_UNFINISHED_JOBS;
+    public static int JOB_TRACKER_INTERVAL;
     public static String SPARK_DEFAULT_CONF;
     public static String SPARK_EVENTLOG_DIR;
     public static int SPARK_YARN_MAXAPPATTEMPTS;
@@ -146,6 +148,13 @@ public class TaskManagerConfig {
                     throw new ConfigException("job.log.path", "fail to create log path");
                 }
             }
+        }
+
+        TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
+
+        JOB_TRACKER_INTERVAL = Integer.parseInt(prop.getProperty("job.tracker.interval", "30"));
+        if (JOB_TRACKER_INTERVAL <= 0) {
+            throw new ConfigException("job.tracker.interval", "interval should be larger than 0");
         }
 
         SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
