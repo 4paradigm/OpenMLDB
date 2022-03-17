@@ -142,6 +142,8 @@ thirdparty-fast:
 		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+		# FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	    else \
 		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
 	    fi; \
@@ -149,6 +151,8 @@ thirdparty-fast:
 	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    # FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
+	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	fi
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'

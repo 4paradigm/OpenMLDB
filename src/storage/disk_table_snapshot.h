@@ -1,0 +1,47 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include "proto/common.pb.h"
+#include "storage/disk_table.h"
+#include "storage/snapshot.h"
+#include "storage/table.h"
+
+namespace openmldb {
+namespace storage {
+
+class DiskTableSnapshot : public Snapshot {
+ public:
+    DiskTableSnapshot(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
+                      const std::string& db_root_path);
+    virtual ~DiskTableSnapshot() = default;
+    bool Init() override;
+    int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) override;
+    bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
+    void SetTerm(uint64_t term) { term_ = term; }
+
+ private:
+    ::openmldb::common::StorageMode storage_mode_;
+    uint64_t term_;
+    std::string db_root_path_;
+};
+
+}  // namespace storage
+}  // namespace openmldb
