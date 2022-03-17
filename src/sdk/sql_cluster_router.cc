@@ -1626,7 +1626,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             ::hybridse::sdk::Status status;
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
             if (status.code != 0) {
-                std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
             }
             return rs;
@@ -1635,14 +1634,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
-            ShowJobs(false, job_infos);
-            std::stringstream ss;
-            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            std::vector<std::vector<std::string>> result;
-            std::vector<std::string> vec = {ss.str()};
-            result.emplace_back(std::move(vec));
-            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
+            std::string db = "__INTERNAL_DB";
+            std::string sql = "SELECT * FROM JOB_INFO";
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+            if (status->code != 0) {
+                return {};
+            }
+            return rs;
         }
         case hybridse::node::kCmdShowJob: {
             int job_id;
@@ -1655,19 +1653,19 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
 
-            ::openmldb::taskmanager::JobInfo job_info;
-            ShowJob(job_id, job_info);
-            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
+            std::string db = "__INTERNAL_DB";
+            std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
-            if (job_info.id() > 0) {
-                job_infos.push_back(job_info);
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+            if (status->code != 0) {
+                return {};
             }
-            std::stringstream ss;
-            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            std::vector<std::vector<std::string>> result;
-            std::vector<std::string> vec = {ss.str()};
-            result.emplace_back(std::move(vec));
-            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
+            if(rs->Size() == 0) {
+                status->code = ::hybridse::common::StatusCode::kCmdError;
+                status->msg = "Job not found: " + std::to_string(job_id);
+                return {};
+            }
+            return rs;
         }
         case hybridse::node::kCmdStopJob: {
             int job_id;

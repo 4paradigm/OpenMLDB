@@ -310,6 +310,7 @@ message TableMeta {
     optional string db = 14 [default = ""];
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;
+    optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
 }
 
 message CreateTableRequest {
