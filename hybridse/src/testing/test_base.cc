@@ -506,6 +506,19 @@ void PrintSchema(std::ostringstream& ss, const Schema& schema) {
     }
 }
 
+void PrintAllSchema(std::ostringstream& ss, const PhysicalOpNode* op) {
+    for (int i = 0; i < op->GetProducerCnt(); i++) {
+        PrintAllSchema(ss, op->GetProducer(i));
+    }
+    ss << "[";
+    op->Print(ss, "\t");
+    ss << "]";
+    ss << ": " << std::endl;
+    auto schema = op->GetOutputSchema();
+    PrintSchema(ss, *schema);
+    ss << std::endl;
+}
+
 void PrintSchema(const Schema& schema) {
     std::ostringstream ss;
     PrintSchema(ss, schema);

@@ -100,7 +100,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     physical_plan->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, *physical_plan->GetOutputSchema());
+    PrintAllSchema(ss, physical_plan);
     LOG(INFO) << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
@@ -483,15 +483,25 @@ TEST_F(TransformRequestModePassOptimizedTest, SplitAggregationOptimizedTest) {
         "w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
     const std::string expected =
-        "SIMPLE_PROJECT(sources=(col1, sum(col2)over w1, col2 + 1, add(col2, col1), "
-        "count(col2)over w1, w1_col2_sum, sum(col2)over w3))\n"
+        "SIMPLE_PROJECT(sources=(col1, sum(col2)over w1, col2 + 1, add(col2, col1), count(col2)over w1, w1_col2_sum, "
+        "sum(col2)over w3))\n"
         "  REQUEST_JOIN(type=kJoinTypeConcat)\n"
         "    REQUEST_JOIN(type=kJoinTypeConcat)\n"
         "      REQUEST_JOIN(type=kJoinTypeConcat)\n"
-        "        PROJECT(type=Aggregation)\n"
-        "          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
-        "            DATA_PROVIDER(request=t1)\n"
-        "            DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "        REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "          REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "            PROJECT(type=RowProject)\n"
+        "              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "            PROJECT(type=Aggregation)\n"
+        "              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "          PROJECT(type=RowProject)\n"
+        "            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+        "              DATA_PROVIDER(request=t1)\n"
+        "              DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
         "        PROJECT(type=Aggregation)\n"
         "          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
         "            DATA_PROVIDER(request=t1)\n"
@@ -529,12 +539,11 @@ TEST_F(TransformRequestModePassOptimizedTest, SplitAggregationOptimizedTest) {
 
     {
         hybridse::type::TableDef table_def;
-        BuildTableDef(table_def);
-        table_def.set_name("aggr_t1");
+        BuildAggTableDef(table_def, "aggr_t1", "aggr_db");
         ::hybridse::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1_t2");
-        index->add_first_keys("col1");
-        index->set_second_key("col5");
+        index->add_first_keys("key");
+        index->set_second_key("ts_start");
         hybridse::type::Database db;
         db.set_name("aggr_db");
         AddTable(db, table_def);
@@ -561,16 +570,27 @@ TEST_F(TransformRequestModePassOptimizedTest, LongWindowOptimizedTest) {
         "  REQUEST_JOIN(type=kJoinTypeConcat)\n"
         "    REQUEST_JOIN(type=kJoinTypeConcat)\n"
         "      REQUEST_JOIN(type=kJoinTypeConcat)\n"
-        "        PROJECT(type=ReduceAggregation: col1, sum(col2)over w1 (range[-180000,0]))\n"
+        "        REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "          REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "            PROJECT(type=RowProject)\n"
+        "              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "            PROJECT(type=ReduceAggregation: sum(col2)over w1 (range[-180000,0]))\n"
+        "              REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), "
+        "index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "                DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)\n"
+        "          PROJECT(type=RowProject)\n"
+        "            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
+        "              DATA_PROVIDER(request=t1)\n"
+        "              DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "        PROJECT(type=ReduceAggregation: count(col2)over w1 (range[-180000,0]))\n"
         "          REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
         "            DATA_PROVIDER(request=t1)\n"
         "            DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
-        "            DATA_PROVIDER(table=aggr_t1)\n"
-        "        PROJECT(type=ReduceAggregation: col2 + 1, add(col2, col1), count(col2)over w1 (range[-180000,0]))\n"
-        "          REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
-        "            DATA_PROVIDER(request=t1)\n"
-        "            DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
-        "            DATA_PROVIDER(table=aggr_t1)\n"
+        "            DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)\n"
         "      PROJECT(type=Aggregation)\n"
         "        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -180000, 0), index_keys=(col1))\n"
         "          DATA_PROVIDER(request=t1)\n"
@@ -579,7 +599,7 @@ TEST_F(TransformRequestModePassOptimizedTest, LongWindowOptimizedTest) {
         "      REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1,col2))\n"
         "        DATA_PROVIDER(request=t1)\n"
         "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
-        "        DATA_PROVIDER(table=aggr_t1)";
+        "        DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)";
 
     std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
     hybridse::type::TableDef table_def;
@@ -605,12 +625,11 @@ TEST_F(TransformRequestModePassOptimizedTest, LongWindowOptimizedTest) {
 
     {
         hybridse::type::TableDef table_def;
-        BuildTableDef(table_def);
-        table_def.set_name("aggr_t1");
+        BuildAggTableDef(table_def, "aggr_t1", "aggr_db");
         ::hybridse::type::IndexDef* index = table_def.add_indexes();
         index->set_name("index1_t2");
-        index->add_first_keys("col1");
-        index->set_second_key("col5");
+        index->add_first_keys("key");
+        index->set_second_key("ts_start");
         hybridse::type::Database db;
         db.set_name("aggr_db");
         AddTable(db, table_def);

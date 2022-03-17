@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include "passes/physical/split_aggregation_optimized.h"
+
 #include <vector>
+
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 
@@ -88,22 +90,36 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
         return false;
     }
 
-    std::vector<vm::PhysicalAggrerationNode*> aggr_nodes;
+    std::vector<vm::PhysicalProjectNode*> split_nodes;
     vm::ColumnProjects column_projects;
-    column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
     DLOG(INFO) << "fn_schema size = " << in->project().fn_info().fn_schema()->size();
     for (int i = 0; i < in->project().fn_info().fn_schema()->size(); i++) {
         DLOG(INFO) << "fn_schema " << i << ": " << in->project().fn_info().fn_schema()->Get(i).name();
     }
     for (int i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
-        column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
 
         if (expr->GetExprType() == node::kExprCall) {
             const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
             const auto* window = call_expr->GetOver();
 
             if (window) {
+                // create RowProject of the current column_projects
+                if (column_projects.size() > 0) {
+                    vm::PhysicalRowProjectNode* row_prj = nullptr;
+                    auto status =
+                        plan_ctx_->CreateOp<vm::PhysicalRowProjectNode>(&row_prj, in->GetProducer(0), column_projects);
+                    if (!status.isOK()) {
+                        LOG(ERROR) << "Fail to create PhysicalRowProjectNode: " << status;
+                        return false;
+                    }
+                    split_nodes.emplace_back(row_prj);
+                    column_projects.Clear();
+                }
+
+                // create PhysicalAggrerationNode of the window project
+                column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
+                column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
                 vm::PhysicalAggrerationNode* node = nullptr;
                 LOG(WARNING) << "column_projects size = " << column_projects.size() << ", fn_schema = "
                              << column_projects.GetExpr(column_projects.size() - 1)->GetExprString();
@@ -115,28 +131,31 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
                     return false;
                 }
 
-                aggr_nodes.emplace_back(node);
+                split_nodes.emplace_back(node);
                 column_projects.Clear();
-                column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
+            } else {
+                column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
             }
+        } else {
+            column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
         }
     }
 
-    if (aggr_nodes.size() < 2) {
+    if (split_nodes.size() < 2) {
         return false;
     }
 
     vm::PhysicalRequestJoinNode* join = nullptr;
-    auto status = plan_ctx_->CreateOp<vm::PhysicalRequestJoinNode>(&join, aggr_nodes[0], aggr_nodes[1],
+    auto status = plan_ctx_->CreateOp<vm::PhysicalRequestJoinNode>(&join, split_nodes[0], split_nodes[1],
                                                                    ::hybridse::node::kJoinTypeConcat);
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestJoinNode: " << status;
         return false;
     }
 
-    for (size_t i = 2; i < aggr_nodes.size(); ++i) {
+    for (size_t i = 2; i < split_nodes.size(); ++i) {
         vm::PhysicalRequestJoinNode* new_join = nullptr;
-        status = plan_ctx_->CreateOp<vm::PhysicalRequestJoinNode>(&new_join, join, aggr_nodes[i],
+        status = plan_ctx_->CreateOp<vm::PhysicalRequestJoinNode>(&new_join, join, split_nodes[i],
                                                                   ::hybridse::node::kJoinTypeConcat);
         if (!status.isOK()) {
             LOG(ERROR) << "Fail to create PhysicalRequestJoinNode: " << status;

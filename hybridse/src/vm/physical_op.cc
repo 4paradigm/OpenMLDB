@@ -528,6 +528,20 @@ void PhysicalAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
+Status PhysicalReduceAggregationNode::InitSchema(PhysicalPlanContext* ctx) {
+    // init reduce project schema
+    schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    SchemaSource* project_source = schemas_ctx_.AddSource();
+    project_source->SetSchema(orig_aggr_->GetOutputSchema());
+    for (int i = 0; i < project_.size(); i++) {
+        auto column_id = ctx->GetNewColumnID();
+        project_source->SetColumnID(i, column_id);
+        project_source->SetNonSource(i);
+    }
+    return Status();
+}
+
 void PhysicalReduceAggregationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -1225,11 +1239,15 @@ base::Status PhysicalRequestAggUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
-    if (output_request_row()) {
-        schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
-    } else {
-        schemas_ctx_.Merge(0, producers_[1]->schemas_ctx());
-    }
+    agg_schema_.Clear();
+
+    auto source = schemas_ctx_.AddSource();
+    auto column = agg_schema_.Add();
+    column->set_type(::hybridse::type::kVarchar);
+    column->set_name("aggr_val");
+    source->SetSchema(&agg_schema_);
+    source->SetColumnID(0, ctx->GetNewColumnID());
+    source->SetNonSource(0);
     return Status::OK();
 }
 

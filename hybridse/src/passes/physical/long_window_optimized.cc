@@ -1,23 +1,25 @@
 /*
-* Copyright 2021 4paradigm
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2021 4paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "passes/physical/long_window_optimized.h"
 #include <absl/strings/str_cat.h>
 #include <string>
 #include <vector>
+
 #include "vm/engine.h"
+#include "vm/physical_op.h"
 
 namespace hybridse {
 namespace passes {
@@ -94,8 +96,9 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         LOG(WARNING) << "Not support optimization of RequestUnionOp with window unions";
         return false;
     }
+    const auto& projects = in->project();
     auto orig_data_provider = dynamic_cast<vm::PhysicalDataProviderNode*>(req_union_op->GetProducer(1));
-    auto aggr_op = dynamic_cast<const node::CallExprNode*>(in->project().GetExpr(idx));
+    auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
     const std::string& db_name = orig_data_provider->GetDb();
@@ -130,9 +133,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
 
     auto table_infos = catalog_->GetAggrTables(db_name, table_name, func_name, aggr_col, partition_col, order_col);
     if (table_infos.empty()) {
-        LOG(WARNING) << absl::StrCat("No Pre-aggregation tables exists for ",
-                                     db_name, ".", table_name, ": ", func_name, "(", aggr_col, ")",
-                                     " partition by ", partition_col, " order by ", order_col);
+        LOG(WARNING) << absl::StrCat("No Pre-aggregation tables exists for ", db_name, ".", table_name, ": ", func_name,
+                                     "(", aggr_col, ")", " partition by ", partition_col, " order by ", order_col);
         return false;
     }
 
@@ -146,17 +148,38 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         return false;
     }
 
+    if (table->GetIndex().size() != 1) {
+        LOG(ERROR) << "PreAggregation table index size != 1";
+    }
+    auto index = table->GetIndex().cbegin()->second;
+    auto nm = plan_ctx_->node_manager();
+
     auto request = req_union_op->GetProducer(0);
     auto raw = req_union_op->GetProducer(1);
+
+    // generate an aggregation window for the aggr table
+    auto req_window = req_union_op->window();
+    auto partitions = nm->MakeExprList();
+    for (int i = 0; i < index.keys.size(); i++) {
+        auto col_ref = nm->MakeColumnRefNode(index.keys[i].name, table->GetName(), table->GetDatabase());
+        partitions->AddChild(col_ref);
+    }
+    vm::RequestWindowOp aggr_window(partitions);
+
+    auto order_col_ref =
+        nm->MakeColumnRefNode((*table->GetSchema())[index.ts_pos].name(), table->GetName(), table->GetDatabase());
+    auto order_expr = nm->MakeOrderExpression(order_col_ref, true);
+    auto orders = nm->MakeExprList();
+    orders->AddChild(order_expr);
+    aggr_window.sort_.orders_ = nm->MakeOrderByNode(orders);
+    aggr_window.name_ = req_window.name();
+    aggr_window.range_ = req_window.range_;
+
     vm::PhysicalRequestAggUnionNode* request_aggr_union = nullptr;
-    status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(&request_aggr_union,
-                                                                  request,
-                                                                  raw,
-                                                                  aggr,
-                                                                  req_union_op->window(),
-                                                                  req_union_op->instance_not_in_window(),
-                                                                  req_union_op->exclude_current_time(),
-                                                                  req_union_op->output_request_row());
+    status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(
+        &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
+        req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
+        req_union_op->output_request_row());
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;
@@ -168,8 +191,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         condition = condition->DeepCopy(plan_ctx_->node_manager());
     }
 
-    status = plan_ctx_->CreateOp<vm::PhysicalReduceAggregationNode>(
-        &reduce_aggr, request_aggr_union, in->project(), condition);
+    status = plan_ctx_->CreateOp<vm::PhysicalReduceAggregationNode>(&reduce_aggr, request_aggr_union, in->project(),
+                                                                    condition, in);
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalReduceAggregationNode: " << status;
         return false;
@@ -178,21 +201,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     return true;
 }
 
-bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
-    const auto& projects = op->project();
-    int aggr_counter = 0;
-    for (int i = 0; i < projects.size(); i++) {
-        const auto* expr = projects.GetExpr(i);
-        if (expr->GetExprType() == node::kExprCall) {
-            const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
-            const auto* window = call_expr->GetOver();
-            if (window != nullptr) {
-                aggr_counter++;
-            }
-        }
-    }
-    return aggr_counter == 1;
-}
+bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) { return op->project().size() == 1; }
 
 std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
     std::string str = "";

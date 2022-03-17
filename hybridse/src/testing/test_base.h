@@ -64,6 +64,7 @@ bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog);
 
 void PrintSchema(std::ostringstream& ss, const Schema& schema);
+void PrintAllSchema(std::ostringstream& ss, const PhysicalOpNode* op);
 void PrintSchema(const Schema& schema);
 }  // namespace vm
 }  // namespace hybridse

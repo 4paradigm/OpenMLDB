@@ -819,14 +819,18 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
 
 class PhysicalReduceAggregationNode : public PhysicalProjectNode {
  public:
-    PhysicalReduceAggregationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
+    PhysicalReduceAggregationNode(PhysicalOpNode *node, const ColumnProjects &project,
+                                  const node::ExprNode *condition, const PhysicalAggrerationNode *orig_aggr)
         : PhysicalProjectNode(node, kReduceAggregation, project, true), having_condition_(condition) {
         output_type_ = kSchemaTypeRow;
         fn_infos_.push_back(&having_condition_.fn_info());
+        orig_aggr_ = orig_aggr;
     }
     virtual ~PhysicalReduceAggregationNode() {}
+    base::Status InitSchema(PhysicalPlanContext *) override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     ConditionFilter having_condition_;
+    const PhysicalAggrerationNode* orig_aggr_ = nullptr;
 };
 
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
@@ -1536,43 +1540,13 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {
  public:
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
-                             const node::ExprListNode *partition)
-        : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
-          window_(partition),
-          instance_not_in_window_(false),
-          exclude_current_time_(false),
-          output_request_row_(true) {
-        output_type_ = kSchemaTypeTable;
-
-        fn_infos_.push_back(&window_.partition_.fn_info());
-        fn_infos_.push_back(&window_.index_key_.fn_info());
-
-        AddProducers(request, raw, aggr);
-    }
-
-    PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
-                             const node::WindowPlanNode *w_ptr)
-        : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
-          window_(w_ptr),
-          instance_not_in_window_(w_ptr->instance_not_in_window()),
-          exclude_current_time_(w_ptr->exclude_current_time()),
-          output_request_row_(true) {
-        output_type_ = kSchemaTypeTable;
-
-        fn_infos_.push_back(&window_.partition_.fn_info());
-        fn_infos_.push_back(&window_.sort_.fn_info());
-        fn_infos_.push_back(&window_.range_.fn_info());
-        fn_infos_.push_back(&window_.index_key_.fn_info());
-
-        AddProducers(request, raw, aggr);
-    }
-
-    PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
                              const RequestWindowOp &window,
+                             const RequestWindowOp &aggr_window,
                              bool instance_not_in_window,
                              bool exclude_current_time, bool output_request_row)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
+          agg_window_(aggr_window),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {
@@ -1606,6 +1580,7 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     }
 
     RequestWindowOp window_;
+    RequestWindowOp agg_window_;
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
     const bool output_request_row_;
@@ -1616,6 +1591,8 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
         AddProducer(raw);
         AddProducer(aggr);
     }
+
+    Schema agg_schema_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {

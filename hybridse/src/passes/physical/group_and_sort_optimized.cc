@@ -158,11 +158,21 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
             if (!union_op->instance_not_in_window()) {
                 if (KeysAndOrderFilterOptimized(
-                        union_op->schemas_ctx(), union_op->GetProducer(1),
+                        union_op->GetProducer(1)->schemas_ctx(), union_op->GetProducer(1),
                         &union_op->window_.partition_,
                         &union_op->window_.index_key_, &union_op->window_.sort_,
                         &new_producer)) {
                     if (!ResetProducer(plan_ctx_, union_op, 1, new_producer)) {
+                        return false;
+                    }
+                }
+
+                if (KeysAndOrderFilterOptimized(
+                        union_op->GetProducer(2)->schemas_ctx(), union_op->GetProducer(2),
+                        &union_op->agg_window_.partition_,
+                        &union_op->agg_window_.index_key_, &union_op->agg_window_.sort_,
+                        &new_producer)) {
+                    if (!ResetProducer(plan_ctx_, union_op, 2, new_producer)) {
                         return false;
                     }
                 }
