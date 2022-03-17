@@ -252,8 +252,30 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
-    session_variables_.emplace("execute_mode", "offline");
-    session_variables_.emplace("enable_trace", "false");
+    // init session variables from systemtable
+    // todo: should support standalone mode
+    if (cluster_sdk_->IsClusterMode()) {
+        hybridse::sdk::Status status;
+        std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+        std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
+        std::string sql = "select * from " + table;
+        auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+        if (status.code != 0) {
+            LOG(ERROR) << "init session variables from system table failed: " << status.msg;
+        }
+        std::string key;
+        std::string value;
+        while (rs->Next()) {
+            key = rs->GetStringUnsafe(0);
+            value = rs->GetStringUnsafe(1);
+            if (key == "execute_mode" || key == "enable_trace") {
+                session_variables_.emplace(key, value);
+            }
+        }
+    } else {
+        session_variables_.emplace("execute_mode", "offline");
+        session_variables_.emplace("enable_trace", "false");
+    }
     return true;
 }
 
@@ -1624,11 +1646,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
             std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
-<<<<<<< HEAD
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-=======
-            auto rs = ExecuteSQLParameterized(db_, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
->>>>>>> 0785d407e (update show global variables)
             if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};

@@ -595,6 +595,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
     sr = cli->sr;
     auto ns_client = cs->GetNsClient();
 
+    // todo: should support standalone mode
     if (cs->IsClusterMode()) {
         std::vector<::openmldb::nameserver::TableInfo> tables;
         std::string msg;
@@ -606,25 +607,24 @@ TEST_P(DBSDKTest, GlobalVariable) {
         ASSERT_EQ(1, tables.size());
         ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
         tables.clear();
-
         // init global table
         ::hybridse::sdk::Status status;
-        auto res = sr->ExecuteSQL(nameserver::INFORMATION_SCHEMA_DB,
-                                "select * from GLOBAL_VARIABLES where Variable_name = 'enable_trace';", &status);
-        ASSERT_TRUE(res);
-        ASSERT_EQ("true", res->GetRowString());
-        res = sr->ExecuteSQL(nameserver::INFORMATION_SCHEMA_DB,
-                                "select * from GLOBAL_VARIABLES where Variable_name = 'execute_mode';", &status);
-        ASSERT_TRUE(res);
-        ASSERT_EQ("online", res->GetRowString());
-
+        auto rs = sr->ExecuteSQL("show global variables", &status);
+        ASSERT_EQ(2, rs->Size());
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
+        ASSERT_EQ("false", rs->GetStringUnsafe(1));
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
+        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
+        // set @@global.xxx = xxx
         std::string sql = "set @@global.enable_trace='true';";
         auto res = sr->ExecuteSQL(sql, &status);
         ASSERT_EQ(0, status.code);
         sql = "set @@global.execute_mode='online';";
         res = sr->ExecuteSQL(sql, &status);
         ASSERT_EQ(0, status.code);
-        auto rs = sr->ExecuteSQL("show global variables", &status);
+        rs = sr->ExecuteSQL("show global variables", &status);
         ASSERT_EQ(2, rs->Size());
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));

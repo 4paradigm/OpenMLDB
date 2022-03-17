@@ -1279,6 +1279,19 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     for (const auto& kv : db_table_info_) {
         RecoverEndpointDBInternal(endpoint, need_restore, concurrency, kv.second);
     }
+    // recover global variable after tablet restart
+    NotifyGlobalVarChanged();
+}
+
+void NameServerImpl::NotifyGlobalVarChanged() {
+    if (!IsClusterMode()) {
+        return;
+    }
+    if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
+        PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_);
+        return;
+    }
+    PDLOG(INFO, "notify table changed ok");
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletRequest* request,
@@ -1338,6 +1351,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zk_path_.zone_data_path_ = zk_path + "/cluster";
         zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
         zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
+        zk_path_.globalvar_changed_notify_node_ = zk_path + "/notify/global_variable";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -5446,6 +5460,7 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
+    // todo: should support standalone mode
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
@@ -10206,12 +10221,12 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
 
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
-        {"execute_mode", "online"},
-        {"enable_trace", "true"},
+        {"execute_mode", "offline"},
+        {"enable_trace", "false"},
     };
     // get table_info
     std::string db = INFORMATION_SCHEMA_DB;
-    std::string table = GLOBAL_VARIABLE_NAME;
+    std::string table = GLOBAL_VARIABLES;
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(table, db, &table_info)) {
         return {ReturnCode::kTableIsNotExist, "table is not exist!"};
