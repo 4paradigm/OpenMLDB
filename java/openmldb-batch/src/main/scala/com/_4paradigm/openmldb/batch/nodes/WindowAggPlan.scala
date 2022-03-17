@@ -29,9 +29,7 @@ import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType
 import org.apache.spark.sql.{DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
-
 
 /** The planner which implements window agg physical node.
  *
@@ -679,39 +677,12 @@ object WindowAggPlan {
               // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
               for (tsColIdx <- outputTimestampColIndexes) {
                 if(!outputInternalRow.isNullAt(tsColIdx)) {
-
                   /*
                    * If we run window without select, we get JoinedRow which contains two UnsafeRow.
                    * We would not ues JoinedRow.setLong() which will can underlying UnsafeRow.update() and it throw
-                   * java.lang.UnsupportedOperationException.
-                   *
-                   * TODO: Change to `outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)`
+                   * java.lang.UnsupportedOperationException so we change to OpenmldbJoinedRow.
                    */
-
-                  outputInternalRow match {
-                    case row: JoinedRow =>
-                      // Use Java reflection to get private fields in JoinedRow
-                      val joinedRowClass = classOf[JoinedRow]
-                      val row1Field = joinedRowClass.getDeclaredField("row1")
-                      val row2Field = joinedRowClass.getDeclaredField("row2")
-                      row1Field.setAccessible(true)
-                      row2Field.setAccessible(true)
-                      val row1InternalRow = row1Field.get(row).asInstanceOf[InternalRow]
-                      val row2InternalRow = row2Field.get(row).asInstanceOf[InternalRow]
-                      val row1ColNum = row1InternalRow.numFields
-
-                      // TODO(tobe): Support JoinedRow within JoinedRow in the future
-                      if (tsColIdx < row1ColNum) {
-                        row1InternalRow.setLong(tsColIdx, row.getLong(tsColIdx) * 1000)
-                      } else {
-                        val row2ColIdx = tsColIdx - row1ColNum
-                        row2InternalRow.setLong(row2ColIdx, row.getLong(tsColIdx) * 1000)
-                      }
-
-                    case _ =>
-                      outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
-                  }
-
+                   outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
                 }
               }
 
