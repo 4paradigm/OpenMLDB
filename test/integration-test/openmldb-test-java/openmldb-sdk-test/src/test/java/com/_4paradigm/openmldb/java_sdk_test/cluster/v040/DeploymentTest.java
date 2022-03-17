@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
-
+package com._4paradigm.openmldb.java_sdk_test.cluster.v040;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -32,27 +32,24 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
-    }
-
+@Feature("deploy")
+public class DeploymentTest extends FedbTest {
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsertByCli(SQLCase testCase){
+    @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
+    @Story("create")
+    public void testCreate(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
+    @Story("show")
+    public void testShow(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
+    @Story("drop")
+    public void testDrop(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 

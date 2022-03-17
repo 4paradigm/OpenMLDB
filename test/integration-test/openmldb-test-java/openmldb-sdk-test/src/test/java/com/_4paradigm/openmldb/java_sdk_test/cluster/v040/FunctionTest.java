@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
-
+package com._4paradigm.openmldb.java_sdk_test.cluster.v040;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -32,28 +31,31 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
+@Feature("Function")
+public class FunctionTest extends FedbTest {
 
+    @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/v040/test_like_match.yaml")
+    public void testFunction(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
-
+    @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
+    @Yaml(filePaths = "function/v040/test_like_match.yaml")
+    public void testFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
-
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsertByCli(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    @Story("requestWithSp")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/v040/test_like_match.yaml")
+    public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
-
+    @Story("requestWithSpAysn")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/v040/test_like_match.yaml")
+    public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
+    }
 }

@@ -36,25 +36,45 @@ public class ExpressTest extends FedbTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
+    @Yaml(filePaths = {
+            "function/expression/test_arithmetic.yaml",
+            "function/expression/test_condition.yaml",
+            "function/expression/test_logic.yaml",
+            "function/expression/test_type.yaml"
+    })
     public void testExpress(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
+    @Yaml(filePaths = {
+            "function/expression/test_arithmetic.yaml",
+            "function/expression/test_condition.yaml",
+            "function/expression/test_logic.yaml",
+            "function/expression/test_type.yaml"
+    })
     public void testExpressRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
+    @Yaml(filePaths = {
+            "function/expression/test_arithmetic.yaml",
+            "function/expression/test_condition.yaml",
+            "function/expression/test_logic.yaml",
+            "function/expression/test_type.yaml"
+    })
     public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/expression/")
+    @Yaml(filePaths = {
+            "function/expression/test_arithmetic.yaml",
+            "function/expression/test_condition.yaml",
+            "function/expression/test_logic.yaml",
+            "function/expression/test_type.yaml"
+    })
     public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

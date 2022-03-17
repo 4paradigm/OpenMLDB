@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+package com._4paradigm.openmldb.java_sdk_test.standalone.v040;
 
-
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -32,28 +31,13 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("DML")
-public class DMLTest extends FedbTest {
+@Feature("Express")
+public class ExpressTest extends StandaloneTest {
 
+    @Story("standalone-cli")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsert(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    @Yaml(filePaths = "function/v040/test_like.yaml")
+    public void testExpress(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
-    @Story("insert-prepared")
-    public void testInsertWithPrepared(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
-    }
-
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsertByCli(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
-    }
-
 }
