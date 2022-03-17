@@ -434,30 +434,6 @@ TEST_P(DBSDKTest, ShowGlobalVaraibles) {
     HandleSQL("show global variables");
 }
 
-// expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j] is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<std::optional<std::string>>>& expect,
-                                 hybridse::sdk::ResultSet* rs) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
-    size_t idx = 0;
-    // schema check
-    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (size_t i = 0; i < expect[idx].size(); ++i) {
-        ASSERT_TRUE(expect[idx][i].has_value());
-        EXPECT_EQ(expect[idx][i].value(), rs->GetSchema()->GetColumnName(i));
-    }
-
-    while (++idx < expect.size() && rs->Next()) {
-        for (size_t i = 0; i < expect[idx].size(); ++i) {
-            if (expect[idx][i].has_value()) {
-                std::string val;
-                EXPECT_TRUE(rs->GetAsString(i, val));
-                EXPECT_EQ(expect[idx][i].value(), val);
-            }
-        }
-    }
-}
-
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
