@@ -369,6 +369,20 @@ class CreatePlanNode : public LeafPlanNode {
           column_desc_list_(column_list),
           distribution_list_(distribution_list),
           if_not_exist_(if_not_exist) {}
+
+    CreatePlanNode(const std::string& db_name,
+                   const std::string &table_name, int replica_num, int partition_num,
+                   NodePointVector column_list,
+                   NodePointVector distribution_list)
+        : LeafPlanNode(kPlanTypeCreate),
+          database_(db_name),
+          table_name_(table_name),
+          replica_num_(replica_num),
+          partition_num_(partition_num),
+          column_desc_list_(column_list),
+          distribution_list_(distribution_list),
+          if_not_exist_(false) {}
+
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
