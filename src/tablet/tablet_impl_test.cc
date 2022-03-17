@@ -5697,7 +5697,6 @@ TEST_F(TabletImplTest, DelRecycleMem) {
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
-// TODO(litongxin): SIGSEGV
 TEST_F(TabletImplTest, DelRecycleDisk) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
