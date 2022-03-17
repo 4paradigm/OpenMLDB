@@ -372,7 +372,7 @@ void DiskTable::GcHead() {
             while (it->Valid()) {
                 std::string cur_pk;
                 uint64_t ts = 0;
-                uint8_t ts_idx = 0;
+                uint32_t ts_idx = 0;
                 ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
                 if (!last_pk.empty() && cur_pk == last_pk) {
                     auto ttl_iter = ttl_map.find(ts_idx);
@@ -547,7 +547,7 @@ DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, con
     : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0) {}
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                                     const std::string& pk, uint8_t ts_idx)
+                                     const std::string& pk, uint32_t ts_idx)
     : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), ts_idx_(ts_idx) {
     has_ts_idx_ = true;
 }
@@ -562,7 +562,7 @@ bool DiskTableIterator::Valid() {
         return false;
     }
     std::string cur_pk;
-    uint8_t cur_ts_idx = UINT8_MAX;
+    uint32_t cur_ts_idx = UINT32_MAX;
     ParseKeyAndTs(has_ts_idx_, it_->key(), cur_pk, ts_, cur_ts_idx);
     return has_ts_idx_ ? cur_pk == pk_ && cur_ts_idx == ts_idx_ : cur_pk == pk_;
 }
@@ -641,7 +641,7 @@ bool DiskTableTraverseIterator::Valid() {
 void DiskTableTraverseIterator::Next() {
     for (it_->Next(); it_->Valid(); it_->Next()) {
         std::string last_pk = pk_;
-        uint8_t cur_ts_idx = UINT8_MAX;
+        uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (last_pk == pk_) {
@@ -689,7 +689,7 @@ void DiskTableTraverseIterator::SeekToFirst() {
     it_->SeekToFirst();
     record_idx_ = 1;
     for (; it_->Valid(); it_->Next()) {
-        uint8_t cur_ts_idx = UINT8_MAX;
+        uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             if (has_ts_idx_) {
@@ -724,7 +724,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     if (expire_value_.ttl_type == ::openmldb::storage::TTLType::kLatestTime) {
         record_idx_ = 0;
         for (; it_->Valid(); it_->Next()) {
-            uint8_t cur_ts_idx = UINT8_MAX;
+            uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
             if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 if (has_ts_idx_) {
@@ -760,7 +760,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         }
     } else {
         for (; it_->Valid(); it_->Next()) {
-            uint8_t cur_ts_idx = UINT8_MAX;
+            uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
             if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 if (has_ts_idx_) {
@@ -811,7 +811,7 @@ void DiskTableTraverseIterator::NextPK() {
     }
     record_idx_ = 1;
     while (it_->Valid()) {
-        uint8_t cur_ts_idx = UINT8_MAX;
+        uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
         if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             if (has_ts_idx_) {

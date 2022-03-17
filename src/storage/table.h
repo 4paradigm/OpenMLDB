@@ -46,7 +46,7 @@ class Table {
           ::openmldb::type::TTLType ttl_type, ::openmldb::type::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
-    
+
     int InitColumnDesc();
 
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;

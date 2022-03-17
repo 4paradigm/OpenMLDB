@@ -125,6 +125,10 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     //    ASSERT_EQ(0, table->GetRecordIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordCnt());
 
+    auto meta = ::openmldb::test::GetTableMeta({"idx0", "idx1", "idx2"});
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
+
+    std::vector<std::string> row = {"valuea", "valueb", "valuec"};
     Dimensions dimensions;
     ::openmldb::api::Dimension* d0 = dimensions.Add();
     d0->set_key("yjdim0");
@@ -135,7 +139,9 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ::openmldb::api::Dimension* d2 = dimensions.Add();
     d2->set_key("yjdim2");
     d2->set_idx(2);
-    bool ok = table->Put(1, "yjtestvalue", dimensions);
+    std::string value;
+    ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
+    bool ok = table->Put(1, value, dimensions);
     ASSERT_TRUE(ok);
     // some functions in disk table need to be implemented.
     // refer to issue #1238
@@ -148,7 +154,12 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     uint64_t ts = it->GetKey();
     ASSERT_EQ(1, (int64_t)ts);
     std::string value1 = it->GetValue().ToString();
-    ASSERT_EQ("yjtestvalue", value1);
+    const int8_t* data = reinterpret_cast<const int8_t*>(value1.data());
+    uint8_t version = codec::RowView::GetSchemaVersion(data);
+    auto decoder = table->GetVersionDecoder(version);
+    std::string rawValue1;
+    decoder->GetStrValue(data, 0, &rawValue1);
+    ASSERT_EQ("valuea", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -158,7 +169,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, (int64_t)it->GetKey());
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("yjtestvalue", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 1, &rawValue1);
+    ASSERT_EQ("valueb", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -166,10 +181,13 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it = table->NewIterator(2, "yjdim2", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
-    ts = it->GetKey();
-    ASSERT_EQ(1, (int64_t)ts);
+    ASSERT_EQ(1, (int64_t)it->GetKey());
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("yjtestvalue", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 2, &rawValue1);
+    ASSERT_EQ("valuec", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -186,7 +204,10 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     d2 = dimensions.Add();
     d2->set_key("dimxxx1");
     d2->set_idx(2);
-    ASSERT_TRUE(table->Put(2, "value2", dimensions));
+
+    row = {"valuea", "valueb", "valuec"};
+    ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
+    ASSERT_TRUE(table->Put(2, value, dimensions));
 
     it = table->NewIterator(0, "key2", ticket);
     it->SeekToFirst();
@@ -194,7 +215,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ts = it->GetKey();
     ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("value2", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 0, &rawValue1);
+    ASSERT_EQ("valuea", rawValue1);
     delete it;
 
     it = table->NewIterator(1, "key1", ticket);
@@ -204,7 +229,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
 
     std::string val;
     ASSERT_TRUE(table->Get(1, "key1", 2, val));
-    ASSERT_EQ("value2", val);
+    data = reinterpret_cast<const int8_t*>(val.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 1, &rawValue1);
+    ASSERT_EQ("valueb", rawValue1);
 
     it = table->NewIterator(2, "dimxxx1", ticket);
     it->SeekToFirst();
@@ -212,7 +241,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ts = it->GetKey();
     ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("value2", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 2, &rawValue1);
+    ASSERT_EQ("valuec", rawValue1);
     delete it;
 
     it = table->NewIterator(1, "key1", ticket);
@@ -221,7 +254,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ts = it->GetKey();
     ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("value2", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 1, &rawValue1);
+    ASSERT_EQ("valueb", rawValue1);
     delete it;
 
     it = table->NewIterator(1, "key1", ticket);
@@ -229,7 +266,11 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2, (int64_t)it->GetKey());
     value1 = it->GetValue().ToString();
-    ASSERT_EQ("value2", value1);
+    data = reinterpret_cast<const int8_t*>(value1.data());
+    version = codec::RowView::GetSchemaVersion(data);
+    decoder = table->GetVersionDecoder(version);
+    decoder->GetStrValue(data, 1, &rawValue1);
+    ASSERT_EQ("valueb", rawValue1);
     delete it;
 
     delete table;
@@ -243,6 +284,8 @@ TEST_F(DiskTableTest, LongPut) {
     std::string table_path = FLAGS_ssd_root_path + "/3_1";
     DiskTable* table = new DiskTable("yjtable3", 3, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kSSD, table_path);
+    auto meta = ::openmldb::test::GetTableMeta({"idx0", "idx1"});
+    ::openmldb::codec::SDKCodec sdk_codec(meta);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         Dimensions dimensions;
@@ -254,8 +297,12 @@ TEST_F(DiskTableTest, LongPut) {
         d1->set_key("ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx));
         d1->set_idx(1);
         uint64_t ts = 1581931824136;
+        std::vector<std::string> row = {"ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue",
+                                        "ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue"};
+        std::string value;
+        ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
         for (int k = 0; k < 10; k++) {
-            ASSERT_TRUE(table->Put(ts + k, "ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", dimensions));
+            ASSERT_TRUE(table->Put(ts + k, value, dimensions));
         }
     }
     for (int idx = 0; idx < 10; idx++) {
@@ -278,8 +325,18 @@ TEST_F(DiskTableTest, LongPut) {
             ASSERT_EQ(1581931824136 + 9 - k, (int64_t)it1->GetKey());
             std::string value0 = it0->GetValue().ToString();
             std::string value1 = it1->GetValue().ToString();
-            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value0);
-            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", value1);
+            const int8_t* data = reinterpret_cast<const int8_t*>(value0.data());
+            uint8_t version = codec::RowView::GetSchemaVersion(data);
+            auto decoder = table->GetVersionDecoder(version);
+            std::string rawValue1;
+            decoder->GetStrValue(data, 0, &rawValue1);
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", rawValue1);
+
+            data = reinterpret_cast<const int8_t*>(value1.data());
+            version = codec::RowView::GetSchemaVersion(data);
+            decoder = table->GetVersionDecoder(version);
+            decoder->GetStrValue(data, 0, &rawValue1);
+            ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue", rawValue1);
             it0->Next();
             it1->Next();
         }
@@ -732,6 +789,7 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     table_meta.set_tid(11);
     table_meta.set_pid(1);
     table_meta.set_storage_mode(::openmldb::common::kHDD);
+    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -743,6 +801,8 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     std::string table_path = FLAGS_hdd_root_path + "/11_1";
     DiskTable* table = new DiskTable(table_meta, table_path);
     ASSERT_TRUE(table->Init());
+
+    codec::SDKCodec codec(table_meta);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         Dimensions dims;
@@ -758,12 +818,22 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
         std::string key = "test" + std::to_string(idx);
         if (idx == 5 || idx == 10) {
             for (int i = 0; i < 10; i++) {
-                ASSERT_TRUE(table->Put(cur_time - i * 60 * 1000, "value" + std::to_string(i), dims));
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_time - i * 60 * 1000),
+                                                std::to_string(cur_time - i * 60 * 1000)};
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                ASSERT_TRUE(table->Put(cur_time - i * 60 * 1000, value, dims));
             }
 
         } else {
             for (int i = 0; i < 10; i++) {
-                ASSERT_TRUE(table->Put(cur_time - i, "value" + std::to_string(i), dims));
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_time - i),
+                                                std::to_string(cur_time - i)};
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                ASSERT_TRUE(table->Put(cur_time - i, value, dims));
             }
         }
     }
@@ -786,7 +856,14 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
         uint64_t ts = cur_time;
         if (idx == 5 || idx == 10) {
             for (int i = 0; i < 10; i++) {
-                std::string e_value = "value" + std::to_string(i);
+                std::vector<std::string> row = {
+                    "value" + std::to_string(i),
+                    "value" + std::to_string(i),
+                    std::to_string(ts - i * 60 * 1000),
+                    std::to_string(ts - i * 60 * 1000),
+                };
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
                 ASSERT_TRUE(table->Get(0, key, ts - i * 60 * 1000, value));
                 ASSERT_EQ(e_value, value);
@@ -797,7 +874,10 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
 
         } else {
             for (int i = 0; i < 10; i++) {
-                std::string e_value = "value" + std::to_string(i);
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(ts - i), std::to_string(ts - i)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
                 ASSERT_TRUE(table->Get(0, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
@@ -826,9 +906,12 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
         uint64_t ts = cur_time;
         if (idx == 5 || idx == 10) {
             for (int i = 0; i < 10; i++) {
-                std::string e_value = "value" + std::to_string(i);
-                std::string value;
                 uint64_t cur_ts = ts - i * 60 * 1000;
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_ts), std::to_string(cur_ts)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
+                std::string value;
                 if (i < 3) {
                     ASSERT_TRUE(table->Get(0, key, cur_ts, value));
                     ASSERT_EQ(e_value, value);
@@ -846,7 +929,10 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
             }
         } else {
             for (int i = 0; i < 10; i++) {
-                std::string e_value = "value" + std::to_string(i);
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(ts - i), std::to_string(ts - i)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
                 ASSERT_TRUE(table->Get(0, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
@@ -865,6 +951,7 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     table_meta.set_tid(12);
     table_meta.set_pid(1);
     table_meta.set_storage_mode(::openmldb::common::kHDD);
+    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -872,11 +959,12 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kLatestTime, 0, 3);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kLatestTime, 0, 5);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kLatestTime, 0, 5);
-    ::openmldb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
 
     std::string table_path = FLAGS_hdd_root_path + "/12_1";
     DiskTable* table = new DiskTable(table_meta, table_path);
     ASSERT_TRUE(table->Init());
+    codec::SDKCodec codec(table_meta);
+
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         Dimensions dims;
@@ -894,7 +982,11 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
             if (idx == 50 && i > 2) {
                 break;
             }
-            ASSERT_TRUE(table->Put(cur_time - i, "value" + std::to_string(i), dims));
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                            std::to_string(cur_time - i), std::to_string(cur_time - i)};
+            std::string value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &value));
+            ASSERT_TRUE(table->Put(cur_time - i, value, dims));
         }
     }
     Ticket ticket;
@@ -914,7 +1006,10 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
         for (int i = 0; i < 10; i++) {
-            std::string e_value = "value" + std::to_string(i);
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                            std::to_string(cur_time - i), std::to_string(cur_time - i)};
+            std::string e_value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
             std::string value;
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, cur_time - i, value));
@@ -946,7 +1041,10 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
         for (int i = 0; i < 10; i++) {
-            std::string e_value = "value" + std::to_string(i);
+            std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                            std::to_string(cur_time - i), std::to_string(cur_time - i)};
+            std::string e_value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
             std::string value;
             if (idx == 50 && i > 2) {
                 ASSERT_FALSE(table->Get(0, key, cur_time - i, value));

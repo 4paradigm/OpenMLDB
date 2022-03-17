@@ -89,14 +89,15 @@ class DiskTestEnvironment : public ::testing::Environment{
     }
 };
 
-class TableTest : public ::testing::Test {
+class TableTest : public ::testing::TestWithParam<::openmldb::common::StorageMode> {
  public:
     TableTest() {}
     ~TableTest() {}
 };
 
+TEST_P(TableTest, Put) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-void put(::openmldb::common::StorageMode storageMode) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -123,15 +124,8 @@ void put(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, PutMem) {
-    put(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, PutDisk) {
-    put(::openmldb::common::StorageMode::kHDD);
-}
-
-void MultiDimissionDelete(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, MultiDimissionDelete) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta* table_meta = new ::openmldb::api::TableMeta();
     table_meta->set_name("t0");
     std::string table_path = "";
@@ -170,15 +164,8 @@ void MultiDimissionDelete(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, MultiDimissionDeleteMem) {
-    MultiDimissionDelete(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, MultiDimissionDeleteDisk) {
-    MultiDimissionDelete(::openmldb::common::StorageMode::kHDD);
-}
-
-void MultiDimissionPut0(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, MultiDimissionPut0) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
@@ -219,20 +206,11 @@ void MultiDimissionPut0(::openmldb::common::StorageMode storageMode) {
         ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
     }
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
-    delete table; 
+    delete table;
 }
 
-TEST_F(TableTest, MultiDimissionPut0Mem) {
-    MultiDimissionPut0(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, MultiDimissionPut0Disk) {
-    MultiDimissionPut0(::openmldb::common::StorageMode::kHDD);
-}
-
-
-
-void IsExpired(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, IsExpired) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -259,15 +237,8 @@ void IsExpired(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, IsExpiredMem) {
-    IsExpired(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, IsExpiredDisk) {
-    IsExpired(::openmldb::common::StorageMode::kHDD);
-}
-
-void Iterator(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, Iterator) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -299,15 +270,8 @@ void Iterator(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, IteratorMem) {
-    Iterator(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, IteratorDisk) {
-    Iterator(::openmldb::common::StorageMode::kHDD);
-}
-
-void Iterator_GetSize(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, Iterator_GetSize) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -359,15 +323,14 @@ void Iterator_GetSize(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, Iterator_GetSizeMem) {
-    Iterator_GetSize(::openmldb::common::StorageMode::kMemory);
-}
+TEST_P(TableTest, SchedGcHead) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-TEST_F(TableTest, Iterator_GetSizeDisk) {
-    Iterator_GetSize(::openmldb::common::StorageMode::kHDD);
-}
-
-void SchedGcHead(::openmldb::common::StorageMode storageMode) {
+    // some functions with disktable mode in this test have not been implemented.
+    // refer to issue #1238
+    if (storageMode == openmldb::common::kHDD) {
+        return;
+    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -424,17 +387,8 @@ void SchedGcHead(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, SchedGcHeadMem) {
-    SchedGcHead(::openmldb::common::StorageMode::kMemory);
-}
-
-// some functions in disk table need to be implemented.
-// refer to issue #1238
-// TEST_F(TableTest, SchedGcHeadDisk) {
-//     SchedGcHead(::openmldb::common::StorageMode::kHDD);
-// }
-
-void SchedGcHead1(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, SchedGcHead1) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
@@ -479,15 +433,14 @@ void SchedGcHead1(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, SchedGcHead1Mem) {
-    SchedGcHead1(::openmldb::common::StorageMode::kMemory);
-}
+TEST_P(TableTest, SchedGc) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-TEST_F(TableTest, SchedGcHead1Disk) {
-    SchedGcHead1(::openmldb::common::StorageMode::kHDD);
-}
-
-void SchedGc(::openmldb::common::StorageMode storageMode) {
+    // some functions with disktable mode in this test have not been implemented.
+    // refer to issue #1238
+    if (storageMode == openmldb::common::kHDD) {
+        return;
+    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -531,17 +484,14 @@ void SchedGc(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, SchedGcMem) {
-    SchedGc(::openmldb::common::StorageMode::kMemory);
-}
+TEST_P(TableTest, TableDataCnt) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-// some functions in disk table need to be implemented.
-// refer to issue #1238
-// TEST_F(TableTest, SchedGcDisk) {
-//     SchedGc(::openmldb::common::StorageMode::kHDD);
-// }
-
-void TableDataCnt(::openmldb::common::StorageMode storageMode) {
+    // some functions with disktable mode in this test have not been implemented.
+    // refer to issue #1238
+    if (storageMode == openmldb::common::kHDD) {
+        return;
+    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -593,17 +543,8 @@ void TableDataCnt(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TableDataCntMem) {
-    TableDataCnt(::openmldb::common::StorageMode::kMemory);
-}
-
-// some functions in disk table need to be implemented.
-// refer to issue #1238
-// TEST_F(TableTest, TableDataCntDisk) {
-//     TableDataCnt(::openmldb::common::StorageMode::kHDD);
-// }
-
-void TableUnref(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TableUnref) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -619,15 +560,8 @@ void TableUnref(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TableUnrefMem) {
-    TableUnref(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TableUnrefDisk) {
-    TableUnref(::openmldb::common::StorageMode::kHDD);
-}
-
-void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TableIteratorRun) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -719,15 +653,8 @@ void TableIteratorRun(::openmldb::common::StorageMode storageMode) {
     delete table1;
 }
 
-TEST_F(TableTest, TableIteratorMem) {
-    TableIteratorRun(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TableIteratorDisk) {
-    TableIteratorRun(::openmldb::common::StorageMode::kHDD);
-}
-
-void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TableIteratorNoPk) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -760,7 +687,7 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     ASSERT_EQ(9523, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk4", it->GetPK().c_str());
-    ASSERT_EQ(9524, (int64_t)it->GetKey());    
+    ASSERT_EQ(9524, (int64_t)it->GetKey());
 
     delete it;
 
@@ -785,15 +712,8 @@ void TableIteratorNoPk(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TableIteratorNoPkMem) {
-    TableIteratorNoPk(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TableIteratorNoPkDisk) {
-    TableIteratorNoPk(::openmldb::common::StorageMode::kHDD);
-}
-
-void TableIteratorCount(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TableIteratorCount) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -857,16 +777,8 @@ void TableIteratorCount(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TableIteratorCountMem) {
-    TableIteratorCount(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TableIteratorCountDisk) {
-    TableIteratorCount(::openmldb::common::StorageMode::kHDD);
-}
-
-
-void TableIteratorTS(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TableIteratorTS) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -977,16 +889,8 @@ void TableIteratorTS(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TableIteratorTSMem) {
-    TableIteratorTS(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TableIteratorTSDisk) {
-    TableIteratorTS(::openmldb::common::StorageMode::kHDD);
-}
-
-
-void TraverseIteratorCount(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TraverseIteratorCount) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1073,15 +977,8 @@ void TraverseIteratorCount(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, TraverseIteratorCountMem) {
-    TraverseIteratorCount(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TraverseIteratorCountDisk) {
-    TraverseIteratorCount(::openmldb::common::StorageMode::kHDD);
-}
-
-void UpdateTTL(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, UpdateTTL) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1120,15 +1017,8 @@ void UpdateTTL(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, UpdateTTLMem) {
-    UpdateTTL(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, UpdateTTLDisk) {
-    UpdateTTL(::openmldb::common::StorageMode::kHDD);
-}
-
-void AbsAndLatSetGet(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, AbsAndLatSetGet) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1228,15 +1118,8 @@ void AbsAndLatSetGet(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, AbsAndLatSetGetMem) {
-    AbsAndLatSetGet(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, AbsAndLatSetGetDisk) {
-    AbsAndLatSetGet(::openmldb::common::StorageMode::kHDD);
-}
-
-void AbsOrLatSetGet(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, AbsOrLatSetGet) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1332,15 +1215,14 @@ void AbsOrLatSetGet(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, AbsOrLatSetGetMem) {
-    AbsOrLatSetGet(::openmldb::common::StorageMode::kMemory);
-}
+TEST_P(TableTest, GcAbsOrLat) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-TEST_F(TableTest, AbsOrLatSetGetDisk) {
-    AbsOrLatSetGet(::openmldb::common::StorageMode::kHDD);
-}
-
-void GcAbsOrLat(::openmldb::common::StorageMode storageMode) {
+    // some functions with disktable mode in this test have not been implemented.
+    // refer to issue #1238
+    if (storageMode == openmldb::common::kHDD) {
+        return;
+    }
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1484,17 +1366,14 @@ void GcAbsOrLat(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, GcAbsOrLatMem) {
-    GcAbsOrLat(::openmldb::common::StorageMode::kMemory);
-}
+TEST_P(TableTest, GcAbsAndLat) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
 
-// some functions in disk table need to be implemented.
-// refer to issue #1238
-// TEST_F(TableTest, GcAbsOrLatDisk) {
-//     GcAbsOrLat(::openmldb::common::StorageMode::kHDD);
-// }
-
-void GcAbsAndLat(::openmldb::common::StorageMode storageMode) {
+    // some functions with disktable mode in this test have not been implemented.
+    // refer to issue #1238
+    if (storageMode == openmldb::common::kHDD) {
+        return;
+    }
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1650,17 +1529,8 @@ void GcAbsAndLat(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, GcAbsAndLatMem) {
-    GcAbsAndLat(::openmldb::common::StorageMode::kMemory);
-}
-
-// some functions in disk table need to be implemented.
-// refer to issue #1238
-// TEST_F(TableTest, GcAbsAndLatDisk) {
-//     GcAbsAndLat(::openmldb::common::StorageMode::kHDD);
-// }
-
-void TraverseIteratorCountWithLimit(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TraverseIteratorCountWithLimit) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 50;
 
@@ -1757,13 +1627,6 @@ void TraverseIteratorCountWithLimit(::openmldb::common::StorageMode storageMode)
     FLAGS_max_traverse_cnt = old_max_traverse;
 }
 
-TEST_F(TableTest, TraverseIteratorCountWithLimitMem) {
-    TraverseIteratorCountWithLimit(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, TraverseIteratorCountWithLimitDisk) {
-    TraverseIteratorCountWithLimit(::openmldb::common::StorageMode::kHDD);
-}
 
 // Release function is only in memtable
 TEST_F(TableTest, Release) {
@@ -1778,7 +1641,8 @@ TEST_F(TableTest, Release) {
     delete table;
 }
 
-void TSColIDLength(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, TSColIDLength) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1833,25 +1697,12 @@ void TSColIDLength(::openmldb::common::StorageMode storageMode) {
         it->Next();
     }
 
-    // Wrong result in disktable with ts_col's id greater than 255
-    // refer to issue #1394 for more information
-    if (storageMode == ::openmldb::common::kMemory) {
-        ASSERT_EQ(10, count);
-    } else {
-        ASSERT_EQ(20, count);
-    }
+    ASSERT_EQ(10, count);
     delete table;
 }
 
-TEST_F(TableTest, TSColIDLengthDisk) {
-    TSColIDLength(::openmldb::common::StorageMode::kHDD);
-}
-
-TEST_F(TableTest, TSColIDLengthMem) {
-    TSColIDLength(::openmldb::common::StorageMode::kMemory);
-}
-
-void MultiDimensionPutTS(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, MultiDimensionPutTS) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1909,15 +1760,8 @@ void MultiDimensionPutTS(::openmldb::common::StorageMode storageMode) {
     ASSERT_EQ(2000, it2->GetKey());
 }
 
-TEST_F(TableTest, MultiDimensionPutTSDisk) {
-    MultiDimensionPutTS(::openmldb::common::StorageMode::kHDD);
-}
-
-TEST_F(TableTest, MultiDimensionPutTSMem) {
-    MultiDimensionPutTS(::openmldb::common::StorageMode::kMemory);
-}
-
-void MultiDimensionPutTS1(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, MultiDimensionPutTS1) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1967,15 +1811,8 @@ void MultiDimensionPutTS1(::openmldb::common::StorageMode storageMode) {
     ASSERT_EQ(1000, it1->GetKey());
 }
 
-TEST_F(TableTest, MultiDimensionPutTS1Disk) {
-    MultiDimensionPutTS1(::openmldb::common::StorageMode::kHDD);
-}
-
-TEST_F(TableTest, MultiDimensionPutTS1Mem) {
-    MultiDimensionPutTS1(::openmldb::common::StorageMode::kMemory);
-}
-
-void MultiDimissionPutTS2(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, MultiDimissionPutTS2) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
@@ -2012,20 +1849,13 @@ void MultiDimissionPutTS2(::openmldb::common::StorageMode storageMode) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(100, (int64_t)it->GetKey());
-    
+
     delete it;
-    delete table; 
+    delete table;
 }
 
-TEST_F(TableTest, MultiDimissionPutTS2Mem) {
-    MultiDimissionPutTS2(::openmldb::common::StorageMode::kMemory);
-}
-
-TEST_F(TableTest, MultiDimissionPutTS2Disk) {
-    MultiDimissionPutTS2(::openmldb::common::StorageMode::kHDD);
-}
-
-void AbsAndLat(::openmldb::common::StorageMode storageMode) {
+TEST_P(TableTest, AbsAndLat) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -2055,7 +1885,7 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index3", "test", "ts4", ::openmldb::type::kAbsAndLat, 0, 5);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index4", "test", "ts5", ::openmldb::type::kAbsAndLat, 50, 0);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index5", "test", "ts6", ::openmldb::type::kAbsAndLat, 0, 0);
-    
+
     Table* table = CreateTable(table_meta, table_path);
     table->Init();
     codec::SDKCodec codec(table_meta);
@@ -2073,9 +1903,9 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
         dim->set_key(row[0]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());                                
+        table->Put(0, value, request.dimensions());
     }
-    
+
     for (int i = 0; i <= 5; i++) {
         TableIterator* it = table->NewTraverseIterator(i);
         it->SeekToFirst();
@@ -2084,7 +1914,7 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
             it->Next();
             count++;
         }
-        
+
         if (i == 1) {
             ASSERT_EQ(80, count);
         } else if (i == 2) {
@@ -2097,13 +1927,8 @@ void AbsAndLat(::openmldb::common::StorageMode storageMode) {
     delete table;
 }
 
-TEST_F(TableTest, AbsAndLatDisk) {
-    AbsAndLat(::openmldb::common::StorageMode::kHDD);
-}
-
-TEST_F(TableTest, AbsAndLatMem) {
-    AbsAndLat(::openmldb::common::StorageMode::kMemory);
-}
+INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableTest,
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace storage
 }  // namespace openmldb

@@ -44,12 +44,12 @@ namespace openmldb {
 namespace storage {
 
 static const uint32_t TS_LEN = sizeof(uint64_t);
-static const uint32_t TS_POS_LEN = sizeof(uint8_t);
+static const uint32_t TS_POS_LEN = sizeof(uint32_t);
 
 __attribute__((unused)) static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s,
                                                  std::string& key,   // NOLINT
                                                  uint64_t& ts,       // NOLINT
-                                                 uint8_t& ts_idx) {  // NOLINT
+                                                 uint32_t& ts_idx) {  // NOLINT
     auto len = TS_LEN;
     if (has_ts_idx) {
         len += TS_POS_LEN;
@@ -91,7 +91,7 @@ static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
     return result;
 }
 
-static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint8_t ts_pos) {
+static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint32_t ts_pos) {
     std::string result;
     result.resize(key.size() + TS_LEN + TS_POS_LEN);
     char* buf = reinterpret_cast<char*>(&(result[0]));
@@ -161,7 +161,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
             if (key.size() < TS_LEN + TS_POS_LEN) {
                 return false;
             }
-            uint8_t ts_idx = *((uint8_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
+            uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
                                           TS_POS_LEN));
             bool has_found = false;
             for (const auto index : indexs) {
@@ -169,7 +169,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
                 if (!ts_col) {
                     return false;
                 }
-                if (ts_col->GetId() == static_cast<int>(ts_idx)) {
+                if (ts_col->GetId() == ts_idx) {
                     real_ttl = index->GetTTL()->abs_ttl;
                     has_found = true;
                     break;
@@ -215,7 +215,7 @@ class DiskTableIterator : public TableIterator {
  public:
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk,
-                      uint8_t ts_idx);
+                      uint32_t ts_idx);
     virtual ~DiskTableIterator();
     bool Valid() override;
     void Next() override;
@@ -231,7 +231,7 @@ class DiskTableIterator : public TableIterator {
     const rocksdb::Snapshot* snapshot_;
     std::string pk_;
     uint64_t ts_;
-    uint8_t ts_idx_;
+    uint32_t ts_idx_;
     bool has_ts_idx_ = false;
 };
 
@@ -266,7 +266,7 @@ class DiskTableTraverseIterator : public TableIterator {
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
-    uint8_t ts_idx_;
+    uint32_t ts_idx_;
     uint64_t traverse_cnt_;
 };
 
