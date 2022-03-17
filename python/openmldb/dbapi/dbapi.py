@@ -363,6 +363,9 @@ class Cursor(object):
         else:
             raise DatabaseError("unsupport sql")
 
+    def is_online_mode(self):
+        return self.connection._sdk.isOnlineMode()
+            
     def get_tables(self, db):
         return self.connection._sdk.getTables(db)
 
