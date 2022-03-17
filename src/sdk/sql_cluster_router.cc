@@ -1620,10 +1620,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"Variable_name", "Value"}, items, status);
         }
         case hybridse::node::kCmdShowGlobalVariables: {
-            std::string db_ = "INFORMATION_SCHEMA";
-            std::string sql = "select * from GLOBAL_VARIABLES";
+            std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+            std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
+            std::string sql = "select * from " + table;
             ::hybridse::sdk::Status status;
-            auto rs = ExecuteSQL(db_, sql, &status);
+            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
             if (status.code != 0) {
                 std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
@@ -1738,8 +1739,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ExecuteShowComponents(status);
         }
         case hybridse::node::kCmdShowTableStatus: {
-            *status = {::hybridse::common::StatusCode::kCmdError, "SHOW TABLE STATUS is not supported yet"};
-            break;
+            return ExecuteShowTableStatus(db, status);
         }
         default: {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
@@ -2183,7 +2183,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
     hybridse::node::PlanNodeList plan_trees;
     hybridse::base::Status sql_status;
     hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
-
     if (sql_status.code != 0) {
         *status = {::hybridse::common::StatusCode::kCmdError, sql_status.msg};
         return {};
@@ -2412,11 +2411,21 @@ bool SQLClusterRouter::IsEnableTrace() {
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
-    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
-        return {::hybridse::common::StatusCode::kCmdError, "global system variable is unsupported"};
-    }
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
+        std::string value = node->Value()->GetExprString();
+        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        hybridse::sdk::Status status;
+        std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
+        if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
+            return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
+        }
+        if (!cluster_sdk_->GlobalVarNotify()) {
+            return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
+        }
+        return {};
+    }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find(node->Key());
     if (it == session_variables_.end()) {
@@ -2999,7 +3008,7 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
 }
 
 static const std::initializer_list<std::string> GetComponetSchema() {
-    static const std::initializer_list<std::string> schema = {"ENDPOINT", "ROLE", "CONNECT_TIME", "STATUS", "NS_ROLE"};
+    static const std::initializer_list<std::string> schema = {"Endpoint", "Role", "Connect_time", "Status", "Ns_role"};
     return schema;
 }
 
@@ -3007,14 +3016,14 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 // it do not set status to fail even e.g. some zk query internally failed
 // which produce partial or empty result on internal error
 //
-// output schema: (ENDPOINT: string, ROLE: string,
-//                 CONNECT_TIME: int64, STATUS: string, NS_ROLE: string)
+// output schema: (Endpoint: string, Role: string,
+//                 Connect_time: int64, Status: string, Ns_role: string)
 // where
-// - ENDPOINT: IP:PORT or DOMAIN:PORT
-// - ROLE can be 'tablet', 'nameserver', 'taskmanager'
-// - CONNECT_TIME last conncted timestamp from epoch
-// - STATUS can be 'online', 'offline' or 'NULL' (otherwise)
-// - NS_ROLE can be 'master', 'standby', or 'NULL' (for non-namespace component)
+// - Endpoint IP:PORT or DOMAIN:PORT
+// - Role can be 'tablet', 'nameserver', 'taskmanager'
+// - Connect_time last conncted timestamp from epoch
+// - Status can be 'online', 'offline' or 'NULL' (otherwise)
+// - Ns_role can be 'master', 'standby', or 'NULL' (for non-namespace component)
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponents(hybridse::sdk::Status* status) {
     DCHECK(status != nullptr);
     std::vector<std::shared_ptr<ResultSetSQL>> data;
@@ -3189,8 +3198,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     // TODO(#1417): return multiple rows
     const auto& schema = GetComponetSchema();
     std::vector<std::vector<std::string>> data = {
-        {endpoint, "taskmanager", std::to_string(stat.ctime), "online",
-         "NULL"}};
+        {endpoint, "taskmanager", std::to_string(stat.ctime), "online", "NULL"}};
 
     return ResultSetSQL::MakeResultSet(schema, data, status);
 }
@@ -3229,6 +3237,94 @@ std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
     }
 
     return table_infos;
+}
+
+static const std::initializer_list<std::string> GetTableStatusSchema() {
+    static const std::initializer_list<std::string> schema = {
+        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
+        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
+        "Offline_path",     "Offline_format", "Offline_deep_copy"};
+    return schema;
+}
+
+// output schema:
+// - Table_id: tid
+// - Table_name
+// - Database_name
+// - Storage_type: memory/disk
+// - Rows: number of rows
+// - Memory_data_size: Memory space in bytes taken or related to a table.
+//    1. memory: table data + index
+//    2. SSD/HDD: rocksdb’s table memory
+// - Disk_data_size: disk space in bytes taken by a table in bytes
+//    1. memory:  binlog + snapshot
+//    2. SSD/HDD: binlog + rocksdb data (sst files), wal files and checkpoints are not included
+// - Partition: partition number
+// - partition_unalive: partition number that is unalive
+// - Replica: replica number
+// - Offline_path: data path for offline data
+// - Offline_format: format for offline data
+// - Offline_deep_copy: deep copy option for offline data
+//
+// if db is empty:
+//   show table status in all databases except hidden databases
+// else: show table status in current database, include hidden database
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
+                                                                                   hybridse::sdk::Status* status) {
+    // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
+    std::vector<nameserver::TableInfo> tables;
+    std::string msg;
+    cluster_sdk_->GetNsClient()->ShowTable("", "", true, tables, msg);
+
+    std::vector<std::vector<std::string>> data;
+    data.reserve(tables.size());
+
+    std::for_each(tables.cbegin(), tables.cend(), [&data, &db](const nameserver::TableInfo& tinfo) {
+        if (!db.empty()) {
+            // rule 1: selected a db, show tables only inside the db
+            if (db != tinfo.db()) {
+                return;
+            }
+        } else if (nameserver::IsHiddenDb(tinfo.db())) {
+            // rule 2: if no db selected, show all tables except those in hidden db
+            return;
+        }
+
+        auto tid = tinfo.tid();
+        auto table_name = tinfo.name();
+        auto db = tinfo.db();
+        // TODO(aceforeverd): support disk type
+        std::string storage_type = "memory";
+        auto partition_num = tinfo.partition_num();
+        auto replica_num = tinfo.replica_num();
+        uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
+        uint32_t partition_unalive = 0;
+        for (auto& partition_info : tinfo.table_partition()) {
+            rows += partition_info.record_cnt();
+            mem_bytes += partition_info.record_byte_size();
+            disk_bytes += partition_info.diskused();
+            for (auto& meta : partition_info.partition_meta()) {
+                if (!meta.is_alive()) {
+                    partition_unalive++;
+                }
+            }
+        }
+
+        std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
+        if (tinfo.has_offline_table_info()) {
+            offline_path = tinfo.offline_table_info().path();
+            offline_format = tinfo.offline_table_info().format();
+            offline_deep_copy = std::to_string(tinfo.offline_table_info().deep_copy());
+        }
+
+        data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
+                        std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
+                        std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
+                        offline_deep_copy});
+    });
+
+    // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
+    return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 
 }  // namespace sdk

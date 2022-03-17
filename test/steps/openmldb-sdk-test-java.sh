@@ -69,20 +69,29 @@ yum install -y net-tools
 ulimit -c unlimited
 echo "ROOT_DIR:${ROOT_DIR}"
 source test/steps/read_properties.sh
+echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
+echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
+    SERVER_URL=$(more test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/fedb_deploy.properties | grep "${OPENMLDB_SERVER_VERSION}")
+    if [[ "${SERVER_URL}" == "" ]]; then
+      echo "${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz" >> test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/fedb_deploy.properties
+    else
+      sed -i "s#${OPENMLDB_SERVER_VERSION}=.*#${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz#" test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/fedb_deploy.properties
+    fi
     JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
+    JAVA_NATIVE_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
     sh test/steps/build-java-sdk.sh
 fi
 echo "JAVA_SDK_VERSION:${JAVA_SDK_VERSION}"
-echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
-echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
+echo "JAVA_NATIVE_VERSION:${JAVA_NATIVE_VERSION}"
+cat test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/fedb_deploy.properties
 # install command tool
 cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # modify config
-sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}"
+sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}"
 # install jar
 cd test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true

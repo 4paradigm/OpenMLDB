@@ -51,11 +51,11 @@ public class StandaloneTest extends BaseTest{
                     .basePath("/home/zhaowei01/fedb-auto-test/standalone")
                     .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10000"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10002"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10018"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10019"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10020"))
                     .host("172.24.4.55")
-                    .port(10000)
+                    .port(10018)
                     .build();
         }
     }
