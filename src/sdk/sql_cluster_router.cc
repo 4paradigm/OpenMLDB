@@ -2094,7 +2094,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
         for (int j = 0; j < column_key.col_name_size(); j++) {
             keys += column_key.col_name(j) + ",";
         }
-        keys = keys.substr(0, keys.size() - 1);
+        keys.pop_back();
         std::string ts_name = column_key.ts_name();
         if (keys == window_info.partition_col_ && ts_name == window_info.order_col_) {
             ttl->CopyFrom(column_key.ttl());
@@ -2106,6 +2106,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!ns_ptr->CreateTable(table_info, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
+    RefreshCatalog();
     return {};
 }
 
@@ -2714,11 +2715,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
-    if (!lw_status.IsOK()) {
-        return lw_status;
-    }
-
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
@@ -2845,6 +2841,12 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
             }
         }
     }
+
+    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+    if (!lw_status.IsOK()) {
+        return lw_status;
+    }
+
     auto status = ns->CreateProcedure(sp_info, options_.request_timeout);
     if (!status.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, status.msg};
@@ -2923,6 +2925,56 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(const hybridse::node::
             auto create_status = CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
             if (!create_status.OK()) {
                 return {base::ReturnCode::kError, "create pre-aggr table failed"};
+            }
+
+            // create aggregator
+            std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+            bool ret = cluster_sdk_->GetTablet(base_db, base_table, &tablets);
+            if (!ret || tablets.empty()) {
+                return {base::ReturnCode::kError, "get tablets failed"};
+            }
+            auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
+            auto aggr_table_info = cluster_sdk_->GetTableInfo(aggr_db, aggr_table);
+            if (!base_table_info || !aggr_table_info) {
+                return {base::ReturnCode::kError, "get table info failed"};
+            }
+            ::openmldb::api::TableMeta base_table_meta;
+            base_table_meta.set_db(base_table_info->db());
+            base_table_meta.set_name(base_table_info->name());
+            base_table_meta.set_tid(static_cast<::google::protobuf::int32>(base_table_info->tid()));
+            base_table_meta.set_format_version(base_table_info->format_version());
+            for (int idx = 0; idx < base_table_info->column_desc_size(); idx++) {
+                ::openmldb::common::ColumnDesc* column_desc = base_table_meta.add_column_desc();
+                column_desc->CopyFrom(base_table_info->column_desc(idx));
+            }
+
+            uint32_t index_pos;
+            bool found_idx = false;
+            for (int idx = 0; idx < base_table_info->column_key_size(); idx++) {
+                ::openmldb::common::ColumnKey* column_key = base_table_meta.add_column_key();
+                column_key->CopyFrom(base_table_info->column_key(idx));
+                std::string partition_keys = "";
+                for (int j = 0; j < column_key->col_name_size(); j++) {
+                    partition_keys += column_key->col_name(j) + ",";
+                }
+                partition_keys.pop_back();
+                if (partition_keys == lw.partition_col_ && column_key->ts_name() == lw.order_col_) {
+                    index_pos = idx;
+                    found_idx = true;
+                }
+            }
+            if (!found_idx) {
+                return {base::ReturnCode::kError, "index that associate to aggregator not found"};
+            }
+
+            for (uint32_t pid = 0; pid < tablets.size(); ++pid) {
+                auto tablet_client = tablets[pid]->GetClient();
+                if (tablet_client == nullptr) {
+                    return {base::ReturnCode::kError, "get tablet client failed"};
+                }
+                base_table_meta.set_pid(pid);
+                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);
+                
             }
         }
     }

@@ -152,6 +152,33 @@ void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLT
     ttl_st->set_ttl_type(ttl_type);
 }
 
+void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
+    table_meta->set_name("t0");
+    table_meta->set_pid(1);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "id", openmldb::type::DataType::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts_col", openmldb::type::DataType::kTimestamp);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col3", openmldb::type::DataType::kInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col4", openmldb::type::DataType::kDouble);
+
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx", "id", "ts_col", ::openmldb::type::kAbsoluteTime, 0, 0);
+    return;
+}
+
+void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
+    table_meta->set_name("pre_aggr_1");
+    table_meta->set_pid(1);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "key", openmldb::type::DataType::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts_start", openmldb::type::DataType::kTimestamp);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts_end", openmldb::type::DataType::kTimestamp);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "num_rows", openmldb::type::DataType::kInt);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "agg_val", openmldb::type::DataType::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "binlog_offset", openmldb::type::DataType::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
+}
+
 void PackDefaultDimension(const std::string& key, ::openmldb::api::PutRequest* request) {
     auto dimension = request->add_dimensions();
     dimension->set_key(key);
@@ -5712,6 +5739,73 @@ TEST_F(TabletImplTest, AddIndex) {
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, (signed)srp.count());
+}
+
+TEST_F(TabletImplTest, CreateAggregator) {
+    TabletImpl tablet;
+    tablet.Init("");
+    ::openmldb::api::TableMeta base_table_meta;
+    uint32_t aggr_table_id;
+    {
+        // base table
+        uint32_t id = counter++;
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_tid(id);
+        AddDefaultAggregatorBaseSchema(table_meta);
+        base_table_meta.CopyFrom(*table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    {
+        // pre aggr table
+        uint32_t id = counter++;
+        aggr_table_id = id;
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_tid(id);
+        AddDefaultAggregatorSchema(table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        
+    }
+    // create aggregator
+    {
+        ::openmldb::api::CreateAggregatorRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_base_table_meta();
+        table_meta->CopyFrom(base_table_meta);
+        request.set_aggr_table_tid(aggr_table_id);
+        request.set_aggr_table_pid(1);
+        request.set_aggr_col("col3");
+        request.set_aggr_func("sum");
+        request.set_index_pos(0);
+        request.set_order_by_col("ts_col");
+        request.set_bucket_size("100");
+        ::openmldb::api::CreateAggregatorResponse response;
+        MockClosure closure;
+        tablet.CreateAggregator(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    {
+        ::openmldb::api::CreateAggregatorRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_base_table_meta();
+        table_meta->CopyFrom(base_table_meta);
+        request.set_aggr_table_tid(aggr_table_id);
+        request.set_aggr_table_pid(1);
+        request.set_aggr_col("col4");
+        request.set_aggr_func("sum");
+        request.set_index_pos(0);
+        request.set_order_by_col("ts_col");
+        request.set_bucket_size("1d");
+        ::openmldb::api::CreateAggregatorResponse response;
+        MockClosure closure;
+        tablet.CreateAggregator(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
 }
 
 }  // namespace tablet

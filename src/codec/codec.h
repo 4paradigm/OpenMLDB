@@ -101,6 +101,7 @@ class RowBuilder {
     bool SetTimestamp(uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
+    bool SetString(uint32_t index, const char* val, uint32_t length);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
@@ -113,7 +114,6 @@ class RowBuilder {
     bool Check(uint32_t index, ::openmldb::type::DataType type);
     inline void SetField(uint32_t index);
     inline void SetStrOffset(uint32_t str_pos);
-    bool SetString(uint32_t index, const char* val, uint32_t length);
     bool SetNULL(uint32_t index);
 
  private:
