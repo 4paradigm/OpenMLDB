@@ -427,13 +427,6 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, ShowGlobalVaraibles) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("show global variables");
-}
-
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
