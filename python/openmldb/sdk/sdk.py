@@ -128,7 +128,7 @@ class OpenMLDBSdk(object):
         else:
             return True, rs
         
-    def is_Online_Mode(self):
+    def isOnlineMode(self):
         if not self.sdk:
             return False, "please init sdk first"
         return self.sdk.IsOnlineMode()
