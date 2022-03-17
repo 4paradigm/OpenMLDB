@@ -122,16 +122,8 @@ void Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     codec::RowBuilder row_builder(aggr_table_schema_);
     std::string aggr_val;
     switch (aggr_col_type_) {
-        case DataType::kSmallInt: {
-            int16_t tmp_val = buffer.aggr_val_.vsmallint;
-            aggr_val.assign(reinterpret_cast<char*>(&tmp_val), sizeof(int16_t));
-            break;
-        }
-        case DataType::kInt: {
-            int32_t tmp_val = buffer.aggr_val_.vint;
-            aggr_val.assign(reinterpret_cast<char*>(&tmp_val), sizeof(int32_t));
-            break;
-        }
+        case DataType::kSmallInt: 
+        case DataType::kInt:
         case DataType::kBigInt: {
             int64_t tmp_val = buffer.aggr_val_.vlong;
             aggr_val.assign(reinterpret_cast<char*>(&tmp_val), sizeof(int64_t));
@@ -186,22 +178,8 @@ bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* r
     char* ch = NULL;
     uint32_t cn_length = 0;
     switch (aggr_col_type_) {
-        case DataType::kSmallInt: {
-            int16_t origin_val = *reinterpret_cast<int16_t*>(ch);
-            int16_t val;
-            row_view->GetInt16(aggr_col_idx_, &val);
-            int16_t new_val = origin_val + val;
-            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int16_t));
-            break;
-        }
-        case DataType::kInt: {
-            int32_t origin_val = *reinterpret_cast<int32_t*>(ch);
-            int32_t val;
-            row_view->GetInt32(aggr_col_idx_, &val);
-            int32_t new_val = origin_val + val;
-            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int32_t));
-            break;
-        }
+        case DataType::kSmallInt:
+        case DataType::kInt:
         case DataType::kBigInt: {
             int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
             int64_t val;
@@ -239,13 +217,13 @@ bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buf
         case DataType::kSmallInt: {
             int16_t val;
             row_view->GetInt16(aggr_col_idx_, &val);
-            aggr_buffer->aggr_val_.vsmallint += val;
+            aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kInt: {
             int32_t val;
             row_view->GetInt32(aggr_col_idx_, &val);
-            aggr_buffer->aggr_val_.vint += val;
+            aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kBigInt: {
@@ -254,12 +232,7 @@ bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buf
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
-        case DataType::kFloat: {
-            float val;
-            row_view->GetFloat(aggr_col_idx_, &val);
-            aggr_buffer->aggr_val_.vfloat += val;
-            break;
-        }
+        case DataType::kFloat:
         case DataType::kDouble: {
             double val;
             row_view->GetDouble(aggr_col_idx_, &val);

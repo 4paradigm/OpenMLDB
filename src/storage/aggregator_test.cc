@@ -22,7 +22,7 @@
 namespace openmldb {
 namespace storage {
 
-using namespace ::openmldb::codec;
+using ::openmldb::codec::SchemaCodec;
 
 uint32_t counter = 10;
 

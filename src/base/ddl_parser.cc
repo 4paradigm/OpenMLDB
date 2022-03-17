@@ -298,7 +298,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 DLOG(ERROR) << "extract long window infos from window order by failed";
                 return;
             }
-            const hybridse::node::ColumnRefNode* column_node = 
+            const hybridse::node::ColumnRefNode* column_node =
                     reinterpret_cast<const hybridse::node::ColumnRefNode*>(order_col_node);
             order_by_col += column_node->GetColumnName() + ",";
         }

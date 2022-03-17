@@ -176,7 +176,8 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "agg_val", openmldb::type::DataType::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "binlog_offset", openmldb::type::DataType::kBigInt);
 
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(),
+                          "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
 }
 
 void PackDefaultDimension(const std::string& key, ::openmldb::api::PutRequest* request) {
@@ -5771,7 +5772,6 @@ TEST_F(TabletImplTest, CreateAggregator) {
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        
     }
     // create aggregator
     {

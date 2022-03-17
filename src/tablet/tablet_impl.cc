@@ -5145,15 +5145,17 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
         return;
     }
-    auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(), aggr_table, request->index_pos(),
-                                                            request->aggr_col(), request->aggr_func(), request->order_by_col(), request->bucket_size());
+    auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
+                                                            aggr_table, request->index_pos(),
+                                                            request->aggr_col(), request->aggr_func(),
+                                                            request->order_by_col(), request->bucket_size());
     if (!aggregator) {
         response->set_code(::openmldb::base::ReturnCode::kError);
         response->set_msg("create aggregator failed");
         return;
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();
-    if(aggregators_.find(uid) == aggregators_.end()) {
+    if (aggregators_.find(uid) == aggregators_.end()) {
         aggregators_.emplace(uid, std::make_shared<Aggrs>());
     }
     aggregators_[uid]->push_back(aggregator);
