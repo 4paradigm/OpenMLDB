@@ -49,7 +49,7 @@ inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::s
     hybridse::sdk::Status status;
     for (auto sql : sqls) {
         sr->ExecuteSQL(std::string(sql), &status);
-        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
+        EXPECT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
     }
 }
 
@@ -243,6 +243,25 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->DropDB(db, &status);
     ASSERT_TRUE(status.IsOK());
     remove(file_path.c_str());
+}
+
+TEST_P(DBSDKTest, CreateDatabase) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+
+    auto db1 = absl::StrCat("db_", GenRand());
+
+    ProcessSQLs(sr, {
+                        absl::StrCat("CREATE DATABASE ", db1),
+                        absl::StrCat("CREATE DATABASE IF NOT EXISTS ", db1),
+                    });
+
+    sr->ExecuteSQL(absl::StrCat("CREATE DATABASE ", db1), &status);
+    EXPECT_FALSE(status.IsOK());
+
+    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1)});
 }
 
 TEST_P(DBSDKTest, Select) {
