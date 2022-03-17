@@ -273,11 +273,7 @@ public class RowView {
                 return new DateTime(buf.getLong(offset));
             case kDate:
                 int date = buf.getInt(offset);
-                int day = date & 0x0000000FF;
-                date = date >> 8;
-                int month = date & 0x0000FF;
-                int year = date >> 8;
-                return new Date(year, month, day);
+                return CodecUtil.dateIntToDate(date);
             case kVarchar:
             case kString:
                 int nextStrFieldOffset = 0;
