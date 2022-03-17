@@ -19,7 +19,8 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil, UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil,
+  UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.openmldb.common.codec.CodecUtil
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor

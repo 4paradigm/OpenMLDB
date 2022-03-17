@@ -45,10 +45,8 @@ class TestDateUdf extends SparkTestSuite {
     val sqlText = "SELECT date_col FROM t1"
 
     val outputDf = sess.sql(sqlText)
-    outputDf.show()
     val sparksqlOutputDf = sess.sparksql(sqlText)
-    sparksqlOutputDf.show()
-    //assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
   test("Test project with date columns") {
@@ -96,7 +94,7 @@ class TestDateUdf extends SparkTestSuite {
     val sess = new OpenmldbSession(spark)
 
     val data = Seq(
-      Row(Date.valueOf("1970-01-02"), 1),
+      Row(Date.valueOf("1970-01-02"), 1)
     )
 
     val schema = StructType(List(

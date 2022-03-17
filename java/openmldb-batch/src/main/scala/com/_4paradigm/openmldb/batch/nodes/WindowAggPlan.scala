@@ -17,7 +17,8 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil, SkewDataFrameUtils, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, PhysicalNodeUtil,
+  SkewDataFrameUtils, SparkUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
