@@ -1625,7 +1625,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             ::hybridse::sdk::Status status;
             auto rs = ExecuteSQL(db_, sql, &status);
             if (status.code != 0) {
-                std::cout << "ERROR: " << status.msg << std::endl;
                 return {};
             }
             return rs;
@@ -1658,7 +1657,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             if (status->code != 0) {
-                std::cout << "ERROR: " << status->msg << std::endl;
                 return {};
             }
             if(rs->Size() == 0) {
