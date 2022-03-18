@@ -271,6 +271,8 @@ TEST_P(TabletImplTest, CountLatestTable) {
         ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
+        // disktable and memtable behave inconsistently when putting duplicate data
+        // See issue #1240 for more information
         if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
             ASSERT_EQ(100u, response.count());
         } else {
@@ -411,6 +413,8 @@ TEST_P(TabletImplTest, CountTimeTable) {
         ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
+        // disktable and memtable behave inconsistently when putting duplicate data
+        // See issue #1240 for more information
         if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
             ASSERT_EQ(100, (signed)response.count());
         } else {
@@ -1160,6 +1164,8 @@ TEST_P(TabletImplTest, MultiGet) {
     deleteindex_request.set_tid(id);
     deleteindex_request.set_pid(1);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
     if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
         ASSERT_EQ(142, deleteindex_response.code());
     } else {
@@ -1169,6 +1175,8 @@ TEST_P(TabletImplTest, MultiGet) {
     deleteindex_request.set_idx_name("amt");
     deleteindex_request.set_tid(id);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
     if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
         ASSERT_EQ(0, deleteindex_response.code());
     } else {
@@ -1182,6 +1190,8 @@ TEST_P(TabletImplTest, MultiGet) {
     get_request.set_ts(1100);
     get_request.set_idx_name("amt");
     tablet.Get(NULL, &get_request, &get_response, &closure);
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
     if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
         ASSERT_EQ(108, get_response.code());
     } else {
@@ -1197,6 +1207,8 @@ TEST_P(TabletImplTest, MultiGet) {
     scan_request.set_st(1100);
     scan_request.set_idx_name("amt");
     tablet.Scan(NULL, &scan_request, &scan_response, &closure);
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
     if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
         ASSERT_EQ(108, scan_response.code());
     } else {
@@ -1433,7 +1445,8 @@ TEST_P(TabletImplTest, Traverse) {
 
 TEST_P(TabletImplTest, TraverseTTL) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
-    
+    // disktable and memtable behave inconsistently with max_traverse_cnt
+    // refer to issue #1249
     if (storage_mode != openmldb::common::kMemory) {
         GTEST_SKIP();
     }
@@ -1491,47 +1504,28 @@ TEST_P(TabletImplTest, TraverseTTL) {
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
-    if (storage_mode == openmldb::common::kMemory) {
-        ASSERT_EQ("test10050", srp->pk());
-    } else {
-        ASSERT_EQ("test10048", srp->pk());
-    }
+    ASSERT_EQ("test10050", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
-    if (storage_mode == openmldb::common::kMemory) {
-        ASSERT_EQ("test10099", srp->pk());
-    } else {
-        ASSERT_EQ("test10096", srp->pk());
-    }
+    ASSERT_EQ("test10099", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    if (storage_mode == openmldb::common::kMemory) {
-        ASSERT_EQ(25, (signed)srp->count());
-        ASSERT_EQ("test21024", srp->pk());
-    } else {
-        ASSERT_EQ(45, (signed)srp->count());
-        ASSERT_EQ("test21045", srp->pk());
-    }
+    ASSERT_EQ(25, (signed)srp->count());
+    ASSERT_EQ("test21024", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    if (storage_mode == openmldb::common::kMemory) {
-        ASSERT_EQ(25, (signed)srp->count());
-        ASSERT_EQ("test21049", srp->pk());
-    } else {
-        ASSERT_EQ(48, (signed)srp->count());
-        ASSERT_EQ("test21092", srp->pk());
-    }
-
+    ASSERT_EQ(25, (signed)srp->count());
+    ASSERT_EQ("test21049", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
@@ -1545,7 +1539,8 @@ TEST_P(TabletImplTest, TraverseTTL) {
 
 TEST_P(TabletImplTest, TraverseTTLTS) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
-
+    // disktable and memtable behave inconsistently with max_traverse_cnt
+    // refer to issue #1249
     if (storage_mode != openmldb::common::kMemory) {
         GTEST_SKIP();
     }
@@ -2362,6 +2357,8 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         deleteindex_request.set_tid(id);
         deleteindex_request.set_pid(1);
         tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
         if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
             ASSERT_EQ(0, deleteindex_response.code());
         } else {
@@ -2392,6 +2389,8 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         sr.set_et(1000);
         ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
         if (storage_mode == ::openmldb::common::kMemory) {
             ASSERT_EQ(108, srp.code());
         } else {
@@ -3232,13 +3231,14 @@ TEST_P(TabletImplTest, GetTermPair) {
         snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     }
     PDLOG(ERROR, "%s", snapshot_file.c_str());
+    // for memtable snapshot is a file
+    // for disktable snapshot is a directory
     if (storage_mode == openmldb::common::kMemory) {
         unlink(snapshot_file.c_str());
     } else {
         ::openmldb::base::RemoveDirRecursive(snapshot_file.c_str());
     }
     
-    // PDLOG(ERROR, "%d %d %s", unlink(snapshot_file.c_str()), errno, strerror(errno));
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
@@ -5852,6 +5852,8 @@ TEST_P(TabletImplTest, DumpIndex) {
         column_key->set_ts_name("ts2");
         ::openmldb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
         if (storage_mode == openmldb::common::kMemory) {
             ASSERT_EQ(0, dump_response.code());
         } else {
@@ -6061,7 +6063,8 @@ TEST_P(TabletImplTest, AddIndex) {
     SchemaCodec::SetIndex(add_index_request.mutable_column_key(), "mcc", "mcc", "ts1",
             ::openmldb::type::kAbsoluteTime, 20, 0);
     tablet.AddIndex(NULL, &add_index_request, &add_index_response, &closure);
-
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
     if (storage_mode != openmldb::common::kMemory) {
         ASSERT_EQ(145, add_index_response.code());
     } else {
