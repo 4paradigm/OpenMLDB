@@ -152,21 +152,22 @@ void Shell() {
                 continue;
             }
         }
+        // todo: should support multiple sql
         // trim space after last semicolon in sql
-        if (buffer.find_last_of(';') != std::string::npos && buffer.back() != ';') {
-            std::string::size_type last_semicolon = buffer.find_last_of(';');
-            std::string::size_type buffer_size = buffer.size();
-            std::string after_semicolon_sql = buffer.substr(last_semicolon + 1, buffer_size);
-            absl::string_view input(after_semicolon_sql);
+        auto last_semicolon_pos = buffer.find_last_of(';');
+        if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
+            absl::string_view input(buffer.substr(last_semicolon_pos + 1, buffer.size() - last_semicolon_pos));
+            std::string prefix(" ");
             while (true) {
-                if (!absl::ConsumePrefix(&input, " ")) {
+                if (!absl::ConsumePrefix(&input, prefix)) {
                     break;
                 }
             }
-            buffer = buffer.substr(0, last_semicolon + 1);
-            buffer = buffer + std::string(input);
+            sql.append(buffer.begin(), buffer.begin() + last_semicolon_pos + 1);
+            sql.append(input.begin(), input.end());
+        } else {
+            sql.append(buffer);
         }
-        sql.append(buffer);
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
                 absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
