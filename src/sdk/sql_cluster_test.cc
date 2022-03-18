@@ -901,19 +901,6 @@ TEST_F(SQLClusterTest, GetPreAggrTable) {
         ASSERT_TRUE(found);
     }
 }
-
-TEST_F(SQLClusterTest, SessionVariables) {
-    SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
-    auto router = NewClusterSQLRouter(sql_opt);
-    auto cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
-    ASSERT_TRUE(cluster_router != nullptr);
-    // session variables get default value from system table
-    ASSERT_FALSE(cluster_router->IsOnlineMode());
-    ASSERT_FALSE(cluster_router->IsEnableTrace());
-}
-
 }  // namespace sdk
 }  // namespace openmldb
 
