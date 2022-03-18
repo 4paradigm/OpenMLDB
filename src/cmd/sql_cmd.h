@@ -152,7 +152,7 @@ void Shell() {
                 continue;
             }
         }
-        // todo: should support multiple sql
+        // todo: should support multiple sql.
         // trim space after last semicolon in sql
         auto last_semicolon_pos = buffer.find_last_of(';');
         if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
