@@ -1280,7 +1280,22 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
         RecoverEndpointDBInternal(endpoint, need_restore, concurrency, kv.second);
     }
     // recover global variable after tablet restart
-    NotifyGlobalVarChanged();
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
+        PDLOG(WARNING, "table is not exist!");
+        return;
+    }
+    bool exist_globalvar = false;
+    for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
+        if (table_info->table_partition(0).partition_meta(meta_idx).endpoint() == endpoint) {
+            exist_globalvar = true;
+            break;
+        }
+    }
+    if (!exist_globalvar) {
+        NotifyGlobalVarChanged();
+    }
+
 }
 
 void NameServerImpl::NotifyGlobalVarChanged() {
@@ -8845,6 +8860,9 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
 bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
     if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
         NotifyTableChanged();
+        if (table_info->db() == INFORMATION_SCHEMA_DB && table_info->name() == GLOBAL_VARIABLES) {
+            NotifyGlobalVarChanged();
+        }
         return true;
     }
     return false;
@@ -10252,7 +10270,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     for (int i = 0; i < default_value.size(); i++) {
         std::string row = rows[i];
         std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
-        uint32_t pid;
+        uint32_t pid = 0;
         if (pid_num > 0) {
             pid = (uint32_t)(::openmldb::base::hash64(dimensions[0].first) % pid_num);
         }
