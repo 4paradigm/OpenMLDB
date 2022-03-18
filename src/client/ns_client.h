@@ -57,7 +57,7 @@ class NsClient : public Client {
 
     bool Use(const std::string& db, std::string& msg);  // NOLINT
 
-    bool CreateDatabase(const std::string& db, std::string& msg);  // NOLINT
+    bool CreateDatabase(const std::string& db, std::string& msg, bool if_not_exists = false);  // NOLINT
 
     bool ShowDatabase(std::vector<std::string>* dbs,
                       std::string& msg);  // NOLINT

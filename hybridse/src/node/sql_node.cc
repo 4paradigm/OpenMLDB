@@ -16,6 +16,7 @@
 
 #include "node/sql_node.h"
 
+#include <algorithm>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -1369,8 +1370,23 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, std::string(CmdTypeName(cmd_type_)), "cmd_type", false);
     output << "\n";
+    if (IsIfNotExists()) {
+        PrintValue(output, tab, "true", "if_not_exists", false);
+        output << "\n";
+    }
     PrintValue(output, tab, args_, "args", true);
 }
+
+bool CmdNode::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdNode*>(node);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
+
 void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;

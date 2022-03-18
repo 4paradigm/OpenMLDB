@@ -2017,13 +2017,24 @@ class CmdNode : public SqlNode {
 
     void AddArg(const std::string &arg) { args_.push_back(arg); }
     const std::vector<std::string> &GetArgs() const { return args_; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
 
     const node::CmdType GetCmdType() const { return cmd_type_; }
+
+    bool IsIfNotExists() const {
+        return if_not_exist_;
+    }
+
+    void SetIfNotExists(bool b) {
+        if_not_exist_ = b;
+    }
 
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+    bool if_not_exist_ = false;
 };
 
 enum class DeleteTarget {
