@@ -2056,12 +2056,12 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 ::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQuery(const std::string& sql,
                                                                const std::map<std::string, std::string>& config,
                                                                const std::string& default_db,
-                                                               ::openmldb::taskmanager::JobInfo& job_info) {
+                                                               std::string& output) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, job_info);
+    return taskmanager_client_ptr->RunBatchSql(sql, config, default_db, output);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string& sql,
@@ -2290,17 +2290,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             } else {
                 // Run offline query
-                ::openmldb::taskmanager::JobInfo job_info;
+                std::string output;
                 std::map<std::string, std::string> config;
-                auto base_status = ExecuteOfflineQuery(sql, config, db, job_info);
+
+                auto base_status = ExecuteOfflineQuery(sql, config, db, output);
                 if (base_status.OK()) {
                     *status = {};
-                    if (job_info.id() > 0) {
-                        std::stringstream ss;
-                        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                        std::vector<std::string> value = {ss.str()};
-                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
-                    }
+                    // Print the output from job output
+                    std::cout << output << std::endl;
+
                 } else {
                     *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }

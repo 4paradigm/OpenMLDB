@@ -36,7 +36,7 @@ public interface TaskManagerInterface {
     TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
-    TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
+    TaskManager.RunBatchSqlResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchAndShow")
     TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request);

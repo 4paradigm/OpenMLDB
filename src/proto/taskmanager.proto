@@ -63,9 +63,14 @@ message ShowBatchVersionRequest {};
 
 message RunBatchSqlRequest {
     required string sql = 1;
-    required string output_path = 2;
-    map<string, string> conf = 3;
-    optional string default_db = 4 [default = ""];
+    map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
+};
+
+message RunBatchSqlResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string output = 3;
 };
 
 message RunBatchAndShowRequest {
@@ -121,7 +126,7 @@ service TaskManagerServer {
 
     // Spark jobs
     rpc ShowBatchVersion(ShowBatchVersionRequest) returns (ShowJobResponse);
-    rpc RunBatchSql(RunBatchSqlRequest) returns (ShowJobResponse);
+    rpc RunBatchSql(RunBatchSqlRequest) returns (RunBatchSqlResponse);
     rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
     rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
     rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);

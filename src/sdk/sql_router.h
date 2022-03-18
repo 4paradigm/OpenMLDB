@@ -177,7 +177,7 @@ class SQLRouter {
     virtual ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                          const std::map<std::string, std::string>& config,
                                                          const std::string& default_db,
-                                                         ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                                         std::string& output) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,

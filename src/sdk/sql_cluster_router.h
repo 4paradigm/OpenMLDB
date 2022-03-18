@@ -254,7 +254,7 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                  const std::map<std::string, std::string>& config,
                                                  const std::string& default_db,
-                                                 ::openmldb::taskmanager::JobInfo& job_info) override;
+                                                 std::string& output) override;
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                               const std::map<std::string, std::string>& config,
