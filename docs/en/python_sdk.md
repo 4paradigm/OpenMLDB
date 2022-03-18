@@ -14,7 +14,7 @@ pip install openmldb
 
 ### 2.1 Create connection
 
-Here database name is not required to exist. If not exist, you need to create the database after the connection is created.
+Here database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
 
 ````python
 import openmldb.dbapi
