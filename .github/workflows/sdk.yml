@@ -326,7 +326,7 @@ jobs:
 
   publish-test-results:
     runs-on: ubuntu-latest
-    needs: [ "java-sdk", "python-sdk" ]
+    needs: [ "java-sdk", "python-sdk", "python-sdk-mac" ]
 
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
