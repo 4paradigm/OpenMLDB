@@ -26,7 +26,6 @@
 #include "gflags/gflags.h"
 #include "storage/record.h"
 
-DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
@@ -41,8 +40,8 @@ static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::openmldb::type::TTLType ttl_type)
-    : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
-            ::openmldb::type::CompressType::kNoCompress),
+    : Table(::openmldb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
+            ttl_type, ::openmldb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
       enable_gc_(true),
@@ -51,7 +50,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       record_byte_size_(0) {}
 
 MemTable::MemTable(const ::openmldb::api::TableMeta& table_meta)
-    : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
+    : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::openmldb::type::TTLType::kAbsoluteTime,
             ::openmldb::type::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {

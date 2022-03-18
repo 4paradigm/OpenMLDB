@@ -53,7 +53,8 @@ object JoinPlan {
     // TODO: Do not handle dataframe with index because ConcatJoin will not include LastJoin or LeftJoin node
     val rightDf = right.getDf()
 
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
 
     val hasOrderby =
       ((node.join.right_sort != null) && (node.join.right_sort.orders != null)

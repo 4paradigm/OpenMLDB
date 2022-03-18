@@ -3,33 +3,16 @@
 <suite name="fesql-v1" parallel="false" thread-count="2">
     <test name="fesql-v1-test">
         <parameter name="env" value="qa"/>
-        <parameter name="version" value="0.3.0"/>
+        <parameter name="version" value="tmp"/>
+        <!--<packages>-->
+            <!--<package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>-->
+<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>-->
+<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v040"/>-->
+        <!--</packages>-->
         <classes>
-<!--            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.ExpressTest">-->
-<!--                &lt;!&ndash;<methods>&ndash;&gt;-->
-<!--                    &lt;!&ndash;<include name="testInsert" />&ndash;&gt;-->
-<!--                &lt;!&ndash;</methods>&ndash;&gt;-->
-<!--            </class>-->
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.DDLTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.DMLTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.LastJoinTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.MultiDBTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.OutInTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.SelectTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.WindowTest">
-            </class>
-            <class name="com._4paradigm.openmldb.java_sdk_test.standalone.v030.TestPerformanceInsensitive">
-            </class>
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest" />
+            <!--<class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.ExpressTest" />-->
         </classes>
-<!--        <packages>-->
-<!--            <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v030"/>-->
-<!--        </packages>-->
     </test>
     <listeners>
         <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />

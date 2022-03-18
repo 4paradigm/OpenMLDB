@@ -45,6 +45,7 @@ object JobInfoManager {
   option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
   option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
   val sqlExecutor = new SqlClusterExecutor(option)
+  sqlExecutor.executeSQL("", "set @@execute_mode='online';")
 
   def createJobInfo(jobType: String, args: List[String] = List(), sparkConf: Map[String, String] = Map()): JobInfo = {
     val jobId = JobIdGenerator.getUniqueId

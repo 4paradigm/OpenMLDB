@@ -137,6 +137,7 @@ cases:
   -
     id: 3
     desc: SELECT simple expression LIMIT 10
+    mode: request-unsupport
     inputs:
       -
         columns: ["id int", "c1 string","c6 double","c7 timestamp"]
@@ -167,6 +168,7 @@ cases:
   -
     id: 4
     desc: SELECT simple expression LIMIT 3
+    mode: request-unsupport
     inputs:
       -
         columns: ["id int", "c1 string","c6 double","c7 timestamp"]

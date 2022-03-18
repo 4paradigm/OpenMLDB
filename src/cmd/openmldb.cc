@@ -266,12 +266,7 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-#ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga",
-          real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
-#else
     PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), OPENMLDB_VERSION.c_str());
-#endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);

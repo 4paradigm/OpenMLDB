@@ -31,6 +31,7 @@
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/table_reader.h"
+#include "vm/catalog.h"
 
 namespace openmldb {
 namespace sdk {
@@ -196,6 +197,10 @@ class SQLRouter {
     virtual std::string GetJobLog(const int id, hybridse::sdk::Status* status) = 0;
 
     virtual bool NotifyTableChange() = 0;
+
+    virtual std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() = 0;
+    
+    virtual bool IsOnlineMode() = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

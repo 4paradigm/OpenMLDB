@@ -19,7 +19,8 @@ CASE_XML=$1
 DEPLOY_MODE=$2
 FEDB_SDK_VERSION=$3
 BUILD_MODE=$4
-FEDB_SERVER_VERSION=$5
+FEDB_SERVER_VERSION=$4
+JAVA_NATIVE_VERSION=$5
 echo "deploy_mode:${DEPLOY_MODE}"
 ROOT_DIR=$(pwd)
 echo "test_version:$FEDB_SDK_VERSION"
@@ -31,6 +32,6 @@ if [[ "${BUILD_MODE}" == "SRC" ]]; then
     sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
 fi
 # modify pom
-sed -i "s#<openmldb.version>.*</openmldb.version>#<openmldb.version>${FEDB_SDK_VERSION}</openmldb.version>#" pom.xml
-
+sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${FEDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
+sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml
 cd "${ROOT_DIR}" || exit

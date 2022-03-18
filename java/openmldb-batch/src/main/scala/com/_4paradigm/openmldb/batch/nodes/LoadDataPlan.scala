@@ -34,6 +34,7 @@ import scala.collection.mutable
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // result 'readSchema' & 'tsCols' is only for csv format, may not be used
   def extractOriginAndReadSchema(columns: util.List[Common.ColumnDesc]): (StructType, StructType, List[String]) = {
     var oriSchema = new StructType
     var readSchema = new StructType
@@ -42,7 +43,7 @@ object LoadDataPlan {
       var ty = col.getDataType
       oriSchema = oriSchema.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
         .getNotNull)
-      if (col.getDataType.equals(Type.DataType.kTimestamp)) {
+      if (ty.equals(Type.DataType.kTimestamp)) {
         tsCols += col.getName
         // use string to parse ts column, to avoid getting null(parse wrong format), can't distinguish between the
         // parsed null and the real `null`.
@@ -85,17 +86,22 @@ object LoadDataPlan {
     longTsCols.toList
   }
 
-  // We want df with oriSchema, but
+  // We want df with oriSchema, but if the file format is csv:
   // 1. we support two format of timestamp
-  // 2. spark read may change the schema to all nullable
-  def autoLoad(columns: util.List[Common.ColumnDesc], reader: DataFrameReader, file: String): DataFrame = {
+  // 2. spark read may change the df schema to all nullable
+  // So we should fix it.
+  def autoLoad(reader: DataFrameReader, file: String, format: String, columns: util.List[Common.ColumnDesc])
+  : DataFrame = {
     val (oriSchema, readSchema, tsCols) = extractOriginAndReadSchema(columns)
+    if (format != "csv") {
+      return reader.schema(oriSchema).format(format).load(file)
+    }
+    // csv should auto detect the timestamp format
 
-    // auto detect timestamp format
     // use string to read, then infer the format by the first non-null value of the ts column
     val longTsCols = parseLongTsCols(reader, readSchema, tsCols, file)
     logger.info(s"read schema: $readSchema")
-    var df = reader.schema(readSchema).load(file)
+    var df = reader.schema(readSchema).format(format).load(file)
     if (longTsCols.nonEmpty) {
       // convert long type to timestamp type
       for (tsCol <- longTsCols) {
@@ -134,7 +140,7 @@ object LoadDataPlan {
     val deepCopy = deepCopyOpt.get
     logger.info("load data to storage {}, reader[format {}, options {}], writer[mode {}], is deep? {}", storage, format,
       options, mode, deepCopy.toString)
-    val reader = spark.read.options(options).format(format)
+    val readerWithOptions = spark.read.options(options)
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
@@ -149,7 +155,7 @@ object LoadDataPlan {
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
         "zkPath" -> ctx.getConf.openmldbZkRootPath)
 
-      val df = autoLoad(info.getColumnDescList, reader, inputFile)
+      val df = autoLoad(readerWithOptions, inputFile, format, info.getColumnDescList)
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
       // only in some case, do not need to update info
@@ -199,7 +205,7 @@ object LoadDataPlan {
 
         // do deep copy
         require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
-        val df = autoLoad(info.getColumnDescList, reader, inputFile)
+        val df = autoLoad(readerWithOptions, inputFile, format, info.getColumnDescList)
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
           .putAllOptions(writeOptions.asJava)

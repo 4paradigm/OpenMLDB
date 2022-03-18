@@ -41,6 +41,8 @@
 #include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
+#include "sdk/sql_cluster_router.h"
+#include "nameserver/system_table.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -315,6 +317,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void RefreshTableInfo();
 
+    void UpdateGlobalVarTable();
+
     bool RefreshSingleTable(uint32_t tid);
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
@@ -423,7 +427,11 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<SpCache> sp_cache_;
     std::string notify_path_;
     std::string sp_root_path_;
+    std::string globalvar_changed_notify_path_;
     ::openmldb::type::StartupMode startup_mode_;
+
+    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
+    std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 };
 
 }  // namespace tablet
