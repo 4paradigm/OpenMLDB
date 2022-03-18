@@ -42,7 +42,8 @@ void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col3", openmldb::type::DataType::kInt);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col4", openmldb::type::DataType::kDouble);
 
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx", "id1|id2", "ts_col", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx", "id1|id2", "ts_col", ::openmldb::type::kAbsoluteTime, 0,
+                          0);
     return;
 }
 
@@ -114,7 +115,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::map<std::string, uint32_t> mapping;
         mapping.insert(std::make_pair("idx", 0));
         std::shared_ptr<Table> aggr_table =
-                std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
+            std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
         aggr_table->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2");
         codec::RowBuilder row_builder(base_table_meta.column_desc());
@@ -122,7 +123,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         uint32_t row_size = row_builder.CalTotalLength(6);
         encoded_row.resize(row_size);
         std::string key = "id1|id2";
-        for(int i = 0; i < 100; i++) {
+        for (int i = 0; i < 100; i++) {
             row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
             row_builder.AppendString("id1", 3);
             row_builder.AppendString("id2", 3);

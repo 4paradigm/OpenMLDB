@@ -47,6 +47,7 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
         }
     }
     aggr_col_type_ = base_meta.column_desc(aggr_col_idx_).data_type();
+    ts_col_type_ = base_meta.column_desc(ts_col_idx_).data_type();
     auto dimension = dimensions_.Add();
     dimension->set_idx(0);
 }
@@ -54,14 +55,34 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
     codec::RowView row_view(base_table_schema_, reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str())), row.size());
     int64_t cur_ts;
-    row_view.GetInt64(ts_col_idx_, &cur_ts);
+    switch (ts_col_type_) {
+        case DataType::kBigInt: {
+            row_view.GetInt64(ts_col_idx_, &cur_ts);
+            break;
+        }
+        case DataType::kTimestamp: {
+            row_view.GetTimestamp(ts_col_idx_, &cur_ts);
+            break;
+        }
+        default: {
+            LOG(ERROR) << "Unsupported timestamp type: " << ts_col_type_;
+            return false;
+        }
+    }
     if (aggr_buffer_map_.find(key) == aggr_buffer_map_.end()) {
         aggr_buffer_map_.emplace(key, AggrBuffer{});
     }
     auto& aggr_buffer = aggr_buffer_map_.at(key);
     if (aggr_buffer.ts_begin_ == 0) {
         aggr_buffer.ts_begin_ = cur_ts;
+        if (window_type_ == WindowType::kRowsNum) {
+            aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
+        }
     }
+    if (window_type_ == WindowType::kRowsRange && cur_ts >= aggr_buffer.ts_end_) {
+        FlushAggrBuffer(key, aggr_buffer);
+    }
+
     // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
     if (cur_ts < aggr_buffer.ts_begin_) {
         auto it = aggr_table_->NewTraverseIterator(0);
@@ -95,23 +116,16 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     }
     aggr_buffer.aggr_cnt_++;
     aggr_buffer.binlog_offset_ = offset;
-    aggr_buffer.ts_end_ = cur_ts;
+    if (window_type_ == WindowType::kRowsNum) {
+        aggr_buffer.ts_end_ = cur_ts;
+    }
     bool ok = UpdateAggrVal(&row_view, &aggr_buffer);
     if (!ok) {
         return false;
     }
 
-    if (window_type_ == WindowType::kRowsNum) {
-        if (aggr_buffer.aggr_cnt_ >= window_size_) {
-            FlushAggrBuffer(key, aggr_buffer);
-        }
-    } else if (window_type_ == WindowType::kRowsRange) {
-        if (cur_ts - aggr_buffer.ts_begin_ >= window_size_) {
-            FlushAggrBuffer(key, aggr_buffer);
-        }
-    } else {
-        PDLOG(WARNING, "unsupported window type");
-        return false;
+    if (window_type_ == WindowType::kRowsNum && aggr_buffer.aggr_cnt_ >= window_size_) {
+        FlushAggrBuffer(key, aggr_buffer);
     }
 
     return true;
@@ -122,7 +136,7 @@ void Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     codec::RowBuilder row_builder(aggr_table_schema_);
     std::string aggr_val;
     switch (aggr_col_type_) {
-        case DataType::kSmallInt: 
+        case DataType::kSmallInt:
         case DataType::kInt:
         case DataType::kBigInt: {
             int64_t tmp_val = buffer.aggr_val_.vlong;

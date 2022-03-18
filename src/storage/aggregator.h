@@ -88,6 +88,7 @@ class Aggregator {
 
     std::unordered_map<std::string, AggrBuffer> aggr_buffer_map_;
     DataType aggr_col_type_;
+    DataType ts_col_type_;
     std::shared_ptr<Table> aggr_table_;
     Dimensions dimensions_;
 
