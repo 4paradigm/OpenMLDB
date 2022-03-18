@@ -268,7 +268,7 @@ jobs:
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-  
+
   python-sdk-mac:
     runs-on: macos-latest
     env:
@@ -322,7 +322,7 @@ jobs:
           twine upload openmldb-*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}  
 
   publish-test-results:
     runs-on: ubuntu-latest
