@@ -51,7 +51,7 @@ option.setRequestTimeout(60000);
 
 ```
 
-Next, create an Executor using SdkOption. SqlClusterExecutor is multi-threaded safe to execute SQL operations. In the actual environment, just create one `SqlClusterExecutor`:
+Next, create an Executor using SdkOption. SqlClusterExecutor is thread-safe to execute SQL operations. In the actual environment, just create one `SqlClusterExecutor`:
 
 ```java
 sqlExecutor = new SqlClusterExecutor(option);
@@ -172,7 +172,7 @@ try {
 }
 ```
 
-### 2.6 Execute SQL on-demand queries
+### 2.6 SQL Queries in the request mode
 
 The first step, use the `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` interface to get the RequestPrepareStatement.
 
@@ -255,7 +255,7 @@ Use the `SqlClusterExecutor::dropDB(db)` interface to drop the specified databas
 sqlExecutor.dropDB(db);
 ```
 
-## 3. Complete Java SDK usage example
+## 3. A Complete Java SDK usage example
 
 ```java
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
