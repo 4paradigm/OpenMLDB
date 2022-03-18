@@ -146,11 +146,24 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         aggr_table_meta.set_tid(id);
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1d");
-        ASSERT_TRUE(aggr != nullptr);
-        ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
-        ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
-        ASSERT_EQ(aggr->GetWindowSize(), 86400000);
+        aggr_table->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1s");
+        codec::RowBuilder row_builder(base_table_meta.column_desc());
+        std::string encoded_row;
+        uint32_t row_size = row_builder.CalTotalLength(6);
+        encoded_row.resize(row_size);
+        std::string key = "id1|id2";
+        for (int i = 0; i <= 100; i++) {
+            row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+            row_builder.AppendString("id1", 3);
+            row_builder.AppendString("id2", 3);
+            row_builder.AppendInt64(i * 1000);
+            row_builder.AppendInt32(i);
+            row_builder.AppendDouble(static_cast<double>(i));
+            bool ok = aggr->Update(key, encoded_row, i);
+            ASSERT_TRUE(ok);
+        }
+        ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
     }
 }
 

@@ -73,13 +73,13 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         aggr_buffer_map_.emplace(key, AggrBuffer{});
     }
     auto& aggr_buffer = aggr_buffer_map_.at(key);
-    if (aggr_buffer.ts_begin_ == 0) {
+    if (aggr_buffer.aggr_cnt_ == 0) {
         aggr_buffer.ts_begin_ = cur_ts;
-        if (window_type_ == WindowType::kRowsNum) {
+        if (window_type_ == WindowType::kRowsRange) {
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
         }
     }
-    if (window_type_ == WindowType::kRowsRange && cur_ts >= aggr_buffer.ts_end_) {
+    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
         FlushAggrBuffer(key, aggr_buffer);
     }
 
