@@ -95,9 +95,9 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
                                            origin_data.size());
             int32_t origin_cnt = 0;
             char* ch = NULL;
-            uint32_t cn_length = 0;
+            uint32_t ch_length = 0;
             origin_row_view.GetInt32(3, &origin_cnt);
-            origin_row_view.GetString(4, &ch, &cn_length);
+            origin_row_view.GetString(4, &ch, &ch_length);
             codec::RowBuilder row_builder(aggr_table_schema_);
             std::string new_row = origin_data;
             row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(new_row[0])), new_row.size(), false);
@@ -190,6 +190,8 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
 
 bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) {
     char* ch = NULL;
+    uint32_t ch_length = 0;
+    row_view->GetString(4, &ch, &ch_length);
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
