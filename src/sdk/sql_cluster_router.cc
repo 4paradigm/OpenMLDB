@@ -919,7 +919,7 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& main_table = cache->router.GetMainTable();
         const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
         if (!main_table.empty()) {
-            DLOG(INFO) << "get main table" << main_table;
+            DLOG(INFO) << "get main table " << main_table;
             std::string val;
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
 
@@ -2978,8 +2978,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 return {base::ReturnCode::kError, "get tablets failed"};
             }
             auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
-            auto aggr_table_info = cluster_sdk_->GetTableInfo(aggr_db, aggr_table);
-            if (!base_table_info || !aggr_table_info) {
+            auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
+            if (!base_table_info) {
                 return {base::ReturnCode::kError, "get table info failed"};
             }
             ::openmldb::api::TableMeta base_table_meta;
@@ -3016,7 +3016,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                     return {base::ReturnCode::kError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
-                tablet_client->CreateAggregator(base_table_meta, aggr_table_info->tid(), pid, index_pos, lw);
+                tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw);
             }
         }
     }
