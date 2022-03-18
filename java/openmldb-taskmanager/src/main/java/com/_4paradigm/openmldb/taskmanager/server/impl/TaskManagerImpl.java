@@ -212,7 +212,9 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
         try {
-            String log = LogManager.getJobLog(request.getId());
+            String outLog = LogManager.getJobLog(request.getId());
+            String errorLog = LogManager.getJobErrorLog(request.getId());
+            String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {
             e.printStackTrace();
