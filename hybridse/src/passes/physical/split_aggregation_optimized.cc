@@ -61,16 +61,12 @@ bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** o
     for (int i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
         if (expr->GetExprType() == node::kExprCall) {
-            DLOG(INFO) << "expr call = " << expr->GetExprString();
             const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
             const auto* window = call_expr->GetOver();
             if (window == nullptr) continue;
 
             // skip ANONYMOUS_WINDOW
             if (!window->GetName().empty()) {
-                DLOG(INFO) << "func name = " << call_expr->GetFnDef()->GetName()
-                           << ", win name = " << window->GetName();
-
                 if (long_windows_.count(window->GetName())) {
                     SplitProjects(project_aggr_op, output);
                     return true;
@@ -86,16 +82,14 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     *output = in;
 
     if (!IsSplitable(in)) {
-        LOG(WARNING) << in->GetTreeString() << " is not splitable";
+        LOG(INFO) << in->GetTreeString() << " is not splitable";
         return false;
     }
 
+    DLOG(INFO) << "Split expr: " << in->GetTreeString();
+
     std::vector<vm::PhysicalProjectNode*> split_nodes;
     vm::ColumnProjects column_projects;
-    DLOG(INFO) << "fn_schema size = " << in->project().fn_info().fn_schema()->size();
-    for (int i = 0; i < in->project().fn_info().fn_schema()->size(); i++) {
-        DLOG(INFO) << "fn_schema " << i << ": " << in->project().fn_info().fn_schema()->Get(i).name();
-    }
     for (int i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
 
@@ -121,8 +115,8 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
                 column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
                 column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
                 vm::PhysicalAggrerationNode* node = nullptr;
-                LOG(WARNING) << "column_projects size = " << column_projects.size() << ", fn_schema = "
-                             << column_projects.GetExpr(column_projects.size() - 1)->GetExprString();
+                DLOG(INFO) << "Create Single Aggregation: size = " << column_projects.size()
+                           << ", expr = " << column_projects.GetExpr(column_projects.size() - 1)->GetExprString();
 
                 auto status = plan_ctx_->CreateOp<vm::PhysicalAggrerationNode>(
                     &node, in->GetProducer(0), column_projects, in->having_condition_.condition());

@@ -187,7 +187,7 @@ class RunSession {
         return options_;
     }
 
-    void SetOptions(const std::shared_ptr<std::unordered_map<std::string, std::string>>& options) {
+    void SetOptions(const std::shared_ptr<const std::unordered_map<std::string, std::string>>& options) {
         options_ = options;
     }
 
