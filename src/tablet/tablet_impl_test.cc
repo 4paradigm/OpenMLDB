@@ -5701,11 +5701,10 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
     FLAGS_recycle_ttl = 1;
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
-    std::string tmp_recycle_path = "/tmp/gtest/recycle/hdd";
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/gtest/recycle/";
     ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/100_2_20191111115149/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
@@ -5716,8 +5715,8 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
     sleep(30);
 
     std::string now_time = ::openmldb::base::GetNowTime();
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/99_3_" + now_time + "/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/hdd/100_4_binlog_" + now_time + "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_3_" + now_time + "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_4_binlog_" + now_time + "/binlog/");
     file_vec.clear();
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
@@ -5736,7 +5735,7 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_EQ(0, (signed)file_vec.size());
 
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;
     FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
 }
@@ -6130,5 +6129,6 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/1";
     FLAGS_hdd_root_path = "/tmp/hdd/1";
     FLAGS_ssd_root_path = "/tmp/ssd/1";
+    FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }
