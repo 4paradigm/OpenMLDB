@@ -1480,7 +1480,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 
         case hybridse::node::kCmdCreateDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            if (ns_ptr->CreateDatabase(name, msg)) {
+            if (ns_ptr->CreateDatabase(name, msg, cmd_node->IsIfNotExists())) {
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, "Create database failed for " + msg};

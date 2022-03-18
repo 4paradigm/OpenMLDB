@@ -21,6 +21,15 @@ cases:
         +-node[CMD]
           +-cmd_type: create database
           +-args: [db1]
+  - id: 1-1
+    desc: create db if not exists
+    sql: create database if not exists db2;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: create database
+          +-if_not_exists: true
+          +-args: [db2]
   - id: 2
     desc: CREATE TABLE
     sql: CREATE TABLE schema.sql;

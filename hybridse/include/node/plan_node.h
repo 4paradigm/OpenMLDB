@@ -451,10 +451,20 @@ class CmdPlanNode : public LeafPlanNode {
 
     const node::CmdType GetCmdType() const { return cmd_type_; }
     const std::vector<std::string> &GetArgs() const { return args_; }
+    bool Equals(const PlanNode *that) const override;
+
+    bool IsIfNotExists() const {
+        return if_not_exist_;
+    }
+
+    void SetIfNotExists(bool b) {
+        if_not_exist_ = b;
+    }
 
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+    bool if_not_exist_ = false;
 };
 
 class DeletePlanNode : public LeafPlanNode {
