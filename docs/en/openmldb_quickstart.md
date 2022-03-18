@@ -351,12 +351,12 @@ The following is the expected return result for this query (the computed feature
 
 #### 3.3.8 Result description of real-time feature extraction
 
-Real-time request (deployment execution) is SQL execution in request mode (request mode). Unlike batch mode (batch mode), request mode will only perform SQL extractions on request rows. In the previous example, the POST input is used as the request line, assuming this line of data exists in the table demo_table1, and execute SQL on it:
+Real-time request (deployment execution) is SQL execution in request mode. Unlike batch mode (batch mode), request mode will only perform SQL extractions on request rows. In the previous example, the POST input is used as the request line, assuming this line of data exists in the table demo_table1, and execute SQL on it:
 ```
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-The specific extraction logic is as follows (the actual extraction will be optimized to reduce the amount of extraction):
-1. According to the request line and the `PARTITION BY` partition of the window, filter out the lines whose c1 is "aaa", and sort them according to c6 from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. Among them, the first row after the request behavior is sorted.
+The specific extraction logic is as follows (the actual extraction will be optimized to reduce the computation):
+1. According to the request line and the `PARTITION BY` in window clause, filter out the lines whose c1 is "aaa", and sort them according to c6 from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. Among them, the first row after the request behavior is sorted.
 ```
  ----- ---- ---- ---------- ----------- --------------- - -------------
   c1 c2 c3 c4 c5 c6 c7
@@ -366,7 +366,7 @@ The specific extraction logic is as follows (the actual extraction will be optim
   aaa 11 22 1.200000 11.300000 1636097290000 1970-01-01
  ----- ---- ---- ---------- ----------- --------------- - -------------
 ```
-2. The window range is `2 PRECEDING AND CURRENT ROW`, so we cut out the real window in the above table, the request row is the smallest row, the previous 2 rows do not exist, but the window contains the current row, so the window has only Request line this line.
+2. The window range is `2 PRECEDING AND CURRENT ROW`, so we cut out the real window in the above table, the request row is the smallest row, the previous 2 rows do not exist, but the window contains the current row, so the window has only one row(the request row).
 3. Window aggregation, sum c3 of the data in the window (only one row), and get 22.
 
 The output is:
