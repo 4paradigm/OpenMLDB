@@ -186,6 +186,12 @@
 			</exclusions>
         </dependency>
 
+		<dependency>
+			<groupId>com.4paradigm.openmldb</groupId>
+			<artifactId>openmldb-common</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-spark-connector</artifactId>
@@ -324,7 +330,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
-				<version>3.9.1</version>
 			</plugin>
 
 			<!-- Check Java style -->
@@ -407,7 +412,6 @@
 			<plugin>
 				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.2.2</version>
 				<configuration>
 					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
 					<failOnError>true</failOnError>
@@ -415,7 +419,7 @@
 				</configuration>
 				<executions>
 					<execution>
-						<phase>package</phase>
+						<phase>prepare-package</phase>
 						<goals>
 							<goal>check</goal>
 						</goals>
@@ -443,22 +447,5 @@
 		</pluginManagement>
 	</build>
 
-	<reporting>
-		<plugins>
-			<!-- Generate report for jacoco -->
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<reportSets>
-					<reportSet>
-						<reports>
-							<report>report</report>
-						</reports>
-					</reportSet>
-				</reportSets>
-			</plugin>
-
-		</plugins>
-	</reporting>
-
+	<!-- use the same reporting in parent pom -->
 </project>

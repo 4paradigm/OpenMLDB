@@ -21,6 +21,15 @@ cases:
         +-node[CMD]
           +-cmd_type: create database
           +-args: [db1]
+  - id: 1-1
+    desc: create db if not exists
+    sql: create database if not exists db2;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: create database
+          +-if_not_exists: true
+          +-args: [db2]
   - id: 2
     desc: CREATE TABLE
     sql: CREATE TABLE schema.sql;
@@ -478,6 +487,30 @@ cases:
             +-expr[primary]
               +-value: yyyy
               +-type: string
+  - id: set global to int
+    sql: SET GLOBAL var1 = 100;
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: GlobalSystemVariable
+          +-key: var1
+          +-value:
+            +-expr[primary]
+              +-value: 100
+              +-type: int32
+
+  - id: set session to string
+    sql: SET SESSION var2 = '100';
+    expect:
+      node_tree_str: |
+        +-node[kSetStmt]
+          +-scope: SessionSystemVariable
+          +-key: var2
+          +-value:
+            +-expr[primary]
+              +-value: 100
+              +-type: string
+
   - id: show_variables
     sql: SHOW VARIABLES;
     expect:

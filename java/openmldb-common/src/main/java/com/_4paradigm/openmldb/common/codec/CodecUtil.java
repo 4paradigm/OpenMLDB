@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.proto.Common.ColumnDesc;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,4 +103,59 @@ public class CodecUtil {
         }
         return strLength;
     }
+
+
+    /**
+     * Convert date type to int value in OpenMLDB date format.
+     *
+     * @param date the date value
+     * @return the int value
+     */
+    public static int dateToDateInt(Date date) {
+        int year = date.getYear();
+        int month = date.getMonth();
+        int day = date.getDate();
+        int returnValue = year << 16;
+        returnValue = returnValue | (month << 8);
+        returnValue = returnValue | day;
+        return returnValue;
+    }
+
+    /**
+     * Convert number of days to int value in OpenMLDB date format.
+     *
+     * @param days the number of days
+     * @return the int value
+     */
+    public static int daysToDateInt(int days) {
+        Date date = new Date(days * 86400000L);
+        return dateToDateInt(date);
+    }
+
+    /**
+     * Convert int value of OpenMLDB date format to date type.
+     *
+     * @param dateInt the int value
+     * @return the date value
+     */
+    public static Date dateIntToDate(int dateInt) {
+        int date = dateInt;
+        int day = date & 0x0000000FF;
+        date = date >> 8;
+        int month = date & 0x0000FF;
+        int year = date >> 8;
+        return new Date(year, month, day);
+    }
+
+    /**
+     * Convert int value of OpenMLDB date format to number of days.
+     *
+     * @param dateInt the int value
+     * @return the number of days
+     */
+    public static int dateIntToDays(int dateInt) {
+        Date date = dateIntToDate(dateInt);
+        return (int)Math.ceil(date.getTime() / 86400000.0);
+    }
+
 }

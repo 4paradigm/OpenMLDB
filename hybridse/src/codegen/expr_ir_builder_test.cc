@@ -987,6 +987,23 @@ TEST_F(ExprIRBuilderTest, TestInExprNotSupport) {
     ExprErrorCheck<bool, codec::StringRef, codec::StringRef>(in_expr);
 }
 
+TEST_F(ExprIRBuilderTest, LikeExpr) {
+    auto assert_like = [&](const udf::Nullable<bool> &ret, const udf::Nullable<codec::StringRef> &lhs,
+                           const udf::Nullable<codec::StringRef> &rhs) {
+        ExprCheck([](node::NodeManager *nm, node::ExprNode *lhs,
+                     node::ExprNode *rhs) { return nm->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpLike); },
+                  ret, lhs, rhs);
+    };
+
+
+    assert_like(true, "abc", "abc");
+    assert_like(false, "abc", "def");
+    assert_like(true, "abc", "a_c");
+    assert_like(false, "a_c", "abc");
+    assert_like(true, "Mary", "M%");
+    assert_like(false, "Mary", "m%");
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

@@ -51,6 +51,7 @@ option(BUILD_BUNDLED_ZOOKEEPER "Build zookeeper from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_BOOST "Build boost from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_ROCKSDB "Build rocksdb from source" ON)
 
 # '-O3 -fPIC' reserved for thirdparty compilation
 set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
@@ -111,7 +112,7 @@ if(NOT BUILD_BUNDLED)
 
   message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED_HYBRIDSQL_ASSERTS=ON')
+    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED=ON')
   endif()
   ExternalProject_Add(
     hybridsql-asserts
@@ -203,4 +204,8 @@ endif()
 
 if (BUILD_BUNDLED_COMMON)
   include(FetchBaiduCommon)
+endif()
+
+if (BUILD_BUNDLED_ROCKSDB)
+  include(FetchRocksDB)
 endif()

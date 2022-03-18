@@ -262,7 +262,14 @@ std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std:
 }
 
 TabletCatalog::TabletCatalog()
-    : mu_(), tables_(), db_(), db_sp_map_(), client_manager_(), version_(1), local_tablet_() {}
+    : mu_(),
+      tables_(),
+      db_(),
+      db_sp_map_(),
+      client_manager_(),
+      version_(1),
+      local_tablet_(),
+      aggr_tables_(std::make_shared<AggrTableMap>()) {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -502,6 +509,36 @@ std::shared_ptr<::hybridse::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
 const Procedures& TabletCatalog::GetProcedures() {
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     return db_sp_map_;
+}
+
+std::vector<::hybridse::vm::AggrTableInfo> TabletCatalog::GetAggrTables(
+    const std::string& base_db,
+    const std::string& base_table,
+    const std::string& aggr_func,
+    const std::string& aggr_col,
+    const std::string& partition_cols,
+    const std::string& order_col) {
+    AggrTableKey key{base_db, base_table, aggr_func, aggr_col, partition_cols, order_col};
+    auto aggr_tables = std::atomic_load_explicit(&aggr_tables_, std::memory_order_acquire);
+    return (*aggr_tables)[key];
+}
+
+void TabletCatalog::RefreshAggrTables(const std::vector<::hybridse::vm::AggrTableInfo>& table_infos) {
+    auto new_aggr_tables = std::make_shared<AggrTableMap>();
+    for (const auto& table_info : table_infos) {
+        // TODO(zhanghao): can use AggrTableKey *table_key = static_cast<AggrTableKey*>(&table_info);
+        AggrTableKey table_key{table_info.base_db, table_info.base_table,
+                                               table_info.aggr_func, table_info.aggr_col,
+                                               table_info.partition_cols, table_info.order_by_col};
+        if (new_aggr_tables->count(table_key) == 0) {
+            new_aggr_tables->emplace(std::move(table_key),
+                                    std::vector<::hybridse::vm::AggrTableInfo>{std::move(table_info)});
+        } else {
+            new_aggr_tables->at(table_key).push_back(std::move(table_info));
+        }
+    }
+
+    atomic_store_explicit(&aggr_tables_, new_aggr_tables, std::memory_order_relaxed);
 }
 
 }  // namespace catalog

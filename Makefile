@@ -92,10 +92,11 @@ coverage: coverage-cpp coverage-java
 coverage-cpp: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
+# scoverage may conflicts with jacoco, so we run it separately
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
 	cd java && ./mvnw --batch-mode prepare-package
-	cd java && ./mvnw --batch-mode clean scoverage:report
+	cd java && ./mvnw --batch-mode scoverage:report
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
@@ -141,6 +142,8 @@ thirdparty-fast:
 		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+		# FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	    else \
 		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
 	    fi; \
@@ -148,6 +151,8 @@ thirdparty-fast:
 	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    # FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
+	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	fi
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'

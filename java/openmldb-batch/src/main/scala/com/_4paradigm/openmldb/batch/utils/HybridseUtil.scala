@@ -31,11 +31,17 @@ import scala.collection.mutable
 
 
 object HybridseUtil {
-  def getOutputSchemaSlices(node: PhysicalOpNode): Array[StructType] = {
-    (0 until node.GetOutputSchemaSourceSize().toInt).map(i => {
-      val columnDefs = node.GetOutputSchemaSource(i).GetSchema()
-      getSparkSchema(columnDefs)
-    }).toArray
+  def getOutputSchemaSlices(node: PhysicalOpNode, enableUnsafeRowOpt: Boolean): Array[StructType] = {
+    if (enableUnsafeRowOpt) {
+      // If enabling UnsafeRowOpt, return row with one slice
+      val columnDefs = node.GetOutputSchema()
+      Array(getSparkSchema(columnDefs))
+    } else {
+      (0 until node.GetOutputSchemaSourceSize().toInt).map(i => {
+        val columnDefs = node.GetOutputSchemaSource(i).GetSchema()
+        getSparkSchema(columnDefs)
+      }).toArray
+    }
   }
 
   def getDatabases(tableMap: mutable.Map[String, mutable.Map[String, DataFrame]]): List[Database] = {

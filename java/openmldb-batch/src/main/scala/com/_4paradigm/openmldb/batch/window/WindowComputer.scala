@@ -17,7 +17,8 @@
 package com._4paradigm.openmldb.batch.window
 
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, WindowInterface}
-import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkRowCodec}
+import com._4paradigm.openmldb.batch.spark.OpenmldbJoinedRow
+import com._4paradigm.openmldb.batch.SparkRowCodec
 import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil, UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import org.apache.commons.lang3.StringUtils
@@ -26,9 +27,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
-
 
 /**
   * Stateful class for window computation during row iteration
@@ -52,6 +51,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
 
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
+
   // group key comparation
   private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
@@ -68,7 +68,8 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
-  def compute(row: Row, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, inputSchemaSize: Int): Row = {
+  def compute(row: Row, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, inputSchemaSize: Int,
+              outputSchema: StructType, enableUnsafeRowFormat: Boolean): Row = {
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
         hook.preCompute(this, row)
@@ -78,14 +79,34 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
 
     // call encode
-    val nativeInputRow = encoder.encode(row)
+    val inputNativeRow = encoder.encode(row)
 
     // call native compute
     // note: row is buffered automatically by core api
-    val outputNativeRow  = CoreAPI.WindowProject(fn, key, nativeInputRow, true, appendSlices, window)
+    val outputNativeRow  = CoreAPI.WindowProject(fn, key, inputNativeRow, true, appendSlices, window)
 
-    // call decode
-    decoder.decode(outputNativeRow, outputArr)
+    val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {
+      /**
+       * When enabling UnsafeRowOpt and appendSlices, it has different processing.
+       *
+       * 1. C WindowProject will only return the newly added columns.
+       * 1. Only get the output row without input row and calculate the size.
+       * 2. Join the output row and input row.
+       */
+      // If window with union, the union input will have one more column at the end of input column, ignore when encode
+      val inputRowColNum = if (unionFlagIdx >= 0) {
+        row.size - 1
+      } else {
+        row.size
+      }
+
+      val row2Size = inputRowColNum
+      val row1Size = outputSchema.size - row2Size
+
+      decoder.decode(outputNativeRow, inputNativeRow, row1Size, row2Size, outputArr)
+    } else {
+      decoder.decode(outputNativeRow, outputArr)
+    }
 
     if (hooks.nonEmpty) {
       hooks.foreach(hook => try {
@@ -96,7 +117,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
 
     // release swig jni objects
-    nativeInputRow.delete()
+    inputNativeRow.delete()
     outputNativeRow.delete()
 
     // Append the index column if needed
@@ -113,23 +134,46 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     Row.fromSeq(outputArr) // can reuse backed array
   }
 
-  def unsafeCompute(internalRow: InternalRow,
-                    key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int, outputSchema: StructType): InternalRow = {
-    val inputRowSize = internalRow.asInstanceOf[UnsafeRow].getBytes.size
+  def unsafeCompute(internalRow: InternalRow, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int,
+                    outputSchema: StructType, enableUnsafeRowFormat: Boolean): InternalRow = {
+    val inputUnsaferow = internalRow.asInstanceOf[UnsafeRow]
 
     // Create native method input from Spark InternalRow
     val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
 
     // Call native method to compute
     val outputHybridseRow  =
-      CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, inputRowSize, true, appendSlices, window)
+      CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
 
-    // Call methods to generate Spark InternalRow
-    val ouputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+    // TODO: Support append slice in JIT function instead of merge in offline
+    val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {
+      /**
+       * When enabling UnsafeRowOpt and appendSlices, it has different processing.
+       *
+       * 1. C WindowProject will only return the newly added columns.
+       * 1. Only get the output row without input row and calculate the size.
+       * 2. Join the output row and input row.
+       */
+
+      val inputRowColNum = if (unionFlagIdx >= 0) {
+        internalRow.numFields - 1
+      } else {
+        internalRow.numFields
+      }
+
+      val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
+        outputSchema.size - inputRowColNum)
+
+      new OpenmldbJoinedRow(outputInternalRow, inputUnsaferow)
+    } else {
+      // Call methods to generate Spark InternalRow
+      UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+    }
 
     // TODO: Add index column if needed
     outputHybridseRow.delete()
-    ouputInternalRow
+
+    outputInternalRowWithAppend
   }
 
   def bufferRowOnly(row: Row, key: Long): Unit = {

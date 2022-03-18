@@ -336,12 +336,11 @@ cases:
         -
           columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
           indexs: ["index1:c1:c7"]
-          rows:
-            - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-            - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-            - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
       sqls:
         - deploy deploy_t1 SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+        - insert into {0} values (1,'aa',20,30,1.1,2.1,1590738990000,'2020-05-01');
+        - insert into {0} values (2,'bb',20,31,1.2,2.2,1590738991000,'2020-05-02');
+        - insert into {0} values (4,'dd',20,33,1.4,2.4,1590738993000,'2020-05-04');
     body: |
       {
           "common_cols":[],
@@ -363,12 +362,11 @@ cases:
         -
           columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
           indexs: ["index1:c1:c7"]
-          rows:
-            - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-            - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-            - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
       sqls:
         - deploy deploy_t1 SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+        - insert into {0} values (1,'aa',20,30,1.1,2.1,1590738990000,'2020-05-01');
+        - insert into {0} values (2,'bb',20,31,1.2,2.2,1590738991000,'2020-05-02');
+        - insert into {0} values (4,'dd',20,33,1.4,2.4,1590738993000,'2020-05-04');
     body: |
       {
           "common_cols":[],

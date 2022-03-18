@@ -455,7 +455,7 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
         }
         default: {
             if (node->GetChildrenSize() > 0) {
-                int cnt= GetPlanTreeLimitCount(node->GetChildren()[0]);
+                int cnt = GetPlanTreeLimitCount(node->GetChildren()[0]);
                 if (cnt > 0) {
                     if (limit_cnt == 0) {
                         limit_cnt = cnt;

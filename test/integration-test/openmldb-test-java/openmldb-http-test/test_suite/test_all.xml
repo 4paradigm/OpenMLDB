@@ -11,6 +11,8 @@
         <classes>
 <!--            <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestInsert"/>-->
             <class name="com._4paradigm.openmldb.http_test.v230.TestProcedure"/>
+            <class name="com._4paradigm.openmldb.http_test.v030.TestDeployment"/>
+            <class name="com._4paradigm.openmldb.http_test.v040.TestDeployment"/>
 <!--            <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestShow"/>-->
         </classes>
     </test>

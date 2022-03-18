@@ -94,8 +94,8 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                 return false;
             }
             const codec::ColInfo& col_info =
-                *schema_context_->GetRowFormat(schema_idx)
-                     ->GetColumnInfo(col_idx);
+                *schema_context_->GetRowFormat()
+                     ->GetColumnInfo(schema_idx, col_idx);
             auto col_type = col_info.type;
             uint32_t offset = col_info.offset;
 
@@ -677,15 +677,22 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     // compute current row's slices
     for (auto& pair : agg_col_infos_) {
         size_t schema_idx = pair.second.schema_idx;
-        auto iter = used_slices.find(schema_idx);
+
+        size_t slice_idx = schema_idx;
+        // TODO(tobe): Check row format before getting
+        if (schema_context_->GetRowFormat() != nullptr) {
+            slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+        }
+
+        auto iter = used_slices.find(slice_idx);
         if (iter == used_slices.end()) {
             ::llvm::Value* idx_value =
-                llvm::ConstantInt::get(int64_ty, schema_idx, true);
+                llvm::ConstantInt::get(int64_ty, slice_idx, true);
             ::llvm::Value* buf_ptr =
                 builder.CreateCall(get_slice_func, {iter_ptr, idx_value});
             ::llvm::Value* buf_size =
                 builder.CreateCall(get_slice_size_func, {iter_ptr, idx_value});
-            used_slices[schema_idx] = {buf_ptr, buf_size};
+            used_slices[slice_idx] = {buf_ptr, buf_size};
         }
     }
 
@@ -696,11 +703,17 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         std::string col_key = info.GetColKey();
         if (cur_row_fields_dict.find(col_key) == cur_row_fields_dict.end()) {
             size_t schema_idx = info.schema_idx;
-            auto& slice_info = used_slices[schema_idx];
+            size_t slice_idx = schema_idx;
+            // TODO(tobe): Check row format before getting
+            if (schema_context_->GetRowFormat() != nullptr) {
+                slice_idx = schema_context_->GetRowFormat()->GetSliceId(schema_idx);
+            }
+
+            auto& slice_info = used_slices[slice_idx];
 
             ScopeVar dummy_scope_var;
             BufNativeIRBuilder buf_builder(
-                schema_idx, schema_context_->GetRowFormat(schema_idx),
+                schema_idx, schema_context_->GetRowFormat(),
                 body_block, &dummy_scope_var);
             NativeValue field_value;
             CHECK_TRUE(buf_builder.BuildGetField(info.col_idx, slice_info.first, slice_info.second, &field_value),
