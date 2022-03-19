@@ -16,20 +16,63 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import java.sql.*;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.CallableStatement;
+import java.sql.Clob;
+import java.sql.Connection;
+import java.sql.NClob;
+import java.sql.SQLClientInfoException;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
+import java.sql.Savepoint;
+import java.sql.Statement;
+import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
 public class SQLConnection implements Connection {
-    @Override
-    public Statement createStatement() throws SQLException {
-        return null;
+    // TODO(hw): public this until we can get INFORMATION_SCHEMA from sql
+    public SqlExecutor client;
+    private final Properties props;
+    public final String defaultDatabase;
+
+    private boolean isClosed = false;
+
+    public SQLConnection(SqlExecutor client, Properties props) throws SQLException {
+        this.client = client;
+        this.props = props;
+        this.defaultDatabase = props.getProperty("dbName", "");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql) throws SQLException {
-        return null;
+    public Statement createStatement() throws SQLException {
+        return new SQLStatement(this);
+    }
+
+
+    /**
+     * WARNING: insert prepared statement only can insert into <B>online storage</B><P>
+     * <p>
+     * select can visit both offline and online
+     *
+     * @param sql only supports insert and select
+     * @return PreparedStatement
+     * @throws SQLException if sql is unsupported
+     */
+    @Override
+    public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException {
+        String lower = sql.toLowerCase();
+        if (lower.startsWith("insert into")) {
+            return client.getInsertPreparedStmt(this.defaultDatabase, sql);
+        } else if (lower.startsWith("select")) {
+            return client.getPreparedStatement(this.defaultDatabase, sql);
+        }
+        throw new SQLException("unsupported sql");
     }
 
     @Override
@@ -54,27 +97,32 @@ public class SQLConnection implements Connection {
 
     @Override
     public void commit() throws SQLException {
-
+        // do not throw an exception
     }
 
     @Override
     public void rollback() throws SQLException {
-
+        throw new SQLException("unsupported");
     }
 
     @Override
     public void close() throws SQLException {
-
+        if (isClosed) {
+            return;
+        }
+        client.close();
+        client = null;
+        isClosed = true;
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        return false;
+        return isClosed;
     }
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
-        return null;
+        return new DatabaseMetaData(this);
     }
 
     @Override

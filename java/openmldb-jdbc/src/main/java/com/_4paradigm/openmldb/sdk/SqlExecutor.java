@@ -65,6 +65,8 @@ public interface SqlExecutor {
 
     Schema getTableSchema(String dbName, String tableName) throws SQLException;
 
+    List<String> getTableNames(String db);
+
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
 
     NS.TableInfo getTableInfo(String db, String table) throws SQLException;
