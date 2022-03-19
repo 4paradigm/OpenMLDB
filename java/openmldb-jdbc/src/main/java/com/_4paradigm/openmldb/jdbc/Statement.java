@@ -46,7 +46,7 @@ public class Statement implements java.sql.Statement {
     public SQLResultSet executeQuery(String sql) throws SQLException {
         checkClosed();
         Status status = new Status();
-        resultSet = sqlRouter.ExecuteSQL("", sql, status);
+        resultSet = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
             String msg = status.getMsg();
             status.delete();
