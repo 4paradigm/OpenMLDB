@@ -115,6 +115,7 @@ class CodeGenContext {
     CodeGenContext(::llvm::Module*, const vm::SchemasContext* schemas_context,
                    const codec::Schema* parameter_types,
                    node::NodeManager* node_manager);
+    ~CodeGenContext();
 
     ::llvm::Function* GetCurrentFunction() const;
     void SetCurrentFunction(::llvm::Function*);
@@ -154,7 +155,7 @@ class CodeGenContext {
 
     const vm::SchemasContext* schemas_context() const;
     const codec::Schema* parameter_types() const;
-    const codec::RowFormat& parameter_row_format() const;
+    const codec::RowFormat* parameter_row_format() const;
     node::NodeManager* node_manager() const;
 
  private:
@@ -172,7 +173,7 @@ class CodeGenContext {
 
     const vm::SchemasContext* schemas_context_;
     const codec::Schema* parameter_types_;
-    const codec::RowFormat parameter_row_format_;
+    codec::RowFormat* parameter_row_format_ = nullptr;
 
     std::unordered_map<std::string, CodeScope> function_scopes_;
 

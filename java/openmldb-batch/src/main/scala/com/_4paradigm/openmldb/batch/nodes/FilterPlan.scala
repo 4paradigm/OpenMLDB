@@ -30,8 +30,8 @@ object FilterPlan {
     val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
 
     var outputDf = inputDf
-
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
     val filter = node.filter().condition()
 
     // Handle equal condiction

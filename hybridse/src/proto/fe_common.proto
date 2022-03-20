@@ -139,6 +139,8 @@ enum StatusCode {
     kTestEngineError = 1801;
     kSqlCaseError = 1802;
     kTestRunSessionError = 1803;
+
+    kCmdError = 2000;
 }
 
 message Status {

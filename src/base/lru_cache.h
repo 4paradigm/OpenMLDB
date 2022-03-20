@@ -17,9 +17,6 @@
 #include <boost/optional.hpp>
 #include <boost/optional/optional_io.hpp>
 
-#include "boost/optional.hpp"
-#include "boost/optional/optional_io.hpp"
-
 namespace openmldb::base {
 
 // a cache which evicts the least recently used item when it is full

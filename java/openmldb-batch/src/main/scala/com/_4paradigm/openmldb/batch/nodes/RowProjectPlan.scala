@@ -19,13 +19,17 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil,
+  UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
+import com._4paradigm.openmldb.common.codec.CodecUtil
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.types.{LongType, StructType}
+import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
+
+import scala.collection.mutable
 
 
 object RowProjectPlan {
@@ -42,8 +46,9 @@ object RowProjectPlan {
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
     // Get schema info from physical node
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0), isUnsafeRowOpt)
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
 
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_info().fn_name(),
@@ -69,9 +74,11 @@ object RowProjectPlan {
       inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
     }
 
+    val inputSchema = inputDf.schema
+
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
 
-    val outputDf = if (ctx.getConf.enableUnsafeRowOptimization) { // Use UnsafeRow optimization
+    val outputDf = if (ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
 
       val outputInternalRowRdd = inputDf.queryExecution.toRdd.mapPartitions(partitionIter => {
         val tag = projectConfig.moduleTag
@@ -82,22 +89,75 @@ object RowProjectPlan {
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
 
+        val inputTimestampColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until inputSchema.size) {
+          if (inputSchema(i).dataType == TimestampType) {
+            inputTimestampColIndexes.append(i)
+          }
+        }
+
+        val outputTimestampColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until outputSchema.size) {
+          if (outputSchema(i).dataType == TimestampType) {
+            outputTimestampColIndexes.append(i)
+          }
+        }
+
+        val inputDateColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until inputSchema.size) {
+          if (inputSchema(i).dataType == DateType) {
+            inputDateColIndexes.append(i)
+          }
+        }
+
+        val outputDateColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until outputSchema.size) {
+          if (outputSchema(i).dataType == DateType) {
+            outputDateColIndexes.append(i)
+          }
+        }
+
         partitionIter.map(internalRow => {
-          val inputRowSize = internalRow.asInstanceOf[UnsafeRow].getBytes.size
+
+          // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
+          for (colIdx <- inputTimestampColIndexes) {
+            if(!internalRow.isNullAt(colIdx)) {
+              internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+            }
+          }
+
+          for (colIdx <- inputDateColIndexes) {
+            if(!internalRow.isNullAt(colIdx)) {
+              internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
+            }
+          }
 
           // Create native method input from Spark InternalRow
           val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
 
           // Call native method to compute
-          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, inputRowSize, false)
+          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
 
           // Call methods to generate Spark InternalRow
-          val ouputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+          val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+
+          // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
+          for (tsColIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(tsColIdx)) {
+              // TODO(tobe): warning if over LONG.MAX_VALUE
+              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
+            }
+          }
 
           // TODO: Add index column if needed
-
           outputHybridseRow.delete()
-          ouputInternalRow
+          outputInternalRow
         })
 
       })
@@ -140,6 +200,7 @@ object RowProjectPlan {
           // Release swig jni objects
           nativeInputRow.delete()
           outputNativeRow.delete()
+          emptyParameter.delete()
 
           // Append the index column if needed
           if (projectConfig.keepIndexColumn) {

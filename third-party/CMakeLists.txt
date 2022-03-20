@@ -112,7 +112,7 @@ if(NOT BUILD_BUNDLED)
 
   message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED_HYBRIDSQL_ASSERTS=ON')
+    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED=ON')
   endif()
   ExternalProject_Add(
     hybridsql-asserts

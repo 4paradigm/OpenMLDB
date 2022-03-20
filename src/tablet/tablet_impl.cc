@@ -139,6 +139,7 @@ TabletImpl::TabletImpl()
       endpoint_(),
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_(),
+      globalvar_changed_notify_path_(),
       startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
 
 TabletImpl::~TabletImpl() {
@@ -161,6 +162,11 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
+    globalvar_changed_notify_path_ = zk_path + "/notify/global_variable";
+    global_variables_ = std::make_shared<std::map<std::string, std::string>>();
+    global_variables_->emplace("execute_mode", "offline");
+    global_variables_->emplace("enable_trace", "false");
+    
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_[::openmldb::common::kMemory]);
     ::openmldb::base::SplitString(FLAGS_ssd_root_path, ",", mode_root_paths_[::openmldb::common::kSSD]);
     ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", mode_root_paths_[::openmldb::common::kHDD]);
@@ -339,6 +345,14 @@ bool TabletImpl::RegisterZK() {
         PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", endpoint_.c_str(), zk_cluster_.c_str());
         if (zk_client_->IsExistNode(notify_path_) != 0) {
             zk_client_->CreateNode(notify_path_, "1");
+        }
+        if (zk_client_->IsExistNode(globalvar_changed_notify_path_) != 0) {
+            zk_client_->CreateNode(globalvar_changed_notify_path_, "1");
+        }
+        if (!zk_client_->WatchItem(globalvar_changed_notify_path_,
+                                   boost::bind(&TabletImpl::UpdateGlobalVarTable, this))) {
+            LOG(WARNING) << "add global var changed watcher failed";
+            return false;
         }
         if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
             LOG(WARNING) << "add notify watcher failed";
@@ -4023,6 +4037,30 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
     return catalog_->UpdateTableInfo(table_info);
 }
 
+void TabletImpl::UpdateGlobalVarTable() {
+    // todo: should support distribute iterate
+    std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+    std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
+    std::string sql = "select * from " + table;
+    hybridse::sdk::Status status;
+    auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    if (status.code != 0) {
+        LOG(ERROR) << "update global var table failed: " << status.msg;
+        return;
+    }
+    auto old_global_var = std::atomic_load_explicit(&global_variables_, std::memory_order_relaxed);
+    auto new_global_var = std::make_shared<std::map<std::string, std::string>>(*old_global_var);
+    std::string key;
+    std::string value;
+    while (rs->Next()) {
+        key = rs->GetStringUnsafe(0);
+        value = rs->GetStringUnsafe(1);
+        (*new_global_var)[key] = value;
+    }
+    std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
+    return;
+}
+
 void TabletImpl::RefreshTableInfo() {
     if (!zk_client_) {
         return;
@@ -4130,6 +4168,22 @@ void TabletImpl::RefreshTableInfo() {
             }
         }
     }
+
+    if (!sr_) {
+        PDLOG(INFO, "Init ClusterSDK in tablet server");
+        ::openmldb::sdk::ClusterOptions copt;
+        copt.zk_cluster = zk_cluster_;
+        copt.zk_path = zk_path_;
+        auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
+        bool ok = cs->Init();
+        if (!ok) {
+            PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
+        }
+        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
+    }
+    // refresh the pre-aggr tables info
+    auto entries = sr_->GetAggrTables();
+    catalog_->RefreshAggrTables(entries);
 }
 
 int TabletImpl::CheckDimessionPut(const ::openmldb::api::PutRequest* request, uint32_t idx_cnt) {

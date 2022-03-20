@@ -44,9 +44,9 @@ import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -157,31 +157,41 @@ public class SqlClusterExecutor implements SqlExecutor {
         return row;
     }
 
+    @Override
+    public Statement getStatement() {
+        return new com._4paradigm.openmldb.jdbc.Statement(sqlRouter);
+    }
+
+    @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
         return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException {
         return new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
         return new PreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                          List<Integer> commonColumnIndices) throws SQLException {
         return new BatchRequestPreparedStatementImpl(
                 db, sql, this.sqlRouter, commonColumnIndices);
     }
 
-    public CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException {
-        return new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    @Override
+    public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
+        return new CallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
-        return new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException {
+        return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override

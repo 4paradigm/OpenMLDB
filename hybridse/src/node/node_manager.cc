@@ -733,7 +733,7 @@ SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::string &arg
 }
 SqlNode *NodeManager::MakeCmdNode(node::CmdType cmd_type, const std::vector<std::string> &args) {
     CmdNode *node_ptr = new CmdNode(cmd_type);
-    for (auto const & arg: args) {
+    for (auto const & arg : args) {
         node_ptr->AddArg(arg);
     }
     return RegisterNode(node_ptr);
@@ -753,15 +753,16 @@ SqlNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
     return RegisterNode(node_ptr);
 }
 
-DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt,
-                                     const std::string& stmt_str, bool if_not_exist) {
-    DeployNode *node = new DeployNode(name, stmt, stmt_str, if_not_exist);
+DeployNode *NodeManager::MakeDeployStmt(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+                                        const std::shared_ptr<OptionsMap> options, bool if_not_exist) {
+    DeployNode *node = new DeployNode(name, stmt, stmt_str, std::move(options), if_not_exist);
     return RegisterNode(node);
 }
 
 DeployPlanNode *NodeManager::MakeDeployPlanNode(const std::string &name, const SqlNode *stmt,
-                                                const std::string& stmt_str, bool if_not_exist) {
-    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, if_not_exist);
+                                                const std::string &stmt_str, const std::shared_ptr<OptionsMap> options,
+                                                bool if_not_exist) {
+    DeployPlanNode *node = new DeployPlanNode(name, stmt, stmt_str, std::move(options), if_not_exist);
     return RegisterNode(node);
 }
 DeleteNode* NodeManager::MakeDeleteNode(DeleteTarget target, std::string_view job_id) {
@@ -937,6 +938,7 @@ CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(const std::str
 
 CmdPlanNode *NodeManager::MakeCmdPlanNode(const CmdNode *node) {
     node::CmdPlanNode *node_ptr = new CmdPlanNode(node->GetCmdType(), node->GetArgs());
+    node_ptr->SetIfNotExists(node->IsIfNotExists());
     RegisterNode(node_ptr);
     return node_ptr;
 }

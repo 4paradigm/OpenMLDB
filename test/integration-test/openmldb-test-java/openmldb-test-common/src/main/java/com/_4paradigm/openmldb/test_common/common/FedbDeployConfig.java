@@ -31,11 +31,13 @@ import java.util.Properties;
 public class FedbDeployConfig {
 
     public static final String ZK_URL;
+    public static final String SPARK_URL;
     public static final Properties CONFIG;
 
     static {
         CONFIG = FedbTool.getProperties("fedb_deploy.properties");
         ZK_URL = CONFIG.getProperty("zk_url");
+        SPARK_URL = CONFIG.getProperty("spark_url");
     }
 
     public static String getUrl(String version){
@@ -43,5 +45,8 @@ public class FedbDeployConfig {
     }
     public static String getZKUrl(String version){
         return CONFIG.getProperty(version+"_zk_url", ZK_URL);
+    }
+    public static String getSparkUrl(String version){
+        return CONFIG.getProperty(version+"_spark_url", SPARK_URL);
     }
 }

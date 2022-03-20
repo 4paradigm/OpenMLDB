@@ -16,13 +16,15 @@
 
 #include "node/sql_node.h"
 
-#include <absl/strings/str_cat.h>
-
+#include <algorithm>
 #include <numeric>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
 #include "node/node_enum.h"
@@ -41,6 +43,43 @@ static const std::unordered_map<std::string, DataType const> type_map = {
     {"int64", kInt64}, {"bigint", kInt64},  {"string", kVarchar}, {"varchar", kVarchar},     {"float32", kFloat},
     {"float", kFloat}, {"double", kDouble}, {"float64", kDouble}, {"timestamp", kTimestamp}, {"date", kDate},
 };
+
+static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
+    absl::flat_hash_map<CmdType, absl::string_view> map = {
+        {CmdType::kCmdShowDatabases, "show databases"},
+        {CmdType::kCmdShowTables, "show tables"},
+        {CmdType::kCmdUseDatabase, "use database"},
+        {CmdType::kCmdDropDatabase, "drop database"},
+        {CmdType::kCmdCreateDatabase, "create database"},
+        {CmdType::kCmdDescTable, "desc table"},
+        {CmdType::kCmdDropTable, "drop table"},
+        {CmdType::kCmdShowProcedures, "show procedures"},
+        {CmdType::kCmdShowCreateSp, "show create procedure"},
+        {CmdType::kCmdDropSp, "drop procedure"},
+        {CmdType::kCmdDropIndex, "drop index"},
+        {CmdType::kCmdExit, "exit"},
+        {CmdType::kCmdCreateIndex, "create index"},
+        {CmdType::kCmdShowDeployment, "show deployment"},
+        {CmdType::kCmdShowDeployments, "show deployments"},
+        {CmdType::kCmdDropDeployment, "drop deployment"},
+        {CmdType::kCmdShowJob, "show job"},
+        {CmdType::kCmdShowJobs, "show jobs"},
+        {CmdType::kCmdStopJob, "stop job"},
+        {CmdType::kCmdShowGlobalVariables, "show global variables"},
+        {CmdType::kCmdShowSessionVariables, "show session variables"},
+        {CmdType::kCmdShowComponents, "show components"},
+        {CmdType::kCmdShowTableStatus, "show table status"},
+    };
+    for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
+        DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
+    }
+    return map;
+}
+
+static const absl::flat_hash_map<CmdType, absl::string_view>& GetCmdTypeNamesMap() {
+  static const absl::flat_hash_map<CmdType, std::string_view>& map = *new auto(CreateCmdTypeNamesMap());
+  return map;
+}
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
@@ -1084,6 +1123,15 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
     return output;
 }
 
+absl::string_view CmdTypeName(const CmdType type) {
+    auto &map = GetCmdTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return it->second;
+    }
+    return "undefined cmd type";
+}
+
 std::ostream &operator<<(std::ostream &output, const SqlNode &thiz) {
     thiz.Print(output, "");
     return output;
@@ -1204,6 +1252,9 @@ bool ExprIsSimple(const ExprNode *expr) {
         case node::kExprColumnRef: {
             return true;
         }
+        case node::kExprAll: {
+            return true;
+        }
         default: {
             return false;
         }
@@ -1317,10 +1368,25 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, CmdTypeName(cmd_type_), "cmd_type", false);
+    PrintValue(output, tab, std::string(CmdTypeName(cmd_type_)), "cmd_type", false);
     output << "\n";
+    if (IsIfNotExists()) {
+        PrintValue(output, tab, "true", "if_not_exists", false);
+        output << "\n";
+    }
     PrintValue(output, tab, args_, "args", true);
 }
+
+bool CmdNode::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdNode*>(node);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
+
 void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1348,6 +1414,8 @@ void DeployNode::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, if_not_exists_ ? "true" : "false", "if_not_exists", false);
     output << "\n";
     PrintValue(output, tab, name_, "name", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", false);
     output << "\n";
     PrintSqlNode(output, tab, stmt_, "stmt", true);
 }

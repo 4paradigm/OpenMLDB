@@ -19,12 +19,17 @@
 #include <string>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/match.h"
 #include "base/fe_status.h"
 #include "zetasql/parser/ast_node_kind.h"
 
 namespace hybridse {
 namespace plan {
+
+static inline base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement,
+                                           node::NodeManager* node_manager, node::SqlNode** output);
+
 base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* node_manager, node::DataType* output) {
     CHECK_TRUE(nullptr != ast_type, common::kSqlAstError, "Un-support null ast type");
     CHECK_TRUE(ast_type->IsType(), common::kSqlAstError, "Un-support ast node ", ast_type->DebugString());
@@ -571,52 +576,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         }
         case zetasql::AST_SHOW_STATEMENT: {
             const zetasql::ASTShowStatement* show_statement = statement->GetAsOrNull<zetasql::ASTShowStatement>();
-            CHECK_TRUE(nullptr != show_statement->identifier(), common::kSqlAstError, "not an ASTShowStatement")
-            auto show_id = show_statement->identifier()->GetAsStringView();
-            CHECK_TRUE(nullptr == show_statement->optional_like_string(), common::kSqlAstError, "Non-support LIKE in "
-                       "show statement")
-
-            if (absl::EqualsIgnoreCase(show_id, "DATABASES")) {
-                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDatabases));
-            } else if (absl::EqualsIgnoreCase(show_id, "TABLES")) {
-                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowTables));
-            } else if (absl::EqualsIgnoreCase(show_id, "PROCEDURES") ||
-                       absl::EqualsIgnoreCase(show_id, "PROCEDURE STATUS")) {
-                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowProcedures));
-            } else if (absl::EqualsIgnoreCase(show_id, "DEPLOYMENTS")) {
-                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowDeployments));
-            } else if (absl::EqualsIgnoreCase(show_id, "JOBS")) {
-                *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowJobs));
-            } else if (absl::EqualsIgnoreCase(show_id, "VARIABLES") ||
-                       absl::EqualsIgnoreCase(show_id, "SESSION VARIABLES")) {
-                *output =
-                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowSessionVariables));
-            } else if (absl::EqualsIgnoreCase(show_id, "GLOBAL VARIABLES")) {
-                *output =
-                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdShowGlobalVariables));
-            } else if (show_statement->optional_target_name() != nullptr) {
-                node::CmdType cmd_type = node::CmdType::kCmdUnknown;
-                if (absl::EqualsIgnoreCase(show_id, "CREATE PROCEDURE")) {
-                    cmd_type = node::CmdType::kCmdShowCreateSp;
-                } else if (absl::EqualsIgnoreCase(show_id, "DEPLOYMENT")) {
-                    cmd_type = node::CmdType::kCmdShowDeployment;
-                } else if (absl::EqualsIgnoreCase(show_id, "JOB")) {
-                    cmd_type = node::CmdType::kCmdShowJob;
-                }
-
-                std::vector<absl::string_view> path_list;
-                CHECK_STATUS(ConvertTargetName(show_statement->optional_target_name(), path_list));
-                if (path_list.size() == 1) {
-                    *output = node_manager->MakeCmdNode(
-                        cmd_type, std::string(path_list.front().data(), path_list.front().size()));
-                } else if (path_list.size() == 2) {
-                    *output = node_manager->MakeCmdNode(cmd_type,
-                                                        std::string(path_list.front().data(), path_list.front().size()),
-                                                        std::string(path_list.back().data(), path_list.back().size()));
-                }
-            } else {
-                FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
-            }
+            CHECK_STATUS(convertShowStmt(show_statement, node_manager, output));
             break;
         }
         case zetasql::AST_CREATE_DATABASE_STATEMENT: {
@@ -629,8 +589,10 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_STATUS(AstPathExpressionToStringList(create_database_statement->name(), names))
             CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid database path expression ",
                        create_database_statement->name()->ToIdentifierPathString())
-            *output =
+            auto* node =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdCreateDatabase, names[0]));
+            node->SetIfNotExists(create_database_statement->is_if_not_exists());
+            *output = node;
             break;
         }
         case zetasql::AST_DESCRIBE_STATEMENT: {
@@ -685,8 +647,8 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             /// support system variable setting and showing in OpenMLDB since v0.4.0
             /// non-support local variable setting in v0.4.0
             const auto ast_system_variable_assign = statement->GetAsOrNull<zetasql::ASTSystemVariableAssignment>();
-            CHECK_TRUE(nullptr != ast_system_variable_assign, common::kSqlAstError, "not an "
-                       "ASTSystemVariableAssignment");
+            CHECK_TRUE(nullptr != ast_system_variable_assign, common::kSqlAstError,
+                       "not an ASTSystemVariableAssignment");
             std::vector<std::string> path;
             CHECK_STATUS(AstPathExpressionToStringList(ast_system_variable_assign->system_variable()->path(), path));
             CHECK_TRUE(!path.empty(), common::kSqlAstError, "Non-support empty variable");
@@ -709,14 +671,30 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                                                         dynamic_cast<node::ConstNode*>(value));
                 } else {
                     FAIL_STATUS(common::kSqlAstError, "Non-support system variable under ", path[0],
-                                " scope, try "
-                                "@@global or @@session scope");
+                                " scope, try @@global or @@session scope");
                 }
             } else {
                 FAIL_STATUS(common::kSqlAstError,
                             "Non-support system variable with more than 2 path "
                             "levels. Try @@global.var_name or @@session.var_name or @@var_name");
             }
+            break;
+        }
+        case zetasql::AST_SCOPED_VARIABLE_ASSIGNMENT: {
+            auto stmt = statement->GetAsOrNull<zetasql::ASTScopedVariableAssignment>();
+            CHECK_TRUE(stmt != nullptr, common::kSqlAstError, "not an ASTScopedVariableAssignment");
+            node::ExprNode* value = nullptr;
+            CHECK_STATUS(ConvertExprNode(stmt->expression(), node_manager, &value));
+            const node::ConstNode* const_value = dynamic_cast<node::ConstNode*>(value);
+            CHECK_TRUE(const_value != nullptr && const_value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
+                       "Unsupported Set value other than const type");
+
+            const std::string& identifier = stmt->variable()->GetAsString();
+            auto scope = node::VariableScope::kSessionSystemVariable;
+            if (stmt->scope() == zetasql::ASTScopedVariableAssignment::Scope::GLOBAL) {
+                scope = node::VariableScope::kGlobalSystemVariable;
+            }
+            *output = node_manager->MakeSetNode(scope, identifier, const_value);
             break;
         }
         case zetasql::AST_LOAD_DATA_STATEMENT: {
@@ -752,8 +730,14 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_TRUE(ast_deploy_stmt != nullptr, common::kSqlAstError, "not an ASTDeployStatement");
             node::SqlNode* deploy_stmt = nullptr;
             CHECK_STATUS(ConvertStatement(ast_deploy_stmt->stmt(), node_manager, &deploy_stmt));
+
+            auto options = std::make_shared<node::OptionsMap>();
+            if (ast_deploy_stmt->options_list() != nullptr) {
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_deploy_stmt->options_list(), node_manager, options));
+            }
             *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
-                                                   ast_deploy_stmt->UnparseStmt(), ast_deploy_stmt->is_if_not_exists());
+                                                   ast_deploy_stmt->UnparseStmt(), options,
+                                                   ast_deploy_stmt->is_if_not_exists());
             break;
         }
         case zetasql::AST_SELECT_INTO_STATEMENT: {
@@ -1881,9 +1865,8 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                     dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names.back()));
 
             } else {
-                *output =
-                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
-
+                *output = dynamic_cast<node::CmdNode*>(
+                    node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
             }
             return base::Status::OK();
         }
@@ -2007,5 +1990,62 @@ base::Status ConvertTargetName(const zetasql::ASTTargetName* node, std::vector<a
     }
     return base::Status::OK();
 }
+
+struct ShowTargetInfo {
+    node::CmdType cmd_type_;  // converted CmdType
+    bool with_target_name_ = false;  // is the show statement has extra target name token
+};
+
+static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap = {
+    {"DATABASES", {node::CmdType::kCmdShowDatabases}},
+    {"TABLES", {node::CmdType::kCmdShowTables}},
+    {"PROCEDURES", {node::CmdType::kCmdShowProcedures}},
+    {"PROCEDURE STATUS", {node::CmdType::kCmdShowProcedures}},
+    {"DEPLOYMENTS", {node::CmdType::kCmdShowDeployments}},
+    {"JOBS", {node::CmdType::kCmdShowJobs}},
+    {"VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
+    {"SESSION VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
+    {"GLOBAL VARIABLES", {node::CmdType::kCmdShowGlobalVariables}},
+    {"CREATE PROCEDURE", {node::CmdType::kCmdShowCreateSp, true}},
+    {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
+    {"JOB", {node::CmdType::kCmdShowJob, true}},
+    {"COMPONENTS", {node::CmdType::kCmdShowComponents}},
+    {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus}},
+};
+
+base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
+                             node::SqlNode** output) {
+    CHECK_TRUE(nullptr != show_statement && nullptr != show_statement->identifier(), common::kSqlAstError,
+               "not an ASTShowStatement")
+    CHECK_TRUE(nullptr == show_statement->optional_like_string(), common::kSqlAstError,
+               "Non-support LIKE in show statement")
+
+    auto show_id = show_statement->identifier()->GetAsStringView();
+
+    auto show_info = showTargetMap.find(absl::AsciiStrToUpper(show_id));
+    if (show_info == showTargetMap.end()) {
+        FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
+    }
+
+    auto cmd_type = show_info->second.cmd_type_;
+    if (show_info->second.with_target_name_) {
+        std::vector<absl::string_view> path_list;
+        CHECK_STATUS(ConvertTargetName(show_statement->optional_target_name(), path_list));
+        if (path_list.size() == 1) {
+            *output =
+                node_manager->MakeCmdNode(cmd_type, std::string(path_list.front().data(), path_list.front().size()));
+        } else if (path_list.size() == 2) {
+            *output =
+                node_manager->MakeCmdNode(cmd_type, std::string(path_list.front().data(), path_list.front().size()),
+                                          std::string(path_list.back().data(), path_list.back().size()));
+        }
+        // did not fail on else branch because ConvertTargetName above covered
+    } else {
+        *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type));
+    }
+
+    return base::Status::OK();
+}
+
 }  // namespace plan
 }  // namespace hybridse

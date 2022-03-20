@@ -72,22 +72,40 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 option(TESTING_ENABLE "Enable test" OFF)
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" OFF)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
+
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
+
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
+endif()
+
+find_package(OpenSSL REQUIRED)
+find_library(BRPC_LIBRARY brpc)
+find_library(PROTOBUF_LIBRARY protobuf)
+find_library(GLOG_LIBRARY glog)
+find_library(GFLAGS_LIBRARY gflags)
+find_library(UNWIND_LIBRARY unwind)
+find_library(LEVELDB_LIBRARY leveldb)
+find_library(Z_LIBRARY z)
+find_library(SNAPPY_LIBRARY snappy)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OS_LIB 
+    set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
             "-framework CoreFoundation"
             "-framework CoreGraphics"
@@ -98,8 +116,14 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+          set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 endif ()
+
+if (SANITIZER_ENABLE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    message(STATUS "Enabled AddressSanitizer")
+endif()
 
 # add default option to ctest
 # - --output-on-failure: print log for tests that fail
@@ -119,10 +143,6 @@ if (COVERAGE_ENABLE)
     APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
 
-if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
-endif()
-
 if (DEFINED ENV{CI})
   # suppress useless maven log (e.g download log) on CI environment
   set(MAVEN_FLAGS --batch-mode)
@@ -130,14 +150,19 @@ endif()
 
 add_subdirectory(hybridse)
 
+set(Boost_NO_BOOST_CMAKE ON)
+set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
+
 set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
+message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
+
 set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
@@ -211,11 +236,17 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
 include_directories(
-  ${CMAKE_PREFIX_PATH}/include
   ${CMAKE_SOURCE_DIR}/hybridse/include
-  ${CMAKE_BINARY_DIR}/hybridse/src)
+  ${CMAKE_BINARY_DIR}/hybridse/src
+  ${LLVM_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${CMAKE_PREFIX_PATH}/include)
 
-link_directories(${CMAKE_PREFIX_PATH}/lib ${CMAKE_PREFIX_PATH}/lib64)
+link_directories(
+    ${LLVM_LIBRARY_DIRS}
+    ${Boost_LIBRARY_DIRS}
+    ${CMAKE_PREFIX_PATH}/lib
+    ${CMAKE_PREFIX_PATH}/lib64)
 
 add_subdirectory(src)
 

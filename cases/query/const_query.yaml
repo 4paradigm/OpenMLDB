@@ -125,3 +125,12 @@ cases:
       columns: ["c1 int", "c2 bigint", "c3 float", "c4 double", "c5 timestamp", "c6 date", "c7 string"]
       rows:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
+  - id: 9
+    desc: differnt const node type
+    mode: request-unsupport
+    sql: |
+      select true c1, int16(3) c2, 13 c3, 10.0 c4, 'a string' c5, date(timestamp(1590115420000)) c6, timestamp(1590115420000) c7;
+    expect:
+      columns: ['c1 bool', 'c2 int16', 'c3 int', 'c4 double', 'c5 string', 'c6 date', 'c7 timestamp' ]
+      rows:
+        - [ true, 3, 13, 10.0, 'a string', '2020-05-22', 1590115420000 ]

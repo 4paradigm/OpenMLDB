@@ -5462,20 +5462,51 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
-    if (IsClusterMode() && (db_table_info_.empty() || db_table_info_[INTERNAL_DB].empty())) {
+    if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        auto status = CreateDatabase(INTERNAL_DB);
-        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-            LOG(FATAL) << "create internal database failed";
-            exit(1);
+        if (databases_.find(INTERNAL_DB) == databases_.end()) {
+            auto status = CreateDatabase(INTERNAL_DB);
+            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+                LOG(FATAL) << "create internal database failed";
+                exit(1);
+            }
         }
-        if (FLAGS_system_table_replica_num > 0 && !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-            LOG(FATAL) << "create system table failed";
-            exit(1);
+        if (db_table_info_[INTERNAL_DB].empty()) {
+            if (FLAGS_system_table_replica_num > 0 &&
+                !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
+                LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
+                exit(1);
+            }
+            if (FLAGS_system_table_replica_num > 0 &&
+                !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
+                LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
+                exit(1);
+            }
+        }
+        if (databases_.find(PRE_AGG_DB) == databases_.end()) {
+            auto status = CreateDatabase(PRE_AGG_DB);
+            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+                LOG(FATAL) << "create pre-agg database failed";
+                exit(1);
+            }
+        }
+        if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
+            auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
+            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+                LOG(FATAL) << "create information schema database failed";
+                exit(1);
+            }
+        }
+        if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
+            if (FLAGS_system_table_replica_num > 0 &&
+                !CreateSystemTable(GLOBAL_VARIABLES, SystemTableType::kGlobalVariable).OK()) {
+                LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
+                exit(1);
+            }
         }
     }
     running_.store(true, std::memory_order_release);
@@ -9468,11 +9499,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    auto status = CreateDatabase(request->db());
+    auto status = CreateDatabase(request->db(), request->if_not_exists());
     SetResponseStatus(status, response);
 }
 
-base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name, bool if_not_exists) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9482,6 +9513,9 @@ base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
         }
     }
     if (is_exists) {
+        if (if_not_exists) {
+            return {};
+        }
         PDLOG(INFO, "database %s already exists", db_name.c_str());
         return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {
@@ -9527,7 +9561,7 @@ void NameServerImpl::ShowDatabase(RpcController* controller, const GeneralReques
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& db : databases_) {
-            if (db != INTERNAL_DB) {
+            if (db != INTERNAL_DB && db != INFORMATION_SCHEMA_DB && db!= PRE_AGG_DB) {
                 response->add_db(db);
             }
         }
@@ -9545,7 +9579,7 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
         PDLOG(WARNING, "cannot drop internal database");
         return;
     }
-    if (request->db() == INTERNAL_DB) {
+    if (request->db() == INTERNAL_DB || request->db() == INFORMATION_SCHEMA_DB) {
         response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
         response->set_msg("database not found");
         return;

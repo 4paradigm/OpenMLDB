@@ -18,6 +18,7 @@
 
 #include <set>
 
+#include "absl/container/flat_hash_map.h"
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -26,6 +27,53 @@ namespace vm {
 using hybridse::base::Status;
 
 const char INDENT[] = "  ";
+
+static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTypeNamesMap() {
+    absl::flat_hash_map<PhysicalOpType, absl::string_view> map = {
+        {kPhysicalOpDataProvider, "DATA_PROVIDER"},
+        {kPhysicalOpGroupBy, "GROUP_BY"},
+        {kPhysicalOpSortBy, "SORT_BY"},
+        {kPhysicalOpFilter, "FILTER_BY"},
+        {kPhysicalOpProject, "PROJECT"},
+        {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
+        {kPhysicalOpConstProject, "CONST_PROJECT"},
+        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpLimit, "LIMIT"},
+        {kPhysicalOpRename, "RENAME"},
+        {kPhysicalOpDistinct, "DISTINCT"},
+        {kPhysicalOpWindow, "WINDOW"},
+        {kPhysicalOpJoin, "JOIN"},
+        {kPhysicalOpUnion, "UNION"},
+        {kPhysicalOpPostRequestUnion, "POST_REQUEST_UNION"},
+        {kPhysicalOpRequestUnion, "REQUEST_UNION"},
+        {kPhysicalOpRequestJoin, "REQUEST_JOIN"},
+        {kPhysicalOpIndexSeek, "INDEX_SEEK"},
+        {kPhysicalOpLoadData, "LOAD_DATA"},
+        {kPhysicalOpDelete, "DELETE"},
+        {kPhysicalOpSelectInto, "SELECT_INTO"},
+        {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
+        {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
+        {kPhysicalOpInsert, "INSERT"},
+    };
+    for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
+        DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());
+    }
+    return map;
+}
+
+static const absl::flat_hash_map<PhysicalOpType, absl::string_view>& GetPhysicalOpNamesMap() {
+  static const absl::flat_hash_map<PhysicalOpType, std::string_view>& map = *new auto(CreatePhysicalOpTypeNamesMap());
+  return map;
+}
+
+absl::string_view PhysicalOpTypeName(PhysicalOpType type) {
+    auto& map = GetPhysicalOpNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return it->second;
+    }
+    return "UNKNOWN";
+}
 
 void printOptionsMap(std::ostream &output, const node::OptionsMap* value, const std::string_view item_name) {
     output << ", " << item_name << "=";
@@ -281,7 +329,10 @@ Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
     SchemasContext empty_schemas_ctx;
-    return InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source);
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
+    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
+                 "Fail to initialize function def of const project node");
+    return Status::OK();
 }
 
 int PhysicalSimpleProjectNode::GetSelectSourceIndex() const {
@@ -1025,7 +1076,7 @@ Status PhysicalPartitionProviderNode::WithNewChildren(node::NodeManager* nm,
     return Status::OK();
 }
 
-void PhysicalOpNode::PrintSchema() const { std::cout << SchemaToString() << std::endl; }
+void PhysicalOpNode::PrintSchema() const { std::cout << SchemaToString("") << std::endl; }
 
 std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     std::stringstream ss;
@@ -1305,6 +1356,12 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
 void PhysicalDeleteNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
+}
+
+void PhysicalInsertNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(db=" << GetInsertStmt()->db_name_ << ", table=" << GetInsertStmt()->table_name_
+           << ", is_all=" << (GetInsertStmt()->is_all_ ? "true" : "false") << ")";
 }
 
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {

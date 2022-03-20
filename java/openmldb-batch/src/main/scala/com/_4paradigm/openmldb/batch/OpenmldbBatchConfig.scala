@@ -29,7 +29,7 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "spark.sql.session.timeZone")
   var timeZone = "Asia/Shanghai"
 
-  // test mode 用于测试的时候验证相关问题
+  // test mode
   @ConfigOption(name = "openmldb.test.tiny", doc = "控制读取表的数据条数，默认读全量数据")
   var tinyData: Long = -1
 
@@ -41,6 +41,10 @@ class OpenmldbBatchConfig extends Serializable {
 
   @ConfigOption(name = "openmldb.test.print", doc = "执行过程中允许打印数据")
   var print: Boolean = false
+
+  // Debug options
+  @ConfigOption(name = "openmldb.debug.show_node_df", doc = "Use Spark DataFrame.show() for each physical nodes")
+  var debugShowNodeDf: Boolean = false
 
   // Window skew optimization
   @ConfigOption(name = "openmldb.window.skew.opt", doc = "Enable window skew optimization or not")
@@ -66,7 +70,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.window.skew.opt.config", doc = "The skew config for window skew optimization")
   var windowSkewOptConfig: String = ""
 
-  // 慢速执行模式
   @ConfigOption(name = "openmldb.slowRunCacheDir", doc =
     """
       | Slow run mode cache directory path. If specified, run OpenMLDB plan with slow mode.
@@ -109,7 +112,7 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.physical.plan.graphviz.path", doc = "The path of physical plan graphviz image")
   var physicalPlanGraphvizPath = ""
 
-  @ConfigOption(name = "openmldb.physical.plan.print", doc = "Print the sql physical plan")
+  @ConfigOption(name = "openmldb.debug.print_physical_plan", doc = "Print the sql physical plan")
   var printPhysicalPlan = false
 
   @ConfigOption(name = "openmldb.enable.native.last.join", doc = "Enable native last join or not")
@@ -118,6 +121,18 @@ class OpenmldbBatchConfig extends Serializable {
   // UnsafeRow optimization
   @ConfigOption(name = "openmldb.unsaferow.opt", doc = "Enable UnsafeRow optimization or not")
   var enableUnsafeRowOptimization = false
+
+  @ConfigOption(name = "openmldb.opt.unsaferow.project", doc = "Enable UnsafeRow optimization for project")
+  var enableUnsafeRowOptForProject = false
+
+  @ConfigOption(name = "openmldb.opt.unsaferow.window", doc = "Enable UnsafeRow optimization for window")
+  var enableUnsafeRowOptForWindow = false
+
+  @ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
+  var enableUnsafeRowOptForGroupby = false
+
+  @ConfigOption(name = "openmldb.opt.unsaferow.join", doc = "Enable UnsafeRow optimization for join")
+  var enableUnsafeRowOptForJoin = false
 
   // Switch for disable OpenMLDB
   @ConfigOption(name = "openmldb.disable", doc = "Disable OpenMLDB optimization or not")

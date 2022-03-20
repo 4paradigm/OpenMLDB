@@ -39,6 +39,10 @@ namespace sdk {
 MiniCluster* mc_ = nullptr;
 std::shared_ptr<SQLRouter> router_ = std::shared_ptr<SQLRouter>();
 
+static void SetOnlineMode(std::shared_ptr<SQLRouter> router) {
+    ::hybridse::sdk::Status status;
+    router->ExecuteSQL("SET @@execute_mode='online';", &status);
+}
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
@@ -46,8 +50,11 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
-    return NewClusterSQLRouter(sql_opt);
+    auto router = NewClusterSQLRouter(sql_opt);
+    SetOnlineMode(router);
+    return router;
 }
+
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
         mode.find("rtidb-unsupport") != std::string::npos ||
@@ -96,6 +103,7 @@ TEST_P(SQLSDKTest, SqlSdkBatchTest) {
         FAIL() << "Fail new cluster sql router";
         return;
     }
+    SetOnlineMode(router);
     SQLSDKTest::RunBatchModeSDK(sql_case, router, mc_->GetTbEndpoint());
 }
 
@@ -216,6 +224,7 @@ TEST_F(SQLSDKQueryTest, ExecuteLatestWhereTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "sql_latest_where_test";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
@@ -279,6 +288,7 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "sql_where_test";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
@@ -355,6 +365,7 @@ TEST_F(SQLSDKQueryTest, ExecuteInsertLoopsTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "leak_test";
     hybridse::sdk::Status status;
     router->CreateDB(db, &status);
@@ -407,6 +418,7 @@ TEST_F(SQLSDKQueryTest, CreateNoTs) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "create_no_ts";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
@@ -448,6 +460,7 @@ TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "test";
     hybridse::sdk::Status status;
     router->CreateDB(db, &status);
@@ -579,6 +592,7 @@ TEST_F(SQLSDKQueryTest, DropTableWithProcedureTest) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "test_db1";
     std::string db2 = "test_db2";
     hybridse::sdk::Status status;
@@ -643,6 +657,7 @@ TEST_F(SQLSDKTest, TableReaderScan) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string db = GenRand("db");
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
@@ -675,6 +690,7 @@ TEST_F(SQLSDKTest, TableReaderAsyncScan) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string db = GenRand("db");
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
@@ -708,6 +724,7 @@ TEST_F(SQLSDKTest, CreateTable) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
     std::string db = GenRand("db");
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
@@ -782,6 +799,7 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
+    SetOnlineMode(router);
     std::string db = "execute_where_with_parameter";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));

@@ -263,14 +263,9 @@ public class RowBuilder {
     }
 
     public boolean appendDate(Date date) {
-        int year = date.getYear();
-        int month = date.getMonth();
-        int day = date.getDate();
-        int data = year << 16;
-        data = data | (month << 8);
-        data = data | day;
+        int dateInt = CodecUtil.dateToDateInt(date);
         buf.position(offsetVec.get(cnt));
-        buf.putInt(data);
+        buf.putInt(dateInt);
         setField(cnt);
         cnt++;
         return true;

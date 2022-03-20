@@ -41,7 +41,7 @@ public class DMLTest extends FedbTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
-    @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "function/dml/multi_insert.yaml")
     @Story("multi-insert")
     public void testMultiInsertByCli(SQLCase testCase){

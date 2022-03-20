@@ -46,6 +46,9 @@ endif
 ifdef COVERAGE_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_ENABLE=$(COVERAGE_ENABLE)
 endif
+ifdef SANITIZER_ENABLE
+    OPENMLDB_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
+endif
 
 # Extra cmake flags for HybridSE
 HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
@@ -60,9 +63,6 @@ ifdef EXAMPLES_ENABLE
 endif
 ifdef EXAMPLES_TESTING_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DEXAMPLES_TESTING_ENABLE=$(EXAMPLES_TESTING_ENABLE)
-endif
-ifdef SANITIZER_ENABLE
-    HYBRIDSE_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
 endif
 
 # append hybridse flags so it also works when compile all from OPENMLDB_BUILD_DIR
@@ -92,9 +92,11 @@ coverage: coverage-cpp coverage-java
 coverage-cpp: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
+# scoverage may conflicts with jacoco, so we run it separately
 coverage-java: coverage-configure
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
 	cd java && ./mvnw --batch-mode prepare-package
+	cd java && ./mvnw --batch-mode scoverage:report
 
 coverage-configure:
 	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
@@ -118,6 +120,7 @@ configure: thirdparty-fast
 
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
+	@cd java && ./mvnw clean
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
@@ -139,7 +142,6 @@ thirdparty-fast:
 		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
-		# FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	    else \
 		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
@@ -148,7 +150,6 @@ thirdparty-fast:
 	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
-	    # FIXME(zhanghao): remove this rocksdb fix after we update thirdparty \
 	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target rocksdb; \
 	fi
 
@@ -170,7 +171,7 @@ thirdpartysrc-clean:
 HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
 HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse
 
-.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-coverage hybridse-coverage-configure hybridse-clean
+.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-clean
 
 # hybridse* target reserved for those like to compile in the old way
 hybridse: hybridse-build
@@ -186,13 +187,6 @@ hybridse-build: hybridse-configure
 
 hybridse-configure: thirdparty-fast
 	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(HYBRIDSE_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
-
-hybridse-coverage: hybridse-coverage-configure
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
-
-hybridse-coverage-configure:
-	$(MAKE) hybridse-configure CMAKE_BUILD_TYPE=Debug COVERAGE_ENABLE=ON
 
 hybridse-clean:
 	rm -rf "$(HYBRIDSE_BUILD_DIR)"

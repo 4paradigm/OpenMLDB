@@ -18,7 +18,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 
 set(SDK_DEPS_LIBS hybridse_core hybridse_flags
-		${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
+		${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
 
 # split sdk test and bm
 set(SDK_SRC_FILE_LIST)
@@ -39,7 +39,7 @@ target_link_libraries(hybridse_sdk ${SDK_DEPS_LIBS})
 set_property(SOURCE hybridse_interface_core.i PROPERTY CPLUSPLUS ON)
 
 set(sdk_core_deps_libs
-		hybridse_core hybridse_flags ${yaml_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
+  hybridse_core hybridse_flags ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 set_property(SOURCE hybridse_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 
 if(SQL_JAVASDK_ENABLE)
@@ -50,7 +50,7 @@ if(SQL_JAVASDK_ENABLE)
     SOURCES hybridse_interface_core.i)
   target_include_directories(hybridse_jsdk_core PRIVATE ${JNI_INCLUDE_DIRS})
   target_compile_options(hybridse_jsdk_core PRIVATE -w)
-  target_link_libraries(hybridse_jsdk_core PRIVATE glog ${sdk_core_deps_libs})
+  target_link_libraries(hybridse_jsdk_core PRIVATE ${GLOG_LIBRARY} ${sdk_core_deps_libs})
 
   if(APPLE)
     set_target_properties(hybridse_jsdk_core PROPERTIES
@@ -64,7 +64,7 @@ if(SQL_JAVASDK_ENABLE)
     SOURCES hybridse_interface_core.i)
   target_include_directories(hybridse_jsdk_core_static PRIVATE ${JNI_INCLUDE_DIRS})
   target_compile_options(hybridse_jsdk_core_static PRIVATE -w)
-  target_link_libraries(hybridse_jsdk_core_static PRIVATE glog ${sdk_core_deps_libs})
+  target_link_libraries(hybridse_jsdk_core_static PRIVATE ${GLOG_LIBRARY} ${sdk_core_deps_libs})
 
   add_custom_target(
     cp_hybridse_native_so ALL

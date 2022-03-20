@@ -715,3 +715,53 @@ cases:
       - desc {0};
     expect:
       success: false
+  -
+    id: 34
+    desc: 创建索引，ts为一个新的列
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c3, ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c3"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 35
+    desc: 创建一个没有ts的索引
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "-"
+          ttl: 100min
+          ttlType: kAbsoluteTime

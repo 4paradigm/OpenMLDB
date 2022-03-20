@@ -19,7 +19,8 @@ package com._4paradigm.openmldb.batch.utils
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.utils.SparkRowUtil.getLongFromIndex
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{ByteType, DateType, IntegerType, LongType, ShortType, TimestampType}
+import org.apache.spark.sql.types.{ByteType, DateType, IntegerType, LongType, ShortType, StringType, StructField,
+  StructType, TimestampType}
 import org.scalatest.FunSuite
 
 import java.sql.{Date, Timestamp}
@@ -55,6 +56,19 @@ class TestSparkRowUtil extends FunSuite {
     assert(getLongFromIndex(0, LongType, nullRow) == null)
     assert(getLongFromIndex(0, TimestampType, nullRow) == null)
     assert(getLongFromIndex(0, DateType, nullRow) == null)
+  }
+
+  test("Test rowToString") {
+    val row = Row(1, "tom", 100, 1)
+    val schema = StructType(List(
+      StructField("id", IntegerType),
+      StructField("name", StringType),
+      StructField("trans_amount", IntegerType),
+      StructField("trans_time", IntegerType)))
+
+    val outputStr = SparkRowUtil.rowToString(schema, row)
+    val expectStr = "Spark row: IntegerType: 1, StringType: tom, IntegerType: 100, IntegerType: 1"
+    assert(outputStr.equals(expectStr))
   }
 
 }

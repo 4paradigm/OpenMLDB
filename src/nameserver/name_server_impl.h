@@ -748,7 +748,7 @@ class NameServerImpl : public NameServer {
 
     bool AllocateTableId(uint32_t* id);
 
-    base::Status CreateDatabase(const std::string& db_name);
+    base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
 
     uint64_t GetTerm() const;
 

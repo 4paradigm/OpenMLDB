@@ -50,3 +50,8 @@ cases:
       SELECT
       sum(col2) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW MAXSIZE 20) as w1_col2_sum
       FROM t1;
+  - id: 6
+    desc: should perform whitespace check after interval literal
+    sql: select 100ss;
+    expect:
+      success: false

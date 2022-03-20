@@ -35,7 +35,7 @@ using hybridse::vm::SchemasContext;
 
 // new and delete physical node managef
 enum PhysicalOpType {
-    kPhysicalOpDataProvider,
+    kPhysicalOpDataProvider = 0,
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
@@ -58,57 +58,13 @@ enum PhysicalOpType {
     kPhysicalOpLoadData,
     kPhysicalOpDelete,
     kPhysicalOpSelectInto,
+    kPhysicalOpInsert,
+    kPhysicalOpFake,  // not a real type, for testing only
+    kPhysicalOpLast = kPhysicalOpFake,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
-inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
-    switch (type) {
-        case kPhysicalOpDataProvider:
-            return "DATA_PROVIDER";
-        case kPhysicalOpGroupBy:
-            return "GROUP_BY";
-        case kPhysicalOpSortBy:
-            return "SORT_BY";
-        case kPhysicalOpFilter:
-            return "FILTER_BY";
-        case kPhysicalOpProject:
-            return "PROJECT";
-        case kPhysicalOpSimpleProject:
-            return "SIMPLE_PROJECT";
-        case kPhysicalOpConstProject:
-            return "CONST_PROJECT";
-        case kPhysicalOpAggrerate:
-            return "AGGRERATE";
-        case kPhysicalOpLimit:
-            return "LIMIT";
-        case kPhysicalOpRename:
-            return "RENAME";
-        case kPhysicalOpDistinct:
-            return "DISTINCT";
-        case kPhysicalOpWindow:
-            return "WINDOW";
-        case kPhysicalOpJoin:
-            return "JOIN";
-        case kPhysicalOpUnion:
-            return "UNION";
-        case kPhysicalOpPostRequestUnion:
-            return "POST_REQUEST_UNION";
-        case kPhysicalOpRequestUnion:
-            return "REQUEST_UNION";
-        case kPhysicalOpRequestJoin:
-            return "REQUEST_JOIN";
-        case kPhysicalOpIndexSeek:
-            return "INDEX_SEEK";
-        case kPhysicalOpLoadData:
-            return "LOAD_DATA";
-        case kPhysicalOpDelete:
-            return "DELETE";
-        case kPhysicalOpSelectInto:
-            return "SELECT_INTO";
-        default:
-            return "UNKNOWN";
-    }
-}
+absl::string_view PhysicalOpTypeName(PhysicalOpType type);
 
 /**
  * Function codegen information for physical node. It should
@@ -395,7 +351,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
           schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
-        return PhysicalOpTypeName(type_);
+        return std::string(PhysicalOpTypeName(type_));
     }
     bool Equals(const PhysicalOpNode *other) const override {
         return this == other;
@@ -421,7 +377,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     virtual void PrintSchema() const;
 
-    virtual std::string SchemaToString(const std::string &tab = "") const;
+    virtual std::string SchemaToString(const std::string &tab) const;
 
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
@@ -1719,6 +1675,26 @@ class PhysicalDeleteNode : public PhysicalOpNode {
  private:
     const node::DeleteTarget target_;
     const std::string job_id_;
+};
+
+
+class PhysicalInsertNode : public PhysicalOpNode {
+ public:
+    explicit PhysicalInsertNode(const node::InsertStmt *ins) :
+        PhysicalOpNode(kPhysicalOpInsert, false), insert_stmt_(ins) {}
+    ~PhysicalInsertNode() override {}
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override { return base::Status::OK(); }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+
+    const node::InsertStmt* GetInsertStmt() const { return insert_stmt_; }
+
+ private:
+    const node::InsertStmt* insert_stmt_;
 };
 /**
  * Initialize expression replacer with schema change.

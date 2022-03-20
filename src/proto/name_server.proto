@@ -439,6 +439,7 @@ message DeleteIndexRequest {
 
 message CreateDatabaseRequest {
     optional string db = 1;
+    optional bool if_not_exists = 2 [default = false];
 }
 
 message UseDatabaseRequest {

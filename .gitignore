@@ -86,7 +86,7 @@ python/logs
 **/.bloop/
 
 # ignore openmldb release dir & pkg
-/openmldb-*
+/openmldb*
 
 /cmake-*
 

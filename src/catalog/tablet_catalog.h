@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "base/spinlock.h"
 #include "catalog/client_manager.h"
@@ -30,6 +31,7 @@
 #include "codec/row.h"
 #include "storage/schema.h"
 #include "storage/table.h"
+#include "sdk/sql_cluster_router.h"
 
 namespace openmldb {
 namespace catalog {
@@ -288,7 +290,49 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     const Procedures &GetProcedures();
 
+    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables(
+        const std::string& base_db,
+        const std::string& base_table,
+        const std::string& aggr_func,
+        const std::string& aggr_col,
+        const std::string& partition_cols,
+        const std::string& order_col) override;
+
+    void RefreshAggrTables(const std::vector<::hybridse::vm::AggrTableInfo>& entries);
+
  private:
+    struct AggrTableKey {
+        std::string base_db;
+        std::string base_table;
+        std::string aggr_func;
+        std::string aggr_col;
+        std::string partition_cols;
+        std::string order_by_col;
+    };
+
+    struct AggrTableKeyHash {
+        std::size_t operator()(const AggrTableKey& key) const {
+            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func +
+                                            key.aggr_col + key.partition_cols + key.order_by_col);
+        }
+    };
+
+    struct AggrTableKeyEqual {
+        std::size_t operator()(const AggrTableKey& lhs, const AggrTableKey& rhs) const {
+            return lhs.base_db == rhs.base_db &&
+                lhs.base_table == rhs.base_table &&
+                lhs.aggr_func == rhs.aggr_func &&
+                lhs.aggr_col == rhs.aggr_col &&
+                lhs.partition_cols == rhs.partition_cols &&
+                lhs.order_by_col == rhs.order_by_col;
+        }
+    };
+
+    using AggrTableMap = std::unordered_map<AggrTableKey,
+                                            std::vector<::hybridse::vm::AggrTableInfo>,
+                                            AggrTableKeyHash,
+                                            AggrTableKeyEqual>;
+
     ::openmldb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
@@ -297,6 +341,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     std::atomic<uint64_t> version_;
     std::shared_ptr<::hybridse::vm::Tablet> local_tablet_;
     std::shared_ptr<::hybridse::vm::Tablet> local_sp_tablet_;
+    std::shared_ptr<AggrTableMap> aggr_tables_;
 };
 
 }  // namespace catalog

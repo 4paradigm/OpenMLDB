@@ -1021,7 +1021,7 @@ public class FesqlUtil {
                                                                List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
-            QueryFuture future = requestPs.executeQueryAsync(100, TimeUnit.MILLISECONDS);
+            QueryFuture future = requestPs.executeQueryAsync(1000, TimeUnit.MILLISECONDS);
             ResultSet sqlResultSet = null;
             try {
                 sqlResultSet = future.get();
@@ -1063,41 +1063,41 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    public static Object getColumnData(com._4paradigm.openmldb.ResultSet rs, Schema schema, int index) {
-        Object obj = null;
-        DataType dataType = schema.GetColumnType(index);
-        if (rs.IsNULL(index)) {
-            logger.info("rs is null");
-            return null;
-        }
-        if (dataType.equals(DataType.kTypeBool)) {
-            obj = rs.GetBoolUnsafe(index);
-        } else if (dataType.equals(DataType.kTypeDate)) {
-            try {
-                obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                        .parse(rs.GetAsString(index) + " 00:00:00").getTime());
-            } catch (ParseException e) {
-                e.printStackTrace();
-                return null;
-            }
-        } else if (dataType.equals(DataType.kTypeDouble)) {
-            obj = rs.GetDoubleUnsafe(index);
-        } else if (dataType.equals(DataType.kTypeFloat)) {
-            obj = rs.GetFloatUnsafe(index);
-        } else if (dataType.equals(DataType.kTypeInt16)) {
-            obj = rs.GetInt16Unsafe(index);
-        } else if (dataType.equals(DataType.kTypeInt32)) {
-            obj = rs.GetInt32Unsafe(index);
-        } else if (dataType.equals(DataType.kTypeInt64)) {
-            obj = rs.GetInt64Unsafe(index);
-        } else if (dataType.equals(DataType.kTypeString)) {
-            obj = rs.GetStringUnsafe(index);
-            logger.info("conver string data {}", obj);
-        } else if (dataType.equals(DataType.kTypeTimestamp)) {
-            obj = new Timestamp(rs.GetTimeUnsafe(index));
-        }
-        return obj;
-    }
+    // public static Object getColumnData(com._4paradigm.openmldb.ResultSet rs, Schema schema, int index) {
+    //     Object obj = null;
+    //     DataType dataType = schema.GetColumnType(index);
+    //     if (rs.IsNULL(index)) {
+    //         logger.info("rs is null");
+    //         return null;
+    //     }
+    //     if (dataType.equals(DataType.kTypeBool)) {
+    //         obj = rs.GetBoolUnsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeDate)) {
+    //         try {
+    //             obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    //                     .parse(rs.GetAsString(index) + " 00:00:00").getTime());
+    //         } catch (ParseException e) {
+    //             e.printStackTrace();
+    //             return null;
+    //         }
+    //     } else if (dataType.equals(DataType.kTypeDouble)) {
+    //         obj = rs.GetDoubleUnsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeFloat)) {
+    //         obj = rs.GetFloatUnsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeInt16)) {
+    //         obj = rs.GetInt16Unsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeInt32)) {
+    //         obj = rs.GetInt32Unsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeInt64)) {
+    //         obj = rs.GetInt64Unsafe(index);
+    //     } else if (dataType.equals(DataType.kTypeString)) {
+    //         obj = rs.GetStringUnsafe(index);
+    //         logger.info("conver string data {}", obj);
+    //     } else if (dataType.equals(DataType.kTypeTimestamp)) {
+    //         obj = new Timestamp(rs.GetTimeUnsafe(index));
+    //     }
+    //     return obj;
+    // }
 
     public static Object getColumnData(SQLResultSet rs, int index) throws SQLException {
         Object obj = null;
