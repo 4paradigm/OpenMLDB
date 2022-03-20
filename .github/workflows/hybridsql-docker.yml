@@ -47,8 +47,8 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
-            ${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKERHUB_REPO }}/${{ env.IMAGE_NAME }}
           tags: |
             type=match,pattern=docker-(.*),group=1
             type=match,pattern=docker-(\d.\d),group=1
