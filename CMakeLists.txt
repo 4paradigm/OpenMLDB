@@ -102,6 +102,12 @@ find_library(Z_LIBRARY z)
 find_library(SNAPPY_LIBRARY snappy)
 
 find_package(RocksDB REQUIRED)
+if (RocksDB_FOUND)
+    set(RocksDB_LIB RocksDB::rocksdb)
+else()
+    find_library(RocksDB_LIBRARY rocksdb)
+    set(RocksDB_LIB ${RocksDB_LIBRARY})
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)

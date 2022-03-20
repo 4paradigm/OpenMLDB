@@ -41,7 +41,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags RocksDB::rocksdb
+    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
@@ -97,7 +97,7 @@ add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tabl
 
 add_library(openmldb_flags flags.cc)
 
-set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal RocksDB::rocksdb
+set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}
