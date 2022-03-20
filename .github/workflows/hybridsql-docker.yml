@@ -25,6 +25,12 @@ on:
 env:
   IMAGE_NAME: hybridsql
 
+# docker image versioning rules
+# - version is taken from git tag, as vX.Y.Z -> X.Y.Z
+# - a stable version is taken from above rule, as X.Y.Z -> X.Y
+# - ${IMAGE_NAME}:X.Y.Z is immutable
+# - ${IMAGE_NAME}:X.Y will updated and refer to X.Y.Z where Z is the latest
+
 jobs:
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
@@ -63,7 +69,9 @@ jobs:
           GHCR_TAG=$IMAGE_ID:$VERSION
           DOCKERHUB_TAG=${{ secrets.DOCKERHUB_REPO }}/$IMAGE_NAME:$VERSION
           echo "GitHub Docker Registry Tag: $GHCR_TAG"
+          echo "GitHub Docker Registry Stable Tag: $GHCR_TAG"
           echo "DockerHub Tag: $DOCKERHUB_TAG"
+          echo "DockerHub Stable Tag: $DOCKERHUB_TAG"
           echo "COMMIT=${{ github.sha }}"
 
           echo "GHCR_TAG=$GHCR_TAG" >> $GITHUB_ENV
