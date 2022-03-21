@@ -255,7 +255,7 @@ bool SQLClusterRouter::Init() {
     session_variables_.emplace("execute_mode", "offline");
     session_variables_.emplace("enable_trace", "false");
     session_variables_.emplace("sync_job", "false");
-    session_variables_.emplace("job_timeout", "20000");
+    session_variables_.emplace("job_timeout", "20000"); // ref TaskManagerClient::request_timeout_ms_
     return true;
 }
 
