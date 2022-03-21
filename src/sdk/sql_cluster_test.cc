@@ -845,6 +845,7 @@ TEST_F(SQLClusterTest, GetTableSchema) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
 }
+
 TEST_P(SQLSDKClusterOnlineBatchQueryTest, SqlSdkDistributeBatchTest) {
     auto sql_case = GetParam();
     if (!IsBatchSupportMode(sql_case.mode())) {

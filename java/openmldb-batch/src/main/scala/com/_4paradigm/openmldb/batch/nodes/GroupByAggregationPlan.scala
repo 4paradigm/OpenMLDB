@@ -55,9 +55,10 @@ object GroupByAggregationPlan {
     val sortedInputDf = inputDf.sortWithinPartitions(groupByCols:_*)
 
     // Get schema info
-    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0))
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val inputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node.GetProducer(0), isUnsafeRowOpt)
     val inputSchema = HybridseUtil.getSparkSchema(node.GetProducer(0).GetOutputSchema())
-    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node)
+    val outputSchemaSlices = HybridseUtil.getOutputSchemaSlices(node, isUnsafeRowOpt)
 
     val outputSchema = if (keepIndexColumn) {
       HybridseUtil.getSparkSchema(node.GetOutputSchema())

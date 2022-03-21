@@ -91,6 +91,64 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     }
   }
 
+  /**
+   * This is only used for UnsafeRowOpt and AppendSlice case, only work for single slice encoding.
+   */
+  def decode(nativeRow1: NativeRow, nativeRow2: NativeRow, row1Size: Int, row2Size: Int, output: Array[Any]): Unit = {
+    val sliceIndex = 0
+    val rowView = rowViews(sliceIndex)
+    val schema = sliceSchemas(sliceIndex)
+    var inputRowIndex = 0;
+
+    for (outputColIndex <- 0 until row1Size + row2Size) {
+
+      if (outputColIndex == 0) {
+        if (!rowView.Reset(nativeRow1.buf(sliceIndex), nativeRow1.size(sliceIndex))) {
+          throw new HybridSeException("Fail to setup row builder, maybe row buf is corrupted")
+        }
+      } else if (outputColIndex == row1Size) {
+        if (!rowView.Reset(nativeRow2.buf(sliceIndex), nativeRow2.size(sliceIndex))) {
+          throw new HybridSeException("Fail to setup row builder, maybe row buf is corrupted")
+        }
+        // Reset the inputRowIndex to get data from row2
+        inputRowIndex = 0
+      }
+
+      val field = schema(outputColIndex)
+      if (rowView.IsNULL(outputColIndex)) {
+        output(outputColIndex) = null
+      } else {
+        field.dataType match {
+          case ShortType =>
+            output(outputColIndex) = rowView.GetInt16Unsafe(inputRowIndex)
+          case IntegerType =>
+            output(outputColIndex) = rowView.GetInt32Unsafe(inputRowIndex)
+          case LongType =>
+            output(outputColIndex) = rowView.GetInt64Unsafe(inputRowIndex)
+          case FloatType =>
+            output(outputColIndex) = rowView.GetFloatUnsafe(inputRowIndex)
+          case DoubleType =>
+            output(outputColIndex) = rowView.GetDoubleUnsafe(inputRowIndex)
+          case BooleanType =>
+            output(outputColIndex) = rowView.GetBoolUnsafe(inputRowIndex)
+          case StringType =>
+            output(outputColIndex) = rowView.GetStringUnsafe(inputRowIndex)
+          case TimestampType =>
+            output(outputColIndex) = new Timestamp(rowView.GetTimestampUnsafe(inputRowIndex))
+          case DateType =>
+            val days = rowView.GetDateUnsafe(inputRowIndex)
+            // Avoid using new Date(year, month, days) which is deprecated
+            val date = java.sql.Date.valueOf("%d-%d-%d".format(rowView.GetYearUnsafe(days),
+              rowView.GetMonthUnsafe(days), rowView.GetDayUnsafe(days)))
+            output(outputColIndex) = date
+          case _ => throw new IllegalArgumentException(
+            s"Spark type ${field.dataType} not supported")
+        }
+      }
+
+      inputRowIndex += 1
+    }
+  }
 
   def encodeSingle(row: Row, outBuf: Long, outSize: Int,
                    sliceStrings: Seq[Array[Byte]], sliceIndex: Int): Unit = {

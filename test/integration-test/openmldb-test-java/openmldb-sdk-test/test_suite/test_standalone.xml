@@ -7,6 +7,7 @@
         <parameter name="fedbPath" value=""/>
         <packages>
             <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v030"/>
+            <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v040"/>
         </packages>
     </test>
     <listeners>

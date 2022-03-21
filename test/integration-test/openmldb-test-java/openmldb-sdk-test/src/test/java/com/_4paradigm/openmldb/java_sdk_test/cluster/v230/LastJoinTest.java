@@ -34,27 +34,27 @@ import org.testng.annotations.Test;
 @Feature("Lastjoin")
 public class LastJoinTest extends FedbTest {
 
-    @Story("batch")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
-    public void testLastJoin(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
-    }
+    // @Story("batch")
+    // @Test(dataProvider = "getCase")
+    // @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    // public void testLastJoin(SQLCase testCase) throws Exception {
+    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    // }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
     public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    // @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
     public void testLastJoinRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    // @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
     public void testLastJoinRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

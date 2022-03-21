@@ -40,6 +40,7 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       table_root_path_(options.zk_path + "/table/db_table_data"),
       sp_root_path_(options.zk_path + "/store_procedure/db_sp_data"),
       notify_path_(options.zk_path + "/table/notify"),
+      globalvar_changed_notify_path_(options.zk_path + "/notify/global_variable"),
       zk_client_(nullptr),
       pool_(1) {}
 
@@ -96,6 +97,11 @@ bool ClusterSDK::TriggerNotify() const {
     return zk_client_->Increment(notify_path_);
 }
 
+bool ClusterSDK::GlobalVarNotify() const {
+    LOG(INFO) << "Global variable changed trigger notify node";
+    return zk_client_->Increment(globalvar_changed_notify_path_);
+}
+
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
     std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
@@ -127,7 +133,7 @@ bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_
     }
     DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
 
-    // TODO: Maybe allow users to set backup TaskManager endpoint
+    // TODO(tobe): Maybe allow users to set backup TaskManager endpoint
     *real_endpoint = "";
     return true;
 }
@@ -298,7 +304,7 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
     return tables;
 }
 
-std::vector<std::string> DBSDK::GetAllTables(){
+std::vector<std::string> DBSDK::GetAllTables() {
     std::map<std::string, std::shared_ptr<nameserver::TableInfo>> table_map;
     std::vector<std::string> all_tables;
     for (auto db_name_iter = table_to_tablets_.begin(); db_name_iter != table_to_tablets_.end(); db_name_iter++) {
