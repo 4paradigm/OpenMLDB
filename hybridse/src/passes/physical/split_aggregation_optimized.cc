@@ -68,8 +68,7 @@ bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** o
             // skip ANONYMOUS_WINDOW
             if (!window->GetName().empty()) {
                 if (long_windows_.count(window->GetName())) {
-                    SplitProjects(project_aggr_op, output);
-                    return true;
+                    return SplitProjects(project_aggr_op, output);
                 }
             }
         }
@@ -90,8 +89,11 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
 
     std::vector<vm::PhysicalProjectNode*> split_nodes;
     vm::ColumnProjects column_projects;
+    vm::ColumnProjects final_column_projects;
     for (int i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
+        auto name = projects.GetName(i);
+        final_column_projects.Add(name, node_manager_->MakeColumnRefNode(name, ""), nullptr);
 
         if (expr->GetExprType() == node::kExprCall) {
             const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
@@ -112,7 +114,7 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
                 }
 
                 // create PhysicalAggrerationNode of the window project
-                column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
+                column_projects.Add(name, expr, projects.GetFrame(i));
                 column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
                 vm::PhysicalAggrerationNode* node = nullptr;
                 DLOG(INFO) << "Create Single Aggregation: size = " << column_projects.size()
@@ -133,6 +135,18 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
         } else {
             column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
         }
+    }
+
+    if (column_projects.size() > 0) {
+        vm::PhysicalRowProjectNode* row_prj = nullptr;
+        auto status =
+            plan_ctx_->CreateOp<vm::PhysicalRowProjectNode>(&row_prj, in->GetProducer(0), column_projects);
+        if (!status.isOK()) {
+            LOG(ERROR) << "Fail to create PhysicalRowProjectNode: " << status;
+            return false;
+        }
+        split_nodes.emplace_back(row_prj);
+        column_projects.Clear();
     }
 
     if (split_nodes.size() < 2) {
@@ -158,8 +172,11 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
         join = new_join;
     }
 
-    *output = join;
-    return false;
+    vm::PhysicalSimpleProjectNode* simple_prj = nullptr;
+    plan_ctx_->CreateOp<vm::PhysicalSimpleProjectNode>(&simple_prj, join, final_column_projects);
+
+    *output = simple_prj;
+    return true;
 }
 
 bool SplitAggregationOptimized::IsSplitable(vm::PhysicalAggrerationNode* op) {
