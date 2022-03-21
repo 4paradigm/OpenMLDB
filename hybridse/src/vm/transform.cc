@@ -1700,6 +1700,13 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             case ::hybridse::node::kPlanTypeDelete: {
                 return TransformPlanOp(node, output);
             }
+            case ::hybridse::node::kPlanTypeInsert: {
+                auto* insert_plan_node = dynamic_cast<const ::hybridse::node::InsertPlanNode*>(node);
+                PhysicalInsertNode* insert_node = nullptr;
+                CHECK_STATUS(CreateOp(&insert_node, insert_plan_node->GetInsertNode()));
+                *output = insert_node;
+                return Status::OK();
+            }
             default: {
                 return {kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType())};
             }
