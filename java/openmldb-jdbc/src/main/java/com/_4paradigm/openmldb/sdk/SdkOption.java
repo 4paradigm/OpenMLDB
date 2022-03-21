@@ -25,7 +25,7 @@ public class SdkOption {
     private String host;
     private long port;
 
-    private boolean isClusterMode;
+    private boolean isClusterMode = true;
 
     public String getZkCluster() {
         return zkCluster;
