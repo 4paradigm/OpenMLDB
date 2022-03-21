@@ -252,6 +252,7 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
+    // todo: init session variables from systemtable
     session_variables_.emplace("execute_mode", "offline");
     session_variables_.emplace("enable_trace", "false");
     session_variables_.emplace("sync_job", "false");

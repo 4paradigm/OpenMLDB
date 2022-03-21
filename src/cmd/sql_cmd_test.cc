@@ -578,8 +578,9 @@ TEST_P(DBSDKTest, GlobalVariable) {
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
-    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}}, rs.get());
-
+    // init global variable
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "false"}, "execute_mode", "offline"},
+                         rs.get());
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='true';",
                         "set @@global.execute_mode='online';",
@@ -587,7 +588,6 @@ TEST_P(DBSDKTest, GlobalVariable) {
     rs = sr->ExecuteSQL("show global variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "true"}, {"execute_mode", "online"}},
                          rs.get());
-
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='false';",
                         "set @@global.execute_mode='offline';",
