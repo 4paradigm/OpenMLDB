@@ -3060,7 +3060,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
     if (nameservers != nullptr && status->IsOK()) {
         data.push_back(std::move(nameservers));
     } else {
-        LOG(WARNING) << "[WARShowJobsN]: show nameservers, code: " << status->code << ", msg: " << status->msg;
+        LOG(WARNING) << "[WARN]: show nameservers, code: " << status->code << ", msg: " << status->msg;
     }
 
     auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
