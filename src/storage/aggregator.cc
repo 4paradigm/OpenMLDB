@@ -73,14 +73,14 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         aggr_buffer_map_.emplace(key, AggrBuffer{});
     }
     auto& aggr_buffer = aggr_buffer_map_.at(key);
+    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
+        FlushAggrBuffer(key, aggr_buffer);
+    }
     if (aggr_buffer.aggr_cnt_ == 0) {
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
         }
-    }
-    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
-        FlushAggrBuffer(key, aggr_buffer);
     }
 
     // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
@@ -104,7 +104,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             row_builder.SetString(0, key.c_str(), key.size());
             row_builder.SetInt32(3, origin_cnt + 1);
             row_builder.SetInt64(5, offset);
-            bool ok = UpdateAggrVal(&row_view, &row_builder);
+            bool ok = UpdateAggrVal(&origin_row_view, &row_builder);
             if (!ok) {
                 return false;
             }

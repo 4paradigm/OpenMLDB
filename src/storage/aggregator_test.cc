@@ -326,9 +326,9 @@ TEST_F(AggregatorTest, OutOfOrder) {
     row_builder.AppendString("id1", 3);
     row_builder.AppendString("id2", 3);
     row_builder.AppendTimestamp(50 * 1000 + 100);
-    row_builder.AppendInt32(1);
-    row_builder.AppendInt16(2);
-    row_builder.AppendInt64(3);
+    row_builder.AppendInt32(50);
+    row_builder.AppendInt16(50);
+    row_builder.AppendInt64(50);
     row_builder.AppendFloat(static_cast<float>(4));
     row_builder.AppendDouble(static_cast<double>(5));
     bool ok = aggr->Update(key, encoded_row, 101);
@@ -350,10 +350,10 @@ TEST_F(AggregatorTest, OutOfOrder) {
         ASSERT_LE(origin_cnt, 2);
         if (origin_cnt == 1) {
             int32_t val = *reinterpret_cast<int32_t*>(ch);
-            ASSERT_EQ(val, 1);
+            ASSERT_EQ(val, 50);
         } else if (origin_cnt == 2) {
             int32_t val = *reinterpret_cast<int32_t*>(ch);
-            ASSERT_EQ(val, 2);
+            ASSERT_EQ(val, 100);
         }
     }
 }
