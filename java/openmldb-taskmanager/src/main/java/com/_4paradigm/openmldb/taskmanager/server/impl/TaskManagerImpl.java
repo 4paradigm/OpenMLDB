@@ -23,13 +23,10 @@ import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
-import com.baidu.brpc.protocol.BrpcMeta;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hadoop.mapreduce.Job;
 import scala.Option;
 
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
