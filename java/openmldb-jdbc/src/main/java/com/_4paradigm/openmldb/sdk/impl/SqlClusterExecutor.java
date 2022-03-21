@@ -44,10 +44,10 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);;
     private SQLRouter sqlRouter;
 
-    public SqlClusterExecutor(SdkOption option, boolean isClusterMode, String libraryPath) throws SqlException {
+    public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
 
-        if (isClusterMode) {
+        if (option.isClusterMode()) {
             SQLRouterOptions sqlOpt = new SQLRouterOptions();
             sqlOpt.setSession_timeout(option.getSessionTimeout());
             sqlOpt.setZk_cluster(option.getZkCluster());
@@ -64,14 +64,15 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlOpt.setHost(option.getHost());
             sqlOpt.setPort(option.getPort());
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
+            sqlOpt.delete();
         }
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
     }
 
-    public SqlClusterExecutor(SdkOption option, boolean isClusterMode) throws SqlException {
-        this(option, isClusterMode, "sql_jsdk");
+    public SqlClusterExecutor(SdkOption option) throws SqlException {
+        this(option, "sql_jsdk");
     }
 
     synchronized public static void initJavaSdkLibrary(String libraryPath) {

@@ -49,7 +49,8 @@ public class SQLRouterSmokeTest {
             option.setZkPath(TestConfig.ZK_PATH);
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
-            router = new SqlClusterExecutor(option, true);
+            option.setClusterMode(true);
+            router = new SqlClusterExecutor(option);
             java.sql.Statement state = router.getStatement();
             state.execute("SET @@execute_mode='online';");
             state.close();

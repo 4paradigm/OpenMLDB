@@ -25,6 +25,8 @@ public class SdkOption {
     private String host;
     private long port;
 
+    private boolean isClusterMode;
+
     public String getZkCluster() {
         return zkCluster;
     }
@@ -79,5 +81,13 @@ public class SdkOption {
 
     public void setPort(long port) {
         this.port = port;
+    }
+
+    public boolean isClusterMode() {
+        return isClusterMode;
+    }
+
+    public void setClusterMode(boolean clusterMode) {
+        isClusterMode = clusterMode;
     }
 }
