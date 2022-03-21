@@ -22,6 +22,8 @@ public class SdkOption {
     private long sessionTimeout = 10000;
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
+    private String host;
+    private long port;
 
     public String getZkCluster() {
         return zkCluster;
@@ -61,5 +63,21 @@ public class SdkOption {
 
     public void setRequestTimeout(long requestTimeout) {
         this.requestTimeout = requestTimeout;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public long getPort() {
+        return port;
+    }
+
+    public void setPort(long port) {
+        this.port = port;
     }
 }

@@ -16,20 +16,7 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.openmldb.ColumnDescPair;
-import com._4paradigm.openmldb.ColumnDescVector;
-import com._4paradigm.openmldb.ExplainInfo;
-import com._4paradigm.openmldb.ResultSet;
-import com._4paradigm.openmldb.SQLInsertRow;
-import com._4paradigm.openmldb.SQLInsertRows;
-import com._4paradigm.openmldb.SQLRequestRow;
-import com._4paradigm.openmldb.SQLRouter;
-import com._4paradigm.openmldb.SQLRouterOptions;
-import com._4paradigm.openmldb.Status;
-import com._4paradigm.openmldb.TableColumnDescPair;
-import com._4paradigm.openmldb.TableColumnDescPairVector;
-import com._4paradigm.openmldb.TableReader;
-import com._4paradigm.openmldb.VectorString;
+import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
@@ -40,7 +27,6 @@ import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,24 +44,34 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);;
     private SQLRouter sqlRouter;
 
-    public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
+    public SqlClusterExecutor(SdkOption option, boolean isClusterMode, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
 
-        SQLRouterOptions sqlOpt = new SQLRouterOptions();
-        sqlOpt.setSession_timeout(option.getSessionTimeout());
-        sqlOpt.setZk_cluster(option.getZkCluster());
-        sqlOpt.setZk_path(option.getZkPath());
-        sqlOpt.setEnable_debug(option.getEnableDebug());
-        sqlOpt.setRequest_timeout(option.getRequestTimeout());
-        this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
-        sqlOpt.delete();
+        if (isClusterMode) {
+            SQLRouterOptions sqlOpt = new SQLRouterOptions();
+            sqlOpt.setSession_timeout(option.getSessionTimeout());
+            sqlOpt.setZk_cluster(option.getZkCluster());
+            sqlOpt.setZk_path(option.getZkPath());
+            sqlOpt.setEnable_debug(option.getEnableDebug());
+            sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
+            sqlOpt.delete();
+        } else {
+            StandaloneOptions sqlOpt = new StandaloneOptions();
+            sqlOpt.setSession_timeout(option.getSessionTimeout());
+            sqlOpt.setEnable_debug(option.getEnableDebug());
+            sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            sqlOpt.setHost(option.getHost());
+            sqlOpt.setPort(option.getPort());
+            this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
+        }
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
     }
 
-    public SqlClusterExecutor(SdkOption option) throws SqlException {
-        this(option, "sql_jsdk");
+    public SqlClusterExecutor(SdkOption option, boolean isClusterMode) throws SqlException {
+        this(option, isClusterMode, "sql_jsdk");
     }
 
     synchronized public static void initJavaSdkLibrary(String libraryPath) {

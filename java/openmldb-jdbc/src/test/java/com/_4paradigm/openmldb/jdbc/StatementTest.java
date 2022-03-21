@@ -15,7 +15,7 @@ public class StatementTest {
         option.setZkCluster(TestConfig.ZK_CLUSTER);
         option.setSessionTimeout(200000);
         try {
-            router = new SqlClusterExecutor(option);
+            router = new SqlClusterExecutor(option, true);
         } catch (Exception e) {
             e.printStackTrace();
         }
