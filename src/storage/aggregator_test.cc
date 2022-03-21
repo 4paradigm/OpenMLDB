@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-#include "storage/aggregator.h"
+#include <map>
+#include <utility>
+#include "gtest/gtest.h"
+
 #include "codec/schema_codec.h"
 #include "common/timer.h"
-#include "gtest/gtest.h"
+#include "storage/aggregator.h"
 #include "storage/mem_table.h"
 namespace openmldb {
 namespace storage {
@@ -65,11 +68,10 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
                           0);
 }
 
-bool CheckAggregatorUpdate(uint32_t& id, const std::string& aggr_col, const std::string& aggr_type) {
+bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type) {
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);
-    id = counter++;
     ::openmldb::api::TableMeta aggr_table_meta;
     aggr_table_meta.set_tid(id + 1);
     AddDefaultAggregatorSchema(&aggr_table_meta);
@@ -225,6 +227,22 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
             ASSERT_TRUE(ok);
         }
         ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
+        auto it = aggr_table->NewTraverseIterator(0);
+        it->SeekToFirst();
+        for (int i = 50 - 1; i >= 0; --i) {
+            ASSERT_TRUE(it->Valid());
+            auto tmp_val = it->GetValue();
+            std::string origin_data = tmp_val.ToString();
+            codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                        reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                        origin_data.size());
+            char* ch = NULL;
+            uint32_t ch_length = 0;
+            origin_row_view.GetString(4, &ch, &ch_length);
+            int32_t val = *reinterpret_cast<int32_t*>(ch);
+            ASSERT_EQ(val, i * 4 + 1);
+            it->Next();
+        }
     }
     // rows_range window type
     {
@@ -326,10 +344,10 @@ TEST_F(AggregatorTest, OutOfOrder) {
                                        origin_data.size());
         int32_t origin_cnt = 0;
         char* ch = NULL;
-        uint32_t cn_length = 0;
+        uint32_t ch_length = 0;
         origin_row_view.GetInt32(3, &origin_cnt);
-        origin_row_view.GetString(4, &ch, &cn_length);
-        ASSERT_TRUE(origin_cnt <= 2);
+        origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_LE(origin_cnt, 2);
         if (origin_cnt == 1) {
             int32_t val = *reinterpret_cast<int32_t*>(ch);
             ASSERT_EQ(val, 1);
