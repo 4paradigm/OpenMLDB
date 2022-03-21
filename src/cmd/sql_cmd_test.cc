@@ -595,7 +595,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
     sr = cli->sr;
     auto ns_client = cs->GetNsClient();
 
-    // todo: should support standalone mode
+    // todo: should support standalone mode.
     if (cs->IsClusterMode()) {
         std::vector<::openmldb::nameserver::TableInfo> tables;
         std::string msg;
