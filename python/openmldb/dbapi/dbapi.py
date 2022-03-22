@@ -461,17 +461,6 @@ class Cursor(object):
         self._pre_process_result(rs)
         return self
 
-    def executeRequest(self, sql, parameter):
-        command = sql.strip(' \t\n\r')
-        if selectRE.match(command) == False:
-            raise Exception("Invalid opertion for request")
-
-        ok, rs = self.connection._sdk.doRequestQuery(self.db, sql, parameter)
-        if not ok:
-            raise DatabaseError("execute select fail {}".format(rs))
-        self._pre_process_result(rs)
-        return self
-
     def get_resultset_schema(self):
         # Return the readable schema list like [{'name': 'col1', 'type': 'int64'}, {'name': 'col2', 'type': 'date'}]
 
