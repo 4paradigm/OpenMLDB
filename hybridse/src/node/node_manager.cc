@@ -787,6 +787,15 @@ LoadDataPlanNode *NodeManager::MakeLoadDataPlanNode(const std::string &file_name
     return RegisterNode(node);
 }
 
+CreateFunctionPlanNode *NodeManager::MakeCreateFunctionPlanNode(const std::string &function_name,
+                                                               const TypeNode* return_type,
+                                                               const NodePointVector& args_type,
+                                                               bool is_aggregate,
+                                                               std::shared_ptr<OptionsMap> options) {
+    auto node = new CreateFunctionPlanNode(function_name, return_type, args_type, is_aggregate, options);
+    return RegisterNode(node);
+}
+
 SelectIntoNode *NodeManager::MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                                 const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                                 const std::shared_ptr<OptionsMap> config_option) {
@@ -1081,7 +1090,12 @@ SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNod
 
 SqlNode *NodeManager::MakeCreateFunctionNode(const std::string function_name, DataType return_type,
         const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options) {
-    auto node_ptr = new CreateFunctionNode(function_name, return_type, args_type, is_aggregate, options);
+    auto return_type_node = MakeTypeNode(return_type);
+    NodePointVector type_node_vec;
+    for (const auto type : args_type) {
+        type_node_vec.push_back(MakeTypeNode(type));
+    }
+    auto node_ptr = new CreateFunctionNode(function_name, return_type_node, type_node_vec, is_aggregate, options);
     return RegisterNode(node_ptr);
 }
 

@@ -273,6 +273,9 @@ class NodeManager {
     LoadDataPlanNode *MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
                                            const std::string &table, const std::shared_ptr<OptionsMap> options,
                                            const std::shared_ptr<OptionsMap> config_option);
+    CreateFunctionPlanNode *MakeCreateFunctionPlanNode(const std::string &function_name, const TypeNode* return_type,
+                                                       const NodePointVector& args_type, bool is_aggregate,
+                                                       std::shared_ptr<OptionsMap> options);
     SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                        const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                        const std::shared_ptr<OptionsMap> config_option);

@@ -2025,8 +2025,8 @@ class SelectIntoNode : public SqlNode {
 
 class CreateFunctionNode : public SqlNode {
  public:
-     CreateFunctionNode(const std::string& function_name, DataType return_type,
-             const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+     CreateFunctionNode(const std::string& function_name, const TypeNode* return_type,
+             const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
         : SqlNode(kCreateFunctionStmt, 0, 0),
           function_name_(function_name),
           return_type_(return_type),
@@ -2034,15 +2034,15 @@ class CreateFunctionNode : public SqlNode {
           is_aggregate_(is_aggregate),
           options_(options) {}
     const std::string& Name() const { return function_name_; }
-    DataType GetReturnType() const { return return_type_; }
-    const std::vector<DataType>& GetArgsType() const { return args_type_; }
+    const TypeNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
     bool IsAggregate() const { return is_aggregate_; }
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
     void Print(std::ostream& output, const std::string& org_tab) const override;
  private:
     const std::string function_name_;
-    const DataType return_type_;
-    const std::vector<DataType> args_type_;
+    const TypeNode* return_type_;
+    const NodePointVector args_type_;
     const bool is_aggregate_;
     const std::shared_ptr<OptionsMap> options_;
 };

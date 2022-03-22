@@ -1462,19 +1462,15 @@ void CreateFunctionNode::Print(std::ostream &output, const std::string &org_tab)
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    std::string function_signature = DataTypeName(return_type_) + " " + function_name_ + "(";
-    for (size_t pos = 0; pos < args_type_.size(); pos++) {
-        function_signature.append(DataTypeName(args_type_[pos]));
-        if (pos < args_type_.size() - 1) {
-            function_signature.append(", ");
-        }
-    }
-    function_signature.append(")");
-    PrintValue(output, tab, function_signature, "function", false);
+    PrintValue(output, tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, tab, args_type_, "args_type", false);
     output << "\n";
     PrintValue(output, tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
     output << "\n";
-    PrintValue(output, tab, Options().get(), "options", false);
+    PrintValue(output, tab, Options().get(), "options", true);
 }
 
 void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {

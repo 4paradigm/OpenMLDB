@@ -641,10 +641,10 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
     expect_converted(sql1, &create_fun_stmt);
     ASSERT_EQ(create_fun_stmt->Name(), "fun");
     ASSERT_FALSE(create_fun_stmt->IsAggregate());
-    ASSERT_EQ(create_fun_stmt->GetReturnType(), node::DataType::kInt32);
-    const std::vector<node::DataType>& args = create_fun_stmt->GetArgsType();
+    ASSERT_EQ(create_fun_stmt->GetReturnType()->base(), node::DataType::kInt32);
+    const node::NodePointVector& args = create_fun_stmt->GetArgsType();
     ASSERT_EQ(args.size(), 1);
-    ASSERT_EQ(args.front(), node::DataType::kInt32);
+    ASSERT_EQ((dynamic_cast<node::TypeNode*>(args.front()))->base(), node::DataType::kInt32);
     auto option = create_fun_stmt->Options();
     ASSERT_EQ(option->size(), 1);
     ASSERT_EQ(option->begin()->first, "PATH");
@@ -654,10 +654,10 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
     create_fun_stmt = nullptr;
     expect_converted(sql2, &create_fun_stmt);
     ASSERT_EQ(create_fun_stmt->GetArgsType().size(), 1);
-    ASSERT_EQ(create_fun_stmt->GetArgsType().front(), node::DataType::kInt64);
+    ASSERT_EQ((dynamic_cast<node::TypeNode*>(create_fun_stmt->GetArgsType().front()))->base(), node::DataType::kInt64);
     ASSERT_EQ(create_fun_stmt->Name(), "fun1");
     ASSERT_TRUE(create_fun_stmt->IsAggregate());
-    ASSERT_EQ(create_fun_stmt->GetReturnType(), node::DataType::kVarchar);
+    ASSERT_EQ(create_fun_stmt->GetReturnType()->base(), node::DataType::kVarchar);
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
