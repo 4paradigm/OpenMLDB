@@ -37,7 +37,10 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
       aggr_type_(aggr_type),
       ts_col_(ts_col),
       window_type_(window_tpye),
-      window_size_(window_size) {
+      window_size_(window_size),
+      base_row_view_(base_meta.column_desc()),
+      aggr_row_view_(aggr_meta.column_desc()),
+      row_builder_(aggr_meta.column_desc()) {
     for (int i = 0; i < base_meta.column_desc().size(); i++) {
         if (base_meta.column_desc(i).name() == aggr_col_) {
             aggr_col_idx_ = i;
@@ -53,15 +56,15 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 }
 
 bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
-    codec::RowView row_view(base_table_schema_, reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str())), row.size());
+    base_row_view_.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str())), row.size());
     int64_t cur_ts;
     switch (ts_col_type_) {
         case DataType::kBigInt: {
-            row_view.GetInt64(ts_col_idx_, &cur_ts);
+            base_row_view_.GetInt64(ts_col_idx_, &cur_ts);
             break;
         }
         case DataType::kTimestamp: {
-            row_view.GetTimestamp(ts_col_idx_, &cur_ts);
+            base_row_view_.GetTimestamp(ts_col_idx_, &cur_ts);
             break;
         }
         default: {
@@ -73,14 +76,15 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         aggr_buffer_map_.emplace(key, AggrBuffer{});
     }
     auto& aggr_buffer = aggr_buffer_map_.at(key);
-    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
-        FlushAggrBuffer(key, aggr_buffer);
-    }
-    if (aggr_buffer.aggr_cnt_ == 0) {
+    std::lock_guard<std::mutex> lock(*aggr_buffer.mu_);
+    if (aggr_buffer.ts_begin_ == -1) {
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
         }
+    }
+    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
+        FlushAggrBuffer(key, aggr_buffer);
     }
 
     // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
@@ -90,27 +94,27 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         if (it->Valid()) {
             auto val = it->GetValue();
             std::string origin_data = val.ToString();
-            codec::RowView origin_row_view(aggr_table_schema_,
-                                           reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
-                                           origin_data.size());
-            int32_t origin_cnt = 0;
-            char* ch = NULL;
-            uint32_t ch_length = 0;
-            origin_row_view.GetInt32(3, &origin_cnt);
-            origin_row_view.GetString(4, &ch, &ch_length);
-            codec::RowBuilder row_builder(aggr_table_schema_);
-            std::string new_row = origin_data;
-            row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(new_row[0])), new_row.size(), false);
-            row_builder.SetString(0, key.c_str(), key.size());
-            row_builder.SetInt32(3, origin_cnt + 1);
-            row_builder.SetInt64(5, offset);
-            bool ok = UpdateAggrVal(&origin_row_view, &row_builder);
+            aggr_row_view_.Reset(reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())), origin_data.size());
+
+            AggrBuffer tmp_buffer;
+            bool ok = GetAggrBufferFromRowView(&aggr_row_view_, &tmp_buffer);
+            if (!ok) {
+                LOG(ERROR) << "GetAggrBufferFromRowView failed";
+                return false;
+            }
+            if (cur_ts > tmp_buffer.ts_end_ || cur_ts < tmp_buffer.ts_begin_) {
+                return false;
+            }
+            tmp_buffer.aggr_cnt_ += 1;
+            tmp_buffer.binlog_offset_ = offset;
+            ok = UpdateAggrVal(&base_row_view_, &tmp_buffer);
             if (!ok) {
                 return false;
             }
-            int64_t time = ::baidu::common::timer::get_micros() / 1000;
-            dimensions_.Mutable(0)->set_key(key);
-            aggr_table_->Put(time, new_row, dimensions_);
+            ok = FlushAggrBuffer(key, tmp_buffer);
+            if (!ok) {
+                return false;
+            }
         }
         return true;
     }
@@ -119,7 +123,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (window_type_ == WindowType::kRowsNum) {
         aggr_buffer.ts_end_ = cur_ts;
     }
-    bool ok = UpdateAggrVal(&row_view, &aggr_buffer);
+    bool ok = UpdateAggrVal(&base_row_view_, &aggr_buffer);
     if (!ok) {
         return false;
     }
@@ -131,9 +135,44 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     return true;
 }
 
-void Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
+bool Aggregator::GetAggrBufferFromRowView(codec::RowView* row_view, AggrBuffer* buffer) {
+    if (buffer == nullptr) {
+        return false;
+    }
+    row_view->GetTimestamp(1, &buffer->ts_begin_);
+    row_view->GetTimestamp(2, &buffer->ts_end_);
+    row_view->GetInt32(3, &buffer->aggr_cnt_);
+    char* ch = NULL;
+    uint32_t ch_length = 0;
+    row_view->GetString(4, &ch, &ch_length);
+    switch (aggr_col_type_) {
+        case DataType::kSmallInt:
+        case DataType::kInt:
+        case DataType::kBigInt: {
+            int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
+            buffer->aggr_val_.vlong = origin_val;
+            break;
+        }
+        case DataType::kFloat: {
+            float origin_val = *reinterpret_cast<float*>(ch);
+            buffer->aggr_val_.vfloat = origin_val;
+            break;
+        }
+        case DataType::kDouble: {
+            double origin_val = *reinterpret_cast<double*>(ch);
+            buffer->aggr_val_.vdouble = origin_val;
+            break;
+        }
+        default: {
+            PDLOG(WARNING, "unsupported data type");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
     std::string encoded_row;
-    codec::RowBuilder row_builder(aggr_table_schema_);
     std::string aggr_val;
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
@@ -155,31 +194,39 @@ void Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
         }
         default: {
             PDLOG(WARNING, "unsupported data type");
-            return;
+            return false;
         }
     }
 
     int str_length = key.size() + aggr_val.size();
-    uint32_t row_size = row_builder.CalTotalLength(str_length);
+    uint32_t row_size = row_builder_.CalTotalLength(str_length);
     encoded_row.resize(row_size);
-    row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
-    row_builder.AppendString(key.c_str(), key.size());
-    row_builder.AppendTimestamp(buffer.ts_begin_);
-    row_builder.AppendTimestamp(buffer.ts_end_);
-    row_builder.AppendInt32(buffer.aggr_cnt_);
-    row_builder.AppendString(aggr_val.c_str(), aggr_val.size());
-    row_builder.AppendInt64(buffer.binlog_offset_);
+    row_builder_.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+    row_builder_.AppendString(key.c_str(), key.size());
+    row_builder_.AppendTimestamp(buffer.ts_begin_);
+    row_builder_.AppendTimestamp(buffer.ts_end_);
+    row_builder_.AppendInt32(buffer.aggr_cnt_);
+    row_builder_.AppendString(aggr_val.c_str(), aggr_val.size());
+    row_builder_.AppendInt64(buffer.binlog_offset_);
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
     dimensions_.Mutable(0)->set_key(key);
-    aggr_table_->Put(time, encoded_row, dimensions_);
+    bool ok = aggr_table_->Put(time, encoded_row, dimensions_);
+    if (!ok) {
+        LOG(ERROR) << "aggregator put failed";
+        return false;
+    }
 
+    // init the next window range
     auto& latest_val = aggr_buffer_map_.at(key);
     int64_t latest_ts = latest_val.ts_end_ + 1;
     latest_val.clear();
     latest_val.ts_begin_ = latest_ts;
+    if (window_type_ == WindowType::kRowsRange) {
+        latest_val.ts_end_ = latest_ts + window_size_ - 1;
+    }
 
-    return;
+    return true;
 }
 
 SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
@@ -187,45 +234,6 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                              const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye,
                              uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
-
-bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) {
-    char* ch = NULL;
-    uint32_t ch_length = 0;
-    row_view->GetString(4, &ch, &ch_length);
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt:
-        case DataType::kInt:
-        case DataType::kBigInt: {
-            int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-            int64_t val;
-            row_view->GetInt64(aggr_col_idx_, &val);
-            int64_t new_val = origin_val + val;
-            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(int64_t));
-            break;
-        }
-        case DataType::kFloat: {
-            float origin_val = *reinterpret_cast<float*>(ch);
-            float val;
-            row_view->GetFloat(aggr_col_idx_, &val);
-            float new_val = origin_val + val;
-            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(float));
-            break;
-        }
-        case DataType::kDouble: {
-            double origin_val = *reinterpret_cast<double*>(ch);
-            double val;
-            row_view->GetDouble(aggr_col_idx_, &val);
-            double new_val = origin_val + val;
-            row_builder->SetString(4, reinterpret_cast<const char*>(&new_val), sizeof(double));
-            break;
-        }
-        default: {
-            PDLOG(WARNING, "unsupported data type");
-            return false;
-        }
-    }
-    return true;
-}
 
 bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) {
     switch (aggr_col_type_) {

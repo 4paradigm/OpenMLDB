@@ -2106,6 +2106,8 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     table_info.set_name(aggr_table);
     table_info.set_replica_num(base_table_info.replica_num());
     table_info.set_partition_num(base_table_info.partition_num());
+    auto table_partition = table_info.mutable_table_partition();
+    table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {

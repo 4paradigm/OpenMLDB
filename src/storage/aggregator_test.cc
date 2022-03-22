@@ -234,8 +234,8 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
             auto tmp_val = it->GetValue();
             std::string origin_data = tmp_val.ToString();
             codec::RowView origin_row_view(aggr_table_meta.column_desc(),
-                                        reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
-                                        origin_data.size());
+                                           reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                           origin_data.size());
             char* ch = NULL;
             uint32_t ch_length = 0;
             origin_row_view.GetString(4, &ch, &ch_length);
@@ -321,21 +321,22 @@ TEST_F(AggregatorTest, OutOfOrder) {
         bool ok = aggr->Update(key, encoded_row, i);
         ASSERT_TRUE(ok);
     }
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
     // out of order update
     row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
     row_builder.AppendString("id1", 3);
     row_builder.AppendString("id2", 3);
     row_builder.AppendTimestamp(50 * 1000 + 100);
-    row_builder.AppendInt32(50);
-    row_builder.AppendInt16(50);
-    row_builder.AppendInt64(50);
+    row_builder.AppendInt32(100);
+    row_builder.AppendInt16(100);
+    row_builder.AppendInt64(100);
     row_builder.AppendFloat(static_cast<float>(4));
     row_builder.AppendDouble(static_cast<double>(5));
     bool ok = aggr->Update(key, encoded_row, 101);
     ASSERT_TRUE(ok);
     ASSERT_EQ(aggr_table->GetRecordCnt(), 101);
     auto it = aggr_table->NewTraverseIterator(0);
-    it->Seek(key, 50 * 1000);
+    it->Seek(key, 50 * 1000 + 100);
     if (it->Valid()) {
         auto val = it->GetValue();
         std::string origin_data = val.ToString();
@@ -347,14 +348,9 @@ TEST_F(AggregatorTest, OutOfOrder) {
         uint32_t ch_length = 0;
         origin_row_view.GetInt32(3, &origin_cnt);
         origin_row_view.GetString(4, &ch, &ch_length);
-        ASSERT_LE(origin_cnt, 2);
-        if (origin_cnt == 1) {
-            int32_t val = *reinterpret_cast<int32_t*>(ch);
-            ASSERT_EQ(val, 50);
-        } else if (origin_cnt == 2) {
-            int32_t val = *reinterpret_cast<int32_t*>(ch);
-            ASSERT_EQ(val, 100);
-        }
+        ASSERT_EQ(origin_cnt, 2);
+        int32_t update_val = *reinterpret_cast<int32_t*>(ch);
+        ASSERT_EQ(update_val, 150);
     }
 }
 

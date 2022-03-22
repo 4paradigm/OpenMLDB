@@ -18,6 +18,7 @@
 #define SRC_STORAGE_AGGREGATOR_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -82,8 +83,21 @@ class Aggregator {
         int64_t ts_end_;
         int32_t aggr_cnt_;
         uint64_t binlog_offset_;
-        AggrBuffer() : aggr_val_(), ts_begin_(0), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
-        void clear() { memset(this, 0, sizeof(AggrBuffer)); }
+        std::unique_ptr<std::mutex> mu_;
+        AggrBuffer()
+            : aggr_val_(),
+              ts_begin_(-1),
+              ts_end_(0),
+              aggr_cnt_(0),
+              binlog_offset_(0),
+              mu_(std::make_unique<std::mutex>()) {}
+        void clear() {
+            aggr_val_.vsmallint = 0;
+            ts_begin_ = -1;
+            ts_end_ = 0;
+            aggr_cnt_ = 0;
+            binlog_offset_ = 0;
+        }
     };
 
     std::unordered_map<std::string, AggrBuffer> aggr_buffer_map_;
@@ -92,10 +106,10 @@ class Aggregator {
     std::shared_ptr<Table> aggr_table_;
     Dimensions dimensions_;
 
-    void FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
+    bool GetAggrBufferFromRowView(codec::RowView* row_view, AggrBuffer* buffer);
+    bool FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
 
  private:
-    virtual bool UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) { return false; }
     virtual bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) { return false; }
 
     uint32_t index_pos_;
@@ -109,6 +123,10 @@ class Aggregator {
     // for kRowsNum, window_size_ is the rows num in mini window
     // for kRowsRange, window size is the time interval in mini window
     int32_t window_size_;
+
+    codec::RowView base_row_view_;
+    codec::RowView aggr_row_view_;
+    codec::RowBuilder row_builder_;
 };
 
 class SumAggregator : public Aggregator {
@@ -120,7 +138,6 @@ class SumAggregator : public Aggregator {
     ~SumAggregator() = default;
 
  private:
-    bool UpdateAggrVal(codec::RowView* row_view, codec::RowBuilder* row_builder) override;
     bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) override;
 };
 
