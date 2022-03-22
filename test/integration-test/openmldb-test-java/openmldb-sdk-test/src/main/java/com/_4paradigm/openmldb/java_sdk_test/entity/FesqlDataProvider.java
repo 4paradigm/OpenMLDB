@@ -44,8 +44,8 @@ public class FesqlDataProvider extends CaseFile {
             FesqlDataProvider testDateProvider = yaml.loadAs(testDataStream, FesqlDataProvider.class);
             return testDateProvider;
         } catch (Exception e) {
+            logger.error("fail to load yaml: ", caseFile);
             e.printStackTrace();
-            logger.error("fail to load yaml: ", e);
             FesqlDataProvider nullDataProvider = new FesqlDataProvider();
             SQLCase failCase = new SQLCase();
             failCase.setDesc(FAIL_SQL_CASE);

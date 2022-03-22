@@ -72,24 +72,28 @@ message RunBatchAndShowRequest {
     required string sql = 1;
     map<string, string> conf = 2;
     optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
 };
 
 message ImportOnlineDataRequest {
     required string sql = 1;
     map<string, string> conf = 2;
     optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
 };
 
 message ImportOfflineDataRequest {
     required string sql = 1;
     map<string, string> conf = 2;
     optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
 };
 
 message ExportOfflineDataRequest {
     required string sql = 1;
     map<string, string> conf = 2;
     optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
 }
 
 message DropOfflineTableRequest {

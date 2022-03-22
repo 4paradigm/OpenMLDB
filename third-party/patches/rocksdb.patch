@@ -1,0 +1,11 @@
+--- rocksdb-6.27.3/CMakeLists.txt	2021-12-11 06:56:20.000000000 +0800
++++ rocksdb/CMakeLists.txt	2022-03-20 11:30:54.000000000 +0800
+@@ -219,7 +219,7 @@
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FC /d2Zi+ /W4 /wd4127 /wd4800 /wd4996 /wd4351 /wd4100 /wd4204 /wd4324")
+ else()
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wextra -Wall -pthread")
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsign-compare -Wshadow -Wno-unused-parameter -Wno-unused-variable -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers -Wno-strict-aliasing")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsign-compare -Wshadow -Wno-deprecated-copy -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers -Wno-strict-aliasing")
+   if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wstrict-prototypes")
+   endif()

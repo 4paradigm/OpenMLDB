@@ -768,5 +768,14 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     PrintValue(output, next_tab, GetJobId(), "job_id", true);
 }
 
+bool CmdPlanNode::Equals(const PlanNode *that) const {
+    if (!LeafPlanNode::Equals(that)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdPlanNode*>(that);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
 }  // namespace node
 }  // namespace hybridse

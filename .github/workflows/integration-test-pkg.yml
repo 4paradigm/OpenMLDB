@@ -6,23 +6,23 @@ on:
       JAVA_SDK_VERSION:
         description: 'java sdk version'
         required: true
-        default: '0.3.0'
+        default: '0.4.2'
       OPENMLDB_SERVER_VERSION:
         description: 'openmldb server version'
         required: true
-        default: '0.3.0'
+        default: '0.4.2'
       PYTHON_SDK_VERSION:
         description: 'python sdk version'
         required: true
-        default: '0.3.0'
+        default: '0.4.2'
       BATCH_VERSION:
         description: 'batch version'
         required: true
-        default: '0.3.0-allinone-SNAPSHOT'
+        default: '0.4.2-allinone'
       DIFF_VERSIONS:
         description: 'diff versions'
         required: false
-        default: '0.2.3'
+        default: '0.4.0'
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
         required: true
@@ -33,53 +33,55 @@ env:
   HYBRIDSE_SOURCE:
 
 jobs:
-  java-sdk-test-standalone-0:
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v2
-      - name: modify-properties
-        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
-      - name: TEST Results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Standalone0 PKG Report
-          comment_title: Java SDK Test Standalone0 PKG Report
-
-  java-sdk-test-standalone-1:
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v2
-      - name: modify-properties
-        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "1,2,3,4,5"
-      - name: TEST Results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Java SDK Test Standalone1 PKG Report
-          comment_title: Java SDK Test Standalone1 PKG Report
+#  java-sdk-test-standalone-0:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.1
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: modify-properties
+#        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "0"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          comment_mode: "create new"
+#          deduplicate_classes_by_file_name: true
+#          check_name: Java SDK Test Standalone0 PKG Report
+#          comment_title: Java SDK Test Standalone0 PKG Report
+#
+#  java-sdk-test-standalone-1:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.1
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: modify-properties
+#        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d standalone -l "1,2,3,4,5"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          check_name: Java SDK Test Standalone1 PKG Report
+#          comment_title: Java SDK Test Standalone1 PKG Report
 
   java-sdk-test-cluster-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
@@ -93,6 +95,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          comment_mode: "create new"
           check_name: Java SDK Test Cluster0 PKG Report
           comment_title: Java SDK Test Cluster0 PKG Report
 
@@ -100,7 +103,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
@@ -117,53 +120,53 @@ jobs:
           check_name: Java SDK Test Cluster1 PKG Report
           comment_title: Java SDK Test Cluster1 PKG Report
 
-  standalone-cli-test-0:
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v2
-      - name: modify-properties
-        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_standalone.xml -d standalone -l "0"
-      - name: TEST Results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Standalone CLI0 Test PKG Report
-          comment_title: Standalone CLI0 Test PKG Report
-
-  standalone-cli-test-1:
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
-    env:
-      OS: linux
-    steps:
-      - uses: actions/checkout@v2
-      - name: modify-properties
-        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
-      - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_standalone.xml -d standalone -l "1,2,3,4,5"
-      - name: TEST Results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          check_name: Standalone CLI1 Test PKG Report
-          comment_title: Standalone CLI1 Test PKG Report
+#  standalone-cli-test-0:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.1
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: modify-properties
+#        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_standalone.xml -d standalone -l "0"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          check_name: Standalone CLI0 Test PKG Report
+#          comment_title: Standalone CLI0 Test PKG Report
+#
+#  standalone-cli-test-1:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:0.4.1
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: modify-properties
+#        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_standalone.xml -d standalone -l "1,2,3,4,5"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          check_name: Standalone CLI1 Test PKG Report
+#          comment_title: Standalone CLI1 Test PKG Report
 
   python-sdk-test-standalone-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
@@ -200,7 +203,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'python' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
@@ -221,7 +224,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'apiserver' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
@@ -242,7 +245,7 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'batch' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       OS: linux
     steps:
