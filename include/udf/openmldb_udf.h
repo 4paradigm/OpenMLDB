@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPENMLDB_INCLUDE_UDF_OPENMLDB_UDF_H_
-#define OPENMLDB_INCLUDE_UDF_OPENMLDB_UDF_H_
+#ifndef INCLUDE_UDF_OPENMLDB_UDF_H_
+#define INCLUDE_UDF_OPENMLDB_UDF_H_
 
 #include "base/mem_pool.h"
 #include "base/string_ref.h"
@@ -33,4 +33,4 @@ struct UDFContext {
     void* ptr;
 };
 
-#endif  // OPENMLDB_INCLUDE_UDF_OPENMLDB_UDF_H_
+#endif  // INCLUDE_UDF_OPENMLDB_UDF_H_

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPENMLDB_INCLUDE_BASE_MEM_POOL_H_
-#define OPENMLDB_INCLUDE_BASE_MEM_POOL_H_
+#ifndef INCLUDE_BASE_MEM_POOL_H_
+#define INCLUDE_BASE_MEM_POOL_H_
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
@@ -87,4 +87,4 @@ class ByteMemoryPool {
 }  // namespace base
 }  // namespace openmldb
 
-#endif  // OPENMLDB_INCLUDE_BASE_MEM_POOL_H_
+#endif  // INCLUDE_BASE_MEM_POOL_H_
