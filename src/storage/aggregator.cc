@@ -38,9 +38,9 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
       ts_col_(ts_col),
       window_type_(window_tpye),
       window_size_(window_size),
-      base_row_view_(base_meta.column_desc()),
-      aggr_row_view_(aggr_meta.column_desc()),
-      row_builder_(aggr_meta.column_desc()) {
+      base_row_view_(base_table_schema_),
+      aggr_row_view_(aggr_table_schema_),
+      row_builder_(aggr_table_schema_) {
     for (int i = 0; i < base_meta.column_desc().size(); i++) {
         if (base_meta.column_desc(i).name() == aggr_col_) {
             aggr_col_idx_ = i;
