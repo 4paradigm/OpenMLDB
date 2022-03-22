@@ -13,3 +13,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+import openmldb
+import sqlalchemy as db
+from nb_log import LogManager
+
+log = LogManager('fedb-sdk-test').get_logger_and_add_handlers()
+
+
+class StandaloneClient:
+
+    def __init__(self, host, port, dbName="db1"):
+        self.host = host
+        self.port = port
+        self.dbName = dbName
+
+    def getConnect(self):
+        engine = db.create_engine('openmldb:///{}?host={}&port={}'.format(self.dbName, self.host, self.port))
+        connect = engine.connect()
+        return connect

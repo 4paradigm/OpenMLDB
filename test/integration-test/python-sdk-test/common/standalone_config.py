@@ -13,3 +13,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import configparser
+import util.tools as tool
+
+config = configparser.ConfigParser()
+confPath = tool.getAbsolutePath("conf/standalone.conf")
+config.read(confPath)
+lists_header = config.sections()  # 配置组名, ['test', 'mysql'] # 不含'DEFAULT'
+env = config['global']['env']
+default_db_name = config['global']['default_db_name']
+levels = config['global']['levels'].split(",")
+levels = list(map(lambda l: int(l), levels))
+
+host = config['standalone'][env + '_host']
+port = config['standalone'][env + '_port']
+
