@@ -1288,15 +1288,17 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     }
     // recover global variable after tablet restart
     std::shared_ptr<TableInfo> table_info;
-    if (!GetTableInfo(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
+    if (!GetTableInfoUnlock(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
         PDLOG(WARNING, "table is not exist!");
         return;
     }
     bool exist_globalvar = false;
-    for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
-        if (table_info->table_partition(0).partition_meta(meta_idx).endpoint() == endpoint) {
-            exist_globalvar = true;
-            break;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                exist_globalvar = true;
+                break;
+            }
         }
     }
     if (!exist_globalvar) {
@@ -1309,10 +1311,10 @@ void NameServerImpl::NotifyGlobalVarChanged() {
         return;
     }
     if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
-        PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_);
+        PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_.c_str());
         return;
     }
-    PDLOG(INFO, "notify table changed ok");
+    PDLOG(INFO, "notify globalvar changed ok");
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletRequest* request,
