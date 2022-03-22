@@ -1116,6 +1116,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kDeleteStmt:
             output = "kDeleteStmt";
             break;
+        case kCreateFunctionStmt:
+            output = "kCreateFunctionStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -1346,6 +1349,74 @@ void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     }
 }
 
+void ColumnIndexNode::SetTTL(ExprListNode *ttl_node_list) {
+    if (nullptr == ttl_node_list) {
+        abs_ttl_ = -1;
+        lat_ttl_ = -1;
+        return;
+    } else {
+        uint32_t node_num = ttl_node_list->GetChildNum();
+        if (node_num > 2) {
+            abs_ttl_ = -1;
+            lat_ttl_ = -1;
+            return;
+        }
+        for (uint32_t i = 0; i < node_num; i++) {
+            auto ttl_node = ttl_node_list->GetChild(i);
+            if (ttl_node == nullptr) {
+                abs_ttl_ = -1;
+                lat_ttl_ = -1;
+                return;
+            }
+            switch (ttl_node->GetExprType()) {
+                case kExprPrimary: {
+                    const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
+                    switch (ttl->GetDataType()) {
+                        case hybridse::node::kInt32:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            } else {
+                                lat_ttl_ = ttl->GetInt();
+                            }
+                            break;
+                        case hybridse::node::kInt64:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            } else {
+                                lat_ttl_ = ttl->GetLong();
+                            }
+                            break;
+                        case hybridse::node::kDay:
+                        case hybridse::node::kHour:
+                        case hybridse::node::kMinute:
+                        case hybridse::node::kSecond:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = ttl->GetMillis();
+                            } else {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            }
+                            break;
+                        default: {
+                            return;
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
+                    return;
+                }
+            }
+        }
+    }
+}
+
 void ColumnIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1385,6 +1456,25 @@ bool CmdNode::Equals(const SqlNode *node) const {
     return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
            std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
                       std::end(cnode->GetArgs()));
+}
+
+void CreateFunctionNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    std::string function_signature = DataTypeName(return_type_) + " " + function_name_ + "(";
+    for (size_t pos = 0; pos < args_type_.size(); pos++) {
+        function_signature.append(DataTypeName(args_type_[pos]));
+        if (pos < args_type_.size() - 1) {
+            function_signature.append(", ");
+        }
+    }
+    function_signature.append(")");
+    PrintValue(output, tab, function_signature, "function", false);
+    output << "\n";
+    PrintValue(output, tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", false);
 }
 
 void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {

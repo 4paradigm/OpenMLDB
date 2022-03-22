@@ -90,6 +90,7 @@ enum SqlNodeType {
     kDeployStmt,
     kSetStmt,
     kDeleteStmt,
+    kCreateFunctionStmt,
     kUnknow = -1
 };
 

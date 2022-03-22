@@ -321,6 +321,9 @@ class NodeManager {
                                               SqlNodeList *input_parameter_list,
                                               SqlNodeList *inner_node_list);
 
+    SqlNode *MakeCreateFunctionNode(const std::string function_name, DataType return_type,
+            const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options);
+
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
     InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);

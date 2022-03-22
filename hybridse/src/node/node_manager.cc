@@ -1079,6 +1079,12 @@ SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNod
     return RegisterNode(node_ptr);
 }
 
+SqlNode *NodeManager::MakeCreateFunctionNode(const std::string function_name, DataType return_type,
+        const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options) {
+    auto node_ptr = new CreateFunctionNode(function_name, return_type, args_type, is_aggregate, options);
+    return RegisterNode(node_ptr);
+}
+
 SqlNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name, SqlNodeList *input_parameter_list,
                                               SqlNodeList *inner_node_list) {
     CreateSpStmt *node_ptr = new CreateSpStmt(sp_name);

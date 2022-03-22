@@ -1929,73 +1929,7 @@ class ColumnIndexNode : public SqlNode {
     int64_t GetAbsTTL() const { return abs_ttl_; }
     int64_t GetLatTTL() const { return lat_ttl_; }
 
-    void SetTTL(ExprListNode *ttl_node_list) {
-        if (nullptr == ttl_node_list) {
-            abs_ttl_ = -1;
-            lat_ttl_ = -1;
-            return;
-        } else {
-            uint32_t node_num = ttl_node_list->GetChildNum();
-            if (node_num > 2) {
-                abs_ttl_ = -1;
-                lat_ttl_ = -1;
-                return;
-            }
-            for (uint32_t i = 0; i < node_num; i++) {
-                auto ttl_node = ttl_node_list->GetChild(i);
-                if (ttl_node == nullptr) {
-                    abs_ttl_ = -1;
-                    lat_ttl_ = -1;
-                    return;
-                }
-                switch (ttl_node->GetExprType()) {
-                    case kExprPrimary: {
-                        const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
-                        switch (ttl->GetDataType()) {
-                            case hybridse::node::kInt32:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetInt();
-                                }
-                                break;
-                            case hybridse::node::kInt64:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetLong();
-                                }
-                                break;
-                            case hybridse::node::kDay:
-                            case hybridse::node::kHour:
-                            case hybridse::node::kMinute:
-                            case hybridse::node::kSecond:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = ttl->GetMillis();
-                                } else {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                }
-                                break;
-                            default: {
-                                return;
-                            }
-                        }
-                        break;
-                    }
-                    default: {
-                        LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
-                        return;
-                    }
-                }
-            }
-        }
-    }
+    void SetTTL(ExprListNode *ttl_node_list);
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -2089,9 +2023,33 @@ class SelectIntoNode : public SqlNode {
     const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
+class CreateFunctionNode : public SqlNode {
+ public:
+     CreateFunctionNode(const std::string& function_name, DataType return_type,
+             const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : SqlNode(kCreateFunctionStmt, 0, 0),
+          function_name_(function_name),
+          return_type_(return_type),
+          args_type_(args_type),
+          is_aggregate_(is_aggregate),
+          options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    DataType GetReturnType() const { return return_type_; }
+    const std::vector<DataType>& GetArgsType() const { return args_type_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+ private:
+    const std::string function_name_;
+    const DataType return_type_;
+    const std::vector<DataType> args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class LoadDataNode : public SqlNode {
  public:
-    explicit LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
+    LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
                           const std::shared_ptr<OptionsMap>&& op, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op), config_options_(op2) {}
     ~LoadDataNode() {}
