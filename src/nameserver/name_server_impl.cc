@@ -588,6 +588,12 @@ bool NameServerImpl::Recover() {
             }
         }
         value.clear();
+        if (!zk_client_->GetNodeValue(zk_path_.globalvar_changed_notify_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.globalvar_changed_notify_node_, "1")) {
+                PDLOG(WARNING, "create globalvar changed notify node failed");
+                return false;
+            }
+        }
         if (!zk_client_->GetNodeValue(zk_path_.auto_failover_node_, value)) {
             auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
             if (!zk_client_->CreateNode(zk_path_.auto_failover_node_, value)) {
