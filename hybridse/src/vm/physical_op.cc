@@ -46,6 +46,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpUnion, "UNION"},
         {kPhysicalOpPostRequestUnion, "POST_REQUEST_UNION"},
         {kPhysicalOpRequestUnion, "REQUEST_UNION"},
+        {kPhysicalOpRequestAggUnion, "REQUEST_AGG_UNION"},
         {kPhysicalOpRequestJoin, "REQUEST_JOIN"},
         {kPhysicalOpIndexSeek, "INDEX_SEEK"},
         {kPhysicalOpLoadData, "LOAD_DATA"},
