@@ -51,7 +51,6 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_bool(recycle_bin_enabled);
-DECLARE_string(db_root_path);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_bin_ssd_root_path);
 DECLARE_string(recycle_bin_hdd_root_path);
