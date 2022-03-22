@@ -223,11 +223,11 @@ class Cursor(object):
             name = schema.GetColumnName(idx)
             colType = schema.GetColumnType(idx)
 
-            if type(row) is tuple:
+            if isinstance(row, tuple):
                 ok = appendMap[colType](row[i])
                 if not ok:
                     raise DatabaseError("error at append data seq {}".format(i))
-            elif type(row) is dict:
+            elif isinstance(row, dict):
                 if row[name] is None:
                     builder.AppendNULL()
                     continue
@@ -545,11 +545,11 @@ class Connection(object):
 # Constructor for creating connection to db
 def connect(db, zk=None, zkPath=None, host=None, port=None):
     # standalone
-    if type(zkPath) is int:
+    if isinstance(zkPath, int):
         host, port = zk, zkPath
         return Connection(db, False, host, port)
     # cluster
-    elif type(zkPath) is str:
+    elif isinstance(zkPath, str):
         return Connection(db, True, zk, zkPath)
     elif zkPath is None:
         return Connection(db, False, host, int(port))
