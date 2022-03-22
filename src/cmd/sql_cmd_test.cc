@@ -577,21 +577,37 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
         ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-              "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-             {{},
-              nameserver::GLOBAL_VARIABLES,
-              nameserver::INFORMATION_SCHEMA_DB,
-              "memory",
-              {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
-              {},
-              {},
-              "1",
-              "0",
-              "1",
-              "NULL",
-              "NULL",
-              "NULL"}},
+            {
+                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                 "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
+                 "Offline_deep_copy"},
+                {{},
+                 nameserver::DEPLOY_RESPONSE_TIME,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+                {{},
+                 nameserver::GLOBAL_VARIABLES,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+            },
             rs.get());
     }
 
@@ -614,49 +630,25 @@ TEST_P(DBSDKTest, GlobalVariable) {
     sr = cli->sr;
     auto ns_client = cs->GetNsClient();
 
-    if (cs->IsClusterMode()) {
-        std::vector<::openmldb::nameserver::TableInfo> tables;
-        std::string msg;
-        ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        tables.clear();
-        ASSERT_TRUE(
-            ns_client->ShowTable(nameserver::GLOBAL_VARIABLES, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
-        tables.clear();
+    ::hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show global variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}}, rs.get());
 
-        ::hybridse::sdk::Status status;
-        std::string sql = "set @@global.enable_trace='true';";
-        auto res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set @@global.execute_mode='online';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        auto rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("true", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("online", rs->GetStringUnsafe(1));
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='true';",
+                        "set @@global.execute_mode='online';",
+                    });
+    rs = sr->ExecuteSQL("show global variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "true"}, {"execute_mode", "online"}},
+                         rs.get());
 
-        sql = "set GLOBAL enable_trace='false';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set GLOBAL execute_mode='offline';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("false", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
-    }
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='false';",
+                        "set @@global.execute_mode='offline';",
+                    });
+
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "false"}, {"execute_mode", "offline"}},
+                         rs.get());
 }
 
 /* TODO: Only run test in standalone mode
