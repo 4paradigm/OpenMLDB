@@ -150,6 +150,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
 
     if (table->GetIndex().size() != 1) {
         LOG(ERROR) << "PreAggregation table index size != 1";
+        return false;
     }
     auto index = table->GetIndex().cbegin()->second;
     auto nm = plan_ctx_->node_manager();

@@ -88,8 +88,8 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     DLOG(INFO) << "Split expr: " << in->GetTreeString();
 
     std::vector<vm::PhysicalProjectNode*> split_nodes;
-    vm::ColumnProjects column_projects;
     vm::ColumnProjects final_column_projects;
+    vm::ColumnProjects simple_column_projects;
     for (int i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
         auto name = projects.GetName(i);
@@ -100,20 +100,8 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
             const auto* window = call_expr->GetOver();
 
             if (window) {
-                // create RowProject of the current column_projects
-                if (column_projects.size() > 0) {
-                    vm::PhysicalRowProjectNode* row_prj = nullptr;
-                    auto status =
-                        plan_ctx_->CreateOp<vm::PhysicalRowProjectNode>(&row_prj, in->GetProducer(0), column_projects);
-                    if (!status.isOK()) {
-                        LOG(ERROR) << "Fail to create PhysicalRowProjectNode: " << status;
-                        return false;
-                    }
-                    split_nodes.emplace_back(row_prj);
-                    column_projects.Clear();
-                }
-
                 // create PhysicalAggrerationNode of the window project
+                vm::ColumnProjects column_projects;
                 column_projects.Add(name, expr, projects.GetFrame(i));
                 column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
                 vm::PhysicalAggrerationNode* node = nullptr;
@@ -130,23 +118,22 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
                 split_nodes.emplace_back(node);
                 column_projects.Clear();
             } else {
-                column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
+                simple_column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
             }
         } else {
-            column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
+            simple_column_projects.Add(projects.GetName(i), expr, projects.GetFrame(i));
         }
     }
 
-    if (column_projects.size() > 0) {
+    if (simple_column_projects.size() > 0) {
         vm::PhysicalRowProjectNode* row_prj = nullptr;
         auto status =
-            plan_ctx_->CreateOp<vm::PhysicalRowProjectNode>(&row_prj, in->GetProducer(0), column_projects);
+            plan_ctx_->CreateOp<vm::PhysicalRowProjectNode>(&row_prj, in->GetProducer(0), simple_column_projects);
         if (!status.isOK()) {
             LOG(ERROR) << "Fail to create PhysicalRowProjectNode: " << status;
             return false;
         }
         split_nodes.emplace_back(row_prj);
-        column_projects.Clear();
     }
 
     if (split_nodes.size() < 2) {

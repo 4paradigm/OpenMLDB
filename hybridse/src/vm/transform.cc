@@ -33,10 +33,10 @@
 #include "passes/physical/group_and_sort_optimized.h"
 #include "passes/physical/left_join_optimized.h"
 #include "passes/physical/limit_optimized.h"
-#include "passes/physical/simple_project_optimized.h"
-#include "passes/physical/window_column_pruning.h"
 #include "passes/physical/long_window_optimized.h"
+#include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/split_aggregation_optimized.h"
+#include "passes/physical/window_column_pruning.h"
 
 namespace hybridse {
 namespace vm {

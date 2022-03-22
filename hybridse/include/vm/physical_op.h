@@ -1535,11 +1535,12 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
 
     RequestWindowOp window_;
     RequestWindowOp agg_window_;
+
+ private:
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
     const bool output_request_row_;
 
- private:
     void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
         AddProducer(request);
         AddProducer(raw);
