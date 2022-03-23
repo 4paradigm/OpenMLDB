@@ -3227,18 +3227,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
         return;
     }
-    if (table_meta->format_version() == 1 &&
-        table_meta->storage_mode() == ::openmldb::common::kMemory) {
-        bool ok = catalog_->AddTable(*table_meta, table);
-        engine_->ClearCacheLocked(table_meta->db());
-        if (ok) {
-            LOG(INFO) << "add table " << table_meta->name()
-                        << " to catalog with db " << table_meta->db();
-        } else {
-            LOG(WARNING) << "fail to add table " << table_meta->name()
-                            << " to catalog with db " << table_meta->db();
-        }
-    }
+    
     table->SetTableStat(::openmldb::storage::kNormal);
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
@@ -3726,6 +3715,15 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
+    if (!table_meta->db().empty()) {
+        bool ok = catalog_->AddTable(*table_meta, table);
+        engine_->ClearCacheLocked(table_meta->db());
+        if (ok) {
+            LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+        } else {
+            LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+        }
+    }
     return 0;
 }
 
