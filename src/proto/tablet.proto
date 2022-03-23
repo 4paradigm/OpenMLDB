@@ -823,6 +823,15 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 service TabletServer {
     // kv storage api for client
     rpc Put(PutRequest) returns (PutResponse);
@@ -894,4 +903,5 @@ service TabletServer {
     // TODO(hw): nameserver call this?
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
 }

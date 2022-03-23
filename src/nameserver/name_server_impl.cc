@@ -10267,5 +10267,29 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
 }
 
+void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                                    CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& kv : tablets_) {
+            if (!kv.second->Health()) {
+                LOG(WARNING) << "endpoint [" << kv.first << "] is offline";
+                continue;
+            }
+            tb_client_vec.push_back(kv.second->client_);
+        }
+    }
+    for (auto tb_client : tb_client_vec) {
+        std::string msg;
+        if (!tb_client->CreateFunction(request->fun(), &msg)) {
+            // TODO: delete registered function
+            return;
+        }
+    }
+    base::SetResponseOK(response);
+}
+
 }  // namespace nameserver
 }  // namespace openmldb

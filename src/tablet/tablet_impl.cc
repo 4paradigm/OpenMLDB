@@ -5096,5 +5096,10 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     }
 }
 
+void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+        openmldb::api::CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+}
+
 }  // namespace tablet
 }  // namespace openmldb

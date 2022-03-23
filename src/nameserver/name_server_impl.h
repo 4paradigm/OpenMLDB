@@ -185,6 +185,9 @@ class NameServerImpl : public NameServer {
     void ShowTable(RpcController* controller, const ShowTableRequest* request, ShowTableResponse* response,
                    Closure* done);
 
+    void CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                        CreateFunctionResponse* response, Closure* done);
+
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
 

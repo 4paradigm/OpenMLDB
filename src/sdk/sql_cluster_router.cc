@@ -1660,7 +1660,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (status->code != 0) {
                 return {};
             }
-            if(rs->Size() == 0) {
+            if (rs->Size() == 0) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
                 status->msg = "Job not found: " + std::to_string(job_id);
                 return {};
@@ -2025,7 +2025,12 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 }
 
 bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
-    return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    auto ret = cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    if (!ret.OK()) {
+        LOG(WARNING) << "update offline table info failed: " << ret.msg;
+        return false;
+    }
+    return true;
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
@@ -2380,6 +2385,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             }
             return {};
         }
+        case hybridse::node::kPlanTypeCreateFunction: {
+            *status = HandleCreateFunction(dynamic_cast<hybridse::node::CreateFunctionPlanNode*>(node));
+            return {};
+        }
         case hybridse::node::kPlanTypeDelete: {
             *status = {::hybridse::common::StatusCode::kCmdError, "delete is not supported yet"};
             return {};
@@ -2687,6 +2696,46 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
     }
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
         return {::hybridse::common::StatusCode::kCmdError, "insert row failed"};
+    }
+    return {};
+}
+
+hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node) {
+    if (node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    ::openmldb::common::ExternalFun fun;
+    fun.set_name(node->Name());
+    auto type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(node->GetReturnType());
+    if (type_node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    openmldb::type::DataType data_type;
+    if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal return type"};
+    }
+    fun.set_return_type(data_type);
+    for (const auto arg_node : node->GetArgsType()) {
+        type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(arg_node);
+        if (type_node == nullptr) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+        }
+        if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal argument type"};
+        }
+        fun.add_arg_type(data_type);
+    }
+    fun.set_is_aggregate(node->IsAggregate());
+    auto option = node->Options();
+    if (!option || option->find("FILE") == option->end()) {
+        return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
+    }
+    fun.set_file((*option)["FILE"]->GetExprString());
+    auto ns = cluster_sdk_->GetNsClient();
+    // TODO(denglong): support multi db
+    auto ret = ns->CreateFunction(fun);
+    if (!ret.OK()) {
+        return {::hybridse::common::StatusCode::kCmdError, ret.msg};
     }
     return {};
 }

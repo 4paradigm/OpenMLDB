@@ -217,6 +217,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void Query(RpcController* controller, const openmldb::api::QueryRequest* request,
                openmldb::api::QueryResponse* response, Closure* done);
 
+    void CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+               openmldb::api::CreateFunctionResponse* response, Closure* done);
+
     void SubQuery(RpcController* controller, const openmldb::api::QueryRequest* request,
                   openmldb::api::QueryResponse* response, Closure* done);
 

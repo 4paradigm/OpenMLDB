@@ -271,6 +271,9 @@ class TabletClient : public Client {
 
     bool SubBatchRequestQuery(const ::openmldb::api::SQLBatchRequestQueryRequest& request,
                               openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    bool CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
+
     bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 

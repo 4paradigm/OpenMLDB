@@ -1406,5 +1406,21 @@ bool TabletClient::CallSQLBatchRequestProcedure(
                                callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
+bool TabletClient::CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg) {
+    if (msg == nullptr) {
+        return false;
+    }
+    ::openmldb::api::CreateFunctionRequest request;
+    ::openmldb::api::CreateFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        *msg = response.msg();
+        return false;
+    }
+    return true;
+}
+
 }  // namespace client
 }  // namespace openmldb

@@ -218,7 +218,6 @@ class StandAloneSDK : public DBSDK {
     }
 
  protected:
-
     bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override {
         // Standalone mode does not provide TaskManager service
         return false;
