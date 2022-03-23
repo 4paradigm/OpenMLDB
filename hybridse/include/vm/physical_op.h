@@ -1511,6 +1511,11 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
         fn_infos_.push_back(&window_.range_.fn_info());
         fn_infos_.push_back(&window_.index_key_.fn_info());
 
+        fn_infos_.push_back(&agg_window_.partition_.fn_info());
+        fn_infos_.push_back(&agg_window_.sort_.fn_info());
+        fn_infos_.push_back(&agg_window_.range_.fn_info());
+        fn_infos_.push_back(&agg_window_.index_key_.fn_info());
+
         AddProducers(request, raw, aggr);
     }
     virtual ~PhysicalRequestAggUnionNode() {}

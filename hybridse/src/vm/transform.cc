@@ -277,6 +277,15 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
                                           request_union_op->producers()[0]));
             break;
         }
+        case kPhysicalOpRequestAggUnion: {
+            auto request_union_op =
+                dynamic_cast<PhysicalRequestAggUnionNode*>(node);
+            CHECK_STATUS(GenRequestWindow(&request_union_op->window_,
+                                          node->producers()[0]));
+            CHECK_STATUS(GenRequestWindow(&request_union_op->agg_window_,
+                                          node->producers()[2]));
+            break;
+        }
         case kPhysicalOpPostRequestUnion: {
             auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
             CHECK_STATUS(GenRange(union_op->mutable_request_ts(),

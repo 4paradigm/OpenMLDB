@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include "passes/physical/long_window_optimized.h"
+
 #include <absl/strings/str_cat.h>
+
 #include <string>
 #include <vector>
 
@@ -140,11 +142,17 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
 
     // TODO(zhanghao): optimize the selection of the best pre-aggregation tables
     auto table = catalog_->GetTable(table_infos[0].aggr_db, table_infos[0].aggr_table);
+    if (!table) {
+        LOG(ERROR) << "Fail to get table handler for pre-aggregation table " << table_infos[0].aggr_db << "."
+                   << table_infos[0].aggr_table;
+        return false;
+    }
 
     vm::PhysicalTableProviderNode* aggr = nullptr;
     auto status = plan_ctx_->CreateOp<vm::PhysicalTableProviderNode>(&aggr, table);
     if (!status.isOK()) {
-        LOG(ERROR) << "Fail to create PhysicalTableProviderNode for pre-aggregation table: " << status;
+        LOG(ERROR) << "Fail to create PhysicalTableProviderNode for pre-aggregation table " << table_infos[0].aggr_db
+                   << "." << table_infos[0].aggr_table << ": " << status;
         return false;
     }
 
@@ -172,9 +180,19 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     auto order_expr = nm->MakeOrderExpression(order_col_ref, true);
     auto orders = nm->MakeExprList();
     orders->AddChild(order_expr);
+
+    auto partition_by = nm->MakeExprList();
+    for (int i = 0; i < index.keys.size(); i++) {
+        auto col_ref = nm->MakeColumnRefNode((*table->GetSchema())[index.keys[i].idx].name(), table->GetName(),
+                                             table->GetDatabase());
+        partition_by->AddChild(col_ref);
+    }
+
     aggr_window.sort_.orders_ = nm->MakeOrderByNode(orders);
     aggr_window.name_ = req_window.name();
     aggr_window.range_ = req_window.range_;
+    aggr_window.range_.range_key_ = order_col_ref;
+    aggr_window.partition_.keys_ = partition_by;
 
     vm::PhysicalRequestAggUnionNode* request_aggr_union = nullptr;
     status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(
