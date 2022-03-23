@@ -72,7 +72,7 @@ object ExpressionUtil {
                         leftDf: DataFrame,
                         rightDf: DataFrame,
                         physicalNode: PhysicalOpNode,
-                        isLastJoin: Boolean): Column = {
+                        hasIndexColumn: Boolean): Column = {
     expr.GetExprType() match {
       case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
         val inputNode = physicalNode
@@ -88,7 +88,7 @@ object ExpressionUtil {
           SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
         } else {
           // Get from right df
-          val rightColIndex = if (isLastJoin) {
+          val rightColIndex = if (hasIndexColumn) {
             colIndex - (leftDf.schema.size - 1)
           } else {
             colIndex - leftDf.schema.size
@@ -115,17 +115,17 @@ object ExpressionUtil {
    * @return
    */
   def binaryExprToSparkColumns(binaryExpr: BinaryExpr, physicalNode: PhysicalOpNode, leftDf: DataFrame,
-                               rightDf: DataFrame, isLastJoin: Boolean): (Column, Column) = {
+                               rightDf: DataFrame, hasIndexColumn: Boolean): (Column, Column) = {
     val leftExpr = binaryExpr.GetChild(0)
     val rightExpr = binaryExpr.GetChild(1)
-    val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, rightDf, physicalNode, isLastJoin)
-    val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, leftDf, rightDf, physicalNode, isLastJoin)
+    val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, rightDf, physicalNode, hasIndexColumn)
+    val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, leftDf, rightDf, physicalNode, hasIndexColumn)
     leftSparkColumn -> rightSparkColumn
   }
 
 
   def recusiveGetSparkColumnFromExpr(expr: ExprNode, node: PhysicalOpNode, leftDf: DataFrame,
-                                           rightDf: DataFrame, isLastJoin: Boolean): Column = {
+                                           rightDf: DataFrame, hasIndexColumn: Boolean): Column = {
     expr.GetExprType() match {
       case ExprType.kExprBinary =>
         val binaryExpr = BinaryExpr.CastFrom(expr)
@@ -135,35 +135,41 @@ object ExpressionUtil {
             // TODO(tobe): Only support for binary sub expressions
             val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
             val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
-            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, isLastJoin)
-            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, isLastJoin)
+            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, hasIndexColumn)
+            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, hasIndexColumn)
             leftColumn.and(rightColumn)
           case FnOperator.kFnOpOr =>
             val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
             val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
-            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, isLastJoin)
-            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, isLastJoin)
+            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, hasIndexColumn)
+            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, hasIndexColumn)
             leftColumn.or(rightColumn)
           case FnOperator.kFnOpNot =>
-            !recusiveGetSparkColumnFromExpr(expr, node, leftDf, rightDf, isLastJoin)
+            !recusiveGetSparkColumnFromExpr(expr, node, leftDf, rightDf, hasIndexColumn)
           case FnOperator.kFnOpEq => // TODO(todo): Support null-safe equal in the future
             // Notice that it may be handled by physical plan's left_key() and right_key()
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left.equalTo(right)
           case FnOperator.kFnOpNeq =>
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left.notEqual(right)
           case FnOperator.kFnOpLt =>
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left < right
           case FnOperator.kFnOpLe =>
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left <= right
           case FnOperator.kFnOpGt =>
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left > right
           case FnOperator.kFnOpGe =>
-            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf, isLastJoin)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
             left >= right
         }
       case _ => throw new UnsupportedHybridSeException(

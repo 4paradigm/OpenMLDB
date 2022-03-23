@@ -67,6 +67,8 @@ object JoinPlan {
 
     val indexName = "__JOIN_INDEX__" + System.currentTimeMillis()
 
+    var hasIndexColumn = false
+
     val leftDf: DataFrame = {
       if (joinType == JoinType.kJoinTypeLeft) {
         left.getDf()
@@ -74,6 +76,7 @@ object JoinPlan {
         if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
           left.getDf()
         } else {
+          hasIndexColumn = true
           // Add index column for original last join, not used in native last join
           SparkUtil.addIndexColumn(spark, left.getDf(), indexName, ctx.getConf.addIndexColumnMethod)
         }
@@ -96,14 +99,10 @@ object JoinPlan {
       }
     }
 
-    val isLastJoin = joinType == JoinType.kJoinTypeLast
-
-    val indexColIdx = if (isLastJoin) {
-      leftDf.schema.size - 1
-    } else if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
+    val indexColIdx = if (hasIndexColumn) {
       leftDf.schema.size - 1
     } else {
-      leftDf.schema.size
+      -1
     }
 
     val filter = node.join().condition()
@@ -111,7 +110,7 @@ object JoinPlan {
     if (filter.condition() != null) {
       if (ctx.getConf.enableJoinWithSparkExpr) {
         joinConditions += ExpressionUtil.recusiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf,
-          isLastJoin)
+          hasIndexColumn)
         logger.info("Generate spark join conditions: " + joinConditions)
       } else { // Disable join with native expression, use encoder/decoder and jit function
         val regName = "SPARKFE_JOIN_CONDITION_" + filter.fn_info().fn_name()
