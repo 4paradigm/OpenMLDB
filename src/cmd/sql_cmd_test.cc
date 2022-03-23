@@ -592,7 +592,6 @@ TEST_P(DBSDKTest, GlobalVariable) {
                         "set @@global.enable_trace='false';",
                         "set @@global.execute_mode='offline';",
                     });
-
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "false"}, {"execute_mode", "offline"}},
                          rs.get());
 }
