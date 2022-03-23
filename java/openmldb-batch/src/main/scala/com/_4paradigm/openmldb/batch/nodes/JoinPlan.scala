@@ -109,7 +109,7 @@ object JoinPlan {
     val filter = node.join().condition()
     // extra conditions
     if (filter.condition() != null) {
-      if (ctx.getConf.enableJoinWithNativeExpr) {
+      if (ctx.getConf.enableJoinWithSparkExpr) {
         joinConditions += ExpressionUtil.recusiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf,
           isLastJoin)
         logger.info("Generate spark join conditions: " + joinConditions)

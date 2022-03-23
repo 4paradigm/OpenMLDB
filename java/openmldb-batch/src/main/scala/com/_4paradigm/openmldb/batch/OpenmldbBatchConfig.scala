@@ -132,8 +132,8 @@ class OpenmldbBatchConfig extends Serializable {
   var enableUnsafeRowOptForGroupby = false
 
   // Join optimization
-  @ConfigOption(name = "openmldb.opt.join.native_expr", doc = "Enable join with Spark native expression")
-  var enableJoinWithNativeExpr = true
+  @ConfigOption(name = "openmldb.opt.join.spark_expr", doc = "Enable join with original Spark expression")
+  var enableJoinWithSparkExpr = true
 
   // Switch for disable OpenMLDB
   @ConfigOption(name = "openmldb.disable", doc = "Disable OpenMLDB optimization or not")
