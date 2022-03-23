@@ -16,12 +16,12 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.node.{BinaryExpr, ConstNode, ExprNode, ExprType}
+import com._4paradigm.hybridse.node.{BinaryExpr, ConstNode, ExprNode, ExprType, FnOperator,
+  DataType => HybridseDataType}
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalOpNode}
 import org.apache.spark.sql.functions.{lit, typedLit}
 import org.apache.spark.sql.{Column, DataFrame}
-import com._4paradigm.hybridse.node.{DataType => HybridseDataType}
 
 object ExpressionUtil {
 
@@ -115,6 +115,55 @@ object ExpressionUtil {
     val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, rightDf, physicalNode)
     val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, leftDf, rightDf, physicalNode)
     leftSparkColumn -> rightSparkColumn
+  }
+
+
+  def recusiveGetSparkColumnFromExpr(expr: ExprNode, node: PhysicalOpNode, leftDf: DataFrame,
+                                           rightDf: DataFrame): Column = {
+    expr.GetExprType() match {
+      case ExprType.kExprBinary =>
+        val binaryExpr = BinaryExpr.CastFrom(expr)
+        val op = binaryExpr.GetOp()
+        op match {
+          case FnOperator.kFnOpAnd =>
+            // TODO(tobe): Only support for binary sub expressions
+            val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
+            val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
+            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf)
+            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf)
+            leftColumn.and(rightColumn)
+          case FnOperator.kFnOpOr =>
+            val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
+            val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
+            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf)
+            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf)
+            leftColumn.or(rightColumn)
+          case FnOperator.kFnOpNot =>
+            !recusiveGetSparkColumnFromExpr(expr, node, leftDf, rightDf)
+          case FnOperator.kFnOpEq => // TODO(todo): Support null-safe equal in the future
+            // Notice that it may be handled by physical plan's left_key() and right_key()
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left.equalTo(right)
+          case FnOperator.kFnOpNeq =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left.notEqual(right)
+          case FnOperator.kFnOpLt =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left < right
+          case FnOperator.kFnOpLe =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left <= right
+          case FnOperator.kFnOpGt =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left > right
+          case FnOperator.kFnOpGe =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
+            left >= right
+        }
+      case _ => throw new UnsupportedHybridSeException(
+        s"Does not support convert expression type ${expr.GetExprType} to Spark Column")
+    }
+
   }
 
 }
