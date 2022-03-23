@@ -354,6 +354,12 @@ class NameServerImpl : public NameServer {
                        Closure* done);
 
  private:
+    // create the database if not exists, exit on fail
+    void CreateDatabaseOrExit(const std::string& db_name);
+
+    // create table if not exists, exit on fail
+    void CreateSystemTableOrExit(SystemTableType type);
+
     base::Status CreateSystemTable(SystemTableType table_type);
 
     // Recover all memory status, the steps

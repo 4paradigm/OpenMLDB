@@ -64,6 +64,7 @@ inline bool IsHiddenDb(absl::string_view db) {
 }
 
 const SystemTableInfo* GetSystemTableInfo(SystemTableType type);
+
 absl::string_view GetSystemTableName(SystemTableType type);
 
 class SystemTable {

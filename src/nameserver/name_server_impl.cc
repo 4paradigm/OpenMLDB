@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <set>
+#include "nameserver/system_table.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -5451,50 +5452,28 @@ void NameServerImpl::OnLocked() {
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        auto status = CreateDatabase(INTERNAL_DB, true);
-        if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-            LOG(FATAL) << "create internal database failed";
-            exit(1);
-        }
-        if (db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(SystemTableType::kJobInfo).OK()) {
-                LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
-                exit(1);
-            }
+        CreateDatabaseOrExit(INTERNAL_DB);
+
+        if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
     }
-    if (db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0 &&
-        !CreateSystemTable(SystemTableType::KPreAggMetaInfo).OK()) {
-        LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
-        exit(1);
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::KPreAggMetaInfo);
     }
-    auto status = CreateDatabase(PRE_AGG_DB, true);
-    if (!status.OK()) {
-        LOG(FATAL) << "create internal database failed: code=" << status.GetCode() << ", msg=" << status.GetMsg();
-        exit(1);
-    }
-    status = CreateDatabase(INFORMATION_SCHEMA_DB, true);
-    if (!status.OK()) {
-        LOG(FATAL) << "create internal database failed: code=" << status.GetCode() << ", msg=" << status.GetMsg();
-        exit(1);
-    }
+
+    CreateDatabaseOrExit(PRE_AGG_DB);
+
+    CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
 
     // TODO(ace): create table if not exists
-    if (db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
-        if (FLAGS_system_table_replica_num > 0 &&
-            !CreateSystemTable(SystemTableType::kGlobalVariable).OK()) {
-            LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
-            exit(1);
-        }
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
     }
 
-    if (db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
-        if (FLAGS_system_table_replica_num > 0 &&
-            !CreateSystemTable(SystemTableType::kDeployResponseTime).OK()) {
-            LOG(FATAL) << "create system table" << DEPLOY_RESPONSE_TIME << "failed";
-            exit(1);
-        }
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
     }
 
     running_.store(true, std::memory_order_release);
@@ -10183,6 +10162,23 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
         return {};
     }
     return tablet_ptr;
+}
+
+void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
+    auto status = CreateDatabase(db, true);
+    if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+        LOG(FATAL) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+void NameServerImpl::CreateSystemTableOrExit(SystemTableType type) {
+    auto status = CreateSystemTable(type);
+    if (!status.OK()) {
+        LOG(FATAL) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
+                   << ", msg=" << status.GetMsg();
+        exit(1);
+    }
 }
 
 base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
