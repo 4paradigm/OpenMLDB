@@ -166,7 +166,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     global_variables_ = std::make_shared<std::map<std::string, std::string>>();
     global_variables_->emplace("execute_mode", "offline");
     global_variables_->emplace("enable_trace", "false");
-    
+
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_[::openmldb::common::kMemory]);
     ::openmldb::base::SplitString(FLAGS_ssd_root_path, ",", mode_root_paths_[::openmldb::common::kSSD]);
     ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", mode_root_paths_[::openmldb::common::kHDD]);
@@ -3678,7 +3678,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         }
         PDLOG(INFO, "create table. tid %u pid %u", tid, pid);
     }
-    
+
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator =

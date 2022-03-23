@@ -333,11 +333,11 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // test remote without db
     CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
                                              "", storage_mode);
-                                            
+
     if (storage_mode == openmldb::common::kHDD) {
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-    }                            
+    }
 }
 
 TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
@@ -395,7 +395,7 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     // use db create table
     CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
                                              db, storage_mode);
-    
+
     if (storage_mode == openmldb::common::kHDD) {
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);

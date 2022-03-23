@@ -276,7 +276,7 @@ TEST_P(TabletImplTest, CountLatestTable) {
             ASSERT_EQ(100u, response.count());
         } else {
             ASSERT_EQ(10u, response.count());
-        }        
+        }
     }
 
     {
@@ -2541,7 +2541,7 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
         } else {
             manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
         }
-        
+
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -2558,7 +2558,7 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
         } else {
             binlog_path = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/binlog";
         }
-        
+
         ::openmldb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
@@ -3215,7 +3215,7 @@ TEST_P(TabletImplTest, GetTermPair) {
     } else {
         manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
     }
-    
+
     int fd = open(manifest_file.c_str(), O_RDONLY);
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
@@ -3237,7 +3237,7 @@ TEST_P(TabletImplTest, GetTermPair) {
     } else {
         ::openmldb::base::RemoveDirRecursive(snapshot_file.c_str());
     }
-    
+
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
