@@ -107,33 +107,28 @@ object JoinPlan {
     val filter = node.join().condition()
     // extra conditions
     if (filter.condition() != null) {
-
       if (ctx.getConf.enableJoinWithNativeExpr) {
-
         val expr = filter.condition()
         expr.GetExprType() match {
-          case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
-          case ExprType.kExprPrimary =>
-          case ExprType.kExprCast =>
           case ExprType.kExprBinary =>
             val binaryExpr = BinaryExpr.CastFrom(expr)
             val op = binaryExpr.GetOp()
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf)
             op match {
               case FnOperator.kFnOpEq => // Handled by above left_key() and right_key()
               case FnOperator.kFnOpNeq =>
+                joinConditions += left.notEqual(right)
               case FnOperator.kFnOpLt =>
+                joinConditions += (left < right)
               case FnOperator.kFnOpLe =>
+                joinConditions += (left <= right)
               case FnOperator.kFnOpGt =>
-                val leftExpr = binaryExpr.GetChild(0)
-                val rightExpr = binaryExpr.GetChild(1)
-                val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, node, 0)
-                val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, rightDf, node, 1)
-                joinConditions += (leftSparkColumn > rightSparkColumn)
+                joinConditions += (left > right)
               case FnOperator.kFnOpGe =>
+                joinConditions += (left >= right)
             }
-
           case _ => throw new UnsupportedHybridSeException(
-            s"Simple project do not support expression type ${expr.GetExprType}")
+            s"Join condition does not support expression type ${expr.GetExprType}, try disabling join native expr")
         }
 
       } else { // Disable join with native expression, use encoder/decoder and jit function

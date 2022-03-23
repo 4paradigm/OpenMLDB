@@ -28,7 +28,7 @@ class TestUnsafeJoin extends SparkTestSuite {
     spark.conf.set("spark.openmldb.unsaferow.opt", true)
   }
 
-  test("Test unsafe join") {
+  def testSql(sqlText: String) {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -39,11 +39,30 @@ class TestUnsafeJoin extends SparkTestSuite {
     t1.createOrReplaceTempView("t1")
     t2.createOrReplaceTempView("t2")
 
-    val sqlText = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > t2.id"
-
     val outputDf = sess.sql(sqlText)
     val sparksqlOutputDf = sess.sparksql(sqlText)
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+  }
+
+  test("Test unsafe join") {
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id != t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id >= t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id < t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id <= t2.id")
+
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id != 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id >= 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id < 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id <= 1.0")
+
+    /*
+      testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id and t1.id >= 1")
+      testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id and t1.id >= 1 and t2.id > 1")
+    */
   }
 
   override def customizedAfter(): Unit = {
