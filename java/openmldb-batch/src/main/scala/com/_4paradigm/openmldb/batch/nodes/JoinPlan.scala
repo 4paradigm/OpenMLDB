@@ -96,7 +96,9 @@ object JoinPlan {
       }
     }
 
-    val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
+    val isLastJoin = joinType == JoinType.kJoinTypeLast
+
+    val indexColIdx = if (isLastJoin) {
       leftDf.schema.size - 1
     } else if (supportNativeLastJoin && ctx.getConf.enableNativeLastJoin) {
       leftDf.schema.size - 1
@@ -108,8 +110,9 @@ object JoinPlan {
     // extra conditions
     if (filter.condition() != null) {
       if (ctx.getConf.enableJoinWithNativeExpr) {
-        joinConditions += ExpressionUtil.recusiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf)
-
+        joinConditions += ExpressionUtil.recusiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf,
+          isLastJoin)
+        logger.info("Generate spark join conditions: " + joinConditions)
       } else { // Disable join with native expression, use encoder/decoder and jit function
         val regName = "SPARKFE_JOIN_CONDITION_" + filter.fn_info().fn_name()
         val conditionUDF = new JoinConditionUDF(

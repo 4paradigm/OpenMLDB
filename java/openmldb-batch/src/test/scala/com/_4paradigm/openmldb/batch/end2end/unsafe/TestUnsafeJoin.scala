@@ -20,6 +20,9 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.{DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructField,
+  StructType}
 
 class TestUnsafeJoin extends SparkTestSuite {
 
@@ -44,7 +47,7 @@ class TestUnsafeJoin extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
-  test("Test unsafe join") {
+  test("Test unsafe left join") {
     // Test different join condictions
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id != t2.id")
@@ -69,6 +72,52 @@ class TestUnsafeJoin extends SparkTestSuite {
       " ON t1.id >= 1 or t2.id > 1")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2" +
       " ON t1.id >= 1 or t2.id > 1 and t1.id = t2.id or t1.id < 10 and t2.id > 0.1 or t2.id = 2")
+  }
+
+  test("Test unsafe last join") {
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val data = Seq(
+      Row("0", 1, 5.toShort, 1.1.toFloat, 11.1, 1L, "1"),
+      Row("0", 2, 5.toShort, 2.2.toFloat, 22.2, 2L, "22"),
+      Row("1", 3, 55.toShort, 3.3.toFloat, 33.3, 1L, "333"),
+      Row("1", 4, 55.toShort, 4.4.toFloat, 44.4, 2L, "4444"),
+      Row("2", 5, 55.toShort, 5.5.toFloat, 55.5, 3L, "aaaaa"))
+    val schema = StructType(List(
+      StructField("col0", StringType),
+      StructField("col1", IntegerType),
+      StructField("col2", ShortType),
+      StructField("col3", FloatType),
+      StructField("col4", DoubleType),
+      StructField("col5", LongType),
+      StructField("col6", StringType)))
+    val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
+
+    val data2 = Seq(
+      Row("2", "EEEEE", 5.5.toFloat, 55.5, 550.toShort, 5, 3L),
+      Row("1", "DDDD", 4.4.toFloat, 44.4, 550.toShort, 4, 2L),
+      Row("1", "CCC", 3.3.toFloat, 33.3, 550.toShort, 3, 1L),
+      Row("0", "BB", 2.2.toFloat, 22.2, 50.toShort, 2, 2L),
+      Row("0", "A", 1.1.toFloat, 11.1, 50.toShort, 1, 1L))
+    val schema2 = StructType(List(
+      StructField("str0", StringType),
+      StructField("str1", StringType),
+      StructField("col3", FloatType),
+      StructField("col4", DoubleType),
+      StructField("col2", ShortType),
+      StructField("col1", IntegerType),
+      StructField("col5", LongType)))
+    val t2 = spark.createDataFrame(spark.sparkContext.makeRDD(data2), schema2)
+
+    sess.registerTable("t1", t1)
+    sess.registerTable("t2", t2)
+
+    val sqlText = "SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2," +
+      " str1 FROM t1 last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5"
+
+    val outputDf = sess.sql(sqlText)
+    assert(outputDf.count() == data.size)
   }
 
   override def customizedAfter(): Unit = {
