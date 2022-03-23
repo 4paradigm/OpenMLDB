@@ -521,8 +521,8 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
-bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode, uint64_t& term, uint64_t& offset, bool& has_table,
-                               bool& is_leader) {
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode, uint64_t& term,
+                               uint64_t& offset, bool& has_table, bool& is_leader) {
     ::openmldb::api::GetTermPairRequest request;
     ::openmldb::api::GetTermPairResponse response;
     request.set_tid(tid);
@@ -542,7 +542,8 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, ::openmldb::common::S
     return true;
 }
 
-bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode, ::openmldb::api::Manifest& manifest) {
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
+                               ::openmldb::api::Manifest& manifest) {
     ::openmldb::api::GetManifestRequest request;
     ::openmldb::api::GetManifestResponse response;
     request.set_tid(tid);

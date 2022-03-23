@@ -402,7 +402,8 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10, openmldb::common::kMemory);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10,
+                         openmldb::common::kMemory);
     }
 }
 
@@ -410,7 +411,8 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write_absolute) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10, openmldb::common::kHDD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10,
+                         openmldb::common::kHDD);
     }
 }
 
@@ -418,7 +420,8 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write_absolute) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10, openmldb::common::kSSD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kAbsoluteTime, 0, 1000, i + 1, i % 10,
+                         openmldb::common::kSSD);
     }
 }
 
@@ -426,7 +429,8 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10, openmldb::common::kMemory);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10,
+                         openmldb::common::kMemory);
     }
 }
 
@@ -434,7 +438,8 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write_latest) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10, openmldb::common::kHDD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10,
+                         openmldb::common::kHDD);
     }
 }
 
@@ -442,7 +447,8 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write_latest) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10, openmldb::common::kSSD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10,
+                         openmldb::common::kSSD);
     }
 }
 
@@ -450,7 +456,8 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10, openmldb::common::kHDD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10,
+                         openmldb::common::kHDD);
     }
 }
 
@@ -458,7 +465,8 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
     ::openmldb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
-        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10, openmldb::common::kHDD);
+        CreateBaseTablet(tablet_impl, ::openmldb::type::TTLType::kLatestTime, 10, 1000, i + 1, i % 10,
+                         openmldb::common::kHDD);
     }
 }
 

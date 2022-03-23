@@ -6478,8 +6478,9 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = table_info->tid();
     uint32_t seg_cnt = table_info->seg_cnt();
-    std::shared_ptr<Task> task = CreateLoadTableTask(
-        endpoint, op_data->op_info_.op_id(), ::openmldb::api::OPType::kReLoadTableOP, name, tid, pid, seg_cnt, true, table_info->storage_mode());
+    std::shared_ptr<Task> task =
+        CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), ::openmldb::api::OPType::kReLoadTableOP, name, tid,
+                            pid, seg_cnt, true, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6769,8 +6770,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::openmldb::na
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                                           ::openmldb::api::OPType op_type, const std::string& name,
-                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt,
-                                                          bool is_leader, ::openmldb::common::StorageMode storage_mode) {
+                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt, bool is_leader,
+                                                          ::openmldb::common::StorageMode storage_mode) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {

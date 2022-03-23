@@ -1237,7 +1237,7 @@ TEST_P(TabletImplTest, CreateTable) {
         std::string file;
         if (storage_mode == ::openmldb::common::kMemory) {
             file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
-        } else if (storage_mode == ::openmldb::common::kHDD){
+        } else if (storage_mode == ::openmldb::common::kHDD) {
             file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
         } else {
             file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
@@ -2059,7 +2059,7 @@ TEST_P(TabletImplTest, DropTable) {
     ASSERT_EQ(0, response.code());
 }
 
-TEST_F (TabletImplTest, DropTableNoRecycleMem) {
+TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
     std::string tmp_db_root_path = FLAGS_db_root_path;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
@@ -2116,7 +2116,7 @@ TEST_F (TabletImplTest, DropTableNoRecycleMem) {
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
-TEST_F (TabletImplTest, DropTableNoRecycleDisk) {
+TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
     bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
     std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;

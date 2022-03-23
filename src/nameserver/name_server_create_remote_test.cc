@@ -578,7 +578,8 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
         ASSERT_EQ(0, response.code());
     }
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db, storage_mode);
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db,
+                                 storage_mode);
 
     if (storage_mode == openmldb::common::kHDD) {
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
@@ -627,7 +628,8 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     brpc::Server server3;
     StartTablet(&server3);
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "", storage_mode);
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "",
+                                 storage_mode);
 
     if (storage_mode == openmldb::common::kHDD) {
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
@@ -1090,7 +1092,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path3);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path4);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path5);
-
     }
 }
 
