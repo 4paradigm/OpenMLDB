@@ -83,17 +83,25 @@ object ExpressionUtil {
           throw new IndexOutOfBoundsException(
             s"${expr.GetExprString()} resolved index out of bound: $colIndex")
         }
-        if (colIndex < leftDf.schema.size) {
-          // Get from left df
-          SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
-        } else {
-          // Get from right df
-          val rightColIndex = if (hasIndexColumn) {
-            colIndex - (leftDf.schema.size - 1)
+
+        if (hasIndexColumn) {
+          if (colIndex < leftDf.schema.size - 1) {
+            // Get from left df
+            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
           } else {
-            colIndex - leftDf.schema.size
+            // Get from right df
+            val rightColIndex = colIndex - (leftDf.schema.size - 1)
+            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
           }
-          SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
+        } else {
+          if (colIndex < leftDf.schema.size) {
+            // Get from left df
+            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
+          } else {
+            // Get from right df
+            val rightColIndex = colIndex - leftDf.schema.size
+            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
+          }
         }
 
       case ExprType.kExprPrimary =>
