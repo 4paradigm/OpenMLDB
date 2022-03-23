@@ -45,6 +45,7 @@ class TestUnsafeJoin extends SparkTestSuite {
   }
 
   test("Test unsafe join") {
+    // Test different join condictions
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id != t2.id")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > t2.id")
@@ -52,17 +53,20 @@ class TestUnsafeJoin extends SparkTestSuite {
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id < t2.id")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id <= t2.id")
 
+    // Test join with constant values
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = 1")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id != 1")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > 1")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id >= 1")
-    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id < 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON 1 > t1.id")
     testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id <= 1.0")
 
-    /*
-      testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id and t1.id >= 1")
-      testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id and t1.id >= 1 and t2.id > 1")
-    */
+    // Test with multiple conditions
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id FROM t1 LEFT JOIN t2 ON t1.id = t2.id and 100 > t2.id")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2" +
+      " ON t1.id >= 1 and t2.id > 1")
+    testSql("SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2" +
+      " ON t1.id >= 1 or t2.id > 1")
   }
 
   override def customizedAfter(): Unit = {
