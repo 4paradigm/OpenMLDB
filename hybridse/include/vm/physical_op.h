@@ -1494,16 +1494,16 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {
  public:
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
-                             const RequestWindowOp &window,
-                             const RequestWindowOp &aggr_window,
-                             bool instance_not_in_window,
-                             bool exclude_current_time, bool output_request_row)
+                                const RequestWindowOp &window, const RequestWindowOp &aggr_window,
+                                bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
+                                const node::FnDefNode *agg_func)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
           agg_window_(aggr_window),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
-          output_request_row_(output_request_row) {
+          output_request_row_(output_request_row),
+          agg_func_(agg_func) {
         output_type_ = kSchemaTypeTable;
 
         fn_infos_.push_back(&window_.partition_.fn_info());
@@ -1553,6 +1553,7 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     }
 
     Schema agg_schema_;
+    const node::FnDefNode* agg_func_ = nullptr;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {

@@ -318,7 +318,8 @@ bool SqlCompiler::Parse(SqlContext& ctx,
     bool is_batch_mode = ctx.engine_mode == kBatchMode;
     if (!::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(ctx.sql, ctx.logical_plan, &ctx.nm, status, is_batch_mode,
                                                              ctx.is_cluster_optimized,
-                                                             ctx.enable_batch_window_parallelization)) {
+                                                             ctx.enable_batch_window_parallelization,
+                                                             ctx.options.get())) {
         LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
     }

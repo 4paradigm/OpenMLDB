@@ -198,7 +198,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
-        req_union_op->output_request_row());
+        req_union_op->output_request_row(), aggr_op->GetFnDef());
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;

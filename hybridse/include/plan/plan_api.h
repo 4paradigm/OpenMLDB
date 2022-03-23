@@ -16,6 +16,7 @@
 #ifndef HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 #define HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 #include <string>
+#include <unordered_map>
 #include "node/node_manager.h"
 namespace hybridse {
 namespace plan {
@@ -31,7 +32,8 @@ class PlanAPI {
                                          NodeManager* node_manager,
                                          Status& status,  // NOLINT (runtime/references)
                                          bool is_batch_mode = true, bool is_cluster = false,
-                                         bool enable_batch_window_parallelization = false);
+                                         bool enable_batch_window_parallelization = false,
+                                         const std::unordered_map<std::string, std::string>* extra_options = nullptr);
     static const int GetPlanLimitCount(node::PlanNode* plan_trees);
     static const std::string GenerateName(const std::string prefix, int id);
 };
