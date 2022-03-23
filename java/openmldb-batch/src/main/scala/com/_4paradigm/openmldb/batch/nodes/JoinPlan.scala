@@ -19,10 +19,10 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnDef
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.codec.RowView
-import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
-import com._4paradigm.hybridse.node.{ExprListNode, JoinType}
+import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer, UnsupportedHybridSeException}
+import com._4paradigm.hybridse.node.{BinaryExpr, ExprListNode, ExprType, FnOperator, JoinType}
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, PhysicalJoinNode}
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{ExpressionUtil, HybridseUtil, SparkColumnUtil, SparkRowUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.types.StructType
@@ -107,30 +107,63 @@ object JoinPlan {
     val filter = node.join().condition()
     // extra conditions
     if (filter.condition() != null) {
-      val regName = "SPARKFE_JOIN_CONDITION_" + filter.fn_info().fn_name()
-      val conditionUDF = new JoinConditionUDF(
-        functionName = filter.fn_info().fn_name(),
-        inputSchemaSlices = inputSchemaSlices,
-        outputSchema = filter.fn_info().fn_schema(),
-        moduleTag = ctx.getTag,
-        moduleBroadcast = ctx.getSerializableModuleBuffer,
-        hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
-      )
-      spark.udf.register(regName, conditionUDF)
 
-      // Handle the duplicated column names to get Spark Column by index
-      val allColumns = new mutable.ArrayBuffer[Column]()
-      for (i <- leftDf.schema.indices) {
-        if (i != indexColIdx) {
-          allColumns += SparkColumnUtil.getColumnFromIndex(leftDf, i)
+      if (ctx.getConf.enableJoinWithNativeExpr) {
+
+        val expr = filter.condition()
+        expr.GetExprType() match {
+          case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
+          case ExprType.kExprPrimary =>
+          case ExprType.kExprCast =>
+          case ExprType.kExprBinary =>
+            val binaryExpr = BinaryExpr.CastFrom(expr)
+            val op = binaryExpr.GetOp()
+            op match {
+              case FnOperator.kFnOpEq => // Handled by above left_key() and right_key()
+              case FnOperator.kFnOpNeq =>
+              case FnOperator.kFnOpLt =>
+              case FnOperator.kFnOpLe =>
+              case FnOperator.kFnOpGt =>
+                val leftExpr = binaryExpr.GetChild(0)
+                val rightExpr = binaryExpr.GetChild(1)
+                val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, node, 0)
+                val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, rightDf, node, 1)
+                joinConditions += (leftSparkColumn > rightSparkColumn)
+              case FnOperator.kFnOpGe =>
+            }
+
+          case _ => throw new UnsupportedHybridSeException(
+            s"Simple project do not support expression type ${expr.GetExprType}")
         }
-      }
-      for (i <- rightDf.schema.indices) {
-        allColumns += SparkColumnUtil.getColumnFromIndex(rightDf, i)
+
+      } else { // Disable join with native expression, use encoder/decoder and jit function
+
+        val regName = "SPARKFE_JOIN_CONDITION_" + filter.fn_info().fn_name()
+        val conditionUDF = new JoinConditionUDF(
+          functionName = filter.fn_info().fn_name(),
+          inputSchemaSlices = inputSchemaSlices,
+          outputSchema = filter.fn_info().fn_schema(),
+          moduleTag = ctx.getTag,
+          moduleBroadcast = ctx.getSerializableModuleBuffer,
+          hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
+        )
+        spark.udf.register(regName, conditionUDF)
+
+        // Handle the duplicated column names to get Spark Column by index
+        val allColumns = new mutable.ArrayBuffer[Column]()
+        for (i <- leftDf.schema.indices) {
+          if (i != indexColIdx) {
+            allColumns += SparkColumnUtil.getColumnFromIndex(leftDf, i)
+          }
+        }
+        for (i <- rightDf.schema.indices) {
+          allColumns += SparkColumnUtil.getColumnFromIndex(rightDf, i)
+        }
+
+        val allColWrap = functions.struct(allColumns: _*)
+        joinConditions += functions.callUDF(regName, allColWrap)
       }
 
-      val allColWrap = functions.struct(allColumns: _*)
-      joinConditions += functions.callUDF(regName, allColWrap)
     }
 
     if (joinConditions.isEmpty) {

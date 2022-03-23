@@ -32,13 +32,14 @@ class TestUnsafeJoin extends SparkTestSuite {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
-    val df = DataUtil.getTestDf(spark)
-    sess.registerTable("t1", df)
-    sess.registerTable("t2", df)
-    df.createOrReplaceTempView("t1")
-    df.createOrReplaceTempView("t2")
+    val t1 = DataUtil.getTestDf(spark)
+    val t2 = DataUtil.getTestDf(spark)
+    sess.registerTable("t1", t1)
+    sess.registerTable("t2", t2)
+    t1.createOrReplaceTempView("t1")
+    t2.createOrReplaceTempView("t2")
 
-    val sqlText = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id = t2.id"
+    val sqlText = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LEFT JOIN t2 ON t1.id > t2.id"
 
     val outputDf = sess.sql(sqlText)
     val sparksqlOutputDf = sess.sparksql(sqlText)
