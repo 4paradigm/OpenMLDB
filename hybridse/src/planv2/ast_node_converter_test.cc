@@ -636,7 +636,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
         EXPECT_EQ(common::kOk, s.code);
     };
 
-    const std::string sql1 = "CREATE FUNCTION fun (x INT) RETURNS INT OPTIONS (PATH='/tmp/libmyfun.so');";
+    std::string sql1 = "CREATE FUNCTION fun (x INT) RETURNS INT OPTIONS (PATH='/tmp/libmyfun.so');";
     node::CreateFunctionNode* create_fun_stmt = nullptr;
     expect_converted(sql1, &create_fun_stmt);
     ASSERT_EQ(create_fun_stmt->Name(), "fun");
@@ -650,7 +650,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
     ASSERT_EQ(option->begin()->first, "PATH");
     ASSERT_EQ(option->begin()->second->GetAsString(), "/tmp/libmyfun.so");
 
-    const std::string sql2 = "CREATE AGGREGATE FUNCTION fun1 (x BIGINT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
+    std::string sql2 = "CREATE AGGREGATE FUNCTION fun1 (x BIGINT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
     create_fun_stmt = nullptr;
     expect_converted(sql2, &create_fun_stmt);
     ASSERT_EQ(create_fun_stmt->GetArgsType().size(), 1);

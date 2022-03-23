@@ -370,7 +370,7 @@ bool GroupAndSortOptimized::FilterOptimized(
         if (nullptr != filter->condition_.condition()) {
             condition_list->AddChild(const_cast<node::ExprNode*>(filter->condition_.condition()));
         }
-        for (auto i = 0; i < filter->left_key().keys()->GetChildNum(); i++) {
+        for (uint32_t i = 0; i < filter->left_key().keys()->GetChildNum(); i++) {
             condition_list->AddChild(node_manager_->MakeBinaryExprNode(
                 filter->left_key().keys()->GetChild(i), filter->right_key().keys()->GetChild(i), node::kFnOpEq));
         }

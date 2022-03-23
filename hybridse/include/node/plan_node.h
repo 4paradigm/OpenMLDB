@@ -519,7 +519,7 @@ class CreateFunctionPlanNode : public LeafPlanNode {
     const std::shared_ptr<OptionsMap> Options() const { return options_; }
     bool IsAggregate() const { return is_aggregate_; }
     const SqlNode* GetReturnType() const { return return_type_; }
-    const NodePointVector& GetArgsType() const { return args_type_; };
+    const NodePointVector& GetArgsType() const { return args_type_; }
     void Print(std::ostream& output, const std::string& tab) const override;
  private:
     const std::string function_name_;
