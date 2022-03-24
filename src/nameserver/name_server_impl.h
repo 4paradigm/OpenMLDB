@@ -353,6 +353,7 @@ class NameServerImpl : public NameServer {
 
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
+ 
  private:
     // create the database if not exists, exit on fail
     void CreateDatabaseOrExit(const std::string& db_name);

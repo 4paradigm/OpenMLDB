@@ -5493,7 +5493,6 @@ void NameServerImpl::OnLocked() {
 
         if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kJobInfo);
-
         }
     }
 
