@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.node.{CastExprNode, ConstNode, ExprNode, ExprType, DataType => HybridseDataType}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalSimpleProjectNode}
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil}
+import com._4paradigm.openmldb.batch.utils.{ExpressionUtil, HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.slf4j.LoggerFactory
@@ -100,7 +100,7 @@ object SimpleProjectPlan {
 
       case ExprType.kExprPrimary =>
         val const = ConstNode.CastFrom(expr)
-        ConstProjectPlan.getConstCol(const) -> const.GetDataType
+        ExpressionUtil.constExprToSparkColumn(const) -> const.GetDataType
 
       case ExprType.kExprCast =>
         val cast = CastExprNode.CastFrom(expr)

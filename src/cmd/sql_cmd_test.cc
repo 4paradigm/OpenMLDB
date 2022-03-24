@@ -29,6 +29,7 @@
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
 #include "vm/catalog.h"
+#include "test/util.h"
 
 DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
@@ -41,65 +42,10 @@ namespace openmldb {
 namespace cmd {
 
 ::openmldb::sdk::MiniCluster* mc_;
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
-inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
-    hybridse::sdk::Status status;
-    for (auto sql : sqls) {
-        sr->ExecuteSQL(std::string(sql), &status);
-        EXPECT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
-    }
-}
-
-// expect object for ResultSet cell
-struct CellExpectInfo {
-    CellExpectInfo() {}
-
-    CellExpectInfo(const char* buf) : expect_(buf) {}  // NOLINT
-
-    CellExpectInfo(const std::string& expect) : expect_(expect) {}  // NOLINT
-
-    CellExpectInfo(const std::optional<std::string>& expect) : expect_(expect) {}  // NOLINT
-
-    CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
-        : expect_(expect), expect_not_(expect_not) {}
-
-    // result string for target cell to match exactly
-    // if empty, do not check
-    std::optional<std::string const> expect_;
-
-    // what string target cell string should not match
-    // if empty, do not check
-    std::optional<std::string const> expect_not_;
-};
-
-// expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j].(expect_|expect_not_) is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
-    size_t idx = 0;
-    // schema check
-    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (size_t i = 0; i < expect[idx].size(); ++i) {
-        ASSERT_TRUE(expect[idx][i].expect_.has_value());
-        EXPECT_EQ(expect[idx][i].expect_.value(), rs->GetSchema()->GetColumnName(i));
-    }
-
-    while (++idx < expect.size() && rs->Next()) {
-        for (size_t i = 0; i < expect[idx].size(); ++i) {
-            std::string val;
-            EXPECT_TRUE(rs->GetAsString(i, val));
-            if (expect[idx][i].expect_.has_value()) {
-                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
-            }
-            if (expect[idx][i].expect_not_.has_value()) {
-                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
-            }
-        }
-    }
-}
+using test::GenRand;
+using test::ProcessSQLs;
+using test::ExpectResultSetStrEq;
 
 struct CLI {
     ::openmldb::sdk::DBSDK* cs = nullptr;
@@ -577,21 +523,37 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
         ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-              "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-             {{},
-              nameserver::GLOBAL_VARIABLES,
-              nameserver::INFORMATION_SCHEMA_DB,
-              "memory",
-              {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
-              {},
-              {},
-              "1",
-              "0",
-              "1",
-              "NULL",
-              "NULL",
-              "NULL"}},
+            {
+                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                 "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
+                 "Offline_deep_copy"},
+                {{},
+                 nameserver::DEPLOY_RESPONSE_TIME,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+                {{},
+                 nameserver::GLOBAL_VARIABLES,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+            },
             rs.get());
     }
 
@@ -614,49 +576,25 @@ TEST_P(DBSDKTest, GlobalVariable) {
     sr = cli->sr;
     auto ns_client = cs->GetNsClient();
 
-    if (cs->IsClusterMode()) {
-        std::vector<::openmldb::nameserver::TableInfo> tables;
-        std::string msg;
-        ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        tables.clear();
-        ASSERT_TRUE(
-            ns_client->ShowTable(nameserver::GLOBAL_VARIABLES, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
-        tables.clear();
+    ::hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show global variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}}, rs.get());
 
-        ::hybridse::sdk::Status status;
-        std::string sql = "set @@global.enable_trace='true';";
-        auto res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set @@global.execute_mode='online';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        auto rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("true", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("online", rs->GetStringUnsafe(1));
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='true';",
+                        "set @@global.execute_mode='online';",
+                    });
+    rs = sr->ExecuteSQL("show global variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "true"}, {"execute_mode", "online"}},
+                         rs.get());
 
-        sql = "set GLOBAL enable_trace='false';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set GLOBAL execute_mode='offline';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("false", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
-    }
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='false';",
+                        "set @@global.execute_mode='offline';",
+                    });
+
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"}, {"enable_trace", "false"}, {"execute_mode", "offline"}},
+                         rs.get());
 }
 
 /* TODO: Only run test in standalone mode

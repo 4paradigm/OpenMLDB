@@ -353,9 +353,15 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
-    base::Status CreateSystemTable(const std::string& table_name, SystemTableType table_type);
-
  private:
+    // create the database if not exists, exit on fail
+    void CreateDatabaseOrExit(const std::string& db_name);
+
+    // create table if not exists, exit on fail
+    void CreateSystemTableOrExit(SystemTableType type);
+
+    base::Status CreateSystemTable(SystemTableType table_type);
+
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
     // 2.recover table status from all tablets

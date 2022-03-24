@@ -166,4 +166,12 @@ class OpenmldbJoinedRow extends InternalRow {
     }
   }
 
+  override def setInt(i: Int, value: Int): Unit = {
+    if (i < row1.numFields) {
+      row1.setInt(i, value)
+    } else {
+      row2.setInt(i - row1.numFields, value)
+    }
+  }
+
 }
