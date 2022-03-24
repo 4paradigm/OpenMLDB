@@ -355,6 +355,8 @@ class NameServerImpl : public NameServer {
                        Closure* done);
  
  private:
+    base::Status InitGlobalVarTable();
+
     // create the database if not exists, exit on fail
     void CreateDatabaseOrExit(const std::string& db_name);
 
