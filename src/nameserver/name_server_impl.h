@@ -352,9 +352,8 @@ class NameServerImpl : public NameServer {
     bool CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request, std::string& err_msg);  // NOLINT
 
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
-                       Closure* done);
- 
- private:
+                       Closure* done); 
+private:
     base::Status InitGlobalVarTable();
 
     // create the database if not exists, exit on fail
