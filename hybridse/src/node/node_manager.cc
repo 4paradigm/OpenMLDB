@@ -949,6 +949,7 @@ CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(const std::str
 
 CmdPlanNode *NodeManager::MakeCmdPlanNode(const CmdNode *node) {
     node::CmdPlanNode *node_ptr = new CmdPlanNode(node->GetCmdType(), node->GetArgs());
+    node_ptr->SetIfNotExists(node->IsIfNotExists());
     RegisterNode(node_ptr);
     return node_ptr;
 }

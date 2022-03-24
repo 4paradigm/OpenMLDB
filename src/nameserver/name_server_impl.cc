@@ -9477,11 +9477,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    auto status = CreateDatabase(request->db());
+    auto status = CreateDatabase(request->db(), request->if_not_exists());
     SetResponseStatus(status, response);
 }
 
-base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name, bool if_not_exists) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9491,6 +9491,9 @@ base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
         }
     }
     if (is_exists) {
+        if (if_not_exists) {
+            return {};
+        }
         PDLOG(INFO, "database %s already exists", db_name.c_str());
         return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {

@@ -589,8 +589,10 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             CHECK_STATUS(AstPathExpressionToStringList(create_database_statement->name(), names))
             CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid database path expression ",
                        create_database_statement->name()->ToIdentifierPathString())
-            *output =
+            auto* node =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdCreateDatabase, names[0]));
+            node->SetIfNotExists(create_database_statement->is_if_not_exists());
+            *output = node;
             break;
         }
         case zetasql::AST_DESCRIBE_STATEMENT: {

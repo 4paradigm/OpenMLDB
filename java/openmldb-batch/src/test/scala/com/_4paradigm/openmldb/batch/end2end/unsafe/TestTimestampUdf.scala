@@ -33,7 +33,7 @@ class TestTimestampUdf extends SparkTestSuite {
     spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
   }
 
-  test("Test udf of month for project") {
+  test("Test udf of timestamp for project") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -55,7 +55,7 @@ class TestTimestampUdf extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
-  test("Test udf of month for window") {
+  test("Test udf of timestamp for window") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 

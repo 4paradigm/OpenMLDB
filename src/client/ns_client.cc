@@ -48,13 +48,14 @@ bool NsClient::Use(const std::string& db, std::string& msg) {
     return false;
 }
 
-bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
+bool NsClient::CreateDatabase(const std::string& db, std::string& msg, bool if_not_exists) {
     if (db.empty()) {
         return false;
     }
     ::openmldb::nameserver::CreateDatabaseRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
+    request.set_if_not_exists(if_not_exists);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();

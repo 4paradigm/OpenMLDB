@@ -17,18 +17,17 @@
 package com._4paradigm.openmldb.batch.window
 
 import com._4paradigm.hybridse.vm.{CoreAPI, HybridSeJitWrapper, WindowInterface}
-import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkRowCodec}
-import com._4paradigm.openmldb.batch.utils.{ByteArrayUtil, HybridseUtil, SparkRowUtil, UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.spark.OpenmldbJoinedRow
+import com._4paradigm.openmldb.batch.SparkRowCodec
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkRowUtil, UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import org.apache.commons.lang3.StringUtils
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{JoinedRow, UnsafeRow}
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
-
 
 /**
   * Stateful class for window computation during row iteration
@@ -165,7 +164,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
       val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
         outputSchema.size - inputRowColNum)
 
-      new JoinedRow(outputInternalRow, inputUnsaferow)
+      new OpenmldbJoinedRow(outputInternalRow, inputUnsaferow)
     } else {
       // Call methods to generate Spark InternalRow
       UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
