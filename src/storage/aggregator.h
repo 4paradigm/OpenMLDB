@@ -83,14 +83,7 @@ class Aggregator {
         int64_t ts_end_;
         int32_t aggr_cnt_;
         uint64_t binlog_offset_;
-        std::unique_ptr<std::mutex> mu_;
-        AggrBuffer()
-            : aggr_val_(),
-              ts_begin_(-1),
-              ts_end_(0),
-              aggr_cnt_(0),
-              binlog_offset_(0),
-              mu_(std::make_unique<std::mutex>()) {}
+        AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
         void clear() {
             aggr_val_.vsmallint = 0;
             ts_begin_ = -1;
@@ -99,18 +92,25 @@ class Aggregator {
             binlog_offset_ = 0;
         }
     };
+    struct AggrBufferLocked {
+        std::unique_ptr<std::mutex> mu_;
+        AggrBuffer buffer_;
+        AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
+    };
 
-    std::unordered_map<std::string, AggrBuffer> aggr_buffer_map_;
+    std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
+    std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
     std::shared_ptr<Table> aggr_table_;
     Dimensions dimensions_;
 
-    bool GetAggrBufferFromRowView(codec::RowView* row_view, AggrBuffer* buffer);
-    bool FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
+    bool GetAggrBufferFromRowView(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* buffer);
+    bool FlushAggrBuffer(const std::string& key, AggrBuffer aggr_buffer);
+    bool UpdateFlushedBuffer(const std::string& key, int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
 
  private:
-    virtual bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) { return false; }
+    virtual bool UpdateAggrVal(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) { return false; }
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -127,6 +127,7 @@ class Aggregator {
     codec::RowView base_row_view_;
     codec::RowView aggr_row_view_;
     codec::RowBuilder row_builder_;
+    std::mutex rb_mu_;
 };
 
 class SumAggregator : public Aggregator {
@@ -138,7 +139,7 @@ class SumAggregator : public Aggregator {
     ~SumAggregator() = default;
 
  private:
-    bool UpdateAggrVal(codec::RowView* row_view, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,

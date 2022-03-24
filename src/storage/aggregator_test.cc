@@ -326,7 +326,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
     row_builder.AppendString("id1", 3);
     row_builder.AppendString("id2", 3);
-    row_builder.AppendTimestamp(50 * 1000 + 100);
+    row_builder.AppendTimestamp(50 * 1000);
     row_builder.AppendInt32(100);
     row_builder.AppendInt16(100);
     row_builder.AppendInt64(100);

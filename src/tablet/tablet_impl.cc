@@ -5155,10 +5155,13 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
         return;
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();
-    if (aggregators_.find(uid) == aggregators_.end()) {
-        aggregators_.emplace(uid, std::make_shared<Aggrs>());
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        if (aggregators_.find(uid) == aggregators_.end()) {
+            aggregators_.emplace(uid, std::make_shared<Aggrs>());
+        }
+        aggregators_[uid]->push_back(aggregator);
     }
-    aggregators_[uid]->push_back(aggregator);
     response->set_code(::openmldb::base::ReturnCode::kOk);
     return;
 }

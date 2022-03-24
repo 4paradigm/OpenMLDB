@@ -5806,6 +5806,14 @@ TEST_F(TabletImplTest, CreateAggregator) {
         tablet.CreateAggregator(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
+    auto aggrs = tablet.GetAggregators(aggr_table_id, 1);
+    ASSERT_EQ(aggrs->size(), 2);
+    ASSERT_EQ(aggrs->at(0)->GetAggrType(), ::openmldb::storage::AggrType::kSum);
+    ASSERT_EQ(aggrs->at(0)->GetWindowType(), ::openmldb::storage::WindowType::kRowsNum);
+    ASSERT_EQ(aggrs->at(0)->GetWindowSize(), 100);
+    ASSERT_EQ(aggrs->at(1)->GetAggrType(), ::openmldb::storage::AggrType::kSum);
+    ASSERT_EQ(aggrs->at(1)->GetWindowType(), ::openmldb::storage::WindowType::kRowsRange);
+    ASSERT_EQ(aggrs->at(1)->GetWindowSize(), 60 * 60 * 24 * 1000);
 }
 
 }  // namespace tablet

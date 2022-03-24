@@ -265,8 +265,11 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
+
     void CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
                      ::openmldb::api::CreateAggregatorResponse* response, Closure* done);
+   
+    std::shared_ptr<Aggrs> GetAggregators(uint32_t tid, uint32_t pid);
 
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
@@ -281,8 +284,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
-
-    std::shared_ptr<Aggrs> GetAggregators(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Aggrs> GetAggregatorsUnLock(uint32_t tid, uint32_t pid);
 
