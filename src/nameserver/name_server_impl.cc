@@ -10355,12 +10355,12 @@ base::Status NameServerImpl::InitGlobalVarTable() {
                 std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
                 auto table_ptr = GetTablet(endpoint);
                 if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
-                    LOG(WARNING) << "fail to make a put request to table. tid " + std::to_string(tid);
-                    return {};
+                    return {ReturnCode::kPutFailed, "fail to make a put request to table"};
                 }
             }
         }
     }
+    return {};
 }
 
 }  // namespace nameserver
