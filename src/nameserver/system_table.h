@@ -44,7 +44,7 @@ constexpr const char* DEPLOY_RESPONSE_TIME = "DEPLOY_RESPONSE_TIME";
 
 enum class SystemTableType {
     kJobInfo = 1,
-    KPreAggMetaInfo = 2,
+    kPreAggMetaInfo = 2,
     kGlobalVariable = 3,
     kDeployResponseTime,
 };
@@ -98,7 +98,7 @@ class SystemTable {
                 ttl->set_lat_ttl(1);
                 break;
             }
-            case SystemTableType::KPreAggMetaInfo: {
+            case SystemTableType::kPreAggMetaInfo: {
                 SetColumnDesc("aggr_table", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("aggr_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_db", openmldb::type::DataType::kString, table_info->add_column_desc());
@@ -146,8 +146,9 @@ class SystemTable {
                 SetColumnDesc("COUNT", type::DataType::kInt, table_info->add_column_desc());
                 SetColumnDesc("TOTAL", type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
-                index->set_index_name("DEPLOY_NAME");
+                index->set_index_name("index");
                 index->add_col_name("DEPLOY_NAME");
+                index->add_col_name("TIME");
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);
                 ttl->set_lat_ttl(1);

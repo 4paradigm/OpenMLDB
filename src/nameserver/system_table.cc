@@ -24,7 +24,7 @@ namespace nameserver {
 static absl::flat_hash_map<SystemTableType, SystemTableInfo const> CreateSystemTableMap() {
     absl::flat_hash_map<SystemTableType, SystemTableInfo const> map = {
         {SystemTableType::kJobInfo, {INTERNAL_DB, JOB_INFO_NAME}},
-        {SystemTableType::KPreAggMetaInfo, {INTERNAL_DB, PRE_AGG_META_NAME}},
+        {SystemTableType::kPreAggMetaInfo, {INTERNAL_DB, PRE_AGG_META_NAME}},
         {SystemTableType::kGlobalVariable, {INFORMATION_SCHEMA_DB, GLOBAL_VARIABLES}},
         {SystemTableType::kDeployResponseTime, {INFORMATION_SCHEMA_DB, DEPLOY_RESPONSE_TIME}},
     };
