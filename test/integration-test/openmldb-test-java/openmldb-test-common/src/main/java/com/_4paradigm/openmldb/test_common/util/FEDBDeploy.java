@@ -27,22 +27,27 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import sun.tools.jar.resources.jar;
 
 import java.io.File;
 import java.util.List;
 
 @Slf4j
+@Setter
 public class FEDBDeploy {
-
     private String version;
     private String fedbUrl;
     private String fedbName;
-    @Setter
     private String fedbPath;
-    @Setter
     private boolean useName;
-    @Setter
     private boolean isCluster = true;
+    private String sparkMaster = "local";
+    private String batchJobJarPath;
+    private String sparkYarnJars = "";
+    private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
+    private String nameNodeUri = "172.27.12.215:8020";
+
+    public static final int SLEEP_TIME = 10*1000;
 
     public FEDBDeploy(String version){
         this.version = version;
@@ -83,19 +88,9 @@ public class FEDBDeploy {
         builder.nsEndpoints(Lists.newArrayList()).nsNames(Lists.newArrayList());
         builder.tabletEndpoints(Lists.newArrayList()).tabletNames(Lists.newArrayList());
         builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
+        builder.taskManagerEndpoints(Lists.newArrayList());
         builder.fedbPath(testPath+"/openmldb-ns-1/bin/openmldb");
         FEDBInfo fedbInfo = builder.build();
-        for(int i=1;i<=ns;i++){
-            int ns_port;
-            if(useName){
-                String nsName = clusterName+"-ns-"+i;
-                ns_port = deployNS(testPath,null, i, zk_point,nsName);
-                fedbInfo.getNsNames().add(nsName);
-            }else {
-                ns_port = deployNS(testPath, ip, i, zk_point,null);
-            }
-            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
-        }
         for(int i=1;i<=tablet;i++) {
             int tablet_port ;
             if(useName){
@@ -106,7 +101,21 @@ public class FEDBDeploy {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
+            FedbTool.sleep(SLEEP_TIME);
         }
+        for(int i=1;i<=ns;i++){
+            int ns_port;
+            if(useName){
+                String nsName = clusterName+"-ns-"+i;
+                ns_port = deployNS(testPath,null, i, zk_point,nsName);
+                fedbInfo.getNsNames().add(nsName);
+            }else {
+                ns_port = deployNS(testPath, ip, i, zk_point,null);
+            }
+            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
+            FedbTool.sleep(SLEEP_TIME);
+        }
+
         for(int i=1;i<=1;i++) {
             int apiserver_port ;
             if(useName){
@@ -117,6 +126,13 @@ public class FEDBDeploy {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
+            FedbTool.sleep(SLEEP_TIME);
+        }
+        if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
+            for (int i = 1; i <= 1; i++) {
+                int task_manager_port = deployTaskManager(testPath, ip, i, zk_point);
+                fedbInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+            }
         }
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
@@ -124,9 +140,14 @@ public class FEDBDeploy {
 
     private void downloadFEDB(String testPath){
         try {
-            String command = "wget -P " + testPath + " -q " + fedbUrl;
-            String packageName = fedbUrl.substring(fedbUrl.lastIndexOf("/")+1);
+            String command;
+            if(fedbUrl.startsWith("http")) {
+                command = "wget -P " + testPath + " -q " + fedbUrl;
+            }else{
+                command = "cp -r " + fedbUrl +" "+ testPath;
+            }
             ExecutorUtil.run(command);
+            String packageName = fedbUrl.substring(fedbUrl.lastIndexOf("/") + 1);
             command = "ls " + testPath + " | grep "+packageName;
             List<String> result = ExecutorUtil.run(command);
             String tarName = result.get(0);
@@ -309,6 +330,57 @@ public class FEDBDeploy {
         }
         throw new RuntimeException("apiserver部署失败");
     }
+    
+    
+    public String deploySpark(String testPath){
+        try {
+            ExecutorUtil.run("wget -P "+testPath+" -q "+ FedbDeployConfig.getSparkUrl(version));
+            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
+            ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
+            String sparkHome = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
+            String sparkPath = testPath+"/"+sparkHome;
+            return sparkPath;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("spark 部署失败");
+    }
+
+    public int deployTaskManager(String testPath, String ip, int index, String zk_endpoint){
+        try {
+            String sparkHome = deploySpark(testPath);
+            int port = LinuxUtil.getNoUsedPort();
+            String task_manager_name = "/openmldb-task_manager-"+index;
+            ExecutorUtil.run("cp -r " + testPath + "/" + fedbName + " " + testPath + task_manager_name);
+            if(batchJobJarPath==null) {
+                String batchJobName = ExecutorUtil.run("ls " + testPath + task_manager_name + "/taskmanager/lib | grep openmldb-batchjob").get(0);
+                batchJobJarPath = testPath + task_manager_name + "/taskmanager/lib/" + batchJobName;
+            }
+
+            List<String> commands = Lists.newArrayList(
+                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
+            );
+            commands.forEach(ExecutorUtil::run);
+            ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+            boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
+            if(used){
+                log.info("task manager部署成功，port："+port);
+                return port;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        throw new RuntimeException("task manager部署失败");
+    }
 
     public FEDBInfo deployStandalone(String testPath, String ip){
         try {
@@ -321,23 +393,24 @@ public class FEDBDeploy {
             String standaloneName = "/openmldb-standalone";
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + fedbName + " " + testPath + standaloneName,
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/nameserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/nameserver.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/tablet.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/tablet.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/tablet.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags",
-                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/apiserver.flags"
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_nameserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_tablet.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags"
             );
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(fedbPath)){
                 FEDBCommandUtil.cpRtidb(testPath+standaloneName,fedbPath);
             }
-            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-all.sh");
+            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-standalone.sh");
             boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
             boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
             boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);

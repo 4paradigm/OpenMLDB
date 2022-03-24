@@ -21,6 +21,7 @@ BATCH_VERSION=$4
 DIFF_VERSIONS=$5
 
 sed -i "s#JAVA_SDK_VERSION=.*#JAVA_SDK_VERSION=${JAVA_SDK_VERSION}#" test/steps/openmldb_test.properties
+sed -i "s#JAVA_NATIVE_VERSION=.*#JAVA_NATIVE_VERSION=${JAVA_SDK_VERSION}#" test/steps/openmldb_test.properties
 sed -i "s#OPENMLDB_SERVER_VERSION=.*#OPENMLDB_SERVER_VERSION=${OPENMLDB_SERVER_VERSION}#" test/steps/openmldb_test.properties
 sed -i "s#PYTHON_SDK_VERSION=.*#PYTHON_SDK_VERSION=${PYTHON_SDK_VERSION}#" test/steps/openmldb_test.properties
 sed -i "s#BATCH_VERSION=.*#BATCH_VERSION=${BATCH_VERSION}#" test/steps/openmldb_test.properties

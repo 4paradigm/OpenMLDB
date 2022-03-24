@@ -22,15 +22,14 @@ import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUt
 import com._4paradigm.openmldb.batch.window.WindowAggPlanUtil.WindowAggConfig
 import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
+import com._4paradigm.openmldb.common.codec.CodecUtil
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.JoinedRow
-import org.apache.spark.sql.types.{LongType, StructType, TimestampType}
+import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
-
 
 /** The planner which implements window agg physical node.
  *
@@ -114,19 +113,33 @@ object WindowAggPlan {
         }
       }
 
+      val inputDateColIndexes = mutable.ArrayBuffer[Int]()
+      for (i <- 0 until inputSchema.size) {
+        if (inputSchema(i).dataType == DateType) {
+          inputDateColIndexes.append(i)
+        }
+      }
+
+      val outputDateColIndexes = mutable.ArrayBuffer[Int]()
+      for (i <- 0 until outputSchema.size) {
+        if (outputSchema(i).dataType == DateType) {
+          outputDateColIndexes.append(i)
+        }
+      }
+
       val outputInternalRowRdd = if (isWindowWithUnion) {
         zippedRdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
             unsafeWindowAggIterWithUnionFlag(computer, iter, sparkFeConfig, windowAggConfig, outputSchema,
-              inputTimestampColIndexes, outputTimestampColIndexes)
+              inputTimestampColIndexes, outputTimestampColIndexes, inputDateColIndexes, outputDateColIndexes)
         }
       } else {
         zippedRdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
             unsafeWindowAggIter(computer, iter, sparkFeConfig, windowAggConfig, outputSchema, inputTimestampColIndexes,
-              outputTimestampColIndexes)
+              outputTimestampColIndexes, inputDateColIndexes, outputDateColIndexes)
         }
       }
 
@@ -301,7 +314,9 @@ object WindowAggPlan {
                           config: WindowAggConfig,
                           outputSchema: StructType,
                           inputTimestampColIndexes: mutable.ArrayBuffer[Int],
-                          outputTimestampColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
+                          outputTimestampColIndexes: mutable.ArrayBuffer[Int],
+                          inputDateColIndexes: mutable.ArrayBuffer[Int],
+                          outputDateColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
@@ -319,9 +334,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -339,10 +360,16 @@ object WindowAggPlan {
             config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -359,9 +386,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -375,10 +408,16 @@ object WindowAggPlan {
             config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -508,7 +547,9 @@ object WindowAggPlan {
                                        config: WindowAggConfig,
                                        outputSchema: StructType,
                                        inputTimestampColIndexes: mutable.ArrayBuffer[Int],
-                                       outputTimestampColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
+                                       outputTimestampColIndexes: mutable.ArrayBuffer[Int],
+                                       inputDateColIndexes: mutable.ArrayBuffer[Int],
+                                       outputDateColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
 
@@ -527,9 +568,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -548,10 +595,16 @@ object WindowAggPlan {
             sqlConfig.enableUnsafeRowOptimization)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- outputTimestampColIndexes) {
-            if(!outputInternalRow.isNullAt(tsColIdx)) {
+          for (colIdx <- outputTimestampColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
               // TODO(tobe): warning if over LONG.MAX_VALUE
-              outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+              outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+            }
+          }
+
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
             }
           }
 
@@ -568,9 +621,15 @@ object WindowAggPlan {
         val internalRow = zippedRow._2
 
         // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-        for (tsColIdx <- inputTimestampColIndexes) {
-          if(!internalRow.isNullAt(tsColIdx)) {
-            internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+        for (colIdx <- inputTimestampColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+          }
+        }
+
+        for (colIdx <- inputDateColIndexes) {
+          if(!internalRow.isNullAt(colIdx)) {
+            internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
           }
         }
 
@@ -591,10 +650,16 @@ object WindowAggPlan {
                   config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
 
                 // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-                for (tsColIdx <- outputTimestampColIndexes) {
-                  if(!outputInternalRow.isNullAt(tsColIdx)) {
+                for (colIdx <- outputTimestampColIndexes) {
+                  if(!outputInternalRow.isNullAt(colIdx)) {
                     // TODO(tobe): warning if over LONG.MAX_VALUE
-                    outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+                    outputInternalRow.setLong(colIdx, outputInternalRow.getLong(colIdx) * 1000)
+                  }
+                }
+
+                for (colIdx <- outputDateColIndexes) {
+                  if(!outputInternalRow.isNullAt(colIdx)) {
+                    outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
                   }
                 }
 
@@ -612,39 +677,18 @@ object WindowAggPlan {
               // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
               for (tsColIdx <- outputTimestampColIndexes) {
                 if(!outputInternalRow.isNullAt(tsColIdx)) {
-
                   /*
                    * If we run window without select, we get JoinedRow which contains two UnsafeRow.
                    * We would not ues JoinedRow.setLong() which will can underlying UnsafeRow.update() and it throw
-                   * java.lang.UnsupportedOperationException.
-                   *
-                   * TODO: Change to `outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)`
+                   * java.lang.UnsupportedOperationException so we change to OpenmldbJoinedRow.
                    */
+                   outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
+                }
+              }
 
-                  outputInternalRow match {
-                    case row: JoinedRow =>
-                      // Use Java reflection to get private fields in JoinedRow
-                      val joinedRowClass = classOf[JoinedRow]
-                      val row1Field = joinedRowClass.getDeclaredField("row1")
-                      val row2Field = joinedRowClass.getDeclaredField("row2")
-                      row1Field.setAccessible(true)
-                      row2Field.setAccessible(true)
-                      val row1InternalRow = row1Field.get(row).asInstanceOf[InternalRow]
-                      val row2InternalRow = row2Field.get(row).asInstanceOf[InternalRow]
-                      val row1ColNum = row1InternalRow.numFields
-
-                      // TODO(tobe): Support JoinedRow within JoinedRow in the future
-                      if (tsColIdx < row1ColNum) {
-                        row1InternalRow.setLong(tsColIdx, row.getLong(tsColIdx) * 1000)
-                      } else {
-                        val row2ColIdx = tsColIdx - row1ColNum
-                        row2InternalRow.setLong(row2ColIdx, row.getLong(tsColIdx) * 1000)
-                      }
-
-                    case _ =>
-                      outputInternalRow.setLong(tsColIdx, outputInternalRow.getLong(tsColIdx) * 1000)
-                  }
-
+              for (colIdx <- outputDateColIndexes) {
+                if(!outputInternalRow.isNullAt(colIdx)) {
+                  outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
                 }
               }
 
