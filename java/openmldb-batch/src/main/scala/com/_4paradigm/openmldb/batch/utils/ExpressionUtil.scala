@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.node.{BinaryExpr, ConstNode, ExprNode, ExprType, FnOperator,
+import com._4paradigm.hybridse.node.{BinaryExpr, CastExprNode, ConstNode, ExprNode, ExprType, FnOperator,
   DataType => HybridseDataType}
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalOpNode}
@@ -173,6 +173,13 @@ object ExpressionUtil {
       case ExprType.kExprPrimary =>
         val const = ConstNode.CastFrom(expr)
         ExpressionUtil.constExprToSparkColumn(const)
+      case ExprType.kExprCast =>
+        val cast = CastExprNode.CastFrom(expr)
+        val castType = cast.getCast_type_
+        val childCol = recursiveGetSparkColumnFromExpr(cast.GetChild(0), node, leftDf, rightDf, hasIndexColumn)
+        // Convert OpenMLDB node datatype to Spark datatype
+        childCol.cast(HybridseUtil.nodeDataTypeToSparkType(castType))
+
       case _ => throw new UnsupportedHybridSeException(
         s"Do not support convert expression type ${expr.GetExprType} to Spark Column")
     }

@@ -144,6 +144,11 @@ class TestUnsafeJoin extends SparkTestSuite {
       " ON t1.id * 100 + 100 >= t2.id * 100 + 100"
     val outputDf3 = sess.sql(sqlText3)
     assert(outputDf3.count() == t1.count())
+
+    val sqlText4 = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LAST JOIN t2" +
+      " ON CAST(t1.id AS INT64) + 100 >= t2.id * 100 + 100"
+    val outputDf4 = sess.sql(sqlText4)
+    assert(outputDf4.count() == t1.count())
   }
 
   override def customizedAfter(): Unit = {
