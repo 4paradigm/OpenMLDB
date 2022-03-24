@@ -25,9 +25,10 @@
 #include <vector>
 
 #include "brpc/server.h"
-#include "gflags/gflags.h"
-#include "nameserver/name_server_impl.h"
 #include "codec/sdk_codec.h"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
+#include "nameserver/name_server_impl.h"
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);
@@ -180,6 +181,62 @@ bool StartTablet(const std::string& endpoint, brpc::Server* server) {
     }
     sleep(2);
     return true;
+}
+
+inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
+    hybridse::sdk::Status status;
+    for (auto sql : sqls) {
+        sr->ExecuteSQL(std::string(sql), &status);
+        EXPECT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
+    }
+}
+
+// expect object for ResultSet cell
+struct CellExpectInfo {
+    CellExpectInfo() {}
+
+    CellExpectInfo(const char* buf) : expect_(buf) {}  // NOLINT
+
+    CellExpectInfo(const std::string& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect) : expect_(expect) {}  // NOLINT
+
+    CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
+        : expect_(expect), expect_not_(expect_not) {}
+
+    // result string for target cell to match exactly
+    // if empty, do not check
+    std::optional<std::string const> expect_;
+
+    // what string target cell string should not match
+    // if empty, do not check
+    std::optional<std::string const> expect_not_;
+};
+
+// expect the output of a ResultSet, first row is schema, all compared in string
+// if expect[i][j].(expect_|expect_not_) is not set, assert will skip
+inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
+    ASSERT_EQ(expect.size(), rs->Size() + 1);
+    size_t idx = 0;
+    // schema check
+    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
+    for (size_t i = 0; i < expect[idx].size(); ++i) {
+        ASSERT_TRUE(expect[idx][i].expect_.has_value());
+        EXPECT_EQ(expect[idx][i].expect_.value(), rs->GetSchema()->GetColumnName(i));
+    }
+
+    while (++idx < expect.size() && rs->Next()) {
+        for (size_t i = 0; i < expect[idx].size(); ++i) {
+            std::string val;
+            EXPECT_TRUE(rs->GetAsString(i, val));
+            if (expect[idx][i].expect_.has_value()) {
+                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
+            }
+            if (expect[idx][i].expect_not_.has_value()) {
+                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
+            }
+        }
+    }
 }
 
 }  // namespace test

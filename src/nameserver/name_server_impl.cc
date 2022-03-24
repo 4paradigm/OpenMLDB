@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <set>
+#include "nameserver/system_table.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -5451,47 +5452,30 @@ void NameServerImpl::OnLocked() {
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        if (databases_.find(INTERNAL_DB) == databases_.end()) {
-            auto status = CreateDatabase(INTERNAL_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create internal database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INTERNAL_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-                LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
-                exit(1);
-            }
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
-                LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(PRE_AGG_DB) == databases_.end()) {
-            auto status = CreateDatabase(PRE_AGG_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create pre-agg database failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
-            auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create information schema database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(GLOBAL_VARIABLES, SystemTableType::kGlobalVariable).OK()) {
-                LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
-                exit(1);
-            }
+        CreateDatabaseOrExit(INTERNAL_DB);
+
+        if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
     }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kPreAggMetaInfo);
+    }
+
+    CreateDatabaseOrExit(PRE_AGG_DB);
+
+    CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
+
+    // TODO(ace): create table if not exists
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
+    }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+    }
+
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval,
                                 boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
@@ -10180,10 +10164,27 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
     return tablet_ptr;
 }
 
-base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, SystemTableType table_type) {
-    auto table_info = SystemTable::GetTableInfo(table_name, table_type);
+void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
+    auto status = CreateDatabase(db, true);
+    if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+        LOG(FATAL) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+void NameServerImpl::CreateSystemTableOrExit(SystemTableType type) {
+    auto status = CreateSystemTable(type);
+    if (!status.OK()) {
+        LOG(FATAL) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
+                   << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
+    auto table_info = SystemTable::GetTableInfo(table_type);
     if (!table_info) {
-        LOG(WARNING) << "fail to get table info. name is " << table_name;
+        LOG(WARNING) << "fail to get table info. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "nullptr"};
     }
     uint32_t tid = 0;
@@ -10192,7 +10193,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     }
     table_info->set_tid(tid);
     if (SetPartitionInfo(*table_info) < 0) {
-        LOG(WARNING) << "set partition info failed. name is " << table_name;
+        LOG(WARNING) << "set partition info failed. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "set partition info failed"};
     }
     uint64_t cur_term = GetTerm();
@@ -10201,7 +10202,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     if (response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }
-    LOG(INFO) << "create system table ok. name is " << table_name;
+    LOG(INFO) << "create system table ok. name is " << GetSystemTableName(table_type);
     return {};
 }
 
