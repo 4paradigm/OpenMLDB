@@ -31,7 +31,7 @@ static absl::flat_hash_map<SystemTableType, SystemTableInfo const> CreateSystemT
     return map;
 }
 
-static absl::flat_hash_map<SystemTableType, SystemTableInfo const> GetSystemTableMap() {
+static const absl::flat_hash_map<SystemTableType, SystemTableInfo const>& GetSystemTableMap() {
     static const absl::flat_hash_map<SystemTableType, SystemTableInfo const>& map = *new auto(CreateSystemTableMap());
     return map;
 }
