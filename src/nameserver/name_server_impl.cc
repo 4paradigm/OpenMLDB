@@ -10321,7 +10321,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     std::string table = GLOBAL_VARIABLES;
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(table, db, &table_info)) {
-        return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+        return {ReturnCode::kTableIsNotExist, "table is not exist"};
     }
     // encode row && dimensions
     std::vector<std::string> rows;
