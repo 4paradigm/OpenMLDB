@@ -267,8 +267,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 
     void CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
-                     ::openmldb::api::CreateAggregatorResponse* response, Closure* done);
-   
+                          ::openmldb::api::CreateAggregatorResponse* response, Closure* done);
+
     std::shared_ptr<Aggrs> GetAggregators(uint32_t tid, uint32_t pid);
 
  private:

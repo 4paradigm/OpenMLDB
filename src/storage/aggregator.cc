@@ -349,7 +349,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         }
     }
 
-    // TODO: support more aggr_type
+    // TODO(yuhang): support more aggr_type
     if (aggr_func == "sum") {
         return std::make_shared<SumAggregator>(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, AggrType::kSum,
                                                ts_col, window_type, window_size);
