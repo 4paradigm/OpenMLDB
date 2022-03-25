@@ -102,7 +102,6 @@ public class SQLDriver implements Driver {
                 throw new IllegalArgumentException(
                         "url parsing error: '//' is not present in the url " + url);
             }
-            SdkOption option = new SdkOption();
             String urlSecondPart = url.substring(separator + 2);
             int dbIndex = urlSecondPart.indexOf("/");
             int paramIndex = urlSecondPart.indexOf("?");

@@ -28,10 +28,7 @@ public class Statement implements java.sql.Statement {
             throw new SQLException("executeSQL fail: " + msg);
         }
         status.delete();
-        if (resultSet != null) {
-            return true;
-        }
-        return false;
+        return resultSet != null;
     }
 
     @Override

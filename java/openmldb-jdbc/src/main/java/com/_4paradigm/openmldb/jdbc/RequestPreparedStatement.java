@@ -23,6 +23,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.*;
@@ -32,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 public class RequestPreparedStatement implements java.sql.PreparedStatement {
-    public static final Charset CHARSET = Charset.forName("utf-8");
+    public static final Charset CHARSET = StandardCharsets.UTF_8;
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
@@ -214,7 +215,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
             setNull(i);
             return;
         }
-        byte bytes[] = s.getBytes(CHARSET);
+        byte[] bytes = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, bytes);
