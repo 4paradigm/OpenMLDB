@@ -36,6 +36,7 @@ public class SQLDriver implements Driver {
 
     /**
      * Connect to the given connection string.
+     * NOTICE: OpenMLDB JDBC connection only connects to the online part
      *
      * @param url the url to connect to
      * @return a connection
@@ -152,6 +153,7 @@ public class SQLDriver implements Driver {
 
     private void parseParametersToProps(Properties properties, String additionalParameters) {
         if (additionalParameters != null) {
+            // params are after '?'
             String urlParameters = additionalParameters.substring(1);
             if (!urlParameters.isEmpty()) {
                 String[] parameters = urlParameters.split("&");
