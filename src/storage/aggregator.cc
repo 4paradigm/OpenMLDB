@@ -57,7 +57,6 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 
 bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str()));
-    AggrBuffer* flush_buffer = nullptr;
     int64_t cur_ts;
     switch (ts_col_type_) {
         case DataType::kBigInt: {
@@ -93,8 +92,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
         }
     }
-    
-    if (CheckBufferFilled()) {
+
+    if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
         AggrBuffer flush_buffer = aggr_buffer;
         int64_t latest_ts = aggr_buffer.ts_end_ + 1;
         aggr_buffer.clear();
@@ -257,10 +256,10 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, int8_t* base_row_pt
     return true;
 }
 
-bool Aggregator::CheckBufferFilled() {
-    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
+bool Aggregator::CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt) {
+    if (window_type_ == WindowType::kRowsRange && cur_ts > buffer_end) {
         return true;
-    } else if (window_type_ == WindowType::kRowsNum && aggr_buffer.aggr_cnt_ >= window_size_) {
+    } else if (window_type_ == WindowType::kRowsNum && buffer_cnt >= window_size_) {
         return true;
     }
     return false;

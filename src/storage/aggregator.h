@@ -108,7 +108,7 @@ class Aggregator {
     bool GetAggrBufferFromRowView(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* buffer);
     bool FlushAggrBuffer(const std::string& key, AggrBuffer aggr_buffer);
     bool UpdateFlushedBuffer(const std::string& key, int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
-    bool CheckBufferFilled();
+    bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
     virtual bool UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) { return false; }

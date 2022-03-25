@@ -538,7 +538,7 @@ TEST_F(SQLClusterTest, Aggregator) {
 
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
 
-    for (int i = 1; i <= 10; i++) {
+    for (int i = 1; i <= 11; i++) {
         std::string insert = "insert into " + base_table + " values('str1', 'str2', " +
                              std::to_string(i) + ", " + std::to_string(i) +");";
         ok = router->ExecuteInsert(base_db, insert, &status);

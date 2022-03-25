@@ -213,7 +213,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         uint32_t row_size = row_builder.CalTotalLength(6);
         encoded_row.resize(row_size);
         std::string key = "id1|id2";
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i <= 100; i++) {
             row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
             row_builder.AppendString("id1", 3);
             row_builder.AppendString("id2", 3);
