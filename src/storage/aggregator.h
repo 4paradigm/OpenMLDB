@@ -110,7 +110,7 @@ class Aggregator {
     bool UpdateFlushedBuffer(const std::string& key, int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
 
  private:
-    virtual bool UpdateAggrVal(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) { return false; }
+    virtual bool UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) { return false; }
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -139,7 +139,7 @@ class SumAggregator : public Aggregator {
     ~SumAggregator() = default;
 
  private:
-    bool UpdateAggrVal(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,

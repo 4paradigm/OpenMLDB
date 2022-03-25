@@ -477,7 +477,7 @@ bool RowView::Reset(const int8_t* row) {
     return true;
 }
 
-bool RowView::CheckValid(uint32_t idx, ::openmldb::type::DataType type) {
+bool RowView::CheckValid(uint32_t idx, ::openmldb::type::DataType type) const {
     if (row_ == NULL || !is_valid_) {
         return false;
     }
@@ -491,7 +491,7 @@ bool RowView::CheckValid(uint32_t idx, ::openmldb::type::DataType type) {
     return true;
 }
 
-int32_t RowView::GetBool(uint32_t idx, bool* val) {
+int32_t RowView::GetBool(uint32_t idx, bool* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -511,7 +511,7 @@ int32_t RowView::GetBool(uint32_t idx, bool* val) {
     return 0;
 }
 
-int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day) {
+int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day) const {
     if (year == NULL || month == NULL || day == NULL) {
         return -1;
     }
@@ -530,7 +530,7 @@ int32_t RowView::GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t
     return 0;
 }
 
-int32_t RowView::GetDate(uint32_t idx, int32_t* val) {
+int32_t RowView::GetDate(uint32_t idx, int32_t* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -545,7 +545,7 @@ int32_t RowView::GetDate(uint32_t idx, int32_t* val) {
     return 0;
 }
 
-int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
+int32_t RowView::GetInt32(uint32_t idx, int32_t* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -560,7 +560,7 @@ int32_t RowView::GetInt32(uint32_t idx, int32_t* val) {
     return 0;
 }
 
-int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
+int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -575,7 +575,7 @@ int32_t RowView::GetTimestamp(uint32_t idx, int64_t* val) {
     return 0;
 }
 
-int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
+int32_t RowView::GetInt64(uint32_t idx, int64_t* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -590,7 +590,7 @@ int32_t RowView::GetInt64(uint32_t idx, int64_t* val) {
     return 0;
 }
 
-int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
+int32_t RowView::GetInt16(uint32_t idx, int16_t* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -605,7 +605,7 @@ int32_t RowView::GetInt16(uint32_t idx, int16_t* val) {
     return 0;
 }
 
-int32_t RowView::GetFloat(uint32_t idx, float* val) {
+int32_t RowView::GetFloat(uint32_t idx, float* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -620,7 +620,7 @@ int32_t RowView::GetFloat(uint32_t idx, float* val) {
     return 0;
 }
 
-int32_t RowView::GetDouble(uint32_t idx, double* val) {
+int32_t RowView::GetDouble(uint32_t idx, double* val) const {
     if (val == NULL) {
         return -1;
     }
@@ -635,7 +635,7 @@ int32_t RowView::GetDouble(uint32_t idx, double* val) {
     return 0;
 }
 
-int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, int64_t* val) {
+int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, int64_t* val) const {
     int32_t ret = 0;
     switch (type) {
         case ::openmldb::type::kSmallInt: {
@@ -663,7 +663,7 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::D
     return ret;
 }
 
-int32_t RowView::GetValue(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, void* val) {
+int32_t RowView::GetValue(const int8_t* row, uint32_t idx, ::openmldb::type::DataType type, void* val) const {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }
@@ -716,7 +716,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, ::openmldb::type::Dat
     return 0;
 }
 
-int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val, uint32_t* length) {
+int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val, uint32_t* length) const {
     if (schema_.size() == 0 || row == NULL || length == NULL) {
         return -1;
     }
@@ -743,7 +743,7 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val, uint32_t*
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
+int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) const {
     if (val == NULL || length == NULL) {
         return -1;
     }
@@ -763,9 +763,9 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
                            reinterpret_cast<int8_t**>(val), length);
 }
 
-int32_t RowView::GetStrValue(uint32_t idx, std::string* val) { return GetStrValue(row_, idx, val); }
+int32_t RowView::GetStrValue(uint32_t idx, std::string* val) const { return GetStrValue(row_, idx, val); }
 
-int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx, std::string* val) {
+int32_t RowView::GetStrValue(const int8_t* row, uint32_t idx, std::string* val) const {
     if (schema_.size() == 0 || row == NULL) {
         return -1;
     }

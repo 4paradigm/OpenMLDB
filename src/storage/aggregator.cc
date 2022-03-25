@@ -116,7 +116,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (window_type_ == WindowType::kRowsNum) {
         aggr_buffer.ts_end_ = cur_ts;
     }
-    bool ok = UpdateAggrVal(&base_row_view_, row_ptr, &aggr_buffer);
+    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
     if (!ok) {
         return false;
     }
@@ -247,7 +247,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, int8_t* base_row_pt
         tmp_buffer.aggr_cnt_ = 1;
         tmp_buffer.binlog_offset_ = offset;
     }
-    bool ok = UpdateAggrVal(&base_row_view_, base_row_ptr, &tmp_buffer);
+    bool ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer);
     if (!ok) {
         LOG(ERROR) << "UpdateAggrVal failed";
         return false;
@@ -266,30 +266,30 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                              uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
 
-bool SumAggregator::UpdateAggrVal(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) {
+bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) {
     switch (aggr_col_type_) {
         case DataType::kSmallInt: {
             int16_t val;
-            row_view->GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kInt: {
             int32_t val;
-            row_view->GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kBigInt: {
             int64_t val;
-            row_view->GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kFloat:
         case DataType::kDouble: {
             double val;
-            row_view->GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
             aggr_buffer->aggr_val_.vdouble += val;
             break;
         }
