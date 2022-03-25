@@ -45,7 +45,8 @@ ExitOnError ExitOnErr;
 namespace hybridse {
 namespace codegen {
 
-using hybridse::codec::Timestamp;
+using openmldb::base::Timestamp;
+using openmldb::base::Date;
 using hybridse::udf::Nullable;
 
 class ArithmeticIRBuilderTest : public ::testing::Test {
@@ -168,11 +169,11 @@ TEST_F(ArithmeticIRBuilderTest, TestAddNull) {
                                                 ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                               Nullable<Timestamp>>(
-        codec::Timestamp(1590115420000L), nullptr, nullptr,
+        Timestamp(1590115420000L), nullptr, nullptr,
         ::hybridse::node::kFnOpAdd);
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                               Nullable<Timestamp>>(
-        nullptr, codec::Timestamp(1590115420000L), nullptr,
+        nullptr, Timestamp(1590115420000L), nullptr,
         ::hybridse::node::kFnOpAdd);
 }
 TEST_F(ArithmeticIRBuilderTest, TestSubNull) {
@@ -500,8 +501,8 @@ TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp4) {
         ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp5) {
-    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(
+    BinaryArithmeticErrorCheck<Nullable<Date>, Nullable<Date>,
+                               Nullable<Date>>(
         ::hybridse::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp6) {
@@ -516,8 +517,8 @@ TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp7) {
         ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp8) {
-    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(
+    BinaryArithmeticErrorCheck<Nullable<Date>, Nullable<Date>,
+                               Nullable<Date>>(
         ::hybridse::node::kFnOpMulti);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp9) {
@@ -532,8 +533,8 @@ TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp10) {
         ::hybridse::node::kFnOpFDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp11) {
-    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(
+    BinaryArithmeticErrorCheck<Nullable<Date>, Nullable<Date>,
+                               Nullable<Date>>(
         ::hybridse::node::kFnOpFDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp12) {
@@ -547,8 +548,8 @@ TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp13) {
         ::hybridse::node::kFnOpDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp14) {
-    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                               Nullable<codec::Date>>(
+    BinaryArithmeticErrorCheck<Nullable<Date>, Nullable<Date>,
+                               Nullable<Date>>(
         ::hybridse::node::kFnOpDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestErrorExprOp15) {

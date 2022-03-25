@@ -19,10 +19,10 @@
 namespace hybridse {
 namespace udf {
 
-using codec::Date;
+using openmldb::base::Date;
 using codec::ListRef;
-using codec::StringRef;
-using codec::Timestamp;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 using udf::Nullable;
 
 class UdafTest : public ::testing::Test {

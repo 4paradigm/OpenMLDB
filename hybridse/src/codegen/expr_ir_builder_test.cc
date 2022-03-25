@@ -40,9 +40,9 @@
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
-using hybridse::codec::Date;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::Date;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 using hybridse::node::ExprNode;
 ExitOnError ExitOnErr;
 
@@ -689,7 +689,7 @@ TEST_F(ExprIRBuilderTest, TestOrExprFalse) {
 
 TEST_F(ExprIRBuilderTest, TestGetField) {
     auto schema = udf::MakeLiteralSchema<int16_t, int32_t, int64_t, float,
-                                         double, codec::Timestamp, codec::Date,
+                                         double, Timestamp, Date,
                                          codec::StringRef>();
     codec::RowBuilder row_builder(schema);
     size_t row_size = row_builder.CalTotalLength(5);
@@ -706,7 +706,7 @@ TEST_F(ExprIRBuilderTest, TestGetField) {
     codec::Row *row =
         new codec::Row(base::RefCountedSlice::Create(buf, row_size));
     udf::LiteralTypedRow<int16_t, int32_t, int64_t, float, double,
-                         codec::Timestamp, codec::Date, codec::StringRef>
+                         Timestamp, Date, codec::StringRef>
         typed_row(reinterpret_cast<int8_t *>(row));
 
     auto make_get_field = [](node::NodeManager *nm, node::ExprNode *input,
@@ -736,10 +736,10 @@ TEST_F(ExprIRBuilderTest, TestGetField) {
               1.0, typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 5); },
-              codec::Timestamp(1590115420000L), typed_row);
+              Timestamp(1590115420000L), typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 6); },
-              codec::Date(2009, 7, 1), typed_row);
+              Date(2009, 7, 1), typed_row);
     ExprCheck([&](node::NodeManager *nm,
                   ExprNode *input) { return make_get_field(nm, input, 7); },
               codec::StringRef(5, "hello"), typed_row);
@@ -893,9 +893,9 @@ TEST_F(ExprIRBuilderTest, TestBetweenExpr) {
     ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
         between_expr, false, codec::StringRef("aaa"), codec::StringRef("ddd"), codec::StringRef("fgc"));
     // timestamp between
-    ExprCheck<bool, codec::Timestamp, codec::Timestamp, codec::Timestamp>(
-        between_expr, true, codec::Timestamp(1629521917000), codec::Timestamp(1629521917000),
-        codec::Timestamp(1629521919000));
+    ExprCheck<bool, Timestamp, Timestamp, Timestamp>(
+        between_expr, true, Timestamp(1629521917000), Timestamp(1629521917000),
+        Timestamp(1629521919000));
 }
 TEST_F(ExprIRBuilderTest, TestNotBetweenExpr) {
     auto not_between_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *low, node::ExprNode *high) {
@@ -915,16 +915,16 @@ TEST_F(ExprIRBuilderTest, TestNotBetweenExpr) {
     ExprCheck<bool, codec::StringRef, codec::StringRef, codec::StringRef>(
         not_between_expr, true, codec::StringRef("aaa"), codec::StringRef("ddd"), codec::StringRef("fgc"));
     // timestamp between
-    ExprCheck<bool, codec::Timestamp, codec::Timestamp, codec::Timestamp>(
-        not_between_expr, false, codec::Timestamp(1629521917000), codec::Timestamp(1629521917000),
-        codec::Timestamp(1629521919000));
+    ExprCheck<bool, Timestamp, Timestamp, Timestamp>(
+        not_between_expr, false, Timestamp(1629521917000), Timestamp(1629521917000),
+        Timestamp(1629521919000));
 }
 TEST_F(ExprIRBuilderTest, TestBetweenExprFail) {
     auto between_expr = [](node::NodeManager *nm, node::ExprNode *lhs, node::ExprNode *low, node::ExprNode *high) {
         return nm->MakeBetweenExpr(lhs, low, high, false);
     };
-    ExprErrorCheck<bool, int64_t, codec::Timestamp, codec::Timestamp>(between_expr);
-    ExprErrorCheck<bool, double, codec::Timestamp, codec::Timestamp>(between_expr);
+    ExprErrorCheck<bool, int64_t, Timestamp, Timestamp>(between_expr);
+    ExprErrorCheck<bool, double, Timestamp, Timestamp>(between_expr);
 }
 
 template <typename T>
