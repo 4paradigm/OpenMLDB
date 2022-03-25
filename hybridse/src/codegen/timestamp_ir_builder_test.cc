@@ -29,6 +29,7 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 namespace hybridse {
 namespace codegen {
+using openmldb::base::Timestamp;
 class TimestampIRBuilderTest : public ::testing::Test {
  public:
     TimestampIRBuilderTest() {}
@@ -60,8 +61,8 @@ TEST_F(TimestampIRBuilderTest, BuildTimestampWithTs_TEST) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("build_timestamp"));
-    codec::Timestamp *(*decode)(int64_t) =
-        (codec::Timestamp * (*)(int64_t)) load_fn_jit.getAddress();
+    Timestamp *(*decode)(int64_t) =
+        (Timestamp * (*)(int64_t)) load_fn_jit.getAddress();
 
     ASSERT_EQ(static_cast<int64_t>(decode(1590115420000L)->ts_),
               1590115420000L);
@@ -122,10 +123,10 @@ TEST_F(TimestampIRBuilderTest, MinuteTest) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("minute"));
-    int32_t (*decode)(codec::Timestamp *) =
-        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+    int32_t (*decode)(Timestamp *) =
+        (int32_t(*)(Timestamp *))load_fn_jit.getAddress();
 
-    codec::Timestamp time(1590115420000L);
+    Timestamp time(1590115420000L);
     ASSERT_EQ(43, decode(&time));
 }
 TEST_F(TimestampIRBuilderTest, SecondTest) {
@@ -152,10 +153,10 @@ TEST_F(TimestampIRBuilderTest, SecondTest) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("second"));
-    int32_t (*decode)(codec::Timestamp *) =
-        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+    int32_t (*decode)(Timestamp *) =
+        (int32_t(*)(Timestamp *))load_fn_jit.getAddress();
 
-    codec::Timestamp time(1590115420000L);
+    Timestamp time(1590115420000L);
     ASSERT_EQ(40, decode(&time));
 }
 TEST_F(TimestampIRBuilderTest, HourTest) {
@@ -183,10 +184,10 @@ TEST_F(TimestampIRBuilderTest, HourTest) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("hour"));
-    int32_t (*decode)(codec::Timestamp *) =
-        (int32_t(*)(codec::Timestamp *))load_fn_jit.getAddress();
+    int32_t (*decode)(Timestamp *) =
+        (int32_t(*)(Timestamp *))load_fn_jit.getAddress();
 
-    codec::Timestamp time(1590115420000L);
+    Timestamp time(1590115420000L);
     ASSERT_EQ(10, decode(&time));
 }
 TEST_F(TimestampIRBuilderTest, SetTsTest) {
@@ -216,10 +217,10 @@ TEST_F(TimestampIRBuilderTest, SetTsTest) {
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("build_timestamp"));
-    void (*set_ts)(codec::Timestamp *, int64_t) =
-        (void (*)(codec::Timestamp *, int64_t))load_fn_jit.getAddress();
+    void (*set_ts)(Timestamp *, int64_t) =
+        (void (*)(Timestamp *, int64_t))load_fn_jit.getAddress();
 
-    codec::Timestamp data;
+    Timestamp data;
     set_ts(&data, 1590115420000L);
     ASSERT_EQ(data.ts_, 1590115420000L);
     set_ts(&data, 1L);
@@ -227,28 +228,28 @@ TEST_F(TimestampIRBuilderTest, SetTsTest) {
 }
 
 TEST_F(TimestampIRBuilderTest, TimestampOp) {
-    codec::Timestamp t1(1);
-    codec::Timestamp t2(10);
+    Timestamp t1(1);
+    Timestamp t2(10);
 
     ASSERT_EQ(11L, (t1 + t2).ts_);
     ASSERT_EQ(9L, (t2 - t1).ts_);
     ASSERT_EQ(3, (t2 / 3L).ts_);
 
-    ASSERT_TRUE(t2 >= codec::Timestamp(10));
-    ASSERT_TRUE(t2 <= codec::Timestamp(10));
+    ASSERT_TRUE(t2 >= Timestamp(10));
+    ASSERT_TRUE(t2 <= Timestamp(10));
 
-    ASSERT_TRUE(t2 > codec::Timestamp(9));
-    ASSERT_TRUE(t2 < codec::Timestamp(11));
+    ASSERT_TRUE(t2 > Timestamp(9));
+    ASSERT_TRUE(t2 < Timestamp(11));
 
-    ASSERT_TRUE(t2 == codec::Timestamp(10));
-    ASSERT_TRUE(t2 != codec::Timestamp(9));
+    ASSERT_TRUE(t2 == Timestamp(10));
+    ASSERT_TRUE(t2 != Timestamp(9));
     if (t2.ts_ > INT32_MAX) {
-        codec::Timestamp t3(10);
+        Timestamp t3(10);
         t3 += t1;
         ASSERT_EQ(11, t3.ts_);
     }
     {
-        codec::Timestamp t3(10);
+        Timestamp t3(10);
         t3 -= t1;
         ASSERT_EQ(9, t3.ts_);
     }
