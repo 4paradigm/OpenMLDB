@@ -34,10 +34,10 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using hybridse::codec::Date;
+using openmldb::base::Date;
 using hybridse::codec::ListRef;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 
 namespace hybridse {
 namespace udf {
