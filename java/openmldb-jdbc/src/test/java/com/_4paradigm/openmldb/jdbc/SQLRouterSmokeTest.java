@@ -370,7 +370,7 @@ public class SQLRouterSmokeTest {
             try {
                 impl3.execute();
             } catch (Exception e) {
-                Assert.assertEquals("preparedstatement closed", e.getMessage());
+                Assert.assertEquals("InsertPreparedStatement closed", e.getMessage());
             }
             insert = "insert into tsql1010 values(?, ?, ?, 'zhenzhou', 5);";
             PreparedStatement impl4 = router.getInsertPreparedStmt(dbname, insert);
@@ -467,15 +467,15 @@ public class SQLRouterSmokeTest {
                 try {
                     impl.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals("data type not match", e.getMessage());
+                    Assert.assertEquals(e.getMessage(), "data type not match");
                 }
                 try {
                     impl.execute();
                 } catch (Exception e) {
                     if (j > 1) {
-                        Assert.assertEquals("please use executeBatch", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals("build insert row failed", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "append failed");
                     }
                 }
                 impl.setLong(1, (Long) datas1[j][0]);
@@ -485,7 +485,7 @@ public class SQLRouterSmokeTest {
             try {
                 ok = impl.execute();
             } catch (Exception e) {
-                Assert.assertEquals("please use executeBatch", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "please use executeBatch");
             }
             impl.executeBatch();
             Assert.assertTrue(ok);
@@ -500,15 +500,15 @@ public class SQLRouterSmokeTest {
                 try {
                     impl2.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals("data type not match", e.getMessage());
+                    Assert.assertEquals(e.getMessage(), "data type not match");
                 }
                 try {
                     impl2.execute();
                 } catch (Exception e) {
                     if (j > 1) {
-                        Assert.assertEquals("please use executeBatch", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals("build insert row failed", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "build insert row failed");
                     }
                 }
                 impl2.setLong(1, (Long) datas1[j][0]);
@@ -518,14 +518,14 @@ public class SQLRouterSmokeTest {
             try {
                 ok = impl2.execute();
             } catch (Exception e) {
-                Assert.assertEquals("please use executeBatch", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "please use executeBatch");
             }
             i++;
-            Object[] datas2 = (Object[]) batchData[i];
+            Object[] datas2 = batchData[i];
             try {
                 impl2.addBatch((String) datas2[0]);
             } catch (Exception e) {
-                Assert.assertEquals("this sql need data", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "this sql need data");
             }
             for (int j = 1; i < datas2.length; i++) {
                 impl2.addBatch((String) datas2[j]);
