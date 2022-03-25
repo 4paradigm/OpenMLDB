@@ -1289,7 +1289,7 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     // recover global variable after tablet restart
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfoUnlock(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
-        PDLOG(WARNING, "table is not exist!");
+        PDLOG(WARNING, "global variable table is not exist!");
         return;
     }
     bool exist_globalvar = false;
@@ -10350,13 +10350,15 @@ base::Status NameServerImpl::InitGlobalVarTable() {
         }
         // system table only have one partition, so table_partition(0) can be used
         for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
-            if (table_info->table_partition(0).partition_meta(meta_idx).is_leader()) {
+            if (table_info->table_partition(0).partition_meta(meta_idx).is_leader() &&
+                table_info->table_partition(0).partition_meta(meta_idx).is_alive()) {
                 uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
                 std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
                 auto table_ptr = GetTablet(endpoint);
                 if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
                     return {ReturnCode::kPutFailed, "fail to make a put request to table"};
                 }
+                break;
             }
         }
     }
