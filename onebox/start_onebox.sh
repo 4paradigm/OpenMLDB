@@ -14,11 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [ $# -ne 1 ]; then
-    echo "./start_onebox.sh [cluster|standalone]"
-    exit 1
-fi
-
 set -x -e
 
 cd "$(dirname "$0")/../"
@@ -36,10 +31,7 @@ TABLET1=$IP:9520
 TABLET2=$IP:9521
 TABLET3=$IP:9522
 
-OP=$1
-
-case $OP in
-    cluster)
+function start_cluster() {
         # start tablet0
         test -d tablet0-binlogs && rm -rf tablet0-binlogs
         test -d recycle_bin0 && rm -rf recycle_bin0
@@ -99,8 +91,10 @@ case $OP in
                            --zk_root_path=/onebox > ns3.log 2>&1 &
         sleep 3
         echo "cluster start ok"
-        ;;
-    standalone)
+        exit 0
+}
+
+function start_standalone() {
         # start tablet
         test -d tablet0-binlogs && rm -rf tablet0-binlogs
         test -d recycle_bin0 && rm -rf recycle_bin0
@@ -116,8 +110,28 @@ case $OP in
                            --tablet_heartbeat_timeout=1 > ns1.log 2>&1 &
         sleep 3
         echo "standalone start ok"
+        exit 0
+}
+
+if [ $# -eq 0 ]; then
+  start_cluster
+fi
+
+if [ $# -ne 1 ]; then
+  echo "parameter must be standalone|cluster"
+  exit 1
+fi
+
+OP=$1
+case $OP in
+    cluster)
+        start_cluster
+        ;;
+    standalone)
+        start_standalone
         ;;
     *)
         echo "only support standalone|cluster" >&2
+        exit 1
 esac
 
