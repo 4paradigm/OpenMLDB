@@ -42,17 +42,15 @@ public class SQLConnection implements Connection {
 
     private boolean isClosed = false;
 
-    public SQLConnection(SqlExecutor client, Properties props) {
+    public SQLConnection(SqlExecutor client, Properties props) throws SQLException {
         this.client = client;
         this.props = props;
         this.defaultDatabase = props.getProperty("dbName", "");
+        java.sql.Statement stmt = client.getStatement();
+        // TODO(hw): offline job result is not good now, use online by default
+        stmt.execute("set @@execute_mode='online'");
         if (!this.defaultDatabase.isEmpty()) {
-            try {
-                java.sql.Statement stmt = client.getStatement();
-                stmt.execute("USE " + this.defaultDatabase);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            stmt.execute("USE " + this.defaultDatabase);
         }
     }
 
@@ -61,6 +59,16 @@ public class SQLConnection implements Connection {
         return client.getStatement();
     }
 
+
+    /**
+     * WARNING: insert prepared statement only can insert into <B>online storage</B><P>
+     * <p>
+     * select can visit both offline and online
+     *
+     * @param sql only supports insert and select
+     * @return PreparedStatement
+     * @throws SQLException if sql is unsupported
+     */
     @Override
     public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException {
         String lower = sql.toLowerCase();

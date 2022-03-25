@@ -32,6 +32,7 @@ import org.testng.collections.Maps;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -470,9 +471,11 @@ public class SQLRouterSmokeTest {
                     Assert.assertEquals(e.getMessage(), "data type not match");
                 }
                 try {
+                    // set failed, so the row is uncompleted, appending row will be failed
                     impl.execute();
                 } catch (Exception e) {
-                    if (j > 1) {
+                    if (j > 0) {
+                        // j > 0, addBatch has been called
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
                         Assert.assertEquals(e.getMessage(), "append failed");
@@ -496,6 +499,7 @@ public class SQLRouterSmokeTest {
             i++;
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
             datas1 = (Object[][]) batchData[i][1];
+            // value setting error won't break anything
             for (int j = 0; j < datas1.length; j++) {
                 try {
                     impl2.setInt(2, 1002);
@@ -505,33 +509,35 @@ public class SQLRouterSmokeTest {
                 try {
                     impl2.execute();
                 } catch (Exception e) {
-                    if (j > 1) {
+                    if (j > 0) {
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals(e.getMessage(), "build insert row failed");
+                        Assert.assertEquals(e.getMessage(), "append failed");
                     }
                 }
                 impl2.setLong(1, (Long) datas1[j][0]);
                 impl2.setLong(2, (Long) datas1[j][1]);
                 impl2.addBatch();
             }
+
             try {
                 ok = impl2.execute();
             } catch (Exception e) {
                 Assert.assertEquals(e.getMessage(), "please use executeBatch");
             }
             i++;
+            // can't use addBatch(String sql)
             Object[] datas2 = batchData[i];
             try {
                 impl2.addBatch((String) datas2[0]);
             } catch (Exception e) {
-                Assert.assertEquals(e.getMessage(), "this sql need data");
+                Assert.assertEquals(e.getMessage(), "cannot take arguments in PreparedStatement");
             }
-            for (int j = 1; i < datas2.length; i++) {
-                impl2.addBatch((String) datas2[j]);
-            }
-            impl.executeBatch();
-            Assert.assertTrue(ok);
+
+            int[] result = impl.executeBatch();
+            int[] expected = new int[result.length];
+            Assert.assertEquals(result, expected);
+
             String select2 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(6, rs2.GetInternalSchema().GetColumnCnt());

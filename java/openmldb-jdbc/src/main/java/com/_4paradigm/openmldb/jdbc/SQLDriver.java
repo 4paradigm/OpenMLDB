@@ -36,7 +36,6 @@ public class SQLDriver implements Driver {
 
     /**
      * Connect to the given connection string.
-     * NOTICE: OpenMLDB JDBC connection only connects to the online part
      *
      * @param url the url to connect to
      * @return a connection
