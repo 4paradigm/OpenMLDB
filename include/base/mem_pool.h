@@ -16,6 +16,7 @@
 
 #ifndef INCLUDE_BASE_MEM_POOL_H_
 #define INCLUDE_BASE_MEM_POOL_H_
+
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
