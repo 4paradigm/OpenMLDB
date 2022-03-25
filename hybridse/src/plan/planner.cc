@@ -204,7 +204,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     // merge window map
     std::map<const node::WindowDefNode *, node::ProjectListNode *> merged_project_list_map;
     bool long_window_exist = false;
-    if (!long_windows_.empty()) {
+    // only support long-window optimization for request-mode
+    if (!is_batch_mode_ && !long_windows_.empty()) {
         for (const auto &it : window_project_list_map) {
             if (it.first == nullptr) continue;
 
