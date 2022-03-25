@@ -57,6 +57,7 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 
 bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str()));
+    AggrBuffer* flush_buffer = nullptr;
     int64_t cur_ts;
     switch (ts_col_type_) {
         case DataType::kBigInt: {
@@ -84,52 +85,47 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
 
     std::unique_lock<std::mutex> lock(*aggr_buffer_lock->mu_);
     AggrBuffer& aggr_buffer = aggr_buffer_lock->buffer_;
+
+    // init buffer timestamp range
     if (aggr_buffer.ts_begin_ == -1) {
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
         }
     }
-    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
+    
+    if (CheckBufferFilled()) {
         AggrBuffer flush_buffer = aggr_buffer;
         int64_t latest_ts = aggr_buffer.ts_end_ + 1;
         aggr_buffer.clear();
         aggr_buffer.ts_begin_ = latest_ts;
-        aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
+        if (window_type_ == WindowType::kRowsRange) {
+            aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
+        }
         lock.unlock();
         FlushAggrBuffer(key, flush_buffer);
         lock.lock();
     }
 
-    // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
-    lock.unlock();
     if (cur_ts < aggr_buffer.ts_begin_) {
+        // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
+        lock.unlock();
         bool ok = UpdateFlushedBuffer(key, row_ptr, cur_ts, offset);
         if (!ok) {
             LOG(ERROR) << "Update flushed buffer failed";
             return false;
         }
-    }
-    lock.lock();
-
-    aggr_buffer.aggr_cnt_++;
-    aggr_buffer.binlog_offset_ = offset;
-    if (window_type_ == WindowType::kRowsNum) {
-        aggr_buffer.ts_end_ = cur_ts;
-    }
-    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
-    if (!ok) {
-        return false;
-    }
-
-    if (window_type_ == WindowType::kRowsNum && aggr_buffer.aggr_cnt_ >= window_size_) {
-        AggrBuffer flush_buffer = aggr_buffer;
-        int64_t latest_ts = aggr_buffer.ts_end_ + 1;
-        aggr_buffer.clear();
-        aggr_buffer.ts_begin_ = latest_ts;
-        lock.unlock();
-        FlushAggrBuffer(key, flush_buffer);
-        lock.lock();
+    } else {
+        aggr_buffer.aggr_cnt_++;
+        aggr_buffer.binlog_offset_ = offset;
+        if (window_type_ == WindowType::kRowsNum) {
+            aggr_buffer.ts_end_ = cur_ts;
+        }
+        bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
+        if (!ok) {
+            LOG(ERROR) << "Update aggr value failed";
+            return false;
+        }
     }
     return true;
 }
@@ -259,6 +255,15 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, int8_t* base_row_pt
         return false;
     }
     return true;
+}
+
+bool Aggregator::CheckBufferFilled() {
+    if (window_type_ == WindowType::kRowsRange && cur_ts > aggr_buffer.ts_end_) {
+        return true;
+    } else if (window_type_ == WindowType::kRowsNum && aggr_buffer.aggr_cnt_ >= window_size_) {
+        return true;
+    }
+    return false;
 }
 
 SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
