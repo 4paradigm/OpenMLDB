@@ -73,16 +73,17 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         }
     }
 
+    AggrBufferLocked* aggr_buffer_lock;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (aggr_buffer_map_.find(key) == aggr_buffer_map_.end()) {
             aggr_buffer_map_.emplace(key, AggrBufferLocked{});
         }
+        aggr_buffer_lock = &aggr_buffer_map_.at(key);
     }
 
-    auto& aggr_buffer_lock = aggr_buffer_map_.at(key);
-    std::unique_lock<std::mutex> lock(*aggr_buffer_lock.mu_);
-    AggrBuffer& aggr_buffer = aggr_buffer_lock.buffer_;
+    std::unique_lock<std::mutex> lock(*aggr_buffer_lock->mu_);
+    AggrBuffer& aggr_buffer = aggr_buffer_lock->buffer_;
     if (aggr_buffer.ts_begin_ == -1) {
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
