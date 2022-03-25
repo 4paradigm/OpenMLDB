@@ -97,7 +97,7 @@ public class JDBCDriverTest {
                 insertStatement.setInt(1, 1);
                 insertStatement.setString(2, "a");
                 // execute immediately
-                insertStatement.execute();
+                Assert.assertTrue(insertStatement.execute());
             }
             try {
                 String updateSQL = "UPDATE table ...";
@@ -116,6 +116,9 @@ public class JDBCDriverTest {
 
             // useless but won't fail
             connection.commit();
+            connection.close();
+            Assert.assertTrue(connection.isClosed());
+            // double-close is ok
             connection.close();
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
