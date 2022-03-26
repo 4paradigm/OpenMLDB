@@ -27,7 +27,6 @@ absl::Status DeployQueryTimeCollector::Collect(const std::string& deploy_name, a
     absl::ReaderMutexLock lock(&mutex_);
     auto it = collectors_.find(deploy_name);
     if (it == collectors_.end()) {
-        LOG(ERROR) << "[NOT FOUND] deploy named " << deploy_name << " not found";
         return absl::NotFoundError(absl::StrCat("deploy name ", deploy_name, " not found"));
     }
 
@@ -59,6 +58,22 @@ absl::StatusOr<DeployResponseTimeRow> DeployQueryTimeCollector::GetRow(const std
                                                                        size_t idx) const {
     absl::ReaderMutexLock lock(&mutex_);
     return GetRowUnsafe(deploy_name, idx);
+}
+
+absl::StatusOr<std::vector<DeployResponseTimeRow>> DeployQueryTimeCollector::GetRows(const std::string& deploy_name) {
+    absl::ReaderMutexLock lock(&mutex_);
+    auto it = collectors_.find(deploy_name);
+    if (it == collectors_.end()) {
+        return absl::NotFoundError(absl::StrCat("deploy name ", deploy_name, " not found"));
+    }
+
+    std::vector<DeployResponseTimeRow> rows;
+    rows.reserve(it->second->BucketCount());
+    for (auto idx = 0; idx < it->second->BucketCount(); ++idx) {
+        auto row = it->second->GetRow(idx);
+        rows.emplace_back(it->first, row->upper_bound_, row->count_, row->total_);
+    }
+    return rows;
 }
 
 std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::GetRows() const {

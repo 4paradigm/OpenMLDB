@@ -69,6 +69,10 @@ struct ResponseTimeRow {
     absl::Duration total_;
 };
 
+inline bool operator==(const ResponseTimeRow& lhs, const ResponseTimeRow& rhs) {
+    return lhs.upper_bound_ == rhs.upper_bound_ && lhs.total_ == rhs.total_ && lhs.count_ == rhs.count_;
+}
+
 class TimeDistributionHelper {
  public:
     TimeDistributionHelper(uint32_t base, uint32_t negative_cnt, uint32_t non_negative_cnt)

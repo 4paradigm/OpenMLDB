@@ -21,6 +21,7 @@
 #include "absl/random/bit_gen_ref.h"
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -64,6 +65,22 @@ inline std::string Format(const std::vector<std::vector<absl::Duration>>& time_d
     return ss.str();
 }
 
+// HACK: helper better not appear here
+void ExpectRowsEq(const TimeDistributionHelper& helper, const std::string& name,
+                  const std::vector<std::vector<absl::Duration>>& original,
+                  const std::vector<DeployResponseTimeRow>& rs) {
+    LOG(INFO) << "input time distribution:\n" << Format(original);
+    LOG(INFO) << "collected time distribution:\n" << Format(rs);
+    ASSERT_EQ(original.size(), rs.size());
+    for (auto i = 0; i < original.size(); ++i) {
+        absl::Duration time = helper.UpperBound(i).value_or(absl::InfiniteDuration());
+        auto cnt = original[i].size();
+        auto total = std::accumulate(original[i].begin(), original[i].end(), absl::Seconds(0));
+
+        EXPECT_EQ(DeployResponseTimeRow(name, time, cnt, total), rs.at(i));
+    }
+}
+
 // generate a list of random durations that in (start, end]
 std::vector<absl::Duration> GenTimes(absl::BitGenRef gen, uint32_t cnt, uint64_t start_exclusive,
                                      uint64_t end_inclusive) {
@@ -97,7 +114,7 @@ std::vector<std::vector<absl::Duration>> GenTimeDistribution(absl::BitGenRef gen
     return time_dis;
 }
 
-TEST_F(DeployTimeCollectorTest, DeployCollectorSingleDeployAndSingleInterval) {
+TEST_F(DeployTimeCollectorTest, SingleDeployAndSingleInterval) {
     DeployQueryTimeCollector col;
     ASSERT_TRUE(col.GetRows().empty());
 
@@ -129,14 +146,13 @@ TEST_F(DeployTimeCollectorTest, DeployCollectorSingleDeployAndSingleInterval) {
     EXPECT_EQ(DeployResponseTimeRow(deploy_name, absl::Seconds(10), times.size(), total), row.value());
 }
 
-TEST_F(DeployTimeCollectorTest, DeployCollectorSingleDeployThreadSafe) {
+TEST_F(DeployTimeCollectorTest, SingleDeployThreadSafe) {
     DeployQueryTimeCollector col;
 
     std::string deploy_name = "deploy1";
 
     col.AddDeploy(deploy_name);
     auto time_dis = GenTimeDistribution(gen_);
-    LOG(INFO) << "input time distribution:\n" << Format(time_dis);
 
     std::vector<absl::Duration> series[4];
     auto times_cnt = 0;
@@ -163,14 +179,122 @@ TEST_F(DeployTimeCollectorTest, DeployCollectorSingleDeployThreadSafe) {
     }
 
     auto rows = col.GetRows();
-    LOG(INFO) << "collected time distribution:\n" << Format(rows);
-    for (auto i = 0; i < time_dis.size(); ++i) {
-        absl::Duration time = helper_.UpperBound(i).value_or(absl::InfiniteDuration());
-        auto cnt = time_dis[i].size();
-        auto total = std::accumulate(time_dis[i].begin(), time_dis[i].end(), absl::Seconds(0));
+    ExpectRowsEq(helper_, deploy_name, time_dis, rows);
+}
 
-        EXPECT_EQ(DeployResponseTimeRow(deploy_name, time, cnt, total), rows.at(i));
+TEST_F(DeployTimeCollectorTest, MultiDeployThreadSafe) {
+    DeployQueryTimeCollector col;
+
+    std::string deploy1 = "dp1";
+    std::string deploy2 = "dp2";
+    std::string deploy3 = "dp3";
+
+    col.AddDeploy(deploy1);
+    col.AddDeploy(deploy2);
+    col.AddDeploy(deploy3);
+
+    auto ts1 = GenTimeDistribution(gen_);
+    auto ts2 = GenTimeDistribution(gen_);
+    auto ts3 = GenTimeDistribution(gen_);
+
+    std::vector<absl::Duration> series[6];
+    int prefix = 0;
+    for (auto& ts : {ts1, ts2, ts3}) {
+        int cnt = 0;
+        for (auto& row : ts) {
+            for (auto d : row) {
+                series[prefix * 2 + cnt % 2].push_back(d);
+                cnt++;
+            }
+        }
+        prefix++;
     }
+
+    auto collect = [&col](std::string deploy_name, std::vector<absl::Duration> times) {
+        for (auto time : times) {
+            col.Collect(deploy_name, time);
+        }
+    };
+
+    // spawn 6 threads, every two collecting one time distribution
+    std::vector<std::thread> threads;
+    threads.emplace_back(collect, deploy1, series[0]);
+    threads.emplace_back(collect, deploy1, series[1]);
+    threads.emplace_back(collect, deploy2, series[2]);
+    threads.emplace_back(collect, deploy2, series[3]);
+    threads.emplace_back(collect, deploy3, series[4]);
+    threads.emplace_back(collect, deploy3, series[5]);
+
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // check results
+    auto rs1 = col.GetRows(deploy1);
+    ASSERT_TRUE(rs1.ok());
+    ExpectRowsEq(helper_, deploy1, ts1, rs1.value());
+
+    auto rs2 = col.GetRows(deploy2);
+    ASSERT_TRUE(rs2.ok());
+    ExpectRowsEq(helper_, deploy2, ts2, rs2.value());
+
+    auto rs3 = col.GetRows(deploy3);
+    ASSERT_TRUE(rs3.ok());
+    ExpectRowsEq(helper_, deploy3, ts3, rs3.value());
+}
+
+// test wirte & read concurrently won't miss up counters
+TEST_F(DeployTimeCollectorTest, ReadWriteSafe) {
+    DeployQueryTimeCollector col;
+    std::string default_dp = "default_dp";
+    col.AddDeploy(default_dp);
+
+    auto ts = GenTimeDistribution(gen_);
+
+    auto add_deploy = [&col]() {
+        // continuously add deploy so rehash happens on collectors_
+        for (int i = 0; i < 100; i ++) {
+            col.AddDeploy(absl::StrCat("dp", i));
+            absl::SleepFor(absl::Milliseconds(1));
+        }
+    };
+
+    auto collect = [&col, &ts, &default_dp]() {
+        for (auto& row : ts) {
+            for (auto t : row) {
+                col.Collect(default_dp, t);
+                absl::SleepFor(absl::Milliseconds(1));
+            }
+        }
+    };
+
+    std::thread t1(collect);
+    std::thread t2(add_deploy);
+
+    t1.join();
+    t2.join();
+
+    auto rs = col.GetRows(default_dp);
+    ASSERT_TRUE(rs.ok());
+    ExpectRowsEq(helper_, default_dp, ts, rs.value());
+}
+
+TEST_F(DeployTimeCollectorTest, FailConditions) {
+    DeployQueryTimeCollector col;
+    std::string dp1 = "dp1";
+    std::string dp2 = "dp2";
+
+    ASSERT_TRUE(col.AddDeploy(dp1).ok());
+
+    ASSERT_TRUE(absl::IsAlreadyExists(col.AddDeploy(dp1)));
+
+    ASSERT_TRUE(absl::IsNotFound(col.Collect(dp2, absl::Seconds(1))));
+    ASSERT_TRUE(col.Collect(dp1, absl::Seconds(10)).ok());
+
+    ASSERT_TRUE(col.DeleteDeploy(dp1).ok());
+    ASSERT_TRUE(absl::IsNotFound(col.DeleteDeploy(dp2)));
+
+    ASSERT_TRUE(absl::IsNotFound(col.GetRows(dp1).status()));
 }
 
 }  // namespace statistics

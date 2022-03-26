@@ -58,6 +58,8 @@ class DeployQueryTimeCollector {
 
     absl::StatusOr<DeployResponseTimeRow> GetRow(const std::string& deploy_name, size_t idx) const;
 
+    absl::StatusOr<std::vector<DeployResponseTimeRow>> GetRows(const std::string& deploy_name);
+
     std::vector<DeployResponseTimeRow> GetRows() const;
 
  private:
