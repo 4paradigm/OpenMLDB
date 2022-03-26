@@ -61,11 +61,13 @@ TEST_F(TimeCollectorTest, StateAtomicityInOneBucketTest) {
     }
 
     uint32_t count = times.size();
-    uint64_t total = absl::ToInt64Microseconds(std::accumulate(times.begin(), times.end(), absl::Seconds(0)));
+    absl::Duration total = std::accumulate(times.begin(), times.end(), absl::Seconds(0));
 
     EXPECT_EQ(TIME_DISTRIBUTION_NEGATIVE_POWER_COUNT + 1, bucket_idx);
-    EXPECT_EQ(count, collector_->GetCount(bucket_idx));
-    EXPECT_EQ(total, collector_->GetTotal(bucket_idx));
+    auto row = collector_->GetRow(bucket_idx);
+    ASSERT_TRUE(row.ok());
+    EXPECT_EQ(count, row->count_);
+    EXPECT_EQ(total, row->total_);
 }
 
 TEST_F(TimeCollectorTest, StateAtomicityBetweenBucketsTest) {
@@ -150,12 +152,13 @@ TEST_F(TimeCollectorTest, StateAtomicityBetweenBucketsTest) {
     std::stringstream col_ss;
     for (auto idx = 0; idx < times.size(); ++idx) {
         uint32_t count = times[idx].size();
-        uint64_t total =
-            absl::ToInt64Microseconds(std::accumulate(times[idx].begin(), times[idx].end(), absl::Seconds(0)));
-        col_ss << "[" << collector_->GetUpperBound(idx) << ", " << collector_->GetCount(idx) << ", "
-               << absl::Microseconds(collector_->GetTotal(idx)) << "]" << std::endl;
-        EXPECT_EQ(count, collector_->GetCount(idx));
-        EXPECT_EQ(total, collector_->GetTotal(idx));
+        absl::Duration total = std::accumulate(times[idx].begin(), times[idx].end(), absl::Seconds(0));
+        auto row = collector_->GetRow(idx);
+        ASSERT_TRUE(row.ok());
+        col_ss << "[" << row->upper_bound_ << ", " << row.value().count_ << ", " << row.value().total_ << "]"
+               << std::endl;
+        EXPECT_EQ(count, row.value().count_);
+        EXPECT_EQ(total, row.value().total_);
     }
     LOG(INFO) << "Time distribution in collector:\n" << col_ss.str();
 }

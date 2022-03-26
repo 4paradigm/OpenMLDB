@@ -20,25 +20,30 @@ find_package(absl REQUIRED)
 find_package(GTest REQUIRED)
 find_library(GLOG_LIBRARY glog)
 
-set(LINK_LIBS absl::time absl::random_random ${GTEST_LIBRARIES} ${GLOG_LIBRARY})
+set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${GTEST_LIBRARIES} ${GLOG_LIBRARY})
 link_libraries(${LINK_LIBS})
 
-add_library(query_response_time STATIC ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time.cc)
+add_library(query_response_time STATIC ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time.cc ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time.cc)
 
-if(TESTING_ENABLE)
-  add_executable(query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time_test.cc)
-  target_link_libraries(query_response_time_test query_response_time)
+function(add_test_file TARGET_NAME SOURCE_NAME)
+  add_executable(${TARGET_NAME} ${SOURCE_NAME})
+  target_link_libraries(${TARGET_NAME} query_response_time)
   set_target_properties(
-    query_response_time_test
+    ${TARGET_NAME}
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
   add_test(
-    query_response_time_test
-    ${CMAKE_CURRENT_BINARY_DIR}/query_response_time_test
-    --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/query_response_time_test.xml
+    ${TARGET_NAME}
+    ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
+    --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.xml
   )
+endfunction(add_test_file)
+
+if(TESTING_ENABLE)
+  add_test_file(query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time_test.cc)
+  add_test_file(deploy_query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time_test.cc)
 
   if(CMAKE_PROJECT_NAME STREQUAL "openmldb")
     list(APPEND test_list query_response_time_test)

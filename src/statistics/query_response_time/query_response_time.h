@@ -20,6 +20,9 @@
 #include <atomic>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 
 namespace openmldb {
@@ -57,6 +60,9 @@ namespace statistics {
 struct ResponseTimeRow {
     ResponseTimeRow(absl::Duration upper_bound, uint32_t cnt, absl::Duration total)
         : upper_bound_(upper_bound), count_(cnt), total_(total) {}
+    ResponseTimeRow(const ResponseTimeRow& row)
+        : upper_bound_(row.upper_bound_), count_(row.count_), total_(row.total_) {}
+    virtual ~ResponseTimeRow() {}
 
     absl::Duration upper_bound_;
     uint32_t count_;
@@ -77,10 +83,12 @@ class TimeDistributionHelper {
     ~TimeDistributionHelper() {}
 
     /// \brief return upper bound for `idx` th time interval, idx start from 0
-    absl::Duration UpperBound(size_t idx) const;
+    absl::StatusOr<absl::Duration> UpperBound(size_t idx) const;
+
+    bool IndexOutOfBound(size_t idx) const { return idx >= BucketCount(); }
 
     /// \brief return number of time intervals in the whole distribution
-    uint32_t BucketCount() const;
+    uint32_t BucketCount() const { return bucket_count_; }
 
  private:
     void Setup();
@@ -98,6 +106,9 @@ class TimeCollector {
     // construct from fresh data
     TimeCollector();
 
+    // collector is not copyable
+    TimeCollector(const TimeCollector& c) = delete;
+
     // construct from existing data
     // TimeCollector(std::initializer_list<std::initializer_list<ResponseTimeRow>> data);
 
@@ -112,11 +123,20 @@ class TimeCollector {
     /// \brief helper function to get the bucket index for the given time duration
     size_t GetBucketIdx(absl::Duration time);
 
-    ResponseTimeRow GetResponseRow(size_t idx) const {
-        return {GetUpperBound(idx), GetCount(idx), GetTotalUnited(idx)};
+    uint32_t BucketCount() const { return helper_.BucketCount(); }
+
+    absl::StatusOr<ResponseTimeRow> GetRow(size_t idx) const {
+        auto bound = GetUpperBound(idx);
+        if (!bound.ok()) {
+            return bound.status();
+        }
+        return ResponseTimeRow{bound.value(), GetCount(idx), GetTotalUnited(idx)};
     }
 
-    absl::Duration GetUpperBound(size_t idx) const { return helper_.UpperBound(idx); }
+    absl::StatusOr<absl::Duration> GetUpperBound(size_t idx) const { return helper_.UpperBound(idx); }
+
+ private:
+    // unsafe methods
 
     uint32_t GetCount(size_t idx) const { return count_[idx]; }
 
@@ -124,9 +144,9 @@ class TimeCollector {
 
     absl::Duration GetTotalUnited(size_t idx) const { return absl::Microseconds(GetTotal(idx)); }
 
- private:
     void Setup();
 
+ private:
     TimeDistributionHelper helper_;
     std::atomic<uint32_t> count_[TIME_DISTRIBUTION_BUCKET_COUNT];
     std::atomic<uint64_t> total_[TIME_DISTRIBUTION_BUCKET_COUNT];

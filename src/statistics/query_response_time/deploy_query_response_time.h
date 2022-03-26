@@ -17,15 +17,61 @@
 #ifndef SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOY_QUERY_RESPONSE_TIME_H_
 #define SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOY_QUERY_RESPONSE_TIME_H_
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/synchronization/mutex.h"
+#include "statistics/query_response_time/query_response_time.h"
+
 namespace openmldb {
 namespace statistics {
 
+struct DeployResponseTimeRow : public ResponseTimeRow {
+    DeployResponseTimeRow(const std::string& name, absl::Duration time, uint32_t cnt, absl::Duration total)
+        : ResponseTimeRow(time, cnt, total), deploy_name_(name) {}
+    ~DeployResponseTimeRow() override {}
 
-class DeployQueryResponseTime {
-
+    const std::string deploy_name_;
 };
 
+inline bool operator==(const DeployResponseTimeRow& lhs, const DeployResponseTimeRow& rhs) {
+    return lhs.deploy_name_ == rhs.deploy_name_ && lhs.upper_bound_ == rhs.upper_bound_ && lhs.total_ == rhs.total_ &&
+           lhs.count_ == rhs.count_;
 }
-}
+
+class DeployQueryTimeCollector {
+ public:
+    DeployQueryTimeCollector() {}
+    // collector is not copyable
+    DeployQueryTimeCollector(const DeployQueryTimeCollector& c) = delete;
+    ~DeployQueryTimeCollector() {}
+
+    absl::Status Collect(const std::string& deploy_name, absl::Duration time);
+
+    absl::Status AddDeploy(const std::string& deploy_name);
+
+    absl::Status DeleteDeploy(const std::string& deploy_name);
+
+    absl::StatusOr<DeployResponseTimeRow> GetRow(const std::string& deploy_name, size_t idx) const;
+
+    std::vector<DeployResponseTimeRow> GetRows() const;
+
+ private:
+    absl::StatusOr<DeployResponseTimeRow> GetRowUnsafe(const std::string& deploy_name, size_t idx) const;
+
+    uint32_t GetRecordsCnt() const;
+
+ private:
+    std::unordered_map<std::string, std::shared_ptr<TimeCollector>> collectors_;
+    // reader/writer lock for map collectors_
+    mutable absl::Mutex mutex_;
+};
+
+}  // namespace statistics
+}  // namespace openmldb
 
 #endif  // SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOY_QUERY_RESPONSE_TIME_H_

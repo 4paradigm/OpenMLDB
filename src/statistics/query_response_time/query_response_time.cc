@@ -16,6 +16,8 @@
 
 #include "statistics/query_response_time/query_response_time.h"
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "glog/logging.h"
 
@@ -32,7 +34,7 @@ TimeCollector::TimeCollector()
 
 void TimeCollector::Collect(absl::Duration time) {
     for (size_t idx = 0; idx < helper_.BucketCount(); ++idx) {
-        if (time <= helper_.UpperBound(idx)) {
+        if (time <= helper_.UpperBound(idx).value()) {
             count_[idx] += 1;
             total_[idx] += absl::ToInt64Microseconds(time);
             break;
@@ -45,12 +47,14 @@ void TimeCollector::Flush() { Setup(); }
 size_t TimeCollector::GetBucketIdx(absl::Duration time) {
     size_t idx = 0;
     while (idx < helper_.BucketCount()) {
-        if (time <= helper_.UpperBound(idx)) {
+        // do not check the status from UpperBound since we assume it is always ok
+        if (time <= helper_.UpperBound(idx).value()) {
             return idx;
         }
         idx++;
     }
-    return helper_.BucketCount();
+    // compiler don't known but this line should never reach
+    return helper_.BucketCount() - 1;
 }
 
 void TimeCollector::Setup() {
@@ -60,16 +64,13 @@ void TimeCollector::Setup() {
     }
 }
 
-absl::Duration TimeDistributionHelper::UpperBound(size_t idx) const {
-    if (idx > bucket_count_) {
-        DCHECK(false) << "index " << idx << " out of bound";
-        return absl::Seconds(0);
+absl::StatusOr<absl::Duration> TimeDistributionHelper::UpperBound(size_t idx) const {
+    if (IndexOutOfBound(idx)) {
+        return absl::OutOfRangeError(absl::StrCat("idx ", idx, " out of bucket count ", bucket_count_));
     }
 
     return upper_bounds_[idx];
 }
-
-uint32_t TimeDistributionHelper::BucketCount() const { return bucket_count_; }
 
 void TimeDistributionHelper::Setup() {
     absl::Duration bound = absl::Microseconds(1);

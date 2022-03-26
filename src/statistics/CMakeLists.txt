@@ -17,3 +17,7 @@ cmake_minimum_required(VERSION 3.13)
 project(statistics)
 
 add_subdirectory(query_response_time)
+
+if(CMAKE_PROJECT_NAME STREQUAL "openmldb")
+  set(test_list ${test_list} PARENT_SCOPE)
+endif()
