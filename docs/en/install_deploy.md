@@ -173,20 +173,18 @@ wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14
 cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
-
 #### 2. Modify the configuration file
 Open the file `conf/zoo.cfg` and modify `dataDir` and `clientPort`
 ```
 dataDir=./data
 clientPort=7181
 ```
-
 #### 3. Start Zookeeper
 ```
 sh bin/zkServer.sh start
 ```
-Deploy the zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)
 
+Deploy the zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)
 
 ### Deploy tablet
 #### 1 Download the OpenMLDB deployment package
@@ -247,7 +245,6 @@ cd openmldb-ns-0.4.3
 sh bin/start.sh start nameserver
 ```
 Repeat the above steps to deploy multiple nameservers
-
 #### 4 Check if the service is started
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -257,21 +254,18 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.3
   172.27.128.31:6527 leader
 ```
 
-
 ### Deploy apiserver
 
 APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
 Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
 
 #### 1 Download the OpenMLDB deployment package
-
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-apiserver-0.4.3
 cd openmldb-apiserver-0.4.3
 ```
-
 #### 2 Modify the configuration file conf/apiserver.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
@@ -330,11 +324,10 @@ offline.data.prefix=file:///tmp/openmldb_offline_storage/
 spark.master=local
 spark.home=
 ```
-
 #### 3 Start the service
-
+```bash
 bin/start.sh start taskmanager
-``
+```
 #### 4 Check if the service is started
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
