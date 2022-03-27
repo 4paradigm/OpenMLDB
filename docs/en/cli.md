@@ -1,4 +1,4 @@
-# OpenMLDB operation and maintenance CLI
+# OpenMLDB operation CLI
 
 * [ns client](#ns-client)
 * [tablet client](#tablet-client)
