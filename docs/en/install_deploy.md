@@ -14,9 +14,9 @@ The precompiled OpenMLDB deployment package is used by default in this documenta
 
 ## Configure environment (Linux)
 
-### Disable OS swap
+### Disable system swap
 
-Check whether the current system swap is closed
+Check if the swap area is disabled.
 
 ```bash
 $ free
@@ -25,7 +25,7 @@ Mem: 264011292 67445840 2230676 3269180 194334776 191204160
 Swap: 0 0 0
 ```
 
-If the swap item is all 0, it means it has been closed, otherwise run the following command to close the swap
+If the swap item is all 0, it means it has been closed, otherwise run the following command to disable all swap
 
 ```
 $ swapoff -a
@@ -58,11 +58,11 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
-### Time and zone settings
+### Time and Zone settings
 
 The OpenMLDB data expiration deletion mechanism relies on the system clock. If the system clock is incorrect, the expired data will not be deleted or the data that has not expired will be deleted.
 
-``bash
+```bash
 $date
 Wed Aug 22 16:33:50 CST 2018
 ```
