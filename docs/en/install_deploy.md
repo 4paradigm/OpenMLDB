@@ -69,53 +69,73 @@ Wed Aug 22 16:33:50 CST 2018
 Please make sure the time is correct
 
 ## Deploy standalone version
+
 OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
 **Note:** It is best to deploy different components in different directories for easy upgrades individually
 
 ### Deploy tablet
+
 #### 1 Download the OpenMLDB deployment package
+
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-tablet-0.4.3
 cd openmldb-tablet-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/standalone_tablet.flags
+
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
+
 ```
 --endpoint=172.27.128.33:9527
 ```
+
 **Notice:**
 * The endpoint cannot use 0.0.0.0 and 127.0.0.1
 * If the domain name is used here, all the machines where the client using openmldb is located must be equipped with the corresponding host. Otherwise, it will not be accessible.
+
 #### 3 Start the service
+
 ```
 sh bin/start.sh start standalone_tablet
 ```
+
 **Note: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail**
 
 ### Deploy nameserver
+
 #### 1 Download the OpenMLDB deployment package
+
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-ns-0.4.3
 cd openmldb-ns-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/standalone_nameserver.flags
+
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * The tablet configuration item needs to be configured with the address of the tablet that was started earlier
+
 ```
 --endpoint=172.27.128.33:6527
 --tablet=172.27.128.33:9527
 ```
+
 **Note: endpoint cannot use 0.0.0.0 and 127.0.0.1**
+
 #### 3 Start the service
+
 ```
 sh bin/start.sh start standalone_nameserver
 ```
+
 #### 4 Check if the service is started
+
 ```bash
 $ ./bin/openmldb --host=172.27.128.33 --port=6527
 > show databases;
@@ -160,26 +180,34 @@ sh bin/start.sh start standalone_apiserver
 ```
 
 ## Deploy cluster version
+
 OpenMLDB cluster version needs to deploy zookeeper, nameserver, tablet and other modules. Among them, zookeeper is used for service discovery and saving metadata information. The nameserver is used to manage the tablet, achieve high availability and failover. Tablets are used to store data and synchronize data between master and slave. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
 **Note:** It is best to deploy different components in different directories for easy upgrades individually. If multiple tablets are deployed on the same machine, they also need to be deployed in different directories
 
 ### Deploy zookeeper
+
 It is recommended to deploy version 3.4.14. If there is an available zookeeper cluster, you can skip this step
 
 #### 1. Download the zookeeper installation package
+
 ```
 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
+
 #### 2. Modify the configuration file
+
 Open the file `conf/zoo.cfg` and modify `dataDir` and `clientPort`
+
 ```
 dataDir=./data
 clientPort=7181
 ```
+
 #### 3. Start Zookeeper
+
 ```
 sh bin/zkServer.sh start
 ```
@@ -187,17 +215,22 @@ sh bin/zkServer.sh start
 Deploy the zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)
 
 ### Deploy tablet
+
 #### 1 Download the OpenMLDB deployment package
+
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-tablet-0.4.3
 cd openmldb-tablet-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/tablet.flags
+
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify zk_cluster to the already started zk cluster address
 * If you share zk with other OpenMLDB, you need to modify zk_root_path
+
 ```
 --endpoint=172.27.128.33:9527
 --role=tablet
@@ -206,14 +239,18 @@ cd openmldb-tablet-0.4.3
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
 --zk_root_path=/openmldb_cluster
 ```
+
 **Notice:**
 * The endpoint cannot use 0.0.0.0 and 127.0.0.1
 * If the domain name is used here, all the machines where the client using openmldb is located must be equipped with the corresponding host. Otherwise, it will not be accessible.
 * The configuration of zk_cluster and zk_root_path is consistent with that of nameserver
+
 #### 3 Start the service
+
 ```
 sh bin/start.sh start tablet
 ```
+
 Repeat the above steps to deploy multiple tablets
 
 **Notice:**
@@ -222,30 +259,41 @@ Repeat the above steps to deploy multiple tablets
 * If you need to deploy multiple tablets, deploy all the tablets before deploying the nameserver
 
 ### Deploy nameserver
+
 #### 1 Download the OpenMLDB deployment package
+
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-ns-0.4.3
 cd openmldb-ns-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/nameserver.flags
+
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify zk_cluster to the address of the zk cluster that has been started. ip is the ip of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, separate it with commas, and the format is ip1:port1,ip2:port2, ip3:port3
 * If you share zk with other OpenMLDB, you need to modify zk_root_path
+
 ```
 --endpoint=172.27.128.31:6527
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
 --zk_root_path=/openmldb_cluster
 --enable_distsql=true
 ```
-**Note: endpoint cannot use 0.0.0.0 and 127.0.0.1**
+
+**Note**: endpoint cannot use 0.0.0.0 and 127.0.0.1
+
 #### 3 Start the service
+
 ```
 sh bin/start.sh start nameserver
 ```
+
 Repeat the above steps to deploy multiple nameservers
+
 #### 4 Check if the service is started
+
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=ns_client
 > shown
@@ -260,12 +308,14 @@ APIServer is responsible for receiving http requests, forwarding them to OpenMLD
 Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
 
 #### 1 Download the OpenMLDB deployment package
+
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz
 tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-apiserver-0.4.3
 cd openmldb-apiserver-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/apiserver.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
@@ -280,7 +330,6 @@ cd openmldb-apiserver-0.4.3
 ```
 
 **Notice:**
-
 * The endpoint cannot use 0.0.0.0 and 127.0.0.1. You can also choose not to set `--endpoint`, and only configure the port number `--port`.
 * You can also configure the number of threads of APIServer, `--thread_pool_size`, the default is 16.
 
@@ -295,6 +344,7 @@ sh bin/start.sh start apiserver
 ### Deploy TaskManager
 
 #### 1 Download the OpenMLDB deployment package and the Spark distribution optimized for feature engineering
+
 ```
 wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.4.3/spark-3.0.0-bin-openmldbspark.tgz
 tar -zxvf spark-3.0.0-bin-openmldbspark.tgz
@@ -303,6 +353,7 @@ tar -zxvf openmldb-0.4.3-linux.tar.gz
 mv openmldb-0.4.3-linux openmldb-taskmanager-0.4.3
 cd openmldb-taskmanager-0.4.3
 ```
+
 #### 2 Modify the configuration file conf/taskmanager.properties
 
 * Modify server.host. host is the ip/domain name of the deployment machine.
@@ -324,11 +375,15 @@ offline.data.prefix=file:///tmp/openmldb_offline_storage/
 spark.master=local
 spark.home=
 ```
+
 #### 3 Start the service
+
 ```bash
 bin/start.sh start taskmanager
 ```
+
 #### 4 Check if the service is started
+
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
 > show jobs;
