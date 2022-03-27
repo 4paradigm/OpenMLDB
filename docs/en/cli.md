@@ -23,7 +23,7 @@ The `use` command can switch to a database
 
 View all tables or specify a table
 
-Command format: `showtable \[table\_name\]`
+Command format: `showtable [table_name]`
 
 ```
 172.24.4.55:6531 demo_db > showtable
@@ -55,7 +55,8 @@ View tablet information (if the serverName and automatic local ip function are u
 
 Add replica
 
-Command format: `addreplica table\_name pid\_group endpoint`
+Command format: `addreplica table_name pid_group endpoint`
+
 * table\_name table name
 * pid\_group shard id collection. There can be the following situations
     * a single shard
@@ -91,7 +92,7 @@ AddReplica ok
 
 Delete replica
 
-Command format: `delreplica table\_name pid\_group endpoint`
+Command format: `delreplica table_name pid_group endpoint`
 
 * table\_name table name
 * pid\_group shard id collection. There can be the following situations
@@ -134,7 +135,7 @@ DelReplica ok
 
 copy migration
 
-Command format: `migrate src\_endpoint table\_name pid\_group des\_endpoint`
+Command format: `migrate src_endpoint table_name pid_group des_endpoint`
 
 * src\_endpoint The node that needs to be checked out
 * table\_name table name
@@ -157,7 +158,7 @@ partition migrate ok
 
 Get configuration information, currently only supports auto\_failover
 
-Command format: `confget \[conf\_name\]`
+Command format: `confget [conf_name]`
 
 * conf\_name configuration item name, optional
 
@@ -176,7 +177,7 @@ Command format: `confget \[conf\_name\]`
 
 Modify configuration information, currently only supports auto\_failover
 
-Command format: `confset conf\_name value`
+Command format: `confset conf_name value`
 
 * conf\_name configuration item name
 * value The value set by the configuration item
@@ -239,7 +240,7 @@ recover endpoint ok
 
 Perform a master-slave switchover for a specified shard. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: `changeleader table\_name pid [candidate\_leader]`
+Command format: `changeleader table_name pid [candidate_leader]`
 
 * table\_name table name
 * pid shard id
@@ -258,7 +259,7 @@ change leader ok
 
 Restore a shard data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: `recovertable table\_name pid endpoint`
+Command format: `recovertable table_name pid endpoint`
 
 * table\_name table name
 * pid shard id
@@ -286,7 +287,7 @@ Cancel op ok!
 
 Display operation execution information
 
-Command format: `showopstatus \[table\_name pid\]`
+Command format: `showopstatus [table_name pid]`
 
 * table\_name table name
 * pid shard id
@@ -325,7 +326,7 @@ Command format: `showopstatus \[table\_name pid\]`
 
 Modify shard alive state
 
-Command format: `updatetablealive table\_name pid endpoint is\_alive`
+Command format: `updatetablealive table_name pid endpoint is_alive`
 
 * table\_name table name
 * pid fragment id, if you want to modify all fragments of a table, specify pid as *
@@ -384,7 +385,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 1. Load an existing table
 
-Command format: `loadtable table\_name tid pid ttl segment\_cnt`
+Command format: `loadtable table_name tid pid ttl segment_cnt`
 
 * table\_name table name
 * tid specifies the id of the table
