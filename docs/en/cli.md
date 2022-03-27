@@ -21,7 +21,7 @@ The use command can switch to a database
 
 ### showtable
 
-showtable can view all tables or specify a table
+View all tables or specify a table
 
 Command format: showtable \[table\_name\]
 
@@ -90,7 +90,7 @@ AddReplica ok
 
 #### delreplica
 
-delete copy
+Delete replica
 
 Command format: delreplica table\_name pid\_group endpoint
 
@@ -154,7 +154,7 @@ partition migrate ok
 partition migrate ok
 ```
 
-####confget
+#### confget
 
 Get configuration information, currently only supports auto\_failover
 
@@ -189,7 +189,7 @@ set auto_failover ok
 
 #### offlineendpoint
 
-offline node. This command is asynchronous and after the successful return, you can view the running status through showopstatus
+Offline node. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
 Command format: offlineendpoint endpoint [concurrency]
 
@@ -234,9 +234,7 @@ recover endpoint ok
 recover endpoint ok
 ```
 
-**Note:**
-
-1. **Make sure the node is online before executing this command\(showtablet command to view\)**
+**Notice:** Make sure the node is online before executing this command\(showtablet command to view\)
 
 #### changeleader
 
@@ -341,7 +339,8 @@ update ok
 > updatetablealive test 1 172.27.128.31:8542 no
 update ok
 ```
-**Note: This command cannot be used for failure recovery. It is generally used to cut traffic. The operation method is to change the alive state of a node table to no and read requests will not fall on the node**
+
+**Notice:** This command cannot be used for failure recovery. It is generally used to cut traffic. The operation method is to change the alive state of a node table to no and read requests will not fall on the node
 
 #### showns
 
