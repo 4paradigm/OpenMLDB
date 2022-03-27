@@ -4,7 +4,7 @@
 
 * Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to function correctly.
 * Memory: Depends on the amount of data, 8 GB and above is recommended.
-oyment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-darwin.tar.* CPU:
+* CPU:
   * Currently only the x86 architecture is supported, and architectures such as ARM are not currently supported.
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
 
