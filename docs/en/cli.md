@@ -13,7 +13,7 @@ $ ./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/onebox --role=ns
 
 #### use
 
-The use command can switch to a database
+The `use` command can switch to a database
 
 ```
 > use demodb
@@ -23,7 +23,7 @@ The use command can switch to a database
 
 View all tables or specify a table
 
-Command format: showtable \[table\_name\]
+Command format: `showtable \[table\_name\]`
 
 ```
 172.24.4.55:6531 demo_db > showtable
@@ -55,8 +55,7 @@ View tablet information (if the serverName and automatic local ip function are u
 
 Add replica
 
-Command format: addreplica table\_name pid\_group endpoint
-
+Command format: `addreplica table\_name pid\_group endpoint`
 * table\_name table name
 * pid\_group shard id collection. There can be the following situations
     * a single shard
@@ -92,7 +91,7 @@ AddReplica ok
 
 Delete replica
 
-Command format: delreplica table\_name pid\_group endpoint
+Command format: `delreplica table\_name pid\_group endpoint`
 
 * table\_name table name
 * pid\_group shard id collection. There can be the following situations
@@ -135,7 +134,7 @@ DelReplica ok
 
 copy migration
 
-Command format: migrate src\_endpoint table\_name pid\_group des\_endpoint
+Command format: `migrate src\_endpoint table\_name pid\_group des\_endpoint`
 
 * src\_endpoint The node that needs to be checked out
 * table\_name table name
@@ -158,7 +157,7 @@ partition migrate ok
 
 Get configuration information, currently only supports auto\_failover
 
-Command format: confget \[conf\_name\]
+Command format: `confget \[conf\_name\]`
 
 * conf\_name configuration item name, optional
 
@@ -177,7 +176,7 @@ Command format: confget \[conf\_name\]
 
 Modify configuration information, currently only supports auto\_failover
 
-Command format: confset conf\_name value
+Command format: `confset conf\_name value`
 
 * conf\_name configuration item name
 * value The value set by the configuration item
@@ -191,7 +190,7 @@ set auto_failover ok
 
 Offline node. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: offlineendpoint endpoint [concurrency]
+Command format: `offlineendpoint endpoint [concurrency]`
 
 * endpoint is the endpoint of the failed node. This command will perform the following operations on all shards under the node:
   * If it is the master, execute the re-election of the master
@@ -219,7 +218,7 @@ After the command is executed successfully, all shards will have leaders in the 
 
 Restore node data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: recoverendpoint endpoint [need_restore] [concurrency]
+Command format: `recoverendpoint endpoint [need_restore] [concurrency]`
 
 * endpoint is the endpoint of the node to restore
 * Whether the need_restore table topology is to be restored to the original state, this configuration is optional, the default is false. If set to true, a shard is the leader under this node, and it is still the leader after recoverendpoint is executed to restore data
@@ -240,7 +239,7 @@ recover endpoint ok
 
 Perform a master-slave switchover for a specified shard. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: changeleader table\_name pid [candidate\_leader]
+Command format: `changeleader table\_name pid [candidate\_leader]`
 
 * table\_name table name
 * pid shard id
@@ -259,7 +258,7 @@ change leader ok
 
 Restore a shard data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
-Command format: recovertable table\_name pid endpoint
+Command format: `recovertable table\_name pid endpoint`
 
 * table\_name table name
 * pid shard id
@@ -274,7 +273,7 @@ recover table ok
 
 Cancels an ongoing or pending operation. After cancellation, the state of the task changes to kCanceled
 
-Command format: cancelop op\_id
+Command format: `cancelop op\_id`
 
 * op\_id the operation id to cancel
 
@@ -287,7 +286,7 @@ Cancel op ok!
 
 Display operation execution information
 
-Command format: showopstatus \[table\_name pid\]
+Command format: `showopstatus \[table\_name pid\]`
 
 * table\_name table name
 * pid shard id
@@ -326,7 +325,7 @@ Command format: showopstatus \[table\_name pid\]
 
 Modify shard alive state
 
-Command format: updatetablealive table\_name pid endpoint is\_alive
+Command format: `updatetablealive table\_name pid endpoint is\_alive`
 
 * table\_name table name
 * pid fragment id, if you want to modify all fragments of a table, specify pid as *
@@ -346,7 +345,7 @@ update ok
 
 Display the nameserver node and its role (if the serverName and automatic local ip function are used, the endpoint is serverName, and the real_endpoint is "-")
 
-Command format: showns
+Command format: `showns]`
 
 ```
 >showns
@@ -385,7 +384,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 1. Load an existing table
 
-Command format: loadtable table\_name tid pid ttl segment\_cnt
+Command format: `loadtable table\_name tid pid ttl segment\_cnt`
 
 * table\_name table name
 * tid specifies the id of the table
@@ -402,7 +401,7 @@ loadtable will fail if existing table is in memory
 
 Change the leader role of the table
 
-Command format: changerole tid pid role \[term\]
+Command format: `changerole tid pid role \[term\]`
 
 * tid specifies the id of the table
 * pid specifies the shard id of the table
@@ -422,7 +421,7 @@ ChangeRole ok
 
 Get table information
 
-Command format: gettablestatus \[tid pid\]
+Command format: `gettablestatus \[tid pid\]`
 
 * tid specifies the id of the table
 * pid specifies the shard id of the table
@@ -443,7 +442,7 @@ Command format: gettablestatus \[tid pid\]
 
 View slave node information
 
-Command format: getfollower tid pid
+Command format: `getfollower tid pid`
 
 * tid specifies the id of the table
 * pid specifies the shard id of the table
