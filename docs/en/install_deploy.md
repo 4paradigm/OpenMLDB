@@ -72,7 +72,7 @@ Please make sure the time is correct
 
 OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
-**Note:** It is best to deploy different components in different directories for easy upgrades individually
+**Notice:** It is best to deploy different components in different directories for easy upgrades individually
 
 ### Deploy tablet
 
@@ -103,7 +103,7 @@ cd openmldb-tablet-0.4.3
 sh bin/start.sh start standalone_tablet
 ```
 
-**Note: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail**
+**Notice**: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail
 
 ### Deploy nameserver
 
@@ -126,7 +126,7 @@ cd openmldb-ns-0.4.3
 --tablet=172.27.128.33:9527
 ```
 
-**Note: endpoint cannot use 0.0.0.0 and 127.0.0.1**
+**Notice**: endpoint cannot use 0.0.0.0 and 127.0.0.1
 
 #### 3 Start the service
 
@@ -183,7 +183,7 @@ sh bin/start.sh start standalone_apiserver
 
 OpenMLDB cluster version needs to deploy zookeeper, nameserver, tablet and other modules. Among them, zookeeper is used for service discovery and saving metadata information. The nameserver is used to manage the tablet, achieve high availability and failover. Tablets are used to store data and synchronize data between master and slave. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
-**Note:** It is best to deploy different components in different directories for easy upgrades individually. If multiple tablets are deployed on the same machine, they also need to be deployed in different directories
+**Notice:** It is best to deploy different components in different directories for easy upgrades individually. If multiple tablets are deployed on the same machine, they also need to be deployed in different directories
 
 ### Deploy zookeeper
 
@@ -282,7 +282,7 @@ cd openmldb-ns-0.4.3
 --enable_distsql=true
 ```
 
-**Note**: endpoint cannot use 0.0.0.0 and 127.0.0.1
+**Notice:** endpoint cannot use 0.0.0.0 and 127.0.0.1
 
 #### 3 Start the service
 
@@ -339,7 +339,7 @@ cd openmldb-apiserver-0.4.3
 sh bin/start.sh start apiserver
 ```
 
-**Note**: If the core is dropped when the nameserver/tablet/apiserver is started through the release package on the Linux platform, it is very likely that the instruction set is incompatible, and you need to compile openmldb through the source code. For source code compilation refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
+**Notice:** If the core is dropped when the nameserver/tablet/apiserver is started through the release package on the Linux platform, it is very likely that the instruction set is incompatible, and you need to compile openmldb through the source code. For source code compilation refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
 
 ### Deploy TaskManager
 
