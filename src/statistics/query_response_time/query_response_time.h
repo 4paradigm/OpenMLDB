@@ -55,7 +55,7 @@ namespace statistics {
 #define TIME_DISTRIBUTION_BUCKET_COUNT \
     (TIME_DISTRIBUTION_NEGATIVE_POWER_COUNT + TIME_DISTRIBUTION_NON_NEGATIVE_POWER_COUNT + 1)
 
-#define MAX_STRING "MAX"
+#define MAX_STRING "inf"
 
 struct ResponseTimeRow {
     ResponseTimeRow(absl::Duration upper_bound, uint32_t cnt, absl::Duration total)
@@ -123,6 +123,8 @@ class TimeCollector {
 
     /// \brief reset collector states and start a fresh one
     void Flush();
+
+    absl::StatusOr<ResponseTimeRow> Flush(size_t idx);
 
     /// \brief helper function to get the bucket index for the given time duration
     size_t GetBucketIdx(absl::Duration time);

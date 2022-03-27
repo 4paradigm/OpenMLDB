@@ -89,6 +89,22 @@ std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::GetRows() const {
     return rows;
 }
 
+std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::Flush() {
+    absl::ReaderMutexLock lock(&mutex_);
+
+    std::vector<DeployResponseTimeRow> rows;
+    rows.reserve(GetRecordsCnt());
+    for (auto& kv : collectors_) {
+        for (auto idx = 0; idx < kv.second->BucketCount(); ++idx) {
+            auto row = kv.second->Flush(idx);
+            rows.emplace_back(kv.first, row->upper_bound_, row->count_, row->total_);
+        }
+    }
+
+    return rows;
+}
+
+
 absl::StatusOr<DeployResponseTimeRow> DeployQueryTimeCollector::GetRowUnsafe(const std::string& deploy_name,
                                                                        size_t idx) const {
     auto it = collectors_.find(deploy_name);

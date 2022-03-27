@@ -21,6 +21,8 @@
 #include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory>
+#include "absl/time/time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -55,6 +57,7 @@
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
+#include "absl/cleanup/cleanup.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::openmldb::base::ReturnCode;
@@ -111,6 +114,8 @@ namespace tablet {
 static const std::string SERVER_CONCURRENCY_KEY = "server";  // NOLINT
 static const uint32_t SEED = 0xe17a1465;
 
+static constexpr const char DEPLOY_STATS[] = "deploy_stats";
+
 TabletImpl::TabletImpl()
     : tables_(),
       mu_(),
@@ -159,6 +164,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     global_variables_ = std::make_shared<std::map<std::string, std::string>>();
     global_variables_->emplace("execute_mode", "offline");
     global_variables_->emplace("enable_trace", "false");
+
+    deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
+
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
     if (!zk_cluster.empty()) {
@@ -216,6 +224,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
+    task_pool_.DelayTask(2000, boost::bind(&TabletImpl::ScheduleSyncDeployStats, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
     }
@@ -1624,6 +1633,15 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
         session.EnableDebug();
     }
     bool is_procedure = request->is_procedure();
+
+    absl::Time start = absl::Now();
+    const std::string deploy_name = absl::StrCat(request->db(), ".", request->sp_name());
+    absl::Cleanup deploy_collect_task = [this, &deploy_name, start]() {
+        if (this->IsCollectDeployStatsEnabled()) {
+            this->CollectDeployStats(deploy_name, start);
+        }
+    };
+
     if (is_procedure) {
         std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
         {
@@ -4859,6 +4877,16 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info_impl, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
 
+    if (sp_info.type() == type::ProcedureType::kReqDeployment) {
+        auto collector_key = absl::StrCat(db_name, ".", sp_name);
+        auto s = deploy_collector_->AddDeploy(collector_key);
+        if (!s.ok()) {
+            LOG(ERROR) << "[ERROR] add deploy collector: " << s;
+        } else {
+            LOG(INFO) << "added deploy collector for " << collector_key;
+        }
+    }
+
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
     LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
@@ -4872,6 +4900,14 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
         LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
+    }
+
+    auto collector_key = absl::StrCat(db_name, ".", sp_name);
+    auto s = deploy_collector_->DeleteDeploy(collector_key);
+    if (!s.ok()) {
+        LOG(ERROR) << "[ERROR] delete deploy collector: " << s;
+    } else {
+        LOG(INFO) << "deleted deploy collector for " << collector_key;
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -4959,6 +4995,16 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     }
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
+
+    if (sp_info->GetType() == hybridse::sdk::kReqDeployment) {
+        auto collector_key = absl::StrCat(db_name, ".", sp_name);
+        auto s = deploy_collector_->AddDeploy(collector_key);
+        if (!s.ok()) {
+            LOG(ERROR) << "[ERROR] add deploy collector: " << s;
+        } else {
+            LOG(INFO) << "added deploy collector for " << collector_key;
+        }
+    }
     LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 
@@ -5003,6 +5049,89 @@ void TabletImpl::GetBulkLoadInfo(RpcController* controller, const ::openmldb::ap
 
 std::string TabletImpl::GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid) {
     return root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+}
+
+bool TabletImpl::IsCollectDeployStatsEnabled() const {
+    auto p = std::atomic_load_explicit(&global_variables_, std::memory_order_relaxed);
+    auto it = p->find(DEPLOY_STATS);
+    return it != p->end() && (it->second == "true" || it->second == "on");
+}
+
+void TabletImpl::CollectDeployStats(const std::string& deploy_name, absl::Time start_time) {
+    absl::Time now = absl::Now();
+    absl::Duration time = now - start_time;
+    auto s = deploy_collector_->Collect(deploy_name, time);
+    if (!s.ok()) {
+        LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
+    }
+    LOG(INFO) << "collected " << deploy_name << ": " << time;
+}
+
+void TabletImpl::SyncDeployStats() {
+    if (!IsCollectDeployStatsEnabled()) {
+        LOG(INFO) << "deploy stats not enabled";
+        return;
+    }
+    std::string query_deploy_stats =
+        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
+    hybridse::sdk::Status s;
+    auto rs = sr_->ExecuteSQLParameterized("", query_deploy_stats, {}, &s);
+    if (!s.IsOK()) {
+        LOG(ERROR) << "[ERROR] querying DEPLOY_RESPONSE_TIME" << s.msg;
+        return;
+    }
+
+    std::map<std::string, std::pair<uint32_t, absl::Duration>> old_stats;
+    while (rs->Next()) {
+        auto name = rs->GetAsStringUnsafe(0);
+        auto time = rs->GetAsStringUnsafe(1);
+        int32_t cnt = rs->GetInt32Unsafe(2);
+        auto total = rs->GetAsStringUnsafe(3);
+        auto total_united = absl::InfiniteDuration();
+        if (total != MAX_STRING) {
+            total_united = absl::Microseconds(std::stoll(total));
+        }
+
+        std::string key = absl::StrCat(name, "_", time);
+
+        old_stats[key] = std::make_pair(cnt, total_united);
+    }
+
+    std::vector<::openmldb::statistics::DeployResponseTimeRow> rows = deploy_collector_->Flush();
+    std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
+                                                  nameserver::DEPLOY_RESPONSE_TIME, " values ");
+    for (auto& row : rows) {
+        std::string time = MAX_STRING;
+        if (row.upper_bound_ != absl::InfiniteDuration()) {
+            time = std::to_string(absl::ToInt64Microseconds(row.upper_bound_));
+        }
+        auto key = absl::StrCat(row.deploy_name_, "_", time);
+        auto it = old_stats.find(key);
+        if (it != old_stats.end()) {
+            if (row.count_ == 0) {
+                // don't update table only if there is no incremental data, and there is record already in table
+                continue;
+            }
+            row.count_ += it->second.first;
+            row.total_ += it->second.second;
+        }
+
+        auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row.deploy_name_, "', '",
+                                       time, "', ", row.count_,
+                                       ",'", std::to_string(absl::ToInt64Microseconds(row.total_)), "' )");
+
+        hybridse::sdk::Status st;
+        LOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
+        sr_->ExecuteInsert("", insert_sql, &st);
+        if (!st.IsOK()) {
+            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
+        }
+    }
+}
+
+void TabletImpl::ScheduleSyncDeployStats() {
+    SyncDeployStats();
+    task_pool_.DelayTask(2000, boost::bind(&TabletImpl::ScheduleSyncDeployStats, this));
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,

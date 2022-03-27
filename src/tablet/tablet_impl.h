@@ -31,8 +31,11 @@
 #include "base/spinlock.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
+#include "nameserver/system_table.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "sdk/sql_cluster_router.h"
+#include "statistics/query_response_time/deploy_query_response_time.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/bulk_load_mgr.h"
@@ -41,8 +44,6 @@
 #include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
-#include "sdk/sql_cluster_router.h"
-#include "nameserver/system_table.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -390,6 +391,16 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
 
+    bool IsCollectDeployStatsEnabled() const;
+
+    // collect deploy statistics into memory
+    void CollectDeployStats(const std::string& deploy_name, absl::Time start_time);
+
+    // write deploy statistics into table
+    void SyncDeployStats();
+
+    void ScheduleSyncDeployStats();
+
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
@@ -432,6 +443,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
+
+    std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
 };
 
 }  // namespace tablet

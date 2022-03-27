@@ -44,6 +44,19 @@ void TimeCollector::Collect(absl::Duration time) {
 
 void TimeCollector::Flush() { Setup(); }
 
+absl::StatusOr<ResponseTimeRow> TimeCollector::Flush(size_t idx) {
+    auto bound = GetUpperBound(idx);
+    if (!bound.ok()) {
+        return bound.status();
+    }
+
+    ResponseTimeRow row(bound.value(), GetCount(idx), GetTotalUnited(idx));
+
+    count_[idx] = 0;
+    total_[idx] = 0;
+    return row;
+}
+
 size_t TimeCollector::GetBucketIdx(absl::Duration time) {
     size_t idx = 0;
     while (idx < helper_.BucketCount()) {

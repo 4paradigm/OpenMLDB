@@ -62,6 +62,8 @@ class DeployQueryTimeCollector {
 
     std::vector<DeployResponseTimeRow> GetRows() const;
 
+    std::vector<DeployResponseTimeRow> Flush();
+
  private:
     absl::StatusOr<DeployResponseTimeRow> GetRowUnsafe(const std::string& deploy_name, size_t idx) const;
 

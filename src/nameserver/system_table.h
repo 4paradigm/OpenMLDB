@@ -141,7 +141,6 @@ class SystemTable {
             }
             case SystemTableType::kDeployResponseTime: {
                 SetColumnDesc("DEPLOY_NAME", type::DataType::kString, table_info->add_column_desc());
-                SetColumnDesc("DEPLOY_SQL", type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("TIME", type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("COUNT", type::DataType::kInt, table_info->add_column_desc());
                 SetColumnDesc("TOTAL", type::DataType::kString, table_info->add_column_desc());

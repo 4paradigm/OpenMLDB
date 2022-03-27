@@ -100,6 +100,11 @@ std::vector<absl::Duration> GenTimes(absl::BitGenRef gen, uint32_t cnt, absl::Du
     return GenTimes(gen, cnt, start, end);
 }
 
+static const std::vector<std::vector<absl::Duration>>& InitialTimeDistribution() {
+    static const std::vector<std::vector<absl::Duration>> time_dis(TIME_DISTRIBUTION_BUCKET_COUNT);
+    return time_dis;
+}
+
 // generate random time distribution the same as TimeCollector do inside
 // each row represent a time interval as TimeCollector
 // each row's size is random from 0 to 10
@@ -274,9 +279,15 @@ TEST_F(DeployTimeCollectorTest, ReadWriteSafe) {
     t1.join();
     t2.join();
 
-    auto rs = col.GetRows(default_dp);
-    ASSERT_TRUE(rs.ok());
-    ExpectRowsEq(helper_, default_dp, ts, rs.value());
+    auto rs1 = col.GetRows(default_dp);
+    ASSERT_TRUE(rs1.ok());
+    ExpectRowsEq(helper_, default_dp, ts, rs1.value());
+
+    auto rs2 = col.Flush();
+
+    auto rs3 = col.GetRows(default_dp);
+    ASSERT_TRUE(rs3.ok());
+    ExpectRowsEq(helper_, default_dp, InitialTimeDistribution(), rs3.value());
 }
 
 TEST_F(DeployTimeCollectorTest, FailConditions) {
