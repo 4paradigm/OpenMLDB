@@ -90,7 +90,7 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
         row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
         row_builder.AppendString("id1", 3);
         row_builder.AppendString("id2", 3);
-        row_builder.AppendTimestamp(i * window_size);
+        row_builder.AppendTimestamp(static_cast<int64_t>(i) * window_size);
         row_builder.AppendInt32(i);
         row_builder.AppendInt16(i);
         row_builder.AppendInt64(i);
@@ -272,7 +272,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
             row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
             row_builder.AppendString("id1", 3);
             row_builder.AppendString("id2", 3);
-            row_builder.AppendTimestamp(i);
+            row_builder.AppendTimestamp(static_cast<int64_t>(i));
             row_builder.AppendInt32(i);
             row_builder.AppendInt16(i);
             row_builder.AppendInt64(i);
@@ -328,7 +328,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
-        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col7", "sum", "1s", &last_buffer));
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col7", "sum", "1d", &last_buffer));
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
         ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
@@ -356,7 +356,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
         row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
         row_builder.AppendString("id1", 3);
         row_builder.AppendString("id2", 3);
-        row_builder.AppendTimestamp(i * 1000);
+        row_builder.AppendTimestamp(static_cast<int64_t>(i) * 1000);
         row_builder.AppendInt32(i);
         row_builder.AppendInt16(i);
         row_builder.AppendInt64(i);
@@ -370,7 +370,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
     row_builder.AppendString("id1", 3);
     row_builder.AppendString("id2", 3);
-    row_builder.AppendTimestamp(50 * 1000);
+    row_builder.AppendTimestamp(static_cast<int64_t>(50) * 1000);
     row_builder.AppendInt32(100);
     row_builder.AppendInt16(100);
     row_builder.AppendInt64(100);
