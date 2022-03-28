@@ -5483,6 +5483,7 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
+
     CreateDatabaseOrExit(INTERNAL_DB);
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
