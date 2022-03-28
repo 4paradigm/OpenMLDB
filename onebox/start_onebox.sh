@@ -20,18 +20,18 @@ cd "$(dirname "$0")/../"
 
 ulimit -c unlimited
 
-# first start zookeeper
 IP=127.0.0.1
 
-ZK_CLUSTER=$IP:6181
-NS1=$IP:9622
-NS2=$IP:9623
-NS3=$IP:9624
-TABLET1=$IP:9520
-TABLET2=$IP:9521
-TABLET3=$IP:9522
-
 function start_cluster() {
+        # first start zookeeper
+        ZK_CLUSTER=$IP:6181
+        NS1=$IP:9622
+        NS2=$IP:9623
+        NS3=$IP:9624
+        TABLET1=$IP:9520
+        TABLET2=$IP:9521
+        TABLET3=$IP:9522
+
         # start tablet0
         test -d tablet0-binlogs && rm -rf tablet0-binlogs
         test -d recycle_bin0 && rm -rf recycle_bin0
@@ -95,24 +95,27 @@ function start_cluster() {
 }
 
 function start_standalone() {
+        NS=$IP:6527
+        TABLET=$IP:9921
+
         # start tablet
-        test -d tablet0-binlogs && rm -rf tablet0-binlogs
-        test -d recycle_bin0 && rm -rf recycle_bin0
-        ./build/bin/openmldb --db_root_path=tablet0-binlogs \
-                           --recycle_bin_root_path=recycle_bin0 \
-                           --endpoint=${TABLET1} --role=tablet \
-                           --binlog_notify_on_put=true > tablet0.log 2>&1 &
+        test -d tablet-binlogs && rm -rf tablet-binlogs
+        test -d recycle_bin && rm -rf recycle_bin
+        ./build/bin/openmldb --db_root_path=tablet-binlogs \
+                           --recycle_bin_root_path=recycle_bin \
+                           --endpoint=${TABLET} --role=tablet \
+                           --binlog_notify_on_put=true > tablet.log 2>&1 &
 
         # start ns
-        ./build/bin/openmldb --endpoint=${NS1} --role=nameserver \
-                           --tablet=${TABLET1} \
+        ./build/bin/openmldb --endpoint=${NS} --role=nameserver \
+                           --tablet=${TABLET} \
                            --tablet_offline_check_interval=1\
-                           --tablet_heartbeat_timeout=1 > ns1.log 2>&1 &
+                           --tablet_heartbeat_timeout=1 > ns.log 2>&1 &
         sleep 3
         echo "standalone start ok"
         exit 0
 }
-
+# with no param, default is cluster_Mode
 if [ $# -eq 0 ]; then
   start_cluster
 fi

@@ -22,5 +22,5 @@ public class TestConfig {
 
 
     public static String HOST="127.0.0.1";
-    public static long PORT=9622;
+    public static long PORT=6527;
 }
