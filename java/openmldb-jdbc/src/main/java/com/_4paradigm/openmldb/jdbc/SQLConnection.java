@@ -56,10 +56,8 @@ public class SQLConnection implements Connection {
 
 
     /**
-     * WARNING: insert prepared statement only can insert into <B>online storage</B><P>
+     * WARNING:  prepared statement only can insert into <B>online storage</B><P>
      * <p>
-     * select can visit both offline and online
-     *
      * @param sql only supports insert and select
      * @return PreparedStatement
      * @throws SQLException if sql is unsupported

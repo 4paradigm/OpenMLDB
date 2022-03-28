@@ -18,7 +18,7 @@ public class SQLStatement implements java.sql.Statement {
     @Override
     public boolean execute(String sql) throws SQLException {
         checkClosed();
-        return false;
+        throw new SQLException("unsupported");
     }
 
     @Override
@@ -39,7 +39,7 @@ public class SQLStatement implements java.sql.Statement {
     @Override
     public int executeUpdate(String sql) throws SQLException {
         checkClosed();
-        return 0;
+        throw new SQLException("unsupported");
     }
 
     @Override
