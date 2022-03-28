@@ -129,21 +129,21 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
             case DataType::kInt:
             case DataType::kBigInt: {
                 int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-                if (origin_val != (int64_t)i) {
+                if (origin_val != static_cast<int64_t>(i)) {
                     return false;
                 }
                 break;
             }
             case DataType::kFloat: {
                 float origin_val = *reinterpret_cast<float*>(ch);
-                if (origin_val != (float)i) {
+                if (origin_val != static_cast<float>(i)) {
                     return false;
                 }
                 break;
             }
             case DataType::kDouble: {
                 double origin_val = *reinterpret_cast<double*>(ch);
-                if (origin_val != (double)i) {
+                if (origin_val != static_cast<double>(i)) {
                     return false;
                 }
                 break;
@@ -325,12 +325,12 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         counter += 2;
         ASSERT_TRUE(CheckAggregatorUpdate(counter, "col6", "sum", "3h", &last_buffer));
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
-        ASSERT_EQ(last_buffer.aggr_val_.vfloat, (float)100);
+        ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
         ASSERT_TRUE(CheckAggregatorUpdate(counter, "col7", "sum", "1s", &last_buffer));
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
-        ASSERT_EQ(last_buffer.aggr_val_.vdouble, (double)100);
+        ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
     }
 }
