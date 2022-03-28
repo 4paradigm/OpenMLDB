@@ -5483,14 +5483,13 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
+    CreateDatabaseOrExit(INTERNAL_DB);
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        CreateDatabaseOrExit(INTERNAL_DB);
-
         if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
