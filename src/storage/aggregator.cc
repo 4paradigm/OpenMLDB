@@ -129,16 +129,16 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     return true;
 }
 
-bool Aggregator::GetAggrBufferFromRowView(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* buffer) {
+bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer) {
     if (buffer == nullptr) {
         return false;
     }
-    row_view->GetValue(row_ptr, 1, DataType::kTimestamp, &buffer->ts_begin_);
-    row_view->GetValue(row_ptr, 2, DataType::kTimestamp, &buffer->ts_end_);
-    row_view->GetValue(row_ptr, 3, DataType::kInt, &buffer->aggr_cnt_);
+    row_view.GetValue(row_ptr, 1, DataType::kTimestamp, &buffer->ts_begin_);
+    row_view.GetValue(row_ptr, 2, DataType::kTimestamp, &buffer->ts_end_);
+    row_view.GetValue(row_ptr, 3, DataType::kInt, &buffer->aggr_cnt_);
     char* ch = NULL;
     uint32_t ch_length = 0;
-    row_view->GetValue(row_ptr, 4, &ch, &ch_length);
+    row_view.GetValue(row_ptr, 4, &ch, &ch_length);
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
@@ -165,7 +165,7 @@ bool Aggregator::GetAggrBufferFromRowView(codec::RowView* row_view, int8_t* row_
     return true;
 }
 
-bool Aggregator::FlushAggrBuffer(const std::string& key, AggrBuffer buffer) {
+bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
     std::string encoded_row;
     std::string aggr_val;
     switch (aggr_col_type_) {
@@ -216,7 +216,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, AggrBuffer buffer) {
     return true;
 }
 
-bool Aggregator::UpdateFlushedBuffer(const std::string& key, int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset) {
+bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset) {
     auto it = aggr_table_->NewTraverseIterator(0);
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
     it->Seek(key, cur_ts + 1);
@@ -226,7 +226,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, int8_t* base_row_pt
         std::string origin_data = val.ToString();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str()));
 
-        bool ok = GetAggrBufferFromRowView(&aggr_row_view_, aggr_row_ptr, &tmp_buffer);
+        bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &tmp_buffer);
         if (!ok) {
             LOG(ERROR) << "GetAggrBufferFromRowView failed";
             return false;
@@ -271,7 +271,7 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                              uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
 
-bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) {
+bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
     switch (aggr_col_type_) {
         case DataType::kSmallInt: {
             int16_t val;

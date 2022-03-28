@@ -105,13 +105,13 @@ class Aggregator {
     std::shared_ptr<Table> aggr_table_;
     Dimensions dimensions_;
 
-    bool GetAggrBufferFromRowView(codec::RowView* row_view, int8_t* row_ptr, AggrBuffer* buffer);
-    bool FlushAggrBuffer(const std::string& key, AggrBuffer aggr_buffer);
-    bool UpdateFlushedBuffer(const std::string& key, int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
+    bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
+    bool FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
+    bool UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
-    virtual bool UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) {
+    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
         return false;
     }
 
@@ -142,7 +142,7 @@ class SumAggregator : public Aggregator {
     ~SumAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
