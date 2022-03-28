@@ -70,38 +70,6 @@ void ExpectRowsEq(const TimeDistributionHelper& helper, const std::string& name,
     }
 }
 
-TEST_F(DeployTimeCollectorTest, SingleDeployAndSingleInterval) {
-    DeployQueryTimeCollector col;
-    ASSERT_TRUE(col.GetRows().empty());
-
-    std::string deploy_name = "deploy1";
-
-    col.AddDeploy(deploy_name);
-    auto rows = col.GetRows();
-
-    ASSERT_EQ(1 * TIME_DISTRIBUTION_BUCKET_COUNT, rows.size());
-    size_t cnt = 0;
-    absl::Duration dur = absl::Microseconds(1);
-    while (cnt < rows.size() - 1) {
-        EXPECT_EQ(DeployResponseTimeRow(deploy_name, dur, 0u, absl::Seconds(0)), rows[cnt]);
-        cnt++;
-        dur *= TIME_DISTRIBUTION_BASE;
-    }
-    EXPECT_EQ(DeployResponseTimeRow(deploy_name, absl::InfiniteDuration(), 0u, absl::Seconds(0)), rows[cnt]);
-
-    // create a random vector whose value is in (1, 10]
-    std::vector<absl::Duration> times = GenTimes(gen_, 100, absl::Seconds(1), absl::Seconds(10));
-
-    for (auto t : times) {
-        col.Collect(deploy_name, t);
-    }
-
-    absl::Duration total = std::accumulate(times.begin(), times.end(), absl::Seconds(0));
-    auto row = col.GetRow(deploy_name, TIME_DISTRIBUTION_NEGATIVE_POWER_COUNT + 1);
-    EXPECT_TRUE(row.ok());
-    EXPECT_EQ(DeployResponseTimeRow(deploy_name, absl::Seconds(10), times.size(), total), row.value());
-}
-
 TEST_F(DeployTimeCollectorTest, SingleDeployThreadSafe) {
     DeployQueryTimeCollector col;
 

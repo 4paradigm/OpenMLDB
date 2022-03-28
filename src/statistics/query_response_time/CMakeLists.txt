@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.13)
-
-project(query-response-time)
-
-find_package(absl REQUIRED)
-find_package(GTest REQUIRED)
-find_library(GLOG_LIBRARY glog)
-
 set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${GTEST_LIBRARIES} ${GLOG_LIBRARY})
 link_libraries(${LINK_LIBS})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "(AppleClang)|(Clang)")
+  add_definitions(-Wthread-safety)
+endif()
 
 add_library(query_response_time STATIC ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time.cc ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time.cc)
 

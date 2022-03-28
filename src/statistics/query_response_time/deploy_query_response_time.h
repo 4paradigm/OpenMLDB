@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
@@ -48,31 +49,28 @@ class DeployQueryTimeCollector {
     DeployQueryTimeCollector() {}
     // collector is not copyable
     DeployQueryTimeCollector(const DeployQueryTimeCollector& c) = delete;
+
     ~DeployQueryTimeCollector() {}
 
-    absl::Status Collect(const std::string& deploy_name, absl::Duration time);
+    absl::Status Collect(const std::string& deploy_name, absl::Duration time) LOCKS_EXCLUDED(mutex_);
 
-    absl::Status AddDeploy(const std::string& deploy_name);
+    absl::Status AddDeploy(const std::string& deploy_name) LOCKS_EXCLUDED(mutex_);
 
-    absl::Status DeleteDeploy(const std::string& deploy_name);
+    absl::Status DeleteDeploy(const std::string& deploy_name) LOCKS_EXCLUDED(mutex_);
 
-    absl::StatusOr<DeployResponseTimeRow> GetRow(const std::string& deploy_name, size_t idx) const;
+    std::vector<DeployResponseTimeRow> Flush() LOCKS_EXCLUDED(mutex_);
 
-    absl::StatusOr<std::vector<DeployResponseTimeRow>> GetRows(const std::string& deploy_name);
+    absl::StatusOr<std::vector<DeployResponseTimeRow>> GetRows(const std::string& deploy_name) const
+        LOCKS_EXCLUDED(mutex_);
 
-    std::vector<DeployResponseTimeRow> GetRows() const;
-
-    std::vector<DeployResponseTimeRow> Flush();
-
- private:
-    absl::StatusOr<DeployResponseTimeRow> GetRowUnsafe(const std::string& deploy_name, size_t idx) const;
-
-    uint32_t GetRecordsCnt() const;
+    std::vector<DeployResponseTimeRow> GetRows() const LOCKS_EXCLUDED(mutex_);
 
  private:
-    std::unordered_map<std::string, std::shared_ptr<TimeCollector>> collectors_;
-    // reader/writer lock for map collectors_
-    mutable absl::Mutex mutex_;
+    uint32_t GetRecordsCnt() const SHARED_LOCKS_REQUIRED(mutex_);
+
+ private:
+    std::unordered_map<std::string, std::shared_ptr<TimeCollector>> collectors_ GUARDED_BY(mutex_);
+    mutable absl::Mutex mutex_;  // protects collectors_
 };
 
 }  // namespace statistics
