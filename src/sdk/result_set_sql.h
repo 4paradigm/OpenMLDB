@@ -167,7 +167,7 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         return false;
     }
 
-    bool IsNULL(int index) { return result_set_base_->IsNULL(index); }
+    bool IsNULL(int index) override { return result_set_base_->IsNULL(index); }
 
     bool GetString(uint32_t index, std::string* str) override { return result_set_base_->GetString(index, str); }
 
