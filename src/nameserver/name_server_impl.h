@@ -114,6 +114,7 @@ struct ZkPath {
     std::string op_index_node_;
     std::string op_data_path_;
     std::string op_sync_path_;
+    std::string globalvar_changed_notify_node_;
 };
 
 class NameServerImplTest;
@@ -353,9 +354,17 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
-    base::Status CreateSystemTable(const std::string& table_name, SystemTableType table_type);
-
  private:
+    base::Status InitGlobalVarTable();
+
+    // create the database if not exists, exit on fail
+    void CreateDatabaseOrExit(const std::string& db_name);
+
+    // create table if not exists, exit on fail
+    void CreateSystemTableOrExit(SystemTableType type);
+
+    base::Status CreateSystemTable(SystemTableType table_type);
+
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
     // 2.recover table status from all tablets
@@ -748,9 +757,11 @@ class NameServerImpl : public NameServer {
 
     bool AllocateTableId(uint32_t* id);
 
-    base::Status CreateDatabase(const std::string& db_name);
+    base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
 
     uint64_t GetTerm() const;
+
+    void NotifyGlobalVarChanged();
 
  private:
     std::mutex mu_;

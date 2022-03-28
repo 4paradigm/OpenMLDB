@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <set>
+#include "nameserver/system_table.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -34,6 +35,7 @@
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
+#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -586,6 +588,12 @@ bool NameServerImpl::Recover() {
             }
         }
         value.clear();
+        if (!zk_client_->GetNodeValue(zk_path_.globalvar_changed_notify_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.globalvar_changed_notify_node_, "1")) {
+                PDLOG(WARNING, "create globalvar changed notify node failed");
+                return false;
+            }
+        }
         if (!zk_client_->GetNodeValue(zk_path_.auto_failover_node_, value)) {
             auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
             if (!zk_client_->CreateNode(zk_path_.auto_failover_node_, value)) {
@@ -1278,6 +1286,35 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     for (const auto& kv : db_table_info_) {
         RecoverEndpointDBInternal(endpoint, need_restore, concurrency, kv.second);
     }
+    // recover global variable after tablet restart
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfoUnlock(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
+        PDLOG(WARNING, "global variable table is not exist!");
+        return;
+    }
+    bool exist_globalvar = false;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                exist_globalvar = true;
+                break;
+            }
+        }
+    }
+    if (!exist_globalvar) {
+        NotifyGlobalVarChanged();
+    }
+}
+
+void NameServerImpl::NotifyGlobalVarChanged() {
+    if (!IsClusterMode()) {
+        return;
+    }
+    if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
+        PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_.c_str());
+        return;
+    }
+    PDLOG(INFO, "notify globalvar changed ok");
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletRequest* request,
@@ -1337,6 +1374,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zk_path_.zone_data_path_ = zk_path + "/cluster";
         zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
         zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
+        zk_path_.globalvar_changed_notify_node_ = zk_path + "/notify/global_variable";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -5451,47 +5489,31 @@ void NameServerImpl::OnLocked() {
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        if (databases_.find(INTERNAL_DB) == databases_.end()) {
-            auto status = CreateDatabase(INTERNAL_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create internal database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INTERNAL_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-                LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
-                exit(1);
-            }
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
-                LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(PRE_AGG_DB) == databases_.end()) {
-            auto status = CreateDatabase(PRE_AGG_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create pre-agg database failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
-            auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create information schema database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(GLOBAL_VARIABLES, SystemTableType::kGlobalVariable).OK()) {
-                LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
-                exit(1);
-            }
+        CreateDatabaseOrExit(INTERNAL_DB);
+
+        if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
     }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kPreAggMetaInfo);
+    }
+
+    CreateDatabaseOrExit(PRE_AGG_DB);
+
+    CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
+
+    // TODO(ace): create table if not exists
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
+        InitGlobalVarTable();
+    }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+    }
+
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval,
                                 boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
@@ -8828,6 +8850,9 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
 bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
     if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
         NotifyTableChanged();
+        if (table_info->db() == INFORMATION_SCHEMA_DB && table_info->name() == GLOBAL_VARIABLES) {
+            NotifyGlobalVarChanged();
+        }
         return true;
     }
     return false;
@@ -9467,11 +9492,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    auto status = CreateDatabase(request->db());
+    auto status = CreateDatabase(request->db(), request->if_not_exists());
     SetResponseStatus(status, response);
 }
 
-base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name, bool if_not_exists) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9481,6 +9506,9 @@ base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
         }
     }
     if (is_exists) {
+        if (if_not_exists) {
+            return {};
+        }
         PDLOG(INFO, "database %s already exists", db_name.c_str());
         return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {
@@ -10177,10 +10205,27 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
     return tablet_ptr;
 }
 
-base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, SystemTableType table_type) {
-    auto table_info = SystemTable::GetTableInfo(table_name, table_type);
+void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
+    auto status = CreateDatabase(db, true);
+    if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+        LOG(FATAL) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+void NameServerImpl::CreateSystemTableOrExit(SystemTableType type) {
+    auto status = CreateSystemTable(type);
+    if (!status.OK()) {
+        LOG(FATAL) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
+                   << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
+    auto table_info = SystemTable::GetTableInfo(table_type);
     if (!table_info) {
-        LOG(WARNING) << "fail to get table info. name is " << table_name;
+        LOG(WARNING) << "fail to get table info. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "nullptr"};
     }
     uint32_t tid = 0;
@@ -10189,7 +10234,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     }
     table_info->set_tid(tid);
     if (SetPartitionInfo(*table_info) < 0) {
-        LOG(WARNING) << "set partition info failed. name is " << table_name;
+        LOG(WARNING) << "set partition info failed. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "set partition info failed"};
     }
     uint64_t cur_term = GetTerm();
@@ -10198,7 +10243,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     if (response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }
-    LOG(INFO) << "create system table ok. name is " << table_name;
+    LOG(INFO) << "create system table ok. name is " << GetSystemTableName(table_type);
     return {};
 }
 
@@ -10262,6 +10307,62 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         NotifyTableChanged();
     }
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
+}
+
+base::Status NameServerImpl::InitGlobalVarTable() {
+    std::map<std::string, std::string> default_value = {
+        {"execute_mode", "offline"},
+        {"enable_trace", "false"},
+        {"sync_job", "false"},
+        {"job_timeout", "20000"}
+    };
+    // get table_info
+    std::string db = INFORMATION_SCHEMA_DB;
+    std::string table = GLOBAL_VARIABLES;
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(table, db, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "table is not exist"};
+    }
+    // encode row && dimensions
+    std::vector<std::string> rows;
+    std::vector<std::vector<std::pair<std::string, uint32_t>>> rows_dimensions;
+    for (auto iter = default_value.begin(); iter != default_value.end(); iter++) {
+        std::string row;
+        std::vector<std::string> vec;
+        vec.push_back(iter->first);
+        vec.push_back(iter->second);
+        codec::RowCodec::EncodeRow(vec, table_info->column_desc(), 1, row);
+        rows.push_back(row);
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        // only one index in system table
+        dimensions.push_back(std::make_pair(iter->first, 0));
+        rows_dimensions.push_back(dimensions);
+    }
+    // insert value
+    uint32_t tid = table_info->tid();
+    uint32_t pid_num = table_info->table_partition_size();
+    for (int i = 0; i < default_value.size(); i++) {
+        std::string row = rows[i];
+        std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
+        uint32_t pid = 0;
+        if (pid_num > 0) {
+            pid = (uint32_t)(::openmldb::base::hash64(dimensions[0].first) % pid_num);
+        }
+        // system table only have one partition, so table_partition(0) can be used
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(0).partition_meta(meta_idx).is_leader() &&
+                table_info->table_partition(0).partition_meta(meta_idx).is_alive()) {
+                uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+                std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
+                auto table_ptr = GetTablet(endpoint);
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                    return {ReturnCode::kPutFailed, "fail to make a put request to table"};
+                }
+                break;
+            }
+        }
+    }
+    return {};
 }
 
 }  // namespace nameserver

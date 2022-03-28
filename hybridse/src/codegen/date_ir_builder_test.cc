@@ -29,6 +29,7 @@ using namespace llvm::orc;  // NOLINT
 ExitOnError ExitOnErr;
 namespace hybridse {
 namespace codegen {
+using openmldb::base::Date;
 class DateIRBuilderTest : public ::testing::Test {
  public:
     DateIRBuilderTest() {}
@@ -62,11 +63,11 @@ TEST_F(DateIRBuilderTest, DayTest) {
     auto load_fn_jit = ExitOnErr(J->lookup("date_day"));
     int64_t (*decode)(int64_t) = (int64_t(*)(int64_t))load_fn_jit.getAddress();
 
-    ASSERT_EQ(decode(codec::Date(2020, 05, 27).date_), 27);
-    ASSERT_EQ(decode(codec::Date(1900, 05, 28).date_), 28);
+    ASSERT_EQ(decode(Date(2020, 05, 27).date_), 27);
+    ASSERT_EQ(decode(Date(1900, 05, 28).date_), 28);
     // 溢出处理
-    ASSERT_EQ(decode(codec::Date(1800, 05, 31).date_), 0);
-    ASSERT_EQ(decode(codec::Date(1900, 05, 32).date_), 0);
+    ASSERT_EQ(decode(Date(1800, 05, 31).date_), 0);
+    ASSERT_EQ(decode(Date(1900, 05, 32).date_), 0);
 }
 
 TEST_F(DateIRBuilderTest, YearTest) {
@@ -96,11 +97,11 @@ TEST_F(DateIRBuilderTest, YearTest) {
     auto load_fn_jit = ExitOnErr(J->lookup("date_year"));
     int64_t (*decode)(int64_t) = (int64_t(*)(int64_t))load_fn_jit.getAddress();
 
-    ASSERT_EQ(decode(codec::Date(2020, 05, 27).date_), 2020);
-    ASSERT_EQ(decode(codec::Date(1900, 05, 28).date_), 1900);
+    ASSERT_EQ(decode(Date(2020, 05, 27).date_), 2020);
+    ASSERT_EQ(decode(Date(1900, 05, 28).date_), 1900);
 
     // Date溢出
-    ASSERT_EQ(decode(codec::Date(1800, 05, 31).date_), 1900);
+    ASSERT_EQ(decode(Date(1800, 05, 31).date_), 1900);
 }
 
 TEST_F(DateIRBuilderTest, MonthTest) {
@@ -131,16 +132,16 @@ TEST_F(DateIRBuilderTest, MonthTest) {
     auto load_fn_jit = ExitOnErr(J->lookup("date_month"));
     int64_t (*decode)(int64_t) = (int64_t(*)(int64_t))load_fn_jit.getAddress();
 
-    ASSERT_EQ(decode(codec::Date(2020, 05, 27).date_), 05);
-    ASSERT_EQ(decode(codec::Date(1900, 05, 28).date_), 05);
-    ASSERT_EQ(decode(codec::Date(1800, 05, 31).date_), 1);
+    ASSERT_EQ(decode(Date(2020, 05, 27).date_), 05);
+    ASSERT_EQ(decode(Date(1900, 05, 28).date_), 05);
+    ASSERT_EQ(decode(Date(1800, 05, 31).date_), 1);
 }
 
 TEST_F(DateIRBuilderTest, DateOp) {
-    codec::Date t1(2020, 05, 27);
-    codec::Date t2(2020, 05, 27);
-    codec::Date t3(2020, 05, 28);
-    codec::Date t4(2020, 05, 26);
+    Date t1(2020, 05, 27);
+    Date t2(2020, 05, 27);
+    Date t3(2020, 05, 28);
+    Date t4(2020, 05, 26);
 
     ASSERT_EQ(t1, t2);
     ASSERT_TRUE(t1 >= t2);

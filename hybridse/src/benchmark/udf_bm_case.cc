@@ -476,7 +476,7 @@ int32_t RunByteMemPoolAlloc1000(size_t request_size) {
     return 1;
 }
 int32_t RunNewFree1000(size_t request_size) {
-    hybridse::base::ByteMemoryPool pool;
+    openmldb::base::ByteMemoryPool pool;
     std::vector<char*> chucks;
     for (int i = 0; i < 1000; i++) {
         chucks.push_back(new char[request_size]);

@@ -34,7 +34,7 @@ jobs:
   java-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
@@ -223,7 +223,7 @@ jobs:
   python-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'

@@ -621,7 +621,7 @@ int32_t RowView::GetDate(uint32_t idx, int32_t* year, int32_t* month,
         return 1;
     }
     int32_t date = GetDateUnsafe(idx);
-    codec::Date::Decode(date, year, month, day);
+    openmldb::base::Date::Decode(date, year, month, day);
     return 0;
 }
 int32_t RowView::GetInteger(const int8_t* row, uint32_t idx,

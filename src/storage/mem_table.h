@@ -184,15 +184,15 @@ class MemTable : public Table {
     int GetCount(uint32_t index, const std::string& pk,
                  uint64_t& count);  // NOLINT
 
-    uint64_t GetRecordIdxCnt();
-    bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
-    uint64_t GetRecordIdxByteSize();
-    uint64_t GetRecordPkCnt();
+    uint64_t GetRecordIdxCnt() override;
+    bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
+    uint64_t GetRecordIdxByteSize() override;
+    uint64_t GetRecordPkCnt() override;
 
     void SetCompressType(::openmldb::type::CompressType compress_type);
     ::openmldb::type::CompressType GetCompressType();
 
-    inline uint64_t GetRecordByteSize() const { return record_byte_size_.load(std::memory_order_relaxed); }
+    inline uint64_t GetRecordByteSize() const override { return record_byte_size_.load(std::memory_order_relaxed); }
 
     uint64_t GetRecordCnt() const override { return record_cnt_.load(std::memory_order_relaxed); }
 
@@ -212,7 +212,7 @@ class MemTable : public Table {
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
-    bool DeleteIndex(const std::string& idx_name);
+    bool DeleteIndex(const std::string& idx_name) override;
 
     bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
 

@@ -57,7 +57,7 @@ class JitRuntime {
     void ReleaseRunStep();
 
  private:
-    base::ByteMemoryPool mem_pool_;
+    openmldb::base::ByteMemoryPool mem_pool_;
     std::list<base::FeBaseObject*> allocated_obj_pool_;
 
     static thread_local JitRuntime tls_runtime_inst_;

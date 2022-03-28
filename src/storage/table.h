@@ -41,9 +41,9 @@ enum TableStat { kUndefined = 0, kNormal, kLoading, kMakingSnapshot, kSnapshotPa
 class Table {
  public:
     Table();
-    Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader, uint64_t ttl_offset,
-          const std::map<std::string, uint32_t>& mapping, ::openmldb::type::TTLType ttl_type,
-          ::openmldb::type::CompressType compress_type);
+    Table(::openmldb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid,
+          uint64_t ttl, bool is_leader, uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
+          ::openmldb::type::TTLType ttl_type, ::openmldb::type::CompressType compress_type);
     virtual ~Table() {}
     virtual bool Init() = 0;
 
@@ -166,16 +166,25 @@ class Table {
 
     bool CheckFieldExist(const std::string& name);
 
+    virtual bool DeleteIndex(const std::string& idx_name) = 0;
+
+    virtual uint64_t GetRecordIdxCnt() = 0;
+    virtual bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) = 0;
+    virtual uint64_t GetRecordPkCnt() = 0;
+    virtual inline uint64_t GetRecordByteSize() const = 0;
+    virtual uint64_t GetRecordIdxByteSize() = 0;
+
  protected:
     void UpdateTTL();
     bool InitFromMeta();
 
+    ::openmldb::common::StorageMode storage_mode_;
     std::string name_;
     uint32_t id_;
     uint32_t pid_;
     std::atomic<uint64_t> diskused_;
-    uint64_t ttl_offset_;
     bool is_leader_;
+    uint64_t ttl_offset_;
     std::atomic<uint32_t> table_status_;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;

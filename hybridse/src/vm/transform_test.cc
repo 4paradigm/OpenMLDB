@@ -1543,6 +1543,19 @@ TEST_F(TransformTest, DeleteStmt) {
     PhysicalPlanCheck(catalog, "delete job 12", R"r(DELETE(target=JOB, job_id=12))r");
 }
 
+TEST_F(TransformTest, InsertStmt) {
+    hybridse::type::Database db;
+    db.set_name("db");
+
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    AddTable(db, table_def);
+
+    auto catalog = BuildSimpleCatalog(db);
+
+    PhysicalPlanCheck(catalog, "insert into t1 values ('abc', 1, 1, 1.0, 2.0, 100, 'val');", R"r(INSERT(db=, table=t1, is_all=true))r");
+}
+
 TEST_F(TransformTest, GetDatabaseName) {
     hybridse::type::Database db;
     db.set_name("db1");

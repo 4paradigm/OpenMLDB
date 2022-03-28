@@ -49,9 +49,9 @@ ExitOnError ExitOnErr;
 namespace hybridse {
 namespace codegen {
 
-using codec::Date;
-using codec::StringRef;
-using codec::Timestamp;
+using openmldb::base::Date;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 using udf::Nullable;
 
 class UdfIRBuilderTest : public ::testing::Test {
@@ -789,23 +789,23 @@ TEST_F(UdfIRBuilderTest, null_process_test) {
 
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_0) {
     CheckUdf<Nullable<Timestamp>, Nullable<Date>>(
-        "timestamp", codec::Timestamp(1589904000000L),
-        codec::Date(2020, 05, 20));
+        "timestamp", Timestamp(1589904000000L),
+        Date(2020, 05, 20));
 }
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_null_0) {
     //    Invalid year
     CheckUdf<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
-                                                  codec::Date(1899, 05, 20));
+                                                  Date(1899, 05, 20));
 }
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_null_1) {
     //    Invalid month
     CheckUdf<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
-                                                  codec::Date(2029, 13, 20));
+                                                  Date(2029, 13, 20));
 }
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_null_2) {
     //    Invalid day
     CheckUdf<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
-                                                  codec::Date(2029, 05, 32));
+                                                  Date(2029, 05, 32));
 }
 TEST_F(UdfIRBuilderTest, date_to_timestamp_test_null_3) {
     CheckUdf<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
@@ -814,27 +814,27 @@ TEST_F(UdfIRBuilderTest, date_to_timestamp_test_null_3) {
 
 TEST_F(UdfIRBuilderTest, string_to_timestamp_test_0) {
     CheckUdf<Nullable<Timestamp>, Nullable<StringRef>>(
-        "timestamp", codec::Timestamp(1589907723000),
-        codec::StringRef("2020-05-20 01:02:03"));
+        "timestamp", Timestamp(1589907723000),
+        StringRef("2020-05-20 01:02:03"));
 }
 TEST_F(UdfIRBuilderTest, string_to_timestamp_test_1) {
     CheckUdf<Nullable<Timestamp>, Nullable<StringRef>>(
-        "timestamp", codec::Timestamp(1589904000000L),
-        codec::StringRef("2020-05-20"));
+        "timestamp", Timestamp(1589904000000L),
+        StringRef("2020-05-20"));
 }
 TEST_F(UdfIRBuilderTest, string_to_timestamp_test_2) {
     CheckUdf<Nullable<Timestamp>, Nullable<StringRef>>(
-        "timestamp", nullptr, codec::StringRef("1899-05-20"));
+        "timestamp", nullptr, StringRef("1899-05-20"));
 }
 TEST_F(UdfIRBuilderTest, string_to_timestamp_test_3) {
     CheckUdf<Nullable<Timestamp>, Nullable<StringRef>>(
-        "timestamp", codec::Timestamp(1589904000000L),
-        codec::StringRef("20200520"));
+        "timestamp", Timestamp(1589904000000L),
+        StringRef("20200520"));
 }
 
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>(
-        "date", codec::Date(2020, 05, 20), codec::Timestamp(1589958000000L));
+        "date", Date(2020, 05, 20), Timestamp(1589958000000L));
 }
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>("date", nullptr, nullptr);
@@ -842,138 +842,138 @@ TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
 
 TEST_F(UdfIRBuilderTest, string_to_date_test_0) {
     CheckUdf<Nullable<Date>, Nullable<StringRef>>(
-        "date", codec::Date(2020, 05, 20),
-        codec::StringRef("2020-05-20 01:02:03"));
+        "date", Date(2020, 05, 20),
+        StringRef("2020-05-20 01:02:03"));
 }
 TEST_F(UdfIRBuilderTest, string_to_date_test_1) {
     CheckUdf<Nullable<Date>, Nullable<StringRef>>(
-        "date", codec::Date(2020, 05, 20), codec::StringRef("2020-05-20"));
+        "date", Date(2020, 05, 20), StringRef("2020-05-20"));
 }
 TEST_F(UdfIRBuilderTest, string_to_date_test_2) {
     CheckUdf<Nullable<Date>, Nullable<StringRef>>(
-        "date", nullptr, codec::StringRef("1899-05-20"));
+        "date", nullptr, StringRef("1899-05-20"));
 }
 TEST_F(UdfIRBuilderTest, string_to_date_test_3) {
-    CheckUdf<Nullable<codec::Date>, Nullable<StringRef>>(
-        "date", codec::Date(2020, 05, 20), codec::StringRef("20200520"));
+    CheckUdf<Nullable<Date>, Nullable<StringRef>>(
+        "date", Date(2020, 05, 20), StringRef("20200520"));
 }
 TEST_F(UdfIRBuilderTest, string_to_smallint_0) {
     CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", 1,
-                                                     codec::StringRef("1"));
+                                                     StringRef("1"));
 }
 TEST_F(UdfIRBuilderTest, string_to_smallint_1) {
     CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", -1,
-                                                     codec::StringRef("-1"));
+                                                     StringRef("-1"));
 }
 TEST_F(UdfIRBuilderTest, string_to_smallint_2) {
     CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", nullptr,
-                                                     codec::StringRef("abc"));
+                                                     StringRef("abc"));
 }
 TEST_F(UdfIRBuilderTest, string_to_int_0) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", 1,
-                                                     codec::StringRef("1"));
+                                                     StringRef("1"));
 }
 TEST_F(UdfIRBuilderTest, string_to_int_1) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", -1,
-                                                     codec::StringRef("-1"));
+                                                     StringRef("-1"));
 }
 TEST_F(UdfIRBuilderTest, string_to_int_2) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", nullptr,
-                                                     codec::StringRef("abc"));
+                                                     StringRef("abc"));
 }
 TEST_F(UdfIRBuilderTest, string_to_bigint_0) {
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", 1589904000000L, codec::StringRef("1589904000000"));
+        "int64", 1589904000000L, StringRef("1589904000000"));
 }
 TEST_F(UdfIRBuilderTest, string_to_bigint_1) {
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", -1589904000000L, codec::StringRef("-1589904000000"));
+        "int64", -1589904000000L, StringRef("-1589904000000"));
 }
 TEST_F(UdfIRBuilderTest, string_to_bigint_2) {
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>("int64", nullptr,
-                                                     codec::StringRef("abc"));
+                                                     StringRef("abc"));
 }
 TEST_F(UdfIRBuilderTest, string_to_double_0) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", 1.0,
-                                                    codec::StringRef("1.0"));
+                                                    StringRef("1.0"));
 }
 TEST_F(UdfIRBuilderTest, string_to_double_1) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", -1.0,
-                                                    codec::StringRef("-1.0"));
+                                                    StringRef("-1.0"));
 }
 TEST_F(UdfIRBuilderTest, string_to_double_2) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", nullptr,
-                                                    codec::StringRef("abc"));
+                                                    StringRef("abc"));
 }
 TEST_F(UdfIRBuilderTest, string_to_float_0) {
     CheckUdf<Nullable<float>, Nullable<StringRef>>("float", 1.0f,
-                                                   codec::StringRef("1.0"));
+                                                   StringRef("1.0"));
 }
 TEST_F(UdfIRBuilderTest, string_to_float_1) {
     CheckUdf<Nullable<float>, Nullable<StringRef>>("float", -1.0f,
-                                                   codec::StringRef("-1.0"));
+                                                   StringRef("-1.0"));
 }
 TEST_F(UdfIRBuilderTest, string_to_float_2) {
     CheckUdf<Nullable<float>, Nullable<StringRef>>("float", nullptr,
-                                                   codec::StringRef("abc"));
+                                                   StringRef("abc"));
 }
 TEST_F(UdfIRBuilderTest, like_match) {
     auto udf_name = "like_match";
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%"), codec::StringRef("\\"));
+        udf_name, true, StringRef("a_b"), StringRef("a%b%"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("\\"));
+        udf_name, true, StringRef("a_b"), StringRef("a%b%%"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, false, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("%"));
+        udf_name, false, StringRef("a_b"), StringRef("a%b%%"), StringRef("%"));
 
     // target is null, return null
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+        udf_name, nullptr, nullptr, StringRef("Mi_e"), StringRef("\\"));
     // pattern is null, return null
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, codec::StringRef("Mike"), nullptr, codec::StringRef("\\"));
+        udf_name, nullptr, StringRef("Mike"), nullptr, StringRef("\\"));
     // escape is null, disable escape
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, codec::StringRef("Mike"), codec::StringRef("Mi_e"), nullptr);
+        udf_name, nullptr, StringRef("Mike"), StringRef("Mi_e"), nullptr);
 
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+        udf_name, true, StringRef("Mike"), StringRef("Mi_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("Mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+        udf_name, true, StringRef("Mike"), StringRef("Mi_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, false, codec::StringRef("Mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+        udf_name, false, StringRef("Mike"), StringRef("Mi\\_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("Mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+        udf_name, true, StringRef("Mi_e"), StringRef("Mi\\_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("Mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+        udf_name, true, StringRef("Mi\\ke"), StringRef("Mi\\_e"), StringRef(""));
 }
 TEST_F(UdfIRBuilderTest, ilike_match) {
     auto udf_name = "ilike_match";
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%"), codec::StringRef("\\"));
+        udf_name, true, StringRef("a_b"), StringRef("a%b%"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("\\"));
+        udf_name, true, StringRef("a_b"), StringRef("a%b%%"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, false, codec::StringRef("a_b"), codec::StringRef("a%b%%"), codec::StringRef("%"));
+        udf_name, false, StringRef("a_b"), StringRef("a%b%%"), StringRef("%"));
 
     // target is null, return null
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, nullptr, codec::StringRef("Mi_e"), codec::StringRef("\\"));
+        udf_name, nullptr, nullptr, StringRef("Mi_e"), StringRef("\\"));
     // pattern is null, return null
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, codec::StringRef("mike"), nullptr, codec::StringRef("\\"));
+        udf_name, nullptr, StringRef("mike"), nullptr, StringRef("\\"));
     // escape is null, disable escape
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, nullptr, codec::StringRef("mike"), codec::StringRef("Mi_e"), nullptr);
+        udf_name, nullptr, StringRef("mike"), StringRef("Mi_e"), nullptr);
 
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("mike"), codec::StringRef("Mi_e"), codec::StringRef("\\"));
+        udf_name, true, StringRef("mike"), StringRef("Mi_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, false, codec::StringRef("mike"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+        udf_name, false, StringRef("mike"), StringRef("Mi\\_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("mi_e"), codec::StringRef("Mi\\_e"), codec::StringRef("\\"));
+        udf_name, true, StringRef("mi_e"), StringRef("Mi\\_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
-        udf_name, true, codec::StringRef("mi\\ke"), codec::StringRef("Mi\\_e"), codec::StringRef(""));
+        udf_name, true, StringRef("mi\\ke"), StringRef("Mi\\_e"), StringRef(""));
 }
 TEST_F(UdfIRBuilderTest, reverse) {
     auto udf_name = "reverse";
