@@ -42,10 +42,10 @@ function start_cluster() {
                            --zk_cluster=${ZK_CLUSTER}\
                            --zk_keep_alive_check_interval=100000000\
                            --zk_root_path=/onebox > tablet0.log 2>&1 &
+        sleep 2
+
         test -d tablet1-binlogs && rm -rf tablet1-binlogs
         test -d recycle_bin1 && rm -rf recycle_bin1
-
-
         # start tablet1
         ./build/bin/openmldb --db_root_path=tablet1-binlogs \
                            --recycle_bin_root_path=recycle_bin1 \
@@ -54,10 +54,10 @@ function start_cluster() {
                            --binlog_notify_on_put=true\
                            --zk_keep_alive_check_interval=100000000\
                            --zk_root_path=/onebox > tablet1.log 2>&1 &
+        sleep 2
+
         test -d tablet2-binlogs && rm -rf tablet2-binlogs
         test -d recycle_bin2 && rm -rf recycle_bin2
-
-
         # start tablet2
         ./build/bin/openmldb --db_root_path=tablet2-binlogs \
                            --recycle_bin_root_path=recycle_bin2 \
@@ -66,8 +66,7 @@ function start_cluster() {
                            --zk_cluster=${ZK_CLUSTER}\
                            --zk_keep_alive_check_interval=100000000\
                            --zk_root_path=/onebox > tablet2.log 2>&1 &
-
-        test -d recycle_bin3 && rm -rf recycle_bin3
+        sleep 2
 
         # start ns1
         ./build/bin/openmldb --endpoint=${NS1} --role=nameserver \
@@ -75,6 +74,7 @@ function start_cluster() {
                            --tablet_offline_check_interval=1\
                            --tablet_heartbeat_timeout=1\
                            --zk_root_path=/onebox > ns1.log 2>&1 &
+        sleep 2
 
         # start ns2
         ./build/bin/openmldb --endpoint=${NS2} --role=nameserver \
@@ -82,6 +82,7 @@ function start_cluster() {
                            --tablet_offline_check_interval=1\
                            --tablet_heartbeat_timeout=1\
                            --zk_root_path=/onebox > ns2.log 2>&1 &
+        sleep 2
 
         # start ns3
         ./build/bin/openmldb --endpoint=${NS3} --role=nameserver \
@@ -89,7 +90,7 @@ function start_cluster() {
                            --tablet_heartbeat_timeout=1\
                            --zk_cluster=${ZK_CLUSTER}\
                            --zk_root_path=/onebox > ns3.log 2>&1 &
-        sleep 3
+        sleep 2
         echo "cluster start ok"
         exit 0
 }
@@ -105,13 +106,14 @@ function start_standalone() {
                            --recycle_bin_root_path=recycle_bin \
                            --endpoint=${TABLET} --role=tablet \
                            --binlog_notify_on_put=true > tablet.log 2>&1 &
+        sleep 2
 
         # start ns
         ./build/bin/openmldb --endpoint=${NS} --role=nameserver \
                            --tablet=${TABLET} \
                            --tablet_offline_check_interval=1\
                            --tablet_heartbeat_timeout=1 > ns.log 2>&1 &
-        sleep 3
+        sleep 2
         echo "standalone start ok"
         exit 0
 }
