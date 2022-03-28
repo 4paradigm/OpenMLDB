@@ -15,6 +15,7 @@
  */
 
 #include "vm/engine.h"
+#include <dlfcn.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "codec/fe_schema_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/buf_ir_builder.h"
+#include "udf/default_udf_library.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "vm/local_tablet_handler.h"
@@ -265,6 +267,42 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
+}
+
+base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
+                                         const std::vector<node::DataType>& args_type, bool is_aggregate,
+                                         const std::string& so_name) {
+    if (name.empty()) {
+        return {common::kExternalUDFError, "function name is empty"};
+    }
+    if (so_name.empty()) {
+        return {common::kExternalUDFError, "so name is empty"};
+    }
+    void* handle = dlopen(so_name.c_str(), RTLD_LAZY);
+    if (handle == nullptr) {
+        return {common::kExternalUDFError, "can not open the dynamic library: " + so_name};
+    }
+    auto lib = udf::DefaultUdfLibrary::get();
+    if (is_aggregate) {
+        auto init_fun = dlsym(handle, std::string(name + "_init").c_str());
+        if (init_fun == nullptr) {
+            return {common::kExternalUDFError, "can not find the init function: " + name};
+        }
+        auto update_fun = dlsym(handle, std::string(name + "_update").c_str());
+        if (update_fun == nullptr) {
+            return {common::kExternalUDFError, "can not find the update function: " + name};
+        }
+        auto output_fun = dlsym(handle, std::string(name + "_output").c_str());
+        if (output_fun == nullptr) {
+            return {common::kExternalUDFError, "can not find the output function: " + name};
+        }
+    } else {
+        auto fun = dlsym(handle, name.c_str());
+        if (fun == nullptr) {
+            return {common::kExternalUDFError, "can not find the function: " + name};
+        }
+    }
+    return {};
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,

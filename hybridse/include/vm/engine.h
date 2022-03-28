@@ -387,6 +387,10 @@ class Engine {
                  ExplainOutput* explain_output,
                  base::Status* status);
 
+    base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
+                                     const std::vector<node::DataType>& args_type, bool is_aggregate,
+                                     const std::string& so_name);
+
     /// \brief Same as above, but allowing compiling with configuring common column indices.
     ///
     /// The common column indices are used for common column optimization under EngineMode::kBatchRequestMode

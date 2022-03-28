@@ -2755,7 +2755,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     fun.set_file((*option)["FILE"]->GetExprString());
     auto ns = cluster_sdk_->GetNsClient();
-    // TODO(denglong): support multi db
     auto ret = ns->CreateFunction(fun);
     if (!ret.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, ret.msg};

@@ -229,6 +229,27 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsM
     }
 }
 
+Status ValidateArgs(const std::string& function_name, const std::vector<const TypeNode *> &actual_types,
+        const std::vector<const node::TypeNode *>& arg_types, int variadic_pos) {
+    size_t actual_arg_num = actual_types.size();
+    CHECK_TRUE(actual_arg_num >= arg_types.size(), kTypeError, function_name, " take at least ", arg_types.size(),
+               " arguments, but get ", actual_arg_num);
+    if (arg_types.size() < actual_arg_num) {
+        CHECK_TRUE(variadic_pos >= 0 && static_cast<size_t>(variadic_pos) == arg_types.size(), kTypeError,
+                   function_name, " take explicit ", arg_types.size(), " arguments, but get ", actual_arg_num);
+    }
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        auto actual_ty = actual_types[i];
+        if (actual_ty == nullptr) {
+            continue;
+        }
+        CHECK_TRUE(arg_types[i] != nullptr, kTypeError, i, "th argument is not inferred");
+        CHECK_TRUE(arg_types[i]->Equals(actual_ty), kTypeError, function_name, "'s ", i,
+                   "th actual argument mismatch: get ", actual_ty->GetName(), " but expect ", arg_types[i]->GetName());
+    }
+    return Status::OK();
+}
+
 bool SqlNode::Equals(const SqlNode *that) const {
     if (this == that) {
         return true;
@@ -1118,6 +1139,12 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
             break;
         case kCreateFunctionStmt:
             output = "kCreateFunctionStmt";
+            break;
+        case kDynamicUdfFnDef:
+            output = "kDynamicUdfFnDef";
+            break;
+        case kDynamicUdafFnDef:
+            output = "kDynamicUdafFnDef";
             break;
         case kUnknow:
             output = "kUnknow";
@@ -2139,23 +2166,47 @@ bool ExternalFnDefNode::Equals(const SqlNode *node) const {
 }
 
 Status ExternalFnDefNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
-    size_t actual_arg_num = actual_types.size();
-    CHECK_TRUE(actual_arg_num >= arg_types_.size(), kTypeError, function_name(), " take at least ", arg_types_.size(),
-               " arguments, but get ", actual_arg_num);
-    if (arg_types_.size() < actual_arg_num) {
-        CHECK_TRUE(variadic_pos_ >= 0 && static_cast<size_t>(variadic_pos_) == arg_types_.size(), kTypeError,
-                   function_name(), " take explicit ", arg_types_.size(), " arguments, but get ", actual_arg_num);
-    }
-    for (size_t i = 0; i < arg_types_.size(); ++i) {
-        auto actual_ty = actual_types[i];
-        if (actual_ty == nullptr) {
-            continue;
+    return ValidateArgs(function_name_, actual_types, arg_types_, variadic_pos_);
+}
+
+void DynamicUdfFnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
+    if (!IsResolved()) {
+        output << org_tab << "[Unresolved](" << function_name_ << ")";
+    } else {
+        output << org_tab << "[kDynamicUdfFnDef] ";
+        if (GetReturnType() == nullptr) {
+            output << "?";
+        } else {
+            output << GetReturnType()->GetName();
         }
-        CHECK_TRUE(arg_types_[i] != nullptr, kTypeError, i, "th argument is not inferred");
-        CHECK_TRUE(arg_types_[i]->Equals(actual_ty), kTypeError, function_name(), "'s ", i,
-                   "th actual argument mismatch: get ", actual_ty->GetName(), " but expect ", arg_types_[i]->GetName());
+        output << " " << function_name_ << "(";
+        for (size_t i = 0; i < GetArgSize(); ++i) {
+            auto arg_ty = GetArgType(i);
+            if (arg_ty == nullptr) {
+                output << "?";
+            } else {
+                output << arg_ty->GetName();
+            }
+            if (i < GetArgSize() - 1) {
+                output << ", ";
+            }
+        }
+        output << ")";
+        if (return_by_arg_) {
+            output << "\n";
+            const std::string tab = org_tab + INDENT;
+            PrintValue(output, tab, "true", "return_by_arg", true);
+        }
     }
-    return Status::OK();
+}
+
+bool DynamicUdfFnDefNode::Equals(const SqlNode *node) const {
+    auto other = dynamic_cast<const DynamicUdfFnDefNode*>(node);
+    return other != nullptr && other->GetName() == GetName();
+}
+
+Status DynamicUdfFnDefNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
+    return ValidateArgs(function_name_, actual_types, arg_types_, -1);
 }
 
 void UdfDefNode::Print(std::ostream &output, const std::string &tab) const {

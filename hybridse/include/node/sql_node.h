@@ -2356,6 +2356,61 @@ class ExternalFnDefNode : public FnDefNode {
     bool return_by_arg_;
 };
 
+class DynamicUdfFnDefNode : public FnDefNode {
+ public:
+    DynamicUdfFnDefNode(const std::string &name, void *fn_ptr, const node::TypeNode *ret_type, bool ret_nullable,
+                      const std::vector<const node::TypeNode *> &arg_types, const std::vector<int> &arg_nullable,
+                      bool return_by_arg)
+        : FnDefNode(kDynamicUdfFnDef),
+          function_name_(name),
+          function_ptr_(fn_ptr),
+          ret_type_(ret_type),
+          ret_nullable_(ret_nullable),
+          arg_types_(arg_types),
+          arg_nullable_(arg_nullable),
+          return_by_arg_(return_by_arg) {}
+
+    const std::string GetName() const override { return function_name_; }
+
+    void *function_ptr() const { return function_ptr_; }
+    const node::TypeNode *ret_type() const { return ret_type_; }
+    const std::vector<const node::TypeNode *> &arg_types() const { return arg_types_; }
+    bool return_by_arg() const { return return_by_arg_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SqlNode *node) const override;
+
+    void SetReturnType(const node::TypeNode *dtype) { this->ret_type_ = dtype; }
+    void SetReturnNullable(bool flag) { this->ret_nullable_ = flag; }
+
+    void SetReturnByArg(bool flag) { this->return_by_arg_ = flag; }
+
+    bool IsResolved() const { return ret_type_ != nullptr; }
+
+    base::Status Validate(const std::vector<const TypeNode *> &arg_types) const override;
+
+    const TypeNode *GetReturnType() const override { return ret_type_; }
+    size_t GetArgSize() const override { return arg_types_.size(); }
+    const TypeNode *GetArgType(size_t i) const override { return arg_types_[i]; }
+    bool IsArgNullable(size_t i) const override { return arg_nullable_[i] > 0; }
+    bool IsReturnNullable() const override { return ret_nullable_; }
+
+    // bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
+    bool IsListReturn(ExprAnalysisContext *ctx) const override { return false; };
+
+    DynamicUdfFnDefNode *ShadowCopy(NodeManager *) const override;
+    DynamicUdfFnDefNode *DeepCopy(NodeManager *) const override;
+
+ private:
+    std::string function_name_;
+    void *function_ptr_;
+    const node::TypeNode *ret_type_;
+    bool ret_nullable_;
+    std::vector<const node::TypeNode *> arg_types_;
+    std::vector<int> arg_nullable_;
+    bool return_by_arg_;
+};
+
 class UdfDefNode : public FnDefNode {
  public:
     explicit UdfDefNode(FnNodeFnDef *def) : FnDefNode(kUdfDef), def_(def) {}

@@ -353,6 +353,13 @@ class NodeManager {
         const std::vector<int> &arg_nullable, int variadic_pos,
         bool return_by_arg);
 
+    DynamicUdfFnDefNode *MakeDynamicUdfFnDefNode(
+        const std::string &function_name, void *function_ptr,
+        const node::TypeNode *ret_type, bool ret_nullable,
+        const std::vector<const node::TypeNode *> &arg_types,
+        const std::vector<int> &arg_nullable,
+        bool return_by_arg);
+
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
         const std::string &function_name);
 
