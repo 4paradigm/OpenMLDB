@@ -5747,9 +5747,11 @@ TEST_F(TabletImplTest, CreateAggregator) {
     tablet.Init("");
     ::openmldb::api::TableMeta base_table_meta;
     uint32_t aggr_table_id;
+    uint32_t base_table_id;
     {
         // base table
         uint32_t id = counter++;
+        base_table_id = id;
         ::openmldb::api::CreateTableRequest request;
         ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_tid(id);
@@ -5814,6 +5816,19 @@ TEST_F(TabletImplTest, CreateAggregator) {
     ASSERT_EQ(aggrs->at(1)->GetAggrType(), ::openmldb::storage::AggrType::kSum);
     ASSERT_EQ(aggrs->at(1)->GetWindowType(), ::openmldb::storage::WindowType::kRowsRange);
     ASSERT_EQ(aggrs->at(1)->GetWindowSize(), 60 * 60 * 24 * 1000);
+    {
+        MockClosure closure;
+        ::openmldb::api::DropTableRequest dr;
+        dr.set_tid(base_table_id);
+        dr.set_pid(1);
+        ::openmldb::api::DropTableResponse drs;
+        tablet.DropTable(NULL, &dr, &drs, &closure);
+        ASSERT_EQ(0, drs.code());
+        dr.set_tid(aggr_table_id);
+        dr.set_pid(1);
+        tablet.DropTable(NULL, &dr, &drs, &closure);
+        ASSERT_EQ(0, drs.code());
+    }
 }
 
 }  // namespace tablet

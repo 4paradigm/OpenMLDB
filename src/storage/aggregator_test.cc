@@ -68,7 +68,8 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
                           0);
 }
 
-bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type) {
+bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
+                           const std::string& bucket_size, AggrBuffer* last_buffer) {
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);
@@ -77,17 +78,19 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
-    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, aggr_col, aggr_type, "ts_col", "1s");
+    auto aggr =
+        CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, aggr_col, aggr_type, "ts_col", bucket_size);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);
     encoded_row.resize(row_size);
     std::string key = "id1|id2";
+    auto window_size = aggr->GetWindowSize();
     for (int i = 0; i <= 100; i++) {
         row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
         row_builder.AppendString("id1", 3);
         row_builder.AppendString("id2", 3);
-        row_builder.AppendTimestamp(i);
+        row_builder.AppendTimestamp(i * window_size);
         row_builder.AppendInt32(i);
         row_builder.AppendInt16(i);
         row_builder.AppendInt64(i);
@@ -98,6 +101,58 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
             return false;
         }
     }
+
+    if (!(aggr_table->GetRecordCnt() == 100)) {
+        return false;
+    }
+
+    auto ok = aggr->GetAggrBuffer(key, last_buffer);
+    if (!ok) {
+        return false;
+    }
+    auto it = aggr_table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    for (int i = 100 - 1; i >= 0; --i) {
+        if (!it->Valid()) {
+            return false;
+        }
+        auto tmp_val = it->GetValue();
+        std::string origin_data = tmp_val.ToString();
+        codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                       origin_data.size());
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        origin_row_view.GetString(4, &ch, &ch_length);
+        switch (aggr->GetAggrColType()) {
+            case DataType::kSmallInt:
+            case DataType::kInt:
+            case DataType::kBigInt: {
+                int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
+                if (origin_val != (int64_t)i) {
+                    return false;
+                }
+                break;
+            }
+            case DataType::kFloat: {
+                float origin_val = *reinterpret_cast<float*>(ch);
+                if (origin_val != (float)i) {
+                    return false;
+                }
+                break;
+            }
+            case DataType::kDouble: {
+                double origin_val = *reinterpret_cast<double*>(ch);
+                if (origin_val != (double)i) {
+                    return false;
+                }
+                break;
+            }
+            default: { return false; }
+        }
+        it->Next();
+    }
+
     return true;
 }
 
@@ -243,51 +298,40 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
             ASSERT_EQ(val, i * 4 + 1);
             it->Next();
         }
+        AggrBuffer last_buffer;
+        auto ok = aggr->GetAggrBuffer(key, &last_buffer);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
     }
     // rows_range window type
     {
-        uint32_t id = counter++;
-        ::openmldb::api::TableMeta base_table_meta;
-        base_table_meta.set_tid(id);
-        AddDefaultAggregatorBaseSchema(&base_table_meta);
-        id = counter++;
-        ::openmldb::api::TableMeta aggr_table_meta;
-        aggr_table_meta.set_tid(id);
-        AddDefaultAggregatorSchema(&aggr_table_meta);
-        std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
-        aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1s");
-        codec::RowBuilder row_builder(base_table_meta.column_desc());
-        std::string encoded_row;
-        uint32_t row_size = row_builder.CalTotalLength(6);
-        encoded_row.resize(row_size);
-        std::string key = "id1|id2";
-        for (int i = 0; i <= 100; i++) {
-            row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
-            row_builder.AppendString("id1", 3);
-            row_builder.AppendString("id2", 3);
-            row_builder.AppendTimestamp(i * 1000);
-            row_builder.AppendInt32(i);
-            row_builder.AppendInt16(i);
-            row_builder.AppendInt64(i);
-            row_builder.AppendFloat(static_cast<float>(i));
-            row_builder.AppendDouble(static_cast<double>(i));
-            bool ok = aggr->Update(key, encoded_row, i);
-            ASSERT_TRUE(ok);
-        }
-        ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
-    }
-    // multi column aggregate
-    {
-        CheckAggregatorUpdate(counter, "col3", "sum");
+        AggrBuffer last_buffer;
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col3", "sum", "1s", &last_buffer));
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
-        CheckAggregatorUpdate(counter, "col4", "sum");
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col4", "sum", "1m", &last_buffer));
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
-        CheckAggregatorUpdate(counter, "col5", "sum");
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col5", "sum", "2h", &last_buffer));
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
-        CheckAggregatorUpdate(counter, "col6", "sum");
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col6", "sum", "3h", &last_buffer));
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vfloat, (float)100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
         counter += 2;
-        CheckAggregatorUpdate(counter, "col7", "sum");
+        ASSERT_TRUE(CheckAggregatorUpdate(counter, "col7", "sum", "1s", &last_buffer));
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vdouble, (double)100);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
     }
 }
 

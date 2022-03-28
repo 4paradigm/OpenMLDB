@@ -46,6 +46,35 @@ enum class WindowType {
     kRowsRange = 2,
 };
 
+union AggrVal {
+    int16_t vsmallint;
+    int32_t vint;
+    int64_t vlong;
+    float vfloat;
+    double vdouble;
+};
+
+struct AggrBuffer {
+    AggrVal aggr_val_;
+    int64_t ts_begin_;
+    int64_t ts_end_;
+    int32_t aggr_cnt_;
+    uint64_t binlog_offset_;
+    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
+    void clear() {
+        memset(&aggr_val_, 0, sizeof(aggr_val_));
+        ts_begin_ = -1;
+        ts_end_ = 0;
+        aggr_cnt_ = 0;
+        binlog_offset_ = 0;
+    }
+};
+struct AggrBufferLocked {
+    std::unique_ptr<std::mutex> mu_;
+    AggrBuffer buffer_;
+    AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
+};
+
 class Aggregator {
  public:
     Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
@@ -60,43 +89,19 @@ class Aggregator {
 
     AggrType GetAggrType() const { return aggr_type_; }
 
+    DataType GetAggrColType() const { return aggr_col_type_; }
+
     WindowType GetWindowType() const { return window_type_; }
 
     uint32_t GetWindowSize() const { return window_size_; }
+
+    bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
 
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
     int aggr_col_idx_;
     int ts_col_idx_;
-    union AggrVal {
-        int16_t vsmallint;
-        int32_t vint;
-        int64_t vlong;
-        float vfloat;
-        double vdouble;
-    };
-
-    struct AggrBuffer {
-        AggrVal aggr_val_;
-        int64_t ts_begin_;
-        int64_t ts_end_;
-        int32_t aggr_cnt_;
-        uint64_t binlog_offset_;
-        AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
-        void clear() {
-            aggr_val_.vsmallint = 0;
-            ts_begin_ = -1;
-            ts_end_ = 0;
-            aggr_cnt_ = 0;
-            binlog_offset_ = 0;
-        }
-    };
-    struct AggrBufferLocked {
-        std::unique_ptr<std::mutex> mu_;
-        AggrBuffer buffer_;
-        AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
-    };
 
     std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
     std::mutex mu_;

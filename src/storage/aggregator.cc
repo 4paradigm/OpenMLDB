@@ -68,7 +68,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             break;
         }
         default: {
-            LOG(ERROR) << "Unsupported timestamp type: " << ts_col_type_;
+            PDLOG(ERROR, "Unsupported timestamp data type");
             return false;
         }
     }
@@ -111,7 +111,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         lock.unlock();
         bool ok = UpdateFlushedBuffer(key, row_ptr, cur_ts, offset);
         if (!ok) {
-            LOG(ERROR) << "Update flushed buffer failed";
+            PDLOG(ERROR, "Update flushed buffer failed");
             return false;
         }
     } else {
@@ -122,10 +122,19 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         }
         bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
         if (!ok) {
-            LOG(ERROR) << "Update aggr value failed";
+            PDLOG(ERROR, "Update aggr value failed");
             return false;
         }
     }
+    return true;
+}
+
+bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer* buffer) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (aggr_buffer_map_.find(key) == aggr_buffer_map_.end()) {
+        return false;
+    }
+    *buffer = aggr_buffer_map_.at(key).buffer_;
     return true;
 }
 
@@ -158,7 +167,7 @@ bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const 
             break;
         }
         default: {
-            PDLOG(WARNING, "unsupported data type");
+            PDLOG(ERROR, "Unsupported data type");
             return false;
         }
     }
@@ -187,7 +196,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
             break;
         }
         default: {
-            PDLOG(WARNING, "unsupported data type");
+            PDLOG(ERROR, "Unsupported data type");
             return false;
         }
     }
@@ -210,13 +219,14 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     dimensions_.Mutable(0)->set_key(key);
     bool ok = aggr_table_->Put(time, encoded_row, dimensions_);
     if (!ok) {
-        LOG(ERROR) << "aggregator put failed";
+        PDLOG(ERROR, "Aggregator put failed");
         return false;
     }
     return true;
 }
 
-bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset) {
+bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts,
+                                     uint64_t offset) {
     auto it = aggr_table_->NewTraverseIterator(0);
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
     it->Seek(key, cur_ts + 1);
@@ -228,11 +238,11 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_
 
         bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &tmp_buffer);
         if (!ok) {
-            LOG(ERROR) << "GetAggrBufferFromRowView failed";
+            PDLOG(ERROR, "GetAggrBufferFromRowView failed");
             return false;
         }
         if (cur_ts > tmp_buffer.ts_end_ || cur_ts < tmp_buffer.ts_begin_) {
-            LOG(ERROR) << "current ts isn't in buffer range";
+            PDLOG(ERROR, "Current ts isn't in buffer range");
             return false;
         }
         tmp_buffer.aggr_cnt_ += 1;
@@ -245,12 +255,12 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_
     }
     bool ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer);
     if (!ok) {
-        LOG(ERROR) << "UpdateAggrVal failed";
+        PDLOG(ERROR, "UpdateAggrVal failed");
         return false;
     }
     ok = FlushAggrBuffer(key, tmp_buffer);
     if (!ok) {
-        LOG(ERROR) << "FlushAggrBuffer failed";
+        PDLOG(ERROR, "FlushAggrBuffer failed");
         return false;
     }
     return true;
@@ -291,7 +301,12 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
-        case DataType::kFloat:
+        case DataType::kFloat: {
+            float val;
+            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+            aggr_buffer->aggr_val_.vfloat += val;
+            break;
+        }
         case DataType::kDouble: {
             double val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
@@ -299,7 +314,7 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             break;
         }
         default: {
-            PDLOG(WARNING, "unsupported data type");
+            PDLOG(ERROR, "Unsupported data type");
             return false;
         }
     }
@@ -320,13 +335,14 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
     } else {
         window_type = WindowType::kRowsRange;
         if (bucket_size.empty()) {
-            PDLOG(WARNING, "bucket size is empty");
+            PDLOG(ERROR, "Bucket size is empty");
             return std::shared_ptr<Aggregator>();
         }
         char time_unit = bucket_size.back();
         std::string time_size = bucket_size.substr(0, bucket_size.size() - 1);
+        boost::trim(time_size);
         if (!::openmldb::base::IsNumber(time_size)) {
-            PDLOG(WARNING, "bucket size is not a number");
+            PDLOG(ERROR, "Bucket size is not a number");
             return std::shared_ptr<Aggregator>();
         }
         switch (time_unit) {
@@ -343,7 +359,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
                 window_size = std::stoi(time_size) * 1000 * 60 * 60 * 24;
                 break;
             default: {
-                PDLOG(WARNING, "Unsupported time unit");
+                PDLOG(ERROR, "Unsupported time unit");
                 return std::shared_ptr<Aggregator>();
             }
         }
@@ -354,7 +370,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         return std::make_shared<SumAggregator>(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, AggrType::kSum,
                                                ts_col, window_type, window_size);
     } else {
-        PDLOG(WARNING, "Unsupported aggregate function type");
+        PDLOG(ERROR, "Unsupported aggregate function type");
         return std::shared_ptr<Aggregator>();
     }
     return std::shared_ptr<Aggregator>();
