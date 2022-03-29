@@ -93,7 +93,11 @@ endif()
 
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
-find_library(PROTOBUF_LIBRARY protobuf)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+find_package(Protobuf 3.6 EXACT REQUIRED)
+message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
+
 find_library(GLOG_LIBRARY glog)
 find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
@@ -111,20 +115,20 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
-            ${CMAKE_THREAD_LIBS_INIT}
-            "-framework CoreFoundation"
-            "-framework CoreGraphics"
-            "-framework CoreData"
-            "-framework CoreText"
-            "-framework Security"
-            "-framework Foundation"
-            "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
-            "-Wl,-U,_ProfilerStart"
-            "-Wl,-U,_ProfilerStop")
-          set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+        ${CMAKE_THREAD_LIBS_INIT}
+        "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework CoreData"
+        "-framework CoreText"
+        "-framework Security"
+        "-framework Foundation"
+        "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
+        "-Wl,-U,_ProfilerStart"
+        "-Wl,-U,_ProfilerStop")
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 endif ()
 
 if (SANITIZER_ENABLE)
@@ -180,8 +184,6 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
-#set(Protobuf_USE_STATIC_LIBS ON)
-#find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND
         ABSL_LIBS

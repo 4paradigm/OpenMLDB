@@ -88,7 +88,11 @@ set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
-find_library(PROTOBUF_LIBRARY protobuf)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+find_package(Protobuf 3.6 EXACT REQUIRED)
+message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
+
 find_library(GLOG_LIBRARY glog)
 find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
@@ -100,7 +104,7 @@ message(STATUS "Boost libraries ${Boost_LIBRARIES}")
 message(STATUS "OpenSSL libraries ${OPENSSL_LIBRARIES}")
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -114,7 +118,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 endif ()
 
@@ -180,8 +184,6 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
-set(Protobuf_USE_STATIC_LIBS ON)
-find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND
         ABSL_LIBS

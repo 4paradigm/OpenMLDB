@@ -18,7 +18,7 @@ add_subdirectory(statistics)
 
 function(compile_proto proto_name project_dir)
 add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
-        COMMAND ${CMAKE_PREFIX_PATH}/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
+        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
         --cpp_out=${project_dir}/src/proto/
         --java_out=${project_dir}/java/openmldb-native/src/main/java
         --java_out=${project_dir}/java/openmldb-import/src/main/java
