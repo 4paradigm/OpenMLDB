@@ -105,7 +105,7 @@ find_library(LEVELDB_LIBRARY leveldb)
 find_library(Z_LIBRARY z)
 find_library(SNAPPY_LIBRARY snappy)
 
-find_package(RocksDB REQUIRED)
+find_package(RocksDB)
 if (RocksDB_FOUND)
     set(RocksDB_LIB RocksDB::rocksdb)
 else()
