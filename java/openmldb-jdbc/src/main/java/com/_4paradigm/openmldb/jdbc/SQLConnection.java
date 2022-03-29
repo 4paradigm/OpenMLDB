@@ -29,7 +29,6 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
-import java.sql.Statement;
 import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
@@ -50,8 +49,8 @@ public class SQLConnection implements Connection {
     }
 
     @Override
-    public Statement createStatement() throws SQLException {
-        return new SQLStatement(this);
+    public java.sql.Statement createStatement() throws SQLException {
+        return new Statement(this);
     }
 
 
@@ -164,7 +163,7 @@ public class SQLConnection implements Connection {
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
+    public java.sql.Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         return null;
     }
 
@@ -219,7 +218,7 @@ public class SQLConnection implements Connection {
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
+    public java.sql.Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
         return null;
     }
 

@@ -5,12 +5,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 
-public class SQLStatement implements java.sql.Statement {
+public class Statement implements java.sql.Statement {
     private ResultSet resultSet;
     private final SQLConnection connection;
     private boolean closed;
 
-    public SQLStatement(SQLConnection connection) {
+    public Statement(SQLConnection connection) {
         this.connection = connection;
         this.closed = false;
     }
