@@ -19,11 +19,13 @@
 
 #include <atomic>
 #include <vector>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "glog/logging.h"
 
 namespace openmldb {
 namespace statistics {
@@ -57,20 +59,49 @@ namespace statistics {
 
 #define MAX_STRING "inf"
 
+static inline std::string GetDurationAsString(absl::Duration d) {
+    if (d == absl::InfiniteDuration()) {
+        return MAX_STRING;
+    }
+    return std::to_string(absl::ToInt64Microseconds(d));
+}
+
+inline absl::Duration ParseDurationFromRawInt(absl::string_view raw) {
+    auto dur = absl::InfiniteDuration();
+    if (raw != MAX_STRING) {
+        try {
+            dur = absl::Microseconds(std::stoll(raw.data()));
+        } catch (std::exception const &e) {
+            LOG(ERROR) << "[ERROR] parse number from string: " << raw << "\n" << e.what();
+        }
+    }
+    return dur;
+}
+
 struct ResponseTimeRow {
-    ResponseTimeRow(absl::Duration upper_bound, uint32_t cnt, absl::Duration total)
-        : upper_bound_(upper_bound), count_(cnt), total_(total) {}
+    ResponseTimeRow(absl::Duration time, uint32_t cnt, absl::Duration total)
+        : time_(time), count_(cnt), total_(total) {}
     ResponseTimeRow(const ResponseTimeRow& row)
-        : upper_bound_(row.upper_bound_), count_(row.count_), total_(row.total_) {}
+        : time_(row.time_), count_(row.count_), total_(row.total_) {}
     virtual ~ResponseTimeRow() {}
 
-    absl::Duration upper_bound_;
+    // get time_ as int64 micro seconds
+    uint64_t GetTimeAsUs() const { return absl::ToInt64Microseconds(time_); }
+
+    // get total_ as int64 micro seconds
+    uint64_t GetTotalAsUs() const { return absl::ToInt64Microseconds(total_); }
+
+    std::string GetTimeAsStr() const { return GetDurationAsString(time_); }
+
+    std::string GetTotalAsStr() const { return GetDurationAsString(total_); }
+
+    absl::Duration time_;
     uint32_t count_;
     absl::Duration total_;
 };
 
 inline bool operator==(const ResponseTimeRow& lhs, const ResponseTimeRow& rhs) {
-    return lhs.upper_bound_ == rhs.upper_bound_ && lhs.total_ == rhs.total_ && lhs.count_ == rhs.count_;
+    return lhs.time_ == rhs.time_ && lhs.total_ == rhs.total_ && lhs.count_ == rhs.count_;
 }
 
 class TimeDistributionHelper {

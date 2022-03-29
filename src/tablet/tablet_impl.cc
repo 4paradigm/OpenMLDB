@@ -224,7 +224,6 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
-    task_pool_.DelayTask(2000, boost::bind(&TabletImpl::ScheduleSyncDeployStats, this));
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
     }
@@ -5065,79 +5064,7 @@ void TabletImpl::CollectDeployStats(const std::string& deploy_name, absl::Time s
     if (!s.ok()) {
         LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
     }
-    LOG(INFO) << "collected " << deploy_name << ": " << time;
-}
-
-static const std::string& QueryDeployStats() {
-    static const std::string query_deploy_stats =
-        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
-    return query_deploy_stats;
-}
-
-void TabletImpl::SyncDeployStats() {
-    if (!IsCollectDeployStatsEnabled()) {
-        DLOG(INFO) << "deploy stats not enabled";
-        return;
-    }
-    hybridse::sdk::Status s;
-    auto rs = sr_->ExecuteSQLParameterized("", QueryDeployStats(), {}, &s);
-    if (!s.IsOK()) {
-        LOG(ERROR) << "[ERROR] querying DEPLOY_RESPONSE_TIME" << s.msg;
-        return;
-    }
-
-    std::map<std::string, std::pair<uint32_t, absl::Duration>> old_stats;
-    while (rs->Next()) {
-        auto name = rs->GetAsStringUnsafe(0);
-        auto time = rs->GetAsStringUnsafe(1);
-        int32_t cnt = rs->GetInt32Unsafe(2);
-        auto total = rs->GetAsStringUnsafe(3);
-        auto total_united = absl::InfiniteDuration();
-        if (total != MAX_STRING) {
-            total_united = absl::Microseconds(std::stoll(total));
-        }
-
-        std::string key = absl::StrCat(name, "_", time);
-
-        old_stats[key] = std::make_pair(cnt, total_united);
-    }
-
-    std::vector<::openmldb::statistics::DeployResponseTimeRow> rows = deploy_collector_->Flush();
-    std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
-                                                  nameserver::DEPLOY_RESPONSE_TIME, " values ");
-    for (auto& row : rows) {
-        std::string time = MAX_STRING;
-        if (row.upper_bound_ != absl::InfiniteDuration()) {
-            time = std::to_string(absl::ToInt64Microseconds(row.upper_bound_));
-        }
-        auto key = absl::StrCat(row.deploy_name_, "_", time);
-        auto it = old_stats.find(key);
-        if (it != old_stats.end()) {
-            if (row.count_ == 0) {
-                // don't update table only if there is no incremental data, and there is record already in table
-                continue;
-            }
-            row.count_ += it->second.first;
-            row.total_ += it->second.second;
-        }
-
-        auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row.deploy_name_, "', '",
-                                       time, "', ", row.count_,
-                                       ",'", std::to_string(absl::ToInt64Microseconds(row.total_)), "' )");
-
-        hybridse::sdk::Status st;
-        DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
-        sr_->ExecuteInsert("", insert_sql, &st);
-        if (!st.IsOK()) {
-            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
-        }
-    }
-}
-
-void TabletImpl::ScheduleSyncDeployStats() {
-    SyncDeployStats();
-    // FIXME(ace): add a flag
-    task_pool_.DelayTask(2000, boost::bind(&TabletImpl::ScheduleSyncDeployStats, this));
+    LOG(INFO) << "collected " << deploy_name << "for " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
@@ -5248,6 +5175,23 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
         bulk_load_mgr_.RemoveReceiver(tid, pid);
         std::dynamic_pointer_cast<MemTable>(table)->SetExpire(true);
     }
+}
+
+void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* controller,
+                                        const ::openmldb::api::GAFDeployStatsRequest* request,
+                                        ::openmldb::api::DeployStatsResponse* response,
+                                        ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    auto rs = deploy_collector_->Flush();
+    for (auto& r : rs) {
+        auto new_row = response->add_rows();
+        new_row->set_deploy_name(r.deploy_name_);
+        new_row->set_time(r.GetTimeAsStr());
+        new_row->set_count(r.count_);
+        new_row->set_total(r.GetTotalAsStr());
+    }
+    response->set_code(ReturnCode::kOk);
 }
 
 }  // namespace tablet

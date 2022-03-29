@@ -45,7 +45,7 @@ class TimeCollectorTest : public ::testing::Test {
 inline std::string Format(const std::vector<ResponseTimeRow>& rows) {
     std::stringstream ss;
     for (auto& row : rows) {
-        ss << row.upper_bound_ << ", " << row.count_ << ", " << row.total_ << std::endl;
+        ss << row.time_ << ", " << row.count_ << ", " << row.total_ << std::endl;
     }
     return ss.str();
 }
@@ -133,7 +133,7 @@ TEST_F(TimeCollectorTest, StateAtomicityBetweenBucketsTest) {
         absl::Duration total = std::accumulate(times[idx].begin(), times[idx].end(), absl::Seconds(0));
         auto row = collector_.GetRow(idx);
         ASSERT_TRUE(row.ok());
-        col_ss << "[" << row->upper_bound_ << ", " << row.value().count_ << ", " << row.value().total_ << "]"
+        col_ss << "[" << row->time_ << ", " << row.value().count_ << ", " << row.value().total_ << "]"
                << std::endl;
         EXPECT_EQ(count, row.value().count_);
         EXPECT_EQ(total, row.value().total_);

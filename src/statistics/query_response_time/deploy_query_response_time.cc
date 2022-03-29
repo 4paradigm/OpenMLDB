@@ -15,6 +15,7 @@
  */
 
 #include "statistics/query_response_time/deploy_query_response_time.h"
+#include <memory>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -22,6 +23,26 @@
 
 namespace openmldb {
 namespace statistics {
+
+void DeployResponseTimeRowReducer::Reduce(const std::string &dp_name, TIME time, COUNT cnt, TOTAL total) {
+    auto it = cache_.find(dp_name);
+    if (it == cache_.end()) {
+        auto row = std::make_shared<DeployResponseTimeRow>(dp_name, time, cnt, total);
+        rows_.push_back(row);
+        cache_[dp_name][time] = std::move(row);
+    } else {
+        auto& inner_map = it->second;
+        auto inner_it = inner_map.find(time);
+        if (inner_it == inner_map.end()) {
+            auto row = std::make_shared<DeployResponseTimeRow>(dp_name, time, cnt, total);
+            rows_.push_back(row);
+            inner_map[time] = std::move(row);
+        } else {
+            inner_it->second->count_ += cnt;
+            inner_it->second->total_ += total;
+        }
+    }
+}
 
 absl::Status DeployQueryTimeCollector::Collect(const std::string& deploy_name, absl::Duration time) {
     absl::ReaderMutexLock lock(&mutex_);
@@ -66,7 +87,7 @@ absl::StatusOr<std::vector<DeployResponseTimeRow>> DeployQueryTimeCollector::Get
     rows.reserve(it->second->BucketCount());
     for (auto idx = 0; idx < it->second->BucketCount(); ++idx) {
         auto row = it->second->GetRow(idx);
-        rows.emplace_back(it->first, row->upper_bound_, row->count_, row->total_);
+        rows.emplace_back(it->first, row->time_, row->count_, row->total_);
     }
     return rows;
 }
@@ -78,7 +99,7 @@ std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::GetRows() const {
     for (auto& kv : collectors_) {
         for (auto idx = 0; idx < kv.second->BucketCount(); ++idx) {
             auto row = kv.second->GetRow(idx);
-            rows.emplace_back(kv.first, row->upper_bound_, row->count_, row->total_);
+            rows.emplace_back(kv.first, row->time_, row->count_, row->total_);
         }
     }
     return rows;
@@ -92,14 +113,13 @@ std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::Flush() {
     for (auto& kv : collectors_) {
         auto rs = kv.second->Flush();
         for (auto& r : rs) {
-            rows.emplace_back(kv.first, r.upper_bound_, r.count_, r.total_);
+            rows.emplace_back(kv.first, r.time_, r.count_, r.total_);
         }
     }
 
     return rows;
 }
 
-// thread unsafe
 uint32_t DeployQueryTimeCollector::GetRecordsCnt() const {
     uint32_t cnt = 0;
     for (auto& kv : collectors_) {

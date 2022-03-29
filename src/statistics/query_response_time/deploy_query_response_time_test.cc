@@ -42,7 +42,7 @@ class DeployTimeCollectorTest : public ::testing::Test {
 };
 
 inline std::string Format(const DeployResponseTimeRow& row) {
-    return absl::StrCat(row.deploy_name_, ", ", absl::FormatDuration(row.upper_bound_), ", ", row.count_, ", ",
+    return absl::StrCat(row.deploy_name_, ", ", absl::FormatDuration(row.time_), ", ", row.count_, ", ",
                         absl::FormatDuration(row.total_));
 }
 

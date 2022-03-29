@@ -21,6 +21,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <map>
+#include <utility>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
@@ -40,9 +42,37 @@ struct DeployResponseTimeRow : public ResponseTimeRow {
 };
 
 inline bool operator==(const DeployResponseTimeRow& lhs, const DeployResponseTimeRow& rhs) {
-    return lhs.deploy_name_ == rhs.deploy_name_ && lhs.upper_bound_ == rhs.upper_bound_ && lhs.total_ == rhs.total_ &&
+    return lhs.deploy_name_ == rhs.deploy_name_ && lhs.time_ == rhs.time_ && lhs.total_ == rhs.total_ &&
            lhs.count_ == rhs.count_;
 }
+
+// helper class to merge different list of deploy response rows into united one
+// that is, after reduce, the output rows will have each row with unique key combine: (deploy_name_ + time)
+class DeployResponseTimeRowReducer {
+ public:
+    using TIME = decltype(DeployResponseTimeRow::time_);
+    using COUNT = decltype(DeployResponseTimeRow::count_);
+    using TOTAL = decltype(DeployResponseTimeRow::total_);
+
+    void Reduce(const std::string& dp_name, TIME time, COUNT cnt, TOTAL total);
+
+    inline const std::vector<std::shared_ptr<DeployResponseTimeRow>>& Rows() const { return rows_; }
+
+    inline std::shared_ptr<DeployResponseTimeRow> Find(const std::string& dp_name, TIME time) const {
+        auto it = cache_.find(dp_name);
+        if (it != cache_.end()) {
+            auto iit = it->second.find(time);
+            if (iit != it->second.end()) {
+                return iit->second;
+            }
+        }
+        return {};
+    }
+
+ private:
+    std::vector<std::shared_ptr<DeployResponseTimeRow>> rows_;
+    std::map<std::string, std::map<TIME, std::shared_ptr<DeployResponseTimeRow>>> cache_;
+};
 
 class DeployQueryTimeCollector {
  public:
