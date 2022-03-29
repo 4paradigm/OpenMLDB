@@ -47,6 +47,7 @@ void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col5", openmldb::type::DataType::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col6", openmldb::type::DataType::kFloat);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col7", openmldb::type::DataType::kDouble);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col_null", openmldb::type::DataType::kInt);
 
     SchemaCodec::SetIndex(table_meta->add_column_key(), "idx", "id1|id2", "ts_col", ::openmldb::type::kAbsoluteTime, 0,
                           0);
@@ -68,6 +69,30 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
                           0);
 }
 
+bool UpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder) {
+    std::string encoded_row;
+    uint32_t row_size = row_builder->CalTotalLength(6);
+    encoded_row.resize(row_size);
+    auto window_size = aggr->GetWindowSize();
+    for (int i = 0; i <= 100; i++) {
+        row_builder->SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder->AppendString("id1", 3);
+        row_builder->AppendString("id2", 3);
+        row_builder->AppendTimestamp(static_cast<int64_t>(i) * window_size);
+        row_builder->AppendInt32(i);
+        row_builder->AppendInt16(i);
+        row_builder->AppendInt64(i);
+        row_builder->AppendFloat(static_cast<float>(i));
+        row_builder->AppendDouble(static_cast<double>(i));
+        row_builder->AppendNULL();
+        bool ok = aggr->Update("id1|id2", encoded_row, i);
+        if (!ok) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
                            const std::string& bucket_size, AggrBuffer* last_buffer) {
     ::openmldb::api::TableMeta base_table_meta;
@@ -81,31 +106,11 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
     auto aggr =
         CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, aggr_col, aggr_type, "ts_col", bucket_size);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
-    std::string encoded_row;
-    uint32_t row_size = row_builder.CalTotalLength(6);
-    encoded_row.resize(row_size);
+    UpdateAggr(aggr, &row_builder);
     std::string key = "id1|id2";
-    auto window_size = aggr->GetWindowSize();
-    for (int i = 0; i <= 100; i++) {
-        row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
-        row_builder.AppendString("id1", 3);
-        row_builder.AppendString("id2", 3);
-        row_builder.AppendTimestamp(static_cast<int64_t>(i) * window_size);
-        row_builder.AppendInt32(i);
-        row_builder.AppendInt16(i);
-        row_builder.AppendInt64(i);
-        row_builder.AppendFloat(static_cast<float>(i));
-        row_builder.AppendDouble(static_cast<double>(i));
-        bool ok = aggr->Update(key, encoded_row, i);
-        if (!ok) {
-            return false;
-        }
-    }
-
     if (!(aggr_table->GetRecordCnt() == 100)) {
         return false;
     }
-
     auto ok = aggr->GetAggrBuffer(key, last_buffer);
     if (!ok) {
         return false;
@@ -264,23 +269,8 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         aggr_table->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2");
         codec::RowBuilder row_builder(base_table_meta.column_desc());
-        std::string encoded_row;
-        uint32_t row_size = row_builder.CalTotalLength(6);
-        encoded_row.resize(row_size);
+        ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
-        for (int i = 0; i <= 100; i++) {
-            row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
-            row_builder.AppendString("id1", 3);
-            row_builder.AppendString("id2", 3);
-            row_builder.AppendTimestamp(static_cast<int64_t>(i));
-            row_builder.AppendInt32(i);
-            row_builder.AppendInt16(i);
-            row_builder.AppendInt64(i);
-            row_builder.AppendFloat(static_cast<float>(i));
-            row_builder.AppendDouble(static_cast<double>(i));
-            bool ok = aggr->Update(key, encoded_row, i);
-            ASSERT_TRUE(ok);
-        }
         ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
         auto it = aggr_table->NewTraverseIterator(0);
         it->SeekToFirst();
@@ -304,6 +294,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
+
     }
     // rows_range window type
     {
@@ -333,6 +324,50 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
     }
+    // null data tpye
+    {
+        uint32_t id = counter++;
+        ::openmldb::api::TableMeta base_table_meta;
+        base_table_meta.set_tid(id);
+        AddDefaultAggregatorBaseSchema(&base_table_meta);
+        id = counter++;
+        ::openmldb::api::TableMeta aggr_table_meta;
+        aggr_table_meta.set_tid(id);
+        AddDefaultAggregatorSchema(&aggr_table_meta);
+        std::map<std::string, uint32_t> mapping;
+        mapping.insert(std::make_pair("idx", 0));
+        std::shared_ptr<Table> aggr_table =
+            std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
+        aggr_table->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col_null", "sum", "ts_col", "2");
+        codec::RowBuilder row_builder(base_table_meta.column_desc());
+        ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
+        std::string key = "id1|id2";
+        ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
+        auto it = aggr_table->NewTraverseIterator(0);
+        it->SeekToFirst();
+        for (int i = 50 - 1; i >= 0; --i) {
+            ASSERT_TRUE(it->Valid());
+            auto tmp_val = it->GetValue();
+            std::string origin_data = tmp_val.ToString();
+            codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                           reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                           origin_data.size());
+            char* ch = NULL;
+            uint32_t ch_length = 0;
+            origin_row_view.GetString(4, &ch, &ch_length);
+            int32_t val = *reinterpret_cast<int32_t*>(ch);
+            ASSERT_EQ(val, 0);
+            it->Next();
+        }
+        AggrBuffer last_buffer;
+        auto ok = aggr->GetAggrBuffer(key, &last_buffer);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, 0);
+        ASSERT_EQ(last_buffer.binlog_offset_, 100);
+
+    }
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {
@@ -351,20 +386,8 @@ TEST_F(AggregatorTest, OutOfOrder) {
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);
     encoded_row.resize(row_size);
+    ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
     std::string key = "id1|id2";
-    for (int i = 0; i <= 100; i++) {
-        row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
-        row_builder.AppendString("id1", 3);
-        row_builder.AppendString("id2", 3);
-        row_builder.AppendTimestamp(static_cast<int64_t>(i) * 1000);
-        row_builder.AppendInt32(i);
-        row_builder.AppendInt16(i);
-        row_builder.AppendInt64(i);
-        row_builder.AppendFloat(static_cast<float>(i));
-        row_builder.AppendDouble(static_cast<double>(i));
-        bool ok = aggr->Update(key, encoded_row, i);
-        ASSERT_TRUE(ok);
-    }
     ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
     // out of order update
     row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
@@ -376,6 +399,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     row_builder.AppendInt64(100);
     row_builder.AppendFloat(static_cast<float>(4));
     row_builder.AppendDouble(static_cast<double>(5));
+    row_builder.AppendNULL();
     bool ok = aggr->Update(key, encoded_row, 101);
     ASSERT_TRUE(ok);
     ASSERT_EQ(aggr_table->GetRecordCnt(), 101);

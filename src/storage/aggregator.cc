@@ -282,6 +282,9 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
     : Aggregator(base_meta, aggr_meta, aggr_table, index_pos, aggr_col, aggr_type, ts_col, window_tpye, window_size) {}
 
 bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
+    if(row_view.IsNULL(row_ptr, aggr_col_idx_)) {
+        return true;
+    }
     switch (aggr_col_type_) {
         case DataType::kSmallInt: {
             int16_t val;
