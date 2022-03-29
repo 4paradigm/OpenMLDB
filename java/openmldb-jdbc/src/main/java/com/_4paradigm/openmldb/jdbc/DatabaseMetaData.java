@@ -662,8 +662,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
      * </OL>
      *
      * <P><B>Note:</B> OpenMLDB only has columns:
-     * TABLE_CAT(DB NAME)
-     * TABLE_SCHEM
+     * TABLE_CAT='null'
+     * TABLE_SCHEM='null'
      * TABLE_NAME
      * TABLE_TYPE='TABLE'
      *
@@ -737,7 +737,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
         // hard to impl when 'SHOW xxx WHERE'
-        if (!schemaPattern.equals("null") || columnNamePattern != null) {
+        if (!catalog.equals("null") || !schemaPattern.equals("null") || columnNamePattern != null) {
             throw new SQLException("unsupported");
         }
 
