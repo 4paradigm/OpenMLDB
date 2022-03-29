@@ -29,6 +29,7 @@ class TestUnsafeJoin extends SparkTestSuite {
   override def customizedBefore(): Unit = {
     val spark = getSparkSession
     spark.conf.set("spark.openmldb.unsaferow.opt", true)
+    spark.conf.set("spark.openmldb.opt.join.spark_expr", true)
   }
 
   def testSql(sqlText: String) {
@@ -118,6 +119,36 @@ class TestUnsafeJoin extends SparkTestSuite {
 
     val outputDf = sess.sql(sqlText)
     assert(outputDf.count() == data.size)
+  }
+
+  test("Test unsafe last join with arithmetic expression") {
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val t1 = DataUtil.getTestDf(spark)
+    val t2 = DataUtil.getTestDf(spark)
+    sess.registerTable("t1", t1)
+    sess.registerTable("t2", t2)
+    t1.createOrReplaceTempView("t1")
+    t2.createOrReplaceTempView("t2")
+
+    val sqlText = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LAST JOIN t2 ON t1.id + 1 <= t2.id"
+    val outputDf = sess.sql(sqlText)
+    assert(outputDf.count() == t1.count())
+
+    val sqlText2 = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LAST JOIN t2 ON t1.id > t2.id * 100"
+    val outputDf2 = sess.sql(sqlText2)
+    assert(outputDf2.count() == t1.count())
+
+    val sqlText3 = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LAST JOIN t2" +
+      " ON t1.id * 100 + 100 >= t2.id * 100 + 100"
+    val outputDf3 = sess.sql(sqlText3)
+    assert(outputDf3.count() == t1.count())
+
+    val sqlText4 = "SELECT t1.id as t1_id, t2.id as t2_id, t1.name FROM t1 LAST JOIN t2" +
+      " ON CAST(t1.id AS INT64) + 100 >= t2.id * 100 + 100"
+    val outputDf4 = sess.sql(sqlText4)
+    assert(outputDf4.count() == t1.count())
   }
 
   override def customizedAfter(): Unit = {

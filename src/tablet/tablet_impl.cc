@@ -30,6 +30,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
@@ -4843,9 +4844,18 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
         return;
     }
     ::hybridse::base::Status status;
+    auto sp_info_impl = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info);
+
+    auto long_windows = sp_info_impl->GetOption(hybridse::vm::LONG_WINDOWS);
+    std::shared_ptr<std::unordered_map<std::string, std::string>> options = nullptr;
+    if (long_windows) {
+        options = std::make_shared<std::unordered_map<std::string, std::string>>();
+        options->emplace(hybridse::vm::LONG_WINDOWS, *long_windows);
+    }
 
     // build for single request
     ::hybridse::vm::RequestRunSession session;
+    session.SetOptions(options);
     bool ok = engine_->Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
@@ -4856,6 +4866,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
 
     // build for batch request
     ::hybridse::vm::BatchRequestRunSession batch_session;
+    batch_session.SetOptions(options);
     for (auto i = 0; i < sp_info.input_schema_size(); ++i) {
         bool is_constant = sp_info.input_schema().Get(i).is_constant();
         if (is_constant) {
@@ -4870,7 +4881,6 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
         return;
     }
 
-    auto sp_info_impl = std::make_shared<openmldb::catalog::ProcedureInfoImpl>(sp_info);
     if (!sp_info_impl) {
         response->set_msg(status.str());
         response->set_code(::openmldb::base::kCreateProcedureFailedOnTablet);
@@ -4955,9 +4965,17 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     const std::string& db_name = sp_info->GetDbName();
     const std::string& sp_name = sp_info->GetSpName();
     const std::string& sql = sp_info->GetSql();
+    auto long_windows = sp_info->GetOption(hybridse::vm::LONG_WINDOWS);
+    std::shared_ptr<std::unordered_map<std::string, std::string>> options = nullptr;
+    if (long_windows) {
+        options = std::make_shared<std::unordered_map<std::string, std::string>>();
+        options->emplace(hybridse::vm::LONG_WINDOWS, *long_windows);
+    }
+
     ::hybridse::base::Status status;
     // build for single request
     ::hybridse::vm::RequestRunSession session;
+    session.SetOptions(options);
     bool ok = engine_->Get(sql, db_name, session, status);
     if (!ok || session.GetCompileInfo() == nullptr) {
         LOG(WARNING) << "fail to compile sql " << sql;
@@ -4965,6 +4983,7 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     }
     // build for batch request
     ::hybridse::vm::BatchRequestRunSession batch_session;
+    batch_session.SetOptions(options);
     for (auto i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
         bool is_constant = sp_info->GetInputSchema().IsConstant(i);
         if (is_constant) {

@@ -114,6 +114,7 @@ struct ZkPath {
     std::string op_index_node_;
     std::string op_data_path_;
     std::string op_sync_path_;
+    std::string globalvar_changed_notify_node_;
 };
 
 class NameServerImplTest;
@@ -354,6 +355,8 @@ class NameServerImpl : public NameServer {
                        Closure* done);
 
  private:
+    base::Status InitGlobalVarTable();
+
     // create the database if not exists, exit on fail
     void CreateDatabaseOrExit(const std::string& db_name);
 
@@ -757,6 +760,8 @@ class NameServerImpl : public NameServer {
     base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
 
     uint64_t GetTerm() const;
+
+    void NotifyGlobalVarChanged();
 
  private:
     std::mutex mu_;
