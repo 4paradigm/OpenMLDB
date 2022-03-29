@@ -103,6 +103,11 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
+    if (aggr_op->GetChildNum() != 1 || aggr_op->GetChild(0)->GetExprType() != node::kExprColumnRef) {
+        LOG(ERROR) << "Not support aggregation over multiple cols: " << ConcatExprList(aggr_op->children_);
+        return false;
+    }
+
     const std::string& db_name = orig_data_provider->GetDb();
     const std::string& table_name = orig_data_provider->GetName();
     std::string func_name = aggr_op->GetFnDef()->GetName();
@@ -198,7 +203,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
-        req_union_op->output_request_row(), aggr_op->GetFnDef());
+        req_union_op->output_request_row(), aggr_op->GetFnDef(),
+        dynamic_cast<node::ColumnRefNode*>(aggr_op->GetChild(0)));
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;
@@ -212,6 +218,14 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
 
     status = plan_ctx_->CreateOp<vm::PhysicalReduceAggregationNode>(&reduce_aggr, request_aggr_union, in->project(),
                                                                     condition, in);
+
+    auto ctx = reduce_aggr->schemas_ctx();
+    if (ctx->GetSchemaSourceSize() != 1 || ctx->GetSchema(0)->size() != 1) {
+        LOG(ERROR) << "PhysicalReduceAggregationNode schema is unexpected";
+        return false;
+    }
+    request_aggr_union->UpdateParentSchema(ctx);
+
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalReduceAggregationNode: " << status;
         return false;
