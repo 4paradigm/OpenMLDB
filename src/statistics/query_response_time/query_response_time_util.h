@@ -48,7 +48,7 @@ std::vector<absl::Duration> GenTimes(absl::BitGenRef gen, uint32_t cnt, uint64_t
                                      uint64_t end_inclusive) {
     std::vector<absl::Duration> times;
     times.reserve(cnt);
-    for (auto i = 0; i < cnt; ++i) {
+    for (size_t i = 0; i < cnt; ++i) {
         times.push_back(
             absl::Microseconds(absl::Uniform(absl::IntervalOpenClosed, gen, start_exclusive, end_inclusive)));
     }
@@ -74,7 +74,7 @@ const std::vector<std::vector<absl::Duration>>& InitialTimeDistribution() {
 std::vector<std::vector<absl::Duration>> GenTimeDistribution(absl::BitGenRef gen, size_t max_ele_each_row = 10) {
     std::vector<std::vector<absl::Duration>> time_dis(TIME_DISTRIBUTION_BUCKET_COUNT);
     absl::Duration start_us = absl::Microseconds(1);
-    for (auto i = 1; i < TIME_DISTRIBUTION_BUCKET_COUNT - 1; ++i) {
+    for (size_t i = 1; i < TIME_DISTRIBUTION_BUCKET_COUNT - 1; ++i) {
         time_dis[i] = GenTimes(gen, absl::Uniform(gen, 0u, max_ele_each_row), start_us, start_us * 10);
         start_us *= TIME_DISTRIBUTION_BASE;
     }

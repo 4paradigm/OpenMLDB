@@ -85,7 +85,7 @@ absl::StatusOr<std::vector<DeployResponseTimeRow>> DeployQueryTimeCollector::Get
 
     std::vector<DeployResponseTimeRow> rows;
     rows.reserve(it->second->BucketCount());
-    for (auto idx = 0; idx < it->second->BucketCount(); ++idx) {
+    for (auto idx = 0u; idx < it->second->BucketCount(); ++idx) {
         auto row = it->second->GetRow(idx);
         rows.emplace_back(it->first, row->time_, row->count_, row->total_);
     }
@@ -97,7 +97,7 @@ std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::GetRows() const {
     std::vector<DeployResponseTimeRow> rows;
     rows.reserve(GetRecordsCnt());
     for (auto& kv : collectors_) {
-        for (auto idx = 0; idx < kv.second->BucketCount(); ++idx) {
+        for (auto idx = 0u; idx < kv.second->BucketCount(); ++idx) {
             auto row = kv.second->GetRow(idx);
             rows.emplace_back(kv.first, row->time_, row->count_, row->total_);
         }

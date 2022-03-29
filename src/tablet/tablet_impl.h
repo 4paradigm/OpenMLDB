@@ -399,7 +399,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     bool IsCollectDeployStatsEnabled() const;
 
     // collect deploy statistics into memory
-    void CollectDeployStats(const std::string& deploy_name, absl::Time start_time);
+    void CollectDeployStats(const std::string& db, const std::string& sp_name, absl::Time start_time);
 
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,

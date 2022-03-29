@@ -55,7 +55,7 @@ void ExpectRowsEq(const TimeDistributionHelper& helper, const std::vector<std::v
     LOG(INFO) << "input time distribution:\n" << Format(original);
     LOG(INFO) << "collected time distribution:\n" << Format(rs);
     ASSERT_EQ(original.size(), rs.size());
-    for (auto i = 0; i < original.size(); ++i) {
+    for (size_t i = 0; i < original.size(); ++i) {
         absl::Duration time = helper.UpperBound(i).value_or(absl::InfiniteDuration());
         auto cnt = original[i].size();
         auto total = std::accumulate(original[i].begin(), original[i].end(), absl::Seconds(0));
@@ -69,8 +69,8 @@ TEST_F(TimeCollectorTest, StateAtomicityInOneBucketTest) {
 
     // times located in the same bucket in TimeCollector: (1, 10]
     const size_t bucket_idx = collector_.GetBucketIdx(absl::Seconds(2));
-    std::vector<absl::Duration const> times = {absl::Seconds(2), absl::Seconds(10), absl::Seconds(5), absl::Seconds(7),
-                                               absl::Seconds(4)};
+    std::vector<absl::Duration> times = {absl::Seconds(2), absl::Seconds(10), absl::Seconds(5), absl::Seconds(7),
+                                         absl::Seconds(4)};
 
     auto collect = [this, &times](size_t idx) { collector_.Collect(times[idx]); };
 
@@ -118,7 +118,7 @@ TEST_F(TimeCollectorTest, StateAtomicityBetweenBucketsTest) {
     }
     std::vector<std::thread> threads;
     threads.reserve(4);
-    for (auto i = 0; i < 4; ++i) {
+    for (size_t i = 0; i < 4; ++i) {
         threads.emplace_back(collect, vecs[i]);
     }
 
@@ -128,7 +128,7 @@ TEST_F(TimeCollectorTest, StateAtomicityBetweenBucketsTest) {
 
     // assert the results
     std::stringstream col_ss;
-    for (auto idx = 0; idx < times.size(); ++idx) {
+    for (size_t idx = 0; idx < times.size(); ++idx) {
         uint32_t count = times[idx].size();
         absl::Duration total = std::accumulate(times[idx].begin(), times[idx].end(), absl::Seconds(0));
         auto row = collector_.GetRow(idx);
@@ -159,9 +159,9 @@ TEST_F(TimeCollectorTest, FlushTest) {
     std::thread t1(collect);
 
     auto rows = collector_.Flush();
-    for (int i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 100; ++i) {
         auto rs = collector_.Flush();
-        for (int i = 0; i < rs.size(); ++i) {
+        for (size_t i = 0; i < rs.size(); ++i) {
             rows[i].count_ += rs[i].count_;
             rows[i].total_ += rs[i].total_;
             absl::SleepFor(absl::Milliseconds(1));
@@ -171,7 +171,7 @@ TEST_F(TimeCollectorTest, FlushTest) {
     t1.join();
 
     auto rs = collector_.Flush();
-    for (int i = 0; i < rs.size(); ++i) {
+    for (size_t i = 0; i < rs.size(); ++i) {
         rows[i].count_ += rs[i].count_;
         rows[i].total_ += rs[i].total_;
     }

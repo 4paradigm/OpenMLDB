@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${GTEST_LIBRARIES} ${GLOG_LIBRARY})
+set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${GTEST_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 link_libraries(${LINK_LIBS})
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "(AppleClang)|(Clang)")

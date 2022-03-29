@@ -10417,16 +10417,23 @@ void NameServerImpl::SyncDeployStats() {
 
     // Step two: Fetch And Flush deploy stats from each tablet
     statistics::DeployResponseTimeRowReducer reducer;
-    for (auto& kv : tablets_) {
-        ::openmldb::api::DeployStatsResponse res;
-        if (!kv.second->client_->GetAndFlushDeployStats(&res)) {
-            LOG(ERROR) << "GetAndFlushDeployStats from " << kv.first << " failed ";
-            continue;
-        }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& kv : tablets_) {
+            if (!kv.second->Health()) {
+                continue;
+            }
 
-        for (auto& r : res.rows()) {
-            reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
-                           statistics::ParseDurationFromRawInt(r.total()));
+            ::openmldb::api::DeployStatsResponse res;
+            if (!kv.second->client_->GetAndFlushDeployStats(&res)) {
+                LOG(ERROR) << "GetAndFlushDeployStats from " << kv.first << " failed ";
+                continue;
+            }
+
+            for (auto& r : res.rows()) {
+                reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
+                               statistics::ParseDurationFromRawInt(r.total()));
+            }
         }
     }
 

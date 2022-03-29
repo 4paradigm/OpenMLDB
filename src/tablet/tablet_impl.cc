@@ -1627,10 +1627,9 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
                                           openmldb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     absl::Time start = absl::Now();
     absl::Cleanup deploy_collect_task = [this, request, start]() {
-        if (this->IsCollectDeployStatsEnabled()) {
-            const std::string deploy_name = absl::StrCat((request->has_db() ? request->db() : "NA"), ".",
-                                                         (request->has_sp_name() ? request->sp_name() : "NA"));
-            this->CollectDeployStats(deploy_name, start);
+        if (request->is_procedure() && this->IsCollectDeployStatsEnabled()) {
+            this->CollectDeployStats(request->has_db() ? request->db() : "NA",
+                                     request->has_sp_name() ? request->sp_name() : "NA", start);
         }
     };
 
@@ -4877,16 +4876,6 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info_impl, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
 
-    if (sp_info.type() == type::ProcedureType::kReqDeployment) {
-        auto collector_key = absl::StrCat(db_name, ".", sp_name);
-        auto s = deploy_collector_->AddDeploy(collector_key);
-        if (!s.ok()) {
-            LOG(ERROR) << "[ERROR] add deploy collector: " << s;
-        } else {
-            LOG(INFO) << "added deploy collector for " << collector_key;
-        }
-    }
-
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
     LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
@@ -4897,17 +4886,23 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     const std::string& db_name = request->db_name();
     const std::string& sp_name = request->sp_name();
+
+    auto sp_info = sp_cache_->FindSpProcedureInfo(db_name, sp_name);
+    auto is_deployment_procedure = sp_info.ok() && sp_info.value()->GetType() == hybridse::sdk::kReqDeployment;
+
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
         LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
     }
 
-    auto collector_key = absl::StrCat(db_name, ".", sp_name);
-    auto s = deploy_collector_->DeleteDeploy(collector_key);
-    if (!s.ok()) {
-        LOG(ERROR) << "[ERROR] delete deploy collector: " << s;
-    } else {
-        LOG(INFO) << "deleted deploy collector for " << collector_key;
+    if (is_deployment_procedure) {
+        auto collector_key = absl::StrCat(db_name, ".", sp_name);
+        auto s = deploy_collector_->DeleteDeploy(collector_key);
+        if (!s.ok()) {
+            LOG(ERROR) << "[ERROR] delete deploy collector: " << s;
+        } else {
+            LOG(INFO) << "deleted deploy collector for " << collector_key;
+        }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -4996,15 +4991,6 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
 
-    if (sp_info->GetType() == hybridse::sdk::kReqDeployment) {
-        auto collector_key = absl::StrCat(db_name, ".", sp_name);
-        auto s = deploy_collector_->AddDeploy(collector_key);
-        if (!s.ok()) {
-            LOG(ERROR) << "[ERROR] add deploy collector: " << s;
-        } else {
-            LOG(INFO) << "added deploy collector for " << collector_key;
-        }
-    }
     LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 
@@ -5057,10 +5043,24 @@ bool TabletImpl::IsCollectDeployStatsEnabled() const {
     return it != p->end() && (it->second == "true" || it->second == "on");
 }
 
-void TabletImpl::CollectDeployStats(const std::string& deploy_name, absl::Time start_time) {
+void TabletImpl::CollectDeployStats(const std::string& db, const std::string& sp_name, absl::Time start_time) {
     absl::Time now = absl::Now();
     absl::Duration time = now - start_time;
+    const std::string deploy_name = absl::StrCat(db, ".", sp_name);
     auto s = deploy_collector_->Collect(deploy_name, time);
+    if (absl::IsNotFound(s)) {
+        // deploy collector is regarded as non-update-to-date cache for sp_info (sp_cache_ should be up-to-date)
+        // so when Not Found error happens, retry once again by AddDeploy first, with the help of sp_cache_
+        auto sp_info = sp_cache_->FindSpProcedureInfo(db, sp_name);
+        if (sp_info.ok() && sp_info.value()->GetType() == hybridse::sdk::kReqDeployment) {
+            s = deploy_collector_->AddDeploy(deploy_name);
+            if (!s.ok()) {
+                LOG(ERROR) << "[ERROR] add deploy collector: " << s;
+                return;
+            }
+            s = deploy_collector_->Collect(deploy_name, time);
+        }
+    }
     if (!s.ok()) {
         LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
     }

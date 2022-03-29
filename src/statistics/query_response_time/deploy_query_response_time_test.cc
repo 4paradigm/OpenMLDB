@@ -61,7 +61,7 @@ void ExpectRowsEq(const TimeDistributionHelper& helper, const std::string& name,
     LOG(INFO) << "input time distribution:\n" << Format(original);
     LOG(INFO) << "collected time distribution:\n" << Format(rs);
     ASSERT_EQ(original.size(), rs.size());
-    for (auto i = 0; i < original.size(); ++i) {
+    for (auto i = 0u; i < original.size(); ++i) {
         absl::Duration time = helper.UpperBound(i).value_or(absl::InfiniteDuration());
         auto cnt = original[i].size();
         auto total = std::accumulate(original[i].begin(), original[i].end(), absl::Seconds(0));
@@ -75,7 +75,7 @@ TEST_F(DeployTimeCollectorTest, SingleDeployThreadSafe) {
 
     std::string deploy_name = "deploy1";
 
-    col.AddDeploy(deploy_name);
+    col.AddDeploy(deploy_name).IgnoreError();
     auto time_dis = GenTimeDistribution(gen_);
 
     std::vector<absl::Duration> series[4];
@@ -89,7 +89,7 @@ TEST_F(DeployTimeCollectorTest, SingleDeployThreadSafe) {
 
     auto collect = [&col, deploy_name](std::vector<absl::Duration> times) {
         for (auto dur : times) {
-            col.Collect(deploy_name, dur);
+            col.Collect(deploy_name, dur).IgnoreError();
         }
     };
 
@@ -113,9 +113,9 @@ TEST_F(DeployTimeCollectorTest, MultiDeployThreadSafe) {
     std::string deploy2 = "dp2";
     std::string deploy3 = "dp3";
 
-    col.AddDeploy(deploy1);
-    col.AddDeploy(deploy2);
-    col.AddDeploy(deploy3);
+    col.AddDeploy(deploy1).IgnoreError();
+    col.AddDeploy(deploy2).IgnoreError();
+    col.AddDeploy(deploy3).IgnoreError();
 
     auto ts1 = GenTimeDistribution(gen_);
     auto ts2 = GenTimeDistribution(gen_);
@@ -136,7 +136,7 @@ TEST_F(DeployTimeCollectorTest, MultiDeployThreadSafe) {
 
     auto collect = [&col](std::string deploy_name, std::vector<absl::Duration> times) {
         for (auto time : times) {
-            col.Collect(deploy_name, time);
+            col.Collect(deploy_name, time).IgnoreError();
         }
     };
 
@@ -171,14 +171,14 @@ TEST_F(DeployTimeCollectorTest, MultiDeployThreadSafe) {
 TEST_F(DeployTimeCollectorTest, ReadWriteSafe) {
     DeployQueryTimeCollector col;
     std::string default_dp = "default_dp";
-    col.AddDeploy(default_dp);
+    col.AddDeploy(default_dp).IgnoreError();
 
     auto ts = GenTimeDistribution(gen_);
 
     auto add_deploy = [&col]() {
         // continuously add deploy so rehash happens on collectors_
         for (int i = 0; i < 100; i ++) {
-            col.AddDeploy(absl::StrCat("dp", i));
+            col.AddDeploy(absl::StrCat("dp", i)).IgnoreError();
             absl::SleepFor(absl::Milliseconds(1));
         }
     };
@@ -186,7 +186,7 @@ TEST_F(DeployTimeCollectorTest, ReadWriteSafe) {
     auto collect = [&col, &ts, &default_dp]() {
         for (auto& row : ts) {
             for (auto t : row) {
-                col.Collect(default_dp, t);
+                col.Collect(default_dp, t).IgnoreError();
                 absl::SleepFor(absl::Milliseconds(1));
             }
         }
@@ -232,8 +232,8 @@ TEST_F(DeployTimeCollectorTest, FlushTest) {
     std::string dp1 = "dp1";
     std::string dp2 = "dp2";
 
-    col.AddDeploy(dp1);
-    col.AddDeploy(dp2);
+    col.AddDeploy(dp1).IgnoreError();
+    col.AddDeploy(dp2).IgnoreError();
 
     auto ts1 = GenTimeDistribution(gen_, 50);
     auto ts2 = GenTimeDistribution(gen_, 50);
@@ -241,7 +241,7 @@ TEST_F(DeployTimeCollectorTest, FlushTest) {
     auto collect = [&col](const std::string& dp, const std::vector<std::vector<absl::Duration>>& ts) {
         for (auto& row : ts) {
             for (auto t : row) {
-                col.Collect(dp, t);
+                col.Collect(dp, t).IgnoreError();
                 absl::SleepFor(absl::Milliseconds(1));
             }
         }
@@ -252,9 +252,9 @@ TEST_F(DeployTimeCollectorTest, FlushTest) {
     std::thread t1(std::bind(collect, dp1, ts1));
     std::thread t2(std::bind(collect, dp2, ts2));
 
-    for (int i = 0; i < 100; i++) {
+    for (auto i = 0u; i < 100; i++) {
         auto rs = col.Flush();
-        for (auto idx = 0; idx < rs.size(); ++idx) {
+        for (auto idx = 0u; idx < rs.size(); ++idx) {
             // assume the returned rs are always in same order
             rows[idx].count_ += rs[idx].count_;
             rows[idx].total_ += rs[idx].total_;
@@ -266,7 +266,7 @@ TEST_F(DeployTimeCollectorTest, FlushTest) {
     t2.join();
 
     auto rs = col.Flush();
-    for (auto idx = 0; idx < rs.size(); ++idx) {
+    for (auto idx = 0u; idx < rs.size(); ++idx) {
         // assume the returned rs are always in same order
         rows[idx].count_ += rs[idx].count_;
         rows[idx].total_ += rs[idx].total_;
