@@ -17,3 +17,4 @@
 set -x -e
 
 pkill -9 openmldb
+
