@@ -16,5 +16,4 @@
 
 set -x -e
 
-ps -ef | grep openmldb | grep endpoint | awk '{print $2}' | while read line; do kill -9 $line; done
-
+pkill -9 openmldb endpoint

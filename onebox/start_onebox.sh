@@ -117,7 +117,7 @@ function start_standalone() {
         echo "standalone start ok"
         exit 0
 }
-# with no param, default is cluster_Mode
+# with no param, default is cluster mode
 if [ $# -eq 0 ]; then
   start_cluster
 fi
