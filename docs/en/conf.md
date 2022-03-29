@@ -1,6 +1,6 @@
-# Configuration file description
+# Configuration File
 
-## nameserver configuration file conf/nameserver.flags
+## The Configuration File for Nameserver: conf/nameserver.flags
 
 ```
 # nameserver.conf
@@ -9,7 +9,7 @@
 # If you are deploying the standalone version, you do not need to configure zk_cluster and zk_root_path, just comment these two configurations. Deploying the cluster version needs to configure these two items, and the two configurations of all nodes in a cluster must be consistent
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
-# The address of the tablet needs to be specified in the stand-alone version, and this configuration can be ignored in the cluster version
+# The address of the tablet needs to be specified in the standalone version, and this configuration can be ignored in the cluster version
 --tablet=127.0.0.1:9921
 # Configure log directory
 --openmldb_log_dir=./logs
@@ -18,7 +18,7 @@
 
 # Configure the thread pool size, no need to modify
 #--thread_pool_size=16
-# Configure the number of failed retries, the default is 3
+# Configure the number of retry attempts, the default is 3
 #--request_max_retry=3
 # Configure the request timeout, the default is 12 seconds
 #--request_timeout_ms=12000
@@ -28,7 +28,7 @@
 --zk_session_timeout=10000
 # Configure the zookeeper health check interval, the unit is milliseconds, generally do not need to be modified
 #--zk_keep_alive_check_interval=15000
-# Configure the timeout period for tablet heartbeat detection, the default is 1 minute. If the tablet is still connected after this time, the nameserver considers that the tablet is unavailable and will perform the operation of offline the node
+# Configure the timeout period for tablet heartbeat detection, the default is 1 minute. If the tablet is still unreachable after this time, the nameserver considers that the tablet is unavailable and will perform the operation of offline the node
 --tablet_heartbeat_timeout=60000
 # Configure the tablet health check interval, in milliseconds
 #--tablet_offline_check_interval=1000
@@ -43,9 +43,9 @@
 #--name_server_task_wait_time=1000
 # The maximum time to execute the task, if it exceeds, it will log
 #--name_server_op_execute_timeout=7200000
-# Get the time interval of the task
+# The time interval of receiving the status of the next task
 #--get_task_status_interval=2000
-# Get the time interval for table status
+# The time interval of receiving the status of the next table
 #--get_table_status_interval=2000
 # Check the minimum difference of binlog synchronization progress, if the master-slave offset is less than this value, the task has been successfully synchronized
 #--check_binlog_sync_progress_delta=100000
@@ -175,7 +175,7 @@
 --endpoint=127.0.0.1:8080
 # role cannot be changed
 --role=apiserver
-# If the deployed openmldb is a stand-alone version, you need to specify the address of the nameserver
+# If the deployed openmldb is a standalone version, you need to specify the address of the nameserver
 --nameserver=127.0.0.1:6527
 # If the deployed openmldb is a cluster version, you need to specify the zk address and the cluster zk node directory
 #--zk_cluster=127.0.0.1:7181
