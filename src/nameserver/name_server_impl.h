@@ -770,7 +770,7 @@ class NameServerImpl : public NameServer {
 
     void ScheduleSyncDeployStats();
 
-    std::unique_ptr<sdk::SQLClusterRouter>& GetSdkConnection();
+    bool GetSdkConnection();
 
     void FreeSdkConnection();
 
@@ -819,7 +819,8 @@ class NameServerImpl : public NameServer {
         db_sp_info_map_;
     ::openmldb::type::StartupMode startup_mode_;
 
-    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
+    // sr_ could be a real instance or nothing, remember always use atomic_* function to access it
+    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
 };
 
 }  // namespace nameserver

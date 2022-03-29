@@ -36,6 +36,7 @@ function(add_test_file TARGET_NAME SOURCE_NAME)
     --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.xml
   )
   list(APPEND test_list ${TARGET_NAME})
+  set(test_list ${test_list} PARENT_SCOPE)
 endfunction(add_test_file)
 
 if(TESTING_ENABLE)

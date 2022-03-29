@@ -18,7 +18,11 @@
 
 #include <algorithm>
 #include <set>
+
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
+#include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
 #include "statistics/query_response_time/deploy_query_response_time.h"
@@ -10396,7 +10400,15 @@ void NameServerImpl::SyncDeployStats() {
         return;
     }
 
-    auto& sr = GetSdkConnection();
+    if (!GetSdkConnection()) {
+        LOG(ERROR) << "failed to get sdk connection";
+        return;
+    }
+    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
+    if (sr == nullptr) {
+        LOG(ERROR) << "sdk connection is null";
+        return;
+    }
     ::hybridse::sdk::Status s;
     auto rs = sr->ExecuteSQLParameterized("", QueryDeployStatsIsOn(), {}, &s);
     if (!s.IsOK()) {
@@ -10494,34 +10506,59 @@ void NameServerImpl::ScheduleSyncDeployStats() {
                                 boost::bind(&NameServerImpl::ScheduleSyncDeployStats, this));
 }
 
-
-std::unique_ptr<sdk::SQLClusterRouter>& NameServerImpl::GetSdkConnection() {
-    if (sr_ == nullptr) {
-        // FIXME(ace): standalone mode
+/// \beirf create a SQLClusterRouter instance for use like monitoring statistics collecting
+///    the actual instance is stored in `sr_` member
+///
+/// \return true if action success, false if any error happens
+bool NameServerImpl::GetSdkConnection() {
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) == nullptr) {
+        sdk::DBSDK* cs = nullptr;
+        PDLOG(INFO, "Init ClusterSDK in name server");
         if (IsClusterMode()) {
-            PDLOG(INFO, "Init ClusterSDK in tablet server");
             ::openmldb::sdk::ClusterOptions copt;
             copt.zk_cluster = zk_path_.zk_cluster_;
             copt.zk_path = zk_path_.root_path_;
-            auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
-            bool ok = cs->Init();
-            if (!ok) {
-                PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
-            }
-            sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
-            if (!sr_->Init()) {
-                PDLOG(ERROR, "fail to init SQLClusterRouter");
-            }
+            cs = new ::openmldb::sdk::ClusterSDK(copt);
         } else {
+            std::vector<std::string> list = absl::StrSplit(endpoint_, ":");
+            if (list.size() != 2) {
+                PDLOG(ERROR, "fail to split endpoint_");
+                return false;
+            }
 
+            int port = 0;
+            if (!absl::SimpleAtoi(list.at(1), &port)) {
+                PDLOG(ERROR, "fail to port string: %s", list.at(1));
+                return false;
+            }
+            cs = new ::openmldb::sdk::StandAloneSDK(list.at(0), port);
         }
+        bool ok = cs->Init();
+        if (!ok) {
+            PDLOG(ERROR, "ERROR: Failed to init DBSDK");
+            if (cs != nullptr) {
+                delete cs;
+            }
+            return false;
+        }
+        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cs);
+        if (!sr->Init()) {
+            PDLOG(ERROR, "fail to init SQLClusterRouter");
+            if (cs != nullptr) {
+                delete cs;
+            }
+            return false;
+        }
+
+        std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
     }
-    return sr_;
+
+    return true;
 }
 
 void NameServerImpl::FreeSdkConnection() {
-    if (sr_ != nullptr) {
-        sr_ = nullptr;
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) != nullptr) {
+        std::atomic_store_explicit(&sr_, {}, std::memory_order_release);
     }
 }
 
