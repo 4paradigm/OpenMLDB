@@ -109,7 +109,7 @@ object JoinPlan {
     // extra conditions
     if (filter.condition() != null) {
       if (ctx.getConf.enableJoinWithSparkExpr) {
-        joinConditions += ExpressionUtil.recusiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf,
+        joinConditions += ExpressionUtil.recursiveGetSparkColumnFromExpr(filter.condition(), node, leftDf, rightDf,
           hasIndexColumn)
         logger.info("Generate spark join conditions: " + joinConditions)
       } else { // Disable join with native expression, use encoder/decoder and jit function
