@@ -16,4 +16,4 @@
 
 set -x -e
 
-pkill -9 openmldb endpoint
+pkill -9 openmldb
