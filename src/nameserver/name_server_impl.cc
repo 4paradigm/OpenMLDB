@@ -10498,18 +10498,22 @@ void NameServerImpl::ScheduleSyncDeployStats() {
 std::unique_ptr<sdk::SQLClusterRouter>& NameServerImpl::GetSdkConnection() {
     if (sr_ == nullptr) {
         // FIXME(ace): standalone mode
-        PDLOG(INFO, "Init ClusterSDK in tablet server");
-        ::openmldb::sdk::ClusterOptions copt;
-        copt.zk_cluster = zk_path_.zk_cluster_;
-        copt.zk_path = zk_path_.root_path_;
-        auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
-        bool ok = cs->Init();
-        if (!ok) {
-            PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
-        }
-        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
-        if (!sr_->Init()) {
-            PDLOG(ERROR, "fail to init SQLClusterRouter");
+        if (IsClusterMode()) {
+            PDLOG(INFO, "Init ClusterSDK in tablet server");
+            ::openmldb::sdk::ClusterOptions copt;
+            copt.zk_cluster = zk_path_.zk_cluster_;
+            copt.zk_path = zk_path_.root_path_;
+            auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
+            bool ok = cs->Init();
+            if (!ok) {
+                PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
+            }
+            sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
+            if (!sr_->Init()) {
+                PDLOG(ERROR, "fail to init SQLClusterRouter");
+            }
+        } else {
+
         }
     }
     return sr_;

@@ -35,6 +35,7 @@ function(add_test_file TARGET_NAME SOURCE_NAME)
     ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
     --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.xml
   )
+  list(APPEND test_list ${TARGET_NAME})
 endfunction(add_test_file)
 
 if(TESTING_ENABLE)
@@ -42,7 +43,6 @@ if(TESTING_ENABLE)
   add_test_file(deploy_query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time_test.cc)
 
   if(CMAKE_PROJECT_NAME STREQUAL "openmldb")
-    list(APPEND test_list query_response_time_test)
     set(test_list ${test_list} PARENT_SCOPE)
   endif()
 endif()
