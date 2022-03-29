@@ -88,7 +88,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             }
             throw new SQLException("getSQLInsertRow failed, " + msg);
         }
+        status.delete();
         return row;
+    }
+
+    private void clearSQLInsertRowList(){
+        for (SQLInsertRow row : currentRows) {
+            row.delete();
+        }
+        currentRows.clear();
     }
 
     @Override
@@ -361,7 +369,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         boolean ok = router.ExecuteInsert(db, sql, currentRows.get(0), status);
         // cleanup rows even if insert failed
         // we can't execute() again without set new row, so we must clean up here
-        currentRows.clear();
+        clearSQLInsertRowList();
         if (!ok) {
             logger.error("getInsertRow fail: {}", status.getMsg());
             status.delete();
@@ -589,9 +597,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             return;
         }
-        for (SQLInsertRow row : currentRows) {
-            row.delete();
-        }
+        clearSQLInsertRowList();
         if (currentSchema != null) {
             currentSchema.delete();
             currentSchema = null;
@@ -751,6 +757,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             result[i] = ok ? 0 : -1;
         }
         status.delete();
+        clearSQLInsertRowList();
         return result;
     }
 

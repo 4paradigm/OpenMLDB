@@ -16,17 +16,16 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.openmldb.sdk.Column;
-import com._4paradigm.openmldb.sdk.Schema;
-
 import java.sql.Connection;
 import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com._4paradigm.openmldb.sdk.Column;
+import com._4paradigm.openmldb.sdk.Schema;
 
 public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     public static final String DRIVER_NAME = "OpenMLDB Connector/J";
@@ -34,11 +33,6 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     public DatabaseMetaData(SQLConnection connection) {
         this.connection = connection;
-    }
-
-    private ResultSet executeQuery(String sql) throws SQLException {
-        Statement statement = connection.createStatement();
-        return statement.executeQuery(sql);
     }
 
     @Override
@@ -668,8 +662,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
      * </OL>
      *
      * <P><B>Note:</B> OpenMLDB only has columns:
-     * TABLE_CAT(DB NAME)
-     * TABLE_SCHEM
+     * TABLE_CAT='null'
+     * TABLE_SCHEM='null'
      * TABLE_NAME
      * TABLE_TYPE='TABLE'
      *
@@ -698,11 +692,11 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             throw new SQLException("unsupported");
         }
 
-        ResultSet allTables = executeQuery("SHOW TABLES");
+        List<String> allTables = connection.getClient().getTableNames(connection.getDefaultDatabase());
 
         List<List<String>> table = new ArrayList<>();
-        while (allTables.next()) {
-            if (tableNamePattern != null && !allTables.getString(1).equals(tableNamePattern)) {
+        for (String tableName : allTables) {
+            if (tableNamePattern != null && !tableName.equals(tableNamePattern)) {
                 continue;
             }
 
@@ -712,7 +706,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             // TABLE_SCHEM schema name
             row.add("null");
             // TABLE_NAME table name
-            row.add(allTables.getString(1));
+            row.add(tableName);
             // table type
             row.add("TABLE");
             // extra 6 columns
@@ -743,15 +737,15 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
         // hard to impl when 'SHOW xxx WHERE'
-        if (!schemaPattern.equals("null") || columnNamePattern != null) {
+        if (!catalog.equals("null") || !schemaPattern.equals("null") || columnNamePattern != null) {
             throw new SQLException("unsupported");
         }
 
         // must use this to get database name, and then get table schema.
-        ResultSet allTables = executeQuery("SHOW TABLE STATUS");
+        List<String> allTables = connection.getClient().getTableNames(connection.getDefaultDatabase());
         List<List<String>> table = new ArrayList<>();
-        while (allTables.next()) {
-            if (tableNamePattern != null && !allTables.getString(2).equals(tableNamePattern)) {
+        for (String tableName : allTables) {
+            if (tableNamePattern != null && !tableName.equals(tableNamePattern)) {
                 continue;
             }
 
@@ -762,11 +756,10 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             // TABLE_SCHEM schema name
             rowFirstPart.add("null");
 
-            String dbName = allTables.getString(3);
-            String tableName = allTables.getString(2);
+            String dbName = connection.getDefaultDatabase();
             // TABLE_NAME table name
             rowFirstPart.add(tableName);
-            Schema schema = connection.client.getTableSchema(dbName, tableName);
+            Schema schema = connection.getClient().getTableSchema(dbName, tableName);
             List<Column> cols = schema.getColumnList();
             for (int i = 0; i < cols.size(); i++) {
                 Column col = cols.get(i);

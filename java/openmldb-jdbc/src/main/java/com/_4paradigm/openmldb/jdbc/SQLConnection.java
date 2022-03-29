@@ -35,8 +35,8 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 
 public class SQLConnection implements Connection {
-    // TODO(hw): public this until we can get INFORMATION_SCHEMA from sql
-    public SqlExecutor client;
+    // TODO(hw): DatabaseMetaData use this directly until we can get INFORMATION_SCHEMA from sql
+    private SqlExecutor client;
     private final Properties props;
     private final String defaultDatabase;
 
@@ -48,10 +48,19 @@ public class SQLConnection implements Connection {
         this.defaultDatabase = props.getProperty("dbName", "");
         java.sql.Statement stmt = client.getStatement();
         // TODO(hw): offline job result is not good now, use online by default
+        //  it only effects Statement
         stmt.execute("set @@execute_mode='online'");
         if (!this.defaultDatabase.isEmpty()) {
             stmt.execute("USE " + this.defaultDatabase);
         }
+    }
+
+    public SqlExecutor getClient(){
+        return client;
+    }
+
+    public String getDefaultDatabase(){
+        return defaultDatabase;
     }
 
     @Override
@@ -62,6 +71,7 @@ public class SQLConnection implements Connection {
 
     /**
      * WARNING: insert prepared statement only can insert into <B>online storage</B><P>
+     * database will use the db config set by jdbcUrl 
      * <p>
      * select can visit both offline and online
      *

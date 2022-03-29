@@ -545,7 +545,7 @@ public class SQLRouterSmokeTest {
             while (rs2.next()) {
                 recordCnt++;
             }
-            Assert.assertEquals(datas1.length + datas2.length, recordCnt);
+            Assert.assertEquals(datas1.length, recordCnt);
             rs2.close();
             // drop table
             String drop = "drop table tsql1010;";
