@@ -25,6 +25,7 @@ import com._4paradigm.openmldb.SQLInsertRows;
 import com._4paradigm.openmldb.SQLRequestRow;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.SQLRouterOptions;
+import com._4paradigm.openmldb.StandaloneOptions;
 import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.TableColumnDescPair;
 import com._4paradigm.openmldb.TableColumnDescPairVector;
