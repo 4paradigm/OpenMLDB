@@ -16,6 +16,7 @@
 
 #include "statistics/query_response_time/deploy_query_response_time.h"
 
+#include <functional>
 #include <thread>
 
 #include "absl/random/bit_gen_ref.h"
@@ -25,6 +26,7 @@
 #include "absl/time/time.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "statistics/query_response_time/query_response_time_util.h"
 
 namespace openmldb {
 namespace statistics {
@@ -52,19 +54,6 @@ inline std::string Format(const std::vector<DeployResponseTimeRow>& rows) {
     return ss.str();
 }
 
-inline std::string Format(const std::vector<std::vector<absl::Duration>>& time_dis) {
-    std::stringstream ss;
-    for (auto& row : time_dis) {
-        ss << "[";
-        for (auto t : row) {
-            ss << t << ", ";
-        }
-        ss << "]" << std::endl;
-    }
-
-    return ss.str();
-}
-
 // HACK: helper better not appear here
 void ExpectRowsEq(const TimeDistributionHelper& helper, const std::string& name,
                   const std::vector<std::vector<absl::Duration>>& original,
@@ -79,44 +68,6 @@ void ExpectRowsEq(const TimeDistributionHelper& helper, const std::string& name,
 
         EXPECT_EQ(DeployResponseTimeRow(name, time, cnt, total), rs.at(i));
     }
-}
-
-// generate a list of random durations that in (start, end]
-std::vector<absl::Duration> GenTimes(absl::BitGenRef gen, uint32_t cnt, uint64_t start_exclusive,
-                                     uint64_t end_inclusive) {
-    std::vector<absl::Duration> times;
-    times.reserve(cnt);
-    for (auto i = 0; i < cnt; ++i) {
-        times.push_back(
-            absl::Microseconds(absl::Uniform(absl::IntervalOpenClosed, gen, start_exclusive, end_inclusive)));
-    }
-    return times;
-}
-
-std::vector<absl::Duration> GenTimes(absl::BitGenRef gen, uint32_t cnt, absl::Duration start_exclusive,
-                                     absl::Duration end_inclusive) {
-    uint64_t start = absl::ToInt64Microseconds(start_exclusive);
-    uint64_t end = absl::ToInt64Microseconds(end_inclusive);
-    return GenTimes(gen, cnt, start, end);
-}
-
-static const std::vector<std::vector<absl::Duration>>& InitialTimeDistribution() {
-    static const std::vector<std::vector<absl::Duration>> time_dis(TIME_DISTRIBUTION_BUCKET_COUNT);
-    return time_dis;
-}
-
-// generate random time distribution the same as TimeCollector do inside
-// each row represent a time interval as TimeCollector
-// each row's size is random from 0 to 10
-// the first and last row is always empty
-std::vector<std::vector<absl::Duration>> GenTimeDistribution(absl::BitGenRef gen) {
-    std::vector<std::vector<absl::Duration>> time_dis(TIME_DISTRIBUTION_BUCKET_COUNT);
-    absl::Duration start_us = absl::Microseconds(1);
-    for (auto i = 1; i < TIME_DISTRIBUTION_BUCKET_COUNT - 1; ++i) {
-        time_dis[i] = GenTimes(gen, absl::Uniform(gen, 0, 10), start_us, start_us * 10);
-        start_us *= TIME_DISTRIBUTION_BASE;
-    }
-    return time_dis;
 }
 
 TEST_F(DeployTimeCollectorTest, SingleDeployAndSingleInterval) {
@@ -306,6 +257,67 @@ TEST_F(DeployTimeCollectorTest, FailConditions) {
     ASSERT_TRUE(absl::IsNotFound(col.DeleteDeploy(dp2)));
 
     ASSERT_TRUE(absl::IsNotFound(col.GetRows(dp1).status()));
+}
+
+TEST_F(DeployTimeCollectorTest, FlushTest) {
+    DeployQueryTimeCollector col;
+    std::string dp1 = "dp1";
+    std::string dp2 = "dp2";
+
+    col.AddDeploy(dp1);
+    col.AddDeploy(dp2);
+
+    auto ts1 = GenTimeDistribution(gen_, 50);
+    auto ts2 = GenTimeDistribution(gen_, 50);
+
+    auto collect = [&col](const std::string& dp, const std::vector<std::vector<absl::Duration>>& ts) {
+        for (auto& row : ts) {
+            for (auto t : row) {
+                col.Collect(dp, t);
+                absl::SleepFor(absl::Milliseconds(1));
+            }
+        }
+    };
+
+    auto rows = col.Flush();
+
+    std::thread t1(std::bind(collect, dp1, ts1));
+    std::thread t2(std::bind(collect, dp2, ts2));
+
+    for (int i = 0; i < 100; i++) {
+        auto rs = col.Flush();
+        for (auto idx = 0; idx < rs.size(); ++idx) {
+            // assume the returned rs are always in same order
+            rows[idx].count_ += rs[idx].count_;
+            rows[idx].total_ += rs[idx].total_;
+        }
+        absl::SleepFor(absl::Milliseconds(1));
+    }
+
+    t1.join();
+    t2.join();
+
+    auto rs = col.Flush();
+    for (auto idx = 0; idx < rs.size(); ++idx) {
+        // assume the returned rs are always in same order
+        rows[idx].count_ += rs[idx].count_;
+        rows[idx].total_ += rs[idx].total_;
+    }
+
+    std::vector<DeployResponseTimeRow> v1;
+    v1.reserve(helper_.BucketCount());
+    std::vector<DeployResponseTimeRow> v2;
+    v2.reserve(helper_.BucketCount());
+    for (auto& row : rows) {
+        if (row.deploy_name_ == dp1) {
+            v1.push_back(row);
+        } else if (row.deploy_name_ == dp2) {
+            v2.push_back(row);
+        }
+    }
+
+    ExpectRowsEq(helper_, dp1, ts1, v1);
+    ExpectRowsEq(helper_, dp2, ts2, v2);
 }
 
 }  // namespace statistics

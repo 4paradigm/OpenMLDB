@@ -105,6 +105,8 @@ class TimeDistributionHelper {
     std::vector<absl::Duration> upper_bounds_;
 };
 
+/// Thread safe wrapper for QUERY TIME DISTRIBUTION counters
+/// all methods provided meant atomic
 class TimeCollector {
  public:
     // construct from fresh data
@@ -113,40 +115,30 @@ class TimeCollector {
     // collector is not copyable
     TimeCollector(const TimeCollector& c) = delete;
 
-    // construct from existing data
-    // TimeCollector(std::initializer_list<std::initializer_list<ResponseTimeRow>> data);
-
     ~TimeCollector() {}
 
     /// \brief collect time and save to states
     void Collect(absl::Duration time);
 
     /// \brief reset collector states and start a fresh one
-    void Flush();
-
-    absl::StatusOr<ResponseTimeRow> Flush(size_t idx);
+    /// \return old data
+    std::vector<ResponseTimeRow> Flush();
 
     /// \brief helper function to get the bucket index for the given time duration
     size_t GetBucketIdx(absl::Duration time);
 
-    uint32_t BucketCount() const { return helper_.BucketCount(); }
+    absl::StatusOr<absl::Duration> GetUpperBound(size_t idx) const;
 
-    absl::StatusOr<ResponseTimeRow> GetRow(size_t idx) const {
-        auto bound = GetUpperBound(idx);
-        if (!bound.ok()) {
-            return bound.status();
-        }
-        return ResponseTimeRow{bound.value(), GetCount(idx), GetTotalUnited(idx)};
-    }
+    uint32_t BucketCount() const;
 
-    absl::StatusOr<absl::Duration> GetUpperBound(size_t idx) const { return helper_.UpperBound(idx); }
+    absl::StatusOr<ResponseTimeRow> GetRow(size_t idx) const;
 
  private:
     // unsafe methods
 
-    uint32_t GetCount(size_t idx) const { return count_[idx]; }
+    uint32_t GetCount(size_t idx) const;
 
-    uint64_t GetTotal(size_t idx) const { return total_[idx]; }
+    uint64_t GetTotal(size_t idx) const;
 
     absl::Duration GetTotalUnited(size_t idx) const { return absl::Microseconds(GetTotal(idx)); }
 

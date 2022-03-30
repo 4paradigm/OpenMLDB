@@ -35,26 +35,22 @@ TimeCollector::TimeCollector()
 void TimeCollector::Collect(absl::Duration time) {
     for (size_t idx = 0; idx < helper_.BucketCount(); ++idx) {
         if (time <= helper_.UpperBound(idx).value()) {
-            count_[idx] += 1;
-            total_[idx] += absl::ToInt64Microseconds(time);
+            count_[idx].fetch_add(1, std::memory_order_relaxed);
+            total_[idx].fetch_add(absl::ToInt64Microseconds(time), std::memory_order_relaxed);
             break;
         }
     }
 }
 
-void TimeCollector::Flush() { Setup(); }
-
-absl::StatusOr<ResponseTimeRow> TimeCollector::Flush(size_t idx) {
-    auto bound = GetUpperBound(idx);
-    if (!bound.ok()) {
-        return bound.status();
+std::vector<ResponseTimeRow> TimeCollector::Flush() {
+    std::vector<ResponseTimeRow> rows;
+    rows.reserve(BucketCount());
+    for (size_t idx = 0; idx < helper_.BucketCount(); ++idx) {
+        auto cnt = count_[idx].exchange(0, std::memory_order_relaxed);
+        auto total = total_[idx].exchange(0, std::memory_order_relaxed);
+        rows.emplace_back(helper_.UpperBound(idx).value(), cnt, absl::Microseconds(total));
     }
-
-    ResponseTimeRow row(bound.value(), GetCount(idx), GetTotalUnited(idx));
-
-    count_[idx] = 0;
-    total_[idx] = 0;
-    return row;
+    return rows;
 }
 
 size_t TimeCollector::GetBucketIdx(absl::Duration time) {
@@ -70,12 +66,28 @@ size_t TimeCollector::GetBucketIdx(absl::Duration time) {
     return helper_.BucketCount() - 1;
 }
 
+absl::StatusOr<absl::Duration> TimeCollector::GetUpperBound(size_t idx) const { return helper_.UpperBound(idx); }
+
+uint32_t TimeCollector::BucketCount() const { return helper_.BucketCount(); }
+
 void TimeCollector::Setup() {
     for (size_t idx = 0; idx < helper_.BucketCount(); ++idx) {
         count_[idx] = 0;
         total_[idx] = 0;
     }
 }
+
+absl::StatusOr<ResponseTimeRow> TimeCollector::GetRow(size_t idx) const {
+    auto bound = GetUpperBound(idx);
+    if (!bound.ok()) {
+        return bound.status();
+    }
+    return ResponseTimeRow{bound.value(), GetCount(idx), GetTotalUnited(idx)};
+}
+
+uint32_t TimeCollector::GetCount(size_t idx) const { return count_[idx].load(std::memory_order_relaxed); }
+
+uint64_t TimeCollector::GetTotal(size_t idx) const { return total_[idx].load(std::memory_order_relaxed); }
 
 absl::StatusOr<absl::Duration> TimeDistributionHelper::UpperBound(size_t idx) const {
     if (IndexOutOfBound(idx)) {

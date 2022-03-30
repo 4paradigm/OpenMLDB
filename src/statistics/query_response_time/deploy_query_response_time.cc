@@ -95,9 +95,9 @@ std::vector<DeployResponseTimeRow> DeployQueryTimeCollector::Flush() {
     std::vector<DeployResponseTimeRow> rows;
     rows.reserve(GetRecordsCnt());
     for (auto& kv : collectors_) {
-        for (auto idx = 0; idx < kv.second->BucketCount(); ++idx) {
-            auto row = kv.second->Flush(idx);
-            rows.emplace_back(kv.first, row->upper_bound_, row->count_, row->total_);
+        auto rs = kv.second->Flush();
+        for (auto& r : rs) {
+            rows.emplace_back(kv.first, r.upper_bound_, r.count_, r.total_);
         }
     }
 
