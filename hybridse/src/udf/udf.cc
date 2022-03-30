@@ -51,7 +51,7 @@ using openmldb::base::Date;
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;
 constexpr time_t TZ_OFFSET = TZ * 3600000;
-constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024; // 2M
+constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 int32_t dayofyear(int64_t ts) {
