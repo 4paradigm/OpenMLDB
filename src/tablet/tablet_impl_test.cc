@@ -87,21 +87,9 @@ void RemoveData(const std::string& path) {
 
 class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
-        // for (int i = 1; i <= 200; i++) {
-        //     std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
-        //     RemoveData(path);
-        //     path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
-        //     RemoveData(path);
-        // }
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
     }
     virtual void TearDown() {
-        // for (int i = 1; i <= 200; i++) {
-        //     std::string path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_0";
-        //     RemoveData(path);
-        //     path = FLAGS_hdd_root_path + "/" + std::to_string(i) +  "_1";
-        //     RemoveData(path);
-        // }
         ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
     }
 };
@@ -1758,7 +1746,6 @@ TEST_P(TabletImplTest, ScanWithLimit) {
     ASSERT_EQ(2, (signed)srp.count());
 }
 
-
 TEST_P(TabletImplTest, Scan) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
@@ -3229,7 +3216,6 @@ TEST_P(TabletImplTest, GetTermPair) {
     } else {
         snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     }
-    PDLOG(ERROR, "%s", snapshot_file.c_str());
     // for memtable snapshot is a file
     // for disktable snapshot is a directory
     if (storage_mode == openmldb::common::kMemory) {
@@ -3972,7 +3958,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         dim->set_key("test" + std::to_string(i % 10));
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
-        PDLOG(ERROR, "puting row ts_col is %u", ts);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
             ts_str, ts_str, ts_str, ts_str};
         auto value = prequest.mutable_value();
