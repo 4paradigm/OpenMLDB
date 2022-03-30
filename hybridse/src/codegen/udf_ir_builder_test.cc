@@ -631,9 +631,9 @@ TEST_F(UdfIRBuilderTest, lower_lcase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", nullptr, nullptr);
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", nullptr, nullptr);
-    char* buf1 = (char*)malloc(2 * 1024 * 1024 + 1);
-    char* buf2 = (char*)malloc(2 * 1024 * 1024 - 1);
-    char* buf3 = (char*)malloc(2 * 1024 * 1024 - 1);
+    char* buf1 = reinterpret_cast<char*>(malloc(2 * 1024 * 1024 + 1));
+    char* buf2 = reinterpret_cast<char*>(malloc(2 * 1024 * 1024 - 1));
+    char* buf3 = reinterpret_cast<char*>(malloc(2 * 1024 * 1024 - 1));
     memset(buf1, 'A', 2 * 1024 * 1024 + 1);
     memset(buf2, 'A', 2 * 1024 * 1024 - 1);
     memset(buf3, 'a', 2 * 1024 * 1024 - 1);
