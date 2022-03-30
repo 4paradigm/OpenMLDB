@@ -1626,6 +1626,15 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const openmldb::api::
 void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
                                           const openmldb::api::SQLBatchRequestQueryRequest* request,
                                           openmldb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
+    absl::Time start = absl::Now();
+    absl::Cleanup deploy_collect_task = [this, request, start]() {
+        if (this->IsCollectDeployStatsEnabled()) {
+            const std::string deploy_name = absl::StrCat((request->has_db() ? request->db() : "NA"), ".",
+                                                         (request->has_sp_name() ? request->sp_name() : "NA"));
+            this->CollectDeployStats(deploy_name, start);
+        }
+    };
+
     ::hybridse::base::Status status;
     ::hybridse::vm::BatchRequestRunSession session;
     // run session
@@ -1633,14 +1642,6 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
         session.EnableDebug();
     }
     bool is_procedure = request->is_procedure();
-
-    absl::Time start = absl::Now();
-    const std::string deploy_name = absl::StrCat(request->db(), ".", request->sp_name());
-    absl::Cleanup deploy_collect_task = [this, &deploy_name, start]() {
-        if (this->IsCollectDeployStatsEnabled()) {
-            this->CollectDeployStats(deploy_name, start);
-        }
-    };
 
     if (is_procedure) {
         std::shared_ptr<hybridse::vm::CompileInfo> request_compile_info;
@@ -5067,15 +5068,19 @@ void TabletImpl::CollectDeployStats(const std::string& deploy_name, absl::Time s
     LOG(INFO) << "collected " << deploy_name << ": " << time;
 }
 
+static const std::string& QueryDeployStats() {
+    static const std::string query_deploy_stats =
+        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
+    return query_deploy_stats;
+}
+
 void TabletImpl::SyncDeployStats() {
     if (!IsCollectDeployStatsEnabled()) {
-        LOG(INFO) << "deploy stats not enabled";
+        DLOG(INFO) << "deploy stats not enabled";
         return;
     }
-    std::string query_deploy_stats =
-        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
     hybridse::sdk::Status s;
-    auto rs = sr_->ExecuteSQLParameterized("", query_deploy_stats, {}, &s);
+    auto rs = sr_->ExecuteSQLParameterized("", QueryDeployStats(), {}, &s);
     if (!s.IsOK()) {
         LOG(ERROR) << "[ERROR] querying DEPLOY_RESPONSE_TIME" << s.msg;
         return;
@@ -5121,7 +5126,7 @@ void TabletImpl::SyncDeployStats() {
                                        ",'", std::to_string(absl::ToInt64Microseconds(row.total_)), "' )");
 
         hybridse::sdk::Status st;
-        LOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
+        DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
         sr_->ExecuteInsert("", insert_sql, &st);
         if (!st.IsOK()) {
             LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
@@ -5131,6 +5136,7 @@ void TabletImpl::SyncDeployStats() {
 
 void TabletImpl::ScheduleSyncDeployStats() {
     SyncDeployStats();
+    // FIXME(ace): add a flag
     task_pool_.DelayTask(2000, boost::bind(&TabletImpl::ScheduleSyncDeployStats, this));
 }
 
