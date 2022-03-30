@@ -1774,6 +1774,25 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         }
     }
 
+    if (cluster_sdk_->IsClusterMode()) {
+        // set default replica num
+        if (create_node->GetReplicaNum() == 0) {
+            auto ns_client = cluster_sdk_->GetNsClient();
+            std::vector<::openmldb::client::TabletInfo> tablets;
+            std::string msg;
+            bool ok = ns_client->ShowTablet(tablets, msg);
+            if (!ok) {
+                return base::Status(base::ReturnCode::kCreateTableFailedOnTablet, "set default replica num failed");
+            }
+            int tablets_size = tablets.size();
+            create_node->setReplicaNum(std::min(tablets_size, 3));
+        }
+        // set default partition num
+        if (create_node->GetPartitionNum() == 0) {
+            create_node->setPartitionNum(8);
+        }
+    }
+
     hybridse::base::Status sql_status;
     ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
     if (sql_status.code != 0) {

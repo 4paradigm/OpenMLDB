@@ -446,6 +446,12 @@ class SqlNode : public NodeBase<SqlNode> {
 
 typedef std::vector<SqlNode *> NodePointVector;
 
+struct CreateTableOptions {
+    int replica_num;
+    int partition_num;
+    NodePointVector distribution_list;
+};
+
 class SqlNodeList : public SqlNode {
  public:
     SqlNodeList() : SqlNode(kNodeList, 0, 0) {}
@@ -1844,23 +1850,14 @@ class CreateStmt : public SqlNode {
         : SqlNode(kCreateStmt, 0, 0),
           table_name_(""),
           op_if_not_exist_(false),
-          replica_num_(1),
-          partition_num_(1),
           storage_mode_(kMemory) {}
 
-    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num, StorageMode storage_mode = kMemory)
-        : SqlNode(kCreateStmt, 0, 0),
-          db_name_(db_name),
-          table_name_(table_name),
-          op_if_not_exist_(op_if_not_exist),
-          replica_num_(replica_num),
-          partition_num_(partition_num),
-          storage_mode_(storage_mode) {}
+    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, StorageMode storage_mode = kMemory)
+        : SqlNode(kCreateStmt, 0, 0), db_name_(db_name), table_name_(""), op_if_not_exist_(false), storage_mode_(storage_mode) {}
 
     ~CreateStmt() {}
 
-    NodePointVector &GetColumnDefList() { return column_desc_list_; }
+    NodePointVector* MutableColumnDefList() { return &column_desc_list_; }
     const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
 
     std::string GetTableName() const { return table_name_; }
@@ -1868,14 +1865,10 @@ class CreateStmt : public SqlNode {
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
-    int GetReplicaNum() const { return replica_num_; }
-
-    int GetPartitionNum() const { return partition_num_; }
-
     StorageMode GetStorageMode() const { return storage_mode_; }
 
-    NodePointVector &GetDistributionList() { return distribution_list_; }
-    const NodePointVector &GetDistributionList() const { return distribution_list_; }
+    NodePointVector* MutableTableOptionList() { return &table_option_list_; }
+    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -1884,10 +1877,9 @@ class CreateStmt : public SqlNode {
     std::string table_name_;
     bool op_if_not_exist_;
     NodePointVector column_desc_list_;
-    int replica_num_;
-    int partition_num_;
     StorageMode storage_mode_;
-    NodePointVector distribution_list_;
+    NodePointVector table_option_list_;
+
 };
 class IndexKeyNode : public SqlNode {
  public:
