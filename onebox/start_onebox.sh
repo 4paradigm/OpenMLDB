@@ -92,7 +92,6 @@ function start_cluster() {
                            --zk_root_path=/onebox > ns3.log 2>&1 &
         sleep 2
         echo "cluster start ok"
-        exit 0
 }
 
 function start_standalone() {
@@ -115,11 +114,11 @@ function start_standalone() {
                            --tablet_heartbeat_timeout=1 > ns.log 2>&1 &
         sleep 2
         echo "standalone start ok"
-        exit 0
 }
 # with no param, default is cluster mode
 if [ $# -eq 0 ]; then
   start_cluster
+  exit 0
 fi
 
 if [ $# -ne 1 ]; then
@@ -131,9 +130,11 @@ OP=$1
 case $OP in
     cluster)
         start_cluster
+        exit 0
         ;;
     standalone)
         start_standalone
+        exit 0
         ;;
     *)
         echo "only support standalone|cluster" >&2
