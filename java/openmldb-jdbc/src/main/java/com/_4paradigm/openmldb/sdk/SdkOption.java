@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.sdk;
 
 import lombok.Data;
 
+
 @Data
 public class SdkOption {
 //    options for cluster mode
