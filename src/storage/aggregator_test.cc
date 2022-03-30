@@ -294,7 +294,6 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
-
     }
     // rows_range window type
     {
@@ -366,7 +365,6 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 0);
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
-
     }
 }
 
