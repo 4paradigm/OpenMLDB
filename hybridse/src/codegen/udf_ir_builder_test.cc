@@ -631,6 +631,19 @@ TEST_F(UdfIRBuilderTest, lower_lcase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lcase", nullptr, nullptr);
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", nullptr, nullptr);
+    char* buf1 = (char*)malloc(2 * 1024 * 1024 + 1);
+    char* buf2 = (char*)malloc(2 * 1024 * 1024 - 1);
+    char* buf3 = (char*)malloc(2 * 1024 * 1024 - 1);
+    memset(buf1, 'A', 2 * 1024 * 1024 + 1);
+    memset(buf2, 'A', 2 * 1024 * 1024 - 1);
+    memset(buf3, 'a', 2 * 1024 * 1024 - 1);
+    StringRef large_str = StringRef(2 * 1024 * 1024 - 1, buf2);
+    StringRef large_str1 = StringRef(2 * 1024 * 1024 - 1, buf3);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", nullptr, StringRef(2 * 1024 * 1024 + 1, buf1));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("lower", large_str1, large_str);
+    delete buf1;
+    delete buf2;
+    delete buf3;
 }
 
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
