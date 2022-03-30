@@ -49,9 +49,9 @@ using openmldb::base::StringRef;
 using openmldb::base::Timestamp;
 using openmldb::base::Date;
 // TODO(chenjing): 时区统一配置
-const int32_t TZ = 8;
-const time_t TZ_OFFSET = TZ * 3600000;
-const int MAX_ALLOC_SIZE = 2048;
+constexpr int32_t TZ = 8;
+constexpr time_t TZ_OFFSET = TZ * 3600000;
+constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024; // 2M
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 int32_t dayofyear(int64_t ts) {
@@ -830,6 +830,10 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = absl::ascii_toupper(static_cast<unsigned char>(str->data_[i]));
     }
@@ -848,6 +852,10 @@ void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = str->data_[str->size_ - i - 1];
     }
@@ -861,6 +869,10 @@ void lcase(StringRef *str, StringRef *output, bool *is_null_ptr) {
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = absl::ascii_tolower(static_cast<unsigned char>(str->data_[i]));
     }
@@ -994,6 +1006,7 @@ char *AllocManagedStringBuf(int32_t bytes) {
         return nullptr;
     }
     if (bytes > MAX_ALLOC_SIZE) {
+        LOG(ERROR) << "alloc string buf size " << bytes << " is larger than " << MAX_ALLOC_SIZE;
         return nullptr;
     }
     return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));
