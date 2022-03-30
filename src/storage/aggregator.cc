@@ -341,7 +341,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
             PDLOG(ERROR, "Bucket size is empty");
             return std::shared_ptr<Aggregator>();
         }
-        char time_unit = bucket_size.back();
+        char time_unit = tolower(bucket_size.back());
         std::string time_size = bucket_size.substr(0, bucket_size.size() - 1);
         boost::trim(time_size);
         if (!::openmldb::base::IsNumber(time_size)) {
