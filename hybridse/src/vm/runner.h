@@ -418,6 +418,9 @@ class RowParser {
     type::Type GetType(const node::ColumnRefNode& col) const;
     type::Type GetType(const std::string& col) const;
 
+    bool IsNull(const Row& row, const node::ColumnRefNode& col) const;
+    bool IsNull(const Row& row, const std::string& col) const;
+
     const vm::SchemasContext* schema_ctx() const {
         return schema_ctx_;
     }

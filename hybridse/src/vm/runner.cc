@@ -2371,6 +2371,20 @@ RowParser::RowParser(const vm::SchemasContext* schema_ctx) : schema_ctx_(schema_
     }
 }
 
+bool RowParser::IsNull(const Row& row, const node::ColumnRefNode& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
+    const RowView& row_view = row_view_list_[schema_idx];
+    return row_view.IsNULL(row.buf(schema_idx), col_idx);
+}
+
+bool RowParser::IsNull(const Row& row, const std::string& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const RowView& row_view = row_view_list_[schema_idx];
+    return row_view.IsNULL(row.buf(schema_idx), col_idx);
+}
+
 int32_t RowParser::GetValue(const Row& row, const node::ColumnRefNode& col, ::hybridse::type::Type type,
                             void* val) const {
     size_t schema_idx, col_idx;
@@ -2406,7 +2420,6 @@ int32_t RowParser::GetString(const Row& row, const std::string& col, std::string
     size_t schema_idx, col_idx;
     schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
     const RowView& row_view = row_view_list_[schema_idx];
-    auto& col_def = row_view.GetSchema()->Get(col_idx);
     const char* ch = nullptr;
     uint32_t str_size;
     row_view.GetValue(row.buf(schema_idx), col_idx, &ch, &str_size);
@@ -2755,7 +2768,7 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     if (ctx.is_debug()) {
-        for (int i = 0; i < union_inputs.size(); i++) {
+        for (size_t i = 0; i < union_inputs.size(); i++) {
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_inputs[i]);
             LOG(INFO) << "union input " << i << ": " << sss.str();
@@ -2772,7 +2785,7 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     union_segments[1] = agg_segment;
 
     if (ctx.is_debug()) {
-        for (int i = 0; i < union_segments.size(); i++) {
+        for (size_t i = 0; i < union_segments.size(); i++) {
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_segments[i]);
             LOG(INFO) << "union output " << i << ": " << sss.str();
@@ -2836,7 +2849,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
     }
-    uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
+    int64_t request_key = ts_gen > 0 ? ts_gen : 0;
 
     auto window_table =
         std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
@@ -2874,6 +2887,10 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
+        if (row_parser->IsNull(row, *agg_col_)) {
+            return;
+        }
+
         auto type = aggregator_->type();
         auto aggregator = aggregator_.get();
         switch (type) {
@@ -2914,6 +2931,10 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     auto update_agg_aggregator = [row_parser = agg_row_parser, this](const Row& row) {
+        if (row_parser->IsNull(row, "agg_val")) {
+            return;
+        }
+
         auto type = aggregator_->type();
         auto aggregator = aggregator_.get();
         std::string agg_val;
@@ -2939,7 +2960,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     };
 
-    uint64_t cnt = 0;
+    int64_t cnt = 0;
     auto range_status = window_range.GetWindowPositionStatus(
         cnt > rows_start_preceding, window_range.end_offset_ < 0,
         request_key < start);
@@ -2957,7 +2978,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
                 break;
             }
 
-            auto ts = base_it->GetKey();
+            int64_t ts = base_it->GetKey();
             if (ts <= end_base) break;
 
             auto range_status = window_range.GetWindowPositionStatus(cnt > rows_start_preceding, ts > end, ts < start);
@@ -2974,13 +2995,13 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // iterate over agg table from end_base until start (both inclusive)
-    uint64_t last_ts_start = UINT64_MAX;
+    int64_t last_ts_start = UINT64_MAX;
     while (agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
 
-        auto ts_start = agg_it->GetKey();
+        int64_t ts_start = agg_it->GetKey();
         // for mem-table, updating will inserts duplicate entries
         if (last_ts_start == ts_start) {
             DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
@@ -3006,23 +3027,28 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             update_agg_aggregator(row);
             cnt += num_rows;
         }
+
+        start_base = ts_start;
         agg_it->Next();
     }
 
-    // iterate over base table from start_base (exclusive) to start (inclusive)
-    base_it->Seek(start_base - 1);
-    while (base_it->Valid()) {
-        auto ts = base_it->GetKey();
-        auto range_status = window_range.GetWindowPositionStatus(cnt > rows_start_preceding, ts > end, ts < start);
-        if (WindowRange::kExceedWindow == range_status) {
-            break;
-        }
-        if (WindowRange::kInWindow == range_status) {
-            update_base_aggregator(base_it->GetValue());
-            cnt++;
-        }
+    if (start_base > 0) {
+        // iterate over base table from start_base (exclusive) to start (inclusive)
+        base_it->Seek(start_base - 1);
+        while (base_it->Valid()) {
+            int64_t ts = base_it->GetKey();
+            auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
+                                                                     ts > end, static_cast<int64_t>(ts) < start);
+            if (WindowRange::kExceedWindow == range_status) {
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                update_base_aggregator(base_it->GetValue());
+                cnt++;
+            }
 
-        base_it->Next();
+            base_it->Next();
+        }
     }
 
     window_table->AddRow(start, aggregator_->Output());
