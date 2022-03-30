@@ -35,6 +35,13 @@ def test_smoke():
     assert ok == True
     ok, error = sdk.execute_sql(db_name, create_db)
     assert ok == False
+    
+    ddl = "create table " + table_name + "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
+    ok, error = sdk.execute_sql(ddl)
+    assert ok == True
+    ok, error = sdk.execute_sql(ddl)
+    assert ok == False
+    
     # insert table normal
     insert_normal = "insert into " + table_name + " values('hello', 123, 3.14, 1000);"
     ok, error = sdk.execute_sql(db_name, insert_normal)
