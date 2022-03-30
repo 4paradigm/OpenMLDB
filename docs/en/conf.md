@@ -60,7 +60,7 @@
 --system_table_replica_num=2
 ```
 
-## tablet configuration file conf/tablet.flags
+## The Configuration File for conf/tablet.flags
 
 ```
 # tablet.conf
@@ -77,7 +77,7 @@
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
 
-# Configure the thread pool size, it is recommended to be consistent with the number of cpu cores
+# Configure the thread pool size, it is recommended to be consistent with the number of CPU cores
 --thread_pool_size=24
 # zk session timeout, in milliseconds
 --zk_session_timeout=10000
@@ -94,13 +94,13 @@
 #--binlog_match_logoffset_interval=1000
 # Whether to notify the follower to synchronize immediately when data is written
 --binlog_notify_on_put=true
-# The maximum size of the binlog file, in M
+# The maximum size of the binlog file, in MB
 --binlog_single_file_max_size=2048
 # Master-slave synchronization batch size
 #--binlog_sync_batch_size=32
 # The interval between binlog sync and disk, in milliseconds
 --binlog_sync_to_disk_interval=5000
-# If there is no new data synchronization wait time, in milliseconds
+# Th wait time when there is no new data synchronization, in milliseconds
 #--binlog_sync_wait_time=100
 # binlog filename length
 #--binlog_name_length=8
@@ -111,7 +111,7 @@
 
 # Thread pool size for performing io-related operations
 #--io_pool_size=2
-# Execute the thread pool size for tasks such as deleting tables, sending snapshots, load snapshots, etc.
+# The thread pool size for tasks such as deleting tables, sending snapshots, load snapshots, etc.
 #--task_pool_size=8
 # Configure the data directory, multiple disks are separated by English symbols
 --db_root_path=./db
@@ -137,13 +137,13 @@
 --gc_pool_size=2
 
 # send file conf
-# Maximum number of retries to send a file
+# The Maximum number of retry attempts to send a file
 #--send_file_max_try=3
 # block size when sending files
 #--stream_block_size=1048576
 # Bandwidth limit when sending files, the default is 20M/s
 --stream_bandwidth_limit=20971520
-# Maximum number of retries for rpc requests
+# The maximum number of retry attempts for rpc requests
 #--request_max_retry=3
 # rpc timeout, in milliseconds
 #--request_timeout_ms=5000
@@ -153,9 +153,9 @@
 #--retry_send_file_wait_time_ms=3000
 #
 # table conf
-# The maximum height of the first level jump table
+# The maximum height of the first level skip list
 #--skiplist_max_height=12
-# The maximum height of the second level jump table
+# The maximum height of the second level skip list
 #--key_entry_max_height=8
 
 # loadtable
@@ -167,7 +167,7 @@
 #--load_table_queue_size=1000
 ```
 
-## apiserver configuration file conf/tablet.flags
+## The Configuration file for APIServer: conf/tablet.flags
 
 ```
 # apiserver.conf
