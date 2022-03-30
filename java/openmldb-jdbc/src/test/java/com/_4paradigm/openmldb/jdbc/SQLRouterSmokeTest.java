@@ -42,8 +42,8 @@ import java.util.Random;
 public class SQLRouterSmokeTest {
 
     private final Random random = new Random(System.currentTimeMillis());
-    public static SqlExecutor clusterRouter;
-    public static SqlExecutor standaloneRouter;
+    public static SqlExecutor clusterExecutor;
+    public static SqlExecutor standaloneExecutor;
 
     static {
         try {
@@ -51,8 +51,8 @@ public class SQLRouterSmokeTest {
             option.setZkPath(TestConfig.ZK_PATH);
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
-            clusterRouter = new SqlClusterExecutor(option);
-            java.sql.Statement state = clusterRouter.getStatement();
+            clusterExecutor = new SqlClusterExecutor(option);
+            java.sql.Statement state = clusterExecutor.getStatement();
             state.execute("SET @@execute_mode='online';");
             state.close();
             // create standalone router
@@ -61,18 +61,18 @@ public class SQLRouterSmokeTest {
             standaloneOption.setPort(TestConfig.PORT);
             standaloneOption.setClusterMode(false);
             standaloneOption.setSessionTimeout(20000);
-            standaloneRouter = new SqlClusterExecutor(standaloneOption);
+            standaloneExecutor = new SqlClusterExecutor(standaloneOption);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @DataProvider(name = "sqlRouter")
-    public Object[] sqlRouter() {
-        return new Object[] {clusterRouter, standaloneRouter};
+    @DataProvider(name = "executor")
+    public Object[] executor() {
+        return new Object[] {clusterExecutor, standaloneExecutor};
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testSmoke(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
@@ -247,7 +247,7 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testParameterizedQueryFail(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
@@ -274,7 +274,7 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testInsertMeta(SqlExecutor router) {
         String dbname = "db" + random.nextInt(100000);
         // create db
@@ -315,7 +315,7 @@ public class SQLRouterSmokeTest {
 
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testInsertPreparedState(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
@@ -442,7 +442,7 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testInsertPreparedStateBatch(SqlExecutor router) {
         Object[][] batchData = new Object[][]{
                 {
@@ -571,7 +571,7 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "sqlRouter")
+    @Test(dataProvider = "executor")
     public void testDDLParseMethods(SqlExecutor router) throws SQLException {
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
