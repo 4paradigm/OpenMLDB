@@ -9985,12 +9985,46 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             tb_client_vec.push_back(kv.second->client_);
         }
     }
+
+    bool is_deployment_procedure = false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = db_sp_info_map_.find(db_name);
+        if (it != db_sp_info_map_.end()) {
+            is_deployment_procedure = it->second.find(sp_name) != it->second.end();
+        }
+    }
+    std::shared_ptr<TableInfo> info = std::make_shared<TableInfo>();
+    GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
+
     for (auto tb_client : tb_client_vec) {
         if (!tb_client->DropProcedure(db_name, sp_name)) {
             PDLOG(WARNING, "drop procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
                   sp_name.c_str(), tb_client->GetEndpoint().c_str());
             continue;
         }
+
+        if (is_deployment_procedure) {
+            auto deploy_name = absl::StrCat(db_name, ".", sp_name);
+            uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
+            uint64_t time = 1;
+            int cnt = 0;
+            std::string msg;
+            while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
+                auto key = absl::StrCat(deploy_name, "|", std::to_string(time));
+                if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+                    PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s",
+                          DEPLOY_RESPONSE_TIME, tb_client->GetEndpoint(), key, msg);
+                }
+                time *= 10;
+            }
+            auto key = absl::StrCat(deploy_name, "|", MAX_STRING);
+            if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+                PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
+                      tb_client->GetEndpoint(), key, msg);
+            }
+        }
+
         PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
               sp_name.c_str(), tb_client->GetEndpoint().c_str());
     }

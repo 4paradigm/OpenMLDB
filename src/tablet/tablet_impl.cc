@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory>
+#include "absl/time/clock.h"
 #include "absl/time/time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
@@ -1495,6 +1496,15 @@ void TabletImpl::Query(RpcController* ctrl, const openmldb::api::QueryRequest* r
 
 void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryRequest* request,
                               ::openmldb::api::QueryResponse* response, butil::IOBuf* buf) {
+    auto start = absl::Now();
+    absl::Cleanup deploy_collect_task = [this, request, start]() {
+        if (this->IsCollectDeployStatsEnabled()) {
+            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+                this->TryCollectDeployStats(request->db(), request->sp_name(), start);
+            }
+        }
+    };
+
     ::hybridse::base::Status status;
     if (request->is_batch()) {
         // convert repeated openmldb:type::DataType into hybridse::codec::Schema
@@ -1627,9 +1637,10 @@ void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
                                           openmldb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     absl::Time start = absl::Now();
     absl::Cleanup deploy_collect_task = [this, request, start]() {
-        if (request->is_procedure() && this->IsCollectDeployStatsEnabled()) {
-            this->CollectDeployStats(request->has_db() ? request->db() : "NA",
-                                     request->has_sp_name() ? request->sp_name() : "NA", start);
+        if (this->IsCollectDeployStatsEnabled()) {
+            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+                this->TryCollectDeployStats(request->db(), request->sp_name(), start);
+            }
         }
     };
 
@@ -4903,6 +4914,9 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
         } else {
             LOG(INFO) << "deleted deploy collector for " << collector_key;
         }
+
+        // delete entries in DEPLOY_RESPONSE_TIME table
+
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -5043,15 +5057,19 @@ bool TabletImpl::IsCollectDeployStatsEnabled() const {
     return it != p->end() && (it->second == "true" || it->second == "on");
 }
 
-void TabletImpl::CollectDeployStats(const std::string& db, const std::string& sp_name, absl::Time start_time) {
+// try collect the cost time for a deployment procedure into collector
+// if the procedure found in collector, it is colelcted directly
+// if not, the function will try find the procedure info from procedure cache, and if turns out is a deployment
+// procedure, retry collecting by firstly adding the missing deployment procedure into collector
+void TabletImpl::TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time) {
     absl::Time now = absl::Now();
     absl::Duration time = now - start_time;
-    const std::string deploy_name = absl::StrCat(db, ".", sp_name);
+    const std::string deploy_name = absl::StrCat(db, ".", name);
     auto s = deploy_collector_->Collect(deploy_name, time);
     if (absl::IsNotFound(s)) {
         // deploy collector is regarded as non-update-to-date cache for sp_info (sp_cache_ should be up-to-date)
         // so when Not Found error happens, retry once again by AddDeploy first, with the help of sp_cache_
-        auto sp_info = sp_cache_->FindSpProcedureInfo(db, sp_name);
+        auto sp_info = sp_cache_->FindSpProcedureInfo(db, name);
         if (sp_info.ok() && sp_info.value()->GetType() == hybridse::sdk::kReqDeployment) {
             s = deploy_collector_->AddDeploy(deploy_name);
             if (!s.ok()) {
@@ -5064,7 +5082,7 @@ void TabletImpl::CollectDeployStats(const std::string& db, const std::string& sp
     if (!s.ok()) {
         LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
     }
-    LOG(INFO) << "collected " << deploy_name << "for " << time;
+    LOG(INFO) << "collected " << deploy_name << " for " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
