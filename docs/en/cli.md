@@ -57,8 +57,8 @@ Add replicas
 
 Command format: `addreplica the table name pid_group endpoint`
 
-* table\_name: The table name
-* pid\_group: The collection of shard IDs. There can be the following situations
+* table\_name: the table name
+* pid\_group: the collection of shard IDs. There can be the following situations
     * A single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
@@ -94,8 +94,8 @@ Delete replicas
 
 Command format: `delreplica table_name pid_group endpoint`
 
-* table\_name: The table name
-* pid\_group: The collection of shard IDs. There can be the following situations
+* table\_name: the table name
+* pid\_group: the collection of shard IDs. There can be the following situations
     * a single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
@@ -138,12 +138,12 @@ Replicas migration
 Command format: `migrate src_endpoint table_name pid_group des_endpoint`
 
 * src\_endpoint: The endpoint of the node that needs to be checked out
-* table\_name: The table name
-* pid\_group:  The collection of shard IDs. There can be the following situations
+* table\_name: the table name
+* pid\_group:  the collection of shard IDs. There can be the following situations
     * a single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
-* des\_endpoint: The endpoint of the destination node for migration
+* des\_endpoint: the endpoint of the destination node for migration
 
 ```
 > migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992
@@ -160,7 +160,7 @@ Get configuration information, currently only supports auto\_failover
 
 Command format: `confget [conf_name]`
 
-* conf\_name: The configuration item name, optional
+* conf\_name: the configuration item name, optional
 
 ```
 > confget
@@ -179,7 +179,7 @@ Modify configuration information, currently only supports auto\_failover
 
 Command format: `confset conf_name value`
 
-* conf\_name: The configuration item name
+* conf\_name: the configuration item name
 * value: The value set by the configuration item
 
 ```
@@ -197,7 +197,7 @@ Command format: `offlineendpoint endpoint [concurrency]`
   * If it is a master, execute the re-election of the master
   * If it is a slave, find the master node and delete the current endpoint copy from the master node
   * Modify is_alive status to no
-* concurrency: The concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
+* concurrency: the concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
 
 ```bash
 > offlineendpoint 172.27.128.32:8541
@@ -221,9 +221,9 @@ Restore node data. This command is asynchronous and after the successful return,
 
 Command format: `recoverendpoint endpoint [need_restore] [concurrency]`
 
-* endpoint: The endpoint of the node to restore
+* endpoint: the endpoint of the node to restore
 * need_restore: Whether the table topology is to be restored to the original state, this configuration is optional, the default is false. If set to true, a shard is the leader under this node, and it is still the leader after recoverendpoint is executed to restore data
-* concurrency: The concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
+* concurrency: the concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
 
 ```
 > recoverendpoint 172.27.128.32:8541
@@ -242,8 +242,8 @@ Perform a master-slave switchover for a specified shard. This command is asynchr
 
 Command format: `changeleader table_name pid [candidate_leader]`
 
-* table\_name: The table name
-* pid: The shard id
+* table\_name: the table name
+* pid: the shard id
 * candidate\_leader: Candidate leader. This parameter is optional. If this parameter is not added, it is required that there is no leader whose alive is yes in the shard. If it is set to auto, it can switch even if the alive status of other nodes is yes.
 
 ```
@@ -261,8 +261,8 @@ Restore a shard data. This command is asynchronous and after the successful retu
 
 Command format: `recovertable table_name pid endpoint`
 
-* table\_name The table name
-* pid: The shard id
+* table\_name: the table name
+* pid: the shard id
 * endpoint: The endpoint to restore the node endpoint where the shard is located
 
 ```
@@ -276,7 +276,7 @@ Cancels an ongoing or pending operation. After cancellation, the state of the ta
 
 Command format: `cancelop op\_id`
 
-* op\_id: The operation id to cancel
+* op\_id: the operation id to cancel
 
 ```
 > cancelop 5
@@ -289,8 +289,8 @@ Display operation execution information
 
 Command format: `showopstatus [table_name pid]`
 
-* table\_name: The table name
-* pid: The shard id
+* table\_name: the table name
+* pid: the shard id
 
 ```
 > showopstatus
@@ -328,9 +328,9 @@ Modify shard alive state
 
 Command format: `updatetablealive table_name pid endpoint is_alive`
 
-* table\_name: The table name
-* pid: The fragment id, if you want to modify all fragments of a table, specify pid as *
-* endpoint: The endpoint of the node
+* table\_name: the table name
+* pid: the fragment id. If you want to modify all fragments of a table, specify pid as *
+* endpoint: the endpoint of the node
 * is\_alive: The  node status, can only fill in yes or no
 
 ```
@@ -387,9 +387,9 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 Command format: `loadtable table_name tid pid ttl segment_cnt`
 
-* table\_name: The table name
-* tid: The id of the table
-* pid: The shard id of the table
+* table\_name: the table name
+* tid: the id of the table
+* pid: the shard id of the table
 * ttl: Set the ttl value
 * segment\_cnt: Set the segment count, generally set to 8
 
@@ -404,8 +404,8 @@ Change the leader role of the table
 
 Command format: `changerole tid pid role \[term\]`
 
-* tid: Specifies the id of the table
-* pid: Specifies the shard id of the table
+* tid: the id of the table
+* pid: the shard id of the table
 * role: The role to be modified, the value is \[leader, follower\]
 * term: Set the term's value, this item is optional, the default is 0
 
@@ -424,8 +424,8 @@ Get table information
 
 Command format: `gettablestatus \[tid pid\]`
 
-* tid: The id of the table
-* pid: The shard id of the table
+* tid: the id of the table
+* pid: the shard id of the table
 
 ```
 > gettablestatus
@@ -445,8 +445,8 @@ View slave node information
 
 Command format: `getfollower tid pid`
 
-* tid: The id of the table
-* pid: The shard id of the table
+* tid: the id of the table
+* pid: the shard id of the table
 
 ```
 > getfollower 4 1
