@@ -405,6 +405,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return databases;
     }
 
+    @Override
     public List<String> getTableNames(String db) {
         VectorString names = sqlRouter.GetTableNames(db);
         List<String> tableNames = new ArrayList<>(names);

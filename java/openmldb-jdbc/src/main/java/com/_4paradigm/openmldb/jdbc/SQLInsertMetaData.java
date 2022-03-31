@@ -26,9 +26,9 @@ import java.util.List;
 
 public class SQLInsertMetaData implements ResultSetMetaData {
 
-    private List<DataType> schema;
-    private Schema realSchema;
-    private List<Integer> idx;
+    private final List<DataType> schema;
+    private final Schema realSchema;
+    private final List<Integer> idx;
     public SQLInsertMetaData(List<DataType> schema,
                              Schema realSchema,
                              List<Integer> idx) {
