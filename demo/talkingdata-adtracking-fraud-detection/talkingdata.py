@@ -3,6 +3,7 @@ import os
 from matplotlib.pyplot import table
 import pandas as pd
 import time
+import timeout_decorator
 import numpy as np
 from sklearn.model_selection import train_test_split
 import lightgbm as lgb  # mac needs `brew install libomp`
@@ -97,13 +98,6 @@ test_df = pd.read_csv(path + "test.csv", dtype=dtypes,
                       usecols=[c[0] for c in test_schema])
 
 len_train = len(train_df)
-# append test data to train data, cuz test data features need history data too.
-# after appending, schema changed
-# two cols become float, can't set to int cuz NA
-# todo: remove the test part, delete "Predicting". We can load train&test data to online storage, and do predict by http
-train_df = train_df.append(test_df)
-train_schema = train_schema + [('click_id', 'int')]
-
 
 def column_string(col_tuple) -> str:
     return ' '.join(col_tuple)
@@ -117,7 +111,7 @@ del test_df
 gc.collect()
 
 engine = db.create_engine(
-    'openmldb:///foo?zk=127.0.0.1:6181&zkPath=/openmldb')
+    'openmldb:///kaggle?zk=127.0.0.1:6181&zkPath=/openmldb')
 connection = engine.connect()
 
 db_name = "kaggle"
@@ -135,7 +129,8 @@ def nothrow_execute(sql):
 
 
 nothrow_execute("CREATE DATABASE {};".format(db_name))
-nothrow_execute("USE {};".format(db_name))
+# sqlalchemy does not support "USE" expression
+# nothrow_execute("USE {};".format(db_name))
 nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
 nothrow_execute("set @@execute_mode='offline';")
@@ -143,9 +138,10 @@ print("load data to offline storage for training")
 
 # todo: must wait for load data finished
 #  set sync_job & job_timeout
-
-nothrow_execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{};".format(
-    os.path.abspath("offline_data.csv"), db_name, table_name))
+@timeout_decorator.timeout(300)
+def load_data():
+  nothrow_execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{};".format(
+      os.path.abspath("offline_data.csv"), db_name, table_name))
 
 print('feature extraction ...')
 final_train_file = "final_train.csv"
@@ -164,22 +160,17 @@ nothrow_execute("{} INTO OUTFILE '{}';".format(
     sql_part, os.path.abspath(final_train_file)))
 
 # todo: load train_df from final_train_file
-
-test_df = train_df[len_train:]
+train_df = pd.read_csv(os.path.abspath(final_train_file))
 val_df = train_df[(len_train - 3000000):len_train]
 train_df = train_df[:(len_train - 3000000)]
 
 print("train size: ", len(train_df))
 print("valid size: ", len(val_df))
-print("test size : ", len(test_df))
 
 target = 'is_attributed'
 predictors = ['app', 'device', 'os', 'channel', 'hour',
               'day', 'qty', 'ip_app_count', 'ip_app_os_count']
 categorical = ['app', 'device', 'os', 'channel', 'hour']
-
-sub = pd.DataFrame()
-sub['click_id'] = test_df['click_id'].astype('int')
 
 gc.collect()
 
@@ -215,13 +206,6 @@ bst = lgb_modelfit_nocv(params,
 del train_df
 del val_df
 gc.collect()
-
-print("Predicting...")
-sub['is_attributed'] = bst.predict(test_df[predictors])
-print("writing...")
-sub.to_csv('sub_lgb_balanced99.csv', index=False)
-print("done...")
-print(sub.info())
 
 # todo: start a predict server, and request it, get predict result
 # ref taxi demo
