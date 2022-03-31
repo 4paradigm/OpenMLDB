@@ -44,24 +44,24 @@ class OpenmldbSdk(object):
 
     def init(self):
         if self.is_cluster_mode:
-             options = sql_router_sdk.SQLRouterOptions()
-             options.zk_cluster = self.options.zk_cluster
-             options.zk_path = self.options.zk_path
-             self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
-             if not self.sdk:
-                 logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
-                 return False
-             logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
-         else:
-             options = sql_router_sdk.StandaloneOptions()
-             options.host = self.options.host
-             options.port = self.options.port
-             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
-             if not self.sdk:
-                 logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (options.host, options.port))
-                 return False
-             logger.info(
-                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
+            options = sql_router_sdk.SQLRouterOptions()
+            options.zk_cluster = self.options.zk_cluster
+            options.zk_path = self.options.zk_path
+            self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
+            if not self.sdk:
+                logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+                return False
+            logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+        else:
+            options = sql_router_sdk.StandaloneOptions()
+            options.host = self.options.host
+            options.port = self.options.port
+            self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
+            if not self.sdk:
+                logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (options.host, options.port))
+                return False
+            logger.info(
+                "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
         status = sql_router_sdk.Status()
         self.sdk.ExecuteSQL("SET @@execute_mode='online'", status)
         return True
