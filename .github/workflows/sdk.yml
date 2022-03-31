@@ -91,7 +91,7 @@ jobs:
         run: |
           sh steps/ut_zookeeper.sh start
           sh steps/download_openmldb_spark.sh $SPARK_HOME
-          cd onebox && sh start_onebox.sh && cd - || exit
+          cd onebox && sh start_onebox.sh && sh start_onebox.sh standalone && cd - || exit
 
       - name: run java modules smoke test
         working-directory: java
