@@ -160,7 +160,7 @@ object JobInfoManager {
     } catch {
       case e: SQLException =>
         e.printStackTrace()
-    } catch {
+    } finally catch {
       case throwables: SQLException =>
         throwables.printStackTrace()
     }
