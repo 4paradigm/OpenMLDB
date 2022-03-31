@@ -5,7 +5,7 @@
 
 ## NS Client
 
-Connecting to the ns client requires specifying zk\_cluster, zk\_root\_path and role. Where zk\_cluster is the zk address, zk\_root\_path is the root path of the cluster in zk, role is the role to be started and needs to be specified as ns_client
+Connecting to the NS Client requires specifying zk\_cluster, zk\_root\_path and role. Where zk\_cluster is the zk address, zk\_root\_path is the root path of the cluster in zk, role is the role to be started and needs to be specified as ns_client
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/onebox --role=ns_client
@@ -57,8 +57,8 @@ Add replicas
 
 Command format: `addreplica the table name pid_group endpoint`
 
-* table\_name: table name
-* pid\_group: the collection of shard IDs. There can be the following situations
+* table\_name: The table name
+* pid\_group: The collection of shard IDs. There can be the following situations
     * A single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
@@ -94,8 +94,8 @@ Delete replicas
 
 Command format: `delreplica table_name pid_group endpoint`
 
-* table\_name: table name
-* pid\_group: the collection of shard IDs. There can be the following situations
+* table\_name: The table name
+* pid\_group: The collection of shard IDs. There can be the following situations
     * a single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
@@ -138,8 +138,8 @@ Replicas migration
 Command format: `migrate src_endpoint table_name pid_group des_endpoint`
 
 * src\_endpoint: The endpoint of the node that needs to be checked out
-* table\_name: the table name
-* pid\_group:  the collection of shard IDs. There can be the following situations
+* table\_name: The table name
+* pid\_group:  The collection of shard IDs. There can be the following situations
     * a single shard
     * Multiple shard IDs, separated by commas. Such as 1,3,5
     * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
@@ -242,9 +242,9 @@ Perform a master-slave switchover for a specified shard. This command is asynchr
 
 Command format: `changeleader table_name pid [candidate_leader]`
 
-* table\_name table name
-* pid shard id
-* candidate\_leader Candidate leader. This parameter is optional. If this parameter is not added, it is required that there is no leader whose alive is yes in the shard. If it is set to auto, it can switch even if the alive status of other nodes is yes.
+* table\_name: The table name
+* pid: The shard id
+* candidate\_leader: Candidate leader. This parameter is optional. If this parameter is not added, it is required that there is no leader whose alive is yes in the shard. If it is set to auto, it can switch even if the alive status of other nodes is yes.
 
 ```
 > changeleader flow 0
@@ -261,9 +261,9 @@ Restore a shard data. This command is asynchronous and after the successful retu
 
 Command format: `recovertable table_name pid endpoint`
 
-* table\_name table name
-* pid shard id
-* endpoint to restore the node endpoint where the shard is located
+* table\_name The table name
+* pid: The shard id
+* endpoint: The endpoint to restore the node endpoint where the shard is located
 
 ```
 > recovertable flow 1 172.27.128.31:8541
@@ -276,7 +276,7 @@ Cancels an ongoing or pending operation. After cancellation, the state of the ta
 
 Command format: `cancelop op\_id`
 
-* op\_id the operation id to cancel
+* op\_id: The operation id to cancel
 
 ```
 > cancelop 5
@@ -289,8 +289,8 @@ Display operation execution information
 
 Command format: `showopstatus [table_name pid]`
 
-* table\_name table name
-* pid shard id
+* table\_name: The table name
+* pid: The shard id
 
 ```
 > showopstatus
@@ -328,10 +328,10 @@ Modify shard alive state
 
 Command format: `updatetablealive table_name pid endpoint is_alive`
 
-* table\_name table name
-* pid fragment id, if you want to modify all fragments of a table, specify pid as *
-* endpoint node endpoint
-* is\_alive node status, can only fill in yes or no
+* table\_name: The table name
+* pid: The fragment id, if you want to modify all fragments of a table, specify pid as *
+* endpoint: The endpoint of the node
+* is\_alive: The  node status, can only fill in yes or no
 
 ```
 > updatetablealive test * 172.27.128.31:8541 no
@@ -346,7 +346,7 @@ update ok
 
 Display the nameserver node and its role (if the serverName and automatic local ip function are used, the endpoint is serverName, and the real_endpoint is "-")
 
-Command format: `showns]`
+Command format: `showns`
 
 ```
 >showns
@@ -387,11 +387,11 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 Command format: `loadtable table_name tid pid ttl segment_cnt`
 
-* table\_name table name
-* tid specifies the id of the table
-* pid specifies the shard id of the table
-* ttl specifies ttl
-* segment\_cnt specifies segment\_cnt, generally set to 8
+* table\_name: The table name
+* tid: The id of the table
+* pid: The shard id of the table
+* ttl: Set the ttl value
+* segment\_cnt: Set the segment count, generally set to 8
 
 ```
 > loadtable table1 1 0 144000 8
@@ -404,10 +404,10 @@ Change the leader role of the table
 
 Command format: `changerole tid pid role \[term\]`
 
-* tid specifies the id of the table
-* pid specifies the shard id of the table
-* role The role to be modified, the value is \[leader, follower\]
-* term sets the term, this item is optional, the default is 0
+* tid: Specifies the id of the table
+* pid: Specifies the shard id of the table
+* role: The role to be modified, the value is \[leader, follower\]
+* term: Set the term's value, this item is optional, the default is 0
 
 ```
 > changerole 1 0 followers
@@ -424,8 +424,8 @@ Get table information
 
 Command format: `gettablestatus \[tid pid\]`
 
-* tid specifies the id of the table
-* pid specifies the shard id of the table
+* tid: The id of the table
+* pid: The shard id of the table
 
 ```
 > gettablestatus
@@ -445,8 +445,8 @@ View slave node information
 
 Command format: `getfollower tid pid`
 
-* tid specifies the id of the table
-* pid specifies the shard id of the table
+* tid: The id of the table
+* pid: The shard id of the table
 
 ```
 > getfollower 4 1
