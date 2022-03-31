@@ -9995,7 +9995,10 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
         }
     }
     std::shared_ptr<TableInfo> info = std::make_shared<TableInfo>();
-    GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
+    auto success = GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
+    // NOTE: deploy stats records will delete even when global setting deploy_stats is turned off while there are
+    // records for previous deploy query (during deploy_stats = 'on')
+    bool drop_deploy_stats = is_deployment_procedure && success && info != nullptr;
 
     for (auto tb_client : tb_client_vec) {
         if (!tb_client->DropProcedure(db_name, sp_name)) {
@@ -10004,7 +10007,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             continue;
         }
 
-        if (is_deployment_procedure) {
+        if (drop_deploy_stats) {
             auto deploy_name = absl::StrCat(db_name, ".", sp_name);
             uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
             uint64_t time = 1;
@@ -10013,6 +10016,9 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
                 auto key = absl::StrCat(deploy_name, "|", std::to_string(time));
                 if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+                    // NOTE: warning appears but is expected, just ingore:
+                    // 1. when you create a deploy query but not call it any time before delete it
+                    // 2. deploy_stats is always turned off
                     PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s",
                           DEPLOY_RESPONSE_TIME, tb_client->GetEndpoint(), key, msg);
                 }

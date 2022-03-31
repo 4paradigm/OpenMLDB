@@ -4914,9 +4914,6 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
         } else {
             LOG(INFO) << "deleted deploy collector for " << collector_key;
         }
-
-        // delete entries in DEPLOY_RESPONSE_TIME table
-
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
