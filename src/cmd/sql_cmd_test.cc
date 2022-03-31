@@ -670,7 +670,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
     int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(1);
+    sleep(3);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
