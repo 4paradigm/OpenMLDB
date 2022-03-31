@@ -35,53 +35,68 @@ import java.util.*;
 
 public class InsertPreparedStatementImpl implements PreparedStatement {
     public static final Charset CHARSET = StandardCharsets.UTF_8;
-    private String currentSql = null;
-    private SQLInsertRow currentRow = null;
-    private SQLInsertRows currentRows = null;
-    private SQLRouter router = null;
-    private List<Object> currentDatas = null;
-    private List<DataType> currentDatasType = null;
-    private Schema currentSchema = null;
-    private String db = null;
-    private List<Boolean> hasSet = null;
     private static final Logger logger = LoggerFactory.getLogger(InsertPreparedStatementImpl.class);
+
+    private final String db;
+    private final String sql;
+    private final SQLRouter router;
+
+    // need manual deletion
+    private final List<SQLInsertRow> currentRows = new ArrayList<>();
+    private Schema currentSchema;
+
+    private final List<Object> currentDatas;
+    private final List<DataType> currentDatasType;
+    private final List<Boolean> hasSet;
+    private final List<Integer> scehmaIdxs;
+
     private boolean closed = false;
     private boolean closeOnComplete = false;
-    private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
-    private List<Integer> scehmaIdxs = null;
-    private Map<Integer, Integer> stringsLen = new HashMap<>();
+    private final Map<Integer, Integer> stringsLen = new HashMap<>();
 
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
-        Status status = new Status();
-        SQLInsertRows rows = router.GetInsertRows(db, sql, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            status.delete();
-            if (rows != null) {
-                rows.delete();
-            }
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insert rows fail " + msg + " in construction preparedstatement");
-        }
-        this.currentRows = rows;
-        this.currentRow = rows.NewRow();
-        this.router = router;
-        this.currentSql = sql;
-        currentSchema = this.currentRow.GetSchema();
         this.db = db;
-        VectorUint32 idxs = this.currentRow.GetHoleIdx();
-        currentDatas = new ArrayList<>(idxs.size());
-        currentDatasType = new ArrayList<>(idxs.size());
-        hasSet = new ArrayList<>(idxs.size());
-        scehmaIdxs = new ArrayList<>(idxs.size());
-        for (int i = 0; i < idxs.size(); i++) {
-            long idx = idxs.get(i);
+        this.sql = sql;
+        this.router = router;
+
+        SQLInsertRow tempRow = getSQLInsertRow();
+        this.currentSchema = tempRow.GetSchema();
+        VectorUint32 idxes = tempRow.GetHoleIdx();
+
+        currentDatas = new ArrayList<>(idxes.size());
+        currentDatasType = new ArrayList<>(idxes.size());
+        hasSet = new ArrayList<>(idxes.size());
+        scehmaIdxs = new ArrayList<>(idxes.size());
+        for (int i = 0; i < idxes.size(); i++) {
+            long idx = idxes.get(i);
             DataType type = currentSchema.GetColumnType(idx);
             currentDatasType.add(type);
             currentDatas.add(null);
             hasSet.add(false);
             scehmaIdxs.add(i);
         }
+    }
+
+    private SQLInsertRow getSQLInsertRow() throws SQLException {
+        Status status = new Status();
+        SQLInsertRow row = router.GetInsertRow(db, sql, status);
+        if (status.getCode() != 0) {
+            String msg = status.getMsg();
+            status.delete();
+            if (row != null) {
+                row.delete();
+            }
+            throw new SQLException("getSQLInsertRow failed, " + msg);
+        }
+        status.delete();
+        return row;
+    }
+
+    private void clearSQLInsertRowList(){
+        for (SQLInsertRow row : currentRows) {
+            row.delete();
+        }
+        currentRows.clear();
     }
 
     @Override
@@ -280,20 +295,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         throw new SQLException("current do not support this method");
     }
 
-    private void dataBuild() throws SQLException {
-        if (currentRows == null) {
-            throw new SQLException("null rows");
-        }
-        if (currentRow == null) {
-            currentRow = currentRows.NewRow();
-        }
-        if (currentRow == null) {
-            long rowCount = currentRows.GetCnt();
-            logger.error("current rows count {}, rows.back().IsComplete = {}", rowCount, rowCount > 0 ?
-                    currentRows.GetRow(rowCount - 1).IsComplete() : "N/A");
-            throw new SQLException("create jni row failed");
-        }
-
+    private void buildRow() throws SQLException {
+        SQLInsertRow currentRow = getSQLInsertRow();
         int strLen = 0;
         for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
             strLen += entry.getValue();
@@ -301,7 +304,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
-            throw new SQLException("build data row failed");
+            throw new SQLException("init row failed");
         }
 
         for (int i = 0; i < currentDatasType.size(); i++) {
@@ -334,11 +337,14 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                     throw new SQLException("unkown data type");
                 }
             }
+            if (!ok) {
+                throw new SQLException("append failed");
+            }
         }
         if (!currentRow.Build()) {
             throw new SQLException("build insert row failed");
         }
-        currentRow = null;
+        currentRows.add(currentRow);
         clearParameters();
     }
 
@@ -351,22 +357,26 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     public boolean execute() throws SQLException {
         if (closed) {
-            throw new SQLException("preparedstatement closed");
+            throw new SQLException("InsertPreparedStatement closed");
         }
-        if (!sqlRowsMap.isEmpty() || this.currentRows.GetCnt() > 1) {
+        // buildRow will add a new row to currentRows
+        if (!currentRows.isEmpty()) {
             throw new SQLException("please use executeBatch");
         }
-        dataBuild();
+        buildRow();
         Status status = new Status();
-        boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
+        // actually only one row
+        boolean ok = router.ExecuteInsert(db, sql, currentRows.get(0), status);
+        // cleanup rows even if insert failed
+        // we can't execute() again without set new row, so we must clean up here
+        clearSQLInsertRowList();
         if (!ok) {
             logger.error("getInsertRow fail: {}", status.getMsg());
             status.delete();
-            status = null;
             return false;
         }
+
         status.delete();
-        status = null;
         if (closeOnComplete) {
             close();
         }
@@ -376,9 +386,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     public void addBatch() throws SQLException {
         if (closed) {
-            throw new SQLException("preparedstatement closed");
+            throw new SQLException("InsertPreparedStatement closed");
         }
-        dataBuild();
+        // build the current row and cleanup the cache of current row
+        // so that the cache is ready for new row
+        buildRow();
     }
 
     @Override
@@ -585,20 +597,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             return;
         }
-        for (String key : sqlRowsMap.keySet()) {
-            SQLInsertRows rows = sqlRowsMap.get(key);
-            rows.delete();
-            rows = null;
-        }
-        sqlRowsMap.clear();
-        if (currentRow != null) {
-            currentRow.delete();
-            currentRow = null;
-        }
-        if (currentRows != null) {
-            currentRows.delete();
-            currentRows = null;
-        }
+        clearSQLInsertRowList();
         if (currentSchema != null) {
             currentSchema.delete();
             currentSchema = null;
@@ -734,33 +733,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void addBatch(String s) throws SQLException {
-        if (currentDatas.size() > 0 && s.equals(this.currentSql)) {
-            throw new SQLException("data not enough");
-        }
-        if (sqlRowsMap.get(s) != null) {
-            return;
-        }
-        Status status = new Status();
-        SQLInsertRows rows = router.GetInsertRows(db, s, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            status.delete();
-            if (rows != null) {
-                rows.delete();
-            }
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-        status.delete();
-        status = null;
-        SQLInsertRow row = rows.NewRow();
-        if (row.GetHoleIdx().size() > 0) {
-            row.delete();
-            rows.delete();
-            throw new SQLException("this sql need data");
-        }
-        row.delete();
-        sqlRowsMap.put(s, rows);
+        throw new SQLException("cannot take arguments in PreparedStatement");
     }
 
     @Override
@@ -772,28 +745,19 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     public int[] executeBatch() throws SQLException {
         if (closed) {
-            throw new SQLException("preparedstatement closed");
+            throw new SQLException("InsertPreparedStatement closed");
         }
-        int result[] = new int[1 + sqlRowsMap.size()];
+        int[] result = new int[currentRows.size()];
         Status status = new Status();
-        boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
-        if (!ok) {
-            result[0] = -1;
-        } else {
-            result[0] = 0;
-        }
-        int i = 1;
-        for (String sql : sqlRowsMap.keySet()) {
-            ok = router.ExecuteInsert(db, sql, sqlRowsMap.get(sql), status);
+        for (int i = 0; i < currentRows.size(); i++) {
+            boolean ok = router.ExecuteInsert(db, sql, currentRows.get(i), status);
             if (!ok) {
-                result[i] = -1;
-            } else {
-                result[i] = 0;
+                logger.info(status.getMsg());
             }
-            i++;
+            result[i] = ok ? 0 : -1;
         }
         status.delete();
-        status = null;
+        clearSQLInsertRowList();
         return result;
     }
 
