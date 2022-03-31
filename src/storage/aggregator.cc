@@ -76,10 +76,13 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     AggrBufferLocked* aggr_buffer_lock;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (aggr_buffer_map_.find(key) == aggr_buffer_map_.end()) {
-            aggr_buffer_map_.emplace(key, AggrBufferLocked{});
+        auto it = aggr_buffer_map_.find(key);
+        if (it == aggr_buffer_map_.end()) {
+            auto insert_pair = aggr_buffer_map_.emplace(key, AggrBufferLocked{});
+            aggr_buffer_lock = &insert_pair.first->second;
+        } else {
+            aggr_buffer_lock = &it->second;
         }
-        aggr_buffer_lock = &aggr_buffer_map_.at(key);
     }
 
     std::unique_lock<std::mutex> lock(*aggr_buffer_lock->mu_);
@@ -233,8 +236,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_
     AggrBuffer tmp_buffer;
     if (it->Valid()) {
         auto val = it->GetValue();
-        std::string origin_data = val.ToString();
-        int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str()));
+        int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
 
         bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &tmp_buffer);
         if (!ok) {
