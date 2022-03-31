@@ -238,15 +238,15 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     index_items->PushBack(manager_->MakeIndexTsNode("col5"));
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(manager_->MakeColumnIndexNode(index_items));
     index_node->SetName("index1");
-    CreatePlanNode *node =
-        manager_->MakeCreateTablePlanNode("", "t1", 3, 8, kMemory,
-                                          {manager_->MakeColumnDescNode("col1", node::kInt32, true),
-                                           manager_->MakeColumnDescNode("col2", node::kInt32, true),
-                                           manager_->MakeColumnDescNode("col3", node::kFloat, true),
-                                           manager_->MakeColumnDescNode("col4", node::kVarchar, true),
-                                           manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
-                                          {},
-                                          false);
+    CreatePlanNode *node = manager_->MakeCreateTablePlanNode(
+        "", "t1",
+        {manager_->MakeColumnDescNode("col1", node::kInt32, true),
+         manager_->MakeColumnDescNode("col2", node::kInt32, true),
+         manager_->MakeColumnDescNode("col3", node::kFloat, true),
+         manager_->MakeColumnDescNode("col4", node::kVarchar, true),
+         manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
+        {manager_->MakeReplicaNumNode(3), manager_->MakePartitionNumNode(8), manager_->MakeStorageModeNode(kMemoery)},
+        false);
     ASSERT_TRUE(nullptr != node);
     std::vector<std::string> columns;
     std::vector<std::string> indexes;
