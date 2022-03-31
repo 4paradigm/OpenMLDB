@@ -21,12 +21,10 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/string_view.h"
 #include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
 #include "statistics/query_response_time/deploy_query_response_time.h"
-#include "statistics/query_response_time/query_response_time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -10016,7 +10014,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
                 auto key = absl::StrCat(deploy_name, "|", std::to_string(time));
                 if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
-                    // NOTE: warning appears but is expected, just ingore:
+                    // NOTE: some warning appears but is expected, just ingore:
                     // 1. when you create a deploy query but not call it any time before delete it
                     // 2. deploy_stats is always turned off
                     PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s",

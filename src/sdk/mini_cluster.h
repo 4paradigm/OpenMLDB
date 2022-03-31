@@ -87,7 +87,7 @@ class MiniCluster {
         }
         FLAGS_system_table_replica_num = 1;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
-        FLAGS_get_table_diskused_interval = 5000;
+        FLAGS_get_table_diskused_interval = 2000;
         FLAGS_sync_deploy_stats_timeout = 2000;
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
@@ -238,7 +238,7 @@ class StandaloneEnv {
         sleep(1);
         FLAGS_tablet = tb_endpoint_;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
-        FLAGS_get_table_diskused_interval = 5000;
+        FLAGS_get_table_diskused_interval = 2000;
         FLAGS_sync_deploy_stats_timeout = 2000;
         ns_port_ = GenRand();
         std::string ns_endpoint = "127.0.0.1:" + std::to_string(ns_port_);

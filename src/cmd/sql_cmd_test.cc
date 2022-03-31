@@ -446,8 +446,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     sr->SetDatabase("");
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -493,8 +492,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
             });
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -620,13 +618,13 @@ TEST_P(DBSDKTest, GlobalVariable) {
 // see NameServerImpl::SyncDeployStats & TabletImpl::TryCollectDeployStats
 // --------------------------------------------------------------------------------------
 
-
 // a proxy class to create and cleanup deployment stats more gracefully
 struct DeploymentEnv {
     explicit DeploymentEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {
         db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
         table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
         dp_name_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        procedure_name_ = absl::StrCat("procedure_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
     }
 
     virtual ~DeploymentEnv() {
@@ -645,33 +643,48 @@ struct DeploymentEnv {
                              "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));"),
                 absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
                              " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+                absl::StrCat(
+                    "create procedure ", procedure_name_,
+                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
+                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                    table_,
+                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
             });
     }
 
     void TearDown() {
         ProcessSQLs(sr_, {
                              absl::StrCat("drop deployment ", dp_name_),
+                             absl::StrCat("drop procedure ", procedure_name_),
                              absl::StrCat("drop table ", table_),
                              absl::StrCat("drop database ", db_),
                              "set global deploy_stats = 'off'",
                          });
     }
 
-    void CallProcedureBatch() {
+    void CallDeployProcedureBatch() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
-        GetRequestRow(rr);
+        GetRequestRow(&rr, dp_name_);
         auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
         sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
+    void CallDeployProcedure() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, dp_name_);
+        sr->CallProcedure(db_, dp_name_, rr, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
     void CallProcedure() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
-        GetRequestRow(rr);
-        sr->CallProcedure(db_, dp_name_, rr, &status);
+        GetRequestRow(&rr, procedure_name_);
+        sr->CallProcedure(db_, procedure_name_, rr, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
@@ -687,21 +700,23 @@ struct DeploymentEnv {
     std::string db_;
     std::string table_;
     std::string dp_name_;
+    std::string procedure_name_;
 
  private:
-    void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>& rs) { // NOLINT
+    void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) { // NOLINT
         hybridse::sdk::Status s;
-        rs = sr_->GetRequestRowByProcedure(db_, dp_name_, &s);
+        auto res = sr_->GetRequestRowByProcedure(db_, name, &s);
         ASSERT_TRUE(s.IsOK());
-        ASSERT_TRUE(rs->Init(5));
-        ASSERT_TRUE(rs->AppendString("hello"));
-        ASSERT_TRUE(rs->AppendInt32(5));
-        ASSERT_TRUE(rs->AppendInt64(5));
-        ASSERT_TRUE(rs->AppendFloat(0.1));
-        ASSERT_TRUE(rs->AppendDouble(0.1));
-        ASSERT_TRUE(rs->AppendTimestamp(100342));
-        ASSERT_TRUE(rs->AppendDate(2012, 10, 10));
-        ASSERT_TRUE(rs->Build());
+        ASSERT_TRUE(res->Init(5));
+        ASSERT_TRUE(res->AppendString("hello"));
+        ASSERT_TRUE(res->AppendInt32(5));
+        ASSERT_TRUE(res->AppendInt64(5));
+        ASSERT_TRUE(res->AppendFloat(0.1));
+        ASSERT_TRUE(res->AppendDouble(0.1));
+        ASSERT_TRUE(res->AppendTimestamp(100342));
+        ASSERT_TRUE(res->AppendDate(2012, 10, 10));
+        ASSERT_TRUE(res->Build());
+        *rs = res;
     }
 };
 
@@ -714,8 +729,8 @@ TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
 
     DeploymentEnv env(sr);
     env.SetUp();
-    env.CallProcedureBatch();
-    env.CallProcedure();
+    env.CallDeployProcedureBatch();
+    env.CallDeployProcedure();
 
     absl::SleepFor(absl::Seconds(3));
 
@@ -727,6 +742,9 @@ TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
     env.EnableDeployStats();
 
     absl::SleepFor(absl::Seconds(3));
+
+    // HandleSQL exists only for purpose of printing
+    HandleSQL(QueryDeployResponseTime);
     rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(0, rs->Size());
@@ -753,11 +771,12 @@ TEST_P(DBSDKTest, DeployStatsEnabledAfterSetGlobal) {
         ASSERT_EQ(0, rs->Size());
 
         // warm up deploy stats
-        env.CallProcedureBatch();
-        env.CallProcedure();
+        env.CallDeployProcedureBatch();
+        env.CallDeployProcedure();
 
         absl::SleepFor(absl::Seconds(3));
 
+        HandleSQL(QueryDeployResponseTime);
         rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
         ASSERT_TRUE(status.IsOK());
         ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
@@ -778,12 +797,17 @@ TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
     if (cs->IsClusterMode()) {
         DeploymentEnv env(sr);
         env.SetUp();
-        env.EnableDeployStats();
 
+        env.EnableDeployStats();
         absl::SleepFor(absl::Seconds(2));
-        for (int i = 0; i < 10; ++i) {
-            env.CallProcedureBatch();
+
+        for (int i =0; i < 5; ++i) {
             env.CallProcedure();
+        }
+
+        for (int i = 0; i < 10; ++i) {
+            env.CallDeployProcedureBatch();
+            env.CallDeployProcedure();
         }
         absl::SleepFor(absl::Seconds(3));
 
