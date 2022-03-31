@@ -33,7 +33,8 @@ namespace openmldb::sdk {
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-                                      ::openmldb::nameserver::TableInfo* table, int default_replica_num, bool is_cluster_mode, hybridse::base::Status* status) {
+                                      ::openmldb::nameserver::TableInfo* table, int default_replica_num,
+                                      bool is_cluster_mode, hybridse::base::Status* status) {
     if (create_node == nullptr || table == nullptr || status == nullptr) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
@@ -71,7 +72,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 distribution_list.push_back(table_option);
             }
         }
-        // 
         if (replica_num != 1) {
             status->msg = "Fail to create table with the replica configuration in standalone mode";
             status->code = hybridse::common::kUnsupportSql;
