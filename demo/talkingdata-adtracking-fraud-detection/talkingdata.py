@@ -70,6 +70,47 @@ def lgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
     print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
 
     return bst1
+  
+# def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
+#                       feval=None,num_boost_round=3000,early_stopping_rounds=20):
+#     xgb_params = {
+#         'booster': 'gbtree',
+#         'obj': objective,
+#         'eval_metric': metrics,
+#         'num_leaves': 31,  # we should let it be smaller than 2^(max_depth)
+#         'max_depth': -1,  # -1 means no limit
+#         'max_bin': 255,  # Number of bucketed bin for feature values
+#         'subsample': 0.6,  # Subsample ratio of the training instance.
+#         'colsample_bytree': 0.3,
+#         'min_child_weight': 5,
+#         'alpha': 0,  # L1 regularization term on weights
+#         'lambda': 0,  # L2 regularization term on weights
+#         'nthread': 8,
+#         'verbosity': 0,
+#     }
+#     xgb_params.update(params)
+
+#     print("preparing validation datasets")
+#     xgtrain = xgb.DMatrix(dtrain[predictors].values, label=dtrain[target].values)
+#     xgvalid = xgb.DMatrix(dvalid[predictors].values, label=dvalid[target].values)
+
+#     evals_results = {}
+
+#     bst1 = xgb.train(xgb_params,
+#                      xgtrain,
+#                      evals=xgvalid,
+#                      evals_result=evals_results,
+#                      num_boost_round=num_boost_round,
+#                      early_stopping_rounds=early_stopping_rounds,
+#                      verbose_eval=10,
+#                      feval=feval)
+
+#     n_estimators = bst1.best_iteration
+#     print("\nModel Report")
+#     print("n_estimators : ", n_estimators)
+#     print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
+
+#     return bst1
 
 
 path = 'data/'
@@ -191,6 +232,19 @@ params = {
     'min_child_weight': 0,
     'scale_pos_weight': 99  # because training data is extremely unbalanced
 }
+
+# params_xgb = {
+#     'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
+#     'max_depth': 3,  # -1 means no limit
+#     'min_child_samples': 100,
+#     'max_bin': 100,  # Number of bucketed bin for feature values
+#     'subsample': 0.7,  # Subsample ratio of the training instance.
+#     # Subsample ratio of columns when constructing each tree.
+#     'colsample_bytree': 0.7,
+#     # Minimum sum of instance weight(hessian) needed in a child(leaf)
+#     'min_child_weight': 0
+# }
+
 bst = lgb_modelfit_nocv(params,
                         train_df,
                         val_df,
@@ -202,6 +256,16 @@ bst = lgb_modelfit_nocv(params,
                         verbose_eval=True,
                         num_boost_round=300,
                         categorical_features=categorical)
+
+# bst = xgb_modelfit_nocv(params_xgb,
+#                         train_df,
+#                         val_df,
+#                         predictors,
+#                         target,
+#                         objective='binary',
+#                         metrics='auc',
+#                         num_boost_round=300,
+#                         early_stopping_rounds=50)
 
 del train_df
 del val_df
