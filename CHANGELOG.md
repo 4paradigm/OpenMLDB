@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.4] - 2022-04-01
+
+### Features
+- Support the standalone version by Java and Python SDKs (#1302 #1325 #1485 @tobegit3hub @HuilinWu2 @keyu813)
+- Support the blocking execution for offline queries (#1486 @vagetablechicken )
+- Add the `getStatement` API in Java SDK (#1231 @dl239 )
+- Add the `executemany` API in Python SDK (#1402 @hezhaozhao-git )
+- Support the JDBC connection (#1511 @vagetablechicken )
+
+### Bug Fixes
+- The error message is empty when executing `show deployment` in CLI fails. (#1415 @dl239 )
+- The `show job` and `show jobs` cannot display correct information. (#1440 @vagetablechicken )
+- The built-in function execution on a string filed with the length of greater than 2048 characters causes OpenMLDB crash. (#1540 @dl239 )
+- The simple expression inference fails in some cases (#1443 @jingchen2222 )
+- The `PreparedStatement` in Java SDK does not perform as expected.  (#1511 @vagetablechicken )
+
+### Code Refactoring
+#1467 @aimanfatima ; #1513 @L-Y-L ; #1503 @Stevinson ;
+
 ## [0.4.3] - 2022-03-15
 
 ### Features
