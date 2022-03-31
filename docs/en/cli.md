@@ -1,6 +1,6 @@
 # Operations in CLI
 
-* [Ns Client](#ns-client)
+* [NS Client](#ns-client)
 * [Tablet Client](#tablet-client)
 
 ## NS Client
