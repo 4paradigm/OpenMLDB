@@ -3811,6 +3811,8 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
+    if (!sr_) return;
+
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
     std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
@@ -3941,21 +3943,47 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
 
-    if (!sr_) {
-        PDLOG(INFO, "Init ClusterSDK in tablet server");
-        ::openmldb::sdk::ClusterOptions copt;
+    // refresh the pre-aggr tables info
+    if (InitClusterRouter()) {
+        auto entries = sr_->GetAggrTables();
+        catalog_->RefreshAggrTables(entries);
+    }
+}
+
+bool TabletImpl::InitClusterRouter() {
+    if (sr_) return true;
+
+    PDLOG(INFO, "Init ClusterSDK in tablet server");
+    if (!zk_cluster_.empty()) {
+        ::openmldb::sdk::SQLRouterOptions copt;
         copt.zk_cluster = zk_cluster_;
         copt.zk_path = zk_path_;
-        auto* cs = new ::openmldb::sdk::ClusterSDK(copt);
-        bool ok = cs->Init();
-        if (!ok) {
-            PDLOG(WARNING, "ERROR: Failed to init ClusterSDK");
+        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(copt);
+        if (sr_) {
+            if (!sr_->Init()) {
+                PDLOG(WARNING, "Fail to init sql cluster router");
+                sr_.release();
+                return false;
+            }
+
+            ::hybridse::sdk::Status status;
+            sr_->ExecuteSQL("SET @@execute_mode='online';", &status);
+            if (!status.IsOK()) {
+                PDLOG(WARNING, "set online mode failed: %s ", status.msg);
+                sr_.release();
+                return false;
+            } else {
+                DLOG(INFO) << "set online mode succeed";
+            }
+        } else {
+            PDLOG(WARNING, "create sql router failed");
+            return false;
         }
-        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cs);
+    } else {
+        PDLOG(ERROR, "Un-support standalone mode for now");
+        return false;
     }
-    // refresh the pre-aggr tables info
-    auto entries = sr_->GetAggrTables();
-    catalog_->RefreshAggrTables(entries);
+    return true;
 }
 
 int TabletImpl::CheckDimessionPut(const ::openmldb::api::PutRequest* request, uint32_t idx_cnt) {
