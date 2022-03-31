@@ -405,31 +405,6 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
     }
 }
 
-class RowParser {
- public:
-    explicit RowParser(const vm::SchemasContext* schema_ctx);
-    int32_t GetValue(const Row& row, const node::ColumnRefNode& col, type::Type type,
-                     void* val) const;
-    int32_t GetValue(const Row& row, const node::ColumnRefNode& col, void* val) const;
-    int32_t GetValue(const Row& row, const std::string& col, type::Type type, void* val) const;
-    int32_t GetValue(const Row& row, const std::string& col, void* val) const;
-    int32_t GetString(const Row& row, const std::string& col, std::string* val) const;
-
-    type::Type GetType(const node::ColumnRefNode& col) const;
-    type::Type GetType(const std::string& col) const;
-
-    bool IsNull(const Row& row, const node::ColumnRefNode& col) const;
-    bool IsNull(const Row& row, const std::string& col) const;
-
-    const vm::SchemasContext* schema_ctx() const {
-        return schema_ctx_;
-    }
-
- private:
-    const vm::SchemasContext* schema_ctx_ = nullptr;
-    std::vector<RowView> row_view_list_;
-};
-
 class Runner : public node::NodeBase<Runner> {
  public:
     explicit Runner(const int32_t id)
