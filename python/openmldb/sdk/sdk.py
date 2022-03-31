@@ -31,7 +31,7 @@ class OpenmldbSdkOptions(object):
         self.zk_path = zk_path
         self.session_timeout = session_timeout
 
-class OpenmldbSdk(object):
+class OpenMLDBSdk(object):
     def __init__(self, options):
         self.options = options
         self.sdk = None
