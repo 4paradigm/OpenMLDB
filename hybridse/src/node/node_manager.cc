@@ -445,7 +445,7 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
                                           SqlNodeList *table_option_list) {
     CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist);
     FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSqlNodeList2NodeVector(&partition_meta_list, node_ptr->GetDistributionList());
+    FillSqlNodeList2NodeVector(table_option_list, node_ptr->GetTableOptionList());
     return RegisterNode(node_ptr);
 }
 
@@ -880,13 +880,10 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &
 }
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
                                                      const std::string &table_name,
-                                                     int replica_num, int partition_num,
-                                                     StorageMode storage_mode,
                                                      const NodePointVector &column_list,
-                                                     const NodePointVector &partition_meta_list,
-                                                     const bool if_not_exist) {
-    node::CreatePlanNode *node_ptr = new CreatePlanNode(db_name, table_name, replica_num, partition_num, storage_mode,
-                                                        column_list, partition_meta_list, if_not_exist);
+                                                     const NodePointVector &table_option_list) {
+    node::CreatePlanNode *node_ptr =
+        new CreatePlanNode(db_name, table_name, column_list, table_option_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

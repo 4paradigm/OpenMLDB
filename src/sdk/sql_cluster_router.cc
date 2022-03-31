@@ -1763,42 +1763,23 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
 
-    if (!cluster_sdk_->IsClusterMode()) {
-        if (create_node->GetReplicaNum() != 1) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the replica configuration in standalone mode");
-        }
-        if (!create_node->GetDistributionList().empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the distribution configuration in standalone mode");
-        }
+    auto ns_client = cluster_sdk_->GetNsClient();
+    std::vector<::openmldb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = ns_client->ShowTablet(tablets, msg);
+    if (!ok) {
+        return base::Status(base::ReturnCode::kCreateTableFailedOnTablet, "set default replica num failed");
     }
-
-    if (cluster_sdk_->IsClusterMode()) {
-        // set default replica num
-        if (create_node->GetReplicaNum() == 0) {
-            auto ns_client = cluster_sdk_->GetNsClient();
-            std::vector<::openmldb::client::TabletInfo> tablets;
-            std::string msg;
-            bool ok = ns_client->ShowTablet(tablets, msg);
-            if (!ok) {
-                return base::Status(base::ReturnCode::kCreateTableFailedOnTablet, "set default replica num failed");
-            }
-            int tablets_size = tablets.size();
-            create_node->setReplicaNum(std::min(tablets_size, 3));
-        }
-        // set default partition num
-        if (create_node->GetPartitionNum() == 0) {
-            create_node->setPartitionNum(8);
-        }
-    }
+    int tablets_size = tablets.size();
+    // set dafault value
+    int default_replica_num = std::min(tablets_size, 3);
 
     hybridse::base::Status sql_status;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
+    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, default_replica_num, is_cluster_mode, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
-    std::string msg;
     if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }

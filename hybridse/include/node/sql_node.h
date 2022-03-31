@@ -446,12 +446,6 @@ class SqlNode : public NodeBase<SqlNode> {
 
 typedef std::vector<SqlNode *> NodePointVector;
 
-struct CreateTableOptions {
-    int replica_num;
-    int partition_num;
-    NodePointVector distribution_list;
-};
-
 class SqlNodeList : public SqlNode {
  public:
     SqlNodeList() : SqlNode(kNodeList, 0, 0) {}
@@ -1865,7 +1859,6 @@ class CreateStmt : public SqlNode {
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
-    StorageMode GetStorageMode() const { return storage_mode_; }
 
     NodePointVector* MutableTableOptionList() { return &table_option_list_; }
     const NodePointVector &GetTableOptionList() const { return table_option_list_; }
@@ -1877,9 +1870,7 @@ class CreateStmt : public SqlNode {
     std::string table_name_;
     bool op_if_not_exist_;
     NodePointVector column_desc_list_;
-    StorageMode storage_mode_;
     NodePointVector table_option_list_;
-
 };
 class IndexKeyNode : public SqlNode {
  public:

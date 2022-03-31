@@ -33,29 +33,57 @@ namespace openmldb::sdk {
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-                                      ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status) {
+                                      ::openmldb::nameserver::TableInfo* table, int default_replica_num, bool is_cluster_mode, hybridse::base::Status* status) {
     if (create_node == nullptr || table == nullptr || status == nullptr) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
-    const hybridse::node::NodePointVector& distribution_list = create_node->GetDistributionList();
+    const hybridse::node::NodePointVector& table_option_list = create_node->GetTableOptionList();
     std::set<std::string> index_names;
     std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
-    // todo: change default setting
-    int replica_num = create_node->GetReplicaNum();
-    if (replica_num <= 0) {
-        status->msg = "CREATE common: replica_num should be bigger than 0";
-        status->code = hybridse::common::kUnsupportSql;
-        return false;
+    hybridse::node::NodePointVector distribution_list;
+
+    int replica_num;
+    int partition_num;
+    if (is_cluster_mode) {
+        replica_num = default_replica_num;
+        partition_num = 8;
+        for (auto table_option : table_option_list) {
+            if (table_option->GetType() == hybridse::node::kReplicaNum) {
+                replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+            } else if (table_option->GetType() == hybridse::node::kPartitionNum) {
+                partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+            } else {
+                distribution_list.push_back(table_option);
+            }
+        }
+        table->set_replica_num(static_cast<uint32_t>(replica_num));
+        table->set_partition_num(static_cast<uint32_t>(partition_num));
+    } else {
+        replica_num = 1;
+        partition_num = 1;
+        for (auto table_option : table_option_list) {
+            if (table_option->GetType() == hybridse::node::kReplicaNum) {
+                replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+            } else if (table_option->GetType() == hybridse::node::kPartitionNum) {
+                partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+            } else {
+                distribution_list.push_back(table_option);
+            }
+        }
+        // 
+        if (replica_num != 1) {
+            status->msg = "Fail to create table with the replica configuration in standalone mode";
+            status->code = hybridse::common::kUnsupportSql;
+        }
+        if (distribution_list.empty()) {
+            status->msg = "Fail to create table with the distribution configuration in standalone mode";
+            status->code = hybridse::common::kUnsupportSql;
+        }
+        table->set_replica_num(static_cast<uint32_t>(replica_num));
+        table->set_partition_num(static_cast<uint32_t>(partition_num));
     }
-    table->set_replica_num(static_cast<uint32_t>(replica_num));
-    int partition_num = create_node->GetPartitionNum();
-    if (partition_num <= 0) {
-        status->msg = "CREATE common: partition_num should be greater than 0";
-        status->code = hybridse::common::kUnsupportSql;
-        return false;
-    }
-    table->set_partition_num(create_node->GetPartitionNum());
+
     table->set_format_version(1);
     bool has_generate_index = false;
     for (auto column_desc : column_desc_list) {
