@@ -9989,10 +9989,11 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
         std::lock_guard<std::mutex> lock(mu_);
         auto it = db_sp_info_map_.find(db_name);
         if (it != db_sp_info_map_.end()) {
-            is_deployment_procedure = it->second.find(sp_name) != it->second.end();
+            auto iit = it->second.find(sp_name);
+            is_deployment_procedure = iit != it->second.end() && iit->second->type() == type::kReqDeployment;
         }
     }
-    std::shared_ptr<TableInfo> info = std::make_shared<TableInfo>();
+    std::shared_ptr<TableInfo> info;
     auto success = GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
     // NOTE: deploy stats records will delete even when global setting deploy_stats is turned off while there are
     // records for previous deploy query (during deploy_stats = 'on')
@@ -10005,32 +10006,46 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             continue;
         }
 
-        if (drop_deploy_stats) {
-            auto deploy_name = absl::StrCat(db_name, ".", sp_name);
-            uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
-            uint64_t time = 1;
-            int cnt = 0;
-            std::string msg;
-            while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
-                auto key = absl::StrCat(deploy_name, "|", std::to_string(time));
-                if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
-                    // NOTE: some warning appears but is expected, just ingore:
-                    // 1. when you create a deploy query but not call it any time before delete it
-                    // 2. deploy_stats is always turned off
-                    PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s",
-                          DEPLOY_RESPONSE_TIME, tb_client->GetEndpoint(), key, msg);
-                }
-                time *= 10;
+        PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
+              sp_name.c_str(), tb_client->GetEndpoint().c_str());
+    }
+
+    if (drop_deploy_stats && info->table_partition_size() > 0) {
+        std::string endpoint;
+        for (auto& meta : info->table_partition()[0].partition_meta()) {
+            if (meta.is_leader()) {
+                endpoint = meta.endpoint();
             }
-            auto key = absl::StrCat(deploy_name, "|", MAX_STRING);
+        }
+        auto tablet_info = GetTablet(endpoint);
+        if (tablet_info == nullptr) {
+            PDLOG(ERROR, "no leader exists for system table %s", DEPLOY_RESPONSE_TIME);
+            return;
+        }
+
+        auto tb_client = tablet_info->client_;
+
+        auto deploy_name = absl::StrCat(db_name, ".", sp_name);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
+        auto time = absl::Microseconds(1);
+        int cnt = 0;
+        std::string msg;
+        while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
+            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsString(time));
             if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+                // NOTE: some warning appears but is expected, just ingore:
+                // 1. when you create a deploy query but not call it any time before delete it
+                // 2. deploy_stats is always turned off
                 PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
                       tb_client->GetEndpoint(), key, msg);
             }
+            time *= 10;
         }
-
-        PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
-              sp_name.c_str(), tb_client->GetEndpoint().c_str());
+        auto key = absl::StrCat(deploy_name, "|", MAX_STRING);
+        if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+            PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
+                  tb_client->GetEndpoint(), key, msg);
+        }
     }
 }
 
@@ -10466,24 +10481,26 @@ void NameServerImpl::SyncDeployStats() {
     }
 
     // Step two: Fetch And Flush deploy stats from each tablet
-    statistics::DeployResponseTimeRowReducer reducer;
+    std::unordered_map<absl::string_view, std::shared_ptr<TabletClient>> active_tablets;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto& kv : tablets_) {
-            if (!kv.second->Health()) {
-                continue;
+            if (kv.second->Health()) {
+                active_tablets.emplace(kv.first, kv.second->client_);
             }
+        }
+    }
+    statistics::DeployResponseTimeRowReducer reducer;
+    for (auto& client : active_tablets) {
+        ::openmldb::api::DeployStatsResponse res;
+        if (!client.second->GetAndFlushDeployStats(&res)) {
+            LOG(ERROR) << "GetAndFlushDeployStats from " << client.first << " failed ";
+            continue;
+        }
 
-            ::openmldb::api::DeployStatsResponse res;
-            if (!kv.second->client_->GetAndFlushDeployStats(&res)) {
-                LOG(ERROR) << "GetAndFlushDeployStats from " << kv.first << " failed ";
-                continue;
-            }
-
-            for (auto& r : res.rows()) {
-                reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
-                               statistics::ParseDurationFromRawInt(r.total()));
-            }
+        for (auto& r : res.rows()) {
+            reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
+                           statistics::ParseDurationFromRawInt(r.total()));
         }
     }
 

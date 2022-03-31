@@ -59,7 +59,7 @@ namespace statistics {
 
 #define MAX_STRING "inf"
 
-static inline std::string GetDurationAsString(absl::Duration d) {
+inline std::string GetDurationAsString(absl::Duration d) {
     if (d == absl::InfiniteDuration()) {
         return MAX_STRING;
     }
