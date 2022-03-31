@@ -85,14 +85,14 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     cols.add(col)
 
     val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
-    val df = autoLoad( getSparkSession.read.option("header", "true").option("nullValue", "null"),
+    val df = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null"),
       testFile, "csv", cols)
     df.show()
     val l = df.select("ts").rdd.map(r => r(0)).collect.toList
     l.toString() should equal("List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
 
     val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
-    val df2 = autoLoad( getSparkSession.read.option("header", "true").option("nullValue", "null"),
+    val df2 = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null"),
       testFile2, "csv", cols)
     df2.show()
     val l2 = df2.select("ts").rdd.map(r => r(0)).collect.toList
@@ -102,7 +102,7 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     val testFile3 = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
     // the format setting in arg1 won't work, autoLoad will use arg2 format to load file
     val df3 = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null").format("csv"),
-      testFile3,"parquet", cols)
+      testFile3, "parquet", cols)
     df3.show()
     val l3 = df3.select("ts").rdd.map(r => r(0)).collect.toList
     l3.toString() should equal("List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
