@@ -445,6 +445,7 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
                                           SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
+    std::string storage_mode;
     SqlNodeList partition_meta_list;
     if (nullptr != table_option_list) {
         for (auto node_ptr : table_option_list->GetList()) {
@@ -456,6 +457,10 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
                     }
                     case kPartitionNum: {
                         partition_num = dynamic_cast<PartitionNumNode *>(node_ptr)->GetPartitionNum();
+                        break;
+                    }
+                    case kStorageMode: {
+                        storage_mode = dynamic_cast<StorageModeNode *>(node_ptr)->GetStorageMode();
                         break;
                     }
                     case kDistributions: {
@@ -481,7 +486,7 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
             }
         }
     }
-    CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist, replica_num, partition_num);
+    CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist, replica_num, partition_num, storage_mode);
     FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
     FillSqlNodeList2NodeVector(&partition_meta_list, node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
@@ -919,10 +924,11 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
                                                      const std::string &table_name,
                                                      int replica_num, int partition_num,
+                                                     const std::string& storage_mode,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(db_name, table_name, replica_num, partition_num, column_list, partition_meta_list);
+        new CreatePlanNode(db_name, table_name, replica_num, partition_num, storage_mode, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1057,6 +1063,11 @@ SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type, const std::strin
 
 SqlNode *NodeManager::MakeReplicaNumNode(int num) {
     SqlNode *node_ptr = new ReplicaNumNode(num);
+    return RegisterNode(node_ptr);
+}
+
+SqlNode *NodeManager::MakeStorageModeNode(const std::string& storage_mode) {
+    SqlNode *node_ptr = new StorageModeNode(storage_mode);
     return RegisterNode(node_ptr);
 }
 

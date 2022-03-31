@@ -82,6 +82,7 @@ enum SqlNodeType {
     kPartitionMeta,
     kReplicaNum,
     kDistributions,
+    kStorageMode,
     kCreateSpStmt,
     kInputParameter,
     kPartitionNum,

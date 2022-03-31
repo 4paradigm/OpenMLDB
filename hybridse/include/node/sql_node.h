@@ -1798,16 +1798,22 @@ class InsertStmt : public SqlNode {
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
-        : SqlNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false), replica_num_(1), partition_num_(1) {}
+        : SqlNode(kCreateStmt, 0, 0),
+          table_name_(""),
+          op_if_not_exist_(false),
+          replica_num_(1),
+          partition_num_(1),
+          storage_mode_("memory") {}
 
     CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num)
+               int partition_num, const std::string& storage_mode)
         : SqlNode(kCreateStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
           replica_num_(replica_num),
-          partition_num_(partition_num) {}
+          partition_num_(partition_num),
+          storage_mode_(storage_mode) {}
 
     ~CreateStmt() {}
 
@@ -1823,6 +1829,8 @@ class CreateStmt : public SqlNode {
 
     int GetPartitionNum() const { return partition_num_; }
 
+    const std::string& GetStorageMode() const { return storage_mode_; }
+
     NodePointVector &GetDistributionList() { return distribution_list_; }
     const NodePointVector &GetDistributionList() const { return distribution_list_; }
 
@@ -1835,6 +1843,7 @@ class CreateStmt : public SqlNode {
     NodePointVector column_desc_list_;
     int replica_num_;
     int partition_num_;
+    std::string storage_mode_;
     NodePointVector distribution_list_;
 };
 class IndexKeyNode : public SqlNode {
@@ -2607,6 +2616,22 @@ class ReplicaNumNode : public SqlNode {
 
  private:
     int replica_num_;
+};
+
+class StorageModeNode : public SqlNode {
+ public:
+    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_("memory") {}
+
+    explicit StorageModeNode(const std::string& storage_mode) : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
+
+    ~StorageModeNode() {}
+
+    const std::string& GetStorageMode() const { return storage_mode_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string storage_mode_;
 };
 
 class PartitionNumNode : public SqlNode {

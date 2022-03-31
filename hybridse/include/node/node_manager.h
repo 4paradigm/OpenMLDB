@@ -309,6 +309,7 @@ class NodeManager {
     CreatePlanNode *MakeCreateTablePlanNode(
         const std::string& db_name,
         const std::string &table_name, int replica_num, int partition_num,
+        const std::string& storage_mode,
         const NodePointVector &column_list,
         const NodePointVector &partition_meta_list);
 
@@ -369,6 +370,8 @@ class NodeManager {
                                    const std::string &endpoint);
 
     SqlNode *MakeReplicaNumNode(int num);
+
+    SqlNode *MakeStorageModeNode(const std::string& storage_mode);
 
     SqlNode *MakePartitionNumNode(int num);
 
