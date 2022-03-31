@@ -2753,16 +2753,17 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         LOG(WARNING) << "inputs size < 3";
         return std::shared_ptr<DataHandler>();
     }
-    auto left = inputs[0];
-    auto right = inputs[1];
-    if (!left || !right) {
+    auto request_handler = inputs[0];
+    auto base_handler = inputs[1];
+    auto agg_handler = inputs[2];
+    if (!request_handler || !base_handler || !agg_handler) {
         return std::shared_ptr<DataHandler>();
     }
-    if (kRowHandler != left->GetHanlderType()) {
+    if (kRowHandler != request_handler->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
 
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    auto request = std::dynamic_pointer_cast<RowHandler>(request_handler)->GetValue();
     int64_t ts_gen = range_gen_.Valid() ? range_gen_.ts_gen_.Gen(request) : -1;
 
     // Prepare Union Window
@@ -2995,7 +2996,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // iterate over agg table from end_base until start (both inclusive)
-    int64_t last_ts_start = UINT64_MAX;
+    int64_t last_ts_start = INT64_MAX;
     while (agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;

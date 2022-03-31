@@ -58,6 +58,7 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
     // TODO(zhanghao): we only support transform PhysicalAggrerationNode with one and only one window aggregation op
     // we may remove this constraint in a later optimization
     if (!VerifySingleAggregation(project_op)) {
+        LOG(WARNING) << "we only support transform PhysicalAggrerationNode with one and only one window aggregation op";
         return false;
     }
 
