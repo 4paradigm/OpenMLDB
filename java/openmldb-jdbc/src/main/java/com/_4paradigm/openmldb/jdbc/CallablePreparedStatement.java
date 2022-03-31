@@ -49,11 +49,9 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         if (status.getCode() != 0 || this.currentRow == null) {
             String msg = status.getMsg();
             status.delete();
-            status = null;
             throw new SQLException("getRequestRow failed!, msg: " + msg);
         }
         status.delete();
-        status = null;
         this.currentSchema = procedureInfo.GetInputSchema();
         if (this.currentSchema == null) {
             throw new SQLException("inputSchema is null");
