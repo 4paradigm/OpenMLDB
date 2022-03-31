@@ -34,18 +34,19 @@ import java.util.stream.IntStream;
 public class JDBCDriverTest {
     @Test
     public void testSmoke() {
-        String zk = "localhost:6181";
-        String zkPath = "/onebox";
+        String zk = TestConfig.ZK_CLUSTER;
+        String zkPath = TestConfig.ZK_PATH;
         try {
             Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
             // No database in jdbcUrl
             Connection connection = DriverManager.getConnection(String.format("jdbc:openmldb:///?zk=%s&zkPath=%s", zk, zkPath));
             Statement stmt = connection.createStatement();
-            String dbName = "driver_test";
+            String dbName = "driver_test1";
             String tableName = "connector_test";
             try {
-                stmt.execute("create database if not exists " + dbName);
+                stmt.execute("create database " + dbName);
             } catch (Exception ignored) {
+                ignored.printStackTrace();
                 Assert.fail();
             }
             try {
