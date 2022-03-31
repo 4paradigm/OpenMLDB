@@ -207,5 +207,7 @@ del train_df
 del val_df
 gc.collect()
 
+bst.save_model("./model.txt")
+print("save model.txt done")
 # todo: start a predict server, and request it, get predict result
 # ref taxi demo
