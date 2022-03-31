@@ -1,9 +1,9 @@
-# OpenMLDB operation CLI
+# Operations in CLI
 
-* [ns client](#ns-client)
-* [tablet client](#tablet-client)
+* [Ns Client](#ns-client)
+* [Tablet Client](#tablet-client)
 
-### NS Client
+## NS Client
 
 Connecting to the ns client requires specifying zk\_cluster, zk\_root\_path and role. Where zk\_cluster is the zk address, zk\_root\_path is the root path of the cluster in zk, role is the role to be started and needs to be specified as ns_client
 
@@ -11,7 +11,7 @@ Connecting to the ns client requires specifying zk\_cluster, zk\_root\_path and 
 $ ./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/onebox --role=ns_client
 ```
 
-#### use
+### use
 
 The `use` command can switch to a database
 
@@ -38,9 +38,9 @@ Command format: `showtable [table_name]`
   auto_VCeOIIKA 25 0 172.24.4.55:9971 leader yes 8 4 498.000 9.128 K
 ```
 
-#### showtablet
+### showtablet
 
-View tablet information (if the serverName and automatic local ip function are used, the endpoint is serverName, and the real_endpoint is "-")
+View tablet information(if the serverName is specified and the local IP auto-configuration is enabled, then the endpoint is shown as the serverName and the real_endpoint is shown as "-")
 
 ```
 > showtablet
@@ -51,18 +51,18 @@ View tablet information (if the serverName and automatic local ip function are u
   6534708420092481536 172.17.0.14:9533 kTabletHealthy 14h
 ```
 
-#### addreplica
+### addreplica
 
-Add replica
+Add replicas
 
-Command format: `addreplica table_name pid_group endpoint`
+Command format: `addreplica the table name pid_group endpoint`
 
-* table\_name table name
-* pid\_group shard id collection. There can be the following situations
-    * a single shard
-    * Multiple shards, separated by commas. Such as 1,3,5
-    * Shard interval, the interval is a closed interval. For example, 1-5 means shard 1, 2, 3, 4, 5
-* endpoint The endpoint of the node to be added as a replica
+* table\_name: table name
+* pid\_group: the collection of shard IDs. There can be the following situations
+    * A single shard
+    * Multiple shard IDs, separated by commas. Such as 1,3,5
+    * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
+* endpoint: The endpoint of the node to be added as a replica
 
 ```
 > showtable test1
@@ -88,18 +88,18 @@ AddReplica ok
 AddReplica ok
 ```
 
-#### delreplica
+### delreplica
 
-Delete replica
+Delete replicas
 
 Command format: `delreplica table_name pid_group endpoint`
 
-* table\_name table name
-* pid\_group shard id collection. There can be the following situations
+* table\_name: table name
+* pid\_group: the collection of shard IDs. There can be the following situations
     * a single shard
-    * Multiple shards, separated by commas. Such as 1,3,5
-    * Shard interval, the interval is a closed interval. For example, 1-5 means shard 1, 2, 3, 4, 5
-* endpoint endpoint to delete replicas
+    * Multiple shard IDs, separated by commas. Such as 1,3,5
+    * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
+* endpoint: The endpoint of node to be deleted as a replica
 
 ```
 > showtable test1
@@ -131,19 +131,19 @@ DelReplica ok
 DelReplica ok
 ```
 
-#### migrate
+### migrate
 
-copy migration
+Replicas migration
 
 Command format: `migrate src_endpoint table_name pid_group des_endpoint`
 
-* src\_endpoint The node that needs to be checked out
-* table\_name table name
-* pid\_group shard id collection. There can be the following situations
+* src\_endpoint: The endpoint of the node that needs to be checked out
+* table\_name: the table name
+* pid\_group:  the collection of shard IDs. There can be the following situations
     * a single shard
-    * Multiple shards, separated by commas. Such as 1,3,5
-    * Shard interval, the interval is a closed interval. For example, 1-5 means shard 1, 2, 3, 4, 5
-* des\_endpoint The destination node for migration
+    * Multiple shard IDs, separated by commas. Such as 1,3,5
+    * A range of shard IDs with a closed interval; for example, 1-5 means shard 1, 2, 3, 4, 5
+* des\_endpoint: The endpoint of the destination node for migration
 
 ```
 > migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992
@@ -154,13 +154,13 @@ partition migrate ok
 partition migrate ok
 ```
 
-#### confget
+### confget
 
 Get configuration information, currently only supports auto\_failover
 
 Command format: `confget [conf_name]`
 
-* conf\_name configuration item name, optional
+* conf\_name: The configuration item name, optional
 
 ```
 > confget
@@ -173,31 +173,31 @@ Command format: `confget [conf_name]`
   auto_failover false
 ```
 
-#### confsets
+### confsets
 
 Modify configuration information, currently only supports auto\_failover
 
 Command format: `confset conf_name value`
 
-* conf\_name configuration item name
-* value The value set by the configuration item
+* conf\_name: The configuration item name
+* value: The value set by the configuration item
 
 ```
 > confset auto_failover true
 set auto_failover ok
 ```
 
-#### offlineendpoint
+### offlineendpoint
 
-Offline node. This command is asynchronous and after the successful return, you can view the running status through showopstatus
+Make a node offline. This command is asynchronous. After it succeeds, you can view the running status through `showopstatus`
 
 Command format: `offlineendpoint endpoint [concurrency]`
 
-* endpoint is the endpoint of the failed node. This command will perform the following operations on all shards under the node:
-  * If it is the master, execute the re-election of the master
+* endpoint: This is the given endpoint to go offline. This command will perform the following operations on all shards under the node:
+  * If it is a master, execute the re-election of the master
   * If it is a slave, find the master node and delete the current endpoint copy from the master node
   * Modify is_alive status to no
-* concurrency controls the concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
+* concurrency: The concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
 
 ```bash
 > offlineendpoint 172.27.128.32:8541
@@ -215,15 +215,15 @@ offline endpoint ok
 
 After the command is executed successfully, all shards will have leaders in the yes state
 
-#### recoverendpoint
+### recoverendpoint
 
 Restore node data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
 Command format: `recoverendpoint endpoint [need_restore] [concurrency]`
 
-* endpoint is the endpoint of the node to restore
-* Whether the need_restore table topology is to be restored to the original state, this configuration is optional, the default is false. If set to true, a shard is the leader under this node, and it is still the leader after recoverendpoint is executed to restore data
-* concurrency controls the concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
+* endpoint: The endpoint of the node to restore
+* need_restore: Whether the table topology is to be restored to the original state, this configuration is optional, the default is false. If set to true, a shard is the leader under this node, and it is still the leader after recoverendpoint is executed to restore data
+* concurrency: The concurrent number of task execution. This configuration is optional, the default is 2 (name_server_task_concurrency configuration can be configured), and the maximum value is the value configured by name_server_task_max_concurrency
 
 ```
 > recoverendpoint 172.27.128.32:8541
@@ -236,7 +236,7 @@ recover endpoint ok
 
 **Notice:** Make sure the node is online before executing this command\(showtablet command to view\)
 
-#### changeleader
+### changeleader
 
 Perform a master-slave switchover for a specified shard. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
@@ -255,7 +255,7 @@ change leader ok
 change leader ok
 ```
 
-#### recoverable
+### recoverable
 
 Restore a shard data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
@@ -270,7 +270,7 @@ Command format: `recovertable table_name pid endpoint`
 recover table ok
 ```
 
-#### cancelop
+### cancelop
 
 Cancels an ongoing or pending operation. After cancellation, the state of the task changes to kCanceled
 
@@ -283,7 +283,7 @@ Command format: `cancelop op\_id`
 Cancel op ok!
 ```
 
-#### showopstatus
+### showopstatus
 
 Display operation execution information
 
@@ -322,7 +322,7 @@ Command format: `showopstatus [table_name pid]`
   56 kOfflineReplicaOP flow 1 kDone 20180824200135 1s 20180824200136 -
 ```
 
-#### updatetablealive
+### updatetablealive
 
 Modify shard alive state
 
@@ -342,7 +342,7 @@ update ok
 
 **Notice:** This command cannot be used for failure recovery. It is generally used to cut traffic. The operation method is to change the alive state of a node table to no and read requests will not fall on the node
 
-#### showns
+### showns
 
 Display the nameserver node and its role (if the serverName and automatic local ip function are used, the endpoint is serverName, and the real_endpoint is "-")
 
@@ -355,7 +355,7 @@ Command format: `showns]`
   172.24.4.55:6531 - leader
 ```
 
-#### exit
+### exit
 
 Exit the client
 
@@ -364,7 +364,7 @@ Exit the client
 bye
 ```
 
-#### quit
+### quit
 
 Exit the client
 
@@ -373,15 +373,15 @@ Exit the client
 bye
 ```
 
-### Tablet Client
+## Tablet Client
 
-To connect to the tablet client, you need to specify the endpoint and role. The endpoint is the endpoint that needs to be connected to the tablet, and the role is the role to start, which needs to be specified as client
+To connect to the Tablet Client, you need to specify the endpoint and role. The endpoint is the endpoint that needs to be connected to the tablet, and the role is the role to start, which needs to be specified as client
 
 ```bash
 $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 ```
 
-#### loadtable
+### loadtable
 
 1. Load an existing table
 
@@ -398,7 +398,7 @@ Command format: `loadtable table_name tid pid ttl segment_cnt`
 ```
 loadtable will fail if existing table is in memory
 
-#### changerole
+### changerole
 
 Change the leader role of the table
 
@@ -418,7 +418,7 @@ ChangeRole ok
 ChangeRole ok
 ```
 
-#### gettablestatus
+### gettablestatus
 
 Get table information
 
@@ -439,7 +439,7 @@ Command format: `gettablestatus \[tid pid\]`
   2 0 4 kTableLeader kTableNormal false 0min 0s 689.000 kNoCompress
 ```
 
-#### getfollower
+### getfollower
 
 View slave node information
 
@@ -456,7 +456,7 @@ Command format: `getfollower tid pid`
    1 4 1 5923724 172.27.128.32:8541 5921707
 ```
 
-#### exit
+### exit
 
 Exit the client
 
@@ -465,7 +465,7 @@ Exit the client
 bye
 ```
 
-#### quit
+### quit
 
 Exit the client
 
