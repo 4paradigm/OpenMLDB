@@ -619,13 +619,13 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
+    ::openmldb::api::LogEntry entry;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(), request->pid());
             break;
         }
-        ::openmldb::api::LogEntry entry;
         entry.set_pk(request->pk());
         entry.set_ts(request->time());
         entry.set_value(request->value());
@@ -640,7 +640,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     } while (false);
 
     ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                     request->dimensions(), replicator->GetLogOffset());
+                     request->dimensions(), entry.log_index());
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kError);
         response->set_msg("update aggr failed");
@@ -3770,10 +3770,11 @@ std::shared_ptr<Aggrs> TabletImpl::GetAggregators(uint32_t tid, uint32_t pid) {
 
 std::shared_ptr<Aggrs> TabletImpl::GetAggregatorsUnLock(uint32_t tid, uint32_t pid) {
     uint64_t uid = (uint64_t) tid << 32 | pid;
-    if (aggregators_.find(uid) == aggregators_.end()) {
-        return std::shared_ptr<Aggrs>();
+    auto it = aggregators_.find(uid);
+    if (it != aggregators_.end()) {
+        return it->second;
     }
-    return aggregators_.at(uid);
+    return std::shared_ptr<Aggrs>();
 }
 
 bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& value,
