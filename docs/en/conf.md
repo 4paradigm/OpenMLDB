@@ -100,7 +100,7 @@
 #--binlog_sync_batch_size=32
 # The interval between binlog sync and disk, in milliseconds
 --binlog_sync_to_disk_interval=5000
-# Th wait time when there is no new data synchronization, in milliseconds
+# The wait time when there is no new data synchronization, in milliseconds
 #--binlog_sync_wait_time=100
 # binlog filename length
 #--binlog_name_length=8
