@@ -60,6 +60,7 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val open
 
   def updateOfflineTableInfo(info: NS.TableInfo): Boolean = {
     sqlExecutor.updateOfflineTableInfo(info)
+    sqlExecutor.refreshCatalog()
   }
 
 }
