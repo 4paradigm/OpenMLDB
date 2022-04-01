@@ -55,7 +55,7 @@ View tablet information(if the serverName is specified and the local IP auto-con
 
 Add replicas
 
-Command format: `addreplica the table name pid_group endpoint`
+Command format: `addreplica table_name pid_group endpoint`
 
 * table\_name: the table name
 * pid\_group: the collection of shard IDs. There can be the following situations
