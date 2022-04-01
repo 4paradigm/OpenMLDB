@@ -135,7 +135,7 @@ train_df = pd.read_csv(path + "train.csv", nrows=4000000,
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
 len_train = len(train_df)
 # take a portion from train sample data
-#train_df.to_csv("train_sample.csv", index=False)
+train_df.to_csv("train_sample.csv", index=False)
 
 
 def column_string(col_tuple) -> str:
@@ -153,7 +153,7 @@ table_name = "talkingdata" + str(int(time.time()))
 print("Prepare openmldb, db {} table {}".format(db_name, table_name))
 
 engine = db.create_engine(
-    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/hw'.format(db_name))
+    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/openmldb'.format(db_name))
 connection = engine.connect()
 
 
