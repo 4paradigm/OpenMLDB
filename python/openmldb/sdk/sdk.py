@@ -36,7 +36,7 @@ class OpenMLDBStandaloneSdkOptions(object):
          self.host = host
          self.port = port
 
-class OpenmldbSdk(object):
+class OpenMLDBSdk(object):
     def __init__(self, options, is_cluster_mode):
         self.is_cluster_mode = is_cluster_mode
         self.options = options
