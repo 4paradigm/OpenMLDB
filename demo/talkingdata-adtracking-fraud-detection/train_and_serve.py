@@ -170,14 +170,14 @@ def nothrow_execute(sql):
 connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
 nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
-print("Load data to offline storage for training(soft link)")
+print("Load data to offline storage for training(hard copy)")
 
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute("SET @@sync_job=true;")
 connection.execute("SET @@job_timeout=120000;")
-# use soft link
-connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(deep_copy=false,format='csv',header=true);".format(
+# use soft link after https://github.com/4paradigm/OpenMLDB/issues/1565 fixed
+connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format='csv',header=true);".format(
     os.path.abspath("train_sample.csv"), db_name, table_name))
 
 
