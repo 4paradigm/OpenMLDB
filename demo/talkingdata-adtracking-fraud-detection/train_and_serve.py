@@ -135,7 +135,7 @@ train_df = pd.read_csv(path + "train.csv", nrows=4000000,
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
 len_train = len(train_df)
 # take a portion from train sample data
-train_df.to_csv("train_sample.csv", index=False)
+#train_df.to_csv("train_sample.csv", index=False)
 
 
 def column_string(col_tuple) -> str:
@@ -153,7 +153,7 @@ table_name = "talkingdata" + str(int(time.time()))
 print("Prepare openmldb, db {} table {}".format(db_name, table_name))
 
 engine = db.create_engine(
-    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/openmldb'.format(db_name))
+    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/hw'.format(db_name))
 connection = engine.connect()
 
 
@@ -182,7 +182,8 @@ connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(deep_c
 
 
 print('Feature extraction')
-train_feature_file = "train_feature.csv"
+current_path=os.path.abspath(".")
+train_feature_file = current_path + "/train_feature.csv"
 sql_part = """
 select ip, day(click_time) as day, hour(click_time) as hour, 
 count(channel) over w1 as qty, 
@@ -190,9 +191,9 @@ count(channel) over w2 as ip_app_count,
 count(channel) over w3 as ip_app_os_count
 from {}.{} 
 window 
-w1 as (partition by ip order by click_time ROWS BETWEEN 1h PRECEDING AND CURRENT ROW), 
-w2 as(partition by ip, app order by click_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
-w3 as(partition by ip, app, os order by click_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
+w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """.format(db_name, table_name)
 # extraction will take time
 connection.execute("SET @@job_timeout=1200000;")
