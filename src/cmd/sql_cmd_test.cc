@@ -499,11 +499,20 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq(
-        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-         {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
-        rs.get());
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            rs.get());
+    } else {
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+            rs.get());        
+    }
     HandleSQL("show table status");
 
     // teardown
@@ -547,62 +556,78 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
     ASSERT_TRUE(status.IsOK());
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq(
-        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-         {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
-        rs.get());
-
-    sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
-    ASSERT_TRUE(status.IsOK());
-    rs = sr->ExecuteSQL("show table status", &status);
-    ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq(
-        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-         {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
-        rs.get());
-
-    // show only tables inside hidden db
-    // TODO(#1458): hidden db should create on standalone mode as well
     if (cs->IsClusterMode()) {
-        HandleSQL("use INFORMATION_SCHEMA");
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            rs.get());
+
+        sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
+        ASSERT_TRUE(status.IsOK());
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
         ExpectResultSetStrEq(
-            {
-                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                 "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
-                 "Offline_deep_copy"},
-                {{},
-                 nameserver::DEPLOY_RESPONSE_TIME,
-                 nameserver::INFORMATION_SCHEMA_DB,
-                 "memory",
-                 {},
-                 {},
-                 {},
-                 "1",
-                 "0",
-                 "1",
-                 "NULL",
-                 "NULL",
-                 "NULL"},
-                {{},
-                 nameserver::GLOBAL_VARIABLES,
-                 nameserver::INFORMATION_SCHEMA_DB,
-                 "memory",
-                 {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
-                 {},
-                 {},
-                 "1",
-                 "0",
-                 "1",
-                 "NULL",
-                 "NULL",
-                 "NULL"},
-            },
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            rs.get());
+    } else {
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+            rs.get());
+
+        sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
+        ASSERT_TRUE(status.IsOK());
+        rs = sr->ExecuteSQL("show table status", &status);
+        ASSERT_EQ(status.code, 0);
+        ExpectResultSetStrEq(
+            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
             rs.get());
     }
+
+    // show only tables inside hidden db
+    HandleSQL("use INFORMATION_SCHEMA");
+    rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+    ExpectResultSetStrEq(
+        {
+            {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
+                "Offline_deep_copy"},
+            {{},
+                nameserver::DEPLOY_RESPONSE_TIME,
+                nameserver::INFORMATION_SCHEMA_DB,
+                "memory",
+                {},
+                {},
+                {},
+                "1",
+                "0",
+                "1",
+                "NULL",
+                "NULL",
+                "NULL"},
+            {{},
+                nameserver::GLOBAL_VARIABLES,
+                nameserver::INFORMATION_SCHEMA_DB,
+                "memory",
+                {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+                {},
+                {},
+                "1",
+                "0",
+                "1",
+                "NULL",
+                "NULL",
+                "NULL"},
+        },
+        rs.get());
 
     // teardown
     ProcessSQLs(sr, {
