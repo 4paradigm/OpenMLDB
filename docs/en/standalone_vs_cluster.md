@@ -1,15 +1,15 @@
-# Difference Between OpenMLDB Cluster Version And Standalone Version
+# Difference Between The Cluster And Standalone Versions
 
-## 1. The difference between installation and deployment
+## 1. Installation and Deployment
 
 The cluster version and the standalone version have their own deployment methods. For details, see [Installation and Deployment Details](../deploy/install_deploy.md). In summary, the main differences are:
 
 - The cluster version needs to install and deploy zookeeper
 - The cluster version needs to install task-manager
 
-## 2. Differences in usage
+## 2. Usage
 
-### 2.1 Different Workflows
+### 2.1 Workflows
 
 | Cluster Version's Workflow | Standalone Version's Workflow | Difference |
 | ---------------- | ---------------- | --------------- --------------------------------------------- |
@@ -20,23 +20,18 @@ The cluster version and the standalone version have their own deployment methods
 | Online data preparation | None | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
 | Online real-time feature extraction | Online real-time feature extraction | None |
 
-### 2.2 Execution mode
+### 2.2 Execution Modes
 
-The cluster version supports the system variable `execute_mode`, which supports configuring the execution mode.
+The cluster version supports the system variable `execute_mode`, which supports configuring the execution mode. In the cluster version, the `offline` and `online` execution modes correspond to the offline and online databases, respectively. For the standalone version, there is no such a concept of "execution mode".
 
-You can execute the below command in CLI to set the execution mode:
-
-```sql
-> SET @@execute_mode = "offline"
-````
+For the cluster verion, you can execute the below command in CLI to set the execution mode:
 
 ```sql
-> SET @@execute_mode = "online"
+> SET @@execute_mode = "offline" | "online"
 ````
 
-OpenMLDB switches to online execution mode. In this mode, only online data will be imported/inserted and queried.
 
-### 2.3 Offline task management
+### 2.3 Offline Task Management
 
 Offline task management is a unique feature of the cluster version.
 
