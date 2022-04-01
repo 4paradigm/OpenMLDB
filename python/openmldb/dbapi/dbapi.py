@@ -246,7 +246,20 @@ class Cursor(object):
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
             raise Exception("None operation")
-        if insertRE.match(command):
+        semicolonCount = command.count(';')
+        escapeSemicolonCount = command.count("\;")
+        if createTableRE.match(command):
+            if escapeSemicolonCount > 1:
+                raise Exception("invalid table name")
+            ok, error = self.connection._sdk.executeDDL(self.db, command)
+            if not ok:
+                raise DatabaseError(error)
+        elif createDBRE.match(command):
+            db = command.split()[-1].rstrip(";")
+            ok, error = self.connection._sdk.createDB(db)
+            if not ok:
+                raise DatabaseError(error)
+        elif insertRE.match(command):
             questionMarkCount = command.count('?')
             if questionMarkCount > 0:
                 if len(parameters) != questionMarkCount:
