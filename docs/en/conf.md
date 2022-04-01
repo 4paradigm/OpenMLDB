@@ -113,7 +113,7 @@
 #--io_pool_size=2
 # The thread pool size for tasks such as deleting tables, sending snapshots, load snapshots, etc.
 #--task_pool_size=8
-# Configure the data directory, multiple disks are separated by English symbols
+# Configure the data directory, multiple disks are separated by commas
 --db_root_path=./db
 # Configure the data recycle bin directory, the data of the drop table will be placed here
 --recycle_bin_root_path=./recycle
@@ -127,7 +127,7 @@
 #--make_snapshot_threshold_offset=100000
 # snapshot thread pool size
 #--snapshot_pool_size=1
-# Whether snapshot compression is enabled. Can be set to off, zlib, snappy
+# Whether snapshot compression is enabled. Which can be set to off, zlib, snappy
 #--snapshot_compression=off
 
 # garbage collection conf
