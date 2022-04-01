@@ -3,7 +3,6 @@ import os
 from matplotlib.pyplot import table
 import pandas as pd
 import time
-import timeout_decorator
 import numpy as np
 from sklearn.model_selection import train_test_split
 import lightgbm as lgb  # mac needs `brew install libomp`
@@ -70,7 +69,7 @@ def lgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
     print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
 
     return bst1
-  
+
 # def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
 #                       feval=None,num_boost_round=3000,early_stopping_rounds=20):
 #     xgb_params = {
@@ -130,37 +129,36 @@ common_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
                  ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp')]
 train_schema = common_schema + [('is_attributed', 'int')]
 test_schema = common_schema + [('click_id', 'int')]
-print('prepare train&test data...')
+print('Prepare train data...')
 
 train_df = pd.read_csv(path + "train.csv", nrows=4000000,
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
-
-test_df = pd.read_csv(path + "test.csv", dtype=dtypes,
-                      usecols=[c[0] for c in test_schema])
-
 len_train = len(train_df)
+# take a portion from train sample data
+train_df.to_csv("train_sample.csv", index=False)
+
 
 def column_string(col_tuple) -> str:
     return ' '.join(col_tuple)
 
 
 schema_string = ','.join(list(map(column_string, train_schema)))
-print(train_df)
-train_df.to_csv("offline_data.csv", index=False)
+
 del train_df
-del test_df
 gc.collect()
 
-engine = db.create_engine(
-    'openmldb:///kaggle?zk=127.0.0.1:6181&zkPath=/openmldb')
-connection = engine.connect()
 
-db_name = "kaggle"
+db_name = "demo_db"
 table_name = "talkingdata" + str(int(time.time()))
-print("use openmldb db {} table {}".format(db_name, table_name))
+print("Prepare openmldb, db {} table {}".format(db_name, table_name))
+
+engine = db.create_engine(
+    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/openmldb'.format(db_name))
+connection = engine.connect()
 
 
 def nothrow_execute(sql):
+    # only used for create table, cuz 'create table if not exist' is not supported now
     try:
         print("execute " + sql)
         ok, rs = connection.execute(sql)
@@ -169,23 +167,22 @@ def nothrow_execute(sql):
         print(e)
 
 
-nothrow_execute("CREATE DATABASE {};".format(db_name))
-# sqlalchemy does not support "USE" expression
-# nothrow_execute("USE {};".format(db_name))
+connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
 nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
-nothrow_execute("set @@execute_mode='offline';")
-print("load data to offline storage for training")
+print("Load data to offline storage for training(soft link)")
 
-# todo: must wait for load data finished
-#  set sync_job & job_timeout
-@timeout_decorator.timeout(300)
-def load_data():
-  nothrow_execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{};".format(
-      os.path.abspath("offline_data.csv"), db_name, table_name))
+connection.execute("SET @@execute_mode='offline';")
+# use sync offline job, to make sure `LOAD DATA` finished
+connection.execute("SET @@sync_job=true;")
+connection.execute("SET @@job_timeout=120000;")
+# use soft link
+connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(deep_copy=false,format='csv',header=true);".format(
+    os.path.abspath("train_sample.csv"), db_name, table_name))
 
-print('feature extraction ...')
-final_train_file = "final_train.csv"
+
+print('Feature extraction')
+train_feature_file = "train_feature.csv"
 sql_part = """
 select ip, day(click_time) as day, hour(click_time) as hour, 
 count(channel) over w1 as qty, 
@@ -197,11 +194,13 @@ w1 as (partition by ip order by click_time ROWS BETWEEN 1h PRECEDING AND CURRENT
 w2 as(partition by ip, app order by click_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
 w3 as(partition by ip, app, os order by click_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """.format(db_name, table_name)
-nothrow_execute("{} INTO OUTFILE '{}';".format(
-    sql_part, os.path.abspath(final_train_file)))
+# extraction will take time
+connection.execute("SET @@job_timeout=1200000;")
+connection.execute("{} INTO OUTFILE '{}';".format(
+    sql_part, os.path.abspath(train_feature_file)))
 
-# todo: load train_df from final_train_file
-train_df = pd.read_csv(os.path.abspath(final_train_file))
+# load features from train_feature_file
+train_df = pd.read_csv(os.path.abspath(train_feature_file))
 val_df = train_df[(len_train - 3000000):len_train]
 train_df = train_df[:(len_train - 3000000)]
 
@@ -271,7 +270,18 @@ del train_df
 del val_df
 gc.collect()
 
+print("Save model.txt")
 bst.save_model("./model.txt")
-print("save model.txt done")
-# todo: start a predict server, and request it, get predict result
-# ref taxi demo
+
+
+print("Prepare online serving")
+
+print("Deploy sql")
+connection.execute("SET @@execute_mode='online';")
+connection.execute("USE {}".format(db_name))
+connection.execute("DEPLOY demo " + sql_part)
+print("Import data to online")
+# online feature extraction needs history data
+# set job_timeout bigger if the `LOAD DATA` job timeout
+connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(mode='append',format='csv',header=true);".format(
+    os.path.abspath("train_sample.csv"), db_name, table_name))

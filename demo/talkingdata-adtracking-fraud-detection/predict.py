@@ -15,11 +15,6 @@
 # limitations under the License.
 
 import requests
-import os
-import base64
-import random
-import time
-import hashlib
 
 url = "http://127.0.0.1:8887/predict"
 req ={"ip":115115,

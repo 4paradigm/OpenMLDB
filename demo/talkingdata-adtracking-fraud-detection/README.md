@@ -23,8 +23,7 @@ unzip to ./demo/talkingdata-adtracking-fraud-detection/data
 ```
 
 # Process
-The sample code is `talkingdata_bk.py`, we'll use OpenMLDB to do feature extraction.
-The new demo is in `talkingdata.py`.
+We use OpenMLDB to do feature extraction, see `train_and_serve.py`.
 
 1. data prepare: 
     * clicks for each ip-day-hour combination -> window 1h
