@@ -19,5 +19,5 @@
 
 """
 
-FEDB_ZK_CLUSTER="127.0.0.1:6181"
-FEDB_ZK_PATH="/onebox"
+OpenMLDB_ZK_CLUSTER="127.0.0.1:6181"
+OpenMLDB_ZK_PATH="/onebox"

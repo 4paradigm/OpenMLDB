@@ -38,6 +38,8 @@ namespace sdk {
 
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtidbSchema;
 
+constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
+
 static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info) {
     ::hybridse::vm::Schema schema;
@@ -106,6 +108,7 @@ struct SQLCache {
 class SQLClusterRouter : public SQLRouter {
  public:
     explicit SQLClusterRouter(const SQLRouterOptions& options);
+    explicit SQLClusterRouter(const StandaloneOptions& options);
     explicit SQLClusterRouter(DBSDK* sdk);
 
     ~SQLClusterRouter() override;
@@ -119,7 +122,7 @@ class SQLClusterRouter : public SQLRouter {
     bool DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
-    
+
     std::vector<std::string> GetAllTables() override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) override;
@@ -151,6 +154,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(const std::string& db, const std::string& sql,
                                                                 std::shared_ptr<SQLRequestRow> row,
                                                                 hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& sql,
+                                                         ::hybridse::sdk::Status* status) override;
+
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
     /// Execute batch SQL with parameter row
@@ -201,7 +208,7 @@ class SQLClusterRouter : public SQLRouter {
         const std::shared_ptr<SQLRequestRow>& parameter_row, hybridse::sdk::Status& status); // NOLINT
     bool GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients,
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients, //NOLINT
         hybridse::sdk::Status& status); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
@@ -213,8 +220,8 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                       std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
-    base::Status HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node, const std::string& db,
-                              std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
+    std::shared_ptr<hybridse::sdk::ResultSet> HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
+                                        const std::string& db, ::hybridse::sdk::Status* status);
 
     std::vector<std::string> GetTableNames(const std::string& db) override;
 
@@ -231,27 +238,35 @@ class SQLClusterRouter : public SQLRouter {
 
     ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                  const std::map<std::string, std::string>& config,
-                                                 const std::string& default_db,
+                                                 const std::string& default_db, bool sync_job,
                                                  ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                               const std::map<std::string, std::string>& config,
-                                              const std::string& default_db,
+                                              const std::string& default_db, bool sync_job,
                                               ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql,
                                                const std::map<std::string, std::string>& config,
-                                               const std::string& default_db,
+                                               const std::string& default_db, bool sync_job,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status ExportOfflineData(const std::string& sql,
                                                const std::map<std::string, std::string>& config,
-                                               const std::string& default_db,
+                                               const std::string& default_db, bool sync_job,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
     std::string GetJobLog(const int id, hybridse::sdk::Status* status) override;
 
     bool NotifyTableChange() override;
+
+    bool IsOnlineMode();
+    bool IsEnableTrace();
+    bool IsSyncJob();
+
+    std::string GetDatabase();
+    void SetDatabase(const std::string& db);
+    void SetInteractive(bool value);
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
@@ -289,8 +304,35 @@ class SQLClusterRouter : public SQLRouter {
     bool ExtractDBTypes(std::shared_ptr<hybridse::sdk::Schema> schema,
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
 
+
+    ::hybridse::sdk::Status SetVariable(hybridse::node::SetPlanNode* node);
+
+    ::hybridse::sdk::Status ParseNamesFromArgs(const std::string& db, const std::vector<std::string>& args,
+            std::string* db_name, std::string* sp_name);
+
+    bool CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name);
+
+    ::openmldb::base::Status SaveResultSet(const std::string& file_path,
+            const std::shared_ptr<hybridse::node::OptionsMap>& options_map,
+            ::hybridse::sdk::ResultSet* result_set);
+
+    hybridse::sdk::Status HandleLoadDataInfile(const std::string& database,
+            const std::string& table, const std::string& file_path,
+            const std::shared_ptr<hybridse::node::OptionsMap>& options);
+
+    hybridse::sdk::Status InsertOneRow(const std::string& database,
+            const std::string& insert_placeholder, const std::vector<int>& str_col_idx,
+            const std::string& null_value, const std::vector<std::string>& cols);
+
+    hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
+
  private:
     SQLRouterOptions options_;
+    StandaloneOptions standalone_options_;
+    std::string db_;
+    std::map<std::string, std::string> session_variables_;
+    bool is_cluster_mode_;
+    bool interactive_;
     DBSDK* cluster_sdk_;
     std::map<std::string,
              std::map<hybridse::vm::EngineMode,

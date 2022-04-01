@@ -16,50 +16,20 @@
 
 package com._4paradigm.openmldb.sdk;
 
+import lombok.Data;
+
+
+@Data
 public class SdkOption {
+//    options for cluster mode
     private String zkCluster;
     private String zkPath;
+//    options for standalone mode
+    private String host;
+    private long port;
+
     private long sessionTimeout = 10000;
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
-
-    public String getZkCluster() {
-        return zkCluster;
-    }
-
-    public void setZkCluster(String zkCluster) {
-        this.zkCluster = zkCluster;
-    }
-
-    public String getZkPath() {
-        return zkPath;
-    }
-
-    public void setZkPath(String zkPath) {
-        this.zkPath = zkPath;
-    }
-
-    public long getSessionTimeout() {
-        return sessionTimeout;
-    }
-
-    public void setSessionTimeout(long sessionTimeout) {
-        this.sessionTimeout = sessionTimeout;
-    }
-
-    public Boolean getEnableDebug() {
-        return enableDebug;
-    }
-
-    public void setEnableDebug(Boolean enableDebug) {
-        this.enableDebug = enableDebug;
-    }
-
-    public long getRequestTimeout() {
-        return requestTimeout;
-    }
-
-    public void setRequestTimeout(long requestTimeout) {
-        this.requestTimeout = requestTimeout;
-    }
+    private boolean isClusterMode = true;
 }

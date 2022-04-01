@@ -25,6 +25,7 @@ import com._4paradigm.openmldb.SQLInsertRows;
 import com._4paradigm.openmldb.SQLRequestRow;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.SQLRouterOptions;
+import com._4paradigm.openmldb.StandaloneOptions;
 import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.TableColumnDescPair;
 import com._4paradigm.openmldb.TableColumnDescPairVector;
@@ -44,9 +45,9 @@ import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,14 +62,25 @@ public class SqlClusterExecutor implements SqlExecutor {
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
 
-        SQLRouterOptions sqlOpt = new SQLRouterOptions();
-        sqlOpt.setSession_timeout(option.getSessionTimeout());
-        sqlOpt.setZk_cluster(option.getZkCluster());
-        sqlOpt.setZk_path(option.getZkPath());
-        sqlOpt.setEnable_debug(option.getEnableDebug());
-        sqlOpt.setRequest_timeout(option.getRequestTimeout());
-        this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
-        sqlOpt.delete();
+        if (option.isClusterMode()) {
+            SQLRouterOptions sqlOpt = new SQLRouterOptions();
+            sqlOpt.setSession_timeout(option.getSessionTimeout());
+            sqlOpt.setZk_cluster(option.getZkCluster());
+            sqlOpt.setZk_path(option.getZkPath());
+            sqlOpt.setEnable_debug(option.getEnableDebug());
+            sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
+            sqlOpt.delete();
+        } else {
+            StandaloneOptions sqlOpt = new StandaloneOptions();
+            sqlOpt.setSession_timeout(option.getSessionTimeout());
+            sqlOpt.setEnable_debug(option.getEnableDebug());
+            sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            sqlOpt.setHost(option.getHost());
+            sqlOpt.setPort(option.getPort());
+            this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
+            sqlOpt.delete();
+        }
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
@@ -157,31 +169,41 @@ public class SqlClusterExecutor implements SqlExecutor {
         return row;
     }
 
+    @Override
+    public Statement getStatement() {
+        return new com._4paradigm.openmldb.jdbc.Statement(sqlRouter);
+    }
+
+    @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
         return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException {
         return new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getPreparedStatement(String db, String sql) throws SQLException {
         return new PreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
+    @Override
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
                                                          List<Integer> commonColumnIndices) throws SQLException {
         return new BatchRequestPreparedStatementImpl(
                 db, sql, this.sqlRouter, commonColumnIndices);
     }
 
-    public CallablePreparedStatement getCallablePreparedStmt(String db, String spName) throws SQLException {
-        return new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    @Override
+    public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
+        return new CallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
-        return new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException {
+        return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
     @Override
@@ -383,6 +405,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return databases;
     }
 
+    @Override
     public List<String> getTableNames(String db) {
         VectorString names = sqlRouter.GetTableNames(db);
         List<String> tableNames = new ArrayList<>(names);

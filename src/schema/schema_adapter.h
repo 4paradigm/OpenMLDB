@@ -17,6 +17,8 @@
 #ifndef SRC_SCHEMA_SCHEMA_ADAPTER_H_
 #define SRC_SCHEMA_SCHEMA_ADAPTER_H_
 
+#include <string>
+#include <vector>
 #include "base/status.h"
 #include "catalog/base.h"
 #include "node/node_enum.h"
@@ -44,15 +46,17 @@ class SchemaAdapter {
 
     static bool ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* type);
 
-    static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* oepnmldb_type);
+    static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* openmldb_type);
 
-    static bool ConvertType(openmldb::type::DataType oepnmldb_type, hybridse::type::Type* hybridse_type);
+    static bool ConvertType(openmldb::type::DataType openmldb_type, hybridse::type::Type* hybridse_type);
 
     static bool ConvertType(hybridse::sdk::DataType type, hybridse::type::Type *cased_type);
 
     static bool ConvertType(hybridse::sdk::DataType type, openmldb::type::DataType *cased_type);
 
     static base::Status CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info);
+
+    static PBSchema BuildSchema(const std::vector<std::string>& fields);
 
  private:
     static bool ConvertColumn(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* column);
