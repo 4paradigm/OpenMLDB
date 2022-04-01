@@ -38,6 +38,7 @@
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
+#include "sdk/sql_cluster_router.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
 
@@ -100,6 +101,7 @@ struct OPData {
 };
 
 struct ZkPath {
+    std::string zk_cluster_;
     std::string root_path_;
     std::string db_path_;
     std::string table_index_node_;
@@ -763,6 +765,15 @@ class NameServerImpl : public NameServer {
 
     void NotifyGlobalVarChanged();
 
+    // write deploy statistics into table
+    void SyncDeployStats();
+
+    void ScheduleSyncDeployStats();
+
+    bool GetSdkConnection();
+
+    void FreeSdkConnection();
+
  private:
     std::mutex mu_;
     Tablets tablets_;
@@ -778,7 +789,7 @@ class NameServerImpl : public NameServer {
     uint32_t table_index_ = 0;
     uint64_t term_ = 0;
     uint64_t op_index_;
-    std::atomic<bool> running_;
+    std::atomic<bool> running_;  // whether the current ns is the master
     std::list<std::shared_ptr<OPData>> done_op_list_;
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
@@ -807,6 +818,9 @@ class NameServerImpl : public NameServer {
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
     ::openmldb::type::StartupMode startup_mode_;
+
+    // sr_ could be a real instance or nothing, remember always use atomic_* function to access it
+    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
 };
 
 }  // namespace nameserver
