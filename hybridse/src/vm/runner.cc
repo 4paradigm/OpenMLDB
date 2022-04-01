@@ -595,10 +595,10 @@ ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
 
 ClusterTask RunnerBuilder::BuildLocalTaskForMultipleRunner(
     const std::vector<const ClusterTask*>& children, Runner* runner) {
+    // TODO(zhanghao): assume all tasks can be done locally
     for (const auto child : children) {
         if (child->IsClusterTask()) {
-            LOG(WARNING) << "fail to build local task for multiple runner with cluster child task";
-            return ClusterTask();
+            DLOG(WARNING) << "Child task is a cluster task: " << child->GetRouteInfo().ToString();
         }
     }
 
