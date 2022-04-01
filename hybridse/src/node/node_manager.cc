@@ -445,7 +445,7 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
                                           SqlNodeList *table_option_list) {
     int replica_num = 1;
     int partition_num = 1;
-    std::string storage_mode;
+    std::string storage_mode = StorageModeNode::kDefaultStorageMode;
     SqlNodeList partition_meta_list;
     if (nullptr != table_option_list) {
         for (auto node_ptr : table_option_list->GetList()) {
@@ -486,7 +486,8 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
             }
         }
     }
-    CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist, replica_num, partition_num, storage_mode);
+    CreateStmt *node_ptr =
+        new CreateStmt(db_name, table_name, op_if_not_exist, replica_num, partition_num, storage_mode);
     FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
     FillSqlNodeList2NodeVector(&partition_meta_list, node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
@@ -927,8 +928,8 @@ CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
                                                      const std::string& storage_mode,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &partition_meta_list) {
-    node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(db_name, table_name, replica_num, partition_num, storage_mode, column_list, partition_meta_list);
+    node::CreatePlanNode *node_ptr = new CreatePlanNode(db_name, table_name, replica_num, partition_num, storage_mode,
+                                                        column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

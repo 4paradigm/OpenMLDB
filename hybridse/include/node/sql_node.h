@@ -1795,6 +1795,26 @@ class InsertStmt : public SqlNode {
     const std::vector<ExprNode *> values_;
     const bool is_all_;
 };
+
+class StorageModeNode : public SqlNode {
+ public:
+    static constexpr char kDefaultStorageMode[] = "memory";
+
+    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_(kDefaultStorageMode) {}
+
+    explicit StorageModeNode(const std::string &storage_mode)
+        : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
+
+    ~StorageModeNode() {}
+
+    const std::string& GetStorageMode() const { return storage_mode_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string storage_mode_;
+};
+
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
@@ -1803,10 +1823,10 @@ class CreateStmt : public SqlNode {
           op_if_not_exist_(false),
           replica_num_(1),
           partition_num_(1),
-          storage_mode_("memory") {}
+          storage_mode_(StorageModeNode::kDefaultStorageMode) {}
 
     CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num, const std::string& storage_mode)
+               int partition_num, const std::string& storage_mode = StorageModeNode::kDefaultStorageMode)
         : SqlNode(kCreateStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
@@ -2616,22 +2636,6 @@ class ReplicaNumNode : public SqlNode {
 
  private:
     int replica_num_;
-};
-
-class StorageModeNode : public SqlNode {
- public:
-    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_("memory") {}
-
-    explicit StorageModeNode(const std::string& storage_mode) : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
-
-    ~StorageModeNode() {}
-
-    const std::string& GetStorageMode() const { return storage_mode_; }
-
-    void Print(std::ostream &output, const std::string &org_tab) const;
-
- private:
-    std::string storage_mode_;
 };
 
 class PartitionNumNode : public SqlNode {
