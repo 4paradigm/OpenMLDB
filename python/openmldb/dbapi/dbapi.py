@@ -462,7 +462,7 @@ class Connection(object):
         self._zk = zk
         self._zkPath = zkPath
         options = sdk_module.OpenmldbSdkOptions(zk, zkPath)
-        sdk = sdk_module.OpenmldbSdk(options)
+        sdk = sdk_module.OpenMLDBSdk(options)
         ok = sdk.init()
         if not ok:
             raise Exception("init openmldb sdk erred")
