@@ -408,6 +408,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
+    bool InitClusterRouter();
+
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;

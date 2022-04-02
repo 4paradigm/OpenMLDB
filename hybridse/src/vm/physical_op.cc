@@ -1290,14 +1290,19 @@ void PhysicalRequestAggUnionNode::PrintChildren(std::ostream& output, const std:
 base::Status PhysicalRequestAggUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
     schemas_ctx_.Clear();
-    schemas_ctx_.SetDefaultDBName(ctx->db());
     agg_schema_.Clear();
 
+    schemas_ctx_.SetDefaultDBName(ctx->db());
     auto source = schemas_ctx_.AddSource();
-    auto column = agg_schema_.Add();
-    column->set_type(::hybridse::type::kVarchar);
-    column->set_name("aggr_val");
-    source->SetSchema(&agg_schema_);
+    if (parent_schema_context_) {
+        source->SetSchema(parent_schema_context_->GetOutputSchema());
+    } else {
+        auto column = agg_schema_.Add();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("agg_val");
+        source->SetSchema(&agg_schema_);
+    }
+
     source->SetColumnID(0, ctx->GetNewColumnID());
     source->SetNonSource(0);
     return Status::OK();

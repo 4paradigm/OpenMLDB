@@ -729,5 +729,86 @@ void SchemasContext::BuildTrivial(
     this->Build();
 }
 
+RowParser::RowParser(const SchemasContext* schema_ctx) : schema_ctx_(schema_ctx) {
+    for (size_t i = 0; i < schema_ctx_->GetSchemaSourceSize(); ++i) {
+        auto source = schema_ctx_->GetSchemaSource(i);
+        row_view_list_.push_back(codec::RowView(*source->GetSchema()));
+    }
+}
+
+bool RowParser::IsNull(const Row& row, const node::ColumnRefNode& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    return row_view.IsNULL(row.buf(schema_idx), col_idx);
+}
+
+bool RowParser::IsNull(const Row& row, const std::string& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    return row_view.IsNULL(row.buf(schema_idx), col_idx);
+}
+
+int32_t RowParser::GetValue(const Row& row, const node::ColumnRefNode& col, ::hybridse::type::Type type,
+                            void* val) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    return row_view.GetValue(row.buf(schema_idx), col_idx, type, val);
+}
+
+int32_t RowParser::GetValue(const Row& row, const node::ColumnRefNode& col, void* val) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    auto& col_def = row_view.GetSchema()->Get(col_idx);
+    return row_view.GetValue(row.buf(schema_idx), col_idx, col_def.type(), val);
+}
+
+int32_t RowParser::GetValue(const Row& row, const std::string& col, ::hybridse::type::Type type, void* val) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    return row_view.GetValue(row.buf(schema_idx), col_idx, type, val);
+}
+
+int32_t RowParser::GetValue(const Row& row, const std::string& col, void* val) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    auto& col_def = row_view.GetSchema()->Get(col_idx);
+    return row_view.GetValue(row.buf(schema_idx), col_idx, col_def.type(), val);
+}
+
+int32_t RowParser::GetString(const Row& row, const std::string& col, std::string* val) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    const char* ch = nullptr;
+    uint32_t str_size;
+    row_view.GetValue(row.buf(schema_idx), col_idx, &ch, &str_size);
+
+    std::string tmp(ch, str_size);
+    val->swap(tmp);
+    return 0;
+}
+
+type::Type RowParser::GetType(const std::string& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    auto& col_def = row_view.GetSchema()->Get(col_idx);
+    return col_def.type();
+}
+
+type::Type RowParser::GetType(const node::ColumnRefNode& col) const {
+    size_t schema_idx, col_idx;
+    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
+    const codec::RowView& row_view = row_view_list_[schema_idx];
+    auto& col_def = row_view.GetSchema()->Get(col_idx);
+    return col_def.type();
+}
+
 }  // namespace vm
 }  // namespace hybridse
