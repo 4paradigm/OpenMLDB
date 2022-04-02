@@ -73,7 +73,7 @@ public class TaskManagerConfig {
         WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
         IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
         // alive time seconds
-        CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "600"));
+        CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "1800"));
         ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
 
         ZK_CLUSTER = prop.getProperty("zookeeper.cluster", "");
