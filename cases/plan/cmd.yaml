@@ -39,10 +39,7 @@ cases:
           +-table: schema.sql
           +-IF NOT EXIST: 0
           +-column_desc_list: []
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
+          +-table_option_list: []
   - id: 3
     desc: CREATE GROUP
     mode: zetasql-unsupport
