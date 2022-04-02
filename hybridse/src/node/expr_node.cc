@@ -690,6 +690,11 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             SetNullable(false);
             break;
         }
+        case kFnOpIdentity: {
+            SetOutputType(dtype);
+            SetNullable(nullable);
+            break;
+        }
         default:
             return Status(common::kTypeError,
                           "Unknown unary op type: " + ExprOpTypeName(GetOp()));

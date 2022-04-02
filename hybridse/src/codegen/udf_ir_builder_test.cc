@@ -997,6 +997,19 @@ TEST_F(UdfIRBuilderTest, reverse) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, nullptr);
 }
+
+TEST_F(UdfIRBuilderTest, identity) {
+    auto udf_name = "identity";
+    CheckUdf<int16_t, int16_t>(udf_name, 32767, 32767);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>>(udf_name, 1, 1);
+    CheckUdf<int64_t, int64_t>(udf_name, 1590115420000L, 1590115420000L);
+    CheckUdf<float, float>(udf_name, 2.0f, 2.0f);
+    CheckUdf<double, double>(udf_name, 2.0, 2.0);
+    CheckUdf<Timestamp, Timestamp>(udf_name, Timestamp(1590115390000L), Timestamp(1590115390000L));
+    CheckUdf<Date, Date>(udf_name, Date(2020, 05, 22), Date(2020, 05, 22));
+    CheckUdf<StringRef, StringRef>(udf_name, StringRef("abc"), StringRef("abc"));
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

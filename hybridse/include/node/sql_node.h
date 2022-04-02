@@ -142,6 +142,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "^";
         case kFnOpBitwiseNot:
             return "~";
+        case kFnOpIdentity:
+            return "IDENTITY";
         default:
             return "UNKNOWN";
     }

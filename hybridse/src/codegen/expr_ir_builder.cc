@@ -570,6 +570,7 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
 
     PredicateIRBuilder predicate_ir_builder(ctx_->GetCurrentBlock());
     ArithmeticIRBuilder arithmetic_ir_builder(ctx_->GetCurrentBlock());
+
     switch (node->GetOp()) {
         case ::hybridse::node::kFnOpNot: {
             CHECK_STATUS(predicate_ir_builder.BuildNotExpr(left, output));
@@ -600,6 +601,10 @@ Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,
         case ::hybridse::node::kFnOpNonNull: {
             // just ignore any null flag
             *output = NativeValue::Create(left.GetValue(ctx_));
+            break;
+        }
+        case ::hybridse::node::kFnOpIdentity: {
+            CHECK_STATUS(BuildIdentityExpr(left, output));
             break;
         }
         default: {
@@ -1055,5 +1060,12 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
         int32_ty, false);
     return Status::OK();
 }
+
+Status ExprIRBuilder::BuildIdentityExpr(NativeValue input,
+                                        NativeValue* output) {
+    *output = input;
+    return Status::OK();
+}
+
 }  // namespace codegen
 }  // namespace hybridse

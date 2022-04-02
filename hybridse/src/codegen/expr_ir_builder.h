@@ -112,6 +112,8 @@ class ExprIRBuilder {
     Status GetFunction(const std::string& col, const std::vector<const node::TypeNode*>& generic_types,
                       ::llvm::Function** output);
 
+    Status BuildIdentityExpr(NativeValue input, NativeValue* output);
+
  private:
     CodeGenContext* ctx_;
     const node::FrameNode* frame_ = nullptr;

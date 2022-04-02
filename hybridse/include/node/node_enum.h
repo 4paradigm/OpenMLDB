@@ -189,7 +189,7 @@ enum FnOperator {
     kFnOpDot,         // "."
     kFnOpAt,          // "[]"
     kFnOpLike,        // "LIKE"
-    kFnOpILike,        // "ILIKE"
+    kFnOpILike,       // "ILIKE"
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"
@@ -199,6 +199,7 @@ enum FnOperator {
     kFnOpBitwiseOr,   // "|"
     kFnOpBitwiseXor,  // "^"
     kFnOpBitwiseNot,  // "~"
+    kFnOpIdentity,    // "identity"
 };
 
 enum FrameType {
