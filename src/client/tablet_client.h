@@ -282,6 +282,8 @@ class TabletClient : public Client {
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
+    bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
+
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;

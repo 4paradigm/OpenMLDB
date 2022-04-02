@@ -233,6 +233,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_window_column_pruning = options_.IsEnableWindowColumnPruning();
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
+    sql_context.options = session.GetOptions();
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
     } else if (session.engine_mode() == kBatchRequestMode) {

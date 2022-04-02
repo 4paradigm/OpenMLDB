@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "base/fe_status.h"
 #include "llvm/IR/Module.h"
 #include "proto/fe_common.pb.h"
@@ -73,6 +74,8 @@ struct SqlContext {
     ::hybridse::udf::UdfLibrary* udf_library = nullptr;
 
     ::hybridse::vm::BatchRequestInfo batch_request_info;
+
+    std::shared_ptr<const std::unordered_map<std::string, std::string>> options;
 
     SqlContext() {}
     ~SqlContext() {}

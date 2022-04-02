@@ -832,6 +832,20 @@ message CreateFunctionResponse {
     optional string msg = 2;
 }
 
+message GAFDeployStatsRequest {}
+
+message DeployStatsResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    message DeployStat {
+        required string deploy_name = 1;
+        required string time = 2;
+        required uint32 count = 3;
+        required string total = 4;
+    }
+    repeated DeployStat rows = 3;
+}
+
 service TabletServer {
     // kv storage api for client
     rpc Put(PutRequest) returns (PutResponse);
@@ -904,4 +918,7 @@ service TabletServer {
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
     rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+
+    // monitoring interfaces
+    rpc GetAndFlushDeployStats(GAFDeployStatsRequest) returns (DeployStatsResponse);
 }

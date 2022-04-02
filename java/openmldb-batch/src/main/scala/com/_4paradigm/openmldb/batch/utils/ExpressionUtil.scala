@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.node.{BinaryExpr, ConstNode, ExprNode, ExprType, FnOperator,
+import com._4paradigm.hybridse.node.{BinaryExpr, CastExprNode, ConstNode, ExprNode, ExprType, FnOperator,
   DataType => HybridseDataType}
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalOpNode}
@@ -59,61 +59,6 @@ object ExpressionUtil {
   }
 
   /**
-   * Convert expr object to Spark Column object.
-   * Notice that this only works for some non-computing expressions.
-   *
-   * @param expr
-   * @param leftDf
-   * @param rightDf
-   * @param physicalNode
-   * @return
-   */
-  def exprToSparkColumn(expr: ExprNode,
-                        leftDf: DataFrame,
-                        rightDf: DataFrame,
-                        physicalNode: PhysicalOpNode,
-                        hasIndexColumn: Boolean): Column = {
-    expr.GetExprType() match {
-      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
-        val inputNode = physicalNode
-        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, expr)
-        if (colIndex < 0 || colIndex >= inputNode.GetOutputSchemaSize()) {
-          inputNode.Print()
-          inputNode.PrintSchema()
-          throw new IndexOutOfBoundsException(
-            s"${expr.GetExprString()} resolved index out of bound: $colIndex")
-        }
-
-        if (hasIndexColumn) {
-          if (colIndex < leftDf.schema.size - 1) {
-            // Get from left df
-            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
-          } else {
-            // Get from right df
-            val rightColIndex = colIndex - (leftDf.schema.size - 1)
-            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
-          }
-        } else {
-          if (colIndex < leftDf.schema.size) {
-            // Get from left df
-            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
-          } else {
-            // Get from right df
-            val rightColIndex = colIndex - leftDf.schema.size
-            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
-          }
-        }
-
-      case ExprType.kExprPrimary =>
-        val const = ConstNode.CastFrom(expr)
-        ExpressionUtil.constExprToSparkColumn(const)
-
-      case _ => throw new UnsupportedHybridSeException(
-        s"Do not support converting expression to Spark Column for expression type ${expr.GetExprType}")
-    }
-  }
-
-  /**
    * Convert binary expression to two Spark Column objects.
    *
    * @param binaryExpr
@@ -126,13 +71,13 @@ object ExpressionUtil {
                                rightDf: DataFrame, hasIndexColumn: Boolean): (Column, Column) = {
     val leftExpr = binaryExpr.GetChild(0)
     val rightExpr = binaryExpr.GetChild(1)
-    val leftSparkColumn = ExpressionUtil.exprToSparkColumn(leftExpr, leftDf, rightDf, physicalNode, hasIndexColumn)
-    val rightSparkColumn = ExpressionUtil.exprToSparkColumn(rightExpr, leftDf, rightDf, physicalNode, hasIndexColumn)
-    leftSparkColumn -> rightSparkColumn
+    val leftColumn = recursiveGetSparkColumnFromExpr(leftExpr, physicalNode, leftDf, rightDf, hasIndexColumn)
+    val rightColumn = recursiveGetSparkColumnFromExpr(rightExpr, physicalNode, leftDf, rightDf, hasIndexColumn)
+    leftColumn -> rightColumn
   }
 
 
-  def recusiveGetSparkColumnFromExpr(expr: ExprNode, node: PhysicalOpNode, leftDf: DataFrame,
+  def recursiveGetSparkColumnFromExpr(expr: ExprNode, node: PhysicalOpNode, leftDf: DataFrame,
                                            rightDf: DataFrame, hasIndexColumn: Boolean): Column = {
     expr.GetExprType() match {
       case ExprType.kExprBinary =>
@@ -140,20 +85,15 @@ object ExpressionUtil {
         val op = binaryExpr.GetOp()
         op match {
           case FnOperator.kFnOpAnd =>
-            // TODO(tobe): Only support for binary sub expressions
-            val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
-            val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
-            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, hasIndexColumn)
-            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, hasIndexColumn)
-            leftColumn.and(rightColumn)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left.and(right)
           case FnOperator.kFnOpOr =>
-            val leftExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(0))
-            val rightExpr = BinaryExpr.CastFrom(binaryExpr.GetChild(1))
-            val leftColumn = recusiveGetSparkColumnFromExpr(leftExpr, node, leftDf, rightDf, hasIndexColumn)
-            val rightColumn = recusiveGetSparkColumnFromExpr(rightExpr, node, leftDf, rightDf, hasIndexColumn)
-            leftColumn.or(rightColumn)
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left.or(right)
           case FnOperator.kFnOpNot =>
-            !recusiveGetSparkColumnFromExpr(expr, node, leftDf, rightDf, hasIndexColumn)
+            !recursiveGetSparkColumnFromExpr(expr, node, leftDf, rightDf, hasIndexColumn)
           case FnOperator.kFnOpEq => // TODO(todo): Support null-safe equal in the future
             // Notice that it may be handled by physical plan's left_key() and right_key()
             val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
@@ -179,9 +119,69 @@ object ExpressionUtil {
             val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
               hasIndexColumn)
             left >= right
+          case FnOperator.kFnOpAdd =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left + right
+          case FnOperator.kFnOpMinus =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left - right
+          case FnOperator.kFnOpMulti =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left * right
+          case FnOperator.kFnOpDiv => // TODO: Support float div for kFnOpFDiv
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left / right
+          case FnOperator.kFnOpMod =>
+            val (left, right) = ExpressionUtil.binaryExprToSparkColumns(binaryExpr, node, leftDf, rightDf,
+              hasIndexColumn)
+            left % right
+          case _ => throw new UnsupportedHybridSeException(
+            s"Do not support convert expression type ${expr.GetExprType} to Spark Column")
         }
+      case ExprType.kExprColumnRef | ExprType.kExprColumnId =>
+        val inputNode = node
+        val colIndex = CoreAPI.ResolveColumnIndex(inputNode, expr)
+        if (colIndex < 0 || colIndex >= inputNode.GetOutputSchemaSize()) {
+          inputNode.Print()
+          inputNode.PrintSchema()
+          throw new IndexOutOfBoundsException(
+            s"${expr.GetExprString()} resolved index out of bound: $colIndex")
+        }
+        if (hasIndexColumn) {
+          if (colIndex < leftDf.schema.size - 1) {
+            // Get from left df
+            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
+          } else {
+            // Get from right df
+            val rightColIndex = colIndex - (leftDf.schema.size - 1)
+            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
+          }
+        } else {
+          if (colIndex < leftDf.schema.size) {
+            // Get from left df
+            SparkColumnUtil.getColumnFromIndex(leftDf, colIndex)
+          } else {
+            // Get from right df
+            val rightColIndex = colIndex - leftDf.schema.size
+            SparkColumnUtil.getColumnFromIndex(rightDf, rightColIndex)
+          }
+        }
+      case ExprType.kExprPrimary =>
+        val const = ConstNode.CastFrom(expr)
+        ExpressionUtil.constExprToSparkColumn(const)
+      case ExprType.kExprCast =>
+        val cast = CastExprNode.CastFrom(expr)
+        val castType = cast.getCast_type_
+        val childCol = recursiveGetSparkColumnFromExpr(cast.GetChild(0), node, leftDf, rightDf, hasIndexColumn)
+        // Convert OpenMLDB node datatype to Spark datatype
+        childCol.cast(HybridseUtil.nodeDataTypeToSparkType(castType))
+
       case _ => throw new UnsupportedHybridSeException(
-        s"Does not support convert expression type ${expr.GetExprType} to Spark Column")
+        s"Do not support convert expression type ${expr.GetExprType} to Spark Column")
     }
 
   }

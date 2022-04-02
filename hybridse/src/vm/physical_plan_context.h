@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 #include "base/fe_status.h"
 #include "node/node_manager.h"
@@ -37,13 +38,15 @@ class PhysicalPlanContext {
                         const std::string& db,
                         const std::shared_ptr<Catalog>& catalog,
                         const codec::Schema* parameter_types,
-                        bool enable_expr_opt)
+                        bool enable_expr_opt,
+                        const std::unordered_map<std::string, std::string>* options = nullptr)
         : nm_(nm),
           library_(library),
           db_(db),
           catalog_(catalog),
           parameter_types_(parameter_types),
-          enable_expr_opt_(enable_expr_opt) {}
+          enable_expr_opt_(enable_expr_opt),
+          options_(options) {}
     ~PhysicalPlanContext() {}
 
     /**
@@ -117,6 +120,10 @@ class PhysicalPlanContext {
         return WithNewChildren(input, children, out);
     }
 
+    const std::unordered_map<std::string, std::string>* GetOptions() const {
+        return options_;
+    }
+
     node::NodeManager* node_manager() const { return nm_; }
     const udf::UdfLibrary* library() const { return library_; }
     const std::string& db() { return db_; }
@@ -152,6 +159,7 @@ class PhysicalPlanContext {
     size_t codegen_func_id_counter_ = 0;
 
     bool enable_expr_opt_ = false;
+    const std::unordered_map<std::string, std::string>* options_ = nullptr;
 };
 }  // namespace vm
 }  // namespace hybridse

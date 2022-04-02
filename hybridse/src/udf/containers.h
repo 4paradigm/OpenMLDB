@@ -113,6 +113,11 @@ class TopKContainer {
         }
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
         // fill string buffer
         char* cur = buffer;
         uint32_t remain_space = str_len;
@@ -244,6 +249,11 @@ class BoundedGroupByDict {
 
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
 
         // fill string buffer
         char* cur = buffer;

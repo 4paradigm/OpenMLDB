@@ -1422,5 +1422,12 @@ bool TabletClient::CreateFunction(const ::openmldb::common::ExternalFun& fun, st
     return true;
 }
 
+bool TabletClient::GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res) {
+    ::openmldb::api::GAFDeployStatsRequest req;
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetAndFlushDeployStats, &req, res,
+                               FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    return ok && res->code() == 0;
+}
+
 }  // namespace client
 }  // namespace openmldb
