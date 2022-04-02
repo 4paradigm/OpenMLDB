@@ -245,7 +245,8 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
                                            manager_->MakeColumnDescNode("col3", node::kFloat, true),
                                            manager_->MakeColumnDescNode("col4", node::kVarchar, true),
                                            manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
-                                          {});
+                                          {},
+                                          false);
     ASSERT_TRUE(nullptr != node);
     std::vector<std::string> columns;
     std::vector<std::string> indexes;
