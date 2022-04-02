@@ -8,55 +8,32 @@ from sklearn.model_selection import train_test_split
 import lightgbm as lgb  # mac needs `brew install libomp`
 import sqlalchemy as db
 
-
-def lgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
-                      feval=None, early_stopping_rounds=20, num_boost_round=3000, verbose_eval=10,
-                      categorical_features=None):
-    lgb_params = {
-        'boosting_type': 'gbdt',
-        'objective': objective,
-        'metric': metrics,
-        'learning_rate': 0.01,
-        # 'is_unbalance': 'true',  #because training data is unbalance (replaced with scale_pos_weight)
+def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
+                      feval=None,num_boost_round=3000,early_stopping_rounds=20):
+    xgb_params = {
+        'booster': 'gbtree',
+        'obj': objective,
+        'eval_metric': metrics,
         'num_leaves': 31,  # we should let it be smaller than 2^(max_depth)
         'max_depth': -1,  # -1 means no limit
-        # Minimum number of data need in a child(min_data_in_leaf)
-        'min_child_samples': 20,
         'max_bin': 255,  # Number of bucketed bin for feature values
         'subsample': 0.6,  # Subsample ratio of the training instance.
-        'subsample_freq': 0,  # frequence of subsample, <=0 means no enable
-        # Subsample ratio of columns when constructing each tree.
         'colsample_bytree': 0.3,
-        # Minimum sum of instance weight(hessian) needed in a child(leaf)
         'min_child_weight': 5,
-        'subsample_for_bin': 200000,  # Number of samples for constructing bin
-        'min_split_gain': 0,  # lambda_l1, lambda_l2 and min_gain_to_split to regularization
-        'reg_alpha': 0,  # L1 regularization term on weights
-        'reg_lambda': 0,  # L2 regularization term on weights
+        'alpha': 0,  # L1 regularization term on weights
+        'lambda': 0,  # L2 regularization term on weights
         'nthread': 8,
-        'verbose': 0,
-        'metric': metrics
+        'verbosity': 0,
     }
-
-    lgb_params.update(params)
+    xgb_params.update(params)
 
     print("preparing validation datasets")
 
-    xgtrain = lgb.Dataset(dtrain[predictors].values, label=dtrain[target].values,
-                          feature_name=predictors,
-                          categorical_feature=categorical_features
-                          )
-    xgvalid = lgb.Dataset(dvalid[predictors].values, label=dvalid[target].values,
-                          feature_name=predictors,
-                          categorical_feature=categorical_features
-                          )
-
     evals_results = {}
 
-    bst1 = lgb.train(lgb_params,
-                     xgtrain,
-                     valid_sets=[xgtrain, xgvalid],
-                     valid_names=['train', 'valid'],
+    bst1 = xgb.train(xgb_params,
+                     dtrain,
+                     evals=dvalid,
                      evals_result=evals_results,
                      num_boost_round=num_boost_round,
                      early_stopping_rounds=early_stopping_rounds,
@@ -69,48 +46,6 @@ def lgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
     print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
 
     return bst1
-
-# def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
-#                       feval=None,num_boost_round=3000,early_stopping_rounds=20):
-#     xgb_params = {
-#         'booster': 'gbtree',
-#         'obj': objective,
-#         'eval_metric': metrics,
-#         'num_leaves': 31,  # we should let it be smaller than 2^(max_depth)
-#         'max_depth': -1,  # -1 means no limit
-#         'max_bin': 255,  # Number of bucketed bin for feature values
-#         'subsample': 0.6,  # Subsample ratio of the training instance.
-#         'colsample_bytree': 0.3,
-#         'min_child_weight': 5,
-#         'alpha': 0,  # L1 regularization term on weights
-#         'lambda': 0,  # L2 regularization term on weights
-#         'nthread': 8,
-#         'verbosity': 0,
-#     }
-#     xgb_params.update(params)
-
-#     print("preparing validation datasets")
-#     xgtrain = xgb.DMatrix(dtrain[predictors].values, label=dtrain[target].values)
-#     xgvalid = xgb.DMatrix(dvalid[predictors].values, label=dvalid[target].values)
-
-#     evals_results = {}
-
-#     bst1 = xgb.train(xgb_params,
-#                      xgtrain,
-#                      evals=xgvalid,
-#                      evals_result=evals_results,
-#                      num_boost_round=num_boost_round,
-#                      early_stopping_rounds=early_stopping_rounds,
-#                      verbose_eval=10,
-#                      feval=feval)
-
-#     n_estimators = bst1.best_iteration
-#     print("\nModel Report")
-#     print("n_estimators : ", n_estimators)
-#     print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
-
-#     return bst1
-
 
 path = 'data/'
 
@@ -216,56 +151,30 @@ categorical = ['app', 'device', 'os', 'channel', 'hour']
 gc.collect()
 
 print("Training...")
-params = {
-    'learning_rate': 0.1,
-    # 'is_unbalance': 'true', # replaced with scale_pos_weight argument
-    'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
-    'max_depth': 3,  # -1 means no limit
-    # Minimum number of data need in a child(min_data_in_leaf)
-    'min_child_samples': 100,
-    'max_bin': 100,  # Number of bucketed bin for feature values
-    'subsample': 0.7,  # Subsample ratio of the training instance.
-    'subsample_freq': 1,  # frequence of subsample, <=0 means no enable
-    # Subsample ratio of columns when constructing each tree.
-    'colsample_bytree': 0.7,
-    # Minimum sum of instance weight(hessian) needed in a child(leaf)
-    'min_child_weight': 0,
-    'scale_pos_weight': 99  # because training data is extremely unbalanced
+params_xgb = {
+     'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
+     'max_depth': 3,  # -1 means no limit
+     'min_child_samples': 100,
+     'max_bin': 100,  # Number of bucketed bin for feature values
+     'subsample': 0.7,  # Subsample ratio of the training instance.
+     # Subsample ratio of columns when constructing each tree.
+     'colsample_bytree': 0.7,
+     # Minimum sum of instance weight(hessian) needed in a child(leaf)
+     'min_child_weight': 0
 }
+xgtrain = xgb.DMatrix(train_df[predictors].values, label=train_df[target].values)
+xgvalid = xgb.DMatrix(val_df[predictors].values, label=val_df[target].values)
+watchlist = [(xgvalid, 'eval'), (xgtrain, 'train')]
 
-# params_xgb = {
-#     'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
-#     'max_depth': 3,  # -1 means no limit
-#     'min_child_samples': 100,
-#     'max_bin': 100,  # Number of bucketed bin for feature values
-#     'subsample': 0.7,  # Subsample ratio of the training instance.
-#     # Subsample ratio of columns when constructing each tree.
-#     'colsample_bytree': 0.7,
-#     # Minimum sum of instance weight(hessian) needed in a child(leaf)
-#     'min_child_weight': 0
-# }
-
-bst = lgb_modelfit_nocv(params,
-                        train_df,
-                        val_df,
-                        predictors,
-                        target,
-                        objective='binary',
-                        metrics='auc',
-                        early_stopping_rounds=50,
-                        verbose_eval=True,
-                        num_boost_round=300,
-                        categorical_features=categorical)
-
-# bst = xgb_modelfit_nocv(params_xgb,
-#                         train_df,
-#                         val_df,
-#                         predictors,
-#                         target,
-#                         objective='binary',
-#                         metrics='auc',
-#                         num_boost_round=300,
-#                         early_stopping_rounds=50)
+bst = xgb_modelfit_nocv(params_xgb,
+                         xgtrain,
+                         watchlist,
+                         predictors,
+                         target,
+                         objective='binary',
+                         metrics='auc',
+                         num_boost_round=300,
+                         early_stopping_rounds=50)
 
 del train_df
 del val_df
