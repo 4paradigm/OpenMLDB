@@ -25,12 +25,15 @@
 #include "base/fe_object.h"
 #include "base/fe_slice.h"
 #include "base/iterator.h"
+#include "base/string_ref.h"
 #include "codec/row.h"
 #include "codec/row_list.h"
 #include "codec/type_codec.h"
 #include "glog/logging.h"
 namespace hybridse {
 namespace codec {
+
+using openmldb::base::StringRef;
 
 template <class V>
 class ArrayListIterator;

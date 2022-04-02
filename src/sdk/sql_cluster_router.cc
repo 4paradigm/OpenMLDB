@@ -252,10 +252,11 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
+    // todo: init session variables from systemtable
     session_variables_.emplace("execute_mode", "offline");
     session_variables_.emplace("enable_trace", "false");
     session_variables_.emplace("sync_job", "false");
-    session_variables_.emplace("job_timeout", "20000"); // ref TaskManagerClient::request_timeout_ms_
+    session_variables_.emplace("job_timeout", "20000");  // ref TaskManagerClient::request_timeout_ms_
     return true;
 }
 
@@ -1662,7 +1663,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (status->code != 0) {
                 return {};
             }
-            if(rs->Size() == 0) {
+            if (rs->Size() == 0) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
                 status->msg = "Job not found: " + std::to_string(job_id);
                 return {};
@@ -2787,6 +2788,11 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     if (!lw_status.IsOK()) {
         return lw_status;
     }
+    for (const auto& o : *deploy_node->Options()) {
+        auto option = sp_info.add_options();
+        option->set_name(o.first);
+        option->mutable_value()->set_value(o.second->GetExprString());
+    }
 
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
@@ -2920,9 +2926,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
-    const hybridse::node::DeployPlanNode* deploy_node, const std::set<std::pair<std::string, std::string>>& table_pair,
+    const hybridse::node::DeployPlanNode* deploy_node,
+    const std::set<std::pair<std::string, std::string>>& table_pair,
     const std::string& select_sql) {
-    auto iter = deploy_node->Options()->find("long_windows");
+    auto iter = deploy_node->Options()->find(hybridse::vm::LONG_WINDOWS);
     std::string long_window_param = "";
     if (iter != deploy_node->Options()->end()) {
         long_window_param = iter->second->GetExprString();
@@ -3238,8 +3245,10 @@ std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
     std::vector<::hybridse::vm::AggrTableInfo> table_infos;
     auto rs = ExecuteSQL(meta_db, select_sql, &status);
     if (!status.IsOK()) {
-        LOG(ERROR) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
+        LOG(WARNING) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
         return table_infos;
+    } else {
+        DLOG(INFO) << "Get pre-aggr table info succeed, size: " << rs->Size();
     }
 
     while (rs->Next()) {

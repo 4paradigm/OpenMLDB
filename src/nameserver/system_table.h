@@ -37,29 +37,50 @@ constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 
 
 constexpr const char* INFORMATION_SCHEMA_DB = "INFORMATION_SCHEMA";
+// start tables for INFORMATION_SCHEMA
 constexpr const char* GLOBAL_VARIABLES = "GLOBAL_VARIABLES";
+constexpr const char* DEPLOY_RESPONSE_TIME = "DEPLOY_RESPONSE_TIME";
+// end tables for INFORMATION_SCHEMA
 
 enum class SystemTableType {
     kJobInfo = 1,
-    KPreAggMetaInfo = 2,
+    kPreAggMetaInfo = 2,
     kGlobalVariable = 3,
+    kDeployResponseTime,
+};
+
+struct SystemTableInfo {
+    SystemTableInfo(absl::string_view db, absl::string_view name)
+        : db_(db), name_(name) {}
+
+    // db name
+    absl::string_view db_;
+    // table name
+    absl::string_view name_;
 };
 
 inline bool IsHiddenDb(absl::string_view db) {
     return db == INFORMATION_SCHEMA_DB || db == INTERNAL_DB || db == PRE_AGG_DB;
 }
 
+const SystemTableInfo* GetSystemTableInfo(SystemTableType type);
+
+absl::string_view GetSystemTableName(SystemTableType type);
+
 class SystemTable {
  public:
-    static std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& table_name,
-            SystemTableType table_type) {
+    static std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(SystemTableType table_type) {
         auto table_info = std::make_shared<::openmldb::nameserver::TableInfo>();
-        table_info->set_name(table_name);
+        auto info = GetSystemTableInfo(table_type);
+        if (info == nullptr) {
+            return {};
+        }
+        table_info->set_db(std::string(info->db_));
+        table_info->set_name(std::string(info->name_));
         table_info->set_replica_num(FLAGS_system_table_replica_num);
         table_info->set_partition_num(1);
         switch (table_type) {
             case SystemTableType::kJobInfo: {
-                table_info->set_db(INTERNAL_DB);
                 SetColumnDesc("id", openmldb::type::DataType::kInt, table_info->add_column_desc());
                 SetColumnDesc("job_type", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("state", openmldb::type::DataType::kString, table_info->add_column_desc());
@@ -77,8 +98,7 @@ class SystemTable {
                 ttl->set_lat_ttl(1);
                 break;
             }
-            case SystemTableType::KPreAggMetaInfo: {
-                table_info->set_db(INTERNAL_DB);
+            case SystemTableType::kPreAggMetaInfo: {
                 SetColumnDesc("aggr_table", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("aggr_db", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("base_db", openmldb::type::DataType::kString, table_info->add_column_desc());
@@ -109,12 +129,25 @@ class SystemTable {
                 break;
             }
             case SystemTableType::kGlobalVariable: {
-                table_info->set_db(INFORMATION_SCHEMA_DB);
                 SetColumnDesc("Variable_name", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("Variable_value", openmldb::type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
                 index->set_index_name("Variable_name");
                 index->add_col_name("Variable_name");
+                auto ttl = index->mutable_ttl();
+                ttl->set_ttl_type(::openmldb::type::kLatestTime);
+                ttl->set_lat_ttl(1);
+                break;
+            }
+            case SystemTableType::kDeployResponseTime: {
+                SetColumnDesc("DEPLOY_NAME", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("TIME", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("COUNT", type::DataType::kInt, table_info->add_column_desc());
+                SetColumnDesc("TOTAL", type::DataType::kString, table_info->add_column_desc());
+                auto index = table_info->add_column_key();
+                index->set_index_name("index");
+                index->add_col_name("DEPLOY_NAME");
+                index->add_col_name("TIME");
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);
                 ttl->set_lat_ttl(1);
@@ -127,8 +160,8 @@ class SystemTable {
     }
 
  private:
-    static void SetColumnDesc(const std::string& name, openmldb::type::DataType type,
-            openmldb::common::ColumnDesc* field) {
+    static inline void SetColumnDesc(const std::string& name, openmldb::type::DataType type,
+                                     openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
             field->set_name(name);
             field->set_data_type(type);

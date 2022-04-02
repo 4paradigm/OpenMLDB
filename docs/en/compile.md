@@ -11,13 +11,13 @@ The docker image has packed required tools and dependencies, so there is no need
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.4.1
+    docker pull 4pdosc/hybridsql:0.4.3
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.4.1 bash
+   docker run -it 4pdosc/hybridsql:0.4.3 bash
    ```
 
 3. Download the OpenMLDB source code inside docker container
@@ -66,7 +66,6 @@ Make sure those tools are installed
 - cmake 3.20 or later
 - jdk 8
 - python3, python setuptools, python wheel
-- apache maven 3.3.9 or later
 - if you'd like compile thirdparty from source, checkout [third-party's requirement](../../third-party/README.md) for extra dependencies
 
 ## Build and Install OpenMLDB
