@@ -183,6 +183,34 @@ TEST_F(SqlCmdTest, show_deployment) {
     ASSERT_EQ(status.msg, "Please enter database first");
 }
 
+TEST_F(SqlCmdTest, load_data) {
+    sr = standalone_cli.sr;
+    cs = standalone_cli.cs;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    std::string file_name = "./myfile.csv";
+    std::ofstream ofile;
+    ofile.open(file_name);
+    ofile << "c1,c2" << std::endl;
+    for (int i = 0; i < 10; i++) {
+        ofile << "aa" << i << "," << i << std::endl;
+    }
+    ofile.close();
+    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(10, result->Size());
+    printf("result size %d\n", result->Size());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+    unlink(file_name.c_str());
+}
+
 TEST_P(DBSDKTest, deploy) {
     auto cli = GetParam();
     cs = cli->cs;
