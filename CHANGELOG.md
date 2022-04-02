@@ -6,7 +6,7 @@
 - Support the standalone version by Java and Python SDKs (#1302 #1325 #1485 @tobegit3hub @HuilinWu2 @keyu813)
 - Support the blocking execution for offline queries (#1486 @vagetablechicken )
 - Add the `getStatement` API in Java SDK (#1231 @dl239 )
-- Add the `executemany` API in Python SDK (#1402 @hezhaozhao-git )
+- Support multiple rows insertion in the Python SDK (#1402 @hezhaozhao-git )
 - Support the JDBC connection (#1511 @vagetablechicken )
 
 ### Bug Fixes
@@ -180,6 +180,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.4.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.0...v0.4.1
