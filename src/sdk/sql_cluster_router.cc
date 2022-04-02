@@ -2351,8 +2351,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
         }
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
-            // Check if passes db or uses default db
-            if (plan->Db().empty() && db.empty()) {
+            std::string database = plan->Db().empty() ? db : plan->Db();
+            if (database.empty()) {
                 *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
                 return {};
             }
@@ -2364,10 +2364,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
                     // Handle in online mode
-                    base_status = ImportOnlineData(sql, config, db, IsSyncJob(), job_info);
+                    base_status = ImportOnlineData(sql, config, database, IsSyncJob(), job_info);
                 } else {
                     // Handle in offline mode
-                    base_status = ImportOfflineData(sql, config, db, IsSyncJob(), job_info);
+                    base_status = ImportOfflineData(sql, config, database, IsSyncJob(), job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
                     std::stringstream ss;
@@ -2378,8 +2378,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 }
             } else {
                 // Handle in standalone mode
-                std::string database = plan->Db().empty() ? GetDatabase() : plan->Db();
-                *status = HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options());
+                *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), plan->Options());
             }
             return {};
         }
