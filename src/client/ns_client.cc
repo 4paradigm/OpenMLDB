@@ -251,10 +251,6 @@ base::Status NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_
     return {};
 }
 
-bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, std::string& msg) {
-    CreateTable(table_info, false, msg);
-}
-
 bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, const bool create_if_not_exist,
                            std::string& msg) {
     ::openmldb::nameserver::CreateTableRequest request;
