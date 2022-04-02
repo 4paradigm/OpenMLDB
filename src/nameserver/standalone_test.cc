@@ -80,7 +80,7 @@ TEST_F(StandaloneTest, smoketest) {
     table_info.set_name(name);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, &table_info);
     std::string msg;
-    ASSERT_TRUE(client.CreateTable(table_info, msg));
+    ASSERT_TRUE(client.CreateTable(table_info, false, msg));
 }
 
 

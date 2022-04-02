@@ -2145,7 +2145,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     }
 
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, true, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     return {};
