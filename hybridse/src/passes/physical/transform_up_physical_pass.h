@@ -35,7 +35,9 @@ enum PhysicalPlanPassType {
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
     kPassClusterOptimized,
-    kPassLimitOptimized
+    kPassLimitOptimized,
+    kPassLongWindowOptimized,
+    kPassSplitAggregationOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
@@ -52,6 +54,10 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassLimitOptimized";
         case kPassClusterOptimized:
             return "PassClusterOptimized";
+        case kPassLongWindowOptimized:
+            return "PassLongWindowOptimized";
+        case kPassSplitAggregationOptimized:
+            return "SplitAggregationOptimized";
         default:
             return "unknowPass";
     }

@@ -176,22 +176,27 @@ class SQLRouter {
 
     virtual ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                          const std::map<std::string, std::string>& config,
-                                                         const std::string& default_db,
-                                                         std::string& output) = 0; // NOLINT
+                                                         const std::string& default_db, bool sync_job,
+                                                         ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+
+    virtual ::openmldb::base::Status ExecuteOfflineQueryGetOutput(const std::string& sql,
+                                                                  const std::map<std::string, std::string>& config,
+                                                                  const std::string& default_db,
+                                                                  std::string& output) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
-                                                      const std::string& default_db,
+                                                      const std::string& default_db, bool sync_job,
                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ImportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
-                                                       const std::string& default_db,
+                                                       const std::string& default_db, bool sync_job,
                                                        ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual ::openmldb::base::Status ExportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
-                                                       const std::string& default_db,
+                                                       const std::string& default_db, bool sync_job,
                                                        ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
     virtual std::string GetJobLog(const int id, hybridse::sdk::Status* status) = 0;

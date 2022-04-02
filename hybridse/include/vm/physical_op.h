@@ -35,7 +35,7 @@ using hybridse::vm::SchemasContext;
 
 // new and delete physical node managef
 enum PhysicalOpType {
-    kPhysicalOpDataProvider,
+    kPhysicalOpDataProvider = 0,
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
@@ -51,6 +51,7 @@ enum PhysicalOpType {
     kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnion,
+    kPhysicalOpRequestAggUnion,
     kPhysicalOpPostRequestUnion,
     kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
@@ -58,57 +59,13 @@ enum PhysicalOpType {
     kPhysicalOpLoadData,
     kPhysicalOpDelete,
     kPhysicalOpSelectInto,
+    kPhysicalOpInsert,
+    kPhysicalOpFake,  // not a real type, for testing only
+    kPhysicalOpLast = kPhysicalOpFake,
 };
 
 enum PhysicalSchemaType { kSchemaTypeTable, kSchemaTypeRow, kSchemaTypeGroup };
-inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
-    switch (type) {
-        case kPhysicalOpDataProvider:
-            return "DATA_PROVIDER";
-        case kPhysicalOpGroupBy:
-            return "GROUP_BY";
-        case kPhysicalOpSortBy:
-            return "SORT_BY";
-        case kPhysicalOpFilter:
-            return "FILTER_BY";
-        case kPhysicalOpProject:
-            return "PROJECT";
-        case kPhysicalOpSimpleProject:
-            return "SIMPLE_PROJECT";
-        case kPhysicalOpConstProject:
-            return "CONST_PROJECT";
-        case kPhysicalOpAggrerate:
-            return "AGGRERATE";
-        case kPhysicalOpLimit:
-            return "LIMIT";
-        case kPhysicalOpRename:
-            return "RENAME";
-        case kPhysicalOpDistinct:
-            return "DISTINCT";
-        case kPhysicalOpWindow:
-            return "WINDOW";
-        case kPhysicalOpJoin:
-            return "JOIN";
-        case kPhysicalOpUnion:
-            return "UNION";
-        case kPhysicalOpPostRequestUnion:
-            return "POST_REQUEST_UNION";
-        case kPhysicalOpRequestUnion:
-            return "REQUEST_UNION";
-        case kPhysicalOpRequestJoin:
-            return "REQUEST_JOIN";
-        case kPhysicalOpIndexSeek:
-            return "INDEX_SEEK";
-        case kPhysicalOpLoadData:
-            return "LOAD_DATA";
-        case kPhysicalOpDelete:
-            return "DELETE";
-        case kPhysicalOpSelectInto:
-            return "SELECT_INTO";
-        default:
-            return "UNKNOWN";
-    }
-}
+absl::string_view PhysicalOpTypeName(PhysicalOpType type);
 
 /**
  * Function codegen information for physical node. It should
@@ -395,7 +352,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
           schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
-        return PhysicalOpTypeName(type_);
+        return std::string(PhysicalOpTypeName(type_));
     }
     bool Equals(const PhysicalOpNode *other) const override {
         return this == other;
@@ -670,6 +627,7 @@ enum ProjectType {
     kAggregation,
     kGroupAggregation,
     kWindowAggregation,
+    kReduceAggregation,
 };
 
 inline const std::string ProjectTypeName(const ProjectType &type) {
@@ -684,6 +642,8 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
             return "GroupAggregation";
         case kWindowAggregation:
             return "WindowAggregation";
+        case kReduceAggregation:
+            return "ReduceAggregation";
         default:
             return "UnKnown";
     }
@@ -694,6 +654,7 @@ inline bool IsAggProjectType(const ProjectType &type) {
         case kAggregation:
         case kGroupAggregation:
         case kWindowAggregation:
+        case kReduceAggregation:
             return true;
         default:
             return false;
@@ -808,6 +769,22 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
     virtual ~PhysicalAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     ConditionFilter having_condition_;
+};
+
+class PhysicalReduceAggregationNode : public PhysicalProjectNode {
+ public:
+    PhysicalReduceAggregationNode(PhysicalOpNode *node, const ColumnProjects &project,
+                                  const node::ExprNode *condition, const PhysicalAggrerationNode *orig_aggr)
+        : PhysicalProjectNode(node, kReduceAggregation, project, true), having_condition_(condition) {
+        output_type_ = kSchemaTypeRow;
+        fn_infos_.push_back(&having_condition_.fn_info());
+        orig_aggr_ = orig_aggr;
+    }
+    virtual ~PhysicalReduceAggregationNode() {}
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    ConditionFilter having_condition_;
+    const PhysicalAggrerationNode* orig_aggr_ = nullptr;
 };
 
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
@@ -1514,6 +1491,71 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     RequestWindowUnionList window_unions_;
 };
 
+class PhysicalRequestAggUnionNode : public PhysicalOpNode {
+ public:
+    PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
+                                const RequestWindowOp &window, const RequestWindowOp &aggr_window,
+                                bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
+                                const node::FnDefNode *agg_func)
+        : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
+          window_(window),
+          agg_window_(aggr_window),
+          instance_not_in_window_(instance_not_in_window),
+          exclude_current_time_(exclude_current_time),
+          output_request_row_(output_request_row),
+          agg_func_(agg_func) {
+        output_type_ = kSchemaTypeTable;
+
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.sort_.fn_info());
+        fn_infos_.push_back(&window_.range_.fn_info());
+        fn_infos_.push_back(&window_.index_key_.fn_info());
+
+        fn_infos_.push_back(&agg_window_.partition_.fn_info());
+        fn_infos_.push_back(&agg_window_.sort_.fn_info());
+        fn_infos_.push_back(&agg_window_.range_.fn_info());
+        fn_infos_.push_back(&agg_window_.index_key_.fn_info());
+
+        AddProducers(request, raw, aggr);
+    }
+    virtual ~PhysicalRequestAggUnionNode() {}
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    void PrintChildren(std::ostream& output, const std::string& tab) const override;
+    const bool Valid() { return true; }
+    static PhysicalRequestAggUnionNode *CastFrom(PhysicalOpNode *node);
+
+    const bool instance_not_in_window() const {
+        return instance_not_in_window_;
+    }
+    const bool exclude_current_time() const { return exclude_current_time_; }
+    const bool output_request_row() const { return output_request_row_; }
+    const RequestWindowOp &window() const { return window_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status(common::kUnSupport);
+    }
+
+    RequestWindowOp window_;
+    RequestWindowOp agg_window_;
+
+ private:
+    const bool instance_not_in_window_;
+    const bool exclude_current_time_;
+    const bool output_request_row_;
+
+    void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
+        AddProducer(request);
+        AddProducer(raw);
+        AddProducer(aggr);
+    }
+
+    Schema agg_schema_;
+    const node::FnDefNode* agg_func_ = nullptr;
+};
+
 class PhysicalSortNode : public PhysicalUnaryNode {
  public:
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
@@ -1719,6 +1761,26 @@ class PhysicalDeleteNode : public PhysicalOpNode {
  private:
     const node::DeleteTarget target_;
     const std::string job_id_;
+};
+
+
+class PhysicalInsertNode : public PhysicalOpNode {
+ public:
+    explicit PhysicalInsertNode(const node::InsertStmt *ins) :
+        PhysicalOpNode(kPhysicalOpInsert, false), insert_stmt_(ins) {}
+    ~PhysicalInsertNode() override {}
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override { return base::Status::OK(); }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+
+    const node::InsertStmt* GetInsertStmt() const { return insert_stmt_; }
+
+ private:
+    const node::InsertStmt* insert_stmt_;
 };
 /**
  * Initialize expression replacer with schema change.

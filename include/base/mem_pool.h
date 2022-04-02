@@ -14,29 +14,23 @@
  * limitations under the License.
  */
 
-#ifndef HYBRIDSE_INCLUDE_BASE_MEM_POOL_H_
-#define HYBRIDSE_INCLUDE_BASE_MEM_POOL_H_
+#ifndef OPENMLDB_INCLUDE_BASE_MEM_POOL_H_
+#define OPENMLDB_INCLUDE_BASE_MEM_POOL_H_
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
 #include <thread>  //NOLINT
-#include "glog/logging.h"
-namespace hybridse {
+namespace openmldb {
 namespace base {
 class MemoryChunk {
  public:
     MemoryChunk(MemoryChunk* next, size_t request_size)
         : next_(next),
-          chuck_size_(request_size > DEFAULT_CHUCK_SIZE ? request_size
-                                                        : DEFAULT_CHUCK_SIZE),
+          chuck_size_(request_size > DEFAULT_CHUCK_SIZE ? request_size : DEFAULT_CHUCK_SIZE),
           allocated_size_(0),
           mem_(new char[chuck_size_]) {
-        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
-                   << reinterpret_cast<void*>(this) << ")" << std::endl;
     }
     ~MemoryChunk() {
-        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
-                   << reinterpret_cast<void*>(this) << ")" << std::endl;
         delete[] mem_;
     }
     inline size_t available_size() const { return chuck_size_ - allocated_size_; }
@@ -61,14 +55,9 @@ class ByteMemoryPool {
  public:
     explicit ByteMemoryPool(size_t init_size = MemoryChunk::DEFAULT_CHUCK_SIZE)
         : chucks_(nullptr) {
-        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
-                   << reinterpret_cast<void*>(this) << ")" << std::endl;
-
         ExpandStorage(init_size);
     }
     ~ByteMemoryPool() {
-        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
-                   << reinterpret_cast<void*>(this) << ")" << std::endl;
         Reset();
     }
     char* Alloc(size_t request_size) {
@@ -96,6 +85,6 @@ class ByteMemoryPool {
     MemoryChunk* chucks_;
 };
 }  // namespace base
-}  // namespace hybridse
+}  // namespace openmldb
 
-#endif  // HYBRIDSE_INCLUDE_BASE_MEM_POOL_H_
+#endif  // OPENMLDB_INCLUDE_BASE_MEM_POOL_H_

@@ -227,6 +227,18 @@ class TabletCatalog : public vm::Catalog {
                                                const std::string& table_name);
     bool IndexSupport() override;
 
+    std::vector<vm::AggrTableInfo> GetAggrTables(
+        const std::string& base_db,
+        const std::string& base_table,
+        const std::string& aggr_func,
+        const std::string& aggr_col,
+        const std::string& partition_cols,
+        const std::string& order_col) override {
+        vm::AggrTableInfo info = {"aggr_" + base_table, "aggr_db", base_db, base_table,
+                                              aggr_func, aggr_col, partition_cols, order_col, "1000"};
+        return {info};
+    }
+
  private:
     TabletTables tables_;
     TabletDB db_;

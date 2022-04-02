@@ -15,10 +15,13 @@
  */
 
 #include "vm/runner.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "absl/strings/str_cat.h"
 #include "base/texttable.h"
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
@@ -524,8 +527,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         default: {
             status.code = common::kExecutionPlanError;
-            status.msg = "Non-support node " +
-                         PhysicalOpTypeName(node->GetOpType()) + " for OpenMLDB Online execute mode";
+            status.msg = absl::StrCat("Non-support node ", PhysicalOpTypeName(node->GetOpType()),
+                                      " for OpenMLDB Online execute mode");
             LOG(WARNING) << status;
             return RegisterTask(node, fail);
         }

@@ -34,10 +34,10 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using hybridse::codec::Date;
+using openmldb::base::Date;
 using hybridse::codec::ListRef;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 
 namespace hybridse {
 namespace udf {
@@ -360,6 +360,11 @@ struct FZStringOpsDef {
             }
         }
         char* buf = v1::AllocManagedStringBuf(bytes + 1);
+        if (buf == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
         buf[bytes] = 0;
 
         size_t offset = 0;
@@ -518,6 +523,11 @@ struct FZTopNFrequency {
 
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
 
         // fill string buffer
         char* cur = buffer;
