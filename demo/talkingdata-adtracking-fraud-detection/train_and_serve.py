@@ -120,7 +120,7 @@ print('Feature extraction')
 current_path=os.path.abspath(".")
 train_feature_file = current_path + "/train_feature.csv"
 sql_part = """
-select ip, day(click_time) as day, hour(click_time) as hour, 
+select ip, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
 count(channel) over w3 as ip_app_os_count
