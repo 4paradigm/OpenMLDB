@@ -205,7 +205,6 @@ TEST_F(SqlCmdTest, load_data) {
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(10, result->Size());
-    printf("result size %d\n", result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
     unlink(file_name.c_str());
