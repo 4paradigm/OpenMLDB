@@ -91,7 +91,7 @@ class SQLInsertRow {
                 result.push_back(i);
             }
         }
-        return std::move(result);
+        return result;
     }
 
     bool AppendString(const char* string_buffer_var_name, uint32_t length);
@@ -125,9 +125,19 @@ class SQLInsertRows {
     inline uint32_t GetCnt() { return rows_.size(); }
     inline std::shared_ptr<SQLInsertRow> GetRow(uint32_t i) {
         if (i >= rows_.size()) {
-            return std::shared_ptr<SQLInsertRow>();
+            return {};
         }
         return rows_[i];
+    }
+    inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
+    const std::vector<uint32_t> GetHoleIdx() {
+        std::vector<uint32_t> result;
+        for (uint32_t i = 0; i < (int64_t)schema_->GetColumnCnt(); ++i) {
+            if (default_map_->count(i) == 0) {
+                result.push_back(i);
+            }
+        }
+        return result;
     }
 
  private:

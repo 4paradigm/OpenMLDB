@@ -35,6 +35,8 @@ using hybridse::codec::ColumnImpl;
 using hybridse::codec::ListRef;
 using hybridse::codec::Row;
 using hybridse::sqlcase::SqlCase;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 
 class UdfTest : public ::testing::Test {
  public:
@@ -467,7 +469,7 @@ TEST_F(UdfTest, GetColHeapTest) {
 TEST_F(UdfTest, DateToString) {
     {
         codec::StringRef str;
-        codec::Date date(2020, 5, 22);
+        Date date(2020, 5, 22);
         udf::v1::date_to_string(&date, &str);
         ASSERT_EQ(codec::StringRef("2020-05-22"), str);
     }
@@ -476,13 +478,13 @@ TEST_F(UdfTest, DateToString) {
 TEST_F(UdfTest, TimestampToString) {
     {
         codec::StringRef str;
-        codec::Timestamp ts(1590115420000L);
+        Timestamp ts(1590115420000L);
         udf::v1::timestamp_to_string(&ts, &str);
         ASSERT_EQ(codec::StringRef("2020-05-22 10:43:40"), str);
     }
     {
         codec::StringRef str;
-        codec::Timestamp ts(1590115421000L);
+        Timestamp ts(1590115421000L);
         udf::v1::timestamp_to_string(&ts, &str);
         ASSERT_EQ(codec::StringRef("2020-05-22 10:43:41"), str);
     }
@@ -521,7 +523,7 @@ class ExternUdfTest : public ::testing::Test {
         *output = is_null ? *default_val : *in;
     }
 
-    static void NewDate(int64_t in, bool is_null, codec::Date* out,
+    static void NewDate(int64_t in, bool is_null, Date* out,
                         bool* is_null_addr) {
         *is_null_addr = is_null;
         if (!is_null) {
@@ -571,7 +573,7 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
     library.RegisterExternal("new_date")
         .args<Nullable<int64_t>>(
             TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
-                Nullable<codec::Date>>(ExternUdfTest::NewDate));
+                Nullable<Date>>(ExternUdfTest::NewDate));
 
     library.RegisterExternal("sum_tuple")
         .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
@@ -617,9 +619,9 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
         &library, "add_two_one_nullable", nullptr, nullptr, nullptr);
 
     // nullable return
-    CheckUdf<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
-                                                       codec::Date(1), 1);
-    CheckUdf<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+    CheckUdf<Nullable<Date>, Nullable<int64_t>>(&library, "new_date",
+                                                       Date(1), 1);
+    CheckUdf<Nullable<Date>, Nullable<int64_t>>(&library, "new_date",
                                                        nullptr, nullptr);
 
     // pass tuple

@@ -37,6 +37,9 @@ using hybridse::udf::Nullable;
 ExitOnError ExitOnErr;
 namespace hybridse {
 namespace codegen {
+using openmldb::base::StringRef;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 class PredicateIRBuilderTest : public ::testing::Test {
  public:
     PredicateIRBuilderTest() { manager_ = new node::NodeManager(); }
@@ -128,29 +131,29 @@ void PredicateNullCheck(node::FnOperator op) {
     BinaryPredicateExprCheck<Nullable<double>, Nullable<double>,
                              Nullable<bool>>(1.0, nullptr, nullptr, op);
 
-    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
-                             Nullable<codec::Timestamp>, Nullable<bool>>(
-        codec::Timestamp(1590115420000L), nullptr, nullptr, op);
-    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
-                             Nullable<codec::Timestamp>, Nullable<bool>>(
-        nullptr, codec::Timestamp(1590115420000L), nullptr, op);
+    BinaryPredicateExprCheck<Nullable<Timestamp>,
+                             Nullable<Timestamp>, Nullable<bool>>(
+        Timestamp(1590115420000L), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<Timestamp>,
+                             Nullable<Timestamp>, Nullable<bool>>(
+        nullptr, Timestamp(1590115420000L), nullptr, op);
 
-    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
-                             Nullable<codec::Timestamp>, Nullable<bool>>(
-        codec::Timestamp(1590115420000L), nullptr, nullptr, op);
-    BinaryPredicateExprCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                             Nullable<bool>>(nullptr, codec::Date(2020, 05, 20),
+    BinaryPredicateExprCheck<Nullable<Timestamp>,
+                             Nullable<Timestamp>, Nullable<bool>>(
+        Timestamp(1590115420000L), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<Date>, Nullable<Date>,
+                             Nullable<bool>>(nullptr, Date(2020, 05, 20),
                                              nullptr, op);
-    BinaryPredicateExprCheck<Nullable<codec::Date>, Nullable<codec::Date>,
-                             Nullable<bool>>(codec::Date(2020, 05, 20), nullptr,
+    BinaryPredicateExprCheck<Nullable<Date>, Nullable<Date>,
+                             Nullable<bool>>(Date(2020, 05, 20), nullptr,
                                              nullptr, op);
 
-    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
-                             Nullable<codec::StringRef>, Nullable<bool>>(
-        codec::StringRef("abc"), nullptr, nullptr, op);
-    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
-                             Nullable<codec::StringRef>, Nullable<bool>>(
-        nullptr, codec::StringRef("abc"), nullptr, op);
+    BinaryPredicateExprCheck<Nullable<StringRef>,
+                             Nullable<StringRef>, Nullable<bool>>(
+        StringRef("abc"), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<StringRef>,
+                             Nullable<StringRef>, Nullable<bool>>(
+        nullptr, StringRef("abc"), nullptr, op);
 }
 
 TEST_F(PredicateIRBuilderTest, TestEqExprTrue) {
@@ -179,129 +182,129 @@ TEST_F(PredicateIRBuilderTest, TestEqExprTrue) {
 }
 
 TEST_F(PredicateIRBuilderTest, TestTimestampCompare) {
-    codec::Timestamp t1(1590115420000L);
-    codec::Timestamp t2(1590115420000L);
-    codec::Timestamp t3(1590115430000L);
-    codec::Timestamp t4(1590115410000L);
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    Timestamp t1(1590115420000L);
+    Timestamp t2(1590115420000L);
+    Timestamp t3(1590115430000L);
+    Timestamp t4(1590115410000L);
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t2, true, ::hybridse::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t3, true, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t3, true, ::hybridse::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t3, true, ::hybridse::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t4, true, ::hybridse::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+    BinaryPredicateExprCheck<Timestamp, Timestamp, bool>(
 
         t1, t4, true, ::hybridse::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, TestDateCompare) {
-    codec::Date d1(2020, 05, 27);
-    codec::Date d2(2020, 05, 27);
-    codec::Date d3(2020, 05, 28);
-    codec::Date d4(2020, 05, 26);
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    Date d1(2020, 05, 27);
+    Date d2(2020, 05, 27);
+    Date d3(2020, 05, 28);
+    Date d4(2020, 05, 26);
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d2, true, ::hybridse::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d3, true, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d3, true, ::hybridse::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d3, true, ::hybridse::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d2, true, ::hybridse::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d2, true, ::hybridse::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d4, true, ::hybridse::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+    BinaryPredicateExprCheck<Date, Date, bool>(
         d1, d4, true, ::hybridse::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, TestStringStringCompare) {
-    codec::StringRef d1("text");
-    codec::StringRef d2("text");
-    codec::StringRef d3("text1");
-    codec::StringRef d4("");
-    codec::StringRef d5("text2");
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    StringRef d1("text");
+    StringRef d2("text");
+    StringRef d3("text1");
+    StringRef d4("");
+    StringRef d5("text2");
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d2, true, ::hybridse::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d3, true, ::hybridse::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d3, true, ::hybridse::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d3, d5, true, ::hybridse::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d3, true, ::hybridse::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d2, true, ::hybridse::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d2, true, ::hybridse::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d4, true, ::hybridse::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+    BinaryPredicateExprCheck<StringRef, StringRef, bool>(
 
         d1, d4, true, ::hybridse::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare0) {
-    BinaryPredicateExprCheck<codec::StringRef, int32_t, bool>(
-        codec::StringRef("123"), 123, true, ::hybridse::node::kFnOpEq);
+    BinaryPredicateExprCheck<StringRef, int32_t, bool>(
+        StringRef("123"), 123, true, ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare1) {
-    BinaryPredicateExprCheck<codec::StringRef, int64_t, bool>(
-        codec::StringRef("123"), static_cast<int64_t>(123), true,
+    BinaryPredicateExprCheck<StringRef, int64_t, bool>(
+        StringRef("123"), static_cast<int64_t>(123), true,
         ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare2) {
-    BinaryPredicateExprCheck<codec::StringRef, double, bool>(
-        codec::StringRef("123"), 123.0, true, ::hybridse::node::kFnOpEq);
+    BinaryPredicateExprCheck<StringRef, double, bool>(
+        StringRef("123"), 123.0, true, ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare3) {
-    BinaryPredicateExprCheck<codec::StringRef, float, bool>(
-        codec::StringRef("123"), 123.0f, true, ::hybridse::node::kFnOpEq);
+    BinaryPredicateExprCheck<StringRef, float, bool>(
+        StringRef("123"), 123.0f, true, ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare4) {
-    BinaryPredicateExprCheck<codec::StringRef, codec::Date, bool>(
-        codec::StringRef("2020-05-30"), codec::Date(2020, 05, 30), true,
+    BinaryPredicateExprCheck<StringRef, Date, bool>(
+        StringRef("2020-05-30"), Date(2020, 05, 30), true,
         ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestStringAnytypeCompare5) {
-    BinaryPredicateExprCheck<codec::StringRef, codec::Timestamp, bool>(
-        codec::StringRef("2020-05-22 10:43:40"),
-        codec::Timestamp(1590115420000L), true, ::hybridse::node::kFnOpEq);
+    BinaryPredicateExprCheck<StringRef, Timestamp, bool>(
+        StringRef("2020-05-22 10:43:40"),
+        Timestamp(1590115420000L), true, ::hybridse::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, TestEqExprFalse) {
@@ -323,14 +326,14 @@ TEST_F(PredicateIRBuilderTest, TestEqExprFalse) {
         1.0, 1.1, false, ::hybridse::node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestEqNull0) {
-    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
-                             Nullable<codec::StringRef>, Nullable<bool>>(
-        codec::StringRef("abc"), nullptr, nullptr, node::kFnOpEq);
+    BinaryPredicateExprCheck<Nullable<StringRef>,
+                             Nullable<StringRef>, Nullable<bool>>(
+        StringRef("abc"), nullptr, nullptr, node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestEqNull1) {
-    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
-                             Nullable<codec::StringRef>, Nullable<bool>>(
-        nullptr, codec::StringRef("abc"), nullptr, node::kFnOpEq);
+    BinaryPredicateExprCheck<Nullable<StringRef>,
+                             Nullable<StringRef>, Nullable<bool>>(
+        nullptr, StringRef("abc"), nullptr, node::kFnOpEq);
 }
 TEST_F(PredicateIRBuilderTest, TestEqNull) {
     PredicateNullCheck(node::kFnOpEq);

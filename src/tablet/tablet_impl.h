@@ -31,8 +31,11 @@
 #include "base/spinlock.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
+#include "nameserver/system_table.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "sdk/sql_cluster_router.h"
+#include "statistics/query_response_time/deploy_query_response_time.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/bulk_load_mgr.h"
@@ -41,8 +44,6 @@
 #include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
-#include "sdk/sql_cluster_router.h"
-#include "nameserver/system_table.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -262,6 +263,11 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void GetAndFlushDeployStats(::google::protobuf::RpcController* controller,
+                                const ::openmldb::api::GAFDeployStatsRequest* request,
+                                ::openmldb::api::DeployStatsResponse* response,
+                                ::google::protobuf::Closure* done) override;
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -390,12 +396,19 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
 
+    bool IsCollectDeployStatsEnabled() const;
+
+    // collect deploy statistics into memory
+    void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
+
  private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
+
+    bool InitClusterRouter();
 
     Tables tables_;
     std::mutex mu_;
@@ -432,6 +445,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
+
+    std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
 };
 
 }  // namespace tablet

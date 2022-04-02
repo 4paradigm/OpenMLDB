@@ -252,10 +252,11 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
+    // todo: init session variables from systemtable
     session_variables_.emplace("execute_mode", "offline");
     session_variables_.emplace("enable_trace", "false");
     session_variables_.emplace("sync_job", "false");
-    session_variables_.emplace("job_timeout", "20000"); // ref TaskManagerClient::request_timeout_ms_
+    session_variables_.emplace("job_timeout", "20000");  // ref TaskManagerClient::request_timeout_ms_
     return true;
 }
 
@@ -1662,7 +1663,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (status->code != 0) {
                 return {};
             }
-            if(rs->Size() == 0) {
+            if (rs->Size() == 0) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
                 status->msg = "Job not found: " + std::to_string(job_id);
                 return {};
@@ -2350,8 +2351,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
         }
         case hybridse::node::kPlanTypeLoadData: {
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
-            // Check if passes db or uses default db
-            if (plan->Db().empty() && db.empty()) {
+            std::string database = plan->Db().empty() ? db : plan->Db();
+            if (database.empty()) {
                 *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
                 return {};
             }
@@ -2363,10 +2364,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
                     // Handle in online mode
-                    base_status = ImportOnlineData(sql, config, db, IsSyncJob(), job_info);
+                    base_status = ImportOnlineData(sql, config, database, IsSyncJob(), job_info);
                 } else {
                     // Handle in offline mode
-                    base_status = ImportOfflineData(sql, config, db, IsSyncJob(), job_info);
+                    base_status = ImportOfflineData(sql, config, database, IsSyncJob(), job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
                     std::stringstream ss;
@@ -2374,11 +2375,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                     std::vector<std::string> value = {ss.str()};
                     *status = {};
                     return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                } else {
+                    *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }
             } else {
                 // Handle in standalone mode
-                std::string database = plan->Db().empty() ? GetDatabase() : plan->Db();
-                *status = HandleLoadDataInfile(plan->Db(), plan->Table(), plan->File(), plan->Options());
+                *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), plan->Options());
             }
             return {};
         }
@@ -2787,6 +2789,11 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     if (!lw_status.IsOK()) {
         return lw_status;
     }
+    for (const auto& o : *deploy_node->Options()) {
+        auto option = sp_info.add_options();
+        option->set_name(o.first);
+        option->mutable_value()->set_value(o.second->GetExprString());
+    }
 
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
@@ -2920,9 +2927,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
-    const hybridse::node::DeployPlanNode* deploy_node, const std::set<std::pair<std::string, std::string>>& table_pair,
+    const hybridse::node::DeployPlanNode* deploy_node,
+    const std::set<std::pair<std::string, std::string>>& table_pair,
     const std::string& select_sql) {
-    auto iter = deploy_node->Options()->find("long_windows");
+    auto iter = deploy_node->Options()->find(hybridse::vm::LONG_WINDOWS);
     std::string long_window_param = "";
     if (iter != deploy_node->Options()->end()) {
         long_window_param = iter->second->GetExprString();
@@ -3238,8 +3246,10 @@ std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
     std::vector<::hybridse::vm::AggrTableInfo> table_infos;
     auto rs = ExecuteSQL(meta_db, select_sql, &status);
     if (!status.IsOK()) {
-        LOG(ERROR) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
+        LOG(WARNING) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
         return table_infos;
+    } else {
+        DLOG(INFO) << "Get pre-aggr table info succeed, size: " << rs->Size();
     }
 
     while (rs->Next()) {

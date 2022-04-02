@@ -98,7 +98,6 @@ bool ClusterSDK::TriggerNotify() const {
 }
 
 bool ClusterSDK::GlobalVarNotify() const {
-    LOG(INFO) << "Global variable changed trigger notify node";
     return zk_client_->Increment(globalvar_changed_notify_path_);
 }
 

@@ -5,20 +5,22 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 jobs:
@@ -61,6 +63,7 @@ jobs:
           sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox
           bash start_onebox.sh
+          sh start_onebox.sh standalone
 
       - name: Build and Coverage
         run: |

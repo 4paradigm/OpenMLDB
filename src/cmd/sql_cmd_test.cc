@@ -18,9 +18,11 @@
 
 #include <unistd.h>
 
+#include <limits>
 #include <memory>
 #include <string>
 
+#include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
@@ -28,6 +30,7 @@
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 DECLARE_bool(interactive);
@@ -41,65 +44,10 @@ namespace openmldb {
 namespace cmd {
 
 ::openmldb::sdk::MiniCluster* mc_;
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
-inline void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
-    hybridse::sdk::Status status;
-    for (auto sql : sqls) {
-        sr->ExecuteSQL(std::string(sql), &status);
-        EXPECT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: " << status.msg;
-    }
-}
-
-// expect object for ResultSet cell
-struct CellExpectInfo {
-    CellExpectInfo() {}
-
-    CellExpectInfo(const char* buf) : expect_(buf) {}  // NOLINT
-
-    CellExpectInfo(const std::string& expect) : expect_(expect) {}  // NOLINT
-
-    CellExpectInfo(const std::optional<std::string>& expect) : expect_(expect) {}  // NOLINT
-
-    CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
-        : expect_(expect), expect_not_(expect_not) {}
-
-    // result string for target cell to match exactly
-    // if empty, do not check
-    std::optional<std::string const> expect_;
-
-    // what string target cell string should not match
-    // if empty, do not check
-    std::optional<std::string const> expect_not_;
-};
-
-// expect the output of a ResultSet, first row is schema, all compared in string
-// if expect[i][j].(expect_|expect_not_) is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
-    size_t idx = 0;
-    // schema check
-    ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());
-    for (size_t i = 0; i < expect[idx].size(); ++i) {
-        ASSERT_TRUE(expect[idx][i].expect_.has_value());
-        EXPECT_EQ(expect[idx][i].expect_.value(), rs->GetSchema()->GetColumnName(i));
-    }
-
-    while (++idx < expect.size() && rs->Next()) {
-        for (size_t i = 0; i < expect[idx].size(); ++i) {
-            std::string val;
-            EXPECT_TRUE(rs->GetAsString(i, val));
-            if (expect[idx][i].expect_.has_value()) {
-                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
-            }
-            if (expect[idx][i].expect_not_.has_value()) {
-                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
-            }
-        }
-    }
-}
+using test::GenRand;
+using test::ProcessSQLs;
+using test::ExpectResultSetStrEq;
 
 struct CLI {
     ::openmldb::sdk::DBSDK* cs = nullptr;
@@ -293,6 +241,33 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
     sr->ExecuteSQL("drop database " + db + ";", &status);
     ASSERT_TRUE(status.IsOK());
+}
+
+TEST_F(SqlCmdTest, load_data) {
+    sr = standalone_cli.sr;
+    cs = standalone_cli.cs;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    std::string file_name = "./myfile.csv";
+    std::ofstream ofile;
+    ofile.open(file_name);
+    ofile << "c1,c2" << std::endl;
+    for (int i = 0; i < 10; i++) {
+        ofile << "aa" << i << "," << i << std::endl;
+    }
+    ofile.close();
+    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(10, result->Size());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+    unlink(file_name.c_str());
 }
 
 TEST_P(DBSDKTest, Deploy) {
@@ -498,8 +473,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     sr->SetDatabase("");
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -545,8 +519,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
             });
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -577,21 +550,37 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
         ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-              "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-             {{},
-              nameserver::GLOBAL_VARIABLES,
-              nameserver::INFORMATION_SCHEMA_DB,
-              "memory",
-              {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
-              {},
-              {},
-              "1",
-              "0",
-              "1",
-              "NULL",
-              "NULL",
-              "NULL"}},
+            {
+                {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
+                 "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
+                 "Offline_deep_copy"},
+                {{},
+                 nameserver::DEPLOY_RESPONSE_TIME,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+                {{},
+                 nameserver::GLOBAL_VARIABLES,
+                 nameserver::INFORMATION_SCHEMA_DB,
+                 "memory",
+                 {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+                 {},
+                 {},
+                 "1",
+                 "0",
+                 "1",
+                 "NULL",
+                 "NULL",
+                 "NULL"},
+            },
             rs.get());
     }
 
@@ -612,50 +601,254 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
-    auto ns_client = cs->GetNsClient();
 
+    ::hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show global variables", &status);
+    // init global variable
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
+                          {"enable_trace", "false"},
+                          {"sync_job", "false"},
+                          {"job_timeout", "20000"},
+                          {"execute_mode", "offline"}},
+                         rs.get());
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='true';",
+                        "set @@global.sync_job='true';",
+                        "set @@global.job_timeout='30000';",
+                        "set @@global.execute_mode='online';",
+                    });
+    rs = sr->ExecuteSQL("show global variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
+                          {"enable_trace", "true"},
+                          {"sync_job", "true"},
+                          {"job_timeout", "30000"},
+                          {"execute_mode", "online"}},
+                         rs.get());
+
+    ProcessSQLs(sr, {
+                        "set @@global.enable_trace='false';",
+                        "set @@global.sync_job='false';",
+                        "set @@global.job_timeout='20000';",
+                        "set @@global.execute_mode='offline';",
+                    });
+
+    ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
+                          {"enable_trace", "false"},
+                          {"sync_job", "false"},
+                          {"job_timeout", "20000"},
+                          {"execute_mode", "offline"}},
+                         rs.get());
+}
+
+// --------------------------------------------------------------------------------------
+// basic functional UTs to test if it is correct for deploy query response time collection
+// see NameServerImpl::SyncDeployStats & TabletImpl::TryCollectDeployStats
+// --------------------------------------------------------------------------------------
+
+// a proxy class to create and cleanup deployment stats more gracefully
+struct DeploymentEnv {
+    explicit DeploymentEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {
+        db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        dp_name_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        procedure_name_ = absl::StrCat("procedure_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+    }
+
+    virtual ~DeploymentEnv() {
+        TearDown();
+    }
+
+    void SetUp() {
+        ProcessSQLs(
+            sr_,
+            {
+                "set session execute_mode = 'online'",
+                absl::StrCat("create database ", db_),
+                absl::StrCat("use ", db_),
+                absl::StrCat("create table ", table_,
+                             " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));"),
+                absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
+                             " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+                absl::StrCat(
+                    "create procedure ", procedure_name_,
+                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
+                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                    table_,
+                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
+            });
+    }
+
+    void TearDown() {
+        ProcessSQLs(sr_, {
+                             absl::StrCat("drop deployment ", dp_name_),
+                             absl::StrCat("drop procedure ", procedure_name_),
+                             absl::StrCat("drop table ", table_),
+                             absl::StrCat("drop database ", db_),
+                             "set global deploy_stats = 'off'",
+                         });
+    }
+
+    void CallDeployProcedureBatch() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, dp_name_);
+        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
+        auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
+        sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void CallDeployProcedure() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, dp_name_);
+        sr->CallProcedure(db_, dp_name_, rr, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void CallProcedure() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, procedure_name_);
+        sr->CallProcedure(db_, procedure_name_, rr, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void EnableDeployStats() {
+        ProcessSQLs(sr_, {
+                             "set global deploy_stats = 'on'",
+                         });
+    }
+
+    sdk::SQLClusterRouter* sr_;
+    absl::BitGen gen_;
+    // variables generate randomly in SetUp
+    std::string db_;
+    std::string table_;
+    std::string dp_name_;
+    std::string procedure_name_;
+
+ private:
+    void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) { // NOLINT
+        hybridse::sdk::Status s;
+        auto res = sr_->GetRequestRowByProcedure(db_, name, &s);
+        ASSERT_TRUE(s.IsOK());
+        ASSERT_TRUE(res->Init(5));
+        ASSERT_TRUE(res->AppendString("hello"));
+        ASSERT_TRUE(res->AppendInt32(5));
+        ASSERT_TRUE(res->AppendInt64(5));
+        ASSERT_TRUE(res->AppendFloat(0.1));
+        ASSERT_TRUE(res->AppendDouble(0.1));
+        ASSERT_TRUE(res->AppendTimestamp(100342));
+        ASSERT_TRUE(res->AppendDate(2012, 10, 10));
+        ASSERT_TRUE(res->Build());
+        *rs = res;
+    }
+};
+
+static const char QueryDeployResponseTime[] = "select * from INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME";
+
+TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    DeploymentEnv env(sr);
+    env.SetUp();
+    env.CallDeployProcedureBatch();
+    env.CallDeployProcedure();
+
+    absl::SleepFor(absl::Seconds(3));
+
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(0, rs->Size());
+
+    env.EnableDeployStats();
+
+    absl::SleepFor(absl::Seconds(3));
+
+    // HandleSQL exists only for purpose of printing
+    HandleSQL(QueryDeployResponseTime);
+    rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(0, rs->Size());
+}
+
+TEST_P(DBSDKTest, DeployStatsEnabledAfterSetGlobal) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    // FIXME(#1547): test skiped due to Deploy Response Time can't enable in standalone mode
     if (cs->IsClusterMode()) {
-        std::vector<::openmldb::nameserver::TableInfo> tables;
-        std::string msg;
-        ASSERT_TRUE(ns_client->ShowTable("", nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        tables.clear();
-        ASSERT_TRUE(
-            ns_client->ShowTable(nameserver::GLOBAL_VARIABLES, nameserver::INFORMATION_SCHEMA_DB, false, tables, msg));
-        ASSERT_EQ(1, tables.size());
-        ASSERT_STREQ(nameserver::GLOBAL_VARIABLES, tables[0].name().c_str());
-        tables.clear();
+        DeploymentEnv env(sr);
+        env.SetUp();
+        env.EnableDeployStats();
+        // sleep a while for global variable notification
+        absl::SleepFor(absl::Seconds(2));
 
-        ::hybridse::sdk::Status status;
-        std::string sql = "set @@global.enable_trace='true';";
-        auto res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set @@global.execute_mode='online';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        auto rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("true", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("online", rs->GetStringUnsafe(1));
+        hybridse::sdk::Status status;
+        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        // as deploy stats in tablet is lazy managed, the deploy stats will stay empty util the first procedure call
+        // happens
+        ASSERT_EQ(0, rs->Size());
 
-        sql = "set GLOBAL enable_trace='false';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        sql = "set GLOBAL execute_mode='offline';";
-        res = sr->ExecuteSQL(sql, &status);
-        ASSERT_EQ(0, status.code);
-        rs = sr->ExecuteSQL("show global variables", &status);
-        ASSERT_EQ(2, rs->Size());
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("enable_trace", rs->GetStringUnsafe(0));
-        ASSERT_EQ("false", rs->GetStringUnsafe(1));
-        ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("execute_mode", rs->GetStringUnsafe(0));
-        ASSERT_EQ("offline", rs->GetStringUnsafe(1));
+        // warm up deploy stats
+        env.CallDeployProcedureBatch();
+        env.CallDeployProcedure();
+
+        absl::SleepFor(absl::Seconds(3));
+
+        HandleSQL(QueryDeployResponseTime);
+        rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
+
+        int cnt = 0;
+        while (rs->Next()) {
+            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
+            cnt += rs->GetInt32Unsafe(2);
+        }
+        EXPECT_EQ(2, cnt);
+    }
+}
+
+TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    if (cs->IsClusterMode()) {
+        DeploymentEnv env(sr);
+        env.SetUp();
+
+        env.EnableDeployStats();
+        absl::SleepFor(absl::Seconds(2));
+
+        for (int i =0; i < 5; ++i) {
+            env.CallProcedure();
+        }
+
+        for (int i = 0; i < 10; ++i) {
+            env.CallDeployProcedureBatch();
+            env.CallDeployProcedure();
+        }
+        absl::SleepFor(absl::Seconds(3));
+
+        HandleSQL(QueryDeployResponseTime);
+        hybridse::sdk::Status status;
+        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
+        int cnt = 0;
+        while (rs->Next()) {
+            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
+            cnt += rs->GetInt32Unsafe(2);
+        }
+        EXPECT_EQ(10 + 10, cnt);
     }
 }
 
@@ -715,7 +908,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
     int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(1);
+    sleep(3);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();

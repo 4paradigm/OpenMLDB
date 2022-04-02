@@ -919,7 +919,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
-    sleep(1);
+    sleep(5);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {

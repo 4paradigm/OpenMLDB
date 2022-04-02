@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace hybridse {
 namespace sdk {
@@ -150,6 +151,8 @@ class ProcedureInfo {
     virtual const std::string& GetMainTable() const = 0;
     virtual const std::string& GetMainDb() const = 0;
     virtual ProcedureType GetType() const = 0;
+    virtual const std::string* GetOption(const std::string& key) const = 0;
+    virtual const std::unordered_map<std::string, std::string>* GetOption() const = 0;
 };
 
 }  // namespace sdk

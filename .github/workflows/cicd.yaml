@@ -6,21 +6,24 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
     tags:
       - v*
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 env:

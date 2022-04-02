@@ -1497,6 +1497,10 @@ class BinaryExpr : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
+    static BinaryExpr *CastFrom(ExprNode *node) {
+        return dynamic_cast<BinaryExpr *>(node);
+    }
+
  private:
     FnOperator op_;
 };

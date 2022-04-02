@@ -48,6 +48,7 @@ namespace hybridse {
 namespace codegen {
 using hybridse::codec::ArrayListV;
 using hybridse::codec::Row;
+using openmldb::base::Date;
 
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
@@ -117,7 +118,7 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     ASSERT_EQ(1.0, row_view.GetDoubleUnsafe(2));
 
     ASSERT_EQ(type::kDate, schema.Get(3).type());
-    ASSERT_EQ(codec::Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
+    ASSERT_EQ(Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
 
     ASSERT_EQ(type::kInt64, schema.Get(4).type());
     ASSERT_EQ(1590115420000L, row_view.GetInt64Unsafe(4));

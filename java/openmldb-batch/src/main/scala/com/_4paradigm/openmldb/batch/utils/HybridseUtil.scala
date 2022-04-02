@@ -123,6 +123,23 @@ object HybridseUtil {
     }
   }
 
+  def nodeDataTypeToSparkType(dtype: com._4paradigm.hybridse.node.DataType): DataType = {
+    dtype match {
+      case com._4paradigm.hybridse.node.DataType.kInt16 => ShortType
+      case com._4paradigm.hybridse.node.DataType.kInt32 => IntegerType
+      case com._4paradigm.hybridse.node.DataType.kInt64 => LongType
+      case com._4paradigm.hybridse.node.DataType.kFloat => FloatType
+      case com._4paradigm.hybridse.node.DataType.kDouble => DoubleType
+      case com._4paradigm.hybridse.node.DataType.kBool => BooleanType
+      case com._4paradigm.hybridse.node.DataType.kVarchar => StringType
+      case com._4paradigm.hybridse.node.DataType.kVarchar => StringType
+      case com._4paradigm.hybridse.node.DataType.kDate => DateType
+      case com._4paradigm.hybridse.node.DataType.kTimestamp => TimestampType
+      case _ => throw new IllegalArgumentException(
+        s"HybridSE node data type $dtype not supported")
+    }
+  }
+
   def getHybridseType(dtype: DataType): Type = {
     dtype match {
       case ShortType => Type.kInt16

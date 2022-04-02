@@ -17,6 +17,7 @@
 #include "node/expr_node.h"
 #include <utility>
 #include <vector>
+#include "base/type.h"
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
@@ -26,7 +27,8 @@
 namespace hybridse {
 namespace node {
 
-using codec::Timestamp;
+using openmldb::base::Timestamp;
+using openmldb::base::Date;
 using udf::Nullable;
 
 class ExprNodeTest : public ::testing::Test {
@@ -254,14 +256,14 @@ void TestInferBinaryCompare(FnOperator op) {
     CheckInferError<Timestamp, int64_t>(do_build);
     CheckInferError<Timestamp, float>(do_build);
     CheckInferError<Timestamp, double>(do_build);
-    CheckInferError<Timestamp, codec::Date>(do_build);
-    CheckInferError<codec::Date, bool>(do_build);
-    CheckInferError<codec::Date, int16_t>(do_build);
-    CheckInferError<codec::Date, int32_t>(do_build);
-    CheckInferError<codec::Date, int64_t>(do_build);
-    CheckInferError<codec::Date, float>(do_build);
-    CheckInferError<codec::Date, double>(do_build);
-    CheckInferError<codec::Date, Timestamp>(do_build);
+    CheckInferError<Timestamp, Date>(do_build);
+    CheckInferError<Date, bool>(do_build);
+    CheckInferError<Date, int16_t>(do_build);
+    CheckInferError<Date, int32_t>(do_build);
+    CheckInferError<Date, int64_t>(do_build);
+    CheckInferError<Date, float>(do_build);
+    CheckInferError<Date, double>(do_build);
+    CheckInferError<Date, Timestamp>(do_build);
 }
 
 void TestInferBinaryLogical(FnOperator op) {
@@ -356,20 +358,20 @@ TEST_F(ExprNodeTest, AddTypeInferTest_22) {
     CheckBinaryOpInfer<double, double, double>(kFnOpAdd);
 }
 TEST_F(ExprNodeTest, AddTypeInferTest_23) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, bool>(kFnOpAdd);
-    CheckBinaryOpInfer<codec::Timestamp, bool, codec::Timestamp>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, Timestamp, bool>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, bool, Timestamp>(kFnOpAdd);
 }
 TEST_F(ExprNodeTest, AddTypeInferTest_24) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int16_t>(kFnOpAdd);
-    CheckBinaryOpInfer<codec::Timestamp, int16_t, codec::Timestamp>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int16_t>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, int16_t, Timestamp>(kFnOpAdd);
 }
 TEST_F(ExprNodeTest, AddTypeInferTest_25) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int32_t>(kFnOpAdd);
-    CheckBinaryOpInfer<codec::Timestamp, int32_t, codec::Timestamp>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int32_t>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, int32_t, Timestamp>(kFnOpAdd);
 }
 TEST_F(ExprNodeTest, AddTypeInferTest_26) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int64_t>(kFnOpAdd);
-    CheckBinaryOpInfer<codec::Timestamp, int64_t, codec::Timestamp>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int64_t>(kFnOpAdd);
+    CheckBinaryOpInfer<Timestamp, int64_t, Timestamp>(kFnOpAdd);
 }
 
 TEST_F(ExprNodeTest, SubTypeInferTest_1) {
@@ -454,20 +456,20 @@ TEST_F(ExprNodeTest, SubTypeInferTest_22) {
     CheckBinaryOpInfer<double, double, double>(kFnOpMinus);
 }
 TEST_F(ExprNodeTest, SubTypeInferTest_23) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, bool>(kFnOpMinus);
-    CheckBinaryOpInferError<bool, codec::Timestamp>(kFnOpMinus);
+    CheckBinaryOpInfer<Timestamp, Timestamp, bool>(kFnOpMinus);
+    CheckBinaryOpInferError<bool, Timestamp>(kFnOpMinus);
 }
 TEST_F(ExprNodeTest, SubTypeInferTest_24) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int16_t>(kFnOpMinus);
-    CheckBinaryOpInferError<int16_t, codec::Timestamp>(kFnOpMinus);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int16_t>(kFnOpMinus);
+    CheckBinaryOpInferError<int16_t, Timestamp>(kFnOpMinus);
 }
 TEST_F(ExprNodeTest, SubTypeInferTest_25) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int32_t>(kFnOpMinus);
-    CheckBinaryOpInferError<int32_t, codec::Timestamp>(kFnOpMinus);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int32_t>(kFnOpMinus);
+    CheckBinaryOpInferError<int32_t, Timestamp>(kFnOpMinus);
 }
 TEST_F(ExprNodeTest, SubTypeInferTest_26) {
-    CheckBinaryOpInfer<codec::Timestamp, codec::Timestamp, int64_t>(kFnOpMinus);
-    CheckBinaryOpInferError<int64_t, codec::Timestamp>(kFnOpMinus);
+    CheckBinaryOpInfer<Timestamp, Timestamp, int64_t>(kFnOpMinus);
+    CheckBinaryOpInferError<int64_t, Timestamp>(kFnOpMinus);
 }
 TEST_F(ExprNodeTest, MultiTypeInferTest_1) {
     CheckBinaryOpInfer<bool, bool, bool>(kFnOpMulti);
@@ -551,20 +553,20 @@ TEST_F(ExprNodeTest, MultiTypeInferTest_22) {
     CheckBinaryOpInfer<double, double, double>(kFnOpMulti);
 }
 TEST_F(ExprNodeTest, MultiTypeInferTest_23) {
-    CheckBinaryOpInferError<codec::Timestamp, bool>(kFnOpMulti);
-    CheckBinaryOpInferError<bool, codec::Timestamp>(kFnOpMulti);
+    CheckBinaryOpInferError<Timestamp, bool>(kFnOpMulti);
+    CheckBinaryOpInferError<bool, Timestamp>(kFnOpMulti);
 }
 TEST_F(ExprNodeTest, MultiTypeInferTest_24) {
-    CheckBinaryOpInferError<codec::Timestamp, int16_t>(kFnOpMulti);
-    CheckBinaryOpInferError<int16_t, codec::Timestamp>(kFnOpMulti);
+    CheckBinaryOpInferError<Timestamp, int16_t>(kFnOpMulti);
+    CheckBinaryOpInferError<int16_t, Timestamp>(kFnOpMulti);
 }
 TEST_F(ExprNodeTest, MultiTypeInferTest_25) {
-    CheckBinaryOpInferError<codec::Timestamp, int32_t>(kFnOpMulti);
-    CheckBinaryOpInferError<int32_t, codec::Timestamp>(kFnOpMulti);
+    CheckBinaryOpInferError<Timestamp, int32_t>(kFnOpMulti);
+    CheckBinaryOpInferError<int32_t, Timestamp>(kFnOpMulti);
 }
 TEST_F(ExprNodeTest, MultiTypeInferTest_26) {
-    CheckBinaryOpInferError<codec::Timestamp, int64_t>(kFnOpMulti);
-    CheckBinaryOpInferError<int64_t, codec::Timestamp>(kFnOpMulti);
+    CheckBinaryOpInferError<Timestamp, int64_t>(kFnOpMulti);
+    CheckBinaryOpInferError<int64_t, Timestamp>(kFnOpMulti);
 }
 
 TEST_F(ExprNodeTest, FDivTypeInferTest_1) {
@@ -649,28 +651,28 @@ TEST_F(ExprNodeTest, FDivTypeInferTest_22) {
     CheckBinaryOpInfer<double, double, double>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_23) {
-    CheckBinaryOpInfer<double, codec::Timestamp, bool>(kFnOpFDiv);
-    CheckBinaryOpInferError<bool, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, bool>(kFnOpFDiv);
+    CheckBinaryOpInferError<bool, Timestamp>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_24) {
-    CheckBinaryOpInfer<double, codec::Timestamp, int16_t>(kFnOpFDiv);
-    CheckBinaryOpInferError<int16_t, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, int16_t>(kFnOpFDiv);
+    CheckBinaryOpInferError<int16_t, Timestamp>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_25) {
-    CheckBinaryOpInfer<double, codec::Timestamp, int32_t>(kFnOpFDiv);
-    CheckBinaryOpInferError<int32_t, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, int32_t>(kFnOpFDiv);
+    CheckBinaryOpInferError<int32_t, Timestamp>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_26) {
-    CheckBinaryOpInfer<double, codec::Timestamp, int64_t>(kFnOpFDiv);
-    CheckBinaryOpInferError<int64_t, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, int64_t>(kFnOpFDiv);
+    CheckBinaryOpInferError<int64_t, Timestamp>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_27) {
-    CheckBinaryOpInfer<double, codec::Timestamp, float>(kFnOpFDiv);
-    CheckBinaryOpInferError<float, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, float>(kFnOpFDiv);
+    CheckBinaryOpInferError<float, Timestamp>(kFnOpFDiv);
 }
 TEST_F(ExprNodeTest, FDivTypeInferTest_28) {
-    CheckBinaryOpInfer<double, codec::Timestamp, double>(kFnOpFDiv);
-    CheckBinaryOpInferError<double, codec::Timestamp>(kFnOpFDiv);
+    CheckBinaryOpInfer<double, Timestamp, double>(kFnOpFDiv);
+    CheckBinaryOpInferError<double, Timestamp>(kFnOpFDiv);
 }
 
 TEST_F(ExprNodeTest, DIVTypeInferTest_1) {
@@ -755,20 +757,20 @@ TEST_F(ExprNodeTest, DIVTypeInferTest_22) {
     CheckBinaryOpInferError<double, double>(kFnOpDiv);
 }
 TEST_F(ExprNodeTest, DIVTypeInferTest_23) {
-    CheckBinaryOpInferError<codec::Timestamp, bool>(kFnOpDiv);
-    CheckBinaryOpInferError<bool, codec::Timestamp>(kFnOpDiv);
+    CheckBinaryOpInferError<Timestamp, bool>(kFnOpDiv);
+    CheckBinaryOpInferError<bool, Timestamp>(kFnOpDiv);
 }
 TEST_F(ExprNodeTest, DIVTypeInferTest_24) {
-    CheckBinaryOpInferError<codec::Timestamp, int16_t>(kFnOpDiv);
-    CheckBinaryOpInferError<int16_t, codec::Timestamp>(kFnOpDiv);
+    CheckBinaryOpInferError<Timestamp, int16_t>(kFnOpDiv);
+    CheckBinaryOpInferError<int16_t, Timestamp>(kFnOpDiv);
 }
 TEST_F(ExprNodeTest, DIVTypeInferTest_25) {
-    CheckBinaryOpInferError<codec::Timestamp, int32_t>(kFnOpDiv);
-    CheckBinaryOpInferError<int32_t, codec::Timestamp>(kFnOpDiv);
+    CheckBinaryOpInferError<Timestamp, int32_t>(kFnOpDiv);
+    CheckBinaryOpInferError<int32_t, Timestamp>(kFnOpDiv);
 }
 TEST_F(ExprNodeTest, DIVTypeInferTest_26) {
-    CheckBinaryOpInferError<codec::Timestamp, int64_t>(kFnOpDiv);
-    CheckBinaryOpInferError<int64_t, codec::Timestamp>(kFnOpDiv);
+    CheckBinaryOpInferError<Timestamp, int64_t>(kFnOpDiv);
+    CheckBinaryOpInferError<int64_t, Timestamp>(kFnOpDiv);
 }
 
 TEST_F(ExprNodeTest, ModTypeInferTest_1) {
@@ -853,20 +855,20 @@ TEST_F(ExprNodeTest, ModTypeInferTest_22) {
     CheckBinaryOpInfer<double, double, double>(kFnOpMod);
 }
 TEST_F(ExprNodeTest, ModTypeInferTest_23) {
-    CheckBinaryOpInferError<codec::Timestamp, bool>(kFnOpMod);
-    CheckBinaryOpInferError<bool, codec::Timestamp>(kFnOpMod);
+    CheckBinaryOpInferError<Timestamp, bool>(kFnOpMod);
+    CheckBinaryOpInferError<bool, Timestamp>(kFnOpMod);
 }
 TEST_F(ExprNodeTest, ModTypeInferTest_24) {
-    CheckBinaryOpInferError<codec::Timestamp, int16_t>(kFnOpMod);
-    CheckBinaryOpInferError<int16_t, codec::Timestamp>(kFnOpMod);
+    CheckBinaryOpInferError<Timestamp, int16_t>(kFnOpMod);
+    CheckBinaryOpInferError<int16_t, Timestamp>(kFnOpMod);
 }
 TEST_F(ExprNodeTest, ModTypeInferTest_25) {
-    CheckBinaryOpInferError<codec::Timestamp, int32_t>(kFnOpMod);
-    CheckBinaryOpInferError<int32_t, codec::Timestamp>(kFnOpMod);
+    CheckBinaryOpInferError<Timestamp, int32_t>(kFnOpMod);
+    CheckBinaryOpInferError<int32_t, Timestamp>(kFnOpMod);
 }
 TEST_F(ExprNodeTest, ModTypeInferTest_26) {
-    CheckBinaryOpInferError<codec::Timestamp, int64_t>(kFnOpMod);
-    CheckBinaryOpInferError<int64_t, codec::Timestamp>(kFnOpMod);
+    CheckBinaryOpInferError<Timestamp, int64_t>(kFnOpMod);
+    CheckBinaryOpInferError<int64_t, Timestamp>(kFnOpMod);
 }
 
 TEST_F(ExprNodeTest, InferBinaryCompareTypeTest) {
