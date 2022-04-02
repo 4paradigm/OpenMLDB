@@ -5,7 +5,7 @@ import pandas as pd
 import time
 import numpy as np
 from sklearn.model_selection import train_test_split
-import lightgbm as lgb  # mac needs `brew install libomp`
+import xgboost as xgb
 import sqlalchemy as db
 
 def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
