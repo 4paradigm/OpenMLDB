@@ -14,9 +14,11 @@
 
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
+add_subdirectory(statistics)
+
 function(compile_proto proto_name project_dir)
 add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
-        COMMAND ${CMAKE_PREFIX_PATH}/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto
+        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
         --cpp_out=${project_dir}/src/proto/
         --java_out=${project_dir}/java/openmldb-native/src/main/java
         --java_out=${project_dir}/java/openmldb-import/src/main/java
@@ -41,7 +43,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
+    set(TEST_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
@@ -97,7 +99,7 @@ add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tabl
 
 add_library(openmldb_flags flags.cc)
 
-set(BIN_LIBS apiserver nameserver tablet openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
+set(BIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}

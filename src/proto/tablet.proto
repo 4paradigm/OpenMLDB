@@ -823,6 +823,7 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+
 message CreateAggregatorRequest {
     optional TableMeta base_table_meta = 1;
     optional uint32 aggr_table_tid = 2;
@@ -837,6 +838,19 @@ message CreateAggregatorRequest {
 message CreateAggregatorResponse {
     optional int32 code = 1;
     optional string msg = 2;
+}
+message GAFDeployStatsRequest {}
+
+message DeployStatsResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    message DeployStat {
+        required string deploy_name = 1;
+        required string time = 2;
+        required uint32 count = 3;
+        required string total = 4;
+    }
+    repeated DeployStat rows = 3;
 }
 
 service TabletServer {
@@ -911,6 +925,9 @@ service TabletServer {
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
 
+
     // pre aggregator interfaces
     rpc CreateAggregator(CreateAggregatorRequest) returns (CreateAggregatorResponse);
+    // monitoring interfaces
+    rpc GetAndFlushDeployStats(GAFDeployStatsRequest) returns (DeployStatsResponse);
 }

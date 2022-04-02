@@ -1663,7 +1663,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (status->code != 0) {
                 return {};
             }
-            if(rs->Size() == 0) {
+            if (rs->Size() == 0) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
                 status->msg = "Job not found: " + std::to_string(job_id);
                 return {};
@@ -3297,8 +3297,10 @@ std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
     std::vector<::hybridse::vm::AggrTableInfo> table_infos;
     auto rs = ExecuteSQL(meta_db, select_sql, &status);
     if (!status.IsOK()) {
-        LOG(ERROR) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
+        LOG(WARNING) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
         return table_infos;
+    } else {
+        DLOG(INFO) << "Get pre-aggr table info succeed, size: " << rs->Size();
     }
 
     while (rs->Next()) {

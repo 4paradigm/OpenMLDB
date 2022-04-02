@@ -18,9 +18,11 @@
 
 #include <unistd.h>
 
+#include <limits>
 #include <memory>
 #include <string>
 
+#include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
@@ -28,8 +30,8 @@
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
-#include "vm/catalog.h"
 #include "test/util.h"
+#include "vm/catalog.h"
 
 DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
@@ -444,8 +446,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     sr->SetDatabase("");
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -491,8 +492,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
             });
 
     // sleep for 10s, name server should updated TableInfo in schedule
-    // default schedule interval is 2s
-    absl::SleepFor(absl::Seconds(10));
+    absl::SleepFor(absl::Seconds(4));
 
     // test
     hybridse::sdk::Status status;
@@ -574,7 +574,6 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
-    auto ns_client = cs->GetNsClient();
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
@@ -612,6 +611,218 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"job_timeout", "20000"},
                           {"execute_mode", "offline"}},
                          rs.get());
+}
+
+// --------------------------------------------------------------------------------------
+// basic functional UTs to test if it is correct for deploy query response time collection
+// see NameServerImpl::SyncDeployStats & TabletImpl::TryCollectDeployStats
+// --------------------------------------------------------------------------------------
+
+// a proxy class to create and cleanup deployment stats more gracefully
+struct DeploymentEnv {
+    explicit DeploymentEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {
+        db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        dp_name_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        procedure_name_ = absl::StrCat("procedure_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+    }
+
+    virtual ~DeploymentEnv() {
+        TearDown();
+    }
+
+    void SetUp() {
+        ProcessSQLs(
+            sr_,
+            {
+                "set session execute_mode = 'online'",
+                absl::StrCat("create database ", db_),
+                absl::StrCat("use ", db_),
+                absl::StrCat("create table ", table_,
+                             " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));"),
+                absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
+                             " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+                absl::StrCat(
+                    "create procedure ", procedure_name_,
+                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
+                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                    table_,
+                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
+            });
+    }
+
+    void TearDown() {
+        ProcessSQLs(sr_, {
+                             absl::StrCat("drop deployment ", dp_name_),
+                             absl::StrCat("drop procedure ", procedure_name_),
+                             absl::StrCat("drop table ", table_),
+                             absl::StrCat("drop database ", db_),
+                             "set global deploy_stats = 'off'",
+                         });
+    }
+
+    void CallDeployProcedureBatch() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, dp_name_);
+        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
+        auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
+        sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void CallDeployProcedure() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, dp_name_);
+        sr->CallProcedure(db_, dp_name_, rr, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void CallProcedure() {
+        hybridse::sdk::Status status;
+        std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
+        GetRequestRow(&rr, procedure_name_);
+        sr->CallProcedure(db_, procedure_name_, rr, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+
+    void EnableDeployStats() {
+        ProcessSQLs(sr_, {
+                             "set global deploy_stats = 'on'",
+                         });
+    }
+
+    sdk::SQLClusterRouter* sr_;
+    absl::BitGen gen_;
+    // variables generate randomly in SetUp
+    std::string db_;
+    std::string table_;
+    std::string dp_name_;
+    std::string procedure_name_;
+
+ private:
+    void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) { // NOLINT
+        hybridse::sdk::Status s;
+        auto res = sr_->GetRequestRowByProcedure(db_, name, &s);
+        ASSERT_TRUE(s.IsOK());
+        ASSERT_TRUE(res->Init(5));
+        ASSERT_TRUE(res->AppendString("hello"));
+        ASSERT_TRUE(res->AppendInt32(5));
+        ASSERT_TRUE(res->AppendInt64(5));
+        ASSERT_TRUE(res->AppendFloat(0.1));
+        ASSERT_TRUE(res->AppendDouble(0.1));
+        ASSERT_TRUE(res->AppendTimestamp(100342));
+        ASSERT_TRUE(res->AppendDate(2012, 10, 10));
+        ASSERT_TRUE(res->Build());
+        *rs = res;
+    }
+};
+
+static const char QueryDeployResponseTime[] = "select * from INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME";
+
+TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    DeploymentEnv env(sr);
+    env.SetUp();
+    env.CallDeployProcedureBatch();
+    env.CallDeployProcedure();
+
+    absl::SleepFor(absl::Seconds(3));
+
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(0, rs->Size());
+
+    env.EnableDeployStats();
+
+    absl::SleepFor(absl::Seconds(3));
+
+    // HandleSQL exists only for purpose of printing
+    HandleSQL(QueryDeployResponseTime);
+    rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(0, rs->Size());
+}
+
+TEST_P(DBSDKTest, DeployStatsEnabledAfterSetGlobal) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    // FIXME(#1547): test skiped due to Deploy Response Time can't enable in standalone mode
+    if (cs->IsClusterMode()) {
+        DeploymentEnv env(sr);
+        env.SetUp();
+        env.EnableDeployStats();
+        // sleep a while for global variable notification
+        absl::SleepFor(absl::Seconds(2));
+
+        hybridse::sdk::Status status;
+        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        // as deploy stats in tablet is lazy managed, the deploy stats will stay empty util the first procedure call
+        // happens
+        ASSERT_EQ(0, rs->Size());
+
+        // warm up deploy stats
+        env.CallDeployProcedureBatch();
+        env.CallDeployProcedure();
+
+        absl::SleepFor(absl::Seconds(3));
+
+        HandleSQL(QueryDeployResponseTime);
+        rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
+
+        int cnt = 0;
+        while (rs->Next()) {
+            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
+            cnt += rs->GetInt32Unsafe(2);
+        }
+        EXPECT_EQ(2, cnt);
+    }
+}
+
+TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    if (cs->IsClusterMode()) {
+        DeploymentEnv env(sr);
+        env.SetUp();
+
+        env.EnableDeployStats();
+        absl::SleepFor(absl::Seconds(2));
+
+        for (int i =0; i < 5; ++i) {
+            env.CallProcedure();
+        }
+
+        for (int i = 0; i < 10; ++i) {
+            env.CallDeployProcedureBatch();
+            env.CallDeployProcedure();
+        }
+        absl::SleepFor(absl::Seconds(3));
+
+        HandleSQL(QueryDeployResponseTime);
+        hybridse::sdk::Status status;
+        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
+        int cnt = 0;
+        while (rs->Next()) {
+            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
+            cnt += rs->GetInt32Unsafe(2);
+        }
+        EXPECT_EQ(10 + 10, cnt);
+    }
 }
 
 /* TODO: Only run test in standalone mode
@@ -670,7 +881,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
     int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(1);
+    sleep(3);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();

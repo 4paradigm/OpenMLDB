@@ -980,7 +980,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
-    sleep(1);
+    sleep(5);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);

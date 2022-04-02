@@ -47,7 +47,7 @@ void BuildAggTableDef(::hybridse::type::TableDef& table, const std::string& aggr
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kVarchar);
-        column->set_name("aggr_val");
+        column->set_name("agg_val");
     }
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
