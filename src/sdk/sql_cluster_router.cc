@@ -2375,6 +2375,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                     std::vector<std::string> value = {ss.str()};
                     *status = {};
                     return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                } else {
+                    *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }
             } else {
                 // Handle in standalone mode
