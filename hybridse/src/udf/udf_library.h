@@ -103,6 +103,9 @@ class UdfLibrary {
     bool RequireListAt(const std::string& name, size_t index) const;
     bool IsListReturn(const std::string& name) const;
 
+    Status RegisterDynamicUdf(const std::string& name, void* fn,
+            node::DataType return_type, const std::vector<node::DataType>& arg_types);
+
     // register interfaces
     ExprUdfRegistryHelper RegisterExprUdf(const std::string& name);
     LlvmUdfRegistryHelper RegisterCodeGenUdf(const std::string& name);

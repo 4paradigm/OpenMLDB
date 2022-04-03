@@ -993,9 +993,10 @@ DynamicUdfFnDefNode* DynamicUdfFnDefNode::DeepCopy(NodeManager* nm) const {
         return nm->MakeDynamicUdfFnDefNode(GetName(), function_ptr(),
                                          GetReturnType(), IsReturnNullable(),
                                          arg_types_, arg_nullable_,
-                                         return_by_arg());
+                                         return_by_arg(),
+                                         init_context_node_ == nullptr ? nullptr : init_context_node_->DeepCopy(nm));
     } else {
-        return nm->MakeDynamicUdfFnDefNode(GetName(), nullptr, nullptr, true, {}, {}, false);
+        return nm->MakeDynamicUdfFnDefNode(GetName(), nullptr, nullptr, true, {}, {}, false, nullptr);
     }
 }
 

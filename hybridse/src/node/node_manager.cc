@@ -1035,9 +1035,10 @@ ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(const std::string &functio
 DynamicUdfFnDefNode *NodeManager::MakeDynamicUdfFnDefNode(const std::string &function_name, void *function_ptr,
                                                       const node::TypeNode *ret_type, bool ret_nullable,
                                                       const std::vector<const node::TypeNode *> &arg_types,
-                                                      const std::vector<int> &arg_nullable, bool return_by_arg) {
+                                                      const std::vector<int> &arg_nullable, bool return_by_arg,
+                                                      ExternalFnDefNode *init_node) {
     return RegisterNode(new node::DynamicUdfFnDefNode(function_name, function_ptr, ret_type, ret_nullable, arg_types,
-                                                    arg_nullable, return_by_arg));
+                                                    arg_nullable, return_by_arg, init_node));
 }
 
 node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(const std::string &function_name) {

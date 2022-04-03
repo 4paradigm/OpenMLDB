@@ -26,9 +26,9 @@
 #include "codec/fe_schema_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/buf_ir_builder.h"
-#include "udf/default_udf_library.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
+#include "udf/default_udf_library.h"
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
@@ -271,7 +271,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 }
 
 base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
-                                         const std::vector<node::DataType>& args_type, bool is_aggregate,
+                                         const std::vector<node::DataType>& arg_types, bool is_aggregate,
                                          const std::string& so_name) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
@@ -302,6 +302,7 @@ base::Status Engine::RegisterExternalFunction(const std::string& name, node::Dat
         if (fun == nullptr) {
             return {common::kExternalUDFError, "can not find the function: " + name};
         }
+        auto status = lib->RegisterDynamicUdf(name, fun, return_type, arg_types);
     }
     return {};
 }

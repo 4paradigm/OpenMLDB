@@ -358,7 +358,8 @@ class NodeManager {
         const node::TypeNode *ret_type, bool ret_nullable,
         const std::vector<const node::TypeNode *> &arg_types,
         const std::vector<int> &arg_nullable,
-        bool return_by_arg);
+        bool return_by_arg,
+        ExternalFnDefNode *init_node);
 
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
         const std::string &function_name);

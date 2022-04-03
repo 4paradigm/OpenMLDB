@@ -24,6 +24,7 @@
 
 #include "codegen/type_ir_builder.h"
 #include "plan/plan_api.h"
+#include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_wrapper.h"
 
@@ -180,6 +181,14 @@ ExternalFuncRegistryHelper UdfLibrary::RegisterExternal(
 
 UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
     return UdafRegistryHelper(GetCanonicalName(name), this);
+}
+
+Status UdfLibrary::RegisterDynamicUdf(const std::string& name, void* fn,
+        node::DataType return_type, const std::vector<node::DataType>& arg_types) {
+    // TODO (denglong): check if exist
+    DynamicUdfRegistryHelper(GetCanonicalName(name), this, fn, return_type, arg_types,
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+    return {};
 }
 
 Status UdfLibrary::RegisterAlias(const std::string& alias,

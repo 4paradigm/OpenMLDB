@@ -400,7 +400,7 @@ class Engine {
                  base::Status* status);
 
     base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
-                                     const std::vector<node::DataType>& args_type, bool is_aggregate,
+                                     const std::vector<node::DataType>& arg_types, bool is_aggregate,
                                      const std::string& so_name);
 
     /// \brief Same as above, but allowing compiling with configuring common column indices.

@@ -2360,7 +2360,7 @@ class DynamicUdfFnDefNode : public FnDefNode {
  public:
     DynamicUdfFnDefNode(const std::string &name, void *fn_ptr, const node::TypeNode *ret_type, bool ret_nullable,
                       const std::vector<const node::TypeNode *> &arg_types, const std::vector<int> &arg_nullable,
-                      bool return_by_arg)
+                      bool return_by_arg, ExternalFnDefNode *init_node)
         : FnDefNode(kDynamicUdfFnDef),
           function_name_(name),
           function_ptr_(fn_ptr),
@@ -2368,7 +2368,8 @@ class DynamicUdfFnDefNode : public FnDefNode {
           ret_nullable_(ret_nullable),
           arg_types_(arg_types),
           arg_nullable_(arg_nullable),
-          return_by_arg_(return_by_arg) {}
+          return_by_arg_(return_by_arg),
+          init_context_node_(init_node) {}
 
     const std::string GetName() const override { return function_name_; }
 
@@ -2401,6 +2402,8 @@ class DynamicUdfFnDefNode : public FnDefNode {
     DynamicUdfFnDefNode *ShadowCopy(NodeManager *) const override;
     DynamicUdfFnDefNode *DeepCopy(NodeManager *) const override;
 
+    ExternalFnDefNode *GetInitContextNode() const { return init_context_node_; }
+
  private:
     std::string function_name_;
     void *function_ptr_;
@@ -2409,6 +2412,7 @@ class DynamicUdfFnDefNode : public FnDefNode {
     std::vector<const node::TypeNode *> arg_types_;
     std::vector<int> arg_nullable_;
     bool return_by_arg_;
+    ExternalFnDefNode *init_context_node_;
 };
 
 class UdfDefNode : public FnDefNode {

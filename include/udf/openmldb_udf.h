@@ -21,7 +21,7 @@
 #include "base/string_ref.h"
 #include "base/type.h"
 
-using ::openmldb::base::MemPool;
+using ::openmldb::base::ByteMemoryPool;
 using ::openmldb::base::Timestamp;
 using ::openmldb::base::Date;
 using ::openmldb::base::StringRef;
@@ -29,7 +29,7 @@ using ::openmldb::base::StringRef;
 constexpr int OPENMLDB_UDF_LIBRARY_VERSION = 1;
 
 struct UDFContext {
-    MemPool* pool_;
+    ByteMemoryPool* pool;
     void* ptr;
 };
 
