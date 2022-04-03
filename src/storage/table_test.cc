@@ -1927,6 +1927,237 @@ TEST_P(TableTest, AbsAndLat) {
     delete table;
 }
 
+TEST_P(TableTest, AbsAndLatGC) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsAndLat, 100, 10);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsAndLat, 50, 8);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "test", "ts3", ::openmldb::type::kAbsAndLat, 70, 5);
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test" + std::to_string(i),
+                                        "testnew" + std::to_string(i),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 1) {
+            ASSERT_EQ(80, count);
+        } else if (i == 2) {
+            ASSERT_EQ(70, count);
+        } else {
+            ASSERT_EQ(100, count);
+        }
+    }
+
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    table->SchedGc();
+    EXPECT_EQ(180, (int64_t)table->GetRecordIdxCnt());
+
+    delete table;
+}
+
+TEST_P(TableTest, AbsAndLatGC1) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kLatestTime, 0, 10);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kLatestTime, 0, 8);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "test", "ts3", ::openmldb::type::kLatestTime, 0, 5);
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test",
+                                        "testnew",
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 1) {
+            ASSERT_EQ(80, count);
+        } else if (i == 2) {
+            ASSERT_EQ(70, count);
+        } else {
+            ASSERT_EQ(100, count);
+        }
+    }
+
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    table->SchedGc();
+    EXPECT_EQ(180, (int64_t)table->GetRecordIdxCnt());
+
+    delete table;
+}
+
+TEST_P(TableTest, AbsAndLatGC2) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsoluteTime, 70, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50, 0);
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test"+ std::to_string(i % 10),
+                                        "testnew"+ std::to_string(i % 10),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 1; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 0) {
+            ASSERT_EQ(70, count);
+        } else if (i == 1) {
+            ASSERT_EQ(50, count);
+        } 
+    }
+
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    table->SchedGc();
+    EXPECT_EQ(180, (int64_t)table->GetRecordIdxCnt());
+
+    delete table;
+}
+
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
