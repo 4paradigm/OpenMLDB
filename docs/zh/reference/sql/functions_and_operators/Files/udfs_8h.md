@@ -3381,15 +3381,17 @@ Supported string style:
 Example:
 
 
-
+```{tip}
+We can use `string()` to make timestamp type values more readable.
+```
 ```cpp
-select timestamp(1590115420000);
+select string(timestamp(1590115420000));
 -- output 2020-05-22 10:43:40
 
-select date("2020-05-22");
+select string(timestamp(date("2020-05-22")));
 -- output 2020-05-22 00:00:00
 
-select timestamp("2020-05-22 10:43:40");
+select string(timestamp("2020-05-22 10:43:40"));
 -- output 2020-05-22 10:43:40
 ```
 

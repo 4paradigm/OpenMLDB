@@ -6,12 +6,12 @@
 
 1. 下载 docker 镜像
     ```bash
-    docker pull 4pdosc/hybridsql:0.4.3
+    docker pull 4pdosc/hybridsql:0.4.4
     ```
 
 2. 启动 docker 容器
     ```bash
-    docker run -it 4pdosc/hybridsql:0.4.3 bash
+    docker run -it 4pdosc/hybridsql:0.4.4 bash
     ```
 
 3. 在 docker 容器内, 克隆 OpenMLDB
@@ -128,7 +128,7 @@ make CMAKE_BUILD_TYPE=Debug
 1. 下载预编译的OpenMLDB Spark发行版。
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.4.3/spark-3.0.0-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.4.4/spark-3.0.0-bin-openmldbspark.tgz
 ```
 
 或者下载源代码并从头开始编译。

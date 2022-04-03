@@ -114,7 +114,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 
 - C++内置函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。
 - 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候释放空间。
-- 若空间size大于2048字节，则分配失败，返回nullptr。
+- 若空间size大于2M字节，则分配失败，返回nullptr。
 - 若空间size < 0，则分配失败，返回nullptr。
 
 **例子:**

@@ -19,7 +19,7 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.3 bash
+docker run -it 4pdosc/openmldb:0.4.4 bash
 ```
 
 :::{important}
@@ -29,11 +29,11 @@ docker run -it 4pdosc/openmldb:0.4.3 bash
 ````{note}
 本教程将在单个容器中启动 OpenMLDB 单机版或集群版，如果希望从外部访问该容器内的 OpenMLDB 服务端口，启动容器时需要 `-p` 暴露端口。
 ```
-docker run -p 6527:6527 -p 2181:2181 -p 8080:8080 -it 4pdosc/openmldb:0.4.3 bash
+docker run -p 6527:6527 -p 2181:2181 -p 8080:8080 -it 4pdosc/openmldb:0.4.4 bash
 ```
 或者更方便地，使用 host networking，不进行端口隔离，例如
 ```
-docker run --network host -it 4pdosc/openmldb:0.4.3 bash
+docker run --network host -it 4pdosc/openmldb:0.4.4 bash
 ```
 注意，OpenMLDB 所有 server 配置的 endpoint 地址都是 `127.0.0.1` 。如果想要外部主机访问本机容器内的服务，需要将回环地址改为外网 IP 或 `0.0.0.0` 。
 

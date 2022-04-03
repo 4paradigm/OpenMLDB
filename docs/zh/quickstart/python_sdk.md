@@ -12,7 +12,7 @@ pip install openmldb
 
 ### 2.1 创建connection
 
-这里db_name不要求必须存在，如果不存在需要在创建好connection后创建database。
+参数db_name不要求必须存在，可以创建connection时指定想要的db，connect后创建该db。
 
 ```python
 import openmldb.dbapi
@@ -84,7 +84,7 @@ cursor.close()
 ### 3.1 创建connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-这里db_name不要求必须存在，如果不存在需要在创建好connection后创建database。
+参数db_name不要求必须存在，可以创建connection时指定想要的db，connect后创建该db。
 
 ```python
 import sqlalchemy as db
@@ -131,12 +131,13 @@ except Exception as e:
     print(e)
 ```
 
-使用`connection.execute(ddl, data)`接口执行带planceholder的SQL的插入语句，可以动态指定插入数据：
+使用`connection.execute(ddl, data)`接口执行带planceholder的SQL的插入语句，可以动态指定插入数据，也可插入多行：
 
 ```python
 try:
     insert = "INSERT INTO t1 VALUES(1002, '2020-12-27', ?, ?, 3);"
     connection.execute(insert, ({"col3":"fujian", "col4":"fuzhou"}))
+    connection.execute(insert, [{"col3":"jiangsu", "col4":"nanjing"}, {"col3":"zhejiang", "col4":"hangzhou"}])
 except Exception as e:
     print(e)
 ```
@@ -151,6 +152,7 @@ try:
     for row in rs:
         print(row)
     rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
+    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;",[('hefei'), ('shanghai')]);
 except Exception as e:
     print(e)
 ```
