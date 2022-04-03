@@ -454,7 +454,7 @@ class SqlNodeList : public SqlNode {
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
     const std::vector<SqlNode *> &GetList() const { return list_; }
-    void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     virtual bool Equals(const SqlNodeList *that) const;
 
  private:
