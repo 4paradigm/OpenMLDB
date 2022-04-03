@@ -1,0 +1,18 @@
+=============================
+数据定义语句（DDL）
+=============================
+
+
+.. toctree::
+    :maxdepth: 1
+
+    CREATE_DATABASE_STATEMENT
+    SHOW_DATABASES_STATEMENT
+    USE_DATABASE_STATEMENT
+    DROP_DATABASE_STATEMENT
+    DESC_STATEMENT
+    CREATE_TABLE_STATEMENT
+    DROP_TABLE_STATEMENT
+    SHOW_TABLES_STATEMENT
+    SHOW_VARIABLES_STATEMENT
+    SET_STATEMENT
