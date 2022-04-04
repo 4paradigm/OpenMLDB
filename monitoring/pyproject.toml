@@ -11,8 +11,10 @@ openmldb_exporter = "openmldb_exporter:main"
 [tool.poetry.dependencies]
 python = "^3.8"
 prometheus-client = "^0.13.0"
+openmldb = { path = "../python/", develop = false }
 
 [tool.poetry.dev-dependencies]
+pylint = "^2.13.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
