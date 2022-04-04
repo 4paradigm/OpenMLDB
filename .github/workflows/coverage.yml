@@ -5,20 +5,22 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 jobs:

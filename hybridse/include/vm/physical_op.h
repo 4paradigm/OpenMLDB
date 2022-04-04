@@ -1496,14 +1496,15 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
                                 const RequestWindowOp &window, const RequestWindowOp &aggr_window,
                                 bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
-                                const node::FnDefNode *agg_func)
+                                const node::FnDefNode *func, const node::ColumnRefNode* agg_col)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
           agg_window_(aggr_window),
+          func_(func),
+          agg_col_(agg_col),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
-          output_request_row_(output_request_row),
-          agg_func_(agg_func) {
+          output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
         fn_infos_.push_back(&window_.partition_.fn_info());
@@ -1520,6 +1521,9 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     }
     virtual ~PhysicalRequestAggUnionNode() {}
     base::Status InitSchema(PhysicalPlanContext *) override;
+    void UpdateParentSchema(const SchemasContext* parent_schema_context) {
+        parent_schema_context_ = parent_schema_context;
+    }
     void Print(std::ostream &output, const std::string &tab) const override;
     void PrintChildren(std::ostream& output, const std::string& tab) const override;
     const bool Valid() { return true; }
@@ -1540,6 +1544,9 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
 
     RequestWindowOp window_;
     RequestWindowOp agg_window_;
+    const node::FnDefNode* func_ = nullptr;
+    const node::ColumnRefNode* agg_col_;
+    const SchemasContext* parent_schema_context_ = nullptr;
 
  private:
     const bool instance_not_in_window_;
@@ -1553,7 +1560,6 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     }
 
     Schema agg_schema_;
-    const node::FnDefNode* agg_func_ = nullptr;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {

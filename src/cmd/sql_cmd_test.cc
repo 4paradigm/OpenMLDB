@@ -243,6 +243,33 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
+TEST_F(SqlCmdTest, load_data) {
+    sr = standalone_cli.sr;
+    cs = standalone_cli.cs;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    std::string file_name = "./myfile.csv";
+    std::ofstream ofile;
+    ofile.open(file_name);
+    ofile << "c1,c2" << std::endl;
+    for (int i = 0; i < 10; i++) {
+        ofile << "aa" << i << "," << i << std::endl;
+    }
+    ofile.close();
+    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(10, result->Size());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+    unlink(file_name.c_str());
+}
+
 TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -881,7 +908,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
     int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(1);
+    sleep(3);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
