@@ -160,7 +160,11 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     }
 
     vm::PhysicalSimpleProjectNode* simple_prj = nullptr;
-    plan_ctx_->CreateOp<vm::PhysicalSimpleProjectNode>(&simple_prj, join, final_column_projects);
+    status = plan_ctx_->CreateOp<vm::PhysicalSimpleProjectNode>(&simple_prj, join, final_column_projects);
+    if (!status.isOK()) {
+        LOG(ERROR) << "Fail to create PhysicalSimpleProjectNode: " << status;
+        return false;
+    }
 
     *output = simple_prj;
     return true;
