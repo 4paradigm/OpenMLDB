@@ -29,6 +29,7 @@ import java.sql.{PreparedStatement, ResultSet, SQLException}
 import java.util.Calendar
 import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
+import scala.util.Using
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 
@@ -160,7 +161,13 @@ object JobInfoManager {
     } catch {
       case e: SQLException =>
         e.printStackTrace()
-    } catch {
+    } Using.Manager { use =>
+      var pstmt: PreparedStatement = null
+      if (pstmt != null){
+        pstmt.close()
+      }
+    }
+      catch {
       case throwables: SQLException =>
         throwables.printStackTrace()
     }
