@@ -18,6 +18,8 @@
 #include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 #include "udf/udf.h"
+#include "udf/default_udf_library.h"
+#include "udf/openmldb_udf.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
@@ -48,6 +50,27 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
+std::shared_ptr<SimpleCatalog> GetTestCatalog1() {
+    hybridse::type::Database db;
+    db.set_name("db");
+    ::hybridse::type::TableDef *table = db.add_tables();
+    table->set_name("t1");
+    table->set_catalog("db");
+    {
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("col_1");
+    }
+    {
+        ::hybridse::type::ColumnDef *column = table->add_columns();
+        column->set_type(::hybridse::type::kInt64);
+        column->set_name("col_2");
+    }
+    auto catalog = std::make_shared<SimpleCatalog>();
+    catalog->AddDatabase(db);
+    return catalog;
+}
+
 std::shared_ptr<SqlCompileInfo> Compile(
     const std::string &sql, const EngineOptions &options,
     std::shared_ptr<SimpleCatalog> catalog) {
@@ -55,7 +78,7 @@ std::shared_ptr<SqlCompileInfo> Compile(
     BatchRunSession session;
     Engine engine(catalog, options);
     if (!engine.Get(sql, "db", session, status)) {
-        LOG(WARNING) << "Fail to compile sql";
+        LOG(WARNING) << "Fail to compile sql. error " << status.msg;
         return nullptr;
     }
     return std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo());
@@ -160,6 +183,39 @@ TEST_F(JitWrapperTest, test_window) {
     auto fn = jit->FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
     delete jit;
+}
+
+int myfun(UDFContext* ctx, StringRef* input) {
+   return 0;
+}
+
+TEST_F(JitWrapperTest, test_udf) {
+    auto lib = udf::DefaultUdfLibrary::get();
+    std::vector<node::DataType> arg_types = {node::kVarchar};
+    auto status = lib->RegisterDynamicUdf("myfun", reinterpret_cast<void*>(myfun), node::kInt32, arg_types);
+    EngineOptions options;
+    options.SetKeepIr(true);
+    auto catalog = GetTestCatalog1();
+    std::string sql = "select myfun(col_1) from t1;";
+    auto compile_info = Compile(sql, options, catalog);
+    /*auto &sql_context = compile_info->get_sql_context();
+    std::string ir_str = sql_context.ir;
+
+    // clear this dict to ensure jit wrapper reinit all symbols
+    // this should be removed by better symbol init utility
+
+    ASSERT_FALSE(ir_str.empty());
+    HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
+    ASSERT_TRUE(jit->Init());
+    HybridSeJitWrapper::InitJitSymbols(jit);
+
+    base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
+    ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
+
+    auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
+    auto fn = jit->FindFunction(fn_name);
+    ASSERT_TRUE(fn != nullptr);
+    delete jit;*/
 }
 
 }  // namespace vm

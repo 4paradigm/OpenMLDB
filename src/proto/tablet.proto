@@ -832,6 +832,22 @@ message CreateFunctionResponse {
     optional string msg = 2;
 }
 
+message CreateAggregatorRequest {
+    optional TableMeta base_table_meta = 1;
+    optional uint32 aggr_table_tid = 2;
+    optional uint32 aggr_table_pid = 3;
+    optional uint32 index_pos = 4;
+    optional string aggr_func = 5;
+    optional string aggr_col = 6;
+    optional string order_by_col = 7;
+    optional string bucket_size = 8;
+}
+
+message CreateAggregatorResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message GAFDeployStatsRequest {}
 
 message DeployStatsResponse {
@@ -919,6 +935,9 @@ service TabletServer {
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
     rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
 
+
+    // pre aggregator interfaces
+    rpc CreateAggregator(CreateAggregatorRequest) returns (CreateAggregatorResponse);
     // monitoring interfaces
     rpc GetAndFlushDeployStats(GAFDeployStatsRequest) returns (DeployStatsResponse);
 }

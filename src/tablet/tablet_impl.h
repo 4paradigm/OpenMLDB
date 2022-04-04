@@ -34,6 +34,7 @@
 #include "nameserver/system_table.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "storage/aggregator.h"
 #include "sdk/sql_cluster_router.h"
 #include "statistics/query_response_time/deploy_query_response_time.h"
 #include "storage/mem_table.h"
@@ -51,6 +52,8 @@ using ::google::protobuf::RpcController;
 using ::openmldb::base::SpinMutex;
 using ::openmldb::replica::LogReplicator;
 using ::openmldb::replica::ReplicatorRole;
+using ::openmldb::storage::Aggregator;
+using ::openmldb::storage::Aggrs;
 using ::openmldb::storage::IndexDef;
 using ::openmldb::storage::MemTable;
 using ::openmldb::storage::Snapshot;
@@ -66,6 +69,7 @@ namespace tablet {
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>> Snapshots;
+typedef std::map<uint64_t, std::shared_ptr<Aggrs>> Aggregators;
 
 class TabletImpl : public ::openmldb::api::TabletServer {
  public:
@@ -266,11 +270,15 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
+                          ::openmldb::api::CreateAggregatorResponse* response, Closure* done);
+
+    std::shared_ptr<Aggrs> GetAggregators(uint32_t tid, uint32_t pid);
+
     void GetAndFlushDeployStats(::google::protobuf::RpcController* controller,
                                 const ::openmldb::api::GAFDeployStatsRequest* request,
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
-
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -280,9 +288,12 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<Aggrs> GetAggregatorsUnLock(uint32_t tid, uint32_t pid);
 
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
@@ -393,6 +404,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                   openmldb::api::SQLBatchRequestQueryResponse* response,
                                   butil::IOBuf& buf);  // NOLINT
 
+    bool UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& value,
+                     const ::openmldb::storage::Dimensions& dimensions, uint64_t log_offset);
+
     inline bool IsClusterMode() const {
         return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
     }
@@ -419,6 +433,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     ThreadPool gc_pool_;
     Replicators replicators_;
     Snapshots snapshots_;
+    Aggregators aggregators_;
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;

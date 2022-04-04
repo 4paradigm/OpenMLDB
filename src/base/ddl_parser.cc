@@ -278,7 +278,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 return;
             }
             hybridse::node::ColumnRefNode* column_node = dynamic_cast<hybridse::node::ColumnRefNode*>(partition_key);
-            partition_col += column_node->GetExprString() + ",";
+            partition_col += column_node->GetColumnName() + ",";
         }
         if (!partition_col.empty()) {
             partition_col.pop_back();
@@ -293,7 +293,14 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 return;
             }
             auto order_node = dynamic_cast<hybridse::node::OrderExpression*>(order_expr);
-            order_by_col += order_node->expr()->GetExprString() + ",";
+            auto order_col_node = order_node->expr();
+            if (order_col_node->GetExprType() != hybridse::node::kExprColumnRef) {
+                DLOG(ERROR) << "extract long window infos from window order by failed";
+                return;
+            }
+            const hybridse::node::ColumnRefNode* column_node =
+                    reinterpret_cast<const hybridse::node::ColumnRefNode*>(order_col_node);
+            order_by_col += column_node->GetColumnName() + ",";
         }
         if (!order_by_col.empty()) {
             order_by_col.pop_back();
