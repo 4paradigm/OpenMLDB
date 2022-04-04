@@ -270,40 +270,112 @@ class DiskTableTraverseIterator : public TableIterator {
     uint64_t traverse_cnt_;
 };
 
-class DiskTableWindowIterator : public ::hybridse::vm::RowIterator {
+class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
  public:
-    DiskTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-                           uint64_t expire_cnt)
-        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
+    DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+                         ::openmldb::storage::TTLType ttl_type, uint64_t expire_time, uint64_t expire_cnt,
+                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx)
+        : it_(it),
+          record_idx_(1),
+          expire_value_(expire_time, expire_cnt, ttl_type),
+          row_(),
+          pk_(pk),
+          row_pk_(pk),
+          ts_(ts),
+          has_ts_idx_(has_ts_idx),
+          ts_idx_(ts_idx) {}
 
-    ~DiskTableWindowIterator() { delete it_; }
+    ~DiskTableRowIterator() {}
 
-    inline bool Valid() const {
-        if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+    bool Valid() const {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (row_pk_ != pk_) return false;
+        if (!it_->Valid() || expire_value_.IsExpired(ts_, record_idx_)) {
             return false;
         }
         return true;
     }
 
-    inline void Next() {
-        it_->Next();
-        record_idx_++;
+    void Next() {
+        for (it_->Next(); it_->Valid(); it_->Next()) {
+            uint32_t cur_ts_idx = UINT32_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            if (row_pk_ == pk_) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    continue;
+                }
+                record_idx_++;
+            } 
+            break;
+        }
     }
 
-    inline const uint64_t& GetKey() const { return it_->GetKey(); }
+    inline const uint64_t& GetKey() const { return ts_; }
 
-    inline const ::hybridse::codec::Row& GetValue() {
-        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
+    const ::hybridse::codec::Row& GetValue() {
+        rocksdb::Slice value = it_->value();
+        row_.Reset(reinterpret_cast<const int8_t*>(value.data()), value.size());
         return row_;
     }
-    inline void Seek(const uint64_t& key) { it_->Seek(key); }
-    inline void SeekToFirst() { it_->SeekToFirst(); }
+    
+    void Seek(const uint64_t& key) {
+        std::string combine;
+        uint64_t tmp_ts = key;
+        std::string pk = row_pk_;
+        if (has_ts_idx_) {
+            combine = CombineKeyTs(pk, tmp_ts, ts_idx_);
+        } else {
+            combine = CombineKeyTs(pk, tmp_ts);
+        }
+        it_->Seek(rocksdb::Slice(combine));
+        for (; it_->Valid(); it_->Next()) {
+            uint32_t cur_ts_idx = UINT32_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            if (pk_ == pk) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    continue;
+                }
+            }
+            break;
+        }
+    }
+
+    void SeekToFirst() {
+        std::string combine;
+        uint64_t tmp_ts = UINT64_MAX;
+        std::string pk = row_pk_;
+        if (has_ts_idx_) {
+            combine = CombineKeyTs(pk, tmp_ts, ts_idx_);
+        } else {
+            combine = CombineKeyTs(pk, tmp_ts);
+        }
+        it_->Seek(rocksdb::Slice(combine));
+        for (; it_->Valid(); it_->Next()) {
+            uint32_t cur_ts_idx = UINT32_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            if (pk_ == pk) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    continue;
+                }
+            }
+            break;
+        }
+    }
     inline bool IsSeekable() const { return true; }
 
  private:
-    TimeEntries::Iterator* it_;
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
     uint32_t record_idx_;
     TTLSt expire_value_;
+    std::string pk_;
+    std::string row_pk_;
+    bool has_ts_idx_;
+    uint64_t ts_;
+    Ticket ticket_;
+    uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
 };
 
