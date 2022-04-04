@@ -304,6 +304,13 @@ enum VariableScope {
     kSessionSystemVariable,
 };
 
+enum StorageMode {
+    kMemory = 1,
+    kSSD = 2,
+    kHDD = 3,
+    kUnknown = 4,
+};
+
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
