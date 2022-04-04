@@ -72,11 +72,12 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
             }
             default: {
-                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType()) << " for table node";
+                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
+                             << " for table node";
             }
         }
     }
-    // deny create table when invalid configuration in standalone mode 
+    // deny create table when invalid configuration in standalone mode
     if (!is_cluster_mode) {
         if (replica_num != 1) {
             status->msg = "Fail to create table with the replica configuration in standalone mode";
@@ -87,7 +88,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             status->msg = "Fail to create table with the distribution configuration in standalone mode";
             status->code = hybridse::common::kUnsupportSql;
             return false;
-        }        
+        }
     }
     table->set_replica_num(static_cast<uint32_t>(replica_num));
     table->set_partition_num(static_cast<uint32_t>(partition_num));

@@ -383,7 +383,8 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
                     break;
                 }
                 default: {
-                    LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType()) << " for table node";
+                    LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
+                                 << " for table node";
                 }
             }
         }

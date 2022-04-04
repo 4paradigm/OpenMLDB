@@ -598,7 +598,8 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
                 break;
             }
             default: {
-                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType()) << " for table node";
+                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
+                             << " for table node";
             }
         }
     }
