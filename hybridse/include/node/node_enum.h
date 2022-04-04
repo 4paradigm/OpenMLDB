@@ -305,10 +305,10 @@ enum VariableScope {
 };
 
 enum StorageMode {
+    kUnknown = 0,
     kMemory = 1,
     kSSD = 2,
     kHDD = 3,
-    kUnknown = 4,
 };
 
 // batch plan node type
