@@ -953,6 +953,18 @@ void DiskTableKeyIterator::Seek(const std::string& pk) {
     }
 }
 
+bool DiskTableKeyIterator::Valid() {
+    return it_->Valid();
+}
+
+const hybridse::codec::Row DiskTableKeyIterator::GetKey() {
+    hybridse::codec::Row row(
+        ::hybridse::base::RefCountedSlice::Create(pk_.c_str(), pk_.size()));
+    return row;
+}
+
+
+
 bool DiskTable::DeleteIndex(const std::string& idx_name) {
     // TODO(litongxin)
     return true;
