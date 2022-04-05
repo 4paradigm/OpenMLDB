@@ -1,6 +1,6 @@
-# Install and deploy
+# Install and Deploy
 
-## Software and hardware environment requirements
+## Software and Hardware Environment Requirements
 
 * Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to function correctly.
 * Memory: Depends on the amount of data, 8 GB and above is recommended.
@@ -9,14 +9,14 @@
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
 
 
-## Deployment package preparation
+## Deployment Package Preparation
 The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
 
-## Configure environment (Linux)
+## Configure Environment (Linux)
 
 ### Disable system swap
 
-Check if the swap area is disabled.
+Check the status of the swap area.
 
 ```bash
 $ free
@@ -33,7 +33,7 @@ $ swapoff -a
 
 ### Disable THP (Transparent Huge Pages)
 
-See if THP is off
+Check th status of THP
 
 ```
 $ cat /sys/kernel/mm/transparent_hugepage/enabled
@@ -58,7 +58,7 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
-### Time and Zone settings
+### Time and zone settings
 
 The OpenMLDB data expiration deletion mechanism relies on the system clock. If the system clock is incorrect, the expired data will not be deleted or the data that has not expired will be deleted.
 
@@ -68,7 +68,7 @@ Wed Aug 22 16:33:50 CST 2018
 ```
 Please make sure the time is correct
 
-## Deploy standalone version
+## Deploy Standalone Version
 
 OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
@@ -105,7 +105,7 @@ sh bin/start.sh start standalone_tablet
 
 **Notice**: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail
 
-### Deploy nameserver
+### Deploy Nameserver
 
 #### 1 Download the OpenMLDB deployment package
 
@@ -116,7 +116,7 @@ mv openmldb-0.4.3-linux openmldb-ns-0.4.3
 cd openmldb-ns-0.4.3
 ```
 
-#### 2 Modify the configuration file conf/standalone_nameserver.flags
+#### 2 Modify the Configuration File: conf/standalone_nameserver.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * The tablet configuration item needs to be configured with the address of the tablet that was started earlier
@@ -134,7 +134,7 @@ cd openmldb-ns-0.4.3
 sh bin/start.sh start standalone_nameserver
 ```
 
-#### 4 Check if the service is started
+#### 4 Verify the running status of the service
 
 ```bash
 $ ./bin/openmldb --host=172.27.128.33 --port=6527
@@ -145,7 +145,7 @@ $ ./bin/openmldb --host=172.27.128.33 --port=6527
 0 row in set
 ```
 
-### Deploy apiserver
+### Deploy APIServer
 
 APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
 Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
@@ -159,7 +159,7 @@ mv openmldb-0.4.3-linux openmldb-apiserver-0.4.3
 cd openmldb-apiserver-0.4.3
 ```
 
-#### 2 Modify the configuration file conf/standalone_apiserver.flags
+#### 2 Modify the Configuration File: conf/standalone_apiserver.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify nameserver to be the address of nameserver
@@ -179,7 +179,7 @@ cd openmldb-apiserver-0.4.3
 sh bin/start.sh start standalone_apiserver
 ```
 
-## Deploy cluster version
+## Deploy Cluster Version
 
 OpenMLDB cluster version needs to deploy zookeeper, nameserver, tablet and other modules. Among them, zookeeper is used for service discovery and saving metadata information. The nameserver is used to manage the tablet, achieve high availability and failover. Tablets are used to store data and synchronize data between master and slave. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module
 
@@ -197,7 +197,7 @@ cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
 
-#### 2. Modify the configuration file
+#### 2. Modify the Configuration File
 
 Open the file `conf/zoo.cfg` and modify `dataDir` and `clientPort`
 
@@ -225,7 +225,7 @@ mv openmldb-0.4.3-linux openmldb-tablet-0.4.3
 cd openmldb-tablet-0.4.3
 ```
 
-#### 2 Modify the configuration file conf/tablet.flags
+#### 2 Modify the Configuration File: conf/tablet.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify zk_cluster to the already started zk cluster address
@@ -258,7 +258,7 @@ Repeat the above steps to deploy multiple tablets
 * Cluster version needs to deploy at least 2 tablets
 * If you need to deploy multiple tablets, deploy all the tablets before deploying the nameserver
 
-### Deploy nameserver
+### Deploy Nameserver
 
 #### 1 Download the OpenMLDB deployment package
 
@@ -269,7 +269,7 @@ mv openmldb-0.4.3-linux openmldb-ns-0.4.3
 cd openmldb-ns-0.4.3
 ```
 
-#### 2 Modify the configuration file conf/nameserver.flags
+#### 2 Modify the Configuration File: conf/nameserver.flags
 
 * Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify zk_cluster to the address of the zk cluster that has been started. ip is the ip of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, separate it with commas, and the format is ip1:port1,ip2:port2, ip3:port3
@@ -292,7 +292,7 @@ sh bin/start.sh start nameserver
 
 Repeat the above steps to deploy multiple nameservers
 
-#### 4 Check if the service is started
+#### 4 Verify the running status of the service
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -302,7 +302,7 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.3
   172.27.128.31:6527 leader
 ```
 
-### Deploy apiserver
+### Deploy APIServer
 
 APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
 Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
@@ -316,9 +316,9 @@ mv openmldb-0.4.3-linux openmldb-apiserver-0.4.3
 cd openmldb-apiserver-0.4.3
 ```
 
-#### 2 Modify the configuration file conf/apiserver.flags
+#### 2 Modify the Configuration File: conf/apiserver.flags
 
-* Modify endpoint. endpoint is the deployment machine ip/domain name and port number separated by colons
+* Modify endpoint. The endpoint is the deployment machine ip/domain name and port number separated by colons
 * Modify zk_cluster to the zk cluster address of OpenMLDB to be forwarded to
 
 ```
@@ -382,7 +382,7 @@ spark.home=
 bin/start.sh start taskmanager
 ```
 
-#### 4 Check if the service is started
+#### 4 Verify the running status of the service
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
