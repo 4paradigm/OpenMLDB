@@ -10404,17 +10404,21 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
             // TODO: delete registered function
+            PDLOG(WARNING, "create function failed. endpoint %s", tablet->client_->GetEndpoint().c_str());
+            response->set_msg(msg);
             return;
         }
     }
-    std::string value;
     auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
-    fun->SerializeToString(&value);
-    std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
-    if (!zk_client_->CreateNode(fun_node, value)) {
-        PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
-              fun_node.c_str(), value.c_str(), value.length());
-        return;
+    if (IsClusterMode()) {
+        std::string value;
+        fun->SerializeToString(&value);
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->CreateNode(fun_node, value)) {
+            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
+                  fun_node.c_str(), value.c_str(), value.length());
+            return;
+        }
     }
     base::SetResponseOK(response);
     std::lock_guard<std::mutex> lock(mu_);
@@ -10446,16 +10450,18 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
     for (const auto& tablet : tablets) {
         std::string msg;
         if (!tablet->client_->DropFunction(*fun, &msg)) {
-            response->set_msg("drop function failed");
+            response->set_msg(msg);
             LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
             return;
         }
     }
-    std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
-    if (!zk_client_->DeleteNode(fun_node)) {
-        PDLOG(WARNING, "create function node[%s] failed", fun_node.c_str());
-        response->set_msg("drop function node failed");
-        return;
+    if (IsClusterMode()) {
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->DeleteNode(fun_node)) {
+            PDLOG(WARNING, "delete function node[%s] failed", fun_node.c_str());
+            response->set_msg("delete function node failed");
+            return;
+        }
     }
     LOG(INFO) << "drop function " << request->name() << " success";
     std::lock_guard<std::mutex> lock(mu_);

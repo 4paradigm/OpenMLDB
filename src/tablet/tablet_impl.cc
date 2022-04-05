@@ -5391,7 +5391,7 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
             dlclose(so_handle->handle);
         }
     } else {
-        LOG(WARNING) << "Drop function failed. name " << fun.name();
+        LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
         response->set_msg(status.msg);
         response->set_code(base::kRPCRunError);
     }
