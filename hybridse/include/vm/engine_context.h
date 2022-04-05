@@ -77,6 +77,8 @@ typedef std::map<EngineMode,
 
 class CompileInfoCache {
  public:
+    virtual ~CompileInfoCache() {}
+
     virtual std::shared_ptr<hybridse::vm::CompileInfo> GetRequestInfo(
         const std::string& db, const std::string& sp_name,
         base::Status& status) = 0;  // NOLINT

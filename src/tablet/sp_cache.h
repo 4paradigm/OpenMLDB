@@ -21,6 +21,8 @@
 #include <memory>
 #include <string>
 #include <utility>
+
+#include "absl/status/statusor.h"
 #include "vm/engine.h"
 
 namespace openmldb {
@@ -43,7 +45,24 @@ struct SQLProcedureCacheEntry {
 class SpCache : public hybridse::vm::CompileInfoCache {
  public:
     SpCache() : db_sp_map_() {}
-    ~SpCache() {}
+    ~SpCache() override {}
+
+    // find the procedure info for input db + sp_name
+    absl::StatusOr<std::shared_ptr<hybridse::sdk::ProcedureInfo>> FindSpProcedureInfo(const std::string& db,
+                                                                                     const std::string& sp_name) const {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto sp_map_of_db = db_sp_map_.find(db);
+        if (sp_map_of_db == db_sp_map_.end()) {
+            return absl::NotFoundError(absl::StrCat("db ", db, " not found in cache"));
+        }
+        auto sp_it = sp_map_of_db->second.find(sp_name);
+        if (sp_it == sp_map_of_db->second.end()) {
+            return absl::NotFoundError(absl::StrCat(db, ".", sp_name, " not found in cache"));
+        }
+
+        return sp_it->second.procedure_info;
+    }
+
     void InsertSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name,
                                       std::shared_ptr<hybridse::sdk::ProcedureInfo> procedure_info,
                                       std::shared_ptr<hybridse::vm::CompileInfo> request_info,
@@ -113,7 +132,7 @@ class SpCache : public hybridse::vm::CompileInfoCache {
 
  private:
     std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
-    SpinMutex spin_mutex_;
+    mutable SpinMutex spin_mutex_;
 };
 
 }  // namespace tablet

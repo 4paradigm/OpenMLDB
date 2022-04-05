@@ -5,27 +5,29 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - release/
-      - image/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 jobs:
   coverage:
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:0.5
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
@@ -61,6 +63,7 @@ jobs:
           sh steps/download_openmldb_spark.sh $SPARK_HOME
           cd onebox
           bash start_onebox.sh
+          sh start_onebox.sh standalone
 
       - name: Build and Coverage
         run: |

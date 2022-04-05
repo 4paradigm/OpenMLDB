@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/ddl_parser.h"
 #include "base/kv_iterator.h"
 #include "base/status.h"
 #include "brpc/channel.h"
@@ -279,6 +280,12 @@ class TabletClient : public Client {
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch> row_batch, bool is_debug,
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    bool CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
+                          uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,
+                          const ::openmldb::base::LongWindowInfo& window_info);
+
+    bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;

@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.batch
 
-import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
 import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
@@ -34,8 +33,8 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.mutable
 
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 

@@ -151,3 +151,6 @@ DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 
 // multiple data center
 DEFINE_uint32(get_replica_status_interval, 10000, "config the interval to sync replica cluster status time");
+
+DEFINE_uint32(sync_deploy_stats_timeout, 10000,
+              "time interval in milliseconds to sync deploy response time stats into table");

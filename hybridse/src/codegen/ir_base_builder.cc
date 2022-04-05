@@ -150,11 +150,11 @@ bool GetLlvmColumnSize(::hybridse::node::TypeNode* v_type, uint32_t* size) {
             break;
         }
         case ::hybridse::node::kTimestamp: {
-            *size = sizeof(::hybridse::codec::ColumnImpl<codec::Timestamp>);
+            *size = sizeof(::hybridse::codec::ColumnImpl<openmldb::base::Timestamp>);
             break;
         }
         case ::hybridse::node::kDate: {
-            *size = sizeof(::hybridse::codec::ColumnImpl<codec::Date>);
+            *size = sizeof(::hybridse::codec::ColumnImpl<openmldb::base::Date>);
             break;
         }
         case ::hybridse::node::kBool: {

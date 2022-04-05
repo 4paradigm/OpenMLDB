@@ -36,6 +36,7 @@ public class TaskManagerConfig {
     public static int PORT;
     public static int WORKER_THREAD;
     public static int IO_THREAD;
+    public static int CHANNEL_KEEP_ALIVE_TIME;
     public static String ZK_CLUSTER;
     public static String ZK_ROOT_PATH;
     public static String ZK_TASKMANAGER_PATH;
@@ -50,6 +51,8 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String JOB_LOG_PATH;
+    public static boolean TRACK_UNFINISHED_JOBS;
+    public static int JOB_TRACKER_INTERVAL;
     public static String SPARK_DEFAULT_CONF;
     public static String SPARK_EVENTLOG_DIR;
     public static int SPARK_YARN_MAXAPPATTEMPTS;
@@ -69,6 +72,8 @@ public class TaskManagerConfig {
         }
         WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
         IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
+        // alive time seconds
+        CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "1800"));
         ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
 
         ZK_CLUSTER = prop.getProperty("zookeeper.cluster", "");
@@ -146,6 +151,13 @@ public class TaskManagerConfig {
                     throw new ConfigException("job.log.path", "fail to create log path");
                 }
             }
+        }
+
+        TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
+
+        JOB_TRACKER_INTERVAL = Integer.parseInt(prop.getProperty("job.tracker.interval", "30"));
+        if (JOB_TRACKER_INTERVAL <= 0) {
+            throw new ConfigException("job.tracker.interval", "interval should be larger than 0");
         }
 
         SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");

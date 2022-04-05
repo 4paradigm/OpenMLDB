@@ -104,7 +104,8 @@ class BatchModeTransformer {
                          ::llvm::Module* module, const udf::UdfLibrary* library,
                          bool cluster_optimized_mode = false, bool enable_expr_opt = false,
                          bool enable_window_parallelization = true,
-                         bool enable_window_column_pruning = false);
+                         bool enable_window_column_pruning = false,
+                         const std::unordered_map<std::string, std::string>* options = nullptr);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
@@ -264,7 +265,8 @@ class RequestModeTransformer : public BatchModeTransformer {
                            ::llvm::Module* module, udf::UdfLibrary* library,
                            const std::set<size_t>& common_column_indices,
                            const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt,
-                           bool performance_sensitive = true);
+                           bool performance_sensitive = true,
+                           const std::unordered_map<std::string, std::string>* options = nullptr);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }

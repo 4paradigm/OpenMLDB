@@ -18,6 +18,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "proto/sql_procedure.pb.h"
 #include "sdk/base.h"
@@ -50,6 +51,18 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
 
     ::hybridse::sdk::ProcedureType GetType() const override { return type_; }
 
+    const std::string* GetOption(const std::string& key) const override {
+        if (options_.count(key)) {
+            return &options_.at(key);
+        } else {
+            return nullptr;
+        }
+    }
+
+    const std::unordered_map<std::string, std::string>* GetOption() const override {
+        return &options_;
+    }
+
  private:
     std::string db_name_;
     std::string sp_name_;
@@ -61,6 +74,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     std::string main_table_;
     std::string main_db_;
     ::hybridse::sdk::ProcedureType type_;
+    std::unordered_map<std::string, std::string> options_;
 };
 
 }  // namespace catalog
