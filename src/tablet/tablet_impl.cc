@@ -5262,6 +5262,24 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
 void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
         openmldb::api::CreateFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    hybridse::node::DataType return_type;
+    const auto& fun = request->fun();
+    openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun.file());
+    if (status.isOK()) {
+        LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+        base::SetResponseOK(response);
+    } else {
+        LOG(WARNING) << "create function failed. name " << fun.name()
+            << " path " << fun.file() << " msg " << status.msg;
+        base::SetResponseStatus(base::kCreateFunctionOnTablet, status.msg, response);
+    }
 }
 
 void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,

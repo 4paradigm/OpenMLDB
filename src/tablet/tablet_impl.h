@@ -279,6 +279,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 const ::openmldb::api::GAFDeployStatsRequest* request,
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization

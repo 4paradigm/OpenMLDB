@@ -90,7 +90,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::RunBatchAndShow(const std::string& sql,
                                                             const std::map<std::string, std::string>& config,
-                                                            const std::string& default_db, bool sync_job, 
+                                                            const std::string& default_db, bool sync_job,
                                                             ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::RunBatchAndShowRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -117,7 +117,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ImportOnlineData(const std::string& sql,
                                                              const std::map<std::string, std::string>& config,
-                                                             const std::string& default_db, bool sync_job, 
+                                                             const std::string& default_db, bool sync_job,
                                                              ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ImportOnlineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -143,7 +143,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ImportOfflineData(const std::string& sql,
                                                               const std::map<std::string, std::string>& config,
-                                                              const std::string& default_db, bool sync_job, 
+                                                              const std::string& default_db, bool sync_job,
                                                               ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ImportOfflineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -169,7 +169,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ExportOfflineData(const std::string& sql,
                                                               const std::map<std::string, std::string>& config,
-                                                              const std::string& default_db, bool sync_job, 
+                                                              const std::string& default_db, bool sync_job,
                                                               ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ExportOfflineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -233,4 +233,4 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     return "";
 }
 
-}  // namespace openmldb
+}  // namespace openmldb::client

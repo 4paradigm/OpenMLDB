@@ -118,6 +118,11 @@ void UdfLibrary::InsertRegistry(
     }
 }
 
+void UdfLibrary::RemoveRegistry(const std::string& name) {
+    std::string canonical_name = GetCanonicalName(name);
+    table_.erase(canonical_name);
+}
+
 bool UdfLibrary::IsUdaf(const std::string& name, size_t args) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
@@ -318,7 +323,11 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
 }
 
 void UdfLibrary::AddExternalFunction(const std::string& name, void* addr) {
-    external_symbols_.insert(std::make_pair(name, addr));
+    external_symbols_.emplace(name, addr);
+}
+
+void UdfLibrary::RemoveExternalFunction(const std::string& name) {
+    external_symbols_.erase(name);
 }
 
 void UdfLibrary::InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr) {

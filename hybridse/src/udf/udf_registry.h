@@ -1376,12 +1376,8 @@ class DynamicUdfRegistryHelper : public UdfRegistryHelper {
             node::DataType return_type, const std::vector<node::DataType>& arg_types,
             void* udfcontext_fun);
 
-    ~DynamicUdfRegistryHelper() {
-        Register();
-    }
-
- private:
-    void Register();
+    Status Register();
+    void UnRegister();
 
  private:
     std::string fn_name_;

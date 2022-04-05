@@ -50,27 +50,6 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::shared_ptr<SimpleCatalog> GetTestCatalog1() {
-    hybridse::type::Database db;
-    db.set_name("db");
-    ::hybridse::type::TableDef *table = db.add_tables();
-    table->set_name("t1");
-    table->set_catalog("db");
-    {
-        ::hybridse::type::ColumnDef *column = table->add_columns();
-        column->set_type(::hybridse::type::kVarchar);
-        column->set_name("col_1");
-    }
-    {
-        ::hybridse::type::ColumnDef *column = table->add_columns();
-        column->set_type(::hybridse::type::kInt64);
-        column->set_name("col_2");
-    }
-    auto catalog = std::make_shared<SimpleCatalog>();
-    catalog->AddDatabase(db);
-    return catalog;
-}
-
 std::shared_ptr<SqlCompileInfo> Compile(
     const std::string &sql, const EngineOptions &options,
     std::shared_ptr<SimpleCatalog> catalog) {
@@ -185,24 +164,21 @@ TEST_F(JitWrapperTest, test_window) {
     delete jit;
 }
 
-int myfun(UDFContext* ctx, StringRef* input) {
+int myfun(UDFContext* ctx, double input) {
    return 0;
 }
 
 TEST_F(JitWrapperTest, test_udf) {
     auto lib = udf::DefaultUdfLibrary::get();
-    std::vector<node::DataType> arg_types = {node::kVarchar};
+    std::vector<node::DataType> arg_types = {node::kDouble};
     auto status = lib->RegisterDynamicUdf("myfun", reinterpret_cast<void*>(myfun), node::kInt32, arg_types);
     EngineOptions options;
     options.SetKeepIr(true);
-    auto catalog = GetTestCatalog1();
+    auto catalog = GetTestCatalog();
     std::string sql = "select myfun(col_1) from t1;";
     auto compile_info = Compile(sql, options, catalog);
-    /*auto &sql_context = compile_info->get_sql_context();
+    auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
-
-    // clear this dict to ensure jit wrapper reinit all symbols
-    // this should be removed by better symbol init utility
 
     ASSERT_FALSE(ir_str.empty());
     HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
@@ -215,7 +191,7 @@ TEST_F(JitWrapperTest, test_udf) {
     auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
     auto fn = jit->FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
-    delete jit;*/
+    delete jit;
 }
 
 }  // namespace vm

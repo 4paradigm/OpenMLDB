@@ -206,10 +206,14 @@ DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, 
     }
 }
 
-void DynamicUdfRegistryHelper::Register() {
+Status DynamicUdfRegistryHelper::Register() {
+    if (fn_ptr_ == nullptr || udfcontext_fun_ptr_ == nullptr) {
+        LOG(WARNING) << "fun_ptr or udfcontext_fun_ptr is null";
+        return Status(kCodegenError, "fun_ptr or udfcontext_fun_ptr is null");
+    }
     if (return_type_ == nullptr) {
         LOG(WARNING) << "No return type specified for udf registry " << name();
-        return;
+        return Status(kCodegenError, "No return type specified for udf registry");;
     }
     std::string init_context_fn_name = "init_udfcontext.opaque";
     auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
@@ -221,6 +225,12 @@ void DynamicUdfRegistryHelper::Register() {
     auto registry = std::make_shared<DynamicUdfRegistry>(name(), def);
     library()->AddExternalFunction(fn_name_, fn_ptr_);
     this->InsertRegistry(arg_types_, false, registry);
+    return Status::OK();
+}
+
+void DynamicUdfRegistryHelper::UnRegister() {
+    library()->RemoveExternalFunction(fn_name_);
+    library()->RemoveRegistry(fn_name_);
 }
 
 }  // namespace udf

@@ -365,8 +365,8 @@ Status UdfIRBuilder::ExtractLlvmReturnValue(
 
 Status UdfIRBuilder::BuildLlvmCall(const node::FnDefNode* fn,
                                    ::llvm::FunctionCallee callee,
-                                   std::vector<const node::TypeNode*>& arg_types,
-                                   std::vector<int>& arg_nullable,
+                                   const std::vector<const node::TypeNode*>& arg_types,
+                                   const std::vector<int>& arg_nullable,
                                    const std::vector<NativeValue>& args,
                                    bool return_by_arg, NativeValue* output) {
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
