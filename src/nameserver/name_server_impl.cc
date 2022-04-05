@@ -10374,28 +10374,68 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
 }
 
+std::vector<std::shared_ptr<TabletInfo>> NameServerImpl::GetAllHealthTablet() {
+    std::vector<std::shared_ptr<TabletInfo>> tablets;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto& kv : tablets_) {
+        if (!kv.second->Health()) {
+            continue;
+        }
+        tablets.push_back(kv.second);
+    }
+    return tablets;
+}
+
 void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
                                     CreateFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (auto& kv : tablets_) {
-            if (!kv.second->Health()) {
-                LOG(WARNING) << "endpoint [" << kv.first << "] is offline";
-                continue;
-            }
-            tb_client_vec.push_back(kv.second->client_);
-        }
-    }
-    for (auto tb_client : tb_client_vec) {
+    auto tablets = GetAllHealthTablet();
+    for (const auto& tablet : tablets) {
         std::string msg;
-        if (!tb_client->CreateFunction(request->fun(), &msg)) {
+        if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
             // TODO: delete registered function
             return;
         }
     }
     base::SetResponseOK(response);
+    auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.emplace(fun->name(), fun);
+}
+
+void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                                    DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    std::shared_ptr<::openmldb::common::ExternalFun> fun;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            fun = iter->second;
+        }
+    }
+    if (!fun) {
+        if (request->if_exists()) {
+            base::SetResponseOK(response);
+        } else {
+            response->set_msg("fun is not exist");
+            LOG(WARNING) << request->name() << " is not exist";
+        }
+        return;
+    }
+    auto tablets = GetAllHealthTablet();
+    for (const auto& tablet : tablets) {
+        std::string msg;
+        if (!tablet->client_->DropFunction(*fun, &msg)) {
+            response->set_msg("drop function failed");
+            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
+            return;
+        }
+    }
+    LOG(INFO) << "drop function " << request->name() << " success";
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.erase(request->name());
 }
 
 base::Status NameServerImpl::InitGlobalVarTable() {

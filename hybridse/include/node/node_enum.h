@@ -259,6 +259,7 @@ enum CmdType {
     kCmdShowSessionVariables,
     kCmdShowComponents,
     kCmdShowTableStatus,
+    kCmdDropFunction,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };

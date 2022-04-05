@@ -15,7 +15,6 @@
  */
 
 #include "vm/engine.h"
-#include <dlfcn.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -272,39 +271,24 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 
 base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
                                          const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                         const std::string& so_name) {
+                                         const std::vector<void*> funcs) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }
-    if (so_name.empty()) {
-        return {common::kExternalUDFError, "so name is empty"};
-    }
-    void* handle = dlopen(so_name.c_str(), RTLD_LAZY);
-    if (handle == nullptr) {
-        return {common::kExternalUDFError, "can not open the dynamic library: " + so_name};
-    }
     auto lib = udf::DefaultUdfLibrary::get();
     if (is_aggregate) {
-        auto init_fun = dlsym(handle, std::string(name + "_init").c_str());
-        if (init_fun == nullptr) {
-            return {common::kExternalUDFError, "can not find the init function: " + name};
-        }
-        auto update_fun = dlsym(handle, std::string(name + "_update").c_str());
-        if (update_fun == nullptr) {
-            return {common::kExternalUDFError, "can not find the update function: " + name};
-        }
-        auto output_fun = dlsym(handle, std::string(name + "_output").c_str());
-        if (output_fun == nullptr) {
-            return {common::kExternalUDFError, "can not find the output function: " + name};
-        }
     } else {
-        auto fun = dlsym(handle, name.c_str());
-        if (fun == nullptr) {
-            return {common::kExternalUDFError, "can not find the function: " + name};
+        if (funcs.empty() || funcs[0] == nullptr) {
+            return {common::kExternalUDFError, name + " is nullptr"};
         }
-        auto status = lib->RegisterDynamicUdf(name, fun, return_type, arg_types);
+        auto status = lib->RegisterDynamicUdf(name, funcs[0], return_type, arg_types);
     }
     return {};
+}
+
+base::Status Engine::RemoveExternalFunction(const std::string& name,
+        const std::vector<node::DataType>& arg_types) {
+    return udf::DefaultUdfLibrary::get()->RemoveDynamicUdf(name, arg_types);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,

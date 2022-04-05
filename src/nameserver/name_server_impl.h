@@ -191,6 +191,9 @@ class NameServerImpl : public NameServer {
     void CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
                         CreateFunctionResponse* response, Closure* done);
 
+    void DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                        DropFunctionResponse* response, Closure* done);
+
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
 
@@ -760,6 +763,8 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
 
+    std::vector<std::shared_ptr<TabletInfo>> GetAllHealthTablet();
+
     bool AllocateTableId(uint32_t* id);
 
     base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
@@ -808,6 +813,7 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
+    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
     // database
     //    -> procedure
     //       -> (db_name, table_name)

@@ -228,10 +228,5 @@ Status DynamicUdfRegistryHelper::Register() {
     return Status::OK();
 }
 
-void DynamicUdfRegistryHelper::UnRegister() {
-    library()->RemoveExternalFunction(fn_name_);
-    library()->RemoveRegistry(fn_name_);
-}
-
 }  // namespace udf
 }  // namespace hybridse

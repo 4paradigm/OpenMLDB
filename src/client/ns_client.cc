@@ -996,5 +996,18 @@ base::Status NsClient::CreateFunction(const ::openmldb::common::ExternalFun& fun
     return {};
 }
 
+base::Status NsClient::DropFunction(const std::string& name, bool if_exists) {
+    nameserver::DropFunctionRequest request;
+    request.set_name(name);
+    request.set_if_exists(if_exists);
+    nameserver::DropFunctionResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    return {};
+}
+
 }  // namespace client
 }  // namespace openmldb

@@ -232,6 +232,8 @@ class NsClient : public Client {
 
     base::Status CreateFunction(const ::openmldb::common::ExternalFun& fun);
 
+    base::Status DropFunction(const std::string& name, bool if_exists);
+
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name, std::vector<api::ProcedureInfo>* infos,
                        std::string* msg);
 

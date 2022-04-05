@@ -106,6 +106,8 @@ class UdfLibrary {
     Status RegisterDynamicUdf(const std::string& name, void* fn,
             node::DataType return_type, const std::vector<node::DataType>& arg_types);
 
+    Status RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types);
+
     // register interfaces
     ExprUdfRegistryHelper RegisterExprUdf(const std::string& name);
     LlvmUdfRegistryHelper RegisterCodeGenUdf(const std::string& name);
@@ -137,7 +139,6 @@ class UdfLibrary {
 
     void AddExternalFunction(const std::string& name, void* addr);
 
-    void RemoveExternalFunction(const std::string& name);
     void InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
@@ -149,8 +150,6 @@ class UdfLibrary {
                         bool is_variadic, bool always_return_list,
                         const std::unordered_set<size_t>& always_list_argidx,
                         std::shared_ptr<UdfRegistry> registry);
-
-    void RemoveRegistry(const std::string& name);
 
  private:
     std::string GetCanonicalName(const std::string& name) const;

@@ -118,11 +118,6 @@ void UdfLibrary::InsertRegistry(
     }
 }
 
-void UdfLibrary::RemoveRegistry(const std::string& name) {
-    std::string canonical_name = GetCanonicalName(name);
-    table_.erase(canonical_name);
-}
-
 bool UdfLibrary::IsUdaf(const std::string& name, size_t args) const {
     std::string canonical_name = GetCanonicalName(name);
     auto iter = table_.find(canonical_name);
@@ -191,8 +186,21 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
 Status UdfLibrary::RegisterDynamicUdf(const std::string& name, void* fn,
         node::DataType return_type, const std::vector<node::DataType>& arg_types) {
     // TODO (denglong): check if exist
-    DynamicUdfRegistryHelper(GetCanonicalName(name), this, fn, return_type, arg_types,
+    DynamicUdfRegistryHelper helper(GetCanonicalName(name), this, fn, return_type, arg_types,
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+    return helper.Register();
+}
+
+Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types) {
+    std::string canonical_name = GetCanonicalName(name);
+    for (const auto type : arg_types) {
+        canonical_name.append(".").append(node::DataTypeName(type));
+    }
+    int cnt = table_.erase(canonical_name);
+    if (cnt <= 0) {
+        return Status(kCodegenError, "can not find the function " + canonical_name);
+    }
+    external_symbols_.erase(canonical_name);
     return {};
 }
 
@@ -324,10 +332,6 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
 
 void UdfLibrary::AddExternalFunction(const std::string& name, void* addr) {
     external_symbols_.emplace(name, addr);
-}
-
-void UdfLibrary::RemoveExternalFunction(const std::string& name) {
-    external_symbols_.erase(name);
 }
 
 void UdfLibrary::InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr) {

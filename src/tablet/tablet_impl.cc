@@ -16,6 +16,7 @@
 
 #include "tablet/tablet_impl.h"
 
+#include <dlfcn.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -5262,6 +5263,7 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
 void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
         openmldb::api::CreateFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
     hybridse::node::DataType return_type;
     const auto& fun = request->fun();
     openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
@@ -5271,14 +5273,73 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun.file());
+    void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
+    if (handle == nullptr) {
+        LOG(WARNING) << "can not open the dynamic library: " << fun.file();
+        response->set_msg("can not open the dynamic library: " + fun.file());
+    }
+    std::string name = fun.name();
+    std::vector<void*> funcs;
+    if (fun.is_aggregate()) {
+        auto init_fun = dlsym(handle, std::string(name + "_init").c_str());
+        if (init_fun == nullptr) {
+            LOG(WARNING) << "can not find the init function: " << name;
+            response->set_msg("can not find the init function: " + name);
+            return;
+        }
+        funcs.emplace_back(init_fun);
+        auto update_fun = dlsym(handle, std::string(name + "_update").c_str());
+        if (update_fun == nullptr) {
+            LOG(WARNING) << "can not find the update function: " << name;
+            response->set_msg("can not find the update function: " + name);
+            return;
+        }
+        funcs.emplace_back(update_fun);
+        auto output_fun = dlsym(handle, std::string(name + "_output").c_str());
+        if (output_fun == nullptr) {
+            LOG(WARNING) << "can not find the output function: " << name;
+            response->set_msg("can not find the output function: " + name);
+            return;
+        }
+        funcs.emplace_back(output_fun);
+    } else {
+        auto fun = dlsym(handle, name.c_str());
+        if (fun == nullptr) {
+            LOG(WARNING) << "can not find the function: " << name;
+            response->set_msg("can not find the function: " + name);
+            return;
+        }
+        funcs.emplace_back(fun);
+    }
+    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
     if (status.isOK()) {
         LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
     } else {
         LOG(WARNING) << "create function failed. name " << fun.name()
             << " path " << fun.file() << " msg " << status.msg;
-        base::SetResponseStatus(base::kCreateFunctionOnTablet, status.msg, response);
+        response->set_msg(status.msg);
+    }
+}
+
+void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
+        openmldb::api::DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const auto& fun = request->fun();
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
+    if (status.isOK()) {
+        LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
+        base::SetResponseOK(response);
+    } else {
+        LOG(WARNING) << "Drop function failed. name " << fun.name();
+        response->set_msg(status.msg);
+        response->set_code(base::kRPCRunError);
     }
 }
 

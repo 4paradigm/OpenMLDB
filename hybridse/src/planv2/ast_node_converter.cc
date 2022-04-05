@@ -595,6 +595,22 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node;
             break;
         }
+        case zetasql::AST_DROP_FUNCTION_STATEMENT: {
+            const zetasql::ASTDropFunctionStatement* drop_fun_statement =
+                statement->GetAsOrNull<zetasql::ASTDropFunctionStatement>();
+            CHECK_TRUE(nullptr != drop_fun_statement->name(), common::kSqlAstError,
+                       "not an AST_DROP_FUNCTION_STATEMENT")
+
+            std::vector<std::string> names;
+            CHECK_STATUS(AstPathExpressionToStringList(drop_fun_statement->name(), names))
+            CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid function path expression ",
+                       drop_fun_statement->name()->ToIdentifierPathString())
+            auto node =
+                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropFunction, names[0]));
+            node->SetIfExists(drop_fun_statement->is_if_exists());
+            *output = node;
+            break;
+        }
         case zetasql::AST_DESCRIBE_STATEMENT: {
             const zetasql::ASTDescribeStatement* describe_statement =
                 statement->GetAsOrNull<zetasql::ASTDescribeStatement>();

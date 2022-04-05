@@ -1509,6 +1509,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdDropFunction: {
+            std::string name = cmd_node->GetArgs()[0];
+            auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
+            if (base_status.OK()) {
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+            }
+            return {};
+        }
         case hybridse::node::kCmdShowCreateSp: {
             auto& args = cmd_node->GetArgs();
             std::string db_name, sp_name;

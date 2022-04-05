@@ -832,6 +832,15 @@ message CreateFunctionResponse {
     optional string msg = 2;
 }
 
+message DropFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message CreateAggregatorRequest {
     optional TableMeta base_table_meta = 1;
     optional uint32 aggr_table_tid = 2;
@@ -934,6 +943,7 @@ service TabletServer {
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
     rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
 
 
     // pre aggregator interfaces

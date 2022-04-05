@@ -1969,10 +1969,19 @@ class CmdNode : public SqlNode {
         if_not_exist_ = b;
     }
 
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
+
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 enum class DeleteTarget {
