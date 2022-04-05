@@ -117,6 +117,7 @@ struct ZkPath {
     std::string op_data_path_;
     std::string op_sync_path_;
     std::string globalvar_changed_notify_node_;
+    std::string external_function_path_;
 };
 
 class NameServerImplTest;

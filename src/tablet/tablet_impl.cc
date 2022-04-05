@@ -5273,52 +5273,90 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
-    if (handle == nullptr) {
-        LOG(WARNING) << "can not open the dynamic library: " << fun.file();
-        response->set_msg("can not open the dynamic library: " + fun.file());
+    std::shared_ptr<SoLibHandle> so_handle;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = handle_map_.find(fun.file());
+        if (iter != handle_map_.end()) {
+            so_handle = iter->second;
+            so_handle->ref_cnt++;
+        }
+    }
+    if (!so_handle) {
+        void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
+        if (handle == nullptr) {
+            LOG(WARNING) << "can not open the dynamic library: " << fun.file();
+            response->set_msg("can not open the dynamic library: " + fun.file());
+        }
+        so_handle = std::make_shared<SoLibHandle>(handle);
+        std::lock_guard<std::mutex> lock(mu_);
+        handle_map_.emplace(fun.file(), so_handle);
     }
     std::string name = fun.name();
     std::vector<void*> funcs;
-    if (fun.is_aggregate()) {
-        auto init_fun = dlsym(handle, std::string(name + "_init").c_str());
-        if (init_fun == nullptr) {
-            LOG(WARNING) << "can not find the init function: " << name;
-            response->set_msg("can not find the init function: " + name);
-            return;
+    bool run_ok = false;
+    do {
+        if (fun.is_aggregate()) {
+            auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
+            if (init_fun == nullptr) {
+                LOG(WARNING) << "can not find the init function: " << name;
+                response->set_msg("can not find the init function: " + name);
+                break;
+            }
+            funcs.emplace_back(init_fun);
+            auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
+            if (update_fun == nullptr) {
+                LOG(WARNING) << "can not find the update function: " << name;
+                response->set_msg("can not find the update function: " + name);
+                break;
+            }
+            funcs.emplace_back(update_fun);
+            auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
+            if (output_fun == nullptr) {
+                LOG(WARNING) << "can not find the output function: " << name;
+                response->set_msg("can not find the output function: " + name);
+                break;
+            }
+            funcs.emplace_back(output_fun);
+        } else {
+            auto fun = dlsym(so_handle->handle, name.c_str());
+            if (fun == nullptr) {
+                LOG(WARNING) << "can not find the function: " << name;
+                response->set_msg("can not find the function: " + name);
+                break;
+            }
+            funcs.emplace_back(fun);
+            run_ok = true;
         }
-        funcs.emplace_back(init_fun);
-        auto update_fun = dlsym(handle, std::string(name + "_update").c_str());
-        if (update_fun == nullptr) {
-            LOG(WARNING) << "can not find the update function: " << name;
-            response->set_msg("can not find the update function: " + name);
-            return;
+    } while(0);
+    if (run_ok) {
+        auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
+        if (status.isOK()) {
+            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+            base::SetResponseOK(response);
+        } else {
+            LOG(WARNING) << "create function failed. name " << fun.name()
+                << " path " << fun.file() << " msg " << status.msg;
+            response->set_msg(status.msg);
+            run_ok = false;
         }
-        funcs.emplace_back(update_fun);
-        auto output_fun = dlsym(handle, std::string(name + "_output").c_str());
-        if (output_fun == nullptr) {
-            LOG(WARNING) << "can not find the output function: " << name;
-            response->set_msg("can not find the output function: " + name);
-            return;
-        }
-        funcs.emplace_back(output_fun);
-    } else {
-        auto fun = dlsym(handle, name.c_str());
-        if (fun == nullptr) {
-            LOG(WARNING) << "can not find the function: " << name;
-            response->set_msg("can not find the function: " + name);
-            return;
-        }
-        funcs.emplace_back(fun);
     }
-    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
-    if (status.isOK()) {
-        LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
-        base::SetResponseOK(response);
-    } else {
-        LOG(WARNING) << "create function failed. name " << fun.name()
-            << " path " << fun.file() << " msg " << status.msg;
-        response->set_msg(status.msg);
+    if (!run_ok) {
+        std::shared_ptr<SoLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            dlclose(so_handle->handle);
+        }
     }
 }
 
@@ -5336,6 +5374,22 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
     if (status.isOK()) {
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
+        std::shared_ptr<SoLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                so_handle = iter->second;
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            dlclose(so_handle->handle);
+        }
     } else {
         LOG(WARNING) << "Drop function failed. name " << fun.name();
         response->set_msg(status.msg);

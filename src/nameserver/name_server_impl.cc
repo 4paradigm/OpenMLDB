@@ -1383,6 +1383,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
         zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
         zk_path_.globalvar_changed_notify_node_ = zk_path + "/notify/global_variable";
+        zk_path_.external_function_path_ = zk_path + "/data/function";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -10389,6 +10390,15 @@ std::vector<std::shared_ptr<TabletInfo>> NameServerImpl::GetAllHealthTablet() {
 void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
                                     CreateFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (external_fun_.find(request->fun().name()) != external_fun_.end()) {
+            PDLOG(WARNING, "create function failed. function %s is exist", request->fun().name().c_str());
+            response->set_msg("function is exist");
+            return;
+        }
+    }
     auto tablets = GetAllHealthTablet();
     for (const auto& tablet : tablets) {
         std::string msg;
@@ -10397,8 +10407,16 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
             return;
         }
     }
-    base::SetResponseOK(response);
+    std::string value;
     auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
+    fun->SerializeToString(&value);
+    std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+    if (!zk_client_->CreateNode(fun_node, value)) {
+        PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
+              fun_node.c_str(), value.c_str(), value.length());
+        return;
+    }
+    base::SetResponseOK(response);
     std::lock_guard<std::mutex> lock(mu_);
     external_fun_.emplace(fun->name(), fun);
 }
@@ -10432,6 +10450,12 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
             LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
             return;
         }
+    }
+    std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+    if (!zk_client_->DeleteNode(fun_node)) {
+        PDLOG(WARNING, "create function node[%s] failed", fun_node.c_str());
+        response->set_msg("drop function node failed");
+        return;
     }
     LOG(INFO) << "drop function " << request->name() << " success";
     std::lock_guard<std::mutex> lock(mu_);
