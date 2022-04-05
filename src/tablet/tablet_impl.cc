@@ -185,9 +185,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kHDD]);
     deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
-
-    ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_);
-    ::openmldb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_);
+    
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
