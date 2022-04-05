@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_UDF_UDF_LIBRARY_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -143,7 +144,10 @@ class UdfLibrary {
 
     node::NodeManager* node_manager() { return &nm_; }
 
-    const auto& GetAllRegistries() { return table_; }
+    std::unordered_map<std::string, std::shared_ptr<UdfLibraryEntry>> GetAllRegistries() {
+        std::lock_guard<std::mutex> lock(mu_);
+        return table_;
+    }
 
     void InsertRegistry(const std::string& name,
                         const std::vector<const node::TypeNode*>& arg_types,
@@ -163,6 +167,7 @@ class UdfLibrary {
     node::NodeManager nm_;
 
     const bool case_sensitive_ = false;
+    mutable std::mutex mu_;
 };
 
 const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);
