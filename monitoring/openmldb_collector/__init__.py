@@ -11,6 +11,8 @@ from openmldb_collector.metrics import (
     table_disk,
     table_memory,
     deploy_response_time,
+    tablet_memory_application,
+    tablet_memory_actual,
 )
 
 __all__ = [
@@ -23,4 +25,6 @@ __all__ = [
     "table_disk",
     "table_memory",
     "deploy_response_time",
+    "tablet_memory_application",
+    "tablet_memory_actual",
 ]

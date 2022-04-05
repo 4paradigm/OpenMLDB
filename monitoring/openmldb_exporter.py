@@ -21,13 +21,16 @@ main entry of openmldb prometheus exporter
 import argparse
 import os
 import sys
+import logging
 from urllib import request
+from typing import Iterable
 
-from openmldb_collector import connected_seconds, component_status, table_rows, table_partitions, table_partitions_unalive, table_memory, table_disk, table_replica, deploy_response_time
-from prometheus_client import Gauge
+from openmldb_collector import (connected_seconds, component_status, table_rows, table_partitions,
+                                table_partitions_unalive, table_memory, table_disk, table_replica, deploy_response_time,
+                                tablet_memory_application, tablet_memory_actual)
 from prometheus_client.twisted import MetricsResource
 from sqlalchemy import engine, select
-from twisted.internet import reactor
+from twisted.internet import reactor, task
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
@@ -87,9 +90,23 @@ class OpenMLDBScraper(object):
             table_disk.labels(tb_path, tid).set(int(disk))
 
 
+def pull_db_stats(inst: OpenMLDBScraper):
+    logging.info("running pull_db_stats")
+    inst.scrape_components()
+    inst.scrape_table_status()
+    inst.scrape_deploy_response_time()
+
+
+def pull_mem_stats(endpoint_list: Iterable[str]):
+    logging.info("running pull_mem_stats")
+    for endpoint in endpoint_list:
+        app, actual = get_mem(f"{endpoint}/TabletServer/ShowMemPool")
+        tablet_memory_application.labels(endpoint).set(app)
+        tablet_memory_actual.labels(endpoint).set(actual)
+
+
 def get_mem(url):
     memory_by_application = 0
-    memory_central_cache_freelist = 0
     memory_acutal_used = 0
     with request.urlopen(url) as resp:
         for i in resp:
@@ -99,19 +116,14 @@ def get_mem(url):
                     memory_by_application = int(line.split()[1])
                 except Exception as e:
                     memory_by_application = 0
-            elif line.rfind("central cache freelist") > 0:
-                try:
-                    memory_central_cache_freelist = line.split()[2]
-                except Exception as e:
-                    memory_central_cache_freelist = 0
             elif line.rfind("Actual memory used") > 0:
                 try:
-                    memory_acutal_used = line.split()[2]
+                    memory_acutal_used = int(line.split()[2])
                 except Exception as e:
                     memory_acutal_used = 0
             else:
                 continue
-    return memory_by_application, memory_central_cache_freelist, memory_acutal_used
+    return memory_by_application, memory_acutal_used
 
 
 def parse_args():
@@ -128,19 +140,18 @@ def main():
     if "metric_port" in env_dist:
         port = int(env_dist["metric_port"])
 
-    gauge = {}
-
-    gauge["memory"] = Gauge("openmldb_memory", "metric for OpenMLDB memory", ["type"])
-
     zk_root = "127.0.0.1:6181"
     zk_path = "/onebox"
     eng = engine.create_engine(f"openmldb:///?zk={zk_root}&zkPath={zk_path}")
     conn = eng.connect()
 
     scraper = OpenMLDBScraper(conn)
-    scraper.scrape_components()
-    scraper.scrape_table_status()
-    scraper.scrape_deploy_response_time()
+
+    repeated_task = task.LoopingCall(pull_db_stats, scraper)
+    repeated_task.start(10.0)
+
+    memory_task = task.LoopingCall(pull_mem_stats, [])
+    memory_task.start(10.0)
 
     root = Resource()
     root.putChild(b"metrics", MetricsResource())

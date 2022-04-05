@@ -27,6 +27,22 @@ component_status = Enum(
     namespace=NAMESPACE,
 )
 
+tablet_memory_application = Gauge(
+    "tablet_memory_application",
+    "tablet application memory usage in bytes",
+    [ENDPOINT],
+    namespace=NAMESPACE,
+    unit="bytes",
+)
+
+tablet_memory_actual = Gauge(
+    "tablet_memory_actual_used",
+    "actual memory used in bytes for tablet application",
+    [ENDPOINT],
+    namespace=NAMESPACE,
+    unit="bytes",
+)
+
 table_rows = Gauge(
     "table_rows",
     "table row count",
@@ -81,4 +97,3 @@ deploy_response_time = Histogram(
     unit="seconds",
     buckets=BUCKETS,
 )
-
