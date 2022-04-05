@@ -49,7 +49,7 @@ namespace statistics {
 // total number of negative power point in time distribution
 // e.g. 6 means 10 ^ -6 - 10 ^-1
 #define TIME_DISTRIBUTION_NEGATIVE_POWER_COUNT 6
-// total number of non-negative power point in time distribution
+// total number of non-negative power point in time distribution (INF excluded)
 // e.g. 7 means 10 ^ 0 - 10 ^ 6
 #define TIME_DISTRIBUTION_NON_NEGATIVE_POWER_COUNT 7
 
