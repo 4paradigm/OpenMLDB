@@ -129,20 +129,25 @@ def get_mem(url):
 def parse_args():
     parser = argparse.ArgumentParser(description="OpenMLDB exporter")
     parser.add_argument("--config", type=str, help="path to config file")
+    parser.add_argument("--log", type=str, default="INFO", help="config log level")
+    parser.add_argument("--port", type=int, default=8000, help="process listen port")
+    parser.add_argument("--zk_root", type=str, default="127.0.0.1:6181", help="endpoint to zookeeper")
+    parser.add_argument("--zk_path", type=str, default="/", help="root path in zookeeper for OpenMLDB")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
-    env_dist = os.environ
-    port = 8000
-    if "metric_port" in env_dist:
-        port = int(env_dist["metric_port"])
+    # assuming loglevel is bound to the string value obtained from the
+    # command line argument. Convert to upper case to allow the user to
+    # specify --log=DEBUG or --log=debug
+    numeric_level = getattr(logging, args.log.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.log}")
+    logging.basicConfig(level=numeric_level)
 
-    zk_root = "127.0.0.1:6181"
-    zk_path = "/onebox"
-    eng = engine.create_engine(f"openmldb:///?zk={zk_root}&zkPath={zk_path}")
+    eng = engine.create_engine(f"openmldb:///?zk={args.zk_root}&zkPath={args.zk_path}")
     conn = eng.connect()
 
     scraper = OpenMLDBScraper(conn)
@@ -156,7 +161,7 @@ def main():
     root = Resource()
     root.putChild(b"metrics", MetricsResource())
     factory = Site(root)
-    reactor.listenTCP(port, factory)
+    reactor.listenTCP(args.port, factory)
     reactor.run()
 
 
