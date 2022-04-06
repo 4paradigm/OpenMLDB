@@ -907,6 +907,8 @@ DiskTableKeyIterator::~DiskTableKeyIterator() {
 
 void DiskTableKeyIterator::SeekToFirst() {
     it_->SeekToFirst();
+    uint32_t cur_ts_idx = UINT32_MAX;
+    ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
 }
 
 void DiskTableKeyIterator::NextPK() {
@@ -931,17 +933,7 @@ void DiskTableKeyIterator::NextPK() {
             // if (!IsExpired()) {
             //     return;
             // } 
-            {
-                last_pk = pk_;
-                std::string combine;
-                if (has_ts_idx_) {
-                    std::string combine_key = CombineKeyTs(last_pk, 0, ts_idx_);
-                    it_->Seek(rocksdb::Slice(combine_key));
-                } else {
-                    std::string combine_key = CombineKeyTs(last_pk, 0);
-                    it_->Seek(rocksdb::Slice(combine_key));
-                }
-            }
+            last_pk = pk_;
         } else {
             it_->Next();
         }
