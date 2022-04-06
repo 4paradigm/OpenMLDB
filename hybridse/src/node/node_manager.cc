@@ -444,8 +444,8 @@ SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::strin
                                           const std::string &table_name, SqlNodeList *column_desc_list,
                                           SqlNodeList *table_option_list) {
     CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist);
-    FillSqlNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSqlNodeList2NodeVector(table_option_list, node_ptr->GetTableOptionList());
+    FillSqlNodeList2NodeVector(column_desc_list, *(node_ptr->MutableColumnDefList()));
+    FillSqlNodeList2NodeVector(table_option_list, *(node_ptr->MutableTableOptionList()));
     return RegisterNode(node_ptr);
 }
 

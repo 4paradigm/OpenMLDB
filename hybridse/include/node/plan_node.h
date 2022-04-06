@@ -417,12 +417,9 @@ class CreatePlanNode : public LeafPlanNode {
         return true;
     }
 
-    NodePointVector &GetColumnDescList() { return column_desc_list_; }
+    const NodePointVector &GetColumnDescList() const { return column_desc_list_; }
 
-    void SetColumnDescList(const NodePointVector &column_desc_list) { column_desc_list_ = column_desc_list; }
-
-    NodePointVector &GetTableOptionList() { return table_option_list_; }
-    void SetTableOptionList(const NodePointVector &table_option_list) { table_option_list_ = table_option_list; }
+    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:

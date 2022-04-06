@@ -511,7 +511,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
             {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
             {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
-            rs.get());        
+            rs.get());
     }
     HandleSQL("show table status");
 

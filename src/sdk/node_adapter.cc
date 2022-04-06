@@ -33,7 +33,7 @@ namespace openmldb::sdk {
 using hybridse::plan::PlanAPI;
 
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-                                      ::openmldb::nameserver::TableInfo* table, int default_replica_num,
+                                      ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                       bool is_cluster_mode, hybridse::base::Status* status) {
     if (create_node == nullptr || table == nullptr || status == nullptr) return false;
     std::string table_name = create_node->GetTableName();
@@ -44,36 +44,38 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_name(table_name);
     hybridse::node::NodePointVector distribution_list;
 
-    int replica_num;
-    int partition_num;
+    uint32_t replica_num = 1;
+    uint32_t partition_num = 1;
     // different default value for cluser mode and standalone mode
     if (is_cluster_mode) {
         replica_num = default_replica_num;
         partition_num = 8;
-    } else {
-        replica_num = 1;
-        partition_num = 1;
     }
     // resolve table_option_list
-    for (auto table_option : table_option_list) {
-        switch (table_option->GetType()) {
-            case hybridse::node::kReplicaNum: {
-                replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
-            }
-            case hybridse::node::kPartitionNum: {
-                partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
-            }
-            case hybridse::node::kDistributions: {
-                auto d_list = dynamic_cast<hybridse::node::DistributionsNode *>(table_option)->GetDistributionList();
-                if (d_list != nullptr) {
-                    for (auto meta_ptr : d_list->GetList()) {
-                        distribution_list.push_back(meta_ptr);
-                    }
+    for (auto& table_option : table_option_list) {
+        if (table_option != nullptr) {
+            switch (table_option->GetType()) {
+                case hybridse::node::kReplicaNum: {
+                    replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+                    break;
                 }
-            }
-            default: {
-                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
-                             << " for table node";
+                case hybridse::node::kPartitionNum: {
+                    partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+                    break;
+                }
+                case hybridse::node::kDistributions: {
+                    auto d_list = dynamic_cast<hybridse::node::DistributionsNode *>(table_option)->GetDistributionList();
+                    if (d_list != nullptr) {
+                        for (auto meta_ptr : d_list->GetList()) {
+                            distribution_list.push_back(meta_ptr);
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
+                                << " for table node";
+                }
             }
         }
     }
@@ -90,8 +92,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             return false;
         }
     }
-    table->set_replica_num(static_cast<uint32_t>(replica_num));
-    table->set_partition_num(static_cast<uint32_t>(partition_num));
+    table->set_replica_num(replica_num);
+    table->set_partition_num(partition_num);
 
     table->set_format_version(1);
     bool has_generate_index = false;

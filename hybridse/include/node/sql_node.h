@@ -1859,7 +1859,6 @@ class CreateStmt : public SqlNode {
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
-
     NodePointVector* MutableTableOptionList() { return &table_option_list_; }
     const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 

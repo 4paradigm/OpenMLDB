@@ -1772,7 +1772,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     }
     int tablets_size = tablets.size();
     // set dafault value
-    int default_replica_num = std::min(tablets_size, 3);
+    uint32_t default_replica_num = std::min(tablets_size, 3);
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
