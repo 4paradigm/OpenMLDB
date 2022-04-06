@@ -47,6 +47,7 @@ DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
+DECLARE_int32(disk_gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(max_traverse_cnt);
@@ -1849,8 +1850,10 @@ TEST_P(TabletImplTest, Scan) {
 TEST_P(TabletImplTest, GCWithUpdateLatest) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1990,6 +1993,7 @@ TEST_P(TabletImplTest, GCWithUpdateLatest) {
     }
 
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, GC) {
