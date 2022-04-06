@@ -454,7 +454,7 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             auto& aggr_val = aggr_buffer->aggr_val_.vstring;
             if (aggr_buffer->AggrValEmpty() || strcmp(ch, aggr_val.data) < 0) {
                 if (aggr_val.data != NULL && ch_length > aggr_val.len) {
-                    delete aggr_val.data;
+                    delete[] aggr_val.data;
                     aggr_val.data = NULL;
                 }
                 if (aggr_val.data == NULL) {
