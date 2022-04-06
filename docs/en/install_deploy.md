@@ -33,7 +33,7 @@ $ swapoff -a
 
 ### Disable THP (Transparent Huge Pages)
 
-Check th status of THP.
+Check the status of THP.
 
 ```
 $ cat /sys/kernel/mm/transparent_hugepage/enabled
