@@ -622,6 +622,18 @@ int64_t myfun(UDFContext* ctx, int input) {
     return input + 2;
 }
 
+void cut2(UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output, bool* is_null) {
+    if (input == nullptr || output == nullptr) {
+        *is_null = true;
+    }
+    uint32_t size = input->size_ <= 2 ? input->size_ : 2;
+    char *buffer = ctx->pool->Alloc(size);
+    memcpy(buffer, input->data_, size);
+    output->size_ = size;
+    output->data_ = buffer;
+    *is_null = false;
+}
+
 TEST_F(EngineCompileTest, ExternalFunctionTest) {
     // Build Simple Catalog
     auto catalog = BuildSimpleCatalog();
@@ -642,14 +654,23 @@ TEST_F(EngineCompileTest, ExternalFunctionTest) {
     EngineOptions options;
     //options.SetCompileOnly(true);
     Engine engine(catalog, options);
-    engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false, {reinterpret_cast<void*>(myfun)});
+    ASSERT_TRUE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false,
+                {reinterpret_cast<void*>(myfun)}).isOK());
+    ASSERT_FALSE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false,
+                {reinterpret_cast<void*>(myfun)}).isOK());
+    ASSERT_FALSE(engine.RegisterExternalFunction("lcase", node::kInt64, {node::kInt32}, false,
+                {reinterpret_cast<void*>(myfun)}).isOK());
     base::Status get_status;
     BatchRunSession session;
     ASSERT_TRUE(engine.Get(sql, "simple_db", session, get_status));
     ASSERT_TRUE(engine.RemoveExternalFunction("myfun", {node::kInt32}).isOK());
-    BatchRunSession session1;
     std::string sql1 = "select myfun(col1 + 2) from t1;";
-    ASSERT_FALSE(engine.Get(sql1, "simple_db", session1, get_status));
+    ASSERT_FALSE(engine.Get(sql1, "simple_db", session, get_status));
+
+    ASSERT_TRUE(engine.RegisterExternalFunction("cut2", node::kVarchar, {node::kVarchar}, false,
+                {reinterpret_cast<void*>(cut2)}).isOK());
+    std::string sql2 = "select cut2(col0) from t1;";
+    ASSERT_TRUE(engine.Get(sql2, "simple_db", session, get_status));
 }
 }  // namespace vm
 }  // namespace hybridse

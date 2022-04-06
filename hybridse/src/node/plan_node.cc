@@ -226,7 +226,7 @@ std::string NameOfPlanNodeType(const PlanType &type) {
         case kPlanTypeDelete:
             return "kPlanTypeDelete";
         case kPlanTypeCreateFunction:
-            return std::string("kPlanTypeCreateFunction");
+            return "kPlanTypeCreateFunction";
         case kUnknowPlan:
             return std::string("kUnknow");
     }

@@ -2411,7 +2411,7 @@ class DynamicUdfFnDefNode : public FnDefNode {
     DynamicUdfFnDefNode *ShadowCopy(NodeManager *) const override;
     DynamicUdfFnDefNode *DeepCopy(NodeManager *) const override;
 
-    ExternalFnDefNode *GetInitContextNode() const { return init_context_node_; }
+    const ExternalFnDefNode *GetInitContextNode() const { return init_context_node_; }
 
  private:
     std::string function_name_;

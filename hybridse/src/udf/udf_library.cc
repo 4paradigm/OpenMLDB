@@ -199,8 +199,11 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
 
 Status UdfLibrary::RegisterDynamicUdf(const std::string& name, void* fn,
         node::DataType return_type, const std::vector<node::DataType>& arg_types) {
-    // TODO (denglong): check if exist
-    DynamicUdfRegistryHelper helper(GetCanonicalName(name), this, fn, return_type, arg_types,
+    std::string canon_name = GetCanonicalName(name);
+    if (HasFunction(canon_name)) {
+        return {kCodegenError, name + " has exist"};
+    }
+    DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
     return helper.Register();
 }

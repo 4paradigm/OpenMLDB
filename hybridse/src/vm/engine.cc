@@ -277,13 +277,13 @@ base::Status Engine::RegisterExternalFunction(const std::string& name, node::Dat
     }
     auto lib = udf::DefaultUdfLibrary::get();
     if (is_aggregate) {
+        return {};
     } else {
         if (funcs.empty() || funcs[0] == nullptr) {
             return {common::kExternalUDFError, name + " is nullptr"};
         }
-        auto status = lib->RegisterDynamicUdf(name, funcs[0], return_type, arg_types);
+        return lib->RegisterDynamicUdf(name, funcs[0], return_type, arg_types);
     }
-    return {};
 }
 
 base::Status Engine::RemoveExternalFunction(const std::string& name,

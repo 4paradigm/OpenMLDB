@@ -5414,7 +5414,6 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
             std::lock_guard<std::mutex> lock(mu_);
             auto iter = handle_map_.find(fun.file());
             if (iter != handle_map_.end()) {
-                so_handle = iter->second;
                 iter->second->ref_cnt--;
                 if (iter->second->ref_cnt == 0) {
                     so_handle = iter->second;
@@ -5423,6 +5422,7 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
             }
         }
         if (so_handle) {
+            LOG(INFO) << "close the handle. path " << fun.file();
             dlclose(so_handle->handle);
         }
     } else {

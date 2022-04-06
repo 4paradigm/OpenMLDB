@@ -496,7 +496,6 @@ Status UdfIRBuilder::BuildDynamicUdfCall(
                 "udf_opaque_type_arg_addr",
                 builder.getInt64(opaque_type_node->bytes())));
     UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
-    //NativeValue udfcontext_output;
     CHECK_STATUS(
         sub_udf_builder.BuildCall(init_context_fn, {}, {}, &udfcontext_output),
         "Build output function call failed");
