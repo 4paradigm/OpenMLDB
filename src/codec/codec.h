@@ -79,6 +79,7 @@ class RowBuilder {
     explicit RowBuilder(const Schema& schema);
 
     uint32_t CalTotalLength(uint32_t string_length);
+    bool InitExternalBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool AppendBool(bool val);
@@ -90,21 +91,33 @@ class RowBuilder {
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);
     bool AppendNULL();
+    bool SetNULL(uint32_t index);
+    bool SetNULL(int8_t* buf, uint32_t size, uint32_t index);
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
     bool AppendDate(int32_t date);
     bool AppendValue(const std::string& val);
     bool SetBool(uint32_t index, bool val);
-    bool SetInt32(uint32_t index, int32_t val);
+    bool SetBool(int8_t* buf, uint32_t index, bool val);
     bool SetInt16(uint32_t index, int16_t val);
+    bool SetInt16(int8_t* buf, uint32_t index, int16_t val);
+    bool SetInt32(uint32_t index, int32_t val);
+    bool SetInt32(int8_t* buf, uint32_t index, int32_t val);
     bool SetInt64(uint32_t index, int64_t val);
+    bool SetInt64(int8_t* buf, uint32_t index, int64_t val);
     bool SetTimestamp(uint32_t index, int64_t val);
+    bool SetTimestamp(int8_t* buf, uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
+    bool SetFloat(int8_t* buf, uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
+    bool SetDouble(int8_t* buf, uint32_t index, double val);
     bool SetString(uint32_t index, const char* val, uint32_t length);
+    bool SetString(int8_t* buf, uint32_t size, uint32_t index, const char* val, uint32_t length);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
+    bool SetDate(int8_t* buf, uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
+    bool SetDate(int8_t* buf, uint32_t index, int32_t date);
 
     void SetSchemaVersion(uint8_t version);
     inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }
@@ -113,8 +126,10 @@ class RowBuilder {
  private:
     bool Check(uint32_t index, ::openmldb::type::DataType type);
     inline void SetField(uint32_t index);
+    inline void SetField(int8_t* buf, uint32_t index);
     inline void SetStrOffset(uint32_t str_pos);
-    bool SetNULL(uint32_t index);
+    void SetStrOffset(int8_t* buf, uint32_t size, uint32_t str_pos, uint32_t str_offset);
+    bool GetStrOffset(int8_t* buf, uint32_t size, uint32_t str_pos, uint32_t* offset);
 
  private:
     const Schema& schema_;
