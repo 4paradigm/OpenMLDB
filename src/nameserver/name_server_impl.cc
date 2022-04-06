@@ -5666,7 +5666,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
     std::shared_ptr<TabletInfo> leader_tablet_ptr;
     std::shared_ptr<TabletInfo> tablet_ptr;
     bool has_follower = true;
-    ::openmldb::common::StorageMode storage_mode = ::openmldb::common::StorageMode::kMemory;
+    common::StorageMode storage_mode = common::kMemory;
     {
         std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -6815,7 +6815,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
 
-    ::openmldb::common::StorageMode cur_storage_mode = ::openmldb::common::StorageMode::kMemory;
+    common::StorageMode cur_storage_mode = common::kMemory;
     if (storage_mode == ::openmldb::common::StorageMode::kSSD) {
         cur_storage_mode = ::openmldb::common::StorageMode::kSSD;
     } else if (storage_mode == ::openmldb::common::StorageMode::kHDD) {

@@ -57,6 +57,11 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         PDLOG(INFO, "snapshot is doing now! tid %u pid %u", tid_, pid_);
         return 0;
     }
+    if (end_offset > 0) {
+        PDLOG(ERROR, "disk table snapshot doesn't support end_offset > 0");
+        return -1;
+    }
+
     making_snapshot_.store(true, std::memory_order_release);
     int ret = 0;
     do {

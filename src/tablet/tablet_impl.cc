@@ -1286,7 +1286,7 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     }
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
-    if (!request->filter_expired_data() && table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
+    if (!request->filter_expired_data() && table->GetStorageMode() == common::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             uint64_t count = 0;
@@ -2286,7 +2286,7 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                 status->set_offset(replicator->GetOffset());
             }
             status->set_record_cnt(table->GetRecordCnt());
-            if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
+            if (table->GetStorageMode() == common::kMemory) {
                 if (MemTable* mem_table = dynamic_cast<MemTable*>(table.get())) {
                     status->set_is_expire(mem_table->GetExpireStatus());
                     status->set_record_byte_size(mem_table->GetRecordByteSize());
@@ -2327,7 +2327,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
+    if (table->GetStorageMode() == common::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             mem_table->SetExpire(request->is_expire());
@@ -2725,7 +2725,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             }
             snapshot_file = manifest.name();
         }
-        if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
+        if (table->GetStorageMode() == common::kMemory) {
             // send snapshot file
             if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
                 PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
@@ -3071,7 +3071,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
             replicator->StartSyncing();
             disk_table->SetOffset(latest_offset);
             table->SchedGc();
-            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000,
+                               boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval,
                                boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval,
@@ -3247,7 +3248,9 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s", tid, pid, name.c_str());
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+
+    int gc_interval = table->GetStorageMode() == common::kMemory ? FLAGS_gc_interval : FLAGS_disk_gc_interval;
+    gc_pool_.DelayTask(gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
@@ -3927,10 +3930,7 @@ std::shared_ptr<::openmldb::api::TaskInfo> TabletImpl::FindMultiTask(const ::ope
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (table) {
-        int32_t gc_interval = FLAGS_gc_interval;
-        if (table->GetStorageMode() != ::openmldb::common::StorageMode::kMemory) {
-            gc_interval = FLAGS_disk_gc_interval;
-        }
+        int32_t gc_interval = table->GetStorageMode() == common::kMemory ? FLAGS_gc_interval : FLAGS_disk_gc_interval;
         table->SchedGc();
         if (!execute_once) {
             gc_pool_.DelayTask(gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
@@ -5015,7 +5015,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         }
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, ::openmldb::common::StorageMode::kMemory, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, common::kMemory, db_root_path);
     if (!ok) {
         base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
