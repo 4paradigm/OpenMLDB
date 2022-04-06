@@ -64,8 +64,8 @@ class OpenMLDBScraper(object):
         sum = 0
         while row != None:
             dp_name, time, count, total = row
-            time = float(time) / 1000000
-            sum += float(total) / 1000000
+            time = float(time)
+            sum += float(total)
             for i, bound in enumerate(deploy_response_time._upper_bounds):
                 if time <= bound:
                     # FIXME: handle Histogram reset correctly
