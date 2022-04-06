@@ -1,11 +1,9 @@
 =============================
-Quickstart
+Developers
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    openmldb_quickstart.md
-    java_sdk
-    python_sdk
-    rest_api
+    built_in_function_develop_guide
+
