@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
 
@@ -81,7 +82,7 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1));";
+            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -119,50 +120,44 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
             Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(1).toString());
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("hello", rs1.getString(2));
-            Assert.assertEquals(1000, rs1.getLong(1));
 
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("world", rs1.getString(2));
-            Assert.assertEquals(1001, rs1.getLong(1));
+            List<Long> col1Insert = new ArrayList<>();
+            List<String> col2Insert = new ArrayList<>();
+            while (rs1.next()) {
+                col1Insert.add(rs1.getLong(1));
+                col2Insert.add(rs1.getString(2));
+            }
+            Collections.sort(col1Insert);
+            Collections.sort(col2Insert);
 
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("hi", rs1.getString(2));
-            Assert.assertEquals(1002, rs1.getLong(1));
-
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("word", rs1.getString(2));
-            Assert.assertEquals(1003, rs1.getLong(1));
+            Assert.assertEquals(col1Insert, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
+            Assert.assertEquals(col2Insert, Arrays.asList("hello", "hi", "word", "world"));
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1000, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1001, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1002, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1003, rs2.getLong(1));
+
+            List<Long> col1InsertRes = new ArrayList<>();
+            while (rs2.next()) {
+                col1InsertRes.add(rs2.getLong(1));
+            }
+            Collections.sort(col1InsertRes);
+            Assert.assertEquals(col1InsertRes, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
             rs2.close();
 
             String select3 = "select col2 from tsql1010;";
-
             com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select3);
             Assert.assertEquals(1, rs3.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("hello", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("world", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("hi", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("word", rs3.getString(1));
+
+            List<String> col2InsertRes = new ArrayList<>();
+            while(rs3.next()) {
+                col2InsertRes.add(rs3.getString(1));
+            }
+            Collections.sort(col2InsertRes);
+            Assert.assertEquals(col2InsertRes, Arrays.asList("hello", "hi", "word", "world"));
             rs3.close();
 
             // parameterized query
@@ -469,7 +464,7 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 bigint, col3 string, col4 float, col5 date, col6 string, index(key=col2, ts=col1));";
+            String ddl = "create table tsql1010 ( col1 bigint, col2 bigint, col3 string, col4 float, col5 date, col6 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);

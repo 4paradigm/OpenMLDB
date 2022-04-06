@@ -30,7 +30,7 @@ public class StatementTest {
             Assert.assertFalse(ret);
             ret = state.execute("use testxx");
             Assert.assertFalse(ret);
-            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1));");
+            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);");
             Assert.assertFalse(ret);
             state.executeUpdate("insert into testtable111 values(1000, 'hello');");
             state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");
@@ -38,10 +38,11 @@ public class StatementTest {
             Assert.assertTrue(ret);
             java.sql.ResultSet rs = state.getResultSet();
             Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getLong(1), 1001);
+            Assert.assertEquals(rs.getString(2), "xxxx");
+            Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getLong(1), 1000);
             Assert.assertEquals(rs.getString(2), "hello");
-            Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getLong(1), 1001);
             Assert.assertFalse(rs.next());
 
             ret = state.execute("drop table testtable111");
