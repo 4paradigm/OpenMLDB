@@ -10463,6 +10463,7 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
             return;
         }
     }
+    base::SetResponseOK(response);
     LOG(INFO) << "drop function " << request->name() << " success";
     std::lock_guard<std::mutex> lock(mu_);
     external_fun_.erase(request->name());

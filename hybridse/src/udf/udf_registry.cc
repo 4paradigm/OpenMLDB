@@ -225,7 +225,7 @@ Status DynamicUdfRegistryHelper::Register() {
     auto registry = std::make_shared<DynamicUdfRegistry>(name(), def);
     library()->AddExternalFunction(fn_name_, fn_ptr_);
     this->InsertRegistry(arg_types_, false, registry);
-    LOG(INFO) << "register function success. name : " << fn_name_ << " return type " << return_type_->GetName();
+    LOG(INFO) << "register function success. name: " << fn_name_ << " return type:" << return_type_->GetName();
     return Status::OK();
 }
 

@@ -207,15 +207,19 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, void* fn,
 
 Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types) {
     std::string canonical_name = GetCanonicalName(name);
+    std::string lib_name = canonical_name;
     for (const auto type : arg_types) {
-        canonical_name.append(".").append(node::DataTypeName(type));
+        lib_name.append(".").append(node::DataTypeName(type));
     }
     std::lock_guard<std::mutex> lock(mu_);
     int cnt = table_.erase(canonical_name);
     if (cnt <= 0) {
         return Status(kCodegenError, "can not find the function " + canonical_name);
     }
-    external_symbols_.erase(canonical_name);
+    cnt = external_symbols_.erase(lib_name);
+    if (cnt <= 0) {
+        return Status(kCodegenError, "can not find the function " + lib_name);
+    }
     return {};
 }
 

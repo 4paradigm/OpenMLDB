@@ -18,8 +18,6 @@
 #include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
 #include "udf/udf.h"
-#include "udf/default_udf_library.h"
-#include "udf/openmldb_udf.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
@@ -149,36 +147,6 @@ TEST_F(JitWrapperTest, test_window) {
 
     // clear this dict to ensure jit wrapper reinit all symbols
     // this should be removed by better symbol init utility
-
-    ASSERT_FALSE(ir_str.empty());
-    HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
-    ASSERT_TRUE(jit->Init());
-    HybridSeJitWrapper::InitJitSymbols(jit);
-
-    base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
-    ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
-
-    auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
-    auto fn = jit->FindFunction(fn_name);
-    ASSERT_TRUE(fn != nullptr);
-    delete jit;
-}
-
-int myfun(UDFContext* ctx, double input) {
-   return 0;
-}
-
-TEST_F(JitWrapperTest, test_udf) {
-    auto lib = udf::DefaultUdfLibrary::get();
-    std::vector<node::DataType> arg_types = {node::kDouble};
-    auto status = lib->RegisterDynamicUdf("myfun", reinterpret_cast<void*>(myfun), node::kInt32, arg_types);
-    EngineOptions options;
-    options.SetKeepIr(true);
-    auto catalog = GetTestCatalog();
-    std::string sql = "select myfun(col_1) from t1;";
-    auto compile_info = Compile(sql, options, catalog);
-    auto &sql_context = compile_info->get_sql_context();
-    std::string ir_str = sql_context.ir;
 
     ASSERT_FALSE(ir_str.empty());
     HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
