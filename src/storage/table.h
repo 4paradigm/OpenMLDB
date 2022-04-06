@@ -175,7 +175,6 @@ class Table {
     virtual uint64_t GetRecordPkCnt() = 0;
     virtual inline uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
-    virtual bool LoadTable() { return false; }
 
  protected:
     void UpdateTTL();

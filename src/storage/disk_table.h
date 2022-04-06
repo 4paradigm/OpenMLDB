@@ -286,8 +286,6 @@ class DiskTable : public Table {
 
     bool Init() override;
 
-    bool LoadTable();
-
     static void initOptionTemplate();
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;

@@ -185,7 +185,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kHDD]);
     deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
-    
+
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
@@ -2388,20 +2388,10 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
               "cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
               tid, pid, cur_offset, snapshot_offset, end_offset);
     } else {
-        if (table->GetStorageMode() != ::openmldb::common::StorageMode::kMemory) {
-            ::openmldb::storage::DiskTableSnapshot* disk_snapshot =
-                dynamic_cast<::openmldb::storage::DiskTableSnapshot*>(snapshot.get());
-            if (disk_snapshot != NULL) {
-                disk_snapshot->SetTerm(replicator->GetLeaderTerm());
-            }
-        }
         uint64_t offset = 0;
-        ret = snapshot->MakeSnapshot(table, offset, end_offset);
+        ret = snapshot->MakeSnapshot(table, offset, end_offset, replicator->GetLeaderTerm());
         if (ret == 0) {
-            std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-            if (replicator) {
-                replicator->SetSnapshotLogPartIndex(offset);
-            }
+            replicator->SetSnapshotLogPartIndex(offset);
         }
     }
     {
@@ -2413,11 +2403,9 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
         if (task) {
             if (ret == 0) {
                 task->set_status(::openmldb::api::kDone);
-                if (table->GetStorageMode() == common::StorageMode::kMemory) {
-                    auto right_now = std::chrono::system_clock::now().time_since_epoch();
-                    int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
-                    table->SetMakeSnapshotTime(ts);
-                }
+                auto right_now = std::chrono::system_clock::now().time_since_epoch();
+                int64_t ts = std::chrono::duration_cast<std::chrono::seconds>(right_now).count();
+                table->SetMakeSnapshotTime(ts);
             } else {
                 task->set_status(::openmldb::api::kFailed);
             }
@@ -2491,11 +2479,9 @@ void TabletImpl::SchedMakeSnapshot() {
                 if (iter->first == 0 && inner->first == 0) {
                     continue;
                 }
-                if (inner->second->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
-                    if (ts - inner->second->GetMakeSnapshotTime() <= FLAGS_make_snapshot_offline_interval &&
-                        !zk_cluster_.empty()) {
-                        continue;
-                    }
+                if (ts - inner->second->GetMakeSnapshotTime() <= FLAGS_make_snapshot_offline_interval &&
+                    !zk_cluster_.empty()) {
+                    continue;
                 }
                 table_set.push_back(std::make_pair(iter->first, inner->first));
             }
@@ -2928,7 +2914,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
         }
 
         if (table_meta.storage_mode() == openmldb::common::kMemory) {
-            if (CreateTableInternal(&table_meta, false, msg) < 0) {
+            if (CreateTableInternal(&table_meta, msg) < 0) {
                 response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
                 response->set_msg(msg.c_str());
                 break;
@@ -3032,7 +3018,6 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                 break;
             }
         }
-        bool need_load = false;
         std::string manifest_file = snapshot_path + "MANIFEST";
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
@@ -3046,10 +3031,9 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                 break;
             }
             snapshot_offset = manifest.offset();
-            need_load = true;
         }
         std::string msg;
-        if (CreateTableInternal(&table_meta, need_load, msg) < 0) {
+        if (CreateTableInternal(&table_meta, msg) < 0) {
             PDLOG(WARNING, "create table failed. tid %u pid %u msg %s", tid, pid, msg.c_str());
             break;
         }
@@ -3238,7 +3222,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         response->set_msg("write data failed");
         return;
     }
-    if (CreateTableInternal(table_meta, false, msg) < 0) {
+    if (CreateTableInternal(table_meta, msg) < 0) {
         response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
         response->set_msg(msg.c_str());
         return;
@@ -3257,7 +3241,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
         return;
     }
-    
+
     table->SetTableStat(::openmldb::storage::kNormal);
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
@@ -3648,7 +3632,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::openmldb::api::TableM
     return UpdateTableMeta(path, table_meta, false);
 }
 
-int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
+int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg) {
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::map<std::string, std::string> real_ep_map;
@@ -3684,19 +3668,12 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     }
     table.reset(table_ptr);
 
-    if (table_meta->storage_mode() != openmldb::common::StorageMode::kMemory && is_load) {
-        if (!table_ptr->LoadTable()) {
-            return -1;
-        }
-        PDLOG(INFO, "load disk table. tid %u pid %u", tid, pid);
-    } else {
-        if (!table->Init()) {
-            PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
-            msg.assign("fail to init table");
-            return -1;
-        }
-        PDLOG(INFO, "create table. tid %u pid %u", tid, pid);
+    if (!table->Init()) {
+        PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        msg.assign("fail to init table");
+        return -1;
     }
+    PDLOG(INFO, "create table. tid %u pid %u", tid, pid);
 
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
@@ -3722,23 +3699,16 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         replicator->SetLeaderTerm(table_meta->term());
     }
 
-    ::openmldb::storage::Snapshot* snapshot_ptr;
+    ::openmldb::storage::Snapshot* snapshot_ptr = nullptr;
     if (table_meta->storage_mode() == openmldb::common::StorageMode::kMemory) {
         snapshot_ptr = new ::openmldb::storage::MemTableSnapshot(tid, pid, replicator->GetLogPart(), db_root_path);
-
-        if (!snapshot_ptr->Init()) {
-            PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u", tid, pid);
-            msg.assign("fail to init snapshot");
-            return -1;
-        }
     } else {
-        snapshot_ptr = new ::openmldb::storage::DiskTableSnapshot(table_meta->tid(), table_meta->pid(),
-                                                                  table_meta->storage_mode(), db_root_path);
-        if (!snapshot_ptr->Init()) {
-            PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u", table_meta->tid(), table_meta->pid());
-            msg.assign("fail to init snapshot");
-            return -1;
-        }
+        snapshot_ptr = new ::openmldb::storage::DiskTableSnapshot(table_meta->tid(), table_meta->pid(), db_root_path);
+    }
+    if (!snapshot_ptr->Init()) {
+        PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        msg.assign("fail to init snapshot");
+        return -1;
     }
 
     std::shared_ptr<Snapshot> snapshot(snapshot_ptr);

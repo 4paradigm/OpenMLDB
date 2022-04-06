@@ -299,8 +299,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
                        std::string& msg);  // NOLINT
 
-    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, bool is_load,
-                            std::string& msg);  // NOLINT
+    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::openmldb::api::TaskInfo> task);

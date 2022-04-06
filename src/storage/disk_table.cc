@@ -180,12 +180,16 @@ bool DiskTable::Init() {
     }
     InitColumnFamilyDescriptor();
     std::string path = table_path_ + "/data";
+    if (!openmldb::base::IsExists(path)) {
+        PDLOG(INFO, "Create new disk table with path %s", path);
+    }
+
     if (!::openmldb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
     }
     options_.create_if_missing = true;
-    options_.error_if_exists = true;
+    options_.error_if_exists = false;
     options_.create_missing_column_families = true;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
@@ -310,27 +314,6 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 }
 
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
-
-bool DiskTable::LoadTable() {
-    if (!InitFromMeta()) {
-        return false;
-    }
-    InitColumnFamilyDescriptor();
-    std::string path = table_path_ + "/data";
-    if (!openmldb::base::IsExists(path)) {
-        return false;
-    }
-    options_.create_if_missing = false;
-    options_.error_if_exists = false;
-    options_.create_missing_column_families = false;
-    rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
-    DEBUGLOG("Load DB. tid %u pid %u ColumnFamilyHandle size %u,", id_, pid_, GetIdxCnt());
-    if (!s.ok()) {
-        PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-        return false;
-    }
-    return true;
-}
 
 void DiskTable::SchedGc() {
     GcHead();
