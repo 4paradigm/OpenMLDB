@@ -850,12 +850,30 @@ void DiskTableTraverseIterator::NextPK() {
     }
 }
 
-::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) {
-
-}
-
-::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx, uint32_t ts_idx) {
-
+::hybridse::vm::WindowIterator* DiskTable::NewWindowIterator(uint32_t idx) {
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
+    if (!index_def) {
+        return NULL;
+    }
+    uint32_t inner_pos = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_pos);
+    auto ttl = index_def->GetTTL();
+    uint64_t expire_time = GetExpireTime(*ttl);
+    uint64_t expire_cnt = ttl->lat_ttl;
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        auto ts_col = index_def->GetTsColumn();
+        if (ts_col) {
+            return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
+                                                 ts_col->GetId());
+        }
+    }
+    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt);
 }
 
 DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
@@ -963,7 +981,16 @@ const hybridse::codec::Row DiskTableKeyIterator::GetKey() {
     return row;
 }
 
+std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
+    std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_,
+                                                                       expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_));
+    return std::move(wit);
+}
 
+::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
+    return new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_, expire_cnt_, pk_, ts_, has_ts_idx_,
+                                    ts_idx_);
+}
 
 bool DiskTable::DeleteIndex(const std::string& idx_name) {
     // TODO(litongxin)

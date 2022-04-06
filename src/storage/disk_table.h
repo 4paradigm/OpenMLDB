@@ -288,8 +288,6 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     ~DiskTableRowIterator() {}
 
     bool Valid() const {
-        uint32_t cur_ts_idx = UINT32_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (row_pk_ != pk_) return false;
         if (!it_->Valid() || expire_value_.IsExpired(ts_, record_idx_)) {
             return false;
@@ -475,8 +473,6 @@ class DiskTable : public Table {
     TableIterator* NewTraverseIterator(uint32_t idx) override;
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) override;
-
-    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx, uint32_t ts_idx);
 
     void SchedGc() override;
 
