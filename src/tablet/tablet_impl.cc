@@ -224,6 +224,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         return false;
     }
 
+    if (IsClusterMode()) {
+        RecoverExternalFunction();
+    }
+
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
     if (FLAGS_recycle_ttl != 0) {
@@ -480,6 +484,36 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
     if (IsClusterMode()) {
         if (RefreshSingleTable(request->tid())) {
             PDLOG(INFO, "refresh success. tid %u", request->tid());
+        }
+    }
+}
+
+void TabletImpl::RecoverExternalFunction() {
+    std::string external_function_path = zk_path_ + "/data/function";
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(external_function_path) == 0) {
+        if (!zk_client_->GetChildren(external_function_path, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << external_function_path;
+            return;
+        }
+    }
+    if (functions.empty()) {
+        LOG(INFO) << "no external functions to recover";
+        return;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(external_function_path + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        ::openmldb::common::ExternalFun fun;
+        if (!fun.ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        if (CreateFunctionInternal(fun).OK()) {
+            LOG(INFO) << "recover " << name << " function success";
         }
     }
 }
@@ -5263,9 +5297,13 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
 void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
         openmldb::api::CreateFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    response->set_code(base::kRPCRunError);
+    auto status = CreateFunctionInternal(request->fun());
+    response->set_code(status.code);
+    response->set_msg(status.msg);
+}
+
+base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun) {
     hybridse::node::DataType return_type;
-    const auto& fun = request->fun();
     openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
     std::vector<hybridse::node::DataType> arg_types;
     for (int idx = 0; idx < fun.arg_type_size(); idx++) {
@@ -5286,7 +5324,7 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
         void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
         if (handle == nullptr) {
             LOG(WARNING) << "can not open the dynamic library: " << fun.file();
-            response->set_msg("can not open the dynamic library: " + fun.file());
+            return {base::kCreateFunctionFailed, "can not open the dynamic library: " + fun.file()};
         }
         so_handle = std::make_shared<SoLibHandle>(handle);
         std::lock_guard<std::mutex> lock(mu_);
@@ -5295,34 +5333,31 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
     std::string name = fun.name();
     std::vector<void*> funcs;
     bool run_ok = false;
+    std::string err_msg;
     do {
         if (fun.is_aggregate()) {
             auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
             if (init_fun == nullptr) {
-                LOG(WARNING) << "can not find the init function: " << name;
-                response->set_msg("can not find the init function: " + name);
+                err_msg = "can not find the init function: " + name;
                 break;
             }
             funcs.emplace_back(init_fun);
             auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
             if (update_fun == nullptr) {
-                LOG(WARNING) << "can not find the update function: " << name;
-                response->set_msg("can not find the update function: " + name);
+                err_msg = "can not find the update function: " + name;
                 break;
             }
             funcs.emplace_back(update_fun);
             auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
             if (output_fun == nullptr) {
-                LOG(WARNING) << "can not find the output function: " << name;
-                response->set_msg("can not find the output function: " + name);
+                err_msg = "can not find the output function: " + name;
                 break;
             }
             funcs.emplace_back(output_fun);
         } else {
             auto fun = dlsym(so_handle->handle, name.c_str());
             if (fun == nullptr) {
-                LOG(WARNING) << "can not find the function: " << name;
-                response->set_msg("can not find the function: " + name);
+                err_msg = "can not find the function: " + name;
                 break;
             }
             funcs.emplace_back(fun);
@@ -5333,15 +5368,13 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
         auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
         if (status.isOK()) {
             LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
-            base::SetResponseOK(response);
         } else {
-            LOG(WARNING) << "create function failed. name " << fun.name()
-                << " path " << fun.file() << " msg " << status.msg;
-            response->set_msg(status.msg);
+            err_msg = status.msg;
             run_ok = false;
         }
     }
     if (!run_ok) {
+        LOG(WARNING) << err_msg;
         std::shared_ptr<SoLibHandle> so_handle;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -5357,7 +5390,9 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
         if (so_handle) {
             dlclose(so_handle->handle);
         }
+        return {base::kCreateFunctionFailed, err_msg};
     }
+    return {};
 }
 
 void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,

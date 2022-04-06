@@ -354,6 +354,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool RefreshSingleTable(uint32_t tid);
 
+    void RecoverExternalFunction();
+
+    base::Status CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun);
+
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
@@ -431,7 +435,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     // collect deploy statistics into memory
     void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
 
- private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
@@ -440,6 +443,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool InitClusterRouter();
 
+ private:
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;
