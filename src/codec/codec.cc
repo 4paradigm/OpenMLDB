@@ -238,11 +238,11 @@ void RowBuilder::SetStrOffset(int8_t* buf, uint32_t size, uint32_t str_pos, uint
     }
     auto str_addr_length = GetAddrLength(size);
     int8_t* ptr = buf + str_field_start_offset_ + str_addr_length * str_pos;
-    if (str_addr_length_ == 1) {
+    if (str_addr_length == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
-    } else if (str_addr_length_ == 2) {
+    } else if (str_addr_length == 2) {
         *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
-    } else if (str_addr_length_ == 3) {
+    } else if (str_addr_length == 3) {
         *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
         *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset & 0xFF00) >> 8;
         *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
