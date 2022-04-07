@@ -388,7 +388,9 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
     auto create_tree = dynamic_cast<const node::CreateStmt *>(root);
     *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetDbName(), create_tree->GetTableName(),
                                                      create_tree->GetReplicaNum(),
-                                                     create_tree->GetPartitionNum(), create_tree->GetColumnDefList(),
+                                                     create_tree->GetPartitionNum(),
+                                                     create_tree->GetStorageMode(),
+                                                     create_tree->GetColumnDefList(),
                                                      create_tree->GetDistributionList(),
                                                      create_tree->GetOpIfNotExist());
     return base::Status::OK();
