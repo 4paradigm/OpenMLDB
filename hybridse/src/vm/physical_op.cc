@@ -586,7 +586,7 @@ Status PhysicalReduceAggregationNode::InitSchema(PhysicalPlanContext* ctx) {
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
     project_source->SetSchema(orig_aggr_->GetOutputSchema());
-    for (int i = 0; i < project_.size(); i++) {
+    for (size_t i = 0; i < project_.size(); i++) {
         auto column_id = ctx->GetNewColumnID();
         project_source->SetColumnID(i, column_id);
         project_source->SetNonSource(i);
@@ -599,7 +599,7 @@ void PhysicalReduceAggregationNode::Print(std::ostream& output,
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
     output << ": ";
-    for (int i = 0; i < project_.size(); i++) {
+    for (size_t i = 0; i < project_.size(); i++) {
         output << project_.GetExpr(i)->GetExprString();
         if (project_.GetFrame(i)) {
             output << " (" << project_.GetFrame(i)->GetExprString() << ")";
@@ -1281,7 +1281,7 @@ void PhysicalRequestAggUnionNode::PrintChildren(std::ostream& output, const std:
         return;
     }
     producers_[0]->Print(output, tab + INDENT);
-    for (int i = 1; i < producers_.size(); i++) {
+    for (size_t i = 1; i < producers_.size(); i++) {
         output << "\n";
         producers_[i]->Print(output, tab + INDENT);
     }

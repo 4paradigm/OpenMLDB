@@ -2067,6 +2067,17 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, sync_job, job_info);
 }
 
+::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQueryGetOutput(const std::string& sql,
+    const std::map<std::string, std::string>& config,
+    const std::string& default_db,
+    std::string& output) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return {-1, "Fail to get TaskManager client"};
+    }
+    return taskmanager_client_ptr->RunBatchSql(sql, config, default_db, output);
+}
+
 ::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string& sql,
                                                             const std::map<std::string, std::string>& config,
                                                             const std::string& default_db, bool sync_job,
@@ -2296,20 +2307,39 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             } else {
                 // Run offline query
-                ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                auto base_status = ExecuteOfflineQuery(sql, config, db, IsSyncJob(), job_info);
-                if (base_status.OK()) {
-                    *status = {};
-                    if (job_info.id() > 0) {
-                        std::stringstream ss;
-                        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                        std::vector<std::string> value = {ss.str()};
+
+                if (IsSyncJob()) {
+                    // Run offline sql and wait to get output
+                    std::string output;
+                    auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, output);
+                    if (base_status.OK()) {
+                        *status = {};
+                        // Print the output from job output
+                        // TODO: return result set if want to format the output
+                        std::vector<std::string> value = {output};
                         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                    } else {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
                 } else {
-                    *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                    // Run offline sql and return job info immediately
+                    ::openmldb::taskmanager::JobInfo job_info;
+                    auto base_status = ExecuteOfflineQuery(sql, config, db, IsSyncJob(), job_info);
+                    if (base_status.OK()) {
+                        *status = {};
+                        if (job_info.id() > 0) {
+                            std::stringstream ss;
+                            ::openmldb::cmd::PrintJobInfos({job_info}, ss);
+                            std::vector<std::string> value = {ss.str()};
+                            // TODO(tobe): Return the result set with multiple columns
+                            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                        }
+                    } else {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                    }
                 }
+
             }
             return {};
         }
@@ -2942,7 +2972,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         return {};
     }
     std::unordered_map<std::string, std::string> long_window_map;
-    if (cluster_sdk_->IsClusterMode() && !long_window_param.empty()) {
+    if (!long_window_param.empty()) {
         if (table_pair.size() != 1) {
             return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
         }
