@@ -1,6 +1,6 @@
 # Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 2)
 
-## 1. Preparation Knowledge
+## 1. Preliminary Knowledge
 
 In the previous series of articles [Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)](./tutorial_sql_1.md)）, we introduce the basic concepts and practical tools of Feature Engineering, as well as the basic feature script development based on single table. In this article, we will introduce in detail the more complex and powerful feature script development of the multi-table based on the main table and sub table. At the same time, we still rely on the SQL syntax provided by OpenMLDB for Feature Engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](http://docs-cn.openmldb.ai/).
 
