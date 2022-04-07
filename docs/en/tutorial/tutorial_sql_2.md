@@ -1,8 +1,8 @@
-# Explaining Feature Engineering in Simple Terms -- A Practical Guide based on OpenMLDB (Part 2)
+# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 2)
 
 ## 1. Preparation Knowledge
 
-In the previous series of articles ([In Simple Terms, Feature Engineering -- A Practical Guide based on OpenMLDB (Part 1)](https://zhuanlan.zhihu.com/p/467625760)）, we introduce the basic concepts and practical tools of Feature Engineering, as well as the basic feature script development based on single table. In this article, we will introduce in detail the more complex and powerful feature script development of the multi-table based on the main table and sub table. At the same time, we still rely on the SQL syntax provided by OpenMLDB for Feature Engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](http://docs-cn.openmldb.ai/).
+In the previous series of articles [Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)](./tutorial_sql_1.md)）, we introduce the basic concepts and practical tools of Feature Engineering, as well as the basic feature script development based on single table. In this article, we will introduce in detail the more complex and powerful feature script development of the multi-table based on the main table and sub table. At the same time, we still rely on the SQL syntax provided by OpenMLDB for Feature Engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](http://docs-cn.openmldb.ai/).
 
 If you want to run the SQL illustrated in this tutorial, please follow the following two steps to prepare:
 
@@ -61,7 +61,7 @@ As shown below, when `LAST JOIN` configure in `ORDER BY`，right click `std_ts` 
 
 ![img](images/lastjoin_2.jpg)
 
-## 3. Multi-row Aggregation Feature of Sub Table
+## 3. Multi-Row Aggregation Feature of Sub Table
 
 For the sub table splicing scenario, OpenMLDB extends the standard window syntax and adds [WINDOW UNION]( http://docs-cn.openmldb.ai/2620896) characteristic. It supports splicing multiple pieces of data from the sub table to form a sub table window. Based on the sub table splicing window, it is convenient to construct the multi-row aggregation feature of the sub table. Similarly, two steps need to be completed to construct the multi-row aggregation feature of the sub table:
 

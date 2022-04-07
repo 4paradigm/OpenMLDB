@@ -6,5 +6,6 @@ Deployment
     :maxdepth: 1
 
     compile
+	install_deploy
     conf
 

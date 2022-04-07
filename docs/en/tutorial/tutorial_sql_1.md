@@ -1,7 +1,7 @@
-# Explaining Feature Engineering in Simple Terms - A Practical Guide based on OpenMLDB (Part 1)
+# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)
 
 
-## 1. What is the characteristic engineering of machine learning
+## 1. What is the feature engineering of machine learning
 
 A machine learning application in a real scene generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model and have the most contact at ordinary times. For example, from the classic logical regression and decision tree model to the deep learning model of the fire in recent years, we all focus on how to develop high-quality models. We may pay less attention to engineering features. However, you must have heard a famous saying that data and features determine the upper limit of machine learning, while models and algorithms only approach this upper limit. It can be seen that we have long agreed on the importance of Feature Engineering.
 
@@ -28,7 +28,7 @@ From the above table, we can see that openmldb has unique advantages in function
 
 In this series of tutorials, we will demonstrate how to develop Feature Engineering scripts based on SQL syntax of openmldb. You can get started quickly by reading our document - [OpenMLDB]( http://docs-cn.openmldb.ai/2620852), to learn how to try out openmldb (based on docker image, it is recommended to try it quickly through stand-alone version); You can also find our [complete product description document](http://docs-cn.openmldb.ai/ ) here.
 
-## 3. From 0 to 1, Characteristic Engineering Practice
+## 3. From 0 to 1, Feature Engineering Practice
 
 We will introduce the common processing methods of Feature Engineering in two parts. This part will focus on single table feature processing, and the next part will focus on more complex multi-table feature computing. This paper uses the anti-fraud commonly used in the financial field as an actual case to describe.
 
@@ -58,7 +58,7 @@ Note that if you want to run the SQL illustrated in this tutorial, please follow
 
 In addition to the main table, there may also be data tables in the database that store relevant auxiliary information, which can be spliced with the main table through the join operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table to store the merchant flow history. In the process of Feature Engineering, more valuable information can be obtained by splicing the information of main table and sub-standard. The Feature Engineering of multi-table will be introduced in detail in the next part of this series.
 
-### 3.1.2. Feature Classification
+### 3.1.2. Types of Features
 
 Before discussing the details of feature construction in depth, we need to classify the features commonly used in machine learning. From the perspective of building feature data sets and aggregation methods, there are four common features in machine learning:
 
@@ -102,7 +102,7 @@ minute(trans_time) as f_trans_minute FROM t1;
 
 Other related functions also include numerical feature calculation (such as 'ceiling') and string feature calculation (such as 'substr').
 
-### 3.3. Timing Characteristics of Main Table Window
+### 3.3. Time-Series Features of Main Table Window
 
 In many scenarios, the more commonly used feature construction method is based on the feature construction of time window. For example, transaction data and user behavior are time-series data with time stamp. Two steps need to be completed to construct the timing characteristics of the main table window:
 
