@@ -383,7 +383,7 @@ Status UdfIRBuilder::BuildLlvmCall(const node::FnDefNode* fn,
     // [non-variadic args], [return addrs], [variadic args]
     ::llvm::Value* should_ret_null = nullptr;
     std::vector<llvm::Value*> llvm_args;
-    for (size_t i = llvm_args.size(); i < variadic_pos; ++i) {
+    for (size_t i = 0; i < variadic_pos; ++i) {
         CHECK_STATUS(ExpandLlvmCallArgs(arg_types[i], arg_nullable[i],
                                         args[i], &builder, &llvm_args,
                                         &should_ret_null));

@@ -5363,7 +5363,7 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
             funcs.emplace_back(fun);
             run_ok = true;
         }
-    } while(0);
+    } while (0);
     if (run_ok) {
         auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
         if (status.isOK()) {

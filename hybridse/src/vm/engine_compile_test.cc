@@ -652,7 +652,6 @@ TEST_F(EngineCompileTest, ExternalFunctionTest) {
 
     std::string sql = "select myfun(col1 + 1) from t1;";
     EngineOptions options;
-    //options.SetCompileOnly(true);
     Engine engine(catalog, options);
     ASSERT_TRUE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false,
                 {reinterpret_cast<void*>(myfun)}).isOK());

@@ -938,7 +938,8 @@ hybridse::sdk::Status SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQue
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
 
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
-                return {::hybridse::common::StatusCode::kCmdError, "fail to get tablet clients for " + main_db + "." + main_table};
+                return {::hybridse::common::StatusCode::kCmdError,
+                    "fail to get tablet clients for " + main_db + "." + main_table};
             }
             for (auto tablet : tablets) {
                 clients->insert(tablet->GetClient());

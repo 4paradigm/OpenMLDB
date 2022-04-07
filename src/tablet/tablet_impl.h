@@ -67,7 +67,7 @@ namespace openmldb {
 namespace tablet {
 
 struct SoLibHandle {
-    SoLibHandle(void* ptr) {
+    explicit SoLibHandle(void* ptr) {
         handle = ptr;
         ref_cnt = 1;
     }

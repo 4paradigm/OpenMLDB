@@ -10400,14 +10400,25 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         }
     }
     auto tablets = GetAllHealthTablet();
+    std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
     for (const auto& tablet : tablets) {
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
-            // TODO: delete registered function
             PDLOG(WARNING, "create function failed. endpoint %s", tablet->client_->GetEndpoint().c_str());
             response->set_msg(msg);
-            return;
+            break;
         }
+        succ_tablets.emplace_back(tablet);
+    }
+    if (succ_tablets.size() < tablets.size()) {
+        for (const auto& tablet : succ_tablets) {
+            std::string msg;
+            if (!tablet->client_->DropFunction(request->fun(), &msg)) {
+                PDLOG(WARNING, "drop function failed. endpoint %s", tablet->client_->GetEndpoint().c_str());
+            }
+            PDLOG(INFO, "drop function on endpoint %s", tablet->client_->GetEndpoint().c_str());
+        }
+        return;
     }
     auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
     if (IsClusterMode()) {
