@@ -1702,6 +1702,11 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             *output = node_manager->MakeDistributionsNode(partition_mata_nodes);
             return base::Status::OK();
         }
+    } else if (boost::equals("storage_mode", identifier)) {
+        std::string storage_mode;
+        CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));
+        boost::to_lower(storage_mode);
+        *output = node_manager->MakeStorageModeNode(node::NameToStorageMode(storage_mode));
     } else {
         return base::Status(common::kOk, "create table option ignored");
     }

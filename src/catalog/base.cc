@@ -44,7 +44,6 @@ ProcedureInfoImpl::ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& proce
 
     for (const auto& op : procedure.options()) {
         options_[op.name()] = op.value().value();
-        DLOG(INFO) << "[procedure option] " << op.name() << " : " << options_[op.name()];
     }
 }
 

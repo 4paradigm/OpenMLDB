@@ -3007,7 +3007,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         return {};
     }
     std::unordered_map<std::string, std::string> long_window_map;
-    if (cluster_sdk_->IsClusterMode() && !long_window_param.empty()) {
+    if (!long_window_param.empty()) {
         if (table_pair.size() != 1) {
             return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
         }
