@@ -179,11 +179,6 @@ class SQLRouter {
                                                          const std::string& default_db, bool sync_job,
                                                          ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
 
-    virtual ::openmldb::base::Status ExecuteOfflineQueryGetOutput(const std::string& sql,
-                                                                  const std::map<std::string, std::string>& config,
-                                                                  const std::string& default_db,
-                                                                  std::string& output) = 0; // NOLINT
-
     virtual ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, bool sync_job,
