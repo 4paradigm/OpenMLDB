@@ -382,6 +382,10 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
 
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
+    if (db.empty()) {
+        lru_cache_.clear();
+        return;
+    }
     for (auto& cache : lru_cache_) {
         auto& mode_cache = cache.second;
         mode_cache.erase(db);

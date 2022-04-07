@@ -2991,9 +2991,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        engine_->ClearCacheLocked(table->GetTableMeta()->db());
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -5405,6 +5405,7 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
+    engine_->ClearCacheLocked("");
     auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
     if (status.isOK()) {
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();

@@ -243,7 +243,7 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
-TEST_F(SqlCmdTest, load_data) {
+TEST_F(SqlCmdTest, LoadData) {
     sr = standalone_cli.sr;
     cs = standalone_cli.cs;
     HandleSQL("create database test1;");
@@ -269,6 +269,38 @@ TEST_F(SqlCmdTest, load_data) {
     HandleSQL("drop database test1;");
     unlink(file_name.c_str());
 }
+
+#if defined(__linux__)
+TEST_F(SqlCmdTest, CreateFunction) {
+    sr = standalone_cli.sr;
+    cs = standalone_cli.cs;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    hybridse::sdk::Status status;
+    std::string create_sql = "create table trans (c1 string, c2 int, c3 double);";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    HandleSQL("insert into trans values ('aaa', 11, 1.2);");
+    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
+    std::string create_func_sql = "CREATE FUNCTION myfun(x INT) RETURNS INT "
+                                  "OPTIONS (FILE='" + so_path + "');";
+    sr->ExecuteSQL(create_func_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select myfun(c2) from trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, result->Size());
+    result->Next();
+    int value = 0;
+    result->GetInt32(0, &value);
+    ASSERT_EQ(value, 13);
+    sr->ExecuteSQL("DROP FUNCTION myfun;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    result = sr->ExecuteSQL("select myfun(c2) from trans;", &status);
+    ASSERT_FALSE(status.IsOK());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+#endif
 
 TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
