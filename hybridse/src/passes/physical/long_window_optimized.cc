@@ -69,7 +69,7 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
     }
 
     const auto& projects = project_aggr_op->project();
-    for (int i = 0; i < projects.size(); i++) {
+    for (size_t i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
         if (expr->GetExprType() == node::kExprCall) {
             const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
@@ -125,7 +125,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         order_col = ConcatExprList(window->GetOrders()->children_);
     } else {
         auto orders = req_union_op->window().sort().orders()->order_expressions();
-        for (int i = 0; i < orders->GetChildNum(); i++) {
+        for (size_t i = 0; i < orders->GetChildNum(); i++) {
             auto order = dynamic_cast<node::OrderExpression*>(orders->GetChild(i));
             if (order == nullptr || order->expr() == nullptr) {
                 LOG(ERROR) << "OrderBy col is empty";
@@ -175,7 +175,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     // generate an aggregation window for the aggr table
     auto req_window = req_union_op->window();
     auto partitions = nm->MakeExprList();
-    for (int i = 0; i < index.keys.size(); i++) {
+    for (size_t i = 0; i < index.keys.size(); i++) {
         auto col_ref = nm->MakeColumnRefNode(index.keys[i].name, table->GetName(), table->GetDatabase());
         partitions->AddChild(col_ref);
     }
@@ -188,7 +188,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     orders->AddChild(order_expr);
 
     auto partition_by = nm->MakeExprList();
-    for (int i = 0; i < index.keys.size(); i++) {
+    for (size_t i = 0; i < index.keys.size(); i++) {
         auto col_ref = nm->MakeColumnRefNode((*table->GetSchema())[index.keys[i].idx].name(), table->GetName(),
                                              table->GetDatabase());
         partition_by->AddChild(col_ref);
