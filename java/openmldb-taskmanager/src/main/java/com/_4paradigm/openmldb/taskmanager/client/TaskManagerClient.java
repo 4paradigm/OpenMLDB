@@ -195,10 +195,10 @@ public class TaskManagerClient {
      *
      * @param sql query sql string.
      * @param outputPath output path.
-     * @return id of job.
+     * @return the output string.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String outputPath) throws Exception {
+    public String runBatchSql(String sql, String outputPath) throws Exception {
         return runBatchSql(sql, outputPath, new HashMap<String, String>(), "");
     }
     /**
@@ -207,22 +207,21 @@ public class TaskManagerClient {
      * @param sql query sql string.
      * @param outputPath output path.
      * @param default_db default database.
-     * @return id of job.
+     * @return the output string.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
+    public String runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
-                .setOutputPath(outputPath)
                 .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchSql(request);
+        TaskManager.RunBatchSqlResponse response = taskManagerInterface.RunBatchSql(request);
         if (response.getCode() != 0) {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getJob().getId();
+        return response.getOutput();
     }
     /**
      * Run batch sql statements and display the results without default_db.
