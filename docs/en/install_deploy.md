@@ -2,12 +2,11 @@
 
 ## Software and Hardware Environment Requirements
 
-* Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to function correctly.
+* Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to be fully compatible.
 * Memory: Depends on the amount of data, 8 GB and above is recommended.
 * CPU:
   * Currently only the x86 architecture is supported, and architectures such as ARM are not currently supported.
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
-
 
 ## Deployment Package Preparation
 The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
@@ -70,7 +69,7 @@ Please make sure the time is correct.
 
 ## Deploy Standalone Version
 
-OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module.
+OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB using REST APIs, you need to deploy this module.
 
 **Notice:** It is best to deploy different components in different directories for easy upgrades individually.
 
@@ -148,7 +147,7 @@ $ ./bin/openmldb --host=172.27.128.33 --port=6527
 ### Deploy APIServer
 
 APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
-Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
+Before starting the APIServer, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
 
 #### 1 Download the OpenMLDB deployment package
 
@@ -242,8 +241,8 @@ cd openmldb-tablet-0.4.3
 
 **Notice:**
 * The endpoint cannot use 0.0.0.0 and 127.0.0.1.
-* If the domain name is used here, all the machines where the client using openmldb is located must be equipped with the corresponding host. Otherwise, it will not be accessible.
-* The configuration of zk_cluster and zk_root_path is consistent with that of Nameserver.
+* If the domain name is used here, all the machines with OpenMLDB clients must be configured with the corresponding host. Otherwise, it will not be accessible.
+* The configuration of `zk_cluster` and `zk_root_path` is consistent with that of Nameserver.
 
 #### 3 Start the service
 
@@ -251,7 +250,7 @@ cd openmldb-tablet-0.4.3
 sh bin/start.sh start tablet
 ```
 
-Repeat the above steps to deploy multiple tablet.
+Repeat the above steps to deploy multiple tablets.
 
 **Notice:**
 * After the service is started, the tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail.
@@ -272,7 +271,7 @@ cd openmldb-ns-0.4.3
 #### 2 Modify the Configuration File: conf/nameserver.flags
 
 * Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* Modify `zk_cluster` to the address of the zk cluster that has been started. Ip is the ip of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, separate it with commas, and the format is ip1:port1,ip2:port2, ip3:port3.
+* Modify `zk_cluster` to the address of the zk cluster that has been started. Ip is the machine address where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, separate it with commas, and the format is ip1:port1,ip2:port2, ip3:port3.
 * If you share zk with other OpenMLDB, you need to modify `zk_root_path`.
 
 ```
@@ -339,11 +338,11 @@ cd openmldb-apiserver-0.4.3
 sh bin/start.sh start apiserver
 ```
 
-**Notice:** If the core is dropped when the nameserver/tablet/apiserver is started through the release package on the Linux platform, it is very likely that the instruction set is incompatible, and you need to compile openmldb through the source code. For source code compilation refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
+**Notice:** If the program crashes when starting the nameserver/tablet/apiserver using the OpenMLDB release package, it is very likely that the instruction set is incompatible, and you need to compile OpenMLDB through the source code. For source code compilation refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
 
 ### Deploy TaskManager
 
-#### 1 Download the OpenMLDB deployment package and the Spark distribution optimized for feature engineering
+#### 1 Download the OpenMLDB Spark distribution that is optimized for feature engineering
 
 ```
 wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.4.3/spark-3.0.0-bin-openmldbspark.tgz
@@ -358,7 +357,7 @@ cd openmldb-taskmanager-0.4.3
 
 * Modify `server.host`. The host is the ip/domain name of the deployment machine.
 * Modify `server.port`. THe port is the port number of the deployment machine.
-* Modify `zk_cluster` to the address of the zk cluster that has been started. Ip is the ip of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, it is separated by commas, and the format is ip1:port1,ip2:port2,ip3:port3.
+* Modify `zk_cluster` to the address of the zk cluster that has been started. Ip is the address of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, it is separated by commas, and the format is ip1:port1,ip2:port2,ip3:port3.
 * If you share zk with other OpenMLDB, you need to modify zookeeper.root_path.
 * Modify `batchjob.jar.path` to the BatchJob Jar file path. If it is set to empty, it will search in the upper-level lib directory. If you use Yarn mode, you need to modify it to the corresponding HDFS path.
 * Modify `offline.data.prefix` to the offline table storage path. If Yarn mode is used, it needs to be modified to the corresponding HDFS path.
