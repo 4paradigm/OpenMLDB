@@ -1924,6 +1924,11 @@ TEST_P(TableTest, AbsAndLat) {
         }
     }
 
+    TableIterator* it = table->NewTraverseIterator(0);
+    it->Seek("test0", now - 60 * 1000);
+    ASSERT_TRUE(it->Valid());
+    
+    delete it;
     delete table;
 }
 

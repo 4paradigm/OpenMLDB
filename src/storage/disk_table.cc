@@ -934,6 +934,7 @@ void DiskTableKeyIterator::NextPK() {
             //     return;
             // } 
             last_pk = pk_;
+            break;
         } else {
             it_->Next();
         }
