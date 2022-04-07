@@ -1843,11 +1843,10 @@ class CreateStmt : public SqlNode {
     CreateStmt()
         : SqlNode(kCreateStmt, 0, 0),
           table_name_(""),
-          op_if_not_exist_(false),
-          storage_mode_(kMemory) {}
+          op_if_not_exist_(false) {}
 
-    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, StorageMode storage_mode = kMemory)
-        : SqlNode(kCreateStmt, 0, 0), db_name_(db_name), table_name_(""), op_if_not_exist_(false), storage_mode_(storage_mode) {}
+    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist)
+        : SqlNode(kCreateStmt, 0, 0), db_name_(db_name), table_name_(table_name), op_if_not_exist_(op_if_not_exist) {}
 
     ~CreateStmt() {}
 

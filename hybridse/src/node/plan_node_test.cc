@@ -254,7 +254,23 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     ASSERT_EQ(std::vector<std::string>({"col1 int32", "col2 int32", "col3 float", "col4 string", "col5 timestamp"}),
               columns);
     ASSERT_EQ(std::vector<std::string>({"index1:col4:col5"}), indexes);
-    ASSERT_EQ(kMemory, node->GetStorageMode());
+    auto table_option_list = node->GetTableOptionList();
+    for (auto table_option : table_option_list) {
+        switch (table_option->GetType()) {
+            case kReplicaNum: {
+                ASSERT_EQ(3, dynamic_cast<ReplicaNumNode *>(table_option)->GetReplicaNum());
+                break;
+            }
+            case kPartitionNum: {
+                ASSERT_EQ(8, dynamic_cast<PartitionNumNode *>(table_option)->GetPartitionNum());
+                break;
+            }
+            case kStorageMode: {
+                ASSERT_EQ(kMemory, dynamic_cast<StorageModeNode *>(table_option)->GetStorageMode());
+                break;
+            }
+        }
+    }
 }
 }  // namespace node
 }  // namespace hybridse

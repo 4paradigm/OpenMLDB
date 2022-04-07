@@ -178,14 +178,7 @@ cases:
           |      +-ttl_type: absolute
           |      +-version_column: column5
           |      +-version_count: 3
-<<<<<<< HEAD
-          +-replica_num: 3
-          +-partition_num: 3
-          +-storage_mode: memory
-          +-distribution_list[list]:
-=======
           +-table_option_list[list]:
->>>>>>> 65193aeec (update test)
             +-0:
             |  +-node[kReplicaNum]
             |    +-replica_num: 3
@@ -238,14 +231,7 @@ cases:
           |      +-ttl_type: latest
           |      +-version_column: a
           |      +-version_count: 1
-<<<<<<< HEAD
-          +-replica_num: 2
-          +-partition_num: 5
-          +-storage_mode: memory
-          +-distribution_list[list]:
-=======
           +-table_option_list[list]:
->>>>>>> 65193aeec (update test)
             +-0:
             |  +-node[kReplicaNum]
             |    +-replica_num: 2
@@ -299,14 +285,7 @@ cases:
           |      +-ttl_type: absorlat
           |      +-version_column: a
           |      +-version_count: 1
-<<<<<<< HEAD
-          +-replica_num: 4
-          +-partition_num: 5
-          +-storage_mode: memory
-          +-distribution_list[list]:
-=======
           +-table_option_list[list]:
->>>>>>> 65193aeec (update test)
             +-0:
             |  +-node[kReplicaNum]
             |    +-replica_num: 4
@@ -339,14 +318,7 @@ cases:
           +-table: t4
           +-IF NOT EXIST: 0
           +-column_desc_list: []
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
 
   - id: 17_create_procedure
     desc: create procedure, everything empty
@@ -668,22 +640,28 @@ cases:
           |      +-ttl_type: absorlat
           |      +-version_column: a
           |      +-version_count: 1
-          +-replica_num: 4
-          +-partition_num: 5
-          +-storage_mode: memory
-          +-distribution_list[list]:
+          +-table_option_list[list]:
             +-0:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: leader1
-            |    +-role_type: leader
+            |  +-node[kReplicaNum]
+            |    +-replica_num: 4
             +-1:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: fo1
-            |    +-role_type: follower
+            |  +-node[kPartitionNum]
+            |    +-partition_num: 5
             +-2:
-              +-node[kPartitionMeta]
-                +-endpoint: fo2
-                +-role_type: follower
+              +-node[kDistributions]
+                +-distribution_list[list]:
+                  +-0:
+                  |  +-node[kPartitionMeta]
+                  |    +-endpoint: leader1
+                  |    +-role_type: leader
+                  +-1:
+                  |  +-node[kPartitionMeta]
+                  |    +-endpoint: fo1
+                  |    +-role_type: follower
+                  +-2:
+                    +-node[kPartitionMeta]
+                      +-endpoint: fo2
+                      +-role_type: follower
   - id: 25
     desc: 简单CREATE with VARCHAR
     sql: |
@@ -741,14 +719,7 @@ cases:
           |      +-ttl_type: <nil>
           |      +-version_column: <nil>
           |      +-version_count: 0
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
   - id: 25
     desc: 简单CREATE with VARCHAR
     sql: |
@@ -806,14 +777,7 @@ cases:
           |      +-ttl_type: <nil>
           |      +-version_column: <nil>
           |      +-version_count: 0
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
   - id: 26
     desc: Column default value
     sql: |
@@ -841,14 +805,7 @@ cases:
           |      +-column_name: column2
           |      +-column_type: int32
           |      +-NOT NULL: 0
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
   - id: 27
     desc: Column default value with explicit type
     sql: |
@@ -879,14 +836,7 @@ cases:
           |      +-column_name: column3
           |      +-column_type: int32
           |      +-NOT NULL: 0
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
   - id: 28
     desc: Create table with database.table
     sql: |
@@ -910,14 +860,7 @@ cases:
           |      +-column_name: column3
           |      +-column_type: int32
           |      +-NOT NULL: 0
-<<<<<<< HEAD
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
-=======
           +-table_option_list: []
->>>>>>> 65193aeec (update test)
   - id: 29
     desc: create index with db name prefix
     sql: |
@@ -968,7 +911,7 @@ cases:
           |      +-ttl_type: <nil>
           |      +-version_column: <nil>
           |      +-version_count: 0
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: hdd
-          +-distribution_list: []
+          +-table_option_list[list]:
+            +-0:
+              +-node[kStorageMode]
+                +-storage_mode: hdd

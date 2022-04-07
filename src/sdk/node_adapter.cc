@@ -46,6 +46,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
 
     uint32_t replica_num = 1;
     uint32_t partition_num = 1;
+    hybridse::node::StorageMode storage_mode = hybridse::node::kMemory;
     // different default value for cluser mode and standalone mode
     if (is_cluster_mode) {
         replica_num = default_replica_num;
@@ -61,6 +62,10 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
                 case hybridse::node::kPartitionNum: {
                     partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+                    break;
+                }
+                case hybridse::node::kStorageMode: {
+                    storage_mode = dynamic_cast<hybridse::node::StorageModeNode *>(table_option)->GetStorageMode();
                     break;
                 }
                 case hybridse::node::kDistributions: {
