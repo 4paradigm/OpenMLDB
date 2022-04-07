@@ -58,7 +58,7 @@ bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** o
 
     auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
     const auto& projects = project_aggr_op->project();
-    for (int i = 0; i < projects.size(); i++) {
+    for (size_t i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
         if (expr->GetExprType() == node::kExprCall) {
             const auto* call_expr = dynamic_cast<const node::CallExprNode*>(expr);
@@ -90,7 +90,7 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     std::vector<vm::PhysicalProjectNode*> split_nodes;
     vm::ColumnProjects final_column_projects;
     vm::ColumnProjects simple_column_projects;
-    for (int i = 0; i < projects.size(); i++) {
+    for (size_t i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
         auto name = projects.GetName(i);
         final_column_projects.Add(name, node_manager_->MakeColumnRefNode(name, ""), nullptr);

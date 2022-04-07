@@ -1086,6 +1086,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kPartitionNum:
             output = "kPartitionNum";
             break;
+        case kStorageMode:
+            output = "kStorageMode";
+            break;
         case kFn:
             output = "kFn";
             break;
@@ -1327,6 +1330,8 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
+    output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", false);
     output << "\n";
     PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
@@ -2318,6 +2323,13 @@ void ReplicaNumNode::Print(std::ostream &output, const std::string &org_tab) con
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
+}
+
+void StorageModeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", true);
 }
 
 void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {
