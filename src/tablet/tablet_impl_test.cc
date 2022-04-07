@@ -786,8 +786,10 @@ TEST_P(TabletImplTest, Get) {
 TEST_P(TabletImplTest, UpdateTTLAbsoluteTime) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -961,13 +963,16 @@ TEST_P(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(100, cur_ttl.abs_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, UpdateTTLLatest) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -1043,6 +1048,7 @@ TEST_P(TabletImplTest, UpdateTTLLatest) {
         ASSERT_EQ(2, cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, CreateTableWithSchema) {
@@ -2593,8 +2599,10 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
 TEST_P(TabletImplTest, GCWithUpdateTTL) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2699,6 +2707,7 @@ TEST_P(TabletImplTest, GCWithUpdateTTL) {
         ASSERT_EQ("invalid args", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, DropTableFollower) {
@@ -3380,8 +3389,10 @@ TEST_P(TabletImplTest, MakeSnapshotThreshold) {
 TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -3606,13 +3617,16 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -3838,6 +3852,7 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
 TEST_P(TabletImplTest, ScanAtLeast) {
