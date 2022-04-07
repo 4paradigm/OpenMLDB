@@ -206,9 +206,9 @@ class TestOpenMLDBClient(unittest.TestCase):
 
   def check_fetchmany(self,connection):
     result = connection.execute("select * from tsql1010;")
-    self.assertTrue(result.fetchmany() == [(1001, '2020-12-26', 'hefei', 'anhui', 2)])
-    self.assertTrue(result.fetchmany(size=2) == [(1000, '2020-12-25', 'guangdon', '广州', 1),(1004, '2020-12-29', 'hubei', 'wuhan', 5)])
-    self.assertTrue(result.fetchmany(size=4) == [(1003, '2020-12-28', 'jiangxi', 'nanchang', 4),(1002, '2020-12-27', 'fujian', 'fuzhou', 3)])
+    self.assertTrue(result.fetchmany() == [(1002, '2020-12-27', 'fujian', 'fuzhou', 3)])
+    self.assertTrue(result.fetchmany(size=2) == [(1001, '2020-12-26', 'hefei', 'anhui', 2),(1000, '2020-12-25', 'guangdon', '广州', 1)])
+    self.assertTrue(result.fetchmany(size=4) == [(1004, '2020-12-29', 'hubei', 'wuhan', 5),(1003, '2020-12-28', 'jiangxi', 'nanchang', 4)])
       
   def check_fetchall(self,connection, expect_row):
     result = connection.execute("select * from tsql1010;")
