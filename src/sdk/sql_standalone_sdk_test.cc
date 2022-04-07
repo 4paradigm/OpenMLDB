@@ -40,6 +40,7 @@ namespace sdk {
 
 MiniCluster* mc_ = nullptr;
 std::shared_ptr<SQLRouter> router_ = std::shared_ptr<SQLRouter>();
+::openmldb::sdk::DBSDK * cs_;
 /// TODO(cj): replace rtidb-unsupport with performance-sensitive-unsupport
 static bool IsRequestSupportMode(const std::string& mode) {
     if (mode.find("hybridse-only") != std::string::npos ||
@@ -805,6 +806,70 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
         ASSERT_EQ(rs->Size(), 0);
     }
 }
+TEST_F(SQLSDKTest, CreatePreAggrTable) {
+    auto router = router_;
+    ASSERT_TRUE(router != nullptr);
+    ::hybridse::sdk::Status status;
+    std::string base_table = GenRand("test");
+    std::string base_db = GenRand("db");
+    bool ok = router->CreateDB(base_db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + base_table +
+                      "("
+                      "col1 string, col2 bigint, col3 int,"
+                      " index(key=col1, ts=col2,"
+                      " TTL_TYPE=latest, TTL=1));";
+    ok = router->ExecuteDDL(base_db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
+                             " sum(col3) over w1 as w1_sum_col3 from " + base_table +
+                             " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+                             " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+    router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    router->ExecuteSQL(base_db, deploy_sql, &status);
+
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    auto ns_client = cs_->GetNsClient();
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string aggr_table = "pre_test1_w1_sum_col3";
+    ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, tables, msg));
+    ASSERT_EQ(tables.size(), 1);
+    ASSERT_EQ(tables[0].column_key_size(), 1);
+    ASSERT_EQ(tables[0].column_key(0).col_name(0), "key");
+    ASSERT_EQ(tables[0].column_key(0).ts_name(), "ts_start");
+    ASSERT_EQ(tables[0].column_key(0).ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(tables[0].column_key(0).ttl().lat_ttl(), 1);
+
+    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    std::string meta_sql = "select * from " + meta_table + ";";
+
+    auto rs = router->ExecuteSQL(meta_db, meta_sql, &status);
+    ASSERT_EQ(0, static_cast<int>(status.code));
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
+    ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
+    ASSERT_EQ(base_table, rs->GetStringUnsafe(3));
+    ASSERT_EQ("sum", rs->GetStringUnsafe(4));
+    ASSERT_EQ("col3", rs->GetStringUnsafe(5));
+    ASSERT_EQ("col1", rs->GetStringUnsafe(6));
+    ASSERT_EQ("col2", rs->GetStringUnsafe(7));
+    ASSERT_EQ("1000", rs->GetStringUnsafe(8));
+
+    ASSERT_TRUE(cs_->GetNsClient()->DropProcedure(base_db, "test1", msg));
+    std::string pre_aggr_table = "pre_test1_w1_sum_col3";
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
 }  // namespace sdk
 }  // namespace openmldb
 
@@ -829,6 +894,7 @@ int main(int argc, char** argv) {
     ::hybridse::sdk::Status status;
     router->ExecuteSQL("SET @@execute_mode='online';", &status);
     ::openmldb::sdk::router_ = router;
+    ::openmldb::sdk::cs_ = cs;
 
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();

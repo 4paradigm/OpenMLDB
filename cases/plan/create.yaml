@@ -180,6 +180,7 @@ cases:
           |      +-version_count: 3
           +-replica_num: 3
           +-partition_num: 3
+          +-storage_mode: memory
           +-distribution_list[list]:
             +-0:
             |  +-node[kPartitionMeta]
@@ -226,6 +227,7 @@ cases:
           |      +-version_count: 1
           +-replica_num: 2
           +-partition_num: 5
+          +-storage_mode: memory
           +-distribution_list[list]:
             +-0:
             |  +-node[kPartitionMeta]
@@ -273,6 +275,7 @@ cases:
           |      +-version_count: 1
           +-replica_num: 4
           +-partition_num: 5
+          +-storage_mode: memory
           +-distribution_list[list]:
             +-0:
             |  +-node[kPartitionMeta]
@@ -299,6 +302,7 @@ cases:
           +-column_desc_list: []
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
 
   - id: 17_create_procedure
@@ -623,6 +627,7 @@ cases:
           |      +-version_count: 1
           +-replica_num: 4
           +-partition_num: 5
+          +-storage_mode: memory
           +-distribution_list[list]:
             +-0:
             |  +-node[kPartitionMeta]
@@ -695,6 +700,7 @@ cases:
           |      +-version_count: 0
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 25
     desc: 简单CREATE with VARCHAR
@@ -755,6 +761,7 @@ cases:
           |      +-version_count: 0
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 26
     desc: Column default value
@@ -785,6 +792,7 @@ cases:
           |      +-NOT NULL: 0
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 27
     desc: Column default value with explicit type
@@ -818,6 +826,7 @@ cases:
           |      +-NOT NULL: 0
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 28
     desc: Create table with database.table
@@ -844,6 +853,7 @@ cases:
           |      +-NOT NULL: 0
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 29
     desc: create index with db name prefix
@@ -863,3 +873,39 @@ cases:
               +-ttl_type: absolute
               +-version_column: <nil>
               +-version_count: 0
+  - id: 30
+    desc: Create 指定存储介质
+    sql: |
+      create table t1(
+          column1 int,
+          column2 timestamp,
+          index(key=column1, ts=column2)) OPTIONS (storage_mode="HDD");
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column2
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: [column1]
+          |      +-ts_col: column2
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: -2
+          |      +-ttl_type: <nil>
+          |      +-version_column: <nil>
+          |      +-version_count: 0
+          +-replica_num: 1
+          +-partition_num: 1
+          +-storage_mode: hdd
+          +-distribution_list: []
