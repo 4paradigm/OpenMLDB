@@ -33,6 +33,7 @@ cases:
           +-column_desc_list: []
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 4
     desc: DESC table aa-bb
@@ -150,6 +151,7 @@ cases:
           |      +-version_count: 3
           +-replica_num: 3
           +-partition_num: 3
+          +-storage_mode: memory
           +-distribution_list[list]:
             +-0:
             |  +-node[kPartitionMeta]
