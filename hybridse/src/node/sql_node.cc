@@ -1086,6 +1086,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kPartitionNum:
             output = "kPartitionNum";
             break;
+        case kStorageMode:
+            output = "kStorageMode";
+            break;
         case kFn:
             output = "kFn";
             break;
