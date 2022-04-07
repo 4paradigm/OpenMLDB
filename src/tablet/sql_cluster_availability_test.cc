@@ -392,7 +392,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
     ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
-    ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
+    ASSERT_EQ(rs->GetInt64Unsafe(2), 33);
     ASSERT_FALSE(rs->Next());
 
     // create another procedure
