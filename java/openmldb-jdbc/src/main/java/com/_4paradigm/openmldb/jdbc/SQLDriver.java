@@ -16,19 +16,162 @@
 
 package com._4paradigm.openmldb.jdbc;
 
+import com._4paradigm.openmldb.sdk.SdkOption;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+
 import java.sql.*;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 public class SQLDriver implements Driver {
+    static {
+        try {
+            DriverManager.registerDriver(new SQLDriver());
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not register driver", e);
+        }
+    }
+
+    /**
+     * Connect to the given connection string.
+     *
+     * @param url the url to connect to
+     * @return a connection
+     * @throws SQLException if it is not possible to connect
+     */
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        return null;
+        try {
+            // Merge connectProperties (from URL) and supplied properties from user.
+            // TODO(hw): only cluster mode now, support StandaloneOptions later
+            if (info == null) {
+                info = new Properties();
+            }
+            parseAndMergeClusterProps(url, info);
+            SdkOption option = createOptionByProps(info);
+            SqlExecutor client = new SqlClusterExecutor(option);
+            return new SQLConnection(client, info);
+        } catch (SqlException e) {
+            throw new SQLException(e.getMessage());
+        }
+    }
+
+    /**
+     * parse and verification of URL.
+     *
+     * <p>basic syntax :<br>
+     * {@code
+     * jdbc:openmldb://[<foobar>]/[<dbName>]?<zk>=<value1>&<zkPath>=<value2>[&<key>=<value>]
+     * }
+     * <p>'host:port' after '//' is useless.</p>
+     * <p>zk:<br>
+     * - simple :<br>
+     * {@code <host>:<portnumber>}<br>
+     * (for example localhost:6181)<br>
+     * - list: <br>
+     * {@code <host>:<portnumber>,<host>:<portnumber>,<host>:<portnumber>}<br>
+     * <br>
+     * <p>Some examples :<br>
+     * {@code jdbc:openmldb:///?zk=localhost:6181&zkPath=/onebox}<br>
+     * {@code
+     * jdbc:openmldb:///db_test?zk=localhost:6181&zkPath=/onebox&sessionTimeout=1000&enableDebug=true}
+     * <br>
+     */
+    private void parseAndMergeClusterProps(String url, Properties info) throws SQLException {
+        if (!acceptsURL(url)) {
+            throw new SQLException("not a valid url");
+        }
+        parseInternal(url, info);
+    }
+
+    /**
+     * Parses the connection URL in order to set the UrlParser instance with all the information
+     * provided through the URL.
+     *
+     * @param url        connection URL
+     * @param properties properties
+     * @throws SQLException if format is incorrect
+     */
+    private void parseInternal(String url, Properties properties) throws SQLException {
+        try {
+            // the first separator must be the end of header 'jdbc:openmldb://'
+            int separator = url.indexOf("//");
+            if (separator == -1) {
+                throw new IllegalArgumentException(
+                        "url parsing error: '//' is not present in the url " + url);
+            }
+            String urlSecondPart = url.substring(separator + 2);
+            int dbIndex = urlSecondPart.indexOf("/");
+            int paramIndex = urlSecondPart.indexOf("?");
+            if (dbIndex < 0 || paramIndex < 0 || dbIndex > paramIndex) {
+                throw new IllegalArgumentException("url parsing error: must have '/[<dbName>]?[params]' part, dbName can be empty");
+            }
+
+            String dbName = urlSecondPart.substring(dbIndex + 1, paramIndex);
+            String additionalParameters = urlSecondPart.substring(paramIndex);
+            // Connection may need the db name
+            properties.setProperty("dbName", dbName);
+            // set additional parameters to the properties
+            parseParametersToProps(properties, additionalParameters);
+        } catch (IllegalArgumentException e) {
+            throw new SQLException("error parsing url: " + e.getMessage(), e);
+        }
+    }
+
+    // only five options. If more, we should use alias map.
+    private SdkOption createOptionByProps(Properties properties) {
+        SdkOption option = new SdkOption();
+        String prop = properties.getProperty("zk");
+        if (prop != null) {
+            option.setZkCluster(prop);
+        } else {
+            throw new IllegalArgumentException("must set param 'zk'");
+        }
+        prop = properties.getProperty("zkPath");
+        if (prop != null) {
+            option.setZkPath(prop);
+        } else {
+            throw new IllegalArgumentException("must set param 'zkPath'");
+        }
+        prop = properties.getProperty("sessionTimeout");
+        if (prop != null) {
+            option.setSessionTimeout(Long.parseLong(prop));
+        }
+        prop = properties.getProperty("enableDebug");
+        if (prop != null) {
+            option.setEnableDebug(Boolean.parseBoolean(prop));
+        }
+        prop = properties.getProperty("requestTimeout");
+        if (prop != null) {
+            option.setRequestTimeout(Long.parseLong(prop));
+        }
+        return option;
+    }
+
+    private void parseParametersToProps(Properties properties, String additionalParameters) {
+        if (additionalParameters != null) {
+            // params are after '?'
+            String urlParameters = additionalParameters.substring(1);
+            if (!urlParameters.isEmpty()) {
+                String[] parameters = urlParameters.split("&");
+                for (String parameter : parameters) {
+                    int pos = parameter.indexOf('=');
+                    if (pos == -1) {
+                        properties.setProperty(parameter, "");
+                    } else {
+                        properties.setProperty(parameter.substring(0, pos), parameter.substring(pos + 1));
+                    }
+                }
+            }
+        }
     }
 
     @Override
-    public boolean acceptsURL(String url) throws SQLException {
-        return false;
+    public boolean acceptsURL(String url) {
+        // not support for "jdbc:openmldb:[<foobar>]//"
+        return url != null && url.startsWith("jdbc:openmldb://");
     }
 
     @Override

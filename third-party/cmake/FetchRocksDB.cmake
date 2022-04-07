@@ -15,6 +15,11 @@
 set(SRC_URL https://github.com/facebook/rocksdb/archive/v6.27.3.tar.gz)
 message(STATUS "build rocksdb from ${SRC_URL}")
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "13.1.6")
+  message(STATUS "apply rocksdb patch for apple clang 13.1.6 or later")
+  set(PATCH_CMD patch -p 1 -N -i ${PROJECT_SOURCE_DIR}/patches/rocksdb.patch)
+endif()
+
 find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
   rocksdb
@@ -23,9 +28,11 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/rocksdb
   INSTALL_DIR ${DEPS_INSTALL_DIR}
-  BUILD_IN_SOURCE True
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ${MAKE_EXE} USE_RTTI=1 static_lib ${MAKEOPTS}
-  INSTALL_COMMAND bash -c "cp -rvf ./include/* <INSTALL_DIR>/include/"
-    COMMAND mkdir -p <INSTALL_DIR>/lib > /dev/null 2>&1
-    COMMAND cp -v librocksdb.a <INSTALL_DIR>/lib/)
+  PATCH_COMMAND ${PATCH_CMD}
+  CONFIGURE_COMMAND
+    ${CMAKE_COMMAND} -H<SOURCE_DIR> -B<BINARY_DIR> -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+    -DCMAKE_BUILD_TYPE=Release -DUSE_RTTI=ON -DROCKSDB_BUILD_SHARED=OFF -DWITH_TESTS=OFF -DWITH_TOOLS=OFF
+    -DWITH_BENCHMARK_TOOLS=OFF -DWITH_GFLAGS=OFF -DWITH_JNI=OFF -DJNI=OFF
+  BUILD_COMMAND ""
+  INSTALL_COMMAND
+    ${CMAKE_COMMAND} --build <BINARY_DIR> --target install -- ${MAKEOPTS})

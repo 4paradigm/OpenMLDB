@@ -21,6 +21,8 @@
 namespace hybridse {
 namespace udf {
 
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 using hybridse::base::Status;
 using hybridse::codegen::CodeGenContext;
 using hybridse::codegen::NativeValue;
@@ -438,9 +440,7 @@ void StaticSignatureCheckFail() {
 }
 
 TEST_F(UdfRegistryTest, static_extern_signature_check) {
-    using codec::Date;
-    using codec::StringRef;
-    using codec::Timestamp;
+    using openmldb::base::StringRef;
 
     // normal arg
     StaticSignatureCheck<int, std::tuple<int, int>, int,

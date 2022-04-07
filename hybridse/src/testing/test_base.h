@@ -35,6 +35,9 @@ using hybridse::base::Status;
 using hybridse::codec::Row;
 using hybridse::common::kTestEngineError;
 using hybridse::sqlcase::SqlCase;
+void BuildAggTableDef(::hybridse::type::TableDef& table,
+                      const std::string& aggr_table = "aggr_t1",
+                      const std::string& aggr_db = "aggr_db");
 void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
 void BuildTableA(::hybridse::type::TableDef& table);      // NOLINT
 void BuildTableT2Def(::hybridse::type::TableDef& table);  // NOLINT
@@ -61,6 +64,7 @@ bool InitSimpleCataLogFromSqlCase(SqlCase& sql_case,  // NOLINT
                                   std::shared_ptr<SimpleCatalog> catalog);
 
 void PrintSchema(std::ostringstream& ss, const Schema& schema);
+void PrintAllSchema(std::ostringstream& ss, const PhysicalOpNode* op);
 void PrintSchema(const Schema& schema);
 }  // namespace vm
 }  // namespace hybridse

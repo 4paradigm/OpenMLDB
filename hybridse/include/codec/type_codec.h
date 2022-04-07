@@ -23,193 +23,14 @@
 #include <vector>
 #include "base/fe_hash.h"
 #include "base/mem_pool.h"
+#include "base/string_ref.h"
+#include "base/type.h"
 #include "glog/logging.h"
 
 namespace hybridse {
 namespace codec {
 
 static const uint32_t SEED = 0xe17a1465;
-
-struct StringRef {
-    StringRef() : size_(0), data_(nullptr) {}
-    explicit StringRef(const char* str)
-        : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
-    explicit StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
-
-    explicit StringRef(const std::string& str)
-        : size_(str.size()), data_(str.data()) {}
-
-    ~StringRef() {}
-
-    const inline bool IsNull() const { return nullptr == data_; }
-    const std::string ToString() const {
-        return size_ == 0 ? "" : std::string(data_, size_);
-    }
-
-    static int compare(const StringRef& a, const StringRef& b) {
-        const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
-        int r = memcmp(a.data_, b.data_, min_len);
-        if (r == 0) {
-            if (a.size_ < b.size_) {
-                r = -1;
-            } else if (a.size_ > b.size_) {
-                r = +1;
-            }
-        }
-        return r;
-    }
-
-    uint32_t size_;
-    const char* data_;
-};
-
-__attribute__((unused)) static const StringRef operator+(const StringRef& a,
-                                                         const StringRef& b) {
-    StringRef str;
-    str.size_ = a.size_ + b.size_;
-    char* buffer = static_cast<char*>(malloc(str.size_ + 1));
-    str.data_ = buffer;
-    if (a.size_ > 0) {
-        memcpy(buffer, a.data_, a.size_);
-    }
-    if (b.size_ > 0) {
-        memcpy(buffer + a.size_, b.data_, b.size_);
-    }
-    buffer[str.size_] = '\0';
-    return str;
-}
-__attribute__((unused)) static std::ostream& operator<<(std::ostream& os,
-                                                        const StringRef& a) {
-    os << a.ToString();
-    return os;
-}
-__attribute__((unused)) static bool operator==(const StringRef& a,
-                                               const StringRef& b) {
-    return 0 == StringRef::compare(a, b);
-}
-__attribute__((unused)) static bool operator!=(const StringRef& a,
-                                               const StringRef& b) {
-    return 0 != StringRef::compare(a, b);
-}
-__attribute__((unused)) static bool operator>=(const StringRef& a,
-                                               const StringRef& b) {
-    return StringRef::compare(a, b) >= 0;
-}
-__attribute__((unused)) static bool operator>(const StringRef& a,
-                                              const StringRef& b) {
-    return StringRef::compare(a, b) > 0;
-}
-__attribute__((unused)) static bool operator<=(const StringRef& a,
-                                               const StringRef& b) {
-    return StringRef::compare(a, b) <= 0;
-}
-__attribute__((unused)) static bool operator<(const StringRef& a,
-                                              const StringRef& b) {
-    return StringRef::compare(a, b) < 0;
-}
-
-struct Timestamp {
-    Timestamp() : ts_(0) {}
-    explicit Timestamp(int64_t ts) : ts_(ts < 0 ? 0 : ts) {}
-    Timestamp& operator+=(const Timestamp& t1) {
-        ts_ += t1.ts_;
-        return *this;
-    }
-    Timestamp& operator-=(const Timestamp& t1) {
-        ts_ -= t1.ts_;
-        return *this;
-    }
-    int64_t ts_;
-};
-
-__attribute__((unused)) static const Timestamp operator+(const Timestamp& a,
-                                                         const Timestamp& b) {
-    return Timestamp(a.ts_ + b.ts_);
-}
-__attribute__((unused)) static const Timestamp operator-(const Timestamp& a,
-                                                         const Timestamp& b) {
-    return Timestamp(a.ts_ - b.ts_);
-}
-__attribute__((unused)) static const Timestamp operator/(const Timestamp& a,
-                                                         const int64_t b) {
-    return Timestamp(static_cast<int64_t>(a.ts_ / b));
-}
-__attribute__((unused)) static bool operator>(const Timestamp& a,
-                                              const Timestamp& b) {
-    return a.ts_ > b.ts_;
-}
-__attribute__((unused)) static bool operator<(const Timestamp& a,
-                                              const Timestamp& b) {
-    return a.ts_ < b.ts_;
-}
-__attribute__((unused)) static bool operator>=(const Timestamp& a,
-                                               const Timestamp& b) {
-    return a.ts_ >= b.ts_;
-}
-__attribute__((unused)) static bool operator<=(const Timestamp& a,
-                                               const Timestamp& b) {
-    return a.ts_ <= b.ts_;
-}
-__attribute__((unused)) static bool operator==(const Timestamp& a,
-                                               const Timestamp& b) {
-    return a.ts_ == b.ts_;
-}
-__attribute__((unused)) static bool operator!=(const Timestamp& a,
-                                               const Timestamp& b) {
-    return a.ts_ != b.ts_;
-}
-
-struct Date {
-    Date() : date_(0) {}
-    explicit Date(int32_t date) : date_(date < 0 ? 0 : date) {}
-    Date(int32_t year, int32_t month, int32_t day) : date_(0) {
-        if (year < 1900 || year > 9999) {
-            return;
-        }
-        if (month < 1 || month > 12) {
-            return;
-        }
-        if (day < 1 || day > 31) {
-            return;
-        }
-        int32_t data = (year - 1900) << 16;
-        data = data | ((month - 1) << 8);
-        data = data | day;
-        date_ = data;
-    }
-    static bool Decode(int32_t date, int32_t* year, int32_t* month,
-                       int32_t* day) {
-        if (date < 0) {
-            return false;
-        }
-        *day = date & 0x0000000FF;
-        date = date >> 8;
-        *month = 1 + (date & 0x0000FF);
-        *year = 1900 + (date >> 8);
-        return true;
-    }
-    int32_t date_;
-};
-
-__attribute__((unused)) static bool operator>(const Date& a, const Date& b) {
-    return a.date_ > b.date_;
-}
-__attribute__((unused)) static bool operator<(const Date& a, const Date& b) {
-    return a.date_ < b.date_;
-}
-__attribute__((unused)) static bool operator>=(const Date& a, const Date& b) {
-    return a.date_ >= b.date_;
-}
-__attribute__((unused)) static bool operator<=(const Date& a, const Date& b) {
-    return a.date_ <= b.date_;
-}
-__attribute__((unused)) static bool operator==(const Date& a, const Date& b) {
-    return a.date_ == b.date_;
-}
-__attribute__((unused)) static bool operator!=(const Date& a, const Date& b) {
-    return a.date_ != b.date_;
-}
-
 template <typename V = void>
 struct ListRef {
     int8_t* list;
@@ -395,15 +216,15 @@ inline float GetFloatField(const int8_t* row, uint32_t idx, uint32_t offset,
     }
 }
 
-inline Timestamp GetTimestampFieldUnsafe(const int8_t* row, uint32_t offset) {
-    return Timestamp(*(reinterpret_cast<const int64_t*>(row + offset)));
+inline openmldb::base::Timestamp GetTimestampFieldUnsafe(const int8_t* row, uint32_t offset) {
+    return openmldb::base::Timestamp(*(reinterpret_cast<const int64_t*>(row + offset)));
 }
 
-inline Timestamp GetTimestampField(const int8_t* row, uint32_t idx,
+inline openmldb::base::Timestamp GetTimestampField(const int8_t* row, uint32_t idx,
                                    uint32_t offset, int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
-        return Timestamp();
+        return openmldb::base::Timestamp();
     } else {
         *is_null = false;
         return GetTimestampFieldUnsafe(row, offset);
@@ -456,22 +277,22 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
 // custom specialization of std::hash for timestamp, date and string
 namespace std {
 template <>
-struct hash<hybridse::codec::Timestamp> {
-    std::size_t operator()(const hybridse::codec::Timestamp& t) const {
+struct hash<openmldb::base::Timestamp> {
+    std::size_t operator()(const openmldb::base::Timestamp& t) const {
         return std::hash<int64_t>()(t.ts_);
     }
 };
 
 template <>
-struct hash<hybridse::codec::Date> {
-    std::size_t operator()(const hybridse::codec::Date& t) const {
+struct hash<openmldb::base::Date> {
+    std::size_t operator()(const openmldb::base::Date& t) const {
         return std::hash<int32_t>()(t.date_);
     }
 };
 
 template <>
-struct hash<hybridse::codec::StringRef> {
-    std::size_t operator()(const hybridse::codec::StringRef& t) const {
+struct hash<openmldb::base::StringRef> {
+    std::size_t operator()(const openmldb::base::StringRef& t) const {
         return hybridse::base::hash(t.data_, t.size_, hybridse::codec::SEED);
     }
 };

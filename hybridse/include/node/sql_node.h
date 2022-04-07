@@ -386,6 +386,31 @@ inline const std::string FnNodeName(const SqlNodeType &type) {
     }
 }
 
+inline const std::string StorageModeName(StorageMode mode) {
+    switch (mode) {
+        case kMemory:
+            return "memory";
+        case kHDD:
+            return "hdd";
+        case kSSD:
+            return "ssd";
+        default:
+            return "unknown";
+    }
+}
+
+inline const StorageMode NameToStorageMode(const std::string& name) {
+    if (boost::iequals(name, "memory")) {
+        return kMemory;
+    } else if (boost::iequals(name, "hdd")) {
+        return kHDD;
+    } else if (boost::iequals(name, "ssd")) {
+        return kSSD;
+    } else {
+        return kUnknown;
+    }
+}
+
 inline const std::string RoleTypeName(RoleType type) {
     switch (type) {
         case kLeader:
@@ -1497,6 +1522,10 @@ class BinaryExpr : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
+    static BinaryExpr *CastFrom(ExprNode *node) {
+        return dynamic_cast<BinaryExpr *>(node);
+    }
+
  private:
     FnOperator op_;
 };
@@ -1791,19 +1820,43 @@ class InsertStmt : public SqlNode {
     const std::vector<ExprNode *> values_;
     const bool is_all_;
 };
+
+class StorageModeNode : public SqlNode {
+ public:
+    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_(kMemory) {}
+
+    explicit StorageModeNode(StorageMode storage_mode)
+        : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
+
+    ~StorageModeNode() {}
+
+    StorageMode GetStorageMode() const { return storage_mode_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    StorageMode storage_mode_;
+};
+
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
-        : SqlNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false), replica_num_(1), partition_num_(1) {}
+        : SqlNode(kCreateStmt, 0, 0),
+          table_name_(""),
+          op_if_not_exist_(false),
+          replica_num_(1),
+          partition_num_(1),
+          storage_mode_(kMemory) {}
 
     CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num)
+               int partition_num, StorageMode storage_mode = kMemory)
         : SqlNode(kCreateStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
           replica_num_(replica_num),
-          partition_num_(partition_num) {}
+          partition_num_(partition_num),
+          storage_mode_(storage_mode) {}
 
     ~CreateStmt() {}
 
@@ -1819,6 +1872,8 @@ class CreateStmt : public SqlNode {
 
     int GetPartitionNum() const { return partition_num_; }
 
+    StorageMode GetStorageMode() const { return storage_mode_; }
+
     NodePointVector &GetDistributionList() { return distribution_list_; }
     const NodePointVector &GetDistributionList() const { return distribution_list_; }
 
@@ -1831,6 +1886,7 @@ class CreateStmt : public SqlNode {
     NodePointVector column_desc_list_;
     int replica_num_;
     int partition_num_;
+    StorageMode storage_mode_;
     NodePointVector distribution_list_;
 };
 class IndexKeyNode : public SqlNode {

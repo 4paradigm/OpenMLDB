@@ -98,10 +98,12 @@ object LoadDataPlan {
     }
     // csv should auto detect the timestamp format
 
+    logger.info(s"set file format: $format")
+    reader.format(format)
     // use string to read, then infer the format by the first non-null value of the ts column
     val longTsCols = parseLongTsCols(reader, readSchema, tsCols, file)
-    logger.info(s"read schema: $readSchema")
-    var df = reader.schema(readSchema).format(format).load(file)
+    logger.info(s"read schema: $readSchema, file $file")
+    var df = reader.schema(readSchema).load(file)
     if (longTsCols.nonEmpty) {
       // convert long type to timestamp type
       for (tsCol <- longTsCols) {

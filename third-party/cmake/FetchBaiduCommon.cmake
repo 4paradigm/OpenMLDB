@@ -16,7 +16,7 @@
 set(COMMON_HOME https://github.com/4paradigm/common)
 set(COMMON_TAG 5fd6418a65116e223372c45cc949893467895637)
 
-message(STATUS "build baidu common from ${COMMON_URL}")
+message(STATUS "build baidu common from ${COMMON_HOME}@${COMMON_TAG}")
 
 find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
