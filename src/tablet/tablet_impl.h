@@ -423,6 +423,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
     bool InitClusterRouter();
+    // refresh the pre-aggr tables info
+    bool RefreshAggrCatalog();
 
     Tables tables_;
     std::mutex mu_;
@@ -458,7 +460,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::string globalvar_changed_notify_path_;
     ::openmldb::type::StartupMode startup_mode_;
 
-    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
+    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
     std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
