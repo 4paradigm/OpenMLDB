@@ -42,7 +42,6 @@ object OpenmldbBatchjobManager {
    * @return the Yarn AppId in String format
    */
   def runBatchSql(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): String = {
-    // tobe
     val jobType = "RunBatchSql"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
     val args = List(sql)

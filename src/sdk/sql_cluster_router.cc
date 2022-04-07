@@ -2314,7 +2314,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                         *status = {};
                         // Print the output from job output
                         // TODO: return result set if want to format the output
-                        std::cout << output << std::endl;
+                        std::vector<std::string> value = {output};
+                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     } else {
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
