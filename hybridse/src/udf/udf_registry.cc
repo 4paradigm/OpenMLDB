@@ -218,7 +218,7 @@ Status DynamicUdfRegistryHelper::Register() {
     std::string init_context_fn_name = "init_udfcontext.opaque";
     auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
     auto init_context_node = node_manager()->MakeExternalFnDefNode(
-            init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, false);
+            init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
     auto def = node_manager()->MakeDynamicUdfFnDefNode(
         fn_name_, fn_ptr_, return_type_, return_nullable_, arg_types_,
         arg_nullable_, return_by_arg_, init_context_node);

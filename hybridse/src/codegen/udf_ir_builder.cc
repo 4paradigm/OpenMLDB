@@ -487,17 +487,13 @@ Status UdfIRBuilder::BuildExternCall(
 Status UdfIRBuilder::BuildDynamicUdfCall(
     const node::DynamicUdfFnDefNode* fn,
     const std::vector<NativeValue>& args, NativeValue* output) {
-    // resolve to llvm function
     auto init_context_fn = fn->GetInitContextNode();
     auto opaque_type_node = dynamic_cast<const node::OpaqueTypeNode*>(init_context_fn->ret_type());
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    NativeValue udfcontext_output = NativeValue::Create(CreateAllocaAtHead(
-                &builder, ::llvm::Type::getInt8Ty(builder.getContext()),
-                "udf_opaque_type_arg_addr",
-                builder.getInt64(opaque_type_node->bytes())));
+    NativeValue udfcontext_output;
     UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
     CHECK_STATUS(
-        sub_udf_builder.BuildCall(init_context_fn, {}, {}, &udfcontext_output),
+        sub_udf_builder.BuildExternCall(init_context_fn, {}, &udfcontext_output),
         "Build output function call failed");
     std::vector<NativeValue> new_args = {udfcontext_output};
     new_args.insert(new_args.end(), args.begin(), args.end());

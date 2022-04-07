@@ -277,27 +277,41 @@ TEST_F(SqlCmdTest, CreateFunction) {
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     hybridse::sdk::Status status;
-    std::string create_sql = "create table trans (c1 string, c2 int, c3 double);";
+    std::string create_sql = "create table t1(c1 string, c2 int, c3 double);";
     sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    HandleSQL("insert into trans values ('aaa', 11, 1.2);");
+    HandleSQL("insert into t1 values ('aab', 11, 1.2);");
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
-    std::string create_func_sql = "CREATE FUNCTION myfun(x INT) RETURNS INT "
-                                  "OPTIONS (FILE='" + so_path + "');";
-    sr->ExecuteSQL(create_func_sql, &status);
+    std::string cut2_sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING "
+                            "OPTIONS (FILE='" + so_path + "');";
+    sr->ExecuteSQL(cut2_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    auto result = sr->ExecuteSQL("select myfun(c2) from trans;", &status);
+    std::string strlength_sql = "CREATE FUNCTION strlength(x STRING) RETURNS INT "
+                            "OPTIONS (FILE='" + so_path + "');";
+    sr->ExecuteSQL(strlength_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    std::string int2str_sql = "CREATE FUNCTION int2str(x INT) RETURNS STRING "
+                            "OPTIONS (FILE='" + so_path + "');";
+    sr->ExecuteSQL(int2str_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
     result->Next();
+    std::string str;
+    result->GetString(0, &str);
+    ASSERT_EQ(str, "aa");
     int value = 0;
-    result->GetInt32(0, &value);
-    ASSERT_EQ(value, 13);
-    sr->ExecuteSQL("DROP FUNCTION myfun;", &status);
+    result->GetInt32(1, &value);
+    ASSERT_EQ(value, 3);
+    str.clear();
+    result->GetString(2, &str);
+    ASSERT_EQ(str, "11");
+    sr->ExecuteSQL("DROP FUNCTION cut2;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    result = sr->ExecuteSQL("select myfun(c2) from trans;", &status);
+    result = sr->ExecuteSQL("select cut2(c1) from t1;", &status);
     ASSERT_FALSE(status.IsOK());
-    HandleSQL("drop table trans;");
+    HandleSQL("drop table t1;");
     HandleSQL("drop database test1;");
 }
 #endif
