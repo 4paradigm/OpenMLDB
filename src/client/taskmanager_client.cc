@@ -233,4 +233,16 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     return "";
 }
 
+::openmldb::base::Status TaskManagerClient::CreateFunction(const ::openmldb::common::ExternalFun& fun) {
+    ::openmldb::taskmanager::CreateFunctionRequest request;
+    ::openmldb::taskmanager::CreateFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::CreateFunction, &request,
+                                  &response, request_timeout_ms_, 1)) {
+        return {};
+    } else {
+        return {-1, response.msg()};
+    }
+}
+
 }  // namespace openmldb::client
