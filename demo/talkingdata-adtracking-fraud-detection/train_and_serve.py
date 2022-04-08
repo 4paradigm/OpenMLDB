@@ -43,7 +43,7 @@ def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
     n_estimators = bst1.best_iteration
     print("\nModel Report")
     print("n_estimators : ", n_estimators)
-    print(metrics + ":", evals_results['valid'][metrics][n_estimators - 1])
+    print(metrics + ":", evals_results['eval'][metrics][n_estimators - 1])
 
     return bst1
 
@@ -110,17 +110,16 @@ print("Load data to offline storage for training(hard copy)")
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute("SET @@sync_job=true;")
-connection.execute("SET @@job_timeout=120000;")
+connection.execute("SET @@job_timeout=1200000;")
 # use soft link after https://github.com/4paradigm/OpenMLDB/issues/1565 fixed
 connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format='csv',header=true);".format(
     os.path.abspath("train_sample.csv"), db_name, table_name))
 
 
 print('Feature extraction')
-current_path=os.path.abspath(".")
-train_feature_file = current_path + "/train_feature.csv"
+train_feature_file = "/tmp/train_feature"
 sql_part = """
-select ip, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
+select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
 count(channel) over w3 as ip_app_os_count
@@ -135,10 +134,24 @@ connection.execute("SET @@job_timeout=1200000;")
 connection.execute("{} INTO OUTFILE '{}';".format(
     sql_part, os.path.abspath(train_feature_file)))
 
+# concat the feature files
+train_feature_file = "./train_feature_file.csv"
+frames = []
+for file_name in os.listdir(train_feature_files):
+    full_path = os.path.abspath(train_feature_files) + '/' + file_name
+    if full_path.endswith(".csv"):
+        df = pd.read_csv(full_path)
+        frames.append(df)
+train_feature = pd.concat(frames)
+train_feature.to_csv(train_feature_file)
+
+del train_feature
+gc.collect()
+
 # load features from train_feature_file
-train_df = pd.read_csv(os.path.abspath(train_feature_file))
-val_df = train_df[(len_train - 3000000):len_train]
-train_df = train_df[:(len_train - 3000000)]
+train_df = pd.read_csv(train_feature_file)
+train_df = train_df[(len_train - 3000000):len_train]
+val_df = train_df[:(len_train - 3000000)]
 
 print("train size: ", len(train_df))
 print("valid size: ", len(val_df))
@@ -181,7 +194,7 @@ del val_df
 gc.collect()
 
 print("Save model.txt")
-bst.save_model("./model.txt")
+bst.save_model("./model.json")
 
 
 print("Prepare online serving")
@@ -189,6 +202,17 @@ print("Prepare online serving")
 print("Deploy sql")
 connection.execute("SET @@execute_mode='online';")
 connection.execute("USE {}".format(db_name))
+sql_part = """
+select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
+count(channel) over w1 as qty, 
+count(channel) over w2 as ip_app_count, 
+count(channel) over w3 as ip_app_os_count
+from {} 
+window 
+w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
+w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+""".format(table_name)
 connection.execute("DEPLOY demo " + sql_part)
 print("Import data to online")
 # online feature extraction needs history data
