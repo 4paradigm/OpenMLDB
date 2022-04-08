@@ -932,7 +932,7 @@ void DiskTableKeyIterator::NextPK() {
             // Like KeyIterator in MemTable, maybe no need to check IsExpired here
             // if (!IsExpired()) {
             //     return;
-            // } 
+            // }
             last_pk = pk_;
             break;
         } else {
@@ -959,7 +959,7 @@ void DiskTableKeyIterator::Seek(const std::string& pk) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 continue;
             }
-        } 
+        }
         break;
     }
 }

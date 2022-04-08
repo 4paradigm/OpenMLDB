@@ -304,7 +304,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
                     continue;
                 }
                 record_idx_++;
-            } 
+            }
             break;
         }
     }
@@ -316,7 +316,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
         row_.Reset(reinterpret_cast<const int8_t*>(value.data()), value.size());
         return row_;
     }
-    
+
     void Seek(const uint64_t& key) {
         std::string combine;
         uint64_t tmp_ts = key;
