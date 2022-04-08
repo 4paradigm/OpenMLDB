@@ -16,20 +16,72 @@
 
 package com._4paradigm.openmldb.taskmanager.server.impl;
 
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.proto.TaskManager;
+import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import com._4paradigm.openmldb.taskmanager.LogManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import lombok.extern.slf4j.Slf4j;
 import scala.Option;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
+
+    private Map<String, String> functionMap = new HashMap<>();
+    private Lock lock = new ReentrantLock();
+    private volatile static ZKClient zkClient;
+
+    static {
+        try {
+            zkClient = new ZKClient(ZKConfig.builder()
+                    .cluster(TaskManagerConfig.ZK_CLUSTER)
+                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                    .build());
+            zkClient.connect();
+        } catch (Exception e) {
+            zkClient = null;
+            e.printStackTrace();
+        }
+    }
+
+    public TaskManagerImpl() {
+        initExternalFunction();
+    }
+
+    private void initExternalFunction() {
+        String funPath = TaskManagerConfig.ZK_ROOT_PATH + "/data/function";
+        try {
+            List<String> funNames = zkClient.getChildren(funPath);
+            for (String name : funNames) {
+                try {
+                    String value = zkClient.getNodeValue(funPath + "/" + name);
+                    Common.ExternalFun fun = Common.ExternalFun.parseFrom(value.getBytes());
+                    functionMap.put(fun.getName(), value);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * Covert JobInfo object to protobuf object.
@@ -258,4 +310,36 @@ public class TaskManagerImpl implements TaskManagerInterface {
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
+
+    @Override
+    public TaskManager.CreateFunctionResponse CreateFunction(TaskManager.CreateFunctionRequest request) {
+        Common.ExternalFun fun = request.getFun();
+        if (fun.getOfflineFile().isEmpty()) {
+            return TaskManager.CreateFunctionResponse.newBuilder()
+                    .setCode(StatusCode.FAILED)
+                    .setMsg("has not offline path")
+                    .build();
+        }
+        String str = fun.toString();
+        lock.lock();
+        if (!functionMap.containsKey(request.getFun().getName())) {
+            functionMap.put(fun.getName(), str);
+        }
+        return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
+    }
+
+    @Override
+    public TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request) {
+        lock.lock();
+        if (functionMap.containsKey(request.getName())) {
+            functionMap.remove(request.getName());
+        } else if (!request.getIfExists()) {
+            return TaskManager.DropFunctionResponse.newBuilder()
+                    .setCode(StatusCode.FAILED)
+                    .setMsg(request.getName() + " is not exist")
+                    .build();
+        }
+        return TaskManager.DropFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
+    }
+
 }
