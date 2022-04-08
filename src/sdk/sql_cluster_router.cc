@@ -1522,6 +1522,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
                 cluster_sdk_->RemoveExternalFun(name);
+                auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+                if (taskmanager_client) {
+                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    if (!base_status.OK()) {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                        return {};
+                    }
+                }
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -2784,6 +2792,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         return {::hybridse::common::StatusCode::kCmdError, ret.msg};
     }
     cluster_sdk_->RegisterExternalFun(fun);
+    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+    if (taskmanager_client) {
+        ret = taskmanager_client->CreateFunction(fun);
+        if (!ret.OK()) {
+            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+        }
+    }
     return {};
 }
 
