@@ -302,6 +302,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     uint64_t ts_;
     uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
+    bool pk_valid_;
 };
 
 class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
