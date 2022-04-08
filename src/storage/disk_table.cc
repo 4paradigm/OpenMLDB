@@ -913,14 +913,13 @@ void DiskTableKeyIterator::SeekToFirst() {
 
 void DiskTableKeyIterator::NextPK() {
     std::string last_pk = pk_;
-    std::string combine;
+    std::string combine_key;
     if (has_ts_idx_) {
-        std::string combine_key = CombineKeyTs(last_pk, 0, ts_idx_);
-        it_->Seek(rocksdb::Slice(combine_key));
+        combine_key = CombineKeyTs(last_pk, 0, ts_idx_);
     } else {
-        std::string combine_key = CombineKeyTs(last_pk, 0);
-        it_->Seek(rocksdb::Slice(combine_key));
+        combine_key = CombineKeyTs(last_pk, 0);
     }
+    it_->Seek(rocksdb::Slice(combine_key));
     while (it_->Valid()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
@@ -933,7 +932,6 @@ void DiskTableKeyIterator::NextPK() {
             // if (!IsExpired()) {
             //     return;
             // }
-            last_pk = pk_;
             break;
         } else {
             it_->Next();
@@ -977,13 +975,103 @@ const hybridse::codec::Row DiskTableKeyIterator::GetKey() {
 std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
     std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_,
                                                                        expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_));
-    return std::move(wit);
+    return wit;
 }
 
 ::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
     return new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_, expire_cnt_, pk_, ts_, has_ts_idx_,
                                     ts_idx_);
 }
+
+DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+                                           ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
+                                           uint64_t expire_cnt, std::string pk, uint64_t ts, bool has_ts_idx,
+                                           uint32_t ts_idx)
+    : it_(it),
+      record_idx_(1),
+      expire_value_(expire_time, expire_cnt, ttl_type),
+      row_(),
+      pk_(pk),
+      row_pk_(pk),
+      ts_(ts),
+      has_ts_idx_(has_ts_idx),
+      ts_idx_(ts_idx) {}
+
+DiskTableRowIterator::~DiskTableRowIterator() {}
+
+bool DiskTableRowIterator::Valid() const {
+    if (row_pk_ != pk_) return false;
+    if (!it_->Valid() || expire_value_.IsExpired(ts_, record_idx_)) {
+        return false;
+    }
+    return true;
+}
+
+void DiskTableRowIterator::Next() {
+    for (it_->Next(); it_->Valid(); it_->Next()) {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (row_pk_ == pk_) {
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                continue;
+            }
+            record_idx_++;
+        }
+        break;
+    }
+}
+
+inline const uint64_t& DiskTableRowIterator::GetKey() const { return ts_; }
+
+const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
+    rocksdb::Slice value = it_->value();
+    row_.Reset(reinterpret_cast<const int8_t*>(value.data()), value.size());
+    return row_;
+}
+
+void DiskTableRowIterator::Seek(const uint64_t& key) {
+    std::string combine;
+    uint64_t tmp_ts = key;
+    if (has_ts_idx_) {
+        combine = CombineKeyTs(row_pk_, tmp_ts, ts_idx_);
+    } else {
+        combine = CombineKeyTs(row_pk_, tmp_ts);
+    }
+    it_->Seek(rocksdb::Slice(combine));
+    for (; it_->Valid(); it_->Next()) {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (pk_ == row_pk_) {
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                continue;
+            }
+        }
+        break;
+    }
+}
+
+void DiskTableRowIterator::SeekToFirst() {
+    std::string combine;
+    uint64_t tmp_ts = UINT64_MAX;
+    std::string pk = row_pk_;
+    if (has_ts_idx_) {
+        combine = CombineKeyTs(pk, tmp_ts, ts_idx_);
+    } else {
+        combine = CombineKeyTs(pk, tmp_ts);
+    }
+    it_->Seek(rocksdb::Slice(combine));
+    for (; it_->Valid(); it_->Next()) {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (pk_ == pk) {
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                continue;
+            }
+        }
+        break;
+    }
+}
+inline bool DiskTableRowIterator::IsSeekable() const { return true; }
 
 bool DiskTable::DeleteIndex(const std::string& idx_name) {
     // TODO(litongxin)

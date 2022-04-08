@@ -274,93 +274,21 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
  public:
     DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                          ::openmldb::storage::TTLType ttl_type, uint64_t expire_time, uint64_t expire_cnt,
-                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx)
-        : it_(it),
-          record_idx_(1),
-          expire_value_(expire_time, expire_cnt, ttl_type),
-          row_(),
-          pk_(pk),
-          row_pk_(pk),
-          ts_(ts),
-          has_ts_idx_(has_ts_idx),
-          ts_idx_(ts_idx) {}
+                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx);
 
-    ~DiskTableRowIterator() {}
+    ~DiskTableRowIterator();
 
-    bool Valid() const {
-        if (row_pk_ != pk_) return false;
-        if (!it_->Valid() || expire_value_.IsExpired(ts_, record_idx_)) {
-            return false;
-        }
-        return true;
-    }
+    bool Valid() const override;
 
-    void Next() {
-        for (it_->Next(); it_->Valid(); it_->Next()) {
-            uint32_t cur_ts_idx = UINT32_MAX;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-            if (row_pk_ == pk_) {
-                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                    continue;
-                }
-                record_idx_++;
-            }
-            break;
-        }
-    }
+    void Next() override;
 
-    inline const uint64_t& GetKey() const { return ts_; }
+    inline const uint64_t& GetKey() const override;
 
-    const ::hybridse::codec::Row& GetValue() {
-        rocksdb::Slice value = it_->value();
-        row_.Reset(reinterpret_cast<const int8_t*>(value.data()), value.size());
-        return row_;
-    }
+    const ::hybridse::codec::Row& GetValue() override;
 
-    void Seek(const uint64_t& key) {
-        std::string combine;
-        uint64_t tmp_ts = key;
-        std::string pk = row_pk_;
-        if (has_ts_idx_) {
-            combine = CombineKeyTs(pk, tmp_ts, ts_idx_);
-        } else {
-            combine = CombineKeyTs(pk, tmp_ts);
-        }
-        it_->Seek(rocksdb::Slice(combine));
-        for (; it_->Valid(); it_->Next()) {
-            uint32_t cur_ts_idx = UINT32_MAX;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-            if (pk_ == pk) {
-                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                    continue;
-                }
-            }
-            break;
-        }
-    }
-
-    void SeekToFirst() {
-        std::string combine;
-        uint64_t tmp_ts = UINT64_MAX;
-        std::string pk = row_pk_;
-        if (has_ts_idx_) {
-            combine = CombineKeyTs(pk, tmp_ts, ts_idx_);
-        } else {
-            combine = CombineKeyTs(pk, tmp_ts);
-        }
-        it_->Seek(rocksdb::Slice(combine));
-        for (; it_->Valid(); it_->Next()) {
-            uint32_t cur_ts_idx = UINT32_MAX;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-            if (pk_ == pk) {
-                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                    continue;
-                }
-            }
-            break;
-        }
-    }
-    inline bool IsSeekable() const { return true; }
+    void Seek(const uint64_t& key) override;
+    void SeekToFirst() override;
+    inline bool IsSeekable() const override;
 
  private:
     rocksdb::DB* db_;
@@ -372,7 +300,6 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     std::string row_pk_;
     bool has_ts_idx_;
     uint64_t ts_;
-    Ticket ticket_;
     uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
 };
@@ -415,7 +342,6 @@ class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
     std::string pk_;
     bool has_ts_idx_;
     uint64_t ts_;
-    Ticket ticket_;
     uint32_t ts_idx_;
 };
 
