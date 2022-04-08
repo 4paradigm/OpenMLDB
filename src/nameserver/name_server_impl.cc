@@ -3676,14 +3676,23 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             } else {
                 auto table_infos = db_table_info_[table_info->db()];
                 if (table_infos.find(table_info->name()) != table_infos.end()) {
-                    base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-                    PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    if (request->create_if_not_exist()) {
+                        base::SetResponseOK(response);
+                    } else {
+                        base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists",
+                                                response);
+                        PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    }
                     return;
                 }
             }
         } else if (table_info_.find(table_info->name()) != table_info_.end()) {
-            base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-            PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            if (request->create_if_not_exist()) {
+                base::SetResponseOK(response);
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
+                PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            }
             return;
         }
     }

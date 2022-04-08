@@ -1778,7 +1778,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         return base::Status(sql_status.code, sql_status.msg);
     }
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     return {};
@@ -2158,7 +2158,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     }
 
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, true, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     RefreshCatalog();

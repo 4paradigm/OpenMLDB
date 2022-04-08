@@ -391,7 +391,8 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
                                                      create_tree->GetPartitionNum(),
                                                      create_tree->GetStorageMode(),
                                                      create_tree->GetColumnDefList(),
-                                                     create_tree->GetDistributionList());
+                                                     create_tree->GetDistributionList(),
+                                                     create_tree->GetOpIfNotExist());
     return base::Status::OK();
 }
 /// Check if current plan node is depend on a [table|simple select table/rename table/ sub query table)
