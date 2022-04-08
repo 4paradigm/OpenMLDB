@@ -2327,7 +2327,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
     ns_table_info.set_db(client->GetDb());
     ns_table_info.set_format_version(1);
     std::string msg;
-    if (!client->CreateTable(ns_table_info, msg)) {
+    if (!client->CreateTable(ns_table_info, false, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
         return;
     }
