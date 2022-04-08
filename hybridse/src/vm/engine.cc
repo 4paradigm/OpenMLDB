@@ -271,7 +271,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 
 base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
                                          const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                         const std::vector<void*> funcs) {
+                                         const std::vector<void*>& funcs) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }

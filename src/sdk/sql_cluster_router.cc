@@ -1521,6 +1521,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
+                cluster_sdk_->RemoveExternalFun(name);
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -2782,6 +2783,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (!ret.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, ret.msg};
     }
+    cluster_sdk_->RegisterExternalFun(fun);
     return {};
 }
 

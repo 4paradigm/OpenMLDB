@@ -10480,6 +10480,23 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
     external_fun_.erase(request->name());
 }
 
+void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                                    ShowFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    if (request->has_name() && !request->name().empty()) {
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            response->add_fun()->CopyFrom(*(iter->second));
+        }
+    } else {
+        for (const auto& kv : external_fun_) {
+            response->add_fun()->CopyFrom(*(kv.second));
+        }
+    }
+    base::SetResponseOK(response);
+}
+
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
         {"execute_mode", "offline"},

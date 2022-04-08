@@ -66,8 +66,8 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace openmldb {
 namespace tablet {
 
-struct SoLibHandle {
-    explicit SoLibHandle(void* ptr) {
+struct DynamicLibHandle {
+    explicit DynamicLibHandle(void* ptr) {
         handle = ptr;
         ref_cnt = 1;
     }
@@ -482,7 +482,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
     std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
-    std::map<std::string, std::shared_ptr<SoLibHandle>> handle_map_;
+    std::map<std::string, std::shared_ptr<DynamicLibHandle>> handle_map_;
 };
 
 }  // namespace tablet

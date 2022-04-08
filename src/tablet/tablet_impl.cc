@@ -5311,7 +5311,7 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    std::shared_ptr<SoLibHandle> so_handle;
+    std::shared_ptr<DynamicLibHandle> so_handle;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = handle_map_.find(fun.file());
@@ -5326,7 +5326,7 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
             LOG(WARNING) << "can not open the dynamic library: " << fun.file();
             return {base::kCreateFunctionFailed, "can not open the dynamic library: " + fun.file()};
         }
-        so_handle = std::make_shared<SoLibHandle>(handle);
+        so_handle = std::make_shared<DynamicLibHandle>(handle);
         std::lock_guard<std::mutex> lock(mu_);
         handle_map_.emplace(fun.file(), so_handle);
     }
@@ -5375,7 +5375,7 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
     }
     if (!run_ok) {
         LOG(WARNING) << err_msg;
-        std::shared_ptr<SoLibHandle> so_handle;
+        std::shared_ptr<DynamicLibHandle> so_handle;
         {
             std::lock_guard<std::mutex> lock(mu_);
             auto iter = handle_map_.find(fun.file());
@@ -5410,7 +5410,7 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
     if (status.isOK()) {
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
-        std::shared_ptr<SoLibHandle> so_handle;
+        std::shared_ptr<DynamicLibHandle> so_handle;
         {
             std::lock_guard<std::mutex> lock(mu_);
             auto iter = handle_map_.find(fun.file());

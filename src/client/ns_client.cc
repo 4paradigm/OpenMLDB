@@ -1009,5 +1009,27 @@ base::Status NsClient::DropFunction(const std::string& name, bool if_exists) {
     return {};
 }
 
+base::Status NsClient::ShowFunction(const std::string& name,
+        std::vector<::openmldb::common::ExternalFun>* fun_vec) {
+    if (fun_vec == nullptr) {
+        return base::Status(base::ReturnCode::kError, "nullptr");
+    }
+    fun_vec->clear();
+    nameserver::ShowFunctionRequest request;
+    if (!name.empty()) {
+        request.set_name(name);
+    }
+    nameserver::ShowFunctionResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    for (int i = 0; i < response.fun_size(); i++) {
+        fun_vec->emplace_back(response.fun(i));
+    }
+    return {};
+}
+
 }  // namespace client
 }  // namespace openmldb
