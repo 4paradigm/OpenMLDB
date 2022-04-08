@@ -332,7 +332,6 @@ TEST_P(TableIteratorTest, smoketest2) {
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         ASSERT_EQ(wit->GetValue().ToString(), value);
     }
-
 }
 
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableIteratorTest,
