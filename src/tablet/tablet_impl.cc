@@ -5302,9 +5302,9 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
     for (auto& r : rs) {
         auto new_row = response->add_rows();
         new_row->set_deploy_name(r.deploy_name_);
-        new_row->set_time(r.GetTimeAsStr());
+        new_row->set_time(r.GetTimeAsStr(statistics::TimeUnit::MICRO_SECOND));
         new_row->set_count(r.count_);
-        new_row->set_total(r.GetTotalAsStr());
+        new_row->set_total(r.GetTotalAsStr(statistics::TimeUnit::MICRO_SECOND));
     }
     response->set_code(ReturnCode::kOk);
 }
