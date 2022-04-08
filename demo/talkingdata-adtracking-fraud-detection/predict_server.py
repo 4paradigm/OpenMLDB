@@ -76,9 +76,12 @@ class PredictHandler(tornado.web.RequestHandler):
             ins = build_feature(r)
             self.write("----------------ins---------------\n")
             self.write(str(ins) + "\n")
-            duration = bst.predict(ins)
+            label = ins[0][5].reshape(1,)
+            ins = np.delete(ins,5).reshape(1,9)
+            ins = xgb.DMatrix(ins, label=label)
+            prediction = bst.predict(ins)
             self.write("---------------predict whether is attributed -------------\n")
-            self.write("%s s"%str(duration[0]))
+            self.write("%s s"%str(prediction[0]))
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
