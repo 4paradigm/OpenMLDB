@@ -1,4 +1,4 @@
-# Difference Between The Cluster And Standalone Versions
+# Cluster vs. Standalone Versions
 
 ## 1. Installation and Deployment
 

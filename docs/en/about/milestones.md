@@ -1,4 +1,4 @@
-# The Evolution of OpenMLDB
+# History
 
 ## 1. From Commercial Closed Source To Community Open Source
 
