@@ -1,0 +1,11 @@
+{% if versions %}
+</br>
+Current Version: {{ current_version.name }}</br>
+{{ _('Versions：') }}
+<ul>
+  {%- for item in versions.branches %}
+  <li><a href="{{ item.url }}">{{ item.name }}</a></li>
+  {%- endfor %}
+</ul>
+</br>
+{% endif %}
