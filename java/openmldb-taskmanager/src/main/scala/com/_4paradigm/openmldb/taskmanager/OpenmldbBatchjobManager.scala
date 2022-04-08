@@ -39,15 +39,16 @@ object OpenmldbBatchjobManager {
    * Run the SparkSQL job and save output to specified path.
    *
    * @param sql the SQL text
-   * @param outputPath the output path
    * @return the Yarn AppId in String format
    */
-  def runBatchSql(sql: String, outputPath: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
+  def runBatchSql(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): String = {
     val jobType = "RunBatchSql"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
-    val args = List(sql, outputPath)
+    val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+    val jobInfo = SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb,
+      blocking=true)
+    LogManager.getJobLog(jobInfo.getId)
   }
 
   def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {

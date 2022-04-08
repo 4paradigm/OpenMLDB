@@ -41,7 +41,7 @@ namespace vm {
 
 using ::hybridse::codec::Row;
 
-static const char* LONG_WINDOWS = "long_windows";
+inline constexpr const char* LONG_WINDOWS = "long_windows";
 
 class Engine;
 /// \brief An options class for controlling engine behaviour.

@@ -922,7 +922,7 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& main_table = cache->router.GetMainTable();
         const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
         if (!main_table.empty()) {
-            DLOG(INFO) << "get main table" << main_table;
+            DLOG(INFO) << "get main table " << main_table;
             std::string val;
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
 
@@ -1778,7 +1778,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         return base::Status(sql_status.code, sql_status.msg);
     }
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     return {};
@@ -2067,6 +2067,17 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, sync_job, job_info);
 }
 
+::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQueryGetOutput(const std::string& sql,
+    const std::map<std::string, std::string>& config,
+    const std::string& default_db,
+    std::string& output) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return {-1, "Fail to get TaskManager client"};
+    }
+    return taskmanager_client_ptr->RunBatchSql(sql, config, default_db, output);
+}
+
 ::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string& sql,
                                                             const std::map<std::string, std::string>& config,
                                                             const std::string& default_db, bool sync_job,
@@ -2109,6 +2120,8 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     table_info.set_name(aggr_table);
     table_info.set_replica_num(base_table_info.replica_num());
     table_info.set_partition_num(base_table_info.partition_num());
+    auto table_partition = table_info.mutable_table_partition();
+    table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {
@@ -2136,7 +2149,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
         for (int j = 0; j < column_key.col_name_size(); j++) {
             keys += column_key.col_name(j) + ",";
         }
-        keys = keys.substr(0, keys.size() - 1);
+        keys.pop_back();
         std::string ts_name = column_key.ts_name();
         if (keys == window_info.partition_col_ && ts_name == window_info.order_col_) {
             ttl->CopyFrom(column_key.ttl());
@@ -2145,9 +2158,10 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     }
 
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, true, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
+    RefreshCatalog();
     return {};
 }
 
@@ -2293,20 +2307,39 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             } else {
                 // Run offline query
-                ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                auto base_status = ExecuteOfflineQuery(sql, config, db, IsSyncJob(), job_info);
-                if (base_status.OK()) {
-                    *status = {};
-                    if (job_info.id() > 0) {
-                        std::stringstream ss;
-                        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                        std::vector<std::string> value = {ss.str()};
+
+                if (IsSyncJob()) {
+                    // Run offline sql and wait to get output
+                    std::string output;
+                    auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, output);
+                    if (base_status.OK()) {
+                        *status = {};
+                        // Print the output from job output
+                        // TODO: return result set if want to format the output
+                        std::vector<std::string> value = {output};
                         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                    } else {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
                 } else {
-                    *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                    // Run offline sql and return job info immediately
+                    ::openmldb::taskmanager::JobInfo job_info;
+                    auto base_status = ExecuteOfflineQuery(sql, config, db, IsSyncJob(), job_info);
+                    if (base_status.OK()) {
+                        *status = {};
+                        if (job_info.id() > 0) {
+                            std::stringstream ss;
+                            ::openmldb::cmd::PrintJobInfos({job_info}, ss);
+                            std::vector<std::string> value = {ss.str()};
+                            // TODO(tobe): Return the result set with multiple columns
+                            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                        }
+                    } else {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                    }
                 }
+
             }
             return {};
         }
@@ -2785,16 +2818,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
-    if (!lw_status.IsOK()) {
-        return lw_status;
-    }
-    for (const auto& o : *deploy_node->Options()) {
-        auto option = sp_info.add_options();
-        option->set_name(o.first);
-        option->mutable_value()->set_value(o.second->GetExprString());
-    }
-
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
@@ -2919,6 +2942,17 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
             }
         }
     }
+
+    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+    if (!lw_status.IsOK()) {
+        return lw_status;
+    }
+    for (const auto& o : *deploy_node->Options()) {
+        auto option = sp_info.add_options();
+        option->set_name(o.first);
+        option->mutable_value()->set_value(o.second->GetExprString());
+    }
+
     auto status = ns->CreateProcedure(sp_info, options_.request_timeout);
     if (!status.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, status.msg};
@@ -2938,7 +2972,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         return {};
     }
     std::unordered_map<std::string, std::string> long_window_map;
-    if (cluster_sdk_->IsClusterMode() && !long_window_param.empty()) {
+    if (!long_window_param.empty()) {
         if (table_pair.size() != 1) {
             return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
         }
@@ -2998,6 +3032,54 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             auto create_status = CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
             if (!create_status.OK()) {
                 return {base::ReturnCode::kError, "create pre-aggr table failed"};
+            }
+
+            // create aggregator
+            std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+            bool ret = cluster_sdk_->GetTablet(base_db, base_table, &tablets);
+            if (!ret || tablets.empty()) {
+                return {base::ReturnCode::kError, "get tablets failed"};
+            }
+            auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
+            auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
+            if (!base_table_info) {
+                return {base::ReturnCode::kError, "get table info failed"};
+            }
+            ::openmldb::api::TableMeta base_table_meta;
+            base_table_meta.set_db(base_table_info->db());
+            base_table_meta.set_name(base_table_info->name());
+            base_table_meta.set_tid(static_cast<::google::protobuf::int32>(base_table_info->tid()));
+            base_table_meta.set_format_version(base_table_info->format_version());
+            for (int idx = 0; idx < base_table_info->column_desc_size(); idx++) {
+                ::openmldb::common::ColumnDesc* column_desc = base_table_meta.add_column_desc();
+                column_desc->CopyFrom(base_table_info->column_desc(idx));
+            }
+
+            uint32_t index_pos;
+            bool found_idx = false;
+            for (int idx = 0; idx < base_table_info->column_key_size(); idx++) {
+                ::openmldb::common::ColumnKey* column_key = base_table_meta.add_column_key();
+                column_key->CopyFrom(base_table_info->column_key(idx));
+                std::string partition_keys = "";
+                for (int j = 0; j < column_key->col_name_size(); j++) {
+                    partition_keys += column_key->col_name(j) + ",";
+                }
+                partition_keys.pop_back();
+                if (partition_keys == lw.partition_col_ && column_key->ts_name() == lw.order_col_) {
+                    index_pos = idx;
+                    found_idx = true;
+                }
+            }
+            if (!found_idx) {
+                return {base::ReturnCode::kError, "index that associate to aggregator not found"};
+            }
+            for (uint32_t pid = 0; pid < tablets.size(); ++pid) {
+                auto tablet_client = tablets[pid]->GetClient();
+                if (tablet_client == nullptr) {
+                    return {base::ReturnCode::kError, "get tablet client failed"};
+                }
+                base_table_meta.set_pid(pid);
+                tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw);
             }
         }
     }
