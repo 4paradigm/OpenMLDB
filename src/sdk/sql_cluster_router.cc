@@ -928,6 +928,8 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
 
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
                 LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
+                status.msg = "fail to get tablet";
+                status.code = hybridse::common::kRunError;
                 return false;
             }
 

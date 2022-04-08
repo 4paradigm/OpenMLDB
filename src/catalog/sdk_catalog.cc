@@ -111,7 +111,12 @@ bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* ta
     }
     tablets->clear();
     for (uint32_t pid = 0; pid < (uint32_t)meta_.table_partition_size(); pid++) {
-        tablets->push_back(table_client_manager_->GetTablet(pid));
+        auto tablet = table_client_manager_->GetTablet(pid);
+        if (tablet == nullptr) {
+            LOG(WARNING) << "fail to get tablet for pid " << pid;
+            return false;
+        }
+        tablets->push_back(tablet);
     }
     return true;
 }
