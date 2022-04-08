@@ -3448,17 +3448,28 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
 void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>& config) {
     if (!conf_file.empty()) {
-        LOG(INFO) << "Read spark conf file: " << conf_file;
-
         boost::property_tree::ptree pt;
-        boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
+
+        try {
+            boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
+            LOG(INFO) << "Load Spark conf file: " << conf_file;
+        } catch (...) {
+            LOG(WARNING) << "Fail to load Spark conf file: " << conf_file;
+            return;
+        }
+
+        if(pt.empty()) {
+            LOG(WARNING) << "Spark conf file is empty";
+        }
 
         for (auto& section : pt) {
-            // TODO(tobe): Currently only handle Spark section
+            // Only supports Spark section
             if(section.first == "Spark") {
                 for (auto& key : section.second) {
                     config.emplace(key.first, key.second.get_value<std::string>());
                 }
+            } else {
+                LOG(WARNING) << "The section " + section.first + " is not supported, please use Spark section";
             }
         }
     }
