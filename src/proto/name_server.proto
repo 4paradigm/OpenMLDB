@@ -490,6 +490,16 @@ message DropFunctionResponse {
     optional string msg = 2;
 }
 
+message ShowFunctionRequest {
+    optional string name = 1;
+}
+
+message ShowFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated openmldb.common.ExternalFun fun = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -539,6 +549,7 @@ service NameServer {
     rpc UpdateOfflineTableInfo(TableInfo) returns (GeneralResponse);
     rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
     rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
+    rpc ShowFunction(ShowFunctionRequest) returns (ShowFunctionResponse);
 
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);

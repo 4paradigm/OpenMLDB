@@ -195,6 +195,9 @@ class NameServerImpl : public NameServer {
     void DropFunction(RpcController* controller, const DropFunctionRequest* request,
                         DropFunctionResponse* response, Closure* done);
 
+    void ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                        ShowFunctionResponse* response, Closure* done);
+
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
 

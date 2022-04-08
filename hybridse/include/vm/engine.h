@@ -401,7 +401,7 @@ class Engine {
 
     base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
                                      const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                     const std::vector<void*> funcs);
+                                     const std::vector<void*>& funcs);
 
     base::Status RemoveExternalFunction(const std::string& name,
                                      const std::vector<node::DataType>& arg_types);

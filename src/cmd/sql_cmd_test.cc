@@ -271,12 +271,17 @@ TEST_F(SqlCmdTest, LoadData) {
 }
 
 #if defined(__linux__)
-TEST_F(SqlCmdTest, CreateFunction) {
-    sr = standalone_cli.sr;
-    cs = standalone_cli.cs;
+TEST_P(DBSDKTest, CreateFunction) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
-    hybridse::sdk::Status status;
     std::string create_sql = "create table t1(c1 string, c2 int, c3 double);";
     sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
@@ -311,6 +316,10 @@ TEST_F(SqlCmdTest, CreateFunction) {
     ASSERT_TRUE(status.IsOK()) << status.msg;
     result = sr->ExecuteSQL("select cut2(c1) from t1;", &status);
     ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL("DROP FUNCTION strlength;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL("DROP FUNCTION int2str;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     HandleSQL("drop table t1;");
     HandleSQL("drop database test1;");
 }
