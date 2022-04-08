@@ -27,6 +27,8 @@
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
+#include "boost/property_tree/ini_parser.hpp"
+#include "boost/property_tree/ptree.hpp"
 #include "brpc/channel.h"
 #include "cmd/display.h"
 #include "common/timer.h"
@@ -46,6 +48,7 @@
 
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
+DEFINE_string(spark_conf, "", "The config file of Spark job");
 
 namespace openmldb {
 namespace sdk {
@@ -2308,6 +2311,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 // Run offline query
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, config);
 
                 if (IsSyncJob()) {
                     // Run offline sql and wait to get output
@@ -2363,6 +2367,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, config);
                 auto base_status = ExportOfflineData(sql, config, db, IsSyncJob(), job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2393,6 +2398,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, config);
 
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
@@ -3438,6 +3444,24 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
+}
+
+void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>& config) {
+    if (!conf_file.empty()) {
+        LOG(INFO) << "Read spark conf file: " << conf_file;
+
+        boost::property_tree::ptree pt;
+        boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
+
+        for (auto& section : pt) {
+            // TODO(tobe): Currently only handle Spark section
+            if(section.first == "Spark") {
+                for (auto& key : section.second) {
+                    config.emplace(key.first, key.second.get_value<std::string>());
+                }
+            }
+        }
+    }
 }
 
 }  // namespace sdk
