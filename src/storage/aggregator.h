@@ -122,10 +122,8 @@ class Aggregator {
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
-    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
-        return false;
-    }
-    virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) { return false; }
+    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
+    virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
 
     uint32_t index_pos_;
     std::string aggr_col_;

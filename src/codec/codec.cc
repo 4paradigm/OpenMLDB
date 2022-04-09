@@ -87,18 +87,7 @@ RowBuilder::RowBuilder(const Schema& schema)
 
 void RowBuilder::SetSchemaVersion(uint8_t version) { schema_version_ = version; }
 
-bool RowBuilder::InitExternalBuffer(int8_t* buf, uint32_t size) { return SetBuffer(buf, size, true); }
-
-bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
-    buf_ = buf;
-    size_ = size;
-    cnt_ = 0;
-    str_addr_length_ = GetAddrLength(size);
-    str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
-    return SetBuffer(buf_, size, true);
-}
-
-bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
+bool RowBuilder::InitBuffer(int8_t* buf, uint32_t size, bool need_clear) {
     if (buf == NULL || size == 0 || size < str_field_start_offset_ + str_field_cnt_) {
         return false;
     }
@@ -109,7 +98,17 @@ bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
         uint32_t bitmap_size = BitMapSize(schema_.size());
         memset(buf + HEADER_LENGTH, 0xFF, bitmap_size);
     }
-    return true;
+}
+
+bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) { return SetBuffer(buf, size, true); }
+
+bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size, bool need_clear) {
+    buf_ = buf;
+    size_ = size;
+    cnt_ = 0;
+    str_addr_length_ = GetAddrLength(size);
+    str_offset_ = str_field_start_offset_ + str_addr_length_ * str_field_cnt_;
+    return InitBuffer(buf_, size_, need_clear);
 }
 
 uint32_t RowBuilder::CalTotalLength(uint32_t string_length) {

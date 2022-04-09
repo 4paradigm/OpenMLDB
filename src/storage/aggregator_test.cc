@@ -125,16 +125,12 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
 }
 
 template <typename T>
-bool CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
-    if (!(aggr_table->GetRecordCnt() == 50)) {
-        return false;
-    }
+void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 50 - 1; i >= 0; --i) {
-        if (!it->Valid()) {
-            return false;
-        }
+        ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
@@ -144,25 +140,23 @@ bool CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
         T origin_val = *(reinterpret_cast<T*>(ch));
-        if (origin_val != static_cast<T>(i * 4 + 1)) {
-            return false;
+        if (expect_null) {
+            ASSERT_EQ(origin_val, 0);
+        } else {
+            ASSERT_EQ(origin_val, static_cast<T>(i * 4 + 1));
         }
         it->Next();
     }
-    return true;
+    return;
 }
 
 template <typename T>
-bool CheckMinAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
-    if (!(aggr_table->GetRecordCnt() == 50)) {
-        return false;
-    }
+void CheckMinAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 50 - 1; i >= 0; --i) {
-        if (!it->Valid()) {
-            return false;
-        }
+        ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
@@ -170,27 +164,24 @@ bool CheckMinAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
                                        origin_data.size());
         char* ch = NULL;
         uint32_t ch_length = 0;
-        origin_row_view.GetString(4, &ch, &ch_length);
-        T origin_val = *reinterpret_cast<T*>(ch);
-        if (origin_val != static_cast<T>(i * 2)) {
-            return false;
+        auto is_null = origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_EQ(is_null, expect_null);
+        if (is_null == 0) {
+            T origin_val = *reinterpret_cast<T*>(ch);
+            ASSERT_EQ(origin_val, static_cast<T>(i * 2));
         }
         it->Next();
     }
-    return true;
+    return;
 }
 
 template <typename T>
-bool CheckMaxAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
-    if (!(aggr_table->GetRecordCnt() == 50)) {
-        return false;
-    }
+void CheckMaxAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 50 - 1; i >= 0; --i) {
-        if (!it->Valid()) {
-            return false;
-        }
+        ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
@@ -198,26 +189,23 @@ bool CheckMaxAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
                                        origin_data.size());
         char* ch = NULL;
         uint32_t ch_length = 0;
-        origin_row_view.GetString(4, &ch, &ch_length);
-        T origin_val = *reinterpret_cast<T*>(ch);
-        if (origin_val != static_cast<T>(i * 2 + 1)) {
-            return false;
+        auto is_null = origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_EQ(is_null, expect_null);
+        if (is_null == 0) {
+            T origin_val = *reinterpret_cast<T*>(ch);
+            ASSERT_EQ(origin_val, static_cast<T>(i * 2 + 1));
         }
         it->Next();
     }
-    return true;
+    return;
 }
 
-bool CheckCountAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int64_t count) {
-    if (!(aggr_table->GetRecordCnt() == 50)) {
-        return false;
-    }
+void CheckCountAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int64_t count) {
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 50 - 1; i >= 0; --i) {
-        if (!it->Valid()) {
-            return false;
-        }
+        ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
@@ -227,25 +215,19 @@ bool CheckCountAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type,
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
         int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-        if (origin_val != count) {
-            return false;
-        }
+        ASSERT_EQ(origin_val, count);
         it->Next();
     }
-    return true;
+    return;
 }
 
 template <typename T>
-bool CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
-    if (!(aggr_table->GetRecordCnt() == 50)) {
-        return false;
-    }
+void CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 50 - 1; i >= 0; --i) {
-        if (!it->Valid()) {
-            return false;
-        }
+        ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
@@ -255,16 +237,20 @@ bool CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type) {
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
         T origin_val = *(reinterpret_cast<T*>(ch));
-        if (origin_val != static_cast<T>(i * 4 + 1)) {
-            return false;
+        if (expect_null) {
+            ASSERT_EQ(origin_val, static_cast<T>(0));
+        } else {
+            ASSERT_EQ(origin_val, static_cast<T>(i * 4 + 1));
         }
         int64_t cnt = *(reinterpret_cast<int64_t*>(ch + sizeof(T)));
-        if (cnt != 2) {
-            return false;
+        if (expect_null) {
+            ASSERT_EQ(cnt, 0);
+        } else {
+            ASSERT_EQ(cnt, 2);
         }
         it->Next();
     }
-    return true;
+    return;
 }
 
 TEST_F(AggregatorTest, CreateAggregator) {
@@ -407,68 +393,35 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         AggrBuffer last_buffer;
         std::shared_ptr<Table> aggr_table;
         ASSERT_TRUE(GetUpdatedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
-        ASSERT_TRUE(CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt));
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col4", "sum", "1m", aggregator, aggr_table, &last_buffer));
-        ASSERT_TRUE(CheckSumAggrResult<int64_t>(aggr_table, DataType::kSmallInt));
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kSmallInt);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col5", "sum", "2h", aggregator, aggr_table, &last_buffer));
-        ASSERT_TRUE(CheckSumAggrResult<int64_t>(aggr_table, DataType::kBigInt));
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kBigInt);
         ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", &last_buffer));
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col6", "sum", "3h", aggregator, aggr_table, &last_buffer));
-        ASSERT_TRUE(CheckSumAggrResult<float>(aggr_table, DataType::kFloat));
+        CheckSumAggrResult<float>(aggr_table, DataType::kFloat);
         ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col7", "sum", "1d", aggregator, aggr_table, &last_buffer));
-        ASSERT_TRUE(CheckSumAggrResult<double>(aggr_table, DataType::kDouble));
+        CheckSumAggrResult<double>(aggr_table, DataType::kDouble);
         ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
-    }
-    // null data tpye
-    {
-        uint32_t id = counter++;
-        ::openmldb::api::TableMeta base_table_meta;
-        base_table_meta.set_tid(id);
-        AddDefaultAggregatorBaseSchema(&base_table_meta);
-        id = counter++;
-        ::openmldb::api::TableMeta aggr_table_meta;
-        aggr_table_meta.set_tid(id);
-        AddDefaultAggregatorSchema(&aggr_table_meta);
-        std::map<std::string, uint32_t> mapping;
-        mapping.insert(std::make_pair("idx", 0));
-        std::shared_ptr<Table> aggr_table =
-            std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
-        aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col_null", "sum", "ts_col", "2");
-        codec::RowBuilder row_builder(base_table_meta.column_desc());
-        ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
-        std::string key = "id1|id2";
-        ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
-        auto it = aggr_table->NewTraverseIterator(0);
-        it->SeekToFirst();
-        for (int i = 50 - 1; i >= 0; --i) {
-            ASSERT_TRUE(it->Valid());
-            auto tmp_val = it->GetValue();
-            std::string origin_data = tmp_val.ToString();
-            codec::RowView origin_row_view(aggr_table_meta.column_desc(),
-                                           reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
-                                           origin_data.size());
-            char* ch = NULL;
-            uint32_t ch_length = 0;
-            origin_row_view.GetString(4, &ch, &ch_length);
-            int32_t val = *reinterpret_cast<int32_t*>(ch);
-            ASSERT_EQ(val, 0);
-            it->Next();
-        }
-        AggrBuffer last_buffer;
-        auto ok = aggr->GetAggrBuffer(key, &last_buffer);
-        ASSERT_TRUE(ok);
-        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, 0);
-        ASSERT_EQ(last_buffer.binlog_offset_, 100);
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        counter += 2;
+        ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "sum", "1d", aggregator, aggr_table, &last_buffer));
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, 1);
+        ASSERT_EQ(last_buffer.aggr_val_.vlong, static_cast<int64_t>(0));
+        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
     }
 }
 
@@ -477,28 +430,37 @@ TEST_F(AggregatorTest, MinAggregatorUpdate) {
     AggrBuffer last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "MIN", "1s", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<int32_t>(aggr_table, DataType::kInt));
+    CheckMinAggrResult<int32_t>(aggr_table, DataType::kInt);
     ASSERT_EQ(last_buffer.aggr_val_.vsmallint, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col4", "min", "1m", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<int16_t>(aggr_table, DataType::kSmallInt));
+    CheckMinAggrResult<int16_t>(aggr_table, DataType::kSmallInt);
     ASSERT_EQ(last_buffer.aggr_val_.vint, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col5", "min", "2h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<int64_t>(aggr_table, DataType::kBigInt));
+    CheckMinAggrResult<int64_t>(aggr_table, DataType::kBigInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col6", "min", "3h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<float>(aggr_table, DataType::kFloat));
+    CheckMinAggrResult<float>(aggr_table, DataType::kFloat);
     ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col7", "min", "1d", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<double>(aggr_table, DataType::kDouble));
+    CheckMinAggrResult<double>(aggr_table, DataType::kDouble);
     ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col8", "min", "2d", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMinAggrResult<int32_t>(aggr_table, DataType::kDate));
+    CheckMinAggrResult<int32_t>(aggr_table, DataType::kDate);
     ASSERT_EQ(last_buffer.aggr_val_.vint, static_cast<int32_t>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "min", "2d", aggregator, aggr_table, &last_buffer));
+    CheckMinAggrResult<int32_t>(aggr_table, DataType::kInt, 1);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
     ASSERT_TRUE(GetUpdatedResult(counter, "col9", "min", "2d", aggregator, aggr_table, &last_buffer));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
@@ -517,6 +479,7 @@ TEST_F(AggregatorTest, MinAggregatorUpdate) {
         it->Next();
     }
     ASSERT_EQ(strncmp(last_buffer.aggr_val_.vstring.data, "abc", 3), 0);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
 }
 
 TEST_F(AggregatorTest, MaxAggregatorUpdate) {
@@ -524,28 +487,37 @@ TEST_F(AggregatorTest, MaxAggregatorUpdate) {
     AggrBuffer last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "MAX", "1s", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<int32_t>(aggr_table, DataType::kInt));
+    CheckMaxAggrResult<int32_t>(aggr_table, DataType::kInt);
     ASSERT_EQ(last_buffer.aggr_val_.vsmallint, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col4", "Max", "1m", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<int16_t>(aggr_table, DataType::kSmallInt));
+    CheckMaxAggrResult<int16_t>(aggr_table, DataType::kSmallInt);
     ASSERT_EQ(last_buffer.aggr_val_.vint, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col5", "max", "2h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<int64_t>(aggr_table, DataType::kBigInt));
+    CheckMaxAggrResult<int64_t>(aggr_table, DataType::kBigInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col6", "max", "3h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<float>(aggr_table, DataType::kFloat));
+    CheckMaxAggrResult<float>(aggr_table, DataType::kFloat);
     ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col7", "max", "1d", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<double>(aggr_table, DataType::kDouble));
+    CheckMaxAggrResult<double>(aggr_table, DataType::kDouble);
     ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col8", "max", "2d", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckMaxAggrResult<int32_t>(aggr_table, DataType::kDate));
+    CheckMaxAggrResult<int32_t>(aggr_table, DataType::kDate);
     ASSERT_EQ(last_buffer.aggr_val_.vint, static_cast<int32_t>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "max", "2d", aggregator, aggr_table, &last_buffer));
+    CheckMaxAggrResult<int32_t>(aggr_table, DataType::kInt, 1);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
     ASSERT_TRUE(GetUpdatedResult(counter, "col9", "max", "2d", aggregator, aggr_table, &last_buffer));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
@@ -564,6 +536,7 @@ TEST_F(AggregatorTest, MaxAggregatorUpdate) {
         it->Next();
     }
     ASSERT_EQ(strncmp(last_buffer.aggr_val_.vstring.data, "abc", 3), 0);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
 }
 
 TEST_F(AggregatorTest, CountAggregatorUpdate) {
@@ -571,11 +544,11 @@ TEST_F(AggregatorTest, CountAggregatorUpdate) {
     AggrBuffer last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "count", "1s", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckCountAggrResult(aggr_table, DataType::kInt, 2));
+    CheckCountAggrResult(aggr_table, DataType::kInt, 2);
     ASSERT_EQ(last_buffer.non_null_cnt, 1);
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "COUNT", "1m", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckCountAggrResult(aggr_table, DataType::kInt, 0));
+    CheckCountAggrResult(aggr_table, DataType::kInt, 0);
     ASSERT_EQ(last_buffer.non_null_cnt, 0);
 }
 
@@ -584,24 +557,33 @@ TEST_F(AggregatorTest, AvgAggregatorUpdate) {
     AggrBuffer last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "AVG", "1s", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckAvgAggrResult<int64_t>(aggr_table, DataType::kInt));
+    CheckAvgAggrResult<int64_t>(aggr_table, DataType::kInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col4", "Avg", "1m", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckAvgAggrResult<int64_t>(aggr_table, DataType::kSmallInt));
+    CheckAvgAggrResult<int64_t>(aggr_table, DataType::kSmallInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col5", "avg", "2h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckAvgAggrResult<int64_t>(aggr_table, DataType::kBigInt));
+    CheckAvgAggrResult<int64_t>(aggr_table, DataType::kBigInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col6", "avg", "3h", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckAvgAggrResult<float>(aggr_table, DataType::kFloat));
+    CheckAvgAggrResult<float>(aggr_table, DataType::kFloat);
     ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col7", "avg", "1d", aggregator, aggr_table, &last_buffer));
-    ASSERT_TRUE(CheckAvgAggrResult<double>(aggr_table, DataType::kDouble));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kDouble);
     ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "avg", "1d", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<int64_t>(aggr_table, DataType::kInt, 1);
+    ASSERT_EQ(last_buffer.aggr_val_.vlong, static_cast<int64_t>(0));
+    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {

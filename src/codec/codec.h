@@ -79,7 +79,7 @@ class RowBuilder {
     explicit RowBuilder(const Schema& schema);
 
     uint32_t CalTotalLength(uint32_t string_length);
-    bool InitExternalBuffer(int8_t* buf, uint32_t size);
+    bool InitBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool AppendBool(bool val);

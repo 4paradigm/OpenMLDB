@@ -511,7 +511,7 @@ TEST_F(CodecTest, RowBuilderSet) {
     row.resize(size);
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&(row[0]));
     std::string st("string");
-    builder.InitExternalBuffer(row_ptr, size);
+    builder.InitBuffer(row_ptr, size, true);
     ASSERT_TRUE(builder.SetInt32(row_ptr, 0, 1));
     ASSERT_TRUE(builder.SetInt16(row_ptr, 1, 2));
     ASSERT_TRUE(builder.SetFloat(row_ptr, 2, 1.3));

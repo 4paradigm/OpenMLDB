@@ -18,6 +18,7 @@
 
 #include "base/glog_wapper.h"
 #include "base/strings.h"
+#include "base/slice.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
 #include "storage/table.h"
@@ -25,6 +26,7 @@
 namespace openmldb {
 namespace storage {
 
+using ::openmldb::base::StringCompare;
 Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                        std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
                        const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye,
@@ -196,7 +198,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     uint32_t row_size = row_builder_.CalTotalLength(str_length);
     encoded_row.resize(row_size);
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&(encoded_row[0]));
-    row_builder_.InitExternalBuffer(row_ptr, row_size);
+    row_builder_.InitBuffer(row_ptr, row_size, true);
     row_builder_.SetString(row_ptr, row_size, 0, key.c_str(), key.size());
     row_builder_.SetTimestamp(row_ptr, 1, buffer.ts_begin_);
     row_builder_.SetTimestamp(row_ptr, 2, buffer.ts_end_);
@@ -313,6 +315,7 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             return false;
         }
     }
+    aggr_buffer->non_null_cnt++;
     return true;
 }
 
@@ -452,7 +455,7 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             uint32_t ch_length = 0;
             row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
             auto& aggr_val = aggr_buffer->aggr_val_.vstring;
-            if (aggr_buffer->AggrValEmpty() || strcmp(ch, aggr_val.data) < 0) {
+            if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) < 0) {
                 if (aggr_val.data != NULL && ch_length > aggr_val.len) {
                     delete[] aggr_val.data;
                     aggr_val.data = NULL;
@@ -534,7 +537,7 @@ bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             uint32_t ch_length = 0;
             row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
             auto& aggr_val = aggr_buffer->aggr_val_.vstring;
-            if (aggr_buffer->AggrValEmpty() || strcmp(ch, aggr_val.data) > 0) {
+            if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) > 0) {
                 if (aggr_val.data != NULL && ch_length > aggr_val.len) {
                     delete[] aggr_val.data;
                     aggr_val.data = NULL;
