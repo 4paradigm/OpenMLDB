@@ -101,8 +101,8 @@ bool UpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder
 }
 
 bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
-                      const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator, //NOLINT
-                      std::shared_ptr<Table>& table, AggrBuffer* buffer) { //NOLINT
+                      const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
+                      std::shared_ptr<Table>& table, AggrBuffer* buffer) {                      // NOLINT
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);

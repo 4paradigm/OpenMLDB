@@ -17,8 +17,8 @@
 #include "boost/algorithm/string.hpp"
 
 #include "base/glog_wapper.h"
-#include "base/strings.h"
 #include "base/slice.h"
+#include "base/strings.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
 #include "storage/table.h"
