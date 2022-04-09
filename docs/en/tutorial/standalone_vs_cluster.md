@@ -11,14 +11,14 @@ The cluster version and the standalone version have their own deployment methods
 
 ### 2.1 Workflows
 
-| Cluster Version's Workflow | Standalone Version's Workflow | Difference |
-| ---------------- | ---------------- | --------------- --------------------------------------------- |
-| Create databases and tables | Create databases and tables | None |
-| Offline data preparation | Data preparation | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
-| Offline feature extraction | Offline feature extraction | None |
-| SQL deployment | SQL deployment | None |
-| Online data preparation | None | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
-| Online real-time feature extraction | Online real-time feature extraction | None |
+| Workflow of Cluster Version         | Workflow of Standalone Version      | Difference                                                   |
+| ----------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| Database and table creation         | Database and table creation         | None                                                         |
+| Offline data preparation            | Data preparation                    | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
+| Offline feature extraction          | Offline feature extraction          | None                                                         |
+| SQL deployment                      | SQL deployment                      | None                                                         |
+| Online data preparation             | Data preparation (optional)         | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
+| Online real-time feature extraction | Online real-time feature extraction | None                                                         |
 
 ### 2.2 Execution Modes
 
