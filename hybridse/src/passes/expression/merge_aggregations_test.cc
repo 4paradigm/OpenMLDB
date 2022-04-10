@@ -81,8 +81,8 @@ TEST_F(MergeAggregationsTest, Test) {
                        .rfind("merged_window_agg") == 0;
     };
 
-    ASSERT_EQ(merge_cases.size() + non_merge_cases.size(),
-              output->GetChildNum());
+    ASSERT_EQ(merge_cases.size() + non_merge_cases.size(), output->GetChildNum());
+
     for (size_t i = 0; i < non_merge_cases.size(); ++i) {
         auto expr = output->GetChild(i);
         ASSERT_TRUE(!is_opt(expr))

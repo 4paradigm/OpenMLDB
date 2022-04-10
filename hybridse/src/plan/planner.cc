@@ -1154,6 +1154,12 @@ std::map<const node::WindowDefNode *, node::ProjectListNode *> Planner::FilterWi
             continue;
         }
 
+        if (kv.first->GetFrame() == nullptr || !kv.first->GetFrame()->IsPureHistoryFrame()) {
+            // only split project list if the window is pure history
+            splited_map.emplace(kv.first, kv.second);
+            continue;
+        }
+
         node::ProjectListNode* window_bound_relative_projects = nullptr;
         node::ProjectListNode* window_bound_non_relative_projects = nullptr;
         SplitProjectList(

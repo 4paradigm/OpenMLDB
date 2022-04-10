@@ -1918,8 +1918,6 @@ cases:
   - id: 46
     desc: window lag functions
     sqlDialect: ["HybridSQL"]
-    # FIXME(ace): cluster & batch-request mode
-    mode: cluster-unsupport, batch-request-unsupport
     inputs:
       -
         columns : ["id int","pk bigint","c1 string","c2 int","c3 bigint","c4 float",
@@ -2304,8 +2302,6 @@ cases:
         - [4,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
   - id: 56
     desc: window at functions, at is synonym to lag
-    # FIXME(ace): cluster & batch-request mode
-    mode: cluster-unsupport, batch-request-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
