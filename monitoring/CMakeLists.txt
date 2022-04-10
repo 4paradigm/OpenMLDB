@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_exporter.py
-  TYPE BIN
-  PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
-)
-
 install(
   FILES ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_exporter.conf
-    ${CMAKE_CURRENT_SOURCE_DIR}/prometheus_example.yml
-    ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_dashboard.json
+    ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_mixin/prometheus_example.yml
+    ${CMAKE_CURRENT_SOURCE_DIR}/openmldb_mixin/openmldb_dashboard.json
   DESTINATION conf
   PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
 )

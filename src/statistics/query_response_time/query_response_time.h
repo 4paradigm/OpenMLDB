@@ -49,7 +49,7 @@ namespace statistics {
 // total number of negative power point in time distribution
 // e.g. 6 means 10 ^ -6 - 10 ^-1
 #define TIME_DISTRIBUTION_NEGATIVE_POWER_COUNT 6
-// total number of non-negative power point in time distribution
+// total number of non-negative power point in time distribution (INF excluded)
 // e.g. 7 means 10 ^ 0 - 10 ^ 6
 #define TIME_DISTRIBUTION_NON_NEGATIVE_POWER_COUNT 7
 
@@ -59,23 +59,51 @@ namespace statistics {
 
 #define MAX_STRING "inf"
 
-inline std::string GetDurationAsString(absl::Duration d) {
+enum class TimeUnit {
+    SECOND,
+    MILLI_SECOND,
+    MICRO_SECOND,
+};
+
+// return string representation of the duration input
+inline std::string GetDurationAsStr(absl::Duration d, TimeUnit unit = TimeUnit::MICRO_SECOND) {
     if (d == absl::InfiniteDuration()) {
         return MAX_STRING;
     }
-    return std::to_string(absl::ToInt64Microseconds(d));
-}
-
-inline absl::Duration ParseDurationFromRawInt(absl::string_view raw) {
-    auto dur = absl::InfiniteDuration();
-    if (raw != MAX_STRING) {
-        try {
-            dur = absl::Microseconds(std::stoll(raw.data()));
-        } catch (std::exception const &e) {
-            LOG(ERROR) << "[ERROR] parse number from string: " << raw << "\n" << e.what();
+    switch (unit) {
+        case TimeUnit::MICRO_SECOND: {
+            return std::to_string(absl::ToDoubleMicroseconds(d));
+        }
+        case TimeUnit::MILLI_SECOND: {
+            return std::to_string(absl::ToDoubleMilliseconds(d));
+        }
+        case TimeUnit::SECOND: {
+            return std::to_string(absl::ToDoubleSeconds(d));
         }
     }
-    return dur;
+}
+
+// parse string into absl::Duration
+inline absl::Duration ParseDurationFromStr(absl::string_view raw, TimeUnit unit = TimeUnit::MICRO_SECOND) {
+    if (raw == MAX_STRING) {
+        return absl::InfiniteDuration();
+    }
+    double val = 0.0;
+    if (!absl::SimpleAtod(raw, &val)) {
+        LOG(ERROR) << "[ERROR] parse string '" << raw << "' into double";
+        val = 0.0;
+    }
+    switch (unit) {
+        case TimeUnit::MICRO_SECOND: {
+            return absl::Microseconds(val);
+        }
+        case TimeUnit::MILLI_SECOND: {
+            return absl::Milliseconds(val);
+        }
+        case TimeUnit::SECOND: {
+            return absl::Seconds(val);
+        }
+    }
 }
 
 struct ResponseTimeRow {
@@ -85,15 +113,9 @@ struct ResponseTimeRow {
         : time_(row.time_), count_(row.count_), total_(row.total_) {}
     virtual ~ResponseTimeRow() {}
 
-    // get time_ as int64 micro seconds
-    uint64_t GetTimeAsUs() const { return absl::ToInt64Microseconds(time_); }
+    std::string GetTimeAsStr(TimeUnit unit = TimeUnit::MICRO_SECOND) const { return GetDurationAsStr(time_, unit); }
 
-    // get total_ as int64 micro seconds
-    uint64_t GetTotalAsUs() const { return absl::ToInt64Microseconds(total_); }
-
-    std::string GetTimeAsStr() const { return GetDurationAsString(time_); }
-
-    std::string GetTotalAsStr() const { return GetDurationAsString(total_); }
+    std::string GetTotalAsStr(TimeUnit unit = TimeUnit::MICRO_SECOND) const { return GetDurationAsStr(total_, unit); }
 
     absl::Duration time_;
     uint32_t count_;

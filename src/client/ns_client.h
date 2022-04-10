@@ -99,6 +99,7 @@ class NsClient : public Client {
                        std::string& msg);  // NOLINT
 
     bool CreateTable(const ::openmldb::nameserver::TableInfo& table_info,
+                     const bool create_if_not_exist,
                      std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT

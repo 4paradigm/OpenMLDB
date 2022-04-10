@@ -846,6 +846,7 @@ message DeployStatsResponse {
     optional string msg = 2;
     message DeployStat {
         required string deploy_name = 1;
+        // NOTE: time and total is the microsecond string
         required string time = 2;
         required uint32 count = 3;
         required string total = 4;
