@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
 
   def test_basic(self):
-    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(replicanum=1);"
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(replicanum=1, partitionnum=1);"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
     
@@ -250,7 +250,7 @@ class TestOpenMLDBClient(unittest.TestCase):
     # test parameterized query in batch mode case 1
     logging.info("[Execute]: select * from tsql1010 where col3 = ?; ('province1')")
     rs = connection.execute("select * from tsql1010 where col3 = ?;", ('province1'))
-    rs = list(rs)
+    rs = list(rs);
     expectRows = [
       (1000, '2020-12-25', 'province1', 'city1', 1, 1590738990000),
       (1001, '2020-12-26', 'province1', 'city2', 2, 1590738991000),

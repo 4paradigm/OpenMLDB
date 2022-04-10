@@ -878,11 +878,12 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &
     RegisterNode(node_ptr);
     return node_ptr;
 }
-CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string& db_name,
-                                                     const std::string &table_name,
+CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
                                                      const NodePointVector &column_list,
-                                                     const NodePointVector &table_option_list) {
-    node::CreatePlanNode *node_ptr = new CreatePlanNode(db_name, table_name, column_list, table_option_list);
+                                                     const NodePointVector &table_option_list,
+                                                     const bool if_not_exist) {
+    node::CreatePlanNode *node_ptr =
+        new CreatePlanNode(db_name, table_name, column_list, if_not_exist, table_option_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

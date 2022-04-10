@@ -356,15 +356,14 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string& db_name,
-                   const std::string &table_name,
-                   NodePointVector column_list,
-                   NodePointVector table_option_list)
+    CreatePlanNode(const std::string &db_name, const std::string &table_name, NodePointVector column_list,
+                   const bool if_not_exist, NodePointVector table_option_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(db_name),
           table_name_(table_name),
           column_desc_list_(column_list),
-          table_option_list_(table_option_list) {}
+          table_option_list_(table_option_list),
+          if_not_exist_(if_not_exist) {}
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
@@ -420,6 +419,11 @@ class CreatePlanNode : public LeafPlanNode {
     const NodePointVector &GetColumnDescList() const { return column_desc_list_; }
 
     const NodePointVector &GetTableOptionList() const { return table_option_list_; }
+
+    bool GetIfNotExist() const { return if_not_exist_; }
+
+    void SetIfNotExist(bool if_not_exist) { if_not_exist_ = if_not_exist; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
@@ -427,6 +431,7 @@ class CreatePlanNode : public LeafPlanNode {
     std::string table_name_;
     NodePointVector column_desc_list_;
     NodePointVector table_option_list_;
+    bool if_not_exist_;
 };
 
 class CmdPlanNode : public LeafPlanNode {

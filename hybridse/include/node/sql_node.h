@@ -1866,9 +1866,9 @@ class CreateStmt : public SqlNode {
  private:
     std::string db_name_;
     std::string table_name_;
-    bool op_if_not_exist_;
     NodePointVector column_desc_list_;
     NodePointVector table_option_list_;
+    bool op_if_not_exist_;
 };
 class IndexKeyNode : public SqlNode {
  public:

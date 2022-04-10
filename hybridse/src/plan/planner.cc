@@ -387,8 +387,8 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
     auto create_tree = dynamic_cast<const node::CreateStmt *>(root);
     *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetDbName(), create_tree->GetTableName(),
-                                                     create_tree->GetColumnDefList(),
-                                                     create_tree->GetTableOptionList());
+                                                     create_tree->GetColumnDefList(), create_tree->GetTableOptionList(),
+                                                     create_tree->GetOpIfNotExist());
     return base::Status::OK();
 }
 /// Check if current plan node is depend on a [table|simple select table/rename table/ sub query table)
