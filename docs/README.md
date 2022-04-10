@@ -1,6 +1,6 @@
 # README
 
-This is the source code of documentations, you may visit our website for better reading: 
+This is the source code of documentations, you may visit our website for smooth reading: 
 
 - English: [https://openmldb.ai/docs/en/main/](https://openmldb.ai/docs/en/main/)
 - Chinese: [https://openmldb.ai/docs/zh](https://openmldb.ai/docs/zh)
@@ -30,4 +30,4 @@ We are using [Sphinx](https://www.sphinx-doc.org/) together with the [sphinx-mul
 
 ## Deployment
 
-For our docs website ([https://openmldb.ai/docs/zh/](https://openmldb.ai/docs/zh/) and [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/main/)), the building and deployment are automatically triggered by any push events to this repo. The deployment script currently is maintained in a private repo, if you experience any problems, please contact the repo maintainers. 
+For our docs website ([https://openmldb.ai/docs/zh/](https://openmldb.ai/docs/zh/) and [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/main/)), the building and deployment are automatically triggered by any push events to the `docs` of this repo. The deployment script currently is maintained in a private repo, if you experience any problems, please contact the repo maintainers. 
