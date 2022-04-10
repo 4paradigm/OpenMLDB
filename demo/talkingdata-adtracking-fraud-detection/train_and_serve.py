@@ -117,7 +117,7 @@ connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format
 
 
 print('Feature extraction')
-train_feature_file = "/tmp/train_feature"
+train_feature_files = "/tmp/train_feature"
 sql_part = """
 select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
@@ -132,7 +132,7 @@ w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED 
 # extraction will take time
 connection.execute("SET @@job_timeout=1200000;")
 connection.execute("{} INTO OUTFILE '{}';".format(
-    sql_part, os.path.abspath(train_feature_file)))
+    sql_part, os.path.abspath(train_feature_files)))
 
 # concat the feature files
 train_feature_file = "./train_feature_file.csv"
