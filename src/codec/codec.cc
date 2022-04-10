@@ -98,6 +98,7 @@ bool RowBuilder::InitBuffer(int8_t* buf, uint32_t size, bool need_clear) {
         uint32_t bitmap_size = BitMapSize(schema_.size());
         memset(buf + HEADER_LENGTH, 0xFF, bitmap_size);
     }
+    return true;
 }
 
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) { return SetBuffer(buf, size, true); }

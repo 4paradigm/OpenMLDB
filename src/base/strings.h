@@ -17,11 +17,11 @@
 #ifndef SRC_BASE_STRINGS_H_
 #define SRC_BASE_STRINGS_H_
 
+#include <string.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include <iostream>
-#include <string.h>
 #include <string>
 #include <vector>
 
