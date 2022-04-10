@@ -630,6 +630,11 @@ bool FrameExtent::Equals(const SqlNode *node) const {
     const FrameExtent *that = dynamic_cast<const FrameExtent *>(node);
     return SqlEquals(this->start_, that->start_) && SqlEquals(this->end_, that->end_);
 }
+
+FrameExtent* FrameExtent::ShadowCopy(NodeManager* nm) const {
+    return dynamic_cast<FrameExtent *>(nm->MakeFrameExtent(start(), end()));
+}
+
 bool FrameNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;
@@ -653,6 +658,11 @@ const std::string FrameNode::GetExprString() const {
     }
     return str;
 }
+
+FrameNode *FrameNode::ShadowCopy(NodeManager *nm) const {
+    return dynamic_cast<FrameNode *>(nm->MakeFrameNode(frame_type(), frame_range(), frame_rows(), frame_maxsize()));
+}
+
 bool FrameNode::CanMergeWith(const FrameNode *that, const bool enbale_merge_with_maxsize) const {
     if (Equals(that)) {
         return true;
@@ -683,7 +693,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that, const bool enbale_merge_with
         return false;
     }
 
-    // Handle RowsRange-like frame with MAXSIZE  and RowsFrame
+    // Handle RowsRange-like frame with MAXSIZE and RowsFrame
     if (this->IsRowsRangeLikeMaxSizeFrame() && kFrameRows == that->frame_type_) {
         // Pure History RowRangeLike Frame with maxsize can't be merged with
         // Rows frame
@@ -875,6 +885,15 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintSqlNode(output, tab, frame_ptr_, "frame", true);
 }
 
+// test if two window can be merged into single one
+// besides the two windows is the same one, two can also merged when all of those condition meet:
+// - flag permit_window_merge_ is true
+// - union table equal
+// - exclude current time equal
+// - instance not in window equal
+// - order equal
+// - partion equal
+// - window frame can be merged
 bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
@@ -882,12 +901,18 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     if (Equals(that)) {
         return true;
     }
-    return SqlListEquals(this->union_tables_, that->union_tables_) &&
+    return PermitWindowMerge() && SqlListEquals(this->union_tables_, that->union_tables_) &&
            this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
            this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
 }
+
+WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
+    return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
+                                                               exclude_current_time_, instance_not_in_window_));
+}
+
 bool WindowDefNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;

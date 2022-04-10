@@ -57,7 +57,7 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w,
+    ProjectListNode *MakeProjectListPlanNode(WindowPlanNode *w,
                                              const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);

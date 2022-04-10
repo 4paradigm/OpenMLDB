@@ -1179,12 +1179,16 @@ class FrameExtent : public SqlNode {
 
     FrameExtent(FrameBound *start, FrameBound *end) : SqlNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
 
-    ~FrameExtent() {}
+    ~FrameExtent() override {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
+
     FrameBound *start() const { return start_; }
     FrameBound *end() const { return end_; }
+    void SetStart(FrameBound* start) { start_ = start; }
+    void SetEnd(FrameBound* end) { end_ = end; }
+
     const std::string GetExprString() const {
         std::string str = "[";
         if (nullptr == start_) {
@@ -1203,6 +1207,8 @@ class FrameExtent : public SqlNode {
         return str;
     }
 
+    FrameExtent* ShadowCopy(NodeManager* nm) const override;
+
  private:
     FrameBound *start_;
     FrameBound *end_;
@@ -1220,6 +1226,9 @@ class FrameNode : public SqlNode {
     void set_frame_type(FrameType frame_type) { frame_type_ = frame_type; }
     FrameExtent *frame_range() const { return frame_range_; }
     FrameExtent *frame_rows() const { return frame_rows_; }
+    void SetFrameRange(FrameExtent* ext) { frame_range_ = ext; }
+    void SetFrameRows(FrameExtent* ext) { frame_rows_ = ext; }
+
     int64_t frame_maxsize() const { return frame_maxsize_; }
     int64_t GetHistoryRangeStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
@@ -1311,6 +1320,8 @@ class FrameNode : public SqlNode {
         return false;
     }
 
+    FrameNode* ShadowCopy(node::NodeManager* nm) const override;
+
  private:
     FrameType frame_type_;
     FrameExtent *frame_range_;
@@ -1348,13 +1359,19 @@ class WindowDefNode : public SqlNode {
     SqlNodeList *union_tables() const { return union_tables_; }
     void set_union_tables(SqlNodeList *union_table) { union_tables_ = union_table; }
 
+    bool PermitWindowMerge() const { return permit_window_merge_; }
+    void SetPermitWindowMerge(bool permit) { permit_window_merge_ = permit; }
+
     const bool instance_not_in_window() const { return instance_not_in_window_; }
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SqlNode *that) const;
+    bool Equals(const SqlNode *that) const override;
     bool CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged = true) const;
+
+    // shadow copy all fields except window_name_
+    WindowDefNode* ShadowCopy(NodeManager* nm) const override;
 
  private:
     bool exclude_current_time_;
@@ -1364,6 +1381,10 @@ class WindowDefNode : public SqlNode {
     SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
+
+    // whether allow two window merged into single
+    // one can explicitly set this to false to disable window merge over this window
+    bool permit_window_merge_ = true;
 };
 
 class AllNode : public ExprNode {

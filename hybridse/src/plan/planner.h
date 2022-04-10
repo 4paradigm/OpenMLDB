@@ -86,9 +86,23 @@ class Planner {
 
     std::string MakeTableName(const PlanNode *node) const;
     base::Status MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
-                                 std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
+                                 std::map<const node::WindowDefNode *, node::ProjectListNode *> *output, int* win_id);
 
  private:
+    // iterate the {in} map and make a new map from that, but sperate projects into two ProjectListNode if there are any
+    // lag/at in the project list list
+    // it is used to sperate project list nodes which is at/lag/lead call expr, see #1554
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> FilterWindowFrameBoundNonRelativeProjects(
+        const std::map<const node::WindowDefNode *, node::ProjectListNode *> &in, int* win_id);
+
+    // split the give ProjectListNode {in} into two ProjectListNode with the given {condition},
+    // true results into {trues}, false results into {falses}
+    void SplitProjectList(const node::ProjectListNode *in, std::function<bool(const node::ProjectNode *)> predicate,
+                          node::ProjectListNode **trues, node::ProjectListNode **falses) const;
+
+    // create a copy (shallow) of {in} where it's frame is [unbound preceding, current row]
+    node::WindowDefNode* CreateWindowUnboundPrecedingAndCurrent(const node::WindowDefNode* in) const;
+
     const std::unordered_map<std::string, std::string>* extra_options_ = nullptr;
     std::set<std::string> long_windows_;
 };

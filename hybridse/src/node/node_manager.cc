@@ -566,7 +566,7 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     return node_ptr;
 }
 
-ProjectListNode *NodeManager::MakeProjectListPlanNode(const WindowPlanNode *w_ptr, const bool need_agg) {
+ProjectListNode *NodeManager::MakeProjectListPlanNode(WindowPlanNode *w_ptr, const bool need_agg) {
     ProjectListNode *node_ptr = new ProjectListNode(w_ptr, need_agg);
     RegisterNode(node_ptr);
     return node_ptr;
