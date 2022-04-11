@@ -517,13 +517,14 @@ TEST_P(DBSDKTest, ShowComponents) {
     ASSERT_EQ(status.code, 0);
 
     if (cs->IsClusterMode()) {
-        ASSERT_EQ(2, rs->Size());
+        ASSERT_EQ(3, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         const auto& tablet_eps = mc_->GetTbEndpoint();
         const auto& ns_ep = mc_->GetNsEndpoint();
-        ASSERT_EQ(1, tablet_eps.size());
+        ASSERT_EQ(2, tablet_eps.size());
         ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
+                              {tablet_eps.at(1), "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
                              rs.get());
     } else {
@@ -1014,8 +1015,9 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
-    int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(3);
+    FLAGS_enable_distsql = true;
+    int ok = ::openmldb::cmd::mc_->SetUp(2);
+    sleep(5);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
@@ -1032,6 +1034,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
+    sleep(3);
 
     ok = RUN_ALL_TESTS();
 
