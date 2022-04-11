@@ -18,10 +18,10 @@ from sqlalchemy.testing.suite import *
 
 from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
-class IntegerTest(_IntegerTest):
+# class IntegerTest(_IntegerTest):
 
-    @testing.skip("access")
-    def test_huge_int(self):
-        # bypass this test because Access ODBC fails with
-        # [ODBC Microsoft Access Driver] Optional feature not implemented.
-        return
+#     @testing.skip("access")
+#     def test_huge_int(self):
+#         # bypass this test because Access ODBC fails with
+#         # [ODBC Microsoft Access Driver] Optional feature not implemented.
+#         return
