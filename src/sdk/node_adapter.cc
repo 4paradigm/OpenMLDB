@@ -69,7 +69,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     break;
                 }
                 case hybridse::node::kDistributions: {
-                    auto d_list = dynamic_cast<hybridse::node::DistributionsNode *>(table_option)->GetDistributionList();
+                    auto d_list = dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
                     if (d_list != nullptr) {
                         for (auto meta_ptr : d_list->GetList()) {
                             distribution_list.push_back(meta_ptr);

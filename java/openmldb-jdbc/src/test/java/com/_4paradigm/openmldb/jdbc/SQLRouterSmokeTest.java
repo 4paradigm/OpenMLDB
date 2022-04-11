@@ -82,7 +82,7 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);";
+            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -464,7 +464,7 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 bigint, col3 string, col4 float, col5 date, col6 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);";
+            String ddl = "create table tsql1010 ( col1 bigint, col2 bigint, col3 string, col4 float, col5 date, col6 string, index(key=col2, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);

@@ -30,7 +30,7 @@ public class StatementTest {
             Assert.assertFalse(ret);
             ret = state.execute("use testxx");
             Assert.assertFalse(ret);
-            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1)) OPTIONS(replicanum=1);");
+            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1));");
             Assert.assertFalse(ret);
             state.executeUpdate("insert into testtable111 values(1000, 'hello');");
             state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");

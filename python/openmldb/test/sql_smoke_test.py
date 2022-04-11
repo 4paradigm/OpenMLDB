@@ -36,7 +36,7 @@ def test_smoke():
     ok, error = sdk.execute_sql(db_name, create_db)
     assert ok == False
     
-    ddl = "create table " + table_name + "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4)) OPTIONS(replicanum=1);"
+    ddl = "create table " + table_name + "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
     ok, error = sdk.execute_sql(db_name, ddl)
     assert ok == True
     ok, error = sdk.execute_sql(db_name, ddl)

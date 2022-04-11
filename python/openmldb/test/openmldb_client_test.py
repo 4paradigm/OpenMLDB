@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
 
   def test_basic(self):
-    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(replicanum=1, partitionnum=1);"
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(partitionnum=1);"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
     
@@ -231,7 +231,7 @@ class TestOpenMLDBClient(unittest.TestCase):
 
     time.sleep(2)
 
-    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, col6 timestamp, index(key=col3, ts=col1), index(key=col3, ts=col6)) OPTIONS(replicanum=1);"
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, col6 timestamp, index(key=col3, ts=col1), index(key=col3, ts=col6));"
     connection.execute(ddl)
     insert_sqls = [
       "insert into tsql1010 values(1000, '2020-12-25', 'province1', 'city1', 1, 1590738990000);",
