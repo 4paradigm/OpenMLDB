@@ -223,37 +223,37 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
+    if (FLAGS_db_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
         PDLOG(WARNING, "fail to create db root path %s",
               FLAGS_db_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
+    if (FLAGS_ssd_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
         PDLOG(WARNING, "fail to create ssd root path %s",
               FLAGS_ssd_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
+    if (FLAGS_hdd_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
         PDLOG(WARNING, "fail to create hdd root path %s",
               FLAGS_hdd_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
+    if (FLAGS_recycle_bin_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_bin_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
+    if (FLAGS_recycle_bin_ssd_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
         PDLOG(WARNING, "fail to create recycle ssd bin root path %s",
               FLAGS_recycle_bin_ssd_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
+    if (FLAGS_recycle_bin_hdd_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_bin_hdd_root_path.c_str());
         return false;
