@@ -1001,7 +1001,7 @@ TEST_F(SQLClusterTest, ClusterSelect) {
     ASSERT_EQ("helloworld, 1024", res->GetRowString());
     ASSERT_FALSE(res->Next());
 
-    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
     ASSERT_TRUE(ok);
