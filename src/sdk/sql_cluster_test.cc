@@ -970,7 +970,7 @@ TEST_F(SQLClusterTest, GetPreAggrTable) {
     }
 }
 
-TEST_F(SQLClusterTest, Select) {
+TEST_F(SQLClusterTest, ClusterSelect) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -989,7 +989,7 @@ TEST_F(SQLClusterTest, Select) {
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
-    
+
     std::string insert = "insert into " + table + " values('helloworld', 1024);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
@@ -1000,6 +1000,11 @@ TEST_F(SQLClusterTest, Select) {
     ASSERT_TRUE(res->Next());
     ASSERT_EQ("helloworld, 1024", res->GetRowString());
     ASSERT_FALSE(res->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 }  // namespace sdk
