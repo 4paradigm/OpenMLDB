@@ -10538,7 +10538,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     // insert value
     uint32_t tid = table_info->tid();
     uint32_t pid_num = table_info->table_partition_size();
-    for (int i = 0; i < default_value.size(); i++) {
+    for (size_t i = 0; i < default_value.size(); i++) {
         std::string row = rows[i];
         std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
         uint32_t pid = 0;
