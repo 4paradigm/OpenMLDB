@@ -2333,6 +2333,11 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
             mem_table->SetExpire(request->is_expire());
             PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]", request->is_expire(), request->tid(), request->pid());
         }
+    } else {
+        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
+        response->set_msg("table is not memtable");
+        return;
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
