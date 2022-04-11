@@ -81,6 +81,8 @@ inline std::string GetDurationAsStr(absl::Duration d, TimeUnit unit = TimeUnit::
             return std::to_string(absl::ToDoubleSeconds(d));
         }
     }
+    // unreachable
+    return MAX_STRING;
 }
 
 // parse string into absl::Duration
@@ -104,6 +106,8 @@ inline absl::Duration ParseDurationFromStr(absl::string_view raw, TimeUnit unit 
             return absl::Seconds(val);
         }
     }
+    // unreachable
+    return absl::InfiniteDuration();
 }
 
 struct ResponseTimeRow {
