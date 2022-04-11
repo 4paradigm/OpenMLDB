@@ -3522,7 +3522,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
-    if (!table_meta->db().empty()) {
+    if (!table_meta->db().empty() && table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_->ClearCacheLocked(table_meta->db());
         if (ok) {
