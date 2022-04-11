@@ -2802,6 +2802,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         }
         fun.add_arg_type(data_type);
     }
+    if (node->IsAggregate()) {
+        return {::hybridse::common::StatusCode::kCmdError, "unsupport udaf function"};
+    }
     fun.set_is_aggregate(node->IsAggregate());
     auto option = node->Options();
     if (!option || option->find("FILE") == option->end()) {
