@@ -91,6 +91,7 @@ void HandleSQL(const std::string& sql) {
                     t.end_of_row();
                 }
                 std::cout << t;
+                std::cout << std::endl << result_set->Size() << " rows in set" << std::endl;
             }
         } else {
             if (status.msg != "ok") {
