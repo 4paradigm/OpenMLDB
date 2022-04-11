@@ -50,6 +50,9 @@ class TaskManagerClient : public Client {
 
     ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
 
+    ::openmldb::base::Status RunBatchSql(const std::string& sql, const std::map<std::string, std::string>& config,
+                                             const std::string& default_db, std::string& output); // NOLINT
+
     ::openmldb::base::Status RunBatchAndShow(const std::string& sql, const std::map<std::string, std::string>& config,
                                              const std::string& default_db, bool sync_job,
                                              ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT

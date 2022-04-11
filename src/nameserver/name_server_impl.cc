@@ -3677,14 +3677,23 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             } else {
                 auto table_infos = db_table_info_[table_info->db()];
                 if (table_infos.find(table_info->name()) != table_infos.end()) {
-                    base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-                    PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    if (request->create_if_not_exist()) {
+                        base::SetResponseOK(response);
+                    } else {
+                        base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists",
+                                                response);
+                        PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    }
                     return;
                 }
             }
         } else if (table_info_.find(table_info->name()) != table_info_.end()) {
-            base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-            PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            if (request->create_if_not_exist()) {
+                base::SetResponseOK(response);
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
+                PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            }
             return;
         }
     }
@@ -10032,7 +10041,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
         int cnt = 0;
         std::string msg;
         while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
-            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsString(time));
+            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsStr(time, statistics::TimeUnit::SECOND));
             if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
                 // NOTE: some warning appears but is expected, just ingore:
                 // 1. when you create a deploy query but not call it any time before delete it
@@ -10529,7 +10538,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     // insert value
     uint32_t tid = table_info->tid();
     uint32_t pid_num = table_info->table_partition_size();
-    for (int i = 0; i < default_value.size(); i++) {
+    for (size_t i = 0; i < default_value.size(); i++) {
         std::string row = rows[i];
         std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
         uint32_t pid = 0;
@@ -10622,8 +10631,9 @@ void NameServerImpl::SyncDeployStats() {
         }
 
         for (auto& r : res.rows()) {
-            reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
-                           statistics::ParseDurationFromRawInt(r.total()));
+            reducer.Reduce(r.deploy_name(),
+                           statistics::ParseDurationFromStr(r.time(), statistics::TimeUnit::MICRO_SECOND), r.count(),
+                           statistics::ParseDurationFromStr(r.total(), statistics::TimeUnit::MICRO_SECOND));
         }
     }
 
@@ -10643,8 +10653,8 @@ void NameServerImpl::SyncDeployStats() {
         int32_t cnt = rs->GetInt32Unsafe(2);
         auto total = rs->GetAsStringUnsafe(3);
 
-        auto ts = statistics::ParseDurationFromRawInt(time);
-        auto tt = statistics::ParseDurationFromRawInt(total);
+        auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
+        auto tt = statistics::ParseDurationFromStr(total, statistics::TimeUnit::SECOND);
 
         reducer.Reduce(name, ts, cnt, tt);
         old_reducer.Reduce(name, ts, cnt, tt);
@@ -10657,16 +10667,16 @@ void NameServerImpl::SyncDeployStats() {
     std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
                                                   nameserver::DEPLOY_RESPONSE_TIME, " values ");
     for (auto& row : reducer.Rows()) {
-        std::string time = row->GetTimeAsStr();
         auto old_it = old_reducer.Find(row->deploy_name_, row->time_);
         if (old_it != nullptr && row->count_ == old_it->count_) {
             // don't update table only if there is no incremental data, and there is record already in table
             continue;
         }
 
+        std::string time = row->GetTimeAsStr(statistics::TimeUnit::SECOND);
         auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row->deploy_name_, "', '",
                                        time, "', ", row->count_,
-                                       ",'", row->GetTotalAsStr(), "' )");
+                                       ",'", row->GetTotalAsStr(statistics::TimeUnit::SECOND), "' )");
 
         hybridse::sdk::Status st;
         DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
