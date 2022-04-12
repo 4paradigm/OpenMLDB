@@ -241,7 +241,7 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>&
                 }
             } else {
                 bool matched = false;
-                int null_counter = 0;
+                size_t null_counter = 0;
                 EXPECT_FALSE(expect[idx][i].expect_not_.has_value());
                 for (size_t j = 1; j < expect.size(); j++) {
                     if (expect[j][i].expect_.has_value()) {
