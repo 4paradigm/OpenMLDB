@@ -2132,6 +2132,9 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
                   "table[%s] is not memory table, can't do snapshot with end "
                   "offset",
                   request->name().c_str());
+            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
+            response->set_msg("table is not memory table, can't do snapshot with end offset");
+            return;
         } else {
             thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(),
                                             request->offset(), table_info));

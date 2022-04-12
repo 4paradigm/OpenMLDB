@@ -197,12 +197,9 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
         snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
     }
     std::vector<std::string> vec;
-    std::vector<std::string> sub;
-    int cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
-    int cnt2 = ::openmldb::base::GetSubDir(snapshot_path, sub);
+    int cnt = ::openmldb::base::GetChildFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(0, cnt2);
-    ASSERT_EQ(2, (int64_t)vec.size() + (int64_t)sub.size());
+    ASSERT_EQ(2, (int64_t)vec.size());
 
     std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name;
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -275,12 +272,9 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
         snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
     }
     vec.clear();
-    sub.clear();
-    cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
-    cnt2 = ::openmldb::base::GetSubDir(snapshot_path, sub);
+    cnt = ::openmldb::base::GetChildFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(0, cnt2);
-    ASSERT_EQ(2, (int64_t)vec.size() + (int64_t)sub.size());
+    ASSERT_EQ(2, (int64_t)vec.size());
 
     table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" + std::to_string(table.tid());
     ok = zk_client.GetNodeValue(table_data_node, value);

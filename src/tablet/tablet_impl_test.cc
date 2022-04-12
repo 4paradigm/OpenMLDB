@@ -2248,6 +2248,8 @@ TEST_P(TabletImplTest, Recover) {
         std::string file;
         if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
             file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else if (storage_mode == ::openmldb::common::StorageMode::kSSD) {
+            file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
         } else {
             file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
         }
@@ -2437,8 +2439,11 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
     uint32_t tid = counter++;
     ::openmldb::storage::LogParts* log_part = new ::openmldb::storage::LogParts(12, 4, scmp);
     std::string binlog_dir;
-    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+
+    if (storage_mode == ::openmldb::common::kMemory) {
         binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        binlog_dir = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     } else {
         binlog_dir = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/binlog/";
     }
@@ -2561,8 +2566,11 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
         ASSERT_EQ(0, grp.code());
         sleep(1);
         std::string manifest_file;
-        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+
+        if (storage_mode == ::openmldb::common::kMemory) {
             manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
         } else {
             manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
         }
@@ -2578,8 +2586,11 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
         sleep(10);
         std::vector<std::string> vec;
         std::string binlog_path;
-        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+
+        if (storage_mode == ::openmldb::common::kMemory) {
             binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            binlog_path = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/binlog";
         } else {
             binlog_path = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/binlog";
         }
@@ -3238,8 +3249,11 @@ TEST_P(TabletImplTest, GetTermPair) {
     ASSERT_EQ(1, (signed)pair_response.offset());
 
     std::string manifest_file;
-    if (storage_mode == openmldb::common::kMemory) {
+
+    if (storage_mode == ::openmldb::common::kMemory) {
         manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
     } else {
         manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
     }
@@ -3252,11 +3266,15 @@ TEST_P(TabletImplTest, GetTermPair) {
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
 
     std::string snapshot_file;
-    if (storage_mode == openmldb::common::kMemory) {
+
+    if (storage_mode == ::openmldb::common::kMemory) {
         snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        snapshot_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     } else {
         snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
     }
+
     // for memtable snapshot is a file
     // for disktable snapshot is a directory
     if (storage_mode == openmldb::common::kMemory) {
@@ -3320,8 +3338,11 @@ TEST_P(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_EQ(0, grp.code());
         sleep(1);
         std::string manifest_file;
-        if (storage_mode == openmldb::common::kMemory) {
+
+        if (storage_mode == ::openmldb::common::kMemory) {
             manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         } else {
             manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         }
@@ -3363,8 +3384,11 @@ TEST_P(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_EQ(0, grp.code());
         sleep(1);
         std::string manifest_file;
-        if (storage_mode == openmldb::common::kMemory) {
+
+        if (storage_mode == ::openmldb::common::kMemory) {
             manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         } else {
             manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
         }
@@ -3376,10 +3400,13 @@ TEST_P(TabletImplTest, MakeSnapshotThreshold) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
         std::string snapshot_file;
-        if (storage_mode == openmldb::common::kMemory) {
-            snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         } else {
-            snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         }
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
@@ -6148,7 +6175,7 @@ TEST_P(TabletImplTest, AddIndex) {
 }
 
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD, ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;

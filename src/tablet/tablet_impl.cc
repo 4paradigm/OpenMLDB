@@ -1286,6 +1286,7 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     }
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
+    // This way to get Count only available for memtable
     if (!request->filter_expired_data() && table->GetStorageMode() == common::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
@@ -2311,6 +2312,9 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
+            } else {
+                PDLOG(WARNING, "can not get all table status now for disktable. tid %u, pid %u", request->tid(),
+                      request->pid());
             }
         }
     }
