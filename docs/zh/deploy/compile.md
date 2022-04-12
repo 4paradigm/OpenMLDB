@@ -4,7 +4,7 @@
 
 此节介绍在官方编译镜像 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) 中编译 OpenMLDB。镜像内置了编译所需要的工具和依赖，因此不需要额外的步骤单独配置它们。关于基于非 docker 的编译使用方式，请参照下面的 [编译详细说明](#编译详细说明) 章节。
 
-:bulb: 关于编译镜像版本，需要注意拉取的镜像版本和 [OpenMLDB 发布版本](https://github.com/4paradigm/OpenMLDB/releases)保持一致。以下例子演示了在 hybridsql 0.4.4 镜像版本上编译 [OpenMLDB v0.4.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.4.4) 的代码，如果要编译最新 main 分支的代码，则需要拉取 hybridsql:latest 版本镜像。
+:bulb: 关于编译镜像版本，需要注意拉取的镜像版本和 [OpenMLDB 发布版本](https://github.com/4paradigm/OpenMLDB/releases)保持一致。以下例子演示了在 `hybridsql:0.4.4` 镜像版本上编译 [OpenMLDB v0.4.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.4.4) 的代码，如果要编译最新 `main` 分支的代码，则需要拉取 `hybridsql:latest` 版本镜像。
 
 1. 下载 docker 镜像
     ```bash
