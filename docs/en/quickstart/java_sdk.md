@@ -1,4 +1,4 @@
-# Java SDK Quick Start
+# Java SDK Quickstart
 
 Notice: The Java SDK currently only supports the cluster version, and the standalone version is planned to be supported in the next version v0.5.0.
 

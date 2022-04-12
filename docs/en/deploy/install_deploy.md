@@ -1,6 +1,6 @@
 # Install and Deploy
 
-## Software and Hardware Environment Requirements
+## Software and Hardware Requirements
 
 * Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to be fully compatible.
 * Memory: Depends on the amount of data, 8 GB and above is recommended.
@@ -8,7 +8,7 @@
   * Currently only the x86 architecture is supported, and architectures such as ARM are not currently supported.
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
 
-## Deployment Package Preparation
+## Deployment Package
 The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.3/openmldb-0.4.3-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
 
 ## Configure Environment (Linux)

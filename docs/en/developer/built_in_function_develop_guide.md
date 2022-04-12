@@ -1,4 +1,4 @@
-# OpenMLDB Built-In Function Development Guide
+# Built-In Function Development
 
 ## 1. Background
 

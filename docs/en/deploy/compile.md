@@ -1,4 +1,4 @@
-Build OpenMLDB
+Build
 ================
 
 # Quick Start
