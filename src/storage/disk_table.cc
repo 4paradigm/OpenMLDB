@@ -1057,6 +1057,7 @@ void DiskTableRowIterator::Seek(const uint64_t& key) {
 }
 
 void DiskTableRowIterator::SeekToFirst() {
+    record_idx_ = 1;
     std::string combine;
     uint64_t tmp_ts = UINT64_MAX;
     if (has_ts_idx_) {
