@@ -60,7 +60,8 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 Aggregator::~Aggregator() {
     if (aggr_col_type_ == DataType::kString || aggr_col_type_ == DataType::kVarchar) {
         for (const auto& it : aggr_buffer_map_) {
-            delete[] it.second.buffer_.aggr_val_.vstring.data;
+            if (it.second.buffer_.aggr_val_.vstring.data)
+                delete[] it.second.buffer_.aggr_val_.vstring.data;
         }
     }
 }
