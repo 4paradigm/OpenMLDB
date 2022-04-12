@@ -3884,7 +3884,7 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
-    if (!InitClusterRouter()) return;
+    if (!GetClusterRouter()) return;
     auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
 
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
@@ -4022,7 +4022,7 @@ void TabletImpl::RefreshTableInfo() {
 
 bool TabletImpl::RefreshAggrCatalog() {
     if (IsClusterMode()) {
-        if (InitClusterRouter()) {
+        if (GetClusterRouter()) {
             auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
             auto table_infos = sr->GetAggrTables();
             catalog_->RefreshAggrTables(table_infos);
@@ -4074,7 +4074,7 @@ bool TabletImpl::RefreshAggrCatalog() {
     }
 }
 
-bool TabletImpl::InitClusterRouter() {
+bool TabletImpl::GetClusterRouter() {
     if (std::atomic_load_explicit(&sr_, std::memory_order_acquire)) return true;
 
     PDLOG(INFO, "Init ClusterSDK in tablet server");

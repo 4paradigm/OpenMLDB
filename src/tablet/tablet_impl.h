@@ -276,6 +276,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 const ::openmldb::api::GAFDeployStatsRequest* request,
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -422,7 +423,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
-    bool InitClusterRouter();
+    // create a SQLClusterRouter instance and stored in sr_
+    // return true if success, false if any error happens
+    bool GetClusterRouter();
+
     // refresh the pre-aggr tables info
     bool RefreshAggrCatalog();
 
