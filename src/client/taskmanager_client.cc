@@ -97,7 +97,7 @@ namespace openmldb::client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    for (auto it=config.begin(); it!=config.end(); ++it) {
+    for (auto it=config.begin(); it != config.end(); ++it) {
         (*request.mutable_conf())[it->first] = it->second;
     }
 
@@ -124,7 +124,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it=config.begin(); it!=config.end(); ++it) {
+    for (auto it=config.begin(); it != config.end(); ++it) {
         (*request.mutable_conf())[it->first] = it->second;
     }
 
@@ -153,7 +153,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it=config.begin(); it!=config.end(); ++it) {
+    for (auto it=config.begin(); it != config.end(); ++it) {
         (*request.mutable_conf())[it->first] = it->second;
     }
 
@@ -182,7 +182,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it=config.begin(); it!=config.end(); ++it) {
+    for (auto it=config.begin(); it != config.end(); ++it) {
         (*request.mutable_conf())[it->first] = it->second;
     }
 
@@ -211,7 +211,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it=config.begin(); it!=config.end(); ++it) {
+    for (auto it=config.begin(); it != config.end(); ++it) {
         (*request.mutable_conf())[it->first] = it->second;
     }
 

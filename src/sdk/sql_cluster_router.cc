@@ -2311,7 +2311,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 // Run offline query
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, config);
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 if (IsSyncJob()) {
                     // Run offline sql and wait to get output
@@ -2320,7 +2320,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                     if (base_status.OK()) {
                         *status = {};
                         // Print the output from job output
-                        // TODO: return result set if want to format the output
+                        // TODO(tobe): return result set if want to format the output
                         std::vector<std::string> value = {output};
                         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     } else {
@@ -2343,7 +2343,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
                 }
-
             }
             return {};
         }
@@ -2367,7 +2366,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, config);
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
                 auto base_status = ExportOfflineData(sql, config, db, IsSyncJob(), job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2398,7 +2397,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, config);
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
@@ -3446,7 +3445,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 
-void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>& config) {
+void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config) {
     if (!conf_file.empty()) {
         boost::property_tree::ptree pt;
 
@@ -3458,15 +3457,15 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std
             return;
         }
 
-        if(pt.empty()) {
+        if (pt.empty()) {
             LOG(WARNING) << "Spark conf file is empty";
         }
 
         for (auto& section : pt) {
             // Only supports Spark section
-            if(section.first == "Spark") {
+            if (section.first == "Spark") {
                 for (auto& key : section.second) {
-                    config.emplace(key.first, key.second.get_value<std::string>());
+                    (*config).emplace(key.first, key.second.get_value<std::string>());
                 }
             } else {
                 LOG(WARNING) << "The section " + section.first + " is not supported, please use Spark section";
