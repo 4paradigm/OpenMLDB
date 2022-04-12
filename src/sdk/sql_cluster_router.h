@@ -221,9 +221,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<SQLCache> GetSQLCache(
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& parameter_row, hybridse::sdk::Status& status); // NOLINT
-    hybridse::sdk::Status GetTabletClientsForClusterOnlineBatchQuery(
+    bool GetTabletClientsForClusterOnlineBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>* clients);
+        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients, //NOLINT
+        hybridse::sdk::Status& status); //NOLINT
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                           const std::string& table_name) override;

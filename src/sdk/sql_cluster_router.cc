@@ -910,24 +910,13 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
 }
 
 // Get clients when online batch query in Cluster OpenMLDB
-hybridse::sdk::Status SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
+bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter,
-    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>* clients) {
-    if (clients == nullptr) {
-        return {::hybridse::common::StatusCode::kCmdError, "nullptr"};
-    }
-    if (!cluster_sdk_->IsClusterMode()) {
-        auto tablet = cluster_sdk_->GetTablet();
-        if (tablet) {
-            clients->insert(tablet->GetClient());
-            return {};
-        }
-        return {::hybridse::common::StatusCode::kCmdError, "not available tablet"};
-    }
-    ::hybridse::sdk::Status status;
+    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients,
+    hybridse::sdk::Status& status) {  // NOLINT
     auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, status);
     if (0 != status.code) {
-        return {::hybridse::common::StatusCode::kCmdError, status.msg};
+        return {};
     }
     if (cache) {
         const std::string& main_table = cache->router.GetMainTable();
@@ -938,25 +927,30 @@ hybridse::sdk::Status SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQue
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
 
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
-                return {::hybridse::common::StatusCode::kCmdError,
-                    "fail to get tablet clients for " + main_db + "." + main_table};
+                LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
+                status.msg = "fail to get tablet";
+                status.code = hybridse::common::kRunError;
+                return false;
             }
+
             for (auto tablet : tablets) {
-                clients->insert(tablet->GetClient());
+                clients.insert(tablet->GetClient());
             }
-            return {};
+            return true;
         } else {
             auto tablet = cluster_sdk_->GetTablet();
             if (!tablet) {
-                return {::hybridse::common::StatusCode::kCmdError, "not available tablet"};
+                return false;
             }
-            clients->insert(tablet->GetClient());
-            return {};
+            clients.insert(tablet->GetClient());
+            return true;
         }
+    } else {
+        status.msg = "fail to get tablet";
+        status.code = hybridse::common::kRunError;
+        return false;
     }
-    return {::hybridse::common::StatusCode::kCmdError, "fail to get tablet"};
 }
-
 std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
     std::shared_ptr<TableReaderImpl> reader(new TableReaderImpl(cluster_sdk_));
     return reader;
@@ -1064,8 +1058,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
 
     std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>> clients;
-    *status = GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, &clients);
-    if (!status->IsOK()) {
+    if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients, *status)) {
         DLOG(INFO) << "no tablet available for sql " << sql;
         return {};
     }
