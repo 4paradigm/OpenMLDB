@@ -526,7 +526,7 @@ TEST_P(DBSDKTest, ShowComponents) {
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
                               {tablet_eps.at(1), "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
-                             rs.get());
+                             rs.get(), false);
     } else {
         ASSERT_EQ(2, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
