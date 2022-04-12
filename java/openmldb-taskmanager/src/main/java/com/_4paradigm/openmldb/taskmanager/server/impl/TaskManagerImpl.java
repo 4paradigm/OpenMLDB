@@ -30,17 +30,14 @@ import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import lombok.extern.slf4j.Slf4j;
 import scala.Option;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
 
-    private Map<String, String> functionMap = new HashMap<>();
-    private Lock lock = new ReentrantLock();
+    private Map<String, String> functionMap = new ConcurrentHashMap<>();
     private volatile static ZKClient zkClient;
 
     static {
@@ -323,7 +320,6 @@ public class TaskManagerImpl implements TaskManagerInterface {
                     .build();
         }
         String str = fun.toString();
-        lock.lock();
         if (!functionMap.containsKey(request.getFun().getName())) {
             functionMap.put(fun.getName(), str);
         }
@@ -332,7 +328,6 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
     @Override
     public TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request) {
-        lock.lock();
         if (functionMap.containsKey(request.getName())) {
             functionMap.remove(request.getName());
         } else if (!request.getIfExists()) {
