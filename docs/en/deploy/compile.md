@@ -8,23 +8,25 @@ Build
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
 The docker image has packed required tools and dependencies, so there is no need to setup them separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) bellow.
 
+:bulb: Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This setion demonstrate compiling for [OpenMLDB v0.4.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.4.4) under `hybridsql:0.4.4` ，If you prefer to compile on the latest code in `main` branch, pull `hybridql:latest` image instead.
+
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.4.3
+    docker pull 4pdosc/hybridsql:0.4.4
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.4.3 bash
+   docker run -it 4pdosc/hybridsql:0.4.4 bash
    ```
 
-3. Download the OpenMLDB source code inside docker container
+3. Download the OpenMLDB source code inside docker container, and setting the branch into v0.4.4
 
    ```bash
    cd ~
-   git clone https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.4.4 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
