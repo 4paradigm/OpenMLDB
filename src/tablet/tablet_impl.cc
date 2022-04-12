@@ -4034,7 +4034,11 @@ bool TabletImpl::RefreshAggrCatalog() {
     } else {
         std::string meta_db = nameserver::INTERNAL_DB;
         std::string meta_table = nameserver::PRE_AGG_META_NAME;
-        static std::shared_ptr<::hybridse::vm::TableHandler>  table = catalog_->GetTable(meta_db, meta_table);
+        std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
+        if (!table) {
+            PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
+            return false;
+        }
         static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
 
         auto it = table->GetIterator();
