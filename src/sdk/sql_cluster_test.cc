@@ -265,7 +265,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) options(partitionnum=8);";
+                      "index(key=col1, ts=col2)) options(partitionnum=8, replicanum=1);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -425,7 +425,12 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         hybridse::sdk::Status sdk_status;
         auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, sdk_status);
         int pid = ::openmldb::base::hash64(pk) % 2;
-        ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
+        // only assert leader paritition
+        for (int i = 0; i < 3; i++) {
+            if (tables[0].table_partition(pid).partition_meta(i).is_leader()) {
+                ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(i).endpoint());
+            }
+        }
     }
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
