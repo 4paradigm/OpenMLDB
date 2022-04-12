@@ -1862,12 +1862,17 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
                 response->set_msg("table is leader");
                 return;
             }
-            PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
             table->SetLeader(true);
             replicator->SetRole(ReplicatorRole::kLeaderNode);
             if (!zk_cluster_.empty()) {
                 replicator->SetLeaderTerm(request->term());
             }
+        }
+        PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
+        if (catalog_->AddTable(*(table->GetTableMeta()), table)) {
+            LOG(INFO) << "add table " << table->GetName() << " to catalog with db " << table->GetDB();
+        } else {
+            LOG(WARNING) << "fail to add table " << table->GetName() << " to catalog with db " << table->GetDB();
         }
         if (replicator->AddReplicateNode(real_ep_map) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
@@ -1885,17 +1890,22 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
             replicator->AddReplicateNode(r_real_ep_map, e.tid());
         }
     } else {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        if (!table->IsLeader()) {
-            PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kOk);
-            response->set_msg("table is follower");
-            return;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            if (!table->IsLeader()) {
+                PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
+                response->set_code(::openmldb::base::ReturnCode::kOk);
+                response->set_msg("table is follower");
+                return;
+            }
+            replicator->DelAllReplicateNode();
+            replicator->SetRole(ReplicatorRole::kFollowerNode);
+            table->SetLeader(false);
         }
-        replicator->DelAllReplicateNode();
-        replicator->SetRole(ReplicatorRole::kFollowerNode);
-        table->SetLeader(false);
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+        }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -3523,13 +3533,12 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
     if (!table_meta->db().empty() && table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
-        bool ok = catalog_->AddTable(*table_meta, table);
-        engine_->ClearCacheLocked(table_meta->db());
-        if (ok) {
+        if (catalog_->AddTable(*table_meta, table)) {
             LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         }
+        engine_->ClearCacheLocked(table_meta->db());
     }
     return 0;
 }
