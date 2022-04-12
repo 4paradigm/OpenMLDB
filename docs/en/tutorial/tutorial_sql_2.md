@@ -1,4 +1,4 @@
-# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 2)
+# Guidelines for Feature Engineering Development (Part 2)
 
 ## 1. Preliminary Knowledge
 
