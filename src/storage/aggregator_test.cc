@@ -18,6 +18,7 @@
 #include <utility>
 #include "gtest/gtest.h"
 
+#include "base/file_util.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
@@ -34,7 +35,7 @@ class AggregatorTest : public ::testing::Test {
     AggregatorTest() {}
     ~AggregatorTest() {}
 };
-
+std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }
 void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_name("t0");
     table_meta->set_pid(0);
@@ -113,9 +114,18 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     aggr_table->Init();
 
     // replicator
-    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
     auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, aggr_col, aggr_type,
                                  "ts_col", bucket_size);
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->SetBaseReplicator(base_replicator);
+    aggr->Init();
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     UpdateAggr(aggr, &row_builder);
     std::string key = "id1|id2";
@@ -123,6 +133,7 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     if (!aggr->GetAggrBuffer("id1|id2", buffer)) {
         return false;
     }
+    ::openmldb::base::RemoveDir(folder);
     table = aggr_table;
     return true;
 }
@@ -258,7 +269,8 @@ void CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, i
 
 TEST_F(AggregatorTest, CreateAggregator) {
     // rows_num window type
-    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
     {
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
@@ -270,8 +282,16 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
                                      "ts_col", "1000");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsNum);
@@ -289,8 +309,16 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
                                      "ts_col", "1d");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -307,8 +335,16 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
                                      "ts_col", "2s");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -325,8 +361,16 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
                                      "ts_col", "3m");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -343,19 +387,29 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
                                      "ts_col", "100h");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
         ASSERT_EQ(aggr->GetWindowSize(), 100 * 60 * 60 * 1000);
     }
+    ::openmldb::base::RemoveDir(folder);
 }
 
 TEST_F(AggregatorTest, SumAggregatorUpdate) {
     // rows_num window type
-    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
     {
+        std::map<std::string, std::string> map;
+        std::string folder = "/tmp/" + GenRand() + "/";
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
         base_table_meta.set_tid(id);
@@ -369,8 +423,16 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::shared_ptr<Table> aggr_table =
             std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
         aggr_table->Init();
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
         auto aggr =
             CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "2");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->SetBaseReplicator(base_replicator);
+        aggr->Init();
         codec::RowBuilder row_builder(base_table_meta.column_desc());
         ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
@@ -397,6 +459,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         ASSERT_EQ(last_buffer.aggr_cnt_, 1);
         ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer.binlog_offset_, 100);
+        ::openmldb::base::RemoveDir(folder);
     }
     // rows_range window type
     {
@@ -598,7 +661,8 @@ TEST_F(AggregatorTest, AvgAggregatorUpdate) {
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {
-    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
     uint32_t id = counter++;
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
@@ -609,8 +673,16 @@ TEST_F(AggregatorTest, OutOfOrder) {
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
     auto aggr =
         CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "1s");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->SetBaseReplicator(base_replicator);
+    aggr->Init();
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);
@@ -651,6 +723,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
         int32_t update_val = *reinterpret_cast<int32_t*>(ch);
         ASSERT_EQ(update_val, 201);
     }
+    ::openmldb::base::RemoveDir(folder);
 }
 
 }  // namespace storage
