@@ -592,7 +592,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
         ExpectResultSetStrEq(
             {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
             rs.get());
     } else {
         ExpectResultSetStrEq(
@@ -649,7 +649,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         ExpectResultSetStrEq(
             {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
             rs.get());
 
         sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
@@ -659,7 +659,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         ExpectResultSetStrEq(
             {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "1", "NULL", "NULL", "NULL"}},
+            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
             rs.get());
     } else {
         ExpectResultSetStrEq(
@@ -800,7 +800,7 @@ struct DeploymentEnv {
                 absl::StrCat("use ", db_),
                 absl::StrCat("create table ", table_,
                              " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));"),
+                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) OPTIONS(partitionnum=1,replicanum=1);"),
                 absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
                              " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
                 absl::StrCat(
