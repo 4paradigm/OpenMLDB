@@ -82,6 +82,7 @@ class MiniCluster {
     }
 
     bool SetUp(int tablet_num = 2) {
+        LOG(INFO) << "start tablet number " << tablet_num;
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
@@ -192,6 +193,7 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
+        LOG(INFO) << "start tablet " << tb_endpoint;
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
         auto* client = new ::openmldb::client::TabletClient(tb_endpoint, tb_endpoint);
