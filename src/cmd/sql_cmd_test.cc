@@ -276,29 +276,26 @@ TEST_P(DBSDKTest, CreateFunction) {
     cs = cli->cs;
     sr = cli->sr;
     hybridse::sdk::Status status;
-    if (cs->IsClusterMode()) {
-        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
-    }
-    HandleSQL("create database test1;");
-    HandleSQL("use test1;");
-    std::string create_sql = "create table t1(c1 string, c2 int, c3 double);";
-    sr->ExecuteSQL(create_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    HandleSQL("insert into t1 values ('aab', 11, 1.2);");
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string cut2_sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING "
                             "OPTIONS (FILE='" + so_path + "');";
-    sr->ExecuteSQL(cut2_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string strlength_sql = "CREATE FUNCTION strlength(x STRING) RETURNS INT "
                             "OPTIONS (FILE='" + so_path + "');";
-    sr->ExecuteSQL(strlength_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string int2str_sql = "CREATE FUNCTION int2str(x INT) RETURNS STRING "
                             "OPTIONS (FILE='" + so_path + "');";
-    sr->ExecuteSQL(int2str_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    std::string db_name = "test" + GenRand();
+    std::string tb_name = "t1";
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (c1 string, c2 int, c3 double);"),
+                    absl::StrCat("insert into ", tb_name, " values ('aab', 11, 1.2);"),
+                    cut2_sql,
+                    strlength_sql,
+                    int2str_sql
+                });
     auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
@@ -312,16 +309,16 @@ TEST_P(DBSDKTest, CreateFunction) {
     str.clear();
     result->GetString(2, &str);
     ASSERT_EQ(str, "11");
-    sr->ExecuteSQL("DROP FUNCTION cut2;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ProcessSQLs(sr, {"DROP FUNCTION cut2;"});
     result = sr->ExecuteSQL("select cut2(c1) from t1;", &status);
     ASSERT_FALSE(status.IsOK());
-    sr->ExecuteSQL("DROP FUNCTION strlength;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    sr->ExecuteSQL("DROP FUNCTION int2str;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    HandleSQL("drop table t1;");
-    HandleSQL("drop database test1;");
+    ProcessSQLs(sr,
+                {
+                    "DROP FUNCTION strlength;",
+                    "DROP FUNCTION int2str;",
+                    absl::StrCat("drop table ", tb_name, ";"),
+                    absl::StrCat("drop database ", db_name, ";"),
+                });
 }
 #endif
 
