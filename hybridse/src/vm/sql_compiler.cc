@@ -152,6 +152,8 @@ std::string EngineModeName(EngineMode mode) {
             return "kRequestMode";
         case kBatchRequestMode:
             return "kBatchRequestMode";
+        case kMockRequestMode:
+            return "kMockRequestMode";
         default:
             return "unknown";
     }
@@ -201,6 +203,10 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
                                            ctx->batch_request_info.common_column_indices,
                                            ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
                                            ctx->enable_expr_optimize, true, ctx->options.get());
+    if (ctx->options && ctx->options->count(LONG_WINDOWS)) {
+        transformer.AddPass(passes::kPassSplitAggregationOptimized);
+        transformer.AddPass(passes::kPassLongWindowOptimized);
+    }
     transformer.AddDefaultPasses();
     PhysicalOpNode* output_plan = nullptr;
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
