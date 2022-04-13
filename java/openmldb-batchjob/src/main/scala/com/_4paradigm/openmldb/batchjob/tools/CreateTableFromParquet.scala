@@ -9,14 +9,20 @@ object CreateTableFromParquet {
 
   def main(args: Array[String]): Unit = {
 
-    val parquetPath = "file:///tmp/parquet_path/"
     val openmldbZk = "127.0.0.1:2181"
     val openmldbZkPath = "/openmldb"
     val dbName = "db1"
     val tableName = "t1"
+    val parquetPath = "file:///tmp/parquet_path/"
+
+    createTableFromParquet(openmldbZk, openmldbZkPath, dbName, tableName, parquetPath)
+  }
+
+  def createTableFromParquet(openmldbZk: String, openmldbZkPath: String, dbName: String, tableName: String,
+                             parquetPath: String): Unit = {
 
     // Read parquet files
-    val spark = SparkSession.builder().master("local").getOrCreate()
+    val spark = SparkSession.builder().getOrCreate()
     val df = spark.read.parquet(parquetPath)
     val schema = df.schema
 
@@ -58,6 +64,7 @@ object CreateTableFromParquet {
       println(s"Table name: $tableName")
     })
 
+    spark.close()
   }
 
 }
