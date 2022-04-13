@@ -46,21 +46,6 @@ class KvIterator {
         Next();
     }
 
-    explicit KvIterator(::openmldb::api::TraverseResponse* response)
-        : response_(response),
-          buffer_(NULL),
-          tsize_(0),
-          offset_(0),
-          c_size_(0),
-          tmp_(NULL),
-          has_pk_(true),
-          auto_clean_(true) {
-        buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
-        tmp_ = new Slice();
-        tsize_ = response->pairs().size();
-        Next();
-    }
-
     KvIterator(::openmldb::api::ScanResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
@@ -69,21 +54,6 @@ class KvIterator {
           c_size_(0),
           tmp_(NULL),
           has_pk_(false),
-          auto_clean_(clean) {
-        buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
-        tsize_ = response->pairs().size();
-        tmp_ = new Slice();
-        Next();
-    }
-
-    KvIterator(::openmldb::api::TraverseResponse* response, bool clean)
-        : response_(response),
-          buffer_(NULL),
-          tsize_(0),
-          offset_(0),
-          c_size_(0),
-          tmp_(NULL),
-          has_pk_(true),
           auto_clean_(clean) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tsize_ = response->pairs().size();

@@ -212,9 +212,9 @@ class TabletClient : public Client {
     bool ConnectZK();
     bool DisConnectZK();
 
-    ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
-                                           const std::string& pk, uint64_t ts, uint32_t limit,
-                                           uint32_t& count);  // NOLINT
+    bool Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+            const std::string& pk, uint64_t ts, uint32_t limit,
+            brpc::Controller* cntl, ::openmldb::api::TraverseResponse* response);
 
     void ShowTp();
 

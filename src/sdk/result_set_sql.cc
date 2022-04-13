@@ -89,6 +89,16 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+        const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
+        const std::shared_ptr<brpc::Controller>& cntl) {
+    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, record_cnt, buf_size, cntl);
+    if (!rs->Init()) {
+        return std::shared_ptr<ResultSet>();
+    }
+    return rs;
+}
+
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     const std::shared_ptr<::openmldb::api::ScanResponse>& response,
     const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
     std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status) {
@@ -109,7 +119,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         ok = rs->Init();
         if (!ok) {
             status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
+            status->msg = "request error, ResultSetSQL init failed";
             return std::shared_ptr<ResultSet>();
         }
         return rs;
@@ -119,7 +129,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         bool ok = rs->Init();
         if (!ok) {
             status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
+            status->msg = "request error, ResultSetSQL init failed";
             return std::shared_ptr<ResultSet>();
         }
         return rs;

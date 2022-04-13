@@ -47,6 +47,10 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
         ::hybridse::sdk::Status* status);
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
+        const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
+        const std::shared_ptr<brpc::Controller>& cntl);
+
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
         const std::shared_ptr<::openmldb::api::ScanResponse>& response,
         const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
         std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status);

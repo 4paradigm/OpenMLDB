@@ -1331,7 +1331,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     it = table->NewTraverseIterator(index);
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
-        response->set_msg("ts name not found, when create iterator");
+        response->set_msg("create iterator failed");
         return;
     }
     uint64_t last_time = 0;
@@ -1346,13 +1346,14 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         DEBUGLOG("tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
     }
-    std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
-    uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
+    auto* cntl = dynamic_cast<brpc::Controller*>(controller);
+    butil::IOBuf& buf = cntl->response_attachment();
     uint32_t scount = 0;
+    uint32_t total_size = 0;
     for (; it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             DEBUGLOG("reache the limit %u ", request->limit());
@@ -1366,13 +1367,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         }
         last_pk = it->GetPK();
         last_time = it->GetKey();
-        if (value_map.find(last_pk) == value_map.end()) {
-            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>()));
-            value_map[last_pk].reserve(request->limit());
-        }
         openmldb::base::Slice value = it->GetValue();
-        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
-        total_block_size += last_pk.length() + value.size();
+        buf.append(reinterpret_cast<const void*>(value.data()), value.size());
+        total_size += value.size();
         scount++;
         if (it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
@@ -1392,23 +1389,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     } else if (scount < request->limit()) {
         is_finish = true;
     }
-    uint32_t total_size = scount * (8 + 4 + 4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& kv : value_map) {
-        for (const auto& pair : kv.second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", kv.first.c_str(), pair.first, pair.second.size());
-            ::openmldb::codec::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer,
-                                          offset);
-            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
-        }
-    }
     delete it;
     DEBUGLOG("traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -1416,6 +1396,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     response->set_pk(last_pk);
     response->set_ts(last_time);
     response->set_is_finish(is_finish);
+    response->set_buf_size(total_size);
 }
 
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
