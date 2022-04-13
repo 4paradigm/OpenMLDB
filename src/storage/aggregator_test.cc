@@ -103,8 +103,11 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
-    auto aggr =
-        CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, aggr_col, aggr_type, "ts_col", bucket_size);
+
+    // replicator
+    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, aggr_col, aggr_type,
+                                 "ts_col", bucket_size);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     UpdateAggr(aggr, &row_builder);
     std::string key = "id1|id2";
@@ -163,6 +166,7 @@ bool CheckAggregatorUpdate(const uint32_t& id, const std::string& aggr_col, cons
 
 TEST_F(AggregatorTest, CreateAggregator) {
     // rows_num window type
+    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
     {
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
@@ -174,7 +178,8 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1000");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "1000");
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsNum);
@@ -192,7 +197,8 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1d");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "1d");
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -209,7 +215,8 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2s");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "2s");
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -226,7 +233,8 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "3m");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "3m");
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -243,7 +251,8 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "100h");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "100h");
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -253,6 +262,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
 
 TEST_F(AggregatorTest, SumAggregatorUpdate) {
     // rows_num window type
+    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
     {
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
@@ -267,7 +277,8 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::shared_ptr<Table> aggr_table =
             std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2");
+        auto aggr =
+            CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "2");
         codec::RowBuilder row_builder(base_table_meta.column_desc());
         ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
@@ -338,7 +349,8 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::shared_ptr<Table> aggr_table =
             std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col_null", "sum", "ts_col", "2");
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col_null", "sum",
+                                     "ts_col", "2");
         codec::RowBuilder row_builder(base_table_meta.column_desc());
         ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
@@ -369,6 +381,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {
+    std::shared_ptr<openmldb::replica::LogReplicator> replicator;
     uint32_t id = counter++;
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
@@ -379,7 +392,8 @@ TEST_F(AggregatorTest, OutOfOrder) {
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
-    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1s");
+    auto aggr =
+        CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "1s");
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);

@@ -27,12 +27,16 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "storage/table.h"
+#include "replica/log_replicator.h"
+#include "log/log_reader.h"
 
 namespace openmldb {
 namespace storage {
 
 using Dimensions = google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>;
+using ::openmldb::replica::LogReplicator;
 using ::openmldb::type::DataType;
+using ::openmldb::log::LogParts;
 enum class AggrType {
     kSum = 1,
     kMin = 2,
@@ -44,6 +48,12 @@ enum class AggrType {
 enum class WindowType {
     kRowsNum = 1,
     kRowsRange = 2,
+};
+
+enum class AggrStat {
+    kUnInit = 1,
+    kRecovering = 2,
+    kNormal = 3,
 };
 
 union AggrVal {
@@ -78,12 +88,14 @@ struct AggrBufferLocked {
 class Aggregator {
  public:
     Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-               std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
+               std::shared_ptr<Table> aggr_table, std::shared_ptr<openmldb::replica::LogReplicator> aggr_replicator, const uint32_t& index_pos, const std::string& aggr_col,
                const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~Aggregator() = default;
 
-    bool Update(const std::string& key, const std::string& row, const uint64_t& offset);
+    bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
+
+    bool Init();
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -95,7 +107,13 @@ class Aggregator {
 
     uint32_t GetWindowSize() const { return window_size_; }
 
+    bool IsNormal() const {return status == AggrStat::kNormal;}
+
     bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
+
+    void SetBaseReplicator(std::shared_ptr<openmldb::replica::LogReplicator> replicator) {base_replicator_ = replicator;};
+
+    std::shared_ptr<openmldb::replica::LogReplicator> GetBaseReplicator() {return base_replicator_;};
 
  protected:
     codec::Schema base_table_schema_;
@@ -107,7 +125,10 @@ class Aggregator {
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
+    std::shared_ptr<openmldb::replica::LogReplicator> base_replicator_;
     std::shared_ptr<Table> aggr_table_;
+    std::shared_ptr<openmldb::replica::LogReplicator> aggr_replicator_;
+    AggrStat status;
     Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
@@ -141,7 +162,7 @@ class Aggregator {
 class SumAggregator : public Aggregator {
  public:
     SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-                  std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
+                  std::shared_ptr<Table> aggr_table, std::shared_ptr<openmldb::replica::LogReplicator> aggr_replicator, const uint32_t& index_pos, const std::string& aggr_col,
                   const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~SumAggregator() = default;
@@ -152,7 +173,8 @@ class SumAggregator : public Aggregator {
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
                                              const ::openmldb::api::TableMeta& aggr_meta,
-                                             std::shared_ptr<Table> aggr_table, const uint32_t& index_pos,
+                                             std::shared_ptr<Table> aggr_table,
+                                             std::shared_ptr<openmldb::replica::LogReplicator> aggr_replicator, const uint32_t& index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
                                              const std::string& ts_col, const std::string& bucket_size);
 

@@ -138,7 +138,6 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         ::openmldb::base::Slice slice(buffer);
         ::openmldb::log::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
-        return;
     }
     for (; count < 30; count++) {
         offset++;
