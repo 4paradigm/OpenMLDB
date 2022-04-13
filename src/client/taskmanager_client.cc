@@ -97,7 +97,9 @@ namespace openmldb::client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO(tobe): Set map of config
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
@@ -121,8 +123,10 @@ namespace openmldb::client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO: Set map of config
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                   &response, request_timeout_ms_, 1);
@@ -149,6 +153,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
                                   &response, request_timeout_ms_, 1);
@@ -175,6 +182,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
                                   &response, request_timeout_ms_, 1);
@@ -201,6 +211,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
                                   &response, request_timeout_ms_, 1);

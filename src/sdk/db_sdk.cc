@@ -250,7 +250,7 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
         std::string value;
         bool ok = zk_client_->GetNodeValue(table_root_path_ + "/" + table_data, value);
         if (!ok) {
-            LOG(WARNING) << "fail to get table data";
+            LOG(WARNING) << "fail to get table data " << table_root_path_ << "/" << table_data;
             continue;
         }
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info(new ::openmldb::nameserver::TableInfo());

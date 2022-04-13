@@ -17,6 +17,7 @@
 #ifndef SRC_BASE_STRINGS_H_
 #define SRC_BASE_STRINGS_H_
 
+#include <string.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -190,6 +191,18 @@ static inline int64_t ParseTimeToSecond(const std::string& time_str, const std::
     struct tm timeinfo;
     strptime(time_str.c_str(), format_time.c_str(), &timeinfo);
     return mktime(&timeinfo);
+}
+
+static inline int StringCompare(const char* lhs, uint32_t l_size, const char* rhs, uint32_t r_size) {
+    const size_t min_len = (l_size < r_size) ? l_size : r_size;
+    int r = memcmp(lhs, rhs, min_len);
+    if (r == 0) {
+        if (l_size < r_size)
+            r = -1;
+        else if (l_size > r_size)
+            r = +1;
+    }
+    return r;
 }
 
 }  // namespace base
