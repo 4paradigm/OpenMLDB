@@ -28,6 +28,9 @@
 #include "codec/schema_codec.h"
 #include "plan/plan_api.h"
 
+DECLARE_uint32(partition_num);
+DECLARE_uint32(replica_num);
+
 namespace openmldb::sdk {
 
 using hybridse::plan::PlanAPI;
@@ -44,24 +47,24 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_name(table_name);
     hybridse::node::NodePointVector distribution_list;
 
-    uint32_t replica_num = 1;
-    uint32_t partition_num = 1;
     hybridse::node::StorageMode storage_mode = hybridse::node::kMemory;
     // different default value for cluser mode and standalone mode
+    FLAGS_replica_num = 1;
+    FLAGS_partition_num = 1;
     if (is_cluster_mode) {
-        replica_num = default_replica_num;
-        partition_num = 8;
+        FLAGS_replica_num = default_replica_num;
+        FLAGS_partition_num = 8;
     }
     // resolve table_option_list
     for (auto& table_option : table_option_list) {
         if (table_option != nullptr) {
             switch (table_option->GetType()) {
                 case hybridse::node::kReplicaNum: {
-                    replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+                    FLAGS_replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
-                    partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+                    FLAGS_partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
                     break;
                 }
                 case hybridse::node::kStorageMode: {
@@ -86,7 +89,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     }
     // deny create table when invalid configuration in standalone mode
     if (!is_cluster_mode) {
-        if (replica_num != 1) {
+        if (FLAGS_replica_num != 1) {
             status->msg = "Fail to create table with the replica configuration in standalone mode";
             status->code = hybridse::common::kUnsupportSql;
             return false;
@@ -97,8 +100,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             return false;
         }
     }
-    table->set_replica_num(replica_num);
-    table->set_partition_num(partition_num);
+    table->set_replica_num(FLAGS_replica_num);
+    table->set_partition_num(FLAGS_partition_num);
 
     table->set_format_version(1);
     bool has_generate_index = false;
@@ -220,7 +223,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         }
     }
     if (!distribution_list.empty()) {
-        if (replica_num != static_cast<int32_t>(distribution_list.size())) {
+        if (FLAGS_replica_num != static_cast<int32_t>(distribution_list.size())) {
             status->msg =
                 "CREATE common: "
                 "replica_num should equal to partition meta size";
