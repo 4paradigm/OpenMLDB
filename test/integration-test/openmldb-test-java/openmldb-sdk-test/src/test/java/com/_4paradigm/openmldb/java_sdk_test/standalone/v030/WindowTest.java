@@ -43,4 +43,14 @@ public class WindowTest extends StandaloneTest {
     public void testWindow(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

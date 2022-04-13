@@ -17,13 +17,15 @@
 from datetime import datetime
 
 from nb_log import LogManager
-from sqlalchemy_openmldb.openmldbapi import Type as feType
+#from sqlalchemy_openmldb.openmldbapi import Type as feType
+from openmldb.dbapi import Type as feType
 import re
 import random
 import string
 import time
 
-from sqlalchemy_openmldb.openmldbapi.sql_router_sdk import DataTypeName, SQLRequestRow
+#from sqlalchemy_openmldb.openmldbapi.sql_router_sdk import DataTypeName, SQLRequestRow
+from openmldb.native.sql_router_sdk import DataTypeName, SQLRequestRow
 
 from common import fedb_config
 from entity.fedb_result import FedbResult
@@ -91,6 +93,8 @@ def sql(executor, dbName: str, sql: str):
         fedbResult = ddl(executor, dbName, sql)
     elif sql.startswith("insert"):
         fedbResult = insert(executor, dbName, sql)
+    elif sql.startswith("load"):
+        fedbResult = load(executor,sql)
     else:
         fedbResult = select(executor, dbName, sql)
     return fedbResult
@@ -176,7 +180,12 @@ def ddl(executor, dbName: str, sql: str):
     log.info("ddl sql:" + sql)
     fesqlResult = FedbResult()
     try:
-        executor.execute(sql)
+        list = sql.split(" ")
+        newtable = dbName.__add__(".").__add__(list[2])
+        list[2] = newtable
+        newsql = " ".join(list)
+        log.info("ddl newsql:"+newsql)
+        executor.execute(newsql)
         fesqlResult.ok = True
         fesqlResult.msg = "ok"
     except Exception as e:
@@ -286,7 +295,8 @@ def select(executor, dbName: str, sql: str):
         fedbResult.msg = "ok"
         fedbResult.rs = rs
         fedbResult.count = rs.rowcount
-        fedbResult.result = convertRestultSetToListRS(rs)
+        fedbResult.result = rs.fetchall()
+        #fedbResult.result = convertRestultSetToListRS(rs)
     except Exception as e:
         log.info("select exception is {}".format(e))
         fedbResult.ok = False
@@ -294,6 +304,20 @@ def select(executor, dbName: str, sql: str):
     log.info("select result:" + str(fedbResult))
     return fedbResult
 
+def load(executor,sql: str):
+    log.info("load sql:"+sql)
+    fedbResult = FedbResult()
+    try:
+        executor.execute(sql)
+        time.sleep(4)
+        fedbResult.ok = True
+        fedbResult.msg = "ok"
+    except Exception as e:
+        log.info("load data exception is {}".format(e))
+        fedbResult.ok = False
+        fedbResult.msg = str(e)
+    log.info("load result:"+str(fedbResult))
+    return fedbResult
 
 def formatSql(sql: str, tableNames: list):
     if "{auto}" in sql:
@@ -313,9 +337,23 @@ def formatSql(sql: str, tableNames: list):
 
 def createAndInsert(executor, dbName, inputs, requestMode: bool = False):
     tableNames = []
+    dbnames = set()
+    dbnames.add(dbName)
     fedbResult = FedbResult()
     if inputs != None and len(inputs) > 0:
         for index, input in enumerate(inputs):
+            if input.__contains__('db') == True and dbnames.__contains__(input.get('db')) == False:
+                db = input.get('db')
+                log.info("db:" + db)
+                createDB(executor,db)
+                dbnames.add(db)
+                log.info("create input db, dbName:"+db)
+
+
+        for index, input in enumerate(inputs):
+            # if input.__contains__('columns') == False:
+            #     fedbResult.ok = True
+            #     return fedbResult, tableNames
             tableName = input.get('name')
             if tableName == None:
                 tableName = getRandomName()
@@ -325,7 +363,10 @@ def createAndInsert(executor, dbName, inputs, requestMode: bool = False):
             if createSql == None:
                 createSql = getCreateSql(tableName, input['columns'], input['indexs'])
             createSql = formatSql(createSql, tableNames)
-            res = ddl(executor, dbName, createSql)
+            if input.__contains__('db') == True:
+                res = ddl(executor,input.get('db'),createSql)
+            else:
+                res = ddl(executor, dbName, createSql)
             if not res.ok:
                 log.error("fail to create table")
                 return res, tableNames
@@ -341,12 +382,17 @@ def createAndInsert(executor, dbName, inputs, requestMode: bool = False):
     fedbResult.ok = True
     return fedbResult, tableNames
 
+def createDB(executor, dbName):
+    sql = 'create database {}'.format(dbName)
+    executor.execute(sql)
 
 def getInsertSqls(input):
     insertSql = input.get('insert')
     if insertSql is not None and len(insertSql) > 0:
         return [insertSql]
     tableName = input.get('name')
+    if input.__contains__('db')==True:
+        tableName = input.get('db').__add__('.'+tableName)
     rows = input.get('rows')
     columns = input.get('columns')
     inserts = []

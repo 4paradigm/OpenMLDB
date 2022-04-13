@@ -40,6 +40,7 @@ public class FesqlResult {
     private OpenMLDBSchema schema;
     private OpenmldbDeployment deployment;
     private List<OpenmldbDeployment> deployments;
+    private Integer deploymentCount;
 
     @Override
     public String toString() {

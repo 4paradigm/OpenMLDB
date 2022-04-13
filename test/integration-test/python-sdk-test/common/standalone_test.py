@@ -27,8 +27,9 @@ class StandaloneTest:
     def setup_class(self):
         self.client = StandaloneClient(standalone_config.host,standalone_config.port,standalone_config.default_db_name)
         self.connect = self.client.getConnect()
-        try:
-            self.connect.execute("create database {};".format(standalone_config.default_db_name))
-            log.info("create db:" + standalone_config.default_db_name + ",success")
-        except Exception as e:
-            log.info("create db:" + standalone_config.default_db_name + ",failed . msg:" + str(e))
+
+        # try:
+        #     self.connect.execute("create database {};".format(standalone_config.default_db_name))
+        #     log.info("create db:" + standalone_config.default_db_name + ",success")
+        # except Exception as e:
+        #     log.info("create db:" + standalone_config.default_db_name + ",failed . msg:" + str(e))

@@ -72,6 +72,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         logger.info("version:{},create db:{},{}", version, dbName, dbOk);
+        FesqlUtil.useDB(executor,dbName);
         FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);

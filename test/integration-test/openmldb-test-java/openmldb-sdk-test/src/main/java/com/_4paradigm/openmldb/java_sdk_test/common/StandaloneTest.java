@@ -35,7 +35,7 @@ import org.testng.annotations.Parameters;
  */
 @Slf4j
 public class StandaloneTest extends BaseTest {
-    // protected static SqlExecutor executor;
+    protected static SqlExecutor executor;
 
     @BeforeTest()
     @Parameters({"env","version","fedbPath"})
@@ -48,20 +48,24 @@ public class StandaloneTest extends BaseTest {
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .basePath("/home/wangkaidong/fedb-auto-test/standalone")
+                    .fedbPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10019"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10020"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10021"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10027"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10028"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10029"))
                     .host("172.24.4.55")
-                    .port(10019)
+                    .port(10027)
                     .build();
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
             FedbGlobalVar.env = caseEnv;
         }
+        //单机版SDK
+        StandaloneClient standaloneClient = new StandaloneClient(FedbGlobalVar.mainInfo);
+        executor = standaloneClient.getExecutor();
+        log.info("executor : {}",executor);
         log.info("fedb global var env: {}", env);
     }
 }

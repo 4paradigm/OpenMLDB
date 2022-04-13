@@ -43,4 +43,14 @@ public class SelectTest extends StandaloneTest {
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //全pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Step("{testCase.desc}")
+    public void testSelectSDK(SQLCase testCase) throws Exception {
+         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
 }

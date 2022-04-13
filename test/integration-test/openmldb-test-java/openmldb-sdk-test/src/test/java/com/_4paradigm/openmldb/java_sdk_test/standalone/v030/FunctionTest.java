@@ -41,4 +41,12 @@ public class FunctionTest extends StandaloneTest {
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/function/")
+    public void testFunctionSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

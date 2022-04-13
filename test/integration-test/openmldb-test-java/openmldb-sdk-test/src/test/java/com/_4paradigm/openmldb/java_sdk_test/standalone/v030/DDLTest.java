@@ -68,4 +68,45 @@ public class DDLTest extends StandaloneTest {
     public void testCreateNoIndex(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //SDK版本
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Story("create")
+    public void testCreateSDk(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //全pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTLSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //有问题
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Story("options")
+    public void testOptionsSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //有问题
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndexSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Story("create_no_index")
+    public void testCreateNoIndexSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
 }
