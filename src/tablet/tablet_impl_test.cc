@@ -1348,8 +1348,9 @@ TEST_F(TabletImplTest, Traverse) {
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
+    brpc::Controller controller;
     ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
     /*::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(srp);
@@ -1415,35 +1416,40 @@ TEST_F(TabletImplTest, TraverseTTL) {
     sr.set_pid(1);
     sr.set_limit(100);
     ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    brpc::Controller controller;
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10050", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10099", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(25, (signed)srp->count());
     ASSERT_EQ("test21024", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(25, (signed)srp->count());
     ASSERT_EQ("test21049", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(10, (signed)srp->count());
     ASSERT_EQ("test21059", srp->pk());
@@ -1536,21 +1542,24 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.set_idx_name("card");
     sr.set_limit(100);
     ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    brpc::Controller controller;
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(14, (signed)srp->count());
     ASSERT_EQ("card21006", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(33, (signed)srp->count());
     ASSERT_EQ("card21023", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
     ASSERT_EQ("card21029", srp->pk());
@@ -1559,21 +1568,24 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.clear_pk();
     sr.clear_ts();
     sr.set_idx_name("card1");
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(15, (signed)srp->count());
     ASSERT_EQ("card21006", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(33, (signed)srp->count());
     ASSERT_EQ("card21023", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(12, (signed)srp->count());
     ASSERT_EQ("card21029", srp->pk());
@@ -1582,21 +1594,24 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.clear_pk();
     sr.clear_ts();
     sr.set_idx_name("mcc");
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(34, (signed)srp->count());
     ASSERT_EQ("mcc10016", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(26, (signed)srp->count());
     ASSERT_EQ("mcc21009", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    controller.Reset();
+    tablet.Traverse(&controller, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(0, (signed)srp->count());
     ASSERT_TRUE(srp->is_finish());
@@ -3692,20 +3707,22 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index0");
+        brpc::Controller controller;
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
     // ts2 has 20 expire
     {
+        brpc::Controller controller;
         ::openmldb::api::TraverseRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(80, (signed)srp->count());
     }
@@ -3717,7 +3734,8 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_limit(100);
         sr.set_idx_name("index2");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(70, (signed)srp->count());
     }
@@ -3729,7 +3747,8 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_limit(100);
         sr.set_idx_name("index3");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
@@ -3741,7 +3760,8 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_limit(100);
         sr.set_idx_name("index4");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
@@ -3753,7 +3773,8 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_limit(100);
         sr.set_idx_name("index5");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
@@ -4557,8 +4578,9 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("ts1");
+        brpc::Controller controller;
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
@@ -4569,7 +4591,8 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_limit(100);
         sr.set_idx_name("ts2");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
@@ -4580,7 +4603,8 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_limit(100);
         sr.set_idx_name("ts3");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(60, (signed)srp->count());
     }
@@ -4592,7 +4616,8 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_limit(100);
         sr.set_idx_name("ts4");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
@@ -4604,7 +4629,8 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_limit(100);
         sr.set_idx_name("ts5");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(50, (signed)srp->count());
     }
@@ -4616,7 +4642,8 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_limit(100);
         sr.set_idx_name("ts6");
         ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
+        brpc::Controller controller;
+        tablet.Traverse(&controller, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(100, (signed)srp->count());
     }
