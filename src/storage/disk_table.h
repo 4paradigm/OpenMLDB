@@ -309,11 +309,11 @@ class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
     DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                          ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
-                         int32_t ts_idx);
+                         int32_t ts_idx, rocksdb::ColumnFamilyHandle* column_handle);
 
     DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                         ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                         const uint64_t& expire_cnt);
+                         ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
+                         rocksdb::ColumnFamilyHandle* column_handle);
 
     ~DiskTableKeyIterator() override;
 
@@ -344,6 +344,7 @@ class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
     bool has_ts_idx_;
     uint64_t ts_;
     uint32_t ts_idx_;
+    rocksdb::ColumnFamilyHandle* column_handle_;
 };
 
 class DiskTable : public Table {

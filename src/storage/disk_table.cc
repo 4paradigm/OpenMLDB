@@ -870,15 +870,16 @@ void DiskTableTraverseIterator::NextPK() {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
             return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
-                                                 ts_col->GetId());
+                                                 ts_col->GetId(), cf_hs_[inner_pos + 1]);
         }
     }
-    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt);
+    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt, cf_hs_[inner_pos + 1]);
 }
 
-DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                                           ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                                           const uint64_t& expire_cnt)
+DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                           const rocksdb::Snapshot* snapshot, ::openmldb::storage::TTLType ttl_type,
+                                           const uint64_t& expire_time, const uint64_t& expire_cnt,
+                                           rocksdb::ColumnFamilyHandle* column_handle)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -886,11 +887,13 @@ DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* i
       expire_time_(expire_time),
       expire_cnt_(expire_cnt),
       has_ts_idx_(false),
-      ts_idx_(0) {}
+      ts_idx_(0),
+      column_handle_(column_handle) {}
 
-DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                                           ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                                           const uint64_t& expire_cnt, int32_t ts_idx)
+DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                           const rocksdb::Snapshot* snapshot, ::openmldb::storage::TTLType ttl_type,
+                                           const uint64_t& expire_time, const uint64_t& expire_cnt, int32_t ts_idx,
+                                           rocksdb::ColumnFamilyHandle* column_handle)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -898,7 +901,8 @@ DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* i
       expire_time_(expire_time),
       expire_cnt_(expire_cnt),
       has_ts_idx_(true),
-      ts_idx_(ts_idx) {}
+      ts_idx_(ts_idx),
+      column_handle_(column_handle) {}
 
 DiskTableKeyIterator::~DiskTableKeyIterator() {
     delete it_;
@@ -973,13 +977,25 @@ const hybridse::codec::Row DiskTableKeyIterator::GetKey() {
 }
 
 std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
-    std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_,
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
+    std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_,
                                                                        expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_));
     return wit;
 }
 
 ::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
-    return new DiskTableRowIterator(db_, it_, snapshot_, ttl_type_, expire_time_, expire_cnt_, pk_, ts_, has_ts_idx_,
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
+    return new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_, expire_cnt_, pk_, ts_, has_ts_idx_,
                                     ts_idx_);
 }
 
@@ -987,7 +1003,9 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
                                            ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                                            uint64_t expire_cnt, std::string pk, uint64_t ts, bool has_ts_idx,
                                            uint32_t ts_idx)
-    : it_(it),
+    : db_(db),
+      it_(it),
+      snapshot_(snapshot),
       record_idx_(1),
       expire_value_(expire_time, expire_cnt, ttl_type),
       row_(),
@@ -997,7 +1015,10 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
       has_ts_idx_(has_ts_idx),
       ts_idx_(ts_idx) {}
 
-DiskTableRowIterator::~DiskTableRowIterator() {}
+DiskTableRowIterator::~DiskTableRowIterator() {
+    delete it_;
+    db_->ReleaseSnapshot(snapshot_);
+}
 
 bool DiskTableRowIterator::Valid() const {
     if (!pk_valid_) return false;
