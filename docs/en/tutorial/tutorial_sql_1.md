@@ -1,4 +1,4 @@
-# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)
+# Guidelines for Feature Engineering Development (Part 1)
 
 
 ## 1. What is the feature engineering of machine learning
