@@ -140,9 +140,13 @@ class SystemTable {
                 break;
             }
             case SystemTableType::kDeployResponseTime: {
+                // DEPLOY_NAME is constructed in the form of {db}_{deploy_procedure_name}
                 SetColumnDesc("DEPLOY_NAME", type::DataType::kString, table_info->add_column_desc());
+                // upper bound of the bucket, in seconds
                 SetColumnDesc("TIME", type::DataType::kString, table_info->add_column_desc());
+                // total count of queries in the current bucket
                 SetColumnDesc("COUNT", type::DataType::kInt, table_info->add_column_desc());
+                // sum of queries times in the current bucket, in seconds
                 SetColumnDesc("TOTAL", type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
                 index->set_index_name("index");

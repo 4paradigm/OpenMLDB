@@ -1408,6 +1408,37 @@ bool TabletClient::CallSQLBatchRequestProcedure(
                                callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
+bool TabletClient::CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg) {
+    if (msg == nullptr) {
+        return false;
+    }
+    ::openmldb::api::CreateFunctionRequest request;
+    ::openmldb::api::CreateFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        *msg = response.msg();
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg) {
+    if (msg == nullptr) {
+        return false;
+    }
+    ::openmldb::api::DropFunctionRequest request;
+    ::openmldb::api::DropFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::DropFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        *msg = response.msg();
+        return false;
+    }
+    return true;
+}
 
 bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
                           uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,
@@ -1430,6 +1461,7 @@ bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table
     }
     return false;
 }
+
 bool TabletClient::GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res) {
     ::openmldb::api::GAFDeployStatsRequest req;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetAndFlushDeployStats, &req, res,

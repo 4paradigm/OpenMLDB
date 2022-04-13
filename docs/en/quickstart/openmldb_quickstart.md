@@ -1,4 +1,4 @@
-# OpenMLDB Quick Start
+# OpenMLDB Quickstart
 
 This tutorial provides a quick start guide for OpenMLDB. Basic steps are: create database, import data, offline feature extraction, deploy SQL, online real-time feature extraction, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
 

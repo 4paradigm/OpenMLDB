@@ -225,6 +225,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeSet";
         case kPlanTypeDelete:
             return "kPlanTypeDelete";
+        case kPlanTypeCreateFunction:
+            return "kPlanTypeCreateFunction";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -729,6 +731,21 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     PrintValue(output, tab, Options().get(), "options", false);
     output << "\n";
     PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
+}
+
+void CreateFunctionPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string new_tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, new_tab, args_type_, "args_type", false);
+    output << "\n";
+    PrintValue(output, new_tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {

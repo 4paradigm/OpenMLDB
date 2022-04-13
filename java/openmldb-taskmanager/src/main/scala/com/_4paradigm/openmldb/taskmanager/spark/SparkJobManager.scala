@@ -21,8 +21,11 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
+import org.slf4j.LoggerFactory
 
 object SparkJobManager {
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * Create the SparkLauncher object with pre-set parameters like yarn-cluster.
@@ -106,7 +109,9 @@ object SparkJobManager {
     if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
       launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
     }
+
     for ((k, v) <- sparkConf) {
+      logger.info("Get Spark config key: " + k + ", value: " + v)
       launcher.setConf(k, v)
     }
 

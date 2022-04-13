@@ -14,275 +14,156 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+main entry of openmldb prometheus exporter
+"""
 
 import argparse
 import os
-import time
 import sys
+import logging
+from urllib import request
+from typing import Iterable
 
-from prometheus_client import start_http_server
-from prometheus_client import Gauge
+from openmldb_collector import (connected_seconds, component_status, table_rows, table_partitions,
+                                table_partitions_unalive, table_memory, table_disk, table_replica, deploy_response_time,
+                                tablet_memory_application, tablet_memory_actual)
+from prometheus_client.twisted import MetricsResource
+from sqlalchemy import engine, select
+from twisted.internet import reactor, task
+from twisted.web.resource import Resource
+from twisted.web.server import Site
 
 dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-import urllib.request as request
 
-if sys.version_info.major > 2:
-    do_open = lambda filename, mode: open(filename, mode, encoding="utf-8")
-else:
-    do_open = lambda filename, mode: open(filename, mode)
+class OpenMLDBScraper(object):
+    '''
+    basic class to pull OpenMLDB metrics through sdk
+    '''
+    conn: engine.Connection
 
-method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequestquery", "subbatchrequestquery"]
-method_set = set(method)
-monitor_key = [
-    "count", "error", "qps", "latency", "latency_50", "latency_90", "latency_99", "latency_999", "latency_9999",
-    "max_latency"
-]
-openmldb_logs = {
-    "tablet": [{
-        "file_name": "/tablet_mon.log",
-        "offset": 0,
-        "item": {
-            "name": "restart_num",
-            "key": "./bin/boot.sh",
-            "num": 0
-        }
-    }, {
-        "file_name": "/tablet.WARNING",
-        "offset": 0,
-        "item": {
-            "name": "reconnect_num",
-            "key": "reconnect zk",
-            "num": 0
-        }
-    }],
-    "ns": [{
-        "file_name": "/nameserver_mon.log",
-        "offset": 0,
-        "item": {
-            "name": "restart_num",
-            "key": "./bin/boot.sh",
-            "num": 0
-        }
-    }, {
-        "file_name": "/nameserver.WARNING",
-        "offset": 0,
-        "item": {
-            "name": "reconnect_num",
-            "key": "reconnect zk",
-            "num": 0
-        }
-    }]
-}
+    def __init__(self, conn):
+        self.conn = conn
 
+    def scrape_components(self):
+        rs = self.conn.execute("SHOW COMPONENTS")
+        components = rs.fetchall()
+        for row in components:
+            endpoint = row[0]
+            # connect time in millisecond
+            connect_time = int(row[2])
+            status = row[3]
+            # set protected member for Counter is dangerous, though it seems the only way
+            connected_seconds.labels(endpoint)._value.set(connect_time / 1000)
+            component_status.labels(endpoint).state(status)
 
-def parse_data(resp):
-    beginParse = False
-    stageBegin = False
-    server = ""
-    servers = {}
-    for i in resp:
-        if len(i) < 0:
-            continue
-        l = i.decode()
-        if beginParse and l[0] == '\n':
-            stageBegin = False
-            resp.readline()
-            continue
-        elif l[0] == '[':
-            beginParse = True
-            resp.readline()
-            continue
-        if not beginParse:
-            continue
-        if stageBegin:
-            cols = l.strip().split()
-            indicator = cols[0].strip(":")
-            value = int(cols[1])
-            servers[server][indicator] = value
-        else:
-            stageBegin = True
-            server = l.split()[0]
-            servers[server] = {}
-    return servers
+    def scrape_deploy_response_time(self):
+        rs = self.conn.execute("SELECT * FROM INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME")
+        row = rs.fetchone()
+        sum = 0
+        while row != None:
+            dp_name, time, count, total = row
+            time = float(time)
+            sum += float(total)
+            for i, bound in enumerate(deploy_response_time._upper_bounds):
+                if time <= bound:
+                    # FIXME: handle Histogram reset correctly
+                    deploy_response_time.labels(dp_name)._buckets[i].set(int(count))
+                    break
+            deploy_response_time.labels(dp_name)._sum.set(sum)
+            row = rs.fetchone()
+
+    def scrape_table_status(self):
+        rs = self.conn.execute("SHOW TABLE STATUS")
+        rows = rs.fetchall()
+        for row in rows:
+            # TODO: use storage_type
+            tid, tb_name, db_name, storage_type, rows, mem, disk, partition, partition_unalive, replica, *_ = row
+            tb_path = f"{db_name}_{tb_name}"
+            tid = int(tid)
+            table_rows.labels(tb_path, tid).set(int(rows))
+            table_partitions.labels(tb_path, tid).set(int(partition))
+            table_partitions_unalive.labels(tb_path, tid).set(int(partition_unalive))
+            table_replica.labels(tb_path, tid).set(int(replica))
+            table_memory.labels(tb_path, tid).set(int(mem))
+            table_disk.labels(tb_path, tid).set(int(disk))
 
 
-def get_data(url):
-    with request.urlopen(url) as resp:
-        return parse_data(resp)
+def pull_db_stats(inst: OpenMLDBScraper):
+    logging.info("running pull_db_stats")
+    inst.scrape_components()
+    inst.scrape_table_status()
+    inst.scrape_deploy_response_time()
+
+
+def pull_mem_stats(endpoint_list: Iterable[str]):
+    logging.info("running pull_mem_stats")
+    for endpoint in endpoint_list:
+        app, actual = get_mem(f"{endpoint}/TabletServer/ShowMemPool")
+        tablet_memory_application.labels(endpoint).set(app)
+        tablet_memory_actual.labels(endpoint).set(actual)
 
 
 def get_mem(url):
     memory_by_application = 0
-    memory_central_cache_freelist = 0
     memory_acutal_used = 0
-    resp = request.urlopen(url)
-    for i in resp:
-        line = i.decode().strip()
-        if line.rfind("use by application") > 0:
-            try:
-                memory_by_application = int(line.split()[1])
-            except Exception as e:
-                memory_by_application = 0
-        elif line.rfind("central cache freelist") > 0:
-            try:
-                memory_central_cache_freelist = line.split()[2]
-            except Exception as e:
-                memory_central_cache_freelist = 0
-        elif line.rfind("Actual memory used") > 0:
-            try:
-                memory_acutal_used = line.split()[2]
-            except Exception as e:
-                memory_acutal_used = 0
-        else:
-            continue
-    return memory_by_application, memory_central_cache_freelist, memory_acutal_used
-
-
-def get_conf(conf_file):
-    conf_map = {}
-    if conf_file.startswith('/'):
-        conf_path = conf_file
-    else:
-        conf_path = dir_name + '/' + conf_file
-    print("reading config file: ", conf_path)
-    with do_open(conf_path, "r") as conf_file:
-        for line in conf_file:
-            if line.startswith("#"):
+    with request.urlopen(url) as resp:
+        for i in resp:
+            line = i.decode().strip()
+            if line.rfind("use by application") > 0:
+                try:
+                    memory_by_application = int(line.split()[1])
+                except Exception as e:
+                    memory_by_application = 0
+            elif line.rfind("Actual memory used") > 0:
+                try:
+                    memory_acutal_used = int(line.split()[2])
+                except Exception as e:
+                    memory_acutal_used = 0
+            else:
                 continue
-            arr = line.split("=")
-            if arr[0] == "tablet_endpoint":
-                conf_map["endpoint"] = arr[1].strip()
-            elif arr[0] == "tablet_log_dir":
-                conf_map["tablet"] = arr[1].strip()
-            elif arr[0] == "ns_log_dir":
-                conf_map["ns"] = arr[1].strip()
-            elif arr[0] == "port":
-                conf_map["port"] = int(arr[1].strip())
-            elif arr[0] == "interval":
-                conf_map["interval"] = int(arr[1].strip())
-        return conf_map
+    return memory_by_application, memory_acutal_used
 
-
-def get_timestamp():
-
-    def big_int(ct):
-        try:
-            return long(ct)
-        except:
-            return int(ct)
-
-    ct = time.time()
-    local_time = time.localtime(ct)
-    data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    data_secs = (ct - big_int(ct)) * 1000
-    today = time.strftime("%Y%m%d", local_time)
-    return ["%s.%03d" % (data_head, data_secs) + " +0800", today]
-
-
-def search_key(file_name, offset, keyword):
-    if not os.path.exists(file_name):
-        return (0, 0)
-    count = 0
-    with do_open(file_name, 'r') as f:
-        f.seek(offset)
-        for line in f:
-            if line.find(keyword) != -1:
-                count += 1
-        return (count, f.tell())
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='OpenMLDB exporter')
+    parser = argparse.ArgumentParser(description="OpenMLDB exporter")
     parser.add_argument("--config", type=str, help="path to config file")
+    parser.add_argument("--log", type=str, default="INFO", help="config log level")
+    parser.add_argument("--port", type=int, default=8000, help="process listen port")
+    parser.add_argument("--zk_root", type=str, default="127.0.0.1:6181", help="endpoint to zookeeper")
+    parser.add_argument("--zk_path", type=str, default="/", help="root path in zookeeper for OpenMLDB")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
-    conf_map = get_conf(args.config or 'openmldb_exporter.conf')
-    env_dist = os.environ
-    port = conf_map["port"]
-    if "metric_port" in env_dist:
-        port = int(env_dist["metric_port"])
-    start_http_server(port)
+    # assuming loglevel is bound to the string value obtained from the
+    # command line argument. Convert to upper case to allow the user to
+    # specify --log=DEBUG or --log=debug
+    numeric_level = getattr(logging, args.log.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.log}")
+    logging.basicConfig(level=numeric_level)
 
-    # three gauge metric built in, from service status(named api), log, application memory respectively
-    # NOTE: those gauges are not finalized, any change will happen without warning
-    gauge = {}
+    eng = engine.create_engine(f"openmldb:///?zk={args.zk_root}&zkPath={args.zk_path}")
+    conn = eng.connect()
 
-    # gauge for method provided by OpenMLDB, has two labels
-    # 1. method: method name, e.g put, get
-    # 2. category: currently two categories:
-    #    1. latency related metric
-    #    2. couter related: qps, error count
-    gauge["api"] = Gauge("openmldb_api", "metric for OpenMLDB server api status", ["method", "category"])
+    scraper = OpenMLDBScraper(conn)
 
-    gauge["log"] = Gauge("openmldb_log", "metric for OpenMLDB log", ["role", "type"])
-    gauge["memory"] = Gauge("openmldb_memory", "metric for OpenMLDB memory", ["type"])
+    repeated_task = task.LoopingCall(pull_db_stats, scraper)
+    repeated_task.start(10.0)
 
-    endpoint = ""
-    if "endpoint" in conf_map:
-        endpoint = conf_map["endpoint"]
-    if "endpoint" in env_dist:
-        endpoint = env_dist["endpoint"]
-    url = ""
-    mem_url = ""
-    if endpoint != "":
-        url = "http://" + endpoint + "/status"
-        mem_url = "http://{}/TabletServer/ShowMemPool".format(endpoint)
+    memory_task = task.LoopingCall(pull_mem_stats, [])
+    memory_task.start(10.0)
 
-    last_date = get_timestamp()[1]
-    sleep_sec = conf_map["interval"]
-    while True:
-        try:
-            time_stamp = get_timestamp()[0]
-            new_date = get_timestamp()[1]
+    root = Resource()
+    root.putChild(b"metrics", MetricsResource())
+    factory = Site(root)
+    reactor.listenTCP(args.port, factory)
+    reactor.run()
 
-            # analysis openmldb logs
-            for module in openmldb_logs.keys():
-                if module not in conf_map:
-                    continue
-                for var in openmldb_logs[module]:
-                    (count, offset) = search_key(conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
-                    if var["item"]["name"] == "restart_num":
-                        var["offset"] = offset
-                        if count > 0:
-                            var["item"]["num"] += count
-                            openmldb_logs[module][1]["item"]["offset"] = 0
-                            openmldb_logs[module][1]["item"]["num"] = 0
-                        value = count - 1 if count > 0 else count
-                        gauge["log"].labels(role=module, type=var["item"]["name"]).set(var["item"]["num"])
-                    else:
-                        var["item"]["num"] += count
-                        var["offset"] = offset
-                        gauge["log"].labels(role=module, type=var["item"]["name"]).set(str(var["item"]["num"]))
-
-            # pull OpenMLDB metric status
-            if url == "":
-                continue
-            result = get_data(url)
-            for method_data in result:
-                lower_method = method_data.lower()
-                if lower_method not in method_set:
-                    continue
-                data = "{}\t{}\t".format(time_stamp, lower_method)
-                for key in monitor_key:
-                    data = "{}\t{}:{}".format(data, key, result[method_data][key])
-                    gauge["api"].labels(method=lower_method, category=key).set(result[method_data][key])
-
-            # pull OpenMLDB memory usage
-            if len(mem_url) < 1:
-                continue
-            mema, memb, memc = get_mem(mem_url)
-            gauge["memory"].labels(type="use_by_application").set(mema)
-            gauge["memory"].labels(type="central_cache_freelist").set(memb)
-            gauge["memory"].labels(type="actual_memory_used").set(memc)
-        except Exception as e:
-            print(time.ctime(), ", exception happened during pull metrics: ", e)
-        finally:
-            print(time.ctime(), ", pulled, sleep for ", sleep_sec, " seconds")
-            time.sleep(sleep_sec)
 
 if __name__ == "__main__":
     main()

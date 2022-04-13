@@ -158,7 +158,7 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
-    if (config.disableOpenmldb) {
+    if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
 

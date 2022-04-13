@@ -970,6 +970,43 @@ TEST_F(SQLClusterTest, GetPreAggrTable) {
     }
 }
 
+TEST_F(SQLClusterTest, ClusterSelect) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2)) options(partitionnum=8, replicanum=3);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    std::string insert = "insert into " + table + " values('helloworld', 1024);";
+    ok = router->ExecuteInsert(db, insert, &status);
+    ASSERT_TRUE(ok);
+
+    auto res = router->ExecuteSQL(db, "select * from " + table, &status);
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->Size(), 1);
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("helloworld, 1024", res->GetRowString());
+    ASSERT_FALSE(res->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
 }  // namespace sdk
 }  // namespace openmldb
 

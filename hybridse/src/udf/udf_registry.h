@@ -348,7 +348,6 @@ struct VariadicExprUdfGen : public ExprUdfGenBase {
     const FType gen_func;
 };
 
-template <typename RegistryT>
 class UdfRegistryHelper {
  public:
     explicit UdfRegistryHelper(const std::string& name, UdfLibrary* library)
@@ -381,7 +380,7 @@ class UdfRegistryHelper {
     }
 
     void InsertRegistry(const std::vector<const node::TypeNode*>& signature,
-                        bool is_variadic, std::shared_ptr<RegistryT> registry) {
+                        bool is_variadic, std::shared_ptr<UdfRegistry> registry) {
         registry->SetDoc(doc_);
         library_->InsertRegistry(name_, signature, is_variadic,
                                  always_return_list_, always_list_argidx_,
@@ -395,7 +394,7 @@ class UdfRegistryHelper {
     std::string doc_;
     bool always_return_list_ = false;
     std::unordered_set<size_t> always_list_argidx_;
-    std::vector<std::shared_ptr<RegistryT>> registries_;
+    std::vector<std::shared_ptr<UdfRegistry>> registries_;
 };
 
 /**
@@ -414,10 +413,10 @@ class ExprUdfRegistry : public UdfRegistry {
     std::shared_ptr<ExprUdfGenBase> gen_impl_func_;
 };
 
-class ExprUdfRegistryHelper : public UdfRegistryHelper<ExprUdfRegistry> {
+class ExprUdfRegistryHelper : public UdfRegistryHelper {
  public:
     explicit ExprUdfRegistryHelper(const std::string& name, UdfLibrary* library)
-        : UdfRegistryHelper<ExprUdfRegistry>(name, library) {}
+        : UdfRegistryHelper(name, library) {}
 
     template <typename... Args>
     ExprUdfRegistryHelper& args(
@@ -680,13 +679,13 @@ class LlvmUdfRegistry : public UdfRegistry {
     std::vector<size_t> nullable_arg_indices_;
 };
 
-class LlvmUdfRegistryHelper : public UdfRegistryHelper<LlvmUdfRegistry> {
+class LlvmUdfRegistryHelper : public UdfRegistryHelper {
  public:
     LlvmUdfRegistryHelper(const std::string& name, UdfLibrary* library)
-        : UdfRegistryHelper<LlvmUdfRegistry>(name, library) {}
+        : UdfRegistryHelper(name, library) {}
 
     LlvmUdfRegistryHelper(const LlvmUdfRegistryHelper& other)
-        : UdfRegistryHelper<LlvmUdfRegistry>(other.name(), other.library()) {}
+        : UdfRegistryHelper(other.name(), other.library()) {}
 
     template <typename RetType>
     LlvmUdfRegistryHelper& returns() {
@@ -869,6 +868,19 @@ class ExternalFuncRegistry : public UdfRegistry {
 
  private:
     node::ExternalFnDefNode* extern_def_;
+};
+
+class DynamicUdfRegistry : public UdfRegistry {
+ public:
+    explicit DynamicUdfRegistry(const std::string& name,
+                                  node::DynamicUdfFnDefNode* extern_def)
+        : UdfRegistry(name), extern_def_(extern_def) {}
+
+    Status ResolveFunction(UdfResolveContext* ctx,
+                           node::FnDefNode** result) override;
+
+ private:
+    node::DynamicUdfFnDefNode* extern_def_;
 };
 
 template <bool A, bool B>
@@ -1176,12 +1188,10 @@ struct TypeAnnotatedFuncPtr {
     using type = TypeAnnotatedFuncPtrImpl<std::tuple<Args...>>;
 };
 
-class ExternalFuncRegistryHelper
-    : public UdfRegistryHelper<ExternalFuncRegistry> {
+class ExternalFuncRegistryHelper : public UdfRegistryHelper {
  public:
-    explicit ExternalFuncRegistryHelper(const std::string& basename,
-                                        UdfLibrary* library)
-        : UdfRegistryHelper<ExternalFuncRegistry>(basename, library) {}
+    ExternalFuncRegistryHelper(const std::string& basename, UdfLibrary* library)
+        : UdfRegistryHelper(basename, library) {}
 
     ~ExternalFuncRegistryHelper() {
         if (args_specified_) {
@@ -1360,6 +1370,24 @@ class ExternalFuncRegistryHelper
     node::ExternalFnDefNode* cur_def_ = nullptr;
 };
 
+class DynamicUdfRegistryHelper : public UdfRegistryHelper {
+ public:
+    DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
+            node::DataType return_type, const std::vector<node::DataType>& arg_types,
+            void* udfcontext_fun);
+    Status Register();
+
+ private:
+    std::string fn_name_;
+    void* fn_ptr_;
+    void* udfcontext_fun_ptr_;
+    std::vector<const node::TypeNode*> arg_types_;
+    std::vector<int> arg_nullable_;
+    node::TypeNode* return_type_ = nullptr;
+    bool return_nullable_ = false;
+    bool return_by_arg_ = false;
+};
+
 template <template <typename> typename FTemplate>
 class ExternalTemplateFuncRegistryHelper {
  public:
@@ -1435,8 +1463,7 @@ class ExternalTemplateFuncRegistryHelper {
 
 class SimpleUdfRegistry : public UdfRegistry {
  public:
-    explicit SimpleUdfRegistry(const std::string& name,
-                               node::UdfDefNode* fn_def)
+    SimpleUdfRegistry(const std::string& name, node::UdfDefNode* fn_def)
         : UdfRegistry(name), fn_def_(fn_def) {}
 
     Status ResolveFunction(UdfResolveContext* ctx,
@@ -1457,7 +1484,7 @@ struct UdafDefGen {
 
 class UdafRegistry : public UdfRegistry {
  public:
-    explicit UdafRegistry(const std::string& name, const UdafDefGen& udaf_gen)
+    UdafRegistry(const std::string& name, const UdafDefGen& udaf_gen)
         : UdfRegistry(name), udaf_gen_(udaf_gen) {}
 
     Status ResolveFunction(UdfResolveContext* ctx,
@@ -1470,10 +1497,10 @@ class UdafRegistry : public UdfRegistry {
 template <typename OUT, typename ST, typename... IN>
 class UdafRegistryHelperImpl;
 
-class UdafRegistryHelper : public UdfRegistryHelper<UdafRegistry> {
+class UdafRegistryHelper : public UdfRegistryHelper {
  public:
     explicit UdafRegistryHelper(const std::string& name, UdfLibrary* library)
-        : UdfRegistryHelper<UdafRegistry>(name, library) {}
+        : UdfRegistryHelper(name, library) {}
 
     template <typename OUT, typename ST, typename... IN>
     UdafRegistryHelperImpl<OUT, ST, IN...> templates();
@@ -1495,7 +1522,7 @@ class UdafRegistryHelper : public UdfRegistryHelper<UdafRegistry> {
 };
 
 template <typename OUT, typename ST, typename... IN>
-class UdafRegistryHelperImpl : UdfRegistryHelper<UdafRegistry> {
+class UdafRegistryHelperImpl : UdfRegistryHelper {
  public:
     explicit UdafRegistryHelperImpl(const std::string& name,
                                     UdfLibrary* library)
@@ -1832,10 +1859,10 @@ UdafRegistryHelperImpl<OUT, ST, IN...> UdafRegistryHelper::templates() {
 }
 
 template <template <typename> typename FTemplate>
-class UdafTemplateRegistryHelper : public UdfRegistryHelper<UdafRegistry> {
+class UdafTemplateRegistryHelper : public UdfRegistryHelper {
  public:
     UdafTemplateRegistryHelper(const std::string& name, UdfLibrary* library)
-        : UdfRegistryHelper<UdafRegistry>(name, library),
+        : UdfRegistryHelper(name, library),
           helper_(name, library) {}
 
     template <typename... Args>
