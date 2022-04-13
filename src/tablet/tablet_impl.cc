@@ -5370,7 +5370,8 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
     if (run_ok) {
         auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
         if (status.isOK()) {
-            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file()
+                << " endpoint " << endpoint_;
         } else {
             err_msg = status.msg;
             run_ok = false;
@@ -5411,7 +5412,8 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
     engine_->ClearCacheLocked("");
     auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
     if (status.isOK()) {
-        LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
+        LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file()
+                << " endpoint " << endpoint_;
         base::SetResponseOK(response);
         std::shared_ptr<DynamicLibHandle> so_handle;
         {

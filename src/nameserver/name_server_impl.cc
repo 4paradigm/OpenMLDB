@@ -10441,6 +10441,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
             return;
         }
     }
+    PDLOG(INFO, "create function %s success", fun->name().c_str());
     base::SetResponseOK(response);
     std::lock_guard<std::mutex> lock(mu_);
     external_fun_.emplace(fun->name(), fun);
