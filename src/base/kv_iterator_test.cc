@@ -76,30 +76,6 @@ TEST_F(KvIteratorTest, Iterator) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
-TEST_F(KvIteratorTest, HasPK) {
-    ::openmldb::api::TraverseResponse* response = new ::openmldb::api::TraverseResponse();
-
-    std::string* pairs = response->mutable_pairs();
-    pairs->resize(52);
-    char* data = reinterpret_cast<char*>(&((*pairs)[0]));
-    ::openmldb::storage::DataBlock* db1 = new ::openmldb::storage::DataBlock(1, "hello", 5);
-    ::openmldb::storage::DataBlock* db2 = new ::openmldb::storage::DataBlock(1, "hell1", 5);
-    ::openmldb::codec::EncodeFull("test1", 9527, db1, data, 0);
-    ::openmldb::codec::EncodeFull("test2", 9528, db2, data, 26);
-    KvIterator kv_it(response);
-    ASSERT_TRUE(kv_it.Valid());
-    ASSERT_STREQ("test1", kv_it.GetPK().c_str());
-    ASSERT_EQ(9527, (signed)kv_it.GetKey());
-    ASSERT_STREQ("hello", kv_it.GetValue().ToString().c_str());
-    kv_it.Next();
-    ASSERT_TRUE(kv_it.Valid());
-    ASSERT_STREQ("test2", kv_it.GetPK().c_str());
-    ASSERT_EQ(9528, (signed)kv_it.GetKey());
-    ASSERT_STREQ("hell1", kv_it.GetValue().ToString().c_str());
-    kv_it.Next();
-    ASSERT_FALSE(kv_it.Valid());
-}
-
 }  // namespace base
 }  // namespace openmldb
 
