@@ -37,7 +37,7 @@ int strlength(UDFContext* ctx, StringRef* input) {
 }
 
 extern "C"
-void int2str(UDFContext* ctx, int input, StringRef* output) {
+void int2str(UDFContext* ctx, int32_t input, StringRef* output) {
     std::string tmp = std::to_string(input);
     char *buffer = ctx->pool->Alloc(tmp.length());
     memcpy(buffer, tmp.data(), tmp.length());

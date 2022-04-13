@@ -70,12 +70,12 @@ TEST_P(DBSDKTest, CreateFunction) {
     sr = cli->sr;
     hybridse::sdk::Status status;
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
-    std::string cut2_sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING "
-                            "OPTIONS (FILE='" + so_path + "');";
-    std::string strlength_sql = "CREATE FUNCTION strlength(x STRING) RETURNS INT "
-                            "OPTIONS (FILE='" + so_path + "');";
-    std::string int2str_sql = "CREATE FUNCTION int2str(x INT) RETURNS STRING "
-                            "OPTIONS (FILE='" + so_path + "');";
+    std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
+                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+    std::string strlength_sql = absl::StrCat("CREATE FUNCTION strlength(x STRING) RETURNS INT "
+                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+    std::string int2str_sql = absl::StrCat("CREATE FUNCTION int2str(x INT) RETURNS STRING "
+                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path,"');");
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
