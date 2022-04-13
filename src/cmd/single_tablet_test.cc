@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#include "cmd/sql_cmd.h"
 
 #include <unistd.h>
-
 #include <limits>
 #include <memory>
 #include <string>
@@ -26,6 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
+#include "cmd/sql_cmd.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
