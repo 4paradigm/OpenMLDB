@@ -340,43 +340,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                     kRightBias));
         }
         case kPhysicalOpRequestAggUnion: {
-            auto request_task = Build(node->producers().at(0), status);
-            if (!request_task.IsValid()) {
-                status.msg = "fail to build request input runner";
-                status.code = common::kExecutionPlanError;
-                LOG(WARNING) << status;
-                return fail;
-            }
-            auto base_table_task = Build(node->producers().at(1), status);
-            auto base_table = base_table_task.GetRoot();
-            if (!base_table_task.IsValid()) {
-                status.msg = "fail to build base_table input runner";
-                status.code = common::kExecutionPlanError;
-                LOG(WARNING) << status;
-                return fail;
-            }
-            auto agg_table_task = Build(node->producers().at(2), status);
-            auto agg_table = agg_table_task.GetRoot();
-            if (!agg_table_task.IsValid()) {
-                status.msg = "fail to build agg_table input runner";
-                status.code = common::kExecutionPlanError;
-                LOG(WARNING) << status;
-                return fail;
-            }
-            auto op = dynamic_cast<const PhysicalRequestAggUnionNode*>(node);
-            RequestAggUnionRunner* runner = nullptr;
-            CreateRunner<RequestAggUnionRunner>(
-                &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                op->window().range_, op->exclude_current_time(),
-                op->output_request_row(), op->func_, op->agg_col_);
-            if (!op->instance_not_in_window()) {
-                runner->AddWindowUnion(op->window_, base_table);
-                runner->AddWindowUnion(op->agg_window_, agg_table);
-            }
-            auto task = RegisterTask(
-                node, BuildLocalTaskForMultipleRunner({&request_task, &base_table_task, &agg_table_task}, runner));
-            runner->InitAggregator();
-            return task;
+            return BuildRequestAggUnionTask(node, status);
         }
         case kPhysicalOpRequestJoin: {
             auto left_task =  // NOLINT
@@ -581,6 +545,49 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     }
 }
 
+ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status) {
+    auto fail = InvalidTask();
+    auto request_task = Build(node->producers().at(0), status);
+    if (!request_task.IsValid()) {
+        status.msg = "fail to build request input runner";
+        status.code = common::kExecutionPlanError;
+        LOG(WARNING) << status;
+        return fail;
+    }
+    auto base_table_task = Build(node->producers().at(1), status);
+    auto base_table = base_table_task.GetRoot();
+    if (!base_table_task.IsValid()) {
+        status.msg = "fail to build base_table input runner";
+        status.code = common::kExecutionPlanError;
+        LOG(WARNING) << status;
+        return fail;
+    }
+    auto agg_table_task = Build(node->producers().at(2), status);
+    auto agg_table = agg_table_task.GetRoot();
+    if (!agg_table_task.IsValid()) {
+        status.msg = "fail to build agg_table input runner";
+        status.code = common::kExecutionPlanError;
+        LOG(WARNING) << status;
+        return fail;
+    }
+    auto op = dynamic_cast<const PhysicalRequestAggUnionNode*>(node);
+    RequestAggUnionRunner* runner = nullptr;
+    CreateRunner<RequestAggUnionRunner>(
+        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
+        op->window().range_, op->exclude_current_time(),
+        op->output_request_row(), op->func_, op->agg_col_);
+    Key index_key;
+    if (!op->instance_not_in_window()) {
+        index_key = op->window_.index_key();
+        runner->AddWindowUnion(op->window_, base_table);
+        runner->AddWindowUnion(op->agg_window_, agg_table);
+    }
+    auto task = RegisterTask(node, MultipleInherit({&request_task, &base_table_task, &agg_table_task}, runner,
+                                                   index_key, kRightBias));
+    runner->InitAggregator();
+    return task;
+}
+
 ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
                                          const ClusterTask& right,
                                          Runner* runner, const Key& index_key,
@@ -593,15 +600,54 @@ ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
     }
 }
 
-ClusterTask RunnerBuilder::BuildLocalTaskForMultipleRunner(
-    const std::vector<const ClusterTask*>& children, Runner* runner) {
-    // TODO(zhanghao): assume all tasks can be done locally
+ClusterTask RunnerBuilder::MultipleInherit(const std::vector<const ClusterTask*>& children,
+                                                           Runner* runner, const Key& index_key,
+                                                           const TaskBiasType bias) {
+    // TODO(zhanghao): currently only kRunnerRequestAggUnion uses MultipleInherit
+    const ClusterTask* request = children[0];
+    if (runner->type_ != kRunnerRequestAggUnion) {
+        LOG(WARNING) << "MultipleInherit only support RequestAggUnionRunner";
+        return ClusterTask();
+    }
+
+    if (children.size() < 3) {
+        LOG(WARNING) << "MultipleInherit should be called for children size >= 3, but children.size() = "
+                     << children.size();
+        return ClusterTask();
+    }
+
     for (const auto child : children) {
         if (child->IsClusterTask()) {
-            DLOG(WARNING) << "Child task is a cluster task: " << child->GetRouteInfo().ToString();
+            if (index_key.ValidKey()) {
+                for (size_t i = 1; i < children.size(); i++) {
+                    if (!children[i]->IsClusterTask()) {
+                        LOG(WARNING) << "Fail to build cluster task for "
+                                     << "[" << runner->id_ << "]" << RunnerTypeName(runner->type_)
+                                     << ": can't handler local task with index key";
+                        return ClusterTask();
+                    }
+                    if (children[i]->IsCompletedClusterTask()) {
+                        LOG(WARNING) << "Fail to complete cluster task for "
+                                     << "[" << runner->id_ << "]" << RunnerTypeName(runner->type_)
+                                     << ": task is completed already";
+                        return ClusterTask();
+                    }
+                }
+                for (size_t i = 0; i < children.size(); i++) {
+                    runner->AddProducer(children[i]->GetRoot());
+                }
+                // build complete cluster task
+                // TODO(zhanghao): assume all children can be handled with one single tablet
+                const RouteInfo& route_info = children[1]->GetRouteInfo();
+                ClusterTask cluster_task(runner, std::vector<Runner*>({runner}),
+                                         RouteInfo(route_info.index_, index_key,
+                                                   std::make_shared<ClusterTask>(*request), route_info.table_handler_));
+                return cluster_task;
+            }
         }
     }
 
+    // if all are local tasks
     for (const auto child : children) {
         runner->AddProducer(child->GetRoot());
     }
@@ -634,7 +680,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
     // task
     if (index_key.ValidKey()) {
         if (!right.IsClusterTask()) {
-            LOG(WARNING) << "Fail to buidl cluster task for "
+            LOG(WARNING) << "Fail to build cluster task for "
                          << "[" << runner->id_ << "]"
                          << RunnerTypeName(runner->type_)
                          << ": can't handler local task with index key";
