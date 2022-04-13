@@ -70,7 +70,7 @@ class DBSDKTest : public ::testing::Test {
         SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::openmldb::type::kBigInt);
         SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0,
                               0);
-        ASSERT_TRUE(ns_client->CreateTable(table_info, error));
+        ASSERT_TRUE(ns_client->CreateTable(table_info, false, error));
     }
 
  public:

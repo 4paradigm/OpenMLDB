@@ -3551,13 +3551,19 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
-    if (!table_meta->db().empty()) {
+    if (!table_meta->db().empty() && table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_->ClearCacheLocked(table_meta->db());
         if (ok) {
             LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+        }
+
+        // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
+        // if it is cluster mode, RefreshTableInfo will be triggered automatically
+        if (!IsClusterMode() && boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+            RefreshAggrCatalog();
         }
     }
     return 0;
@@ -3907,13 +3913,14 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
-    if (!sr_) return;
+    if (!GetClusterRouter()) return;
+    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
 
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
     std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
     hybridse::sdk::Status status;
-    auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    auto rs = sr->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
     if (status.code != 0) {
         LOG(ERROR) << "update global var table failed: " << status.msg;
         return;
@@ -4039,37 +4046,91 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
 
-    // refresh the pre-aggr tables info
-    if (InitClusterRouter()) {
-        auto entries = sr_->GetAggrTables();
-        catalog_->RefreshAggrTables(entries);
+    RefreshAggrCatalog();
+}
+
+bool TabletImpl::RefreshAggrCatalog() {
+    if (IsClusterMode()) {
+        if (GetClusterRouter()) {
+            auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
+            auto table_infos = sr->GetAggrTables();
+            catalog_->RefreshAggrTables(table_infos);
+            DLOG(INFO) << "Refresh agg catalog in cluster mode (size = " << table_infos.size() << ")";
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        std::string meta_db = nameserver::INTERNAL_DB;
+        std::string meta_table = nameserver::PRE_AGG_META_NAME;
+        std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
+        if (!table) {
+            PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
+            return false;
+        }
+        static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
+
+        auto it = table->GetIterator();
+        it->SeekToFirst();
+        ::hybridse::vm::AggrTableInfo table_info;
+        std::vector<::hybridse::vm::AggrTableInfo> table_infos;
+        while (it->Valid()) {
+            auto row = it->GetValue();
+            const char* str = nullptr;
+            uint32_t len = 0;
+
+            row_view.GetValue(row.buf(), 0, &str, &len);
+            table_info.aggr_table.assign(str, len);
+            row_view.GetValue(row.buf(), 1, &str, &len);
+            table_info.aggr_db.assign(str, len);
+            row_view.GetValue(row.buf(), 2, &str, &len);
+            table_info.base_db.assign(str, len);
+            row_view.GetValue(row.buf(), 3, &str, &len);
+            table_info.base_table.assign(str, len);
+            row_view.GetValue(row.buf(), 4, &str, &len);
+            table_info.aggr_func.assign(str, len);
+            row_view.GetValue(row.buf(), 5, &str, &len);
+            table_info.aggr_col.assign(str, len);
+            row_view.GetValue(row.buf(), 6, &str, &len);
+            table_info.partition_cols.assign(str, len);
+            row_view.GetValue(row.buf(), 7, &str, &len);
+            table_info.order_by_col.assign(str, len);
+            row_view.GetValue(row.buf(), 8, &str, &len);
+            table_info.bucket_size.assign(str, len);
+
+            table_infos.push_back(std::move(table_info));
+            it->Next();
+        }
+        catalog_->RefreshAggrTables(table_infos);
+        DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
+        return true;
     }
 }
 
-bool TabletImpl::InitClusterRouter() {
-    if (sr_) return true;
+bool TabletImpl::GetClusterRouter() {
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire)) return true;
 
     PDLOG(INFO, "Init ClusterSDK in tablet server");
-    if (!zk_cluster_.empty()) {
+    if (IsClusterMode()) {
         ::openmldb::sdk::SQLRouterOptions copt;
         copt.zk_cluster = zk_cluster_;
         copt.zk_path = zk_path_;
-        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(copt);
-        if (sr_) {
-            if (!sr_->Init()) {
+        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(copt);
+        if (sr) {
+            if (!sr->Init()) {
                 PDLOG(WARNING, "Fail to init sql cluster router");
-                sr_.release();
                 return false;
             }
 
             ::hybridse::sdk::Status status;
-            sr_->ExecuteSQL("SET @@execute_mode='online';", &status);
+            sr->ExecuteSQL("SET @@execute_mode='online';", &status);
             if (!status.IsOK()) {
                 PDLOG(WARNING, "set online mode failed: %s ", status.msg);
-                sr_.release();
                 return false;
             } else {
                 DLOG(INFO) << "set online mode succeed";
+                std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
+                return true;
             }
         } else {
             PDLOG(WARNING, "create sql router failed");
@@ -5380,9 +5441,9 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
     for (auto& r : rs) {
         auto new_row = response->add_rows();
         new_row->set_deploy_name(r.deploy_name_);
-        new_row->set_time(r.GetTimeAsStr());
+        new_row->set_time(r.GetTimeAsStr(statistics::TimeUnit::MICRO_SECOND));
         new_row->set_count(r.count_);
-        new_row->set_total(r.GetTotalAsStr());
+        new_row->set_total(r.GetTotalAsStr(statistics::TimeUnit::MICRO_SECOND));
     }
     response->set_code(ReturnCode::kOk);
 }

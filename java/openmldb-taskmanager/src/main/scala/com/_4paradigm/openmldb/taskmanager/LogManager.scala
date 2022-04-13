@@ -26,13 +26,25 @@ object LogManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def getJobLogFile(id: Int): File = {
-    Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_$id.log").toFile
+    Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${id}.log").toFile
+  }
+
+  def getJobErrorLogFile(id: Int): File = {
+    Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${id}_error.log").toFile
+  }
+
+  def getFileContent(inputFile: File): String = {
+    val source = scala.io.Source.fromFile(inputFile)
+    val content = try source.mkString finally source.close()
+    content
   }
 
   def getJobLog(id: Int): String = {
-    val source = scala.io.Source.fromFile(getJobLogFile(id))
-    val content = try source.mkString finally source.close()
-    content
+    getFileContent(getJobLogFile(id))
+  }
+
+  def getJobErrorLog(id: Int): String = {
+    getFileContent(getJobErrorLogFile(id))
   }
 
 }

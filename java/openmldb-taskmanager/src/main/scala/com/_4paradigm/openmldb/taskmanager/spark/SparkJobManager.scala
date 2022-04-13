@@ -21,8 +21,11 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
+import org.slf4j.LoggerFactory
 
 object SparkJobManager {
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * Create the SparkLauncher object with pre-set parameters like yarn-cluster.
@@ -58,7 +61,8 @@ object SparkJobManager {
   }
 
   def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
-                     sparkConf: Map[String, String] = Map(), defaultDb: String = ""): JobInfo = {
+                     sparkConf: Map[String, String] = Map(), defaultDb: String = "",
+                     blocking: Boolean = false): JobInfo = {
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
@@ -105,19 +109,27 @@ object SparkJobManager {
     if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
       launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
     }
+
     for ((k, v) <- sparkConf) {
+      logger.info("Get Spark config key: " + k + ", value: " + v)
       launcher.setConf(k, v)
     }
 
     if (TaskManagerConfig.JOB_LOG_PATH.nonEmpty) {
-      // Create local file and redirect the log of job into single file
-      val jobLogFile = LogManager.getJobLogFile(jobInfo.getId)
-      launcher.redirectOutput(jobLogFile)
-      launcher.redirectError(jobLogFile)
+      // Create local file and redirect the log of job into files
+      launcher.redirectOutput(LogManager.getJobLogFile(jobInfo.getId))
+      launcher.redirectError(LogManager.getJobErrorLogFile(jobInfo.getId))
     }
 
     // Submit Spark application and watch state with custom listener
-    launcher.startApplication(new SparkJobListener(jobInfo))
+    val sparkAppHandler = launcher.startApplication(new SparkJobListener(jobInfo))
+
+    if (blocking) {
+      while (!sparkAppHandler.getState().isFinal()) {
+        // TODO: Make this configurable
+        Thread.sleep(3000L)
+      }
+    }
 
     jobInfo
   }

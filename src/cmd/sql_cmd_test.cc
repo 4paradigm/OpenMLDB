@@ -384,6 +384,93 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
+TEST_P(DBSDKTest, DeployLongWindowsExecute) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t" + GenRand();
+    std::string base_db = "d" + GenRand();
+    bool ok = sr->CreateDB(base_db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + base_table +
+                      "(col1 string, col2 string, col3 timestamp, col4 bigint, index(key=(col1,col2), ts=col3, "
+                      "abs_ttl=0, ttl_type=absolute)) "
+                      "options(partitionnum=8);";
+    ok = sr->ExecuteDDL(base_db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(sr->RefreshCatalog());
+
+    auto ns_client = cs->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
+    ASSERT_EQ(tables.size(), 1);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " sum(col4) over w1 as w1_sum_col4, sum(col3) over w2 as w2_sum_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY col4"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    for (int i = 1; i <= 11; i++) {
+        std::string insert = "insert into " + base_table + " values('str1', 'str2', " +
+                             std::to_string(i) + ", " + std::to_string(i) +");";
+        ok = sr->ExecuteInsert(base_db, insert, &status);
+        ASSERT_TRUE(ok);
+    }
+
+    std::string result_sql = "select * from pre_test_aggr_w1_sum_col4;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    for (int i = 5; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
+        ASSERT_EQ(i * 4 - 1, aggr_val);
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
+    }
+
+    auto req = sr->GetRequestRowByProcedure(base_db, "test_aggr", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(req->Init(8));
+    ASSERT_TRUE(req->AppendString("str1"));
+    ASSERT_TRUE(req->AppendString("str2"));
+    ASSERT_TRUE(req->AppendTimestamp(11));
+    ASSERT_TRUE(req->AppendInt64(11));
+    ASSERT_TRUE(req->Build());
+
+    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, res->Size());
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("str1", res->GetStringUnsafe(0));
+    ASSERT_EQ("str2", res->GetStringUnsafe(1));
+    int64_t exp = 11 + 11 + 19 + 15 + 6;
+    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(3));
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_sum_col4";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
 TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -401,6 +488,26 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
+TEST_P(DBSDKTest, CreateIfNotExists) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("create database test2;");
+    HandleSQL("use test2;");
+    std::string create_sql = "create table if not exists trans (col1 string);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    // Run create again and do not get error
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+}
+
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -410,15 +517,16 @@ TEST_P(DBSDKTest, ShowComponents) {
     ASSERT_EQ(status.code, 0);
 
     if (cs->IsClusterMode()) {
-        ASSERT_EQ(2, rs->Size());
+        ASSERT_EQ(3, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
         const auto& tablet_eps = mc_->GetTbEndpoint();
         const auto& ns_ep = mc_->GetNsEndpoint();
-        ASSERT_EQ(1, tablet_eps.size());
+        ASSERT_EQ(2, tablet_eps.size());
         ExpectResultSetStrEq({{"Endpoint", "Role", "Connect_time", "Status", "Ns_role"},
                               {tablet_eps.at(0), "tablet", {}, "online", "NULL"},
+                              {tablet_eps.at(1), "tablet", {}, "online", "NULL"},
                               {ns_ep, "nameserver", {}, "online", "master"}},
-                             rs.get());
+                             rs.get(), false);
     } else {
         ASSERT_EQ(2, rs->Size());
         ASSERT_EQ(5, rs->GetSchema()->GetColumnCnt());
@@ -907,8 +1015,9 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
-    int ok = ::openmldb::cmd::mc_->SetUp(1);
-    sleep(3);
+    FLAGS_enable_distsql = true;
+    int ok = ::openmldb::cmd::mc_->SetUp(2);
+    sleep(5);
     srand(time(NULL));
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
@@ -925,6 +1034,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
+    sleep(3);
 
     ok = RUN_ALL_TESTS();
 

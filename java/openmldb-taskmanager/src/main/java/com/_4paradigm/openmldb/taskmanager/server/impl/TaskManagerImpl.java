@@ -138,14 +138,14 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
-    public TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request) {
+    public TaskManager.RunBatchSqlResponse RunBatchSql(TaskManager.RunBatchSqlRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getOutputPath(), request.getConfMap(), request.getDefaultDb());
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
-                    .build();
+            String output = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getConfMap(),
+                    request.getDefaultDb());
+            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
 
@@ -251,7 +251,9 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
         try {
-            String log = LogManager.getJobLog(request.getId());
+            String outLog = LogManager.getJobLog(request.getId());
+            String errorLog = LogManager.getJobErrorLog(request.getId());
+            String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {
             e.printStackTrace();
