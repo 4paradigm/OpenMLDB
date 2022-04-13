@@ -85,6 +85,7 @@ enum ReturnCode {
     kSdkEndpointDuplicate = 156,
     kProcedureAlreadyExists = 157,
     kProcedureNotFound = 158,
+    kCreateFunctionFailed = 159,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -118,6 +119,7 @@ enum ReturnCode {
     kGetSchemaFailed = 330,
     kCheckParameterFailed = 331,
     kCreateProcedureFailedOnTablet = 332,
+    kCreateFunctionFailedOnTablet = 333,
     kReplicaClusterAliasDuplicate = 400,
     kConnectRelicaClusterZkFailed = 401,
     kNotSameReplicaName = 402,
@@ -163,7 +165,8 @@ enum ReturnCode {
     kSQLCmdRunError = 901,
 
     kSQLCompileError = 1000,
-    kSQLRunError = 1001
+    kSQLRunError = 1001,
+    kRPCRunError = 1002
 };
 
 struct Status {

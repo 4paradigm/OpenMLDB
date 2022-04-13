@@ -1986,6 +1986,9 @@ void DefaultUdfLibrary::Init() {
     InitWindowFunctions();
     InitUdaf();
     InitFeatureZero();
+
+    AddExternalFunction("init_udfcontext.opaque",
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitUdaf() {

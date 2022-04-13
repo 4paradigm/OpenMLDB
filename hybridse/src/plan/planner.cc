@@ -368,6 +368,13 @@ base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, nod
     return base::Status::OK();
 }
 
+base::Status Planner::CreateCreateFunctionPlanNode(const node::CreateFunctionNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create create function plan with null node");
+    *output = node_manager_->MakeCreateFunctionPlanNode(root->Name(), root->GetReturnType(), root->GetArgsType(),
+                                                        root->IsAggregate(), root->Options());
+    return base::Status::OK();
+}
+
 base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create select into plan with null node");
     PlanNode *query = nullptr;
@@ -724,6 +731,13 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 CHECK_TRUE(delete_node != nullptr, common::kPlanError, "not an DeleteNode");
                 node::PlanNode *delete_plan_node = node_manager_->MakeDeletePlanNode(delete_node);
                 plan_trees.push_back(delete_plan_node);
+                break;
+            }
+            case ::hybridse::node::kCreateFunctionStmt: {
+                node::PlanNode *create_function_plan_node = nullptr;
+                CHECK_STATUS(CreateCreateFunctionPlanNode(dynamic_cast<node::CreateFunctionNode *>(parser_tree),
+                            &create_function_plan_node));
+                plan_trees.push_back(create_function_plan_node);
                 break;
             }
             default: {

@@ -356,6 +356,8 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
+    hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
+
     hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
                                             const std::set<std::pair<std::string, std::string>>& table_pair,
                                             const std::string& select_sql);

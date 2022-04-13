@@ -243,7 +243,7 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
-TEST_F(SqlCmdTest, load_data) {
+TEST_F(SqlCmdTest, LoadData) {
     sr = standalone_cli.sr;
     cs = standalone_cli.cs;
     HandleSQL("create database test1;");
