@@ -2818,7 +2818,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     fun.set_file((*option)["FILE"]->GetExprString());
     if (option->find("OFFLINE_FILE") == option->end()) {
-        if (fun.file().find('/') == std::npos) {
+        if (fun.file().find('/') == std::string::npos) {
             fun.set_offline_file(fun.file());
         } else {
             return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
@@ -2828,7 +2828,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
     if (taskmanager_client) {
-        ret = taskmanager_client->CreateFunction(fun);
+        auto ret = taskmanager_client->CreateFunction(fun);
         if (!ret.OK()) {
             return {::hybridse::common::StatusCode::kCmdError, ret.msg};
         }
