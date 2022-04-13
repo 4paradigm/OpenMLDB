@@ -270,58 +270,6 @@ TEST_F(SqlCmdTest, LoadData) {
     unlink(file_name.c_str());
 }
 
-#if defined(__linux__)
-TEST_P(DBSDKTest, CreateFunction) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    hybridse::sdk::Status status;
-    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
-    std::string cut2_sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING "
-                            "OPTIONS (FILE='" + so_path + "');";
-    std::string strlength_sql = "CREATE FUNCTION strlength(x STRING) RETURNS INT "
-                            "OPTIONS (FILE='" + so_path + "');";
-    std::string int2str_sql = "CREATE FUNCTION int2str(x INT) RETURNS STRING "
-                            "OPTIONS (FILE='" + so_path + "');";
-    std::string db_name = "test" + GenRand();
-    std::string tb_name = "t1";
-    ProcessSQLs(sr,
-                {
-                    "set @@execute_mode = 'online'",
-                    absl::StrCat("create database ", db_name, ";"),
-                    absl::StrCat("use ", db_name, ";"),
-                    absl::StrCat("create table ", tb_name, " (c1 string, c2 int, c3 double);"),
-                    absl::StrCat("insert into ", tb_name, " values ('aab', 11, 1.2);"),
-                    cut2_sql,
-                    strlength_sql,
-                    int2str_sql
-                });
-    auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, result->Size());
-    result->Next();
-    std::string str;
-    result->GetString(0, &str);
-    ASSERT_EQ(str, "aa");
-    int value = 0;
-    result->GetInt32(1, &value);
-    ASSERT_EQ(value, 3);
-    str.clear();
-    result->GetString(2, &str);
-    ASSERT_EQ(str, "11");
-    ProcessSQLs(sr, {"DROP FUNCTION cut2;"});
-    result = sr->ExecuteSQL("select cut2(c1) from t1;", &status);
-    ASSERT_FALSE(status.IsOK());
-    ProcessSQLs(sr,
-                {
-                    "DROP FUNCTION strlength;",
-                    "DROP FUNCTION int2str;",
-                    absl::StrCat("drop table ", tb_name, ";"),
-                    absl::StrCat("drop database ", db_name, ";"),
-                });
-}
-#endif
-
 TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
