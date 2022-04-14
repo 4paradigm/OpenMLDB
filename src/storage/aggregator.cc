@@ -143,11 +143,11 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return false;
         }
     } else {
-        aggr_buffer.aggr_cnt_++;
         if (offset < aggr_buffer.binlog_offset_) {
             PDLOG(ERROR, "logical error: current offset is smaller than binlog offset");
             return false;
         }
+        aggr_buffer.aggr_cnt_++;
         aggr_buffer.binlog_offset_ = offset;
         if (window_type_ == WindowType::kRowsNum) {
             aggr_buffer.ts_end_ = cur_ts;
