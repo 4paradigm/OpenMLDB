@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
-import com._4paradigm.openmldb.batch.utils.HybridseUtil
+import com._4paradigm.openmldb.batch.utils.DataTypeUtil
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.spark.{SPARK_VERSION, SparkConf}
@@ -26,6 +26,7 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -276,7 +277,7 @@ class OpenmldbSession {
               val columnDescList = tableInfo.getColumnDescList
 
               val schema = new StructType(columnDescList.asScala.map(colDesc => {
-                StructField(colDesc.getName, HybridseUtil.protoTypeToSparkType(colDesc.getDataType),
+                StructField(colDesc.getName, DataTypeUtil.protoTypeToSparkType(colDesc.getDataType),
                   !colDesc.getNotNull)
               }).toArray)
 
