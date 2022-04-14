@@ -48,7 +48,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     hybridse::node::NodePointVector distribution_list;
 
     hybridse::node::StorageMode storage_mode = hybridse::node::kMemory;
-    // different default value for cluser and standalone mode
+    // different default value for cluser mode and standalone mode
     FLAGS_replica_num = 1;
     FLAGS_partition_num = 1;
     if (is_cluster_mode) {
