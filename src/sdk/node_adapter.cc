@@ -64,7 +64,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
-                    FLAGS_partition_num = dynamic_cast<hybridse::node::PartitionNumNode *>(table_option)->GetPartitionNum();
+                    FLAGS_partition_num =
+                        dynamic_cast<hybridse::node::PartitionNumNode*>(table_option)->GetPartitionNum();
                     break;
                 }
                 case hybridse::node::kStorageMode: {
