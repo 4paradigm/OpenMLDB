@@ -75,7 +75,7 @@ TEST_P(DBSDKTest, CreateFunction) {
     std::string strlength_sql = absl::StrCat("CREATE FUNCTION strlength(x STRING) RETURNS INT "
                             "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
     std::string int2str_sql = absl::StrCat("CREATE FUNCTION int2str(x INT) RETURNS STRING "
-                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path,"');");
+                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
