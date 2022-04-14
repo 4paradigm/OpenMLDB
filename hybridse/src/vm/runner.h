@@ -985,7 +985,7 @@ class RequestAggUnionRunner : public Runner {
           func_(func),
           agg_col_(agg_col) {}
 
-    void InitAggregator();
+    bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     std::shared_ptr<TableHandler> RequestUnionWindow(
