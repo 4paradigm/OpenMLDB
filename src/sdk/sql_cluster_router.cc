@@ -2817,14 +2817,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
     }
     fun.set_file((*option)["FILE"]->GetExprString());
-    if (option->find("OFFLINE_FILE") == option->end()) {
-        if (fun.file().find('/') == std::string::npos) {
-            fun.set_offline_file(fun.file());
+    if (cluster_sdk_->IsClusterMode()) {
+        if (option->find("OFFLINE_FILE") == option->end()) {
+            if (fun.file().find('/') == std::string::npos) {
+                fun.set_offline_file(fun.file());
+            } else {
+                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+            }
         } else {
-            return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+            fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
         }
-    } else {
-        fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
     }
     auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
     if (taskmanager_client) {
