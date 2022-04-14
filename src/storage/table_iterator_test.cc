@@ -387,6 +387,65 @@ TEST_P(TableIteratorTest, releaseKeyIterator) {
     ASSERT_EQ(wit->GetKey(), now);
 }
 
+TEST_P(TableIteratorTest, SeekNonExistent) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_format_version(1);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_storage_mode(storageMode);
+    codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts", ::openmldb::type::kBigInt);
+    codec::SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts",
+            ::openmldb::type::kLatestTime, 0, 0);
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i = 0; i < 5; i += 2) {
+        std::string key = "card" + std::to_string(i);
+        for (int j = 0; j < 10; j += 2) {
+            std::vector<std::string> row = {key , std::to_string(now - j * (60 * 1000))};
+            ::openmldb::api::PutRequest request;
+            ::openmldb::api::Dimension* dim = request.add_dimensions();
+            dim->set_idx(0);
+            dim->set_key(key);
+            std::string value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &value));
+            table->Put(0, value, request.dimensions());
+        }
+    }
+
+    ::hybridse::vm::WindowIterator* it = table->NewWindowIterator(0);
+    it->SeekToFirst();
+
+    std::unique_ptr<::hybridse::vm::RowIterator> wit = it->GetValue();
+    wit->Seek(now - 3 * (60 * 1000));
+    ASSERT_EQ(240000, now - wit->GetKey());
+
+    wit = it->GetValue();
+    wit->Seek(now - 50 * (60 * 1000));
+    ASSERT_FALSE(wit->Valid());
+
+    wit = it->GetValue();
+    wit->Seek(now + 50 * (60 * 1000));
+    ASSERT_TRUE(wit->Valid());
+    ASSERT_EQ(0, now - wit->GetKey());
+
+}
+
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableIteratorTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
