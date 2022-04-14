@@ -623,6 +623,43 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
                      common::kSqlAstError, "Un-support multiple statements inside ASTBeginEndBlock");
 }
 
+TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, node::CreateFunctionNode** output) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateFunctionStatement>());
+
+        const auto create_function = statement->GetAsOrDie<zetasql::ASTCreateFunctionStatement>();
+        auto s = ConvertCreateFunctionNode(create_function, &node_manager, output);
+        EXPECT_EQ(common::kOk, s.code);
+    };
+
+    std::string sql1 = "CREATE FUNCTION fun (x INT) RETURNS INT OPTIONS (PATH='/tmp/libmyfun.so');";
+    node::CreateFunctionNode* create_fun_stmt = nullptr;
+    expect_converted(sql1, &create_fun_stmt);
+    ASSERT_EQ(create_fun_stmt->Name(), "fun");
+    ASSERT_FALSE(create_fun_stmt->IsAggregate());
+    ASSERT_EQ(create_fun_stmt->GetReturnType()->base(), node::DataType::kInt32);
+    const node::NodePointVector& args = create_fun_stmt->GetArgsType();
+    ASSERT_EQ(args.size(), 1);
+    ASSERT_EQ((dynamic_cast<node::TypeNode*>(args.front()))->base(), node::DataType::kInt32);
+    auto option = create_fun_stmt->Options();
+    ASSERT_EQ(option->size(), 1);
+    ASSERT_EQ(option->begin()->first, "PATH");
+    ASSERT_EQ(option->begin()->second->GetAsString(), "/tmp/libmyfun.so");
+
+    std::string sql2 = "CREATE AGGREGATE FUNCTION fun1 (x BIGINT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
+    create_fun_stmt = nullptr;
+    expect_converted(sql2, &create_fun_stmt);
+    ASSERT_EQ(create_fun_stmt->GetArgsType().size(), 1);
+    ASSERT_EQ((dynamic_cast<node::TypeNode*>(create_fun_stmt->GetArgsType().front()))->base(), node::DataType::kInt64);
+    ASSERT_EQ(create_fun_stmt->Name(), "fun1");
+    ASSERT_TRUE(create_fun_stmt->IsAggregate());
+    ASSERT_EQ(create_fun_stmt->GetReturnType()->base(), node::DataType::kVarchar);
+}
+
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
     node::NodeManager node_manager;
     auto expect_converted = [&](const std::string& sql) -> void {

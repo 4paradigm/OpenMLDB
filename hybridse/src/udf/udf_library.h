@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_UDF_UDF_LIBRARY_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -103,6 +104,11 @@ class UdfLibrary {
     bool RequireListAt(const std::string& name, size_t index) const;
     bool IsListReturn(const std::string& name) const;
 
+    Status RegisterDynamicUdf(const std::string& name, void* fn,
+            node::DataType return_type, const std::vector<node::DataType>& arg_types);
+
+    Status RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types);
+
     // register interfaces
     ExprUdfRegistryHelper RegisterExprUdf(const std::string& name);
     LlvmUdfRegistryHelper RegisterCodeGenUdf(const std::string& name);
@@ -133,11 +139,15 @@ class UdfLibrary {
     }
 
     void AddExternalFunction(const std::string& name, void* addr);
+
     void InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
 
-    const auto& GetAllRegistries() { return table_; }
+    std::unordered_map<std::string, std::shared_ptr<UdfLibraryEntry>> GetAllRegistries() {
+        std::lock_guard<std::mutex> lock(mu_);
+        return table_;
+    }
 
     void InsertRegistry(const std::string& name,
                         const std::vector<const node::TypeNode*>& arg_types,
@@ -157,6 +167,7 @@ class UdfLibrary {
     node::NodeManager nm_;
 
     const bool case_sensitive_ = false;
+    mutable std::mutex mu_;
 };
 
 const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);
