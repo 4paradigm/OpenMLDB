@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Collector definations
 """
@@ -23,13 +22,14 @@ from openmldb_collector import (connected_seconds, component_status, table_rows,
                                 tablet_memory_application, tablet_memory_actual)
 from urllib import request
 
-from typing import (Iterable)
 import logging
+
 
 class Collector(ABC):
     '''
     ABC for OpenMLDB prometheus collectors
     '''
+
     @abstractmethod
     def collect(self):
         '''
@@ -46,7 +46,6 @@ class SDKConnectable(object):
 
     def __init__(self, conn: engine.Connection):
         self._conn = conn
-
 
 
 class TableStatusCollector(Collector, SDKConnectable):
@@ -70,6 +69,7 @@ class TableStatusCollector(Collector, SDKConnectable):
             table_replica.labels(tb_path, tid).set(int(replica))
             table_memory.labels(tb_path, tid).set(int(mem))
             table_disk.labels(tb_path, tid).set(int(disk))
+
 
 class DeployQueryStatCollector(Collector, SDKConnectable):
     '''
@@ -101,6 +101,7 @@ class DeployQueryStatCollector(Collector, SDKConnectable):
             row = rs.fetchone()
 
     def _init_table_info(self):
+        # sql parser do not recognize quoted string
         self._metadata = MetaData(schema="INFORMATION_SCHEMA", bind=self._conn, quote_schema=False)
         self._deploy_response_time = Table(
             "DEPLOY_RESPONSE_TIME",
@@ -115,7 +116,7 @@ class DeployQueryStatCollector(Collector, SDKConnectable):
 
 class ComponentStatusCollector(Collector, SDKConnectable):
     '''
-    component statistics collector
+    component statistics and tablet memory collector
     '''
 
     def collect(self):
@@ -125,6 +126,7 @@ class ComponentStatusCollector(Collector, SDKConnectable):
             logging.debug(row)
 
             endpoint = row[0]
+            role = row[1]
             # connect time in millisecond
             connect_time = int(row[2])
             status = row[3]
@@ -132,21 +134,12 @@ class ComponentStatusCollector(Collector, SDKConnectable):
             connected_seconds.labels(endpoint)._value.set(connect_time / 1000)
             component_status.labels(endpoint).state(status)
 
-class AppMemCollector(Collector):
-    '''
-    collector for OpenMLDB instance memory statistics
-    '''
+            # collect tablet application memory
+            if role == "tablet":
+                app, actual = self._get_mem(f"http://{endpoint}/TabletServer/ShowMemPool")
+                tablet_memory_application.labels(endpoint).set(app)
+                tablet_memory_actual.labels(endpoint).set(actual)
 
-    _endpoints: Iterable[str]
-
-    def __init__(self, endpoints: Iterable[str]):
-        self._endpoints = endpoints
-
-    def collect(self):
-        for endpoint in self._endpoints:
-            app, actual = self._get_mem(f"{endpoint}/TabletServer/ShowMemPool")
-            tablet_memory_application.labels(endpoint).set(app)
-            tablet_memory_actual.labels(endpoint).set(actual)
 
     def _get_mem(self, url: str):
         memory_by_application = 0
@@ -157,13 +150,15 @@ class AppMemCollector(Collector):
                 if line.rfind("use by application") > 0:
                     try:
                         memory_by_application = int(line.split()[1])
-                    except Exception as e:
+                    except ValueError as e:
                         memory_by_application = 0
+                        logging.error(e)
                 elif line.rfind("Actual memory used") > 0:
                     try:
                         memory_acutal_used = int(line.split()[2])
-                    except Exception as e:
+                    except ValueError as e:
                         memory_acutal_used = 0
+                        logging.error(e)
                 else:
                     continue
         return memory_by_application, memory_acutal_used

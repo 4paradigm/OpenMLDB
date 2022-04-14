@@ -24,7 +24,7 @@ import logging
 from typing import (Iterable)
 
 from openmldb_collector import (ConfigStore, Collector, TableStatusCollector, DeployQueryStatCollector,
-                                ComponentStatusCollector, AppMemCollector)
+                                ComponentStatusCollector)
 from prometheus_client.twisted import MetricsResource
 from sqlalchemy import engine
 from twisted.internet import reactor, task
@@ -53,7 +53,8 @@ def main():
     collectors = (
         TableStatusCollector(conn),
         DeployQueryStatCollector(conn),
-        ComponentStatusCollector(conn), AppMemCollector([]))
+        ComponentStatusCollector(conn),
+    )
 
     repeated_task = task.LoopingCall(collect_task, collectors)
     repeated_task.start(cfg_store.pull_interval)

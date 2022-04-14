@@ -22,7 +22,6 @@ from openmldb_collector.collectors import (
     TableStatusCollector,
     DeployQueryStatCollector,
     ComponentStatusCollector,
-    AppMemCollector,
     Collector,
 )
 
@@ -42,6 +41,5 @@ __all__ = [
     "TableStatusCollector",
     "DeployQueryStatCollector",
     "ComponentStatusCollector",
-    "AppMemCollector",
     "Collector",
 ]
