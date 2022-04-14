@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef OPENMLDB_INCLUDE_BASE_TYPE_H_
-#define OPENMLDB_INCLUDE_BASE_TYPE_H_
+#ifndef INCLUDE_BASE_TYPE_H_
+#define INCLUDE_BASE_TYPE_H_
 
 #include <stdint.h>
 #include <cstddef>
@@ -130,4 +130,4 @@ __attribute__((unused)) static bool operator!=(const Date& a, const Date& b) {
 }  // namespace base
 }  // namespace openmldb
 
-#endif  // OPENMLDB_INCLUDE_BASE_TYPE_H_
+#endif  // INCLUDE_BASE_TYPE_H_

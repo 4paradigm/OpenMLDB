@@ -1383,6 +1383,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
         zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
         zk_path_.globalvar_changed_notify_node_ = zk_path + "/notify/global_variable";
+        zk_path_.external_function_path_ = zk_path + "/data/function";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -3676,14 +3677,23 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             } else {
                 auto table_infos = db_table_info_[table_info->db()];
                 if (table_infos.find(table_info->name()) != table_infos.end()) {
-                    base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-                    PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    if (request->create_if_not_exist()) {
+                        base::SetResponseOK(response);
+                    } else {
+                        base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists",
+                                                response);
+                        PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    }
                     return;
                 }
             }
         } else if (table_info_.find(table_info->name()) != table_info_.end()) {
-            base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-            PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            if (request->create_if_not_exist()) {
+                base::SetResponseOK(response);
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
+                PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            }
             return;
         }
     }
@@ -10031,7 +10041,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
         int cnt = 0;
         std::string msg;
         while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
-            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsString(time));
+            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsStr(time, statistics::TimeUnit::SECOND));
             if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
                 // NOTE: some warning appears but is expected, just ingore:
                 // 1. when you create a deploy query but not call it any time before delete it
@@ -10374,6 +10384,130 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
 }
 
+std::vector<std::shared_ptr<TabletInfo>> NameServerImpl::GetAllHealthTablet() {
+    std::vector<std::shared_ptr<TabletInfo>> tablets;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto& kv : tablets_) {
+        if (!kv.second->Health()) {
+            continue;
+        }
+        tablets.push_back(kv.second);
+    }
+    return tablets;
+}
+
+void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                                    CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (external_fun_.find(request->fun().name()) != external_fun_.end()) {
+            PDLOG(WARNING, "create function failed. function %s is exist", request->fun().name().c_str());
+            response->set_msg("function is exist");
+            return;
+        }
+    }
+    auto tablets = GetAllHealthTablet();
+    std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
+    for (const auto& tablet : tablets) {
+        std::string msg;
+        if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
+            PDLOG(WARNING, "create function failed. endpoint %s, msg %s",
+                    tablet->client_->GetEndpoint().c_str(), msg.c_str());
+            response->set_msg(msg);
+            break;
+        }
+        succ_tablets.emplace_back(tablet);
+    }
+    if (succ_tablets.size() < tablets.size()) {
+        for (const auto& tablet : succ_tablets) {
+            std::string msg;
+            if (!tablet->client_->DropFunction(request->fun(), &msg)) {
+                PDLOG(WARNING, "drop function failed. endpoint %s", tablet->client_->GetEndpoint().c_str());
+            }
+            PDLOG(INFO, "drop function on endpoint %s", tablet->client_->GetEndpoint().c_str());
+        }
+        return;
+    }
+    auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
+    if (IsClusterMode()) {
+        std::string value;
+        fun->SerializeToString(&value);
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->CreateNode(fun_node, value)) {
+            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
+                  fun_node.c_str(), value.c_str(), value.length());
+            return;
+        }
+    }
+    PDLOG(INFO, "create function %s success", fun->name().c_str());
+    base::SetResponseOK(response);
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.emplace(fun->name(), fun);
+}
+
+void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                                    DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    std::shared_ptr<::openmldb::common::ExternalFun> fun;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            fun = iter->second;
+        }
+    }
+    if (!fun) {
+        if (request->if_exists()) {
+            base::SetResponseOK(response);
+        } else {
+            response->set_msg("fun is not exist");
+            LOG(WARNING) << request->name() << " is not exist";
+        }
+        return;
+    }
+    auto tablets = GetAllHealthTablet();
+    for (const auto& tablet : tablets) {
+        std::string msg;
+        if (!tablet->client_->DropFunction(*fun, &msg)) {
+            response->set_msg(msg);
+            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
+            return;
+        }
+    }
+    if (IsClusterMode()) {
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->DeleteNode(fun_node)) {
+            PDLOG(WARNING, "delete function node[%s] failed", fun_node.c_str());
+            response->set_msg("delete function node failed");
+            return;
+        }
+    }
+    base::SetResponseOK(response);
+    LOG(INFO) << "drop function " << request->name() << " success";
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.erase(request->name());
+}
+
+void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                                    ShowFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    if (request->has_name() && !request->name().empty()) {
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            response->add_fun()->CopyFrom(*(iter->second));
+        }
+    } else {
+        for (const auto& kv : external_fun_) {
+            response->add_fun()->CopyFrom(*(kv.second));
+        }
+    }
+    base::SetResponseOK(response);
+}
+
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
         {"execute_mode", "offline"},
@@ -10406,7 +10540,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     // insert value
     uint32_t tid = table_info->tid();
     uint32_t pid_num = table_info->table_partition_size();
-    for (int i = 0; i < default_value.size(); i++) {
+    for (size_t i = 0; i < default_value.size(); i++) {
         std::string row = rows[i];
         std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
         uint32_t pid = 0;
@@ -10499,8 +10633,9 @@ void NameServerImpl::SyncDeployStats() {
         }
 
         for (auto& r : res.rows()) {
-            reducer.Reduce(r.deploy_name(), statistics::ParseDurationFromRawInt(r.time()), r.count(),
-                           statistics::ParseDurationFromRawInt(r.total()));
+            reducer.Reduce(r.deploy_name(),
+                           statistics::ParseDurationFromStr(r.time(), statistics::TimeUnit::MICRO_SECOND), r.count(),
+                           statistics::ParseDurationFromStr(r.total(), statistics::TimeUnit::MICRO_SECOND));
         }
     }
 
@@ -10520,8 +10655,8 @@ void NameServerImpl::SyncDeployStats() {
         int32_t cnt = rs->GetInt32Unsafe(2);
         auto total = rs->GetAsStringUnsafe(3);
 
-        auto ts = statistics::ParseDurationFromRawInt(time);
-        auto tt = statistics::ParseDurationFromRawInt(total);
+        auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
+        auto tt = statistics::ParseDurationFromStr(total, statistics::TimeUnit::SECOND);
 
         reducer.Reduce(name, ts, cnt, tt);
         old_reducer.Reduce(name, ts, cnt, tt);
@@ -10534,16 +10669,16 @@ void NameServerImpl::SyncDeployStats() {
     std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
                                                   nameserver::DEPLOY_RESPONSE_TIME, " values ");
     for (auto& row : reducer.Rows()) {
-        std::string time = row->GetTimeAsStr();
         auto old_it = old_reducer.Find(row->deploy_name_, row->time_);
         if (old_it != nullptr && row->count_ == old_it->count_) {
             // don't update table only if there is no incremental data, and there is record already in table
             continue;
         }
 
+        std::string time = row->GetTimeAsStr(statistics::TimeUnit::SECOND);
         auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row->deploy_name_, "', '",
                                        time, "', ", row->count_,
-                                       ",'", row->GetTotalAsStr(), "' )");
+                                       ",'", row->GetTotalAsStr(statistics::TimeUnit::SECOND), "' )");
 
         hybridse::sdk::Status st;
         DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;

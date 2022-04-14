@@ -70,7 +70,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     key1->set_index_name("index0");
     key1->add_col_name("col1");
     key1->set_ts_name("col2");
-    ok = ns_client->CreateTable(table_info, error);
+    ok = ns_client->CreateTable(table_info, false, error);
 
     ::hybridse::vm::Schema fe_schema;
     ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);

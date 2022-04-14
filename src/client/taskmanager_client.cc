@@ -97,7 +97,9 @@ namespace openmldb::client {
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO(tobe): Set map of config
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request,
                                   &response, FLAGS_request_timeout_ms, 1);
@@ -114,15 +116,17 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::RunBatchAndShow(const std::string& sql,
                                                             const std::map<std::string, std::string>& config,
-                                                            const std::string& default_db, bool sync_job, 
+                                                            const std::string& default_db, bool sync_job,
                                                             ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::RunBatchAndShowRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
 
     request.set_sql(sql);
     request.set_default_db(default_db);
-    // TODO: Set map of config
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                   &response, request_timeout_ms_, 1);
@@ -141,7 +145,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ImportOnlineData(const std::string& sql,
                                                              const std::map<std::string, std::string>& config,
-                                                             const std::string& default_db, bool sync_job, 
+                                                             const std::string& default_db, bool sync_job,
                                                              ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ImportOnlineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -149,6 +153,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
                                   &response, request_timeout_ms_, 1);
@@ -167,7 +174,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ImportOfflineData(const std::string& sql,
                                                               const std::map<std::string, std::string>& config,
-                                                              const std::string& default_db, bool sync_job, 
+                                                              const std::string& default_db, bool sync_job,
                                                               ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ImportOfflineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -175,6 +182,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
                                   &response, request_timeout_ms_, 1);
@@ -193,7 +203,7 @@ namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ExportOfflineData(const std::string& sql,
                                                               const std::map<std::string, std::string>& config,
-                                                              const std::string& default_db, bool sync_job, 
+                                                              const std::string& default_db, bool sync_job,
                                                               ::openmldb::taskmanager::JobInfo& job_info) {
     ::openmldb::taskmanager::ExportOfflineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
@@ -201,6 +211,9 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
+    for (auto it=config.begin(); it != config.end(); ++it) {
+        (*request.mutable_conf())[it->first] = it->second;
+    }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
                                   &response, request_timeout_ms_, 1);
@@ -257,4 +270,4 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     return "";
 }
 
-}  // namespace openmldb
+}  // namespace openmldb::client

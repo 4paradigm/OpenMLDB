@@ -274,6 +274,8 @@ class Cursor(object):
             ok, rs = self.connection._sdk.execute_sql(self.db, command)
             if not ok:
                 raise DatabaseError(rs)
+            self._pre_process_result(rs)
+            return self
 
     @classmethod
     def __get_append_map(cls, builder, row, hold_idxs, schema):
@@ -357,9 +359,11 @@ class Cursor(object):
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
             else:
-                ok, error = self.connection._sdk.execute_sql(self.db, command)
+                ok, rs = self.connection._sdk.execute_sql(self.db, command)
                 if not ok:
-                    raise DatabaseError(error)
+                    raise DatabaseError(rs)
+                self._pre_process_result(rs)
+                return self
         else:
             raise DatabaseError("unsupport sql")
 

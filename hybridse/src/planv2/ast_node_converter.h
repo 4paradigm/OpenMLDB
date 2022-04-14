@@ -25,7 +25,7 @@
 
 namespace hybridse {
 namespace plan {
-base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* node_manager, node::DataType* output);
+base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::DataType* output);
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output);
 
@@ -70,6 +70,9 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
 
 base::Status ConvertCreateProcedureNode(const zetasql::ASTCreateProcedureStatement* ast_create_sp_stmt,
                                         node::NodeManager* node_manager, node::CreateSpStmt** output);
+
+base::Status ConvertCreateFunctionNode(const zetasql::ASTCreateFunctionStatement* ast_create_fun_stmt,
+                                        node::NodeManager* node_manager, node::CreateFunctionNode** output);
 
 base::Status ConvertParamter(const zetasql::ASTFunctionParameter* params, node::NodeManager* node_manager,
                              node::SqlNode** output);

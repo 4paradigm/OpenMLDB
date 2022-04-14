@@ -66,6 +66,15 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace openmldb {
 namespace tablet {
 
+struct DynamicLibHandle {
+    explicit DynamicLibHandle(void* ptr) {
+        handle = ptr;
+        ref_cnt = 1;
+    }
+    void* handle = nullptr;
+    uint32_t ref_cnt = 0;
+};
+
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>> Snapshots;
@@ -222,6 +231,12 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void Query(RpcController* controller, const openmldb::api::QueryRequest* request,
                openmldb::api::QueryResponse* response, Closure* done);
 
+    void CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+               openmldb::api::CreateFunctionResponse* response, Closure* done);
+
+    void DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
+               openmldb::api::DropFunctionResponse* response, Closure* done);
+
     void SubQuery(RpcController* controller, const openmldb::api::QueryRequest* request,
                   openmldb::api::QueryResponse* response, Closure* done);
 
@@ -276,6 +291,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 const ::openmldb::api::GAFDeployStatsRequest* request,
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -337,6 +353,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void UpdateGlobalVarTable();
 
     bool RefreshSingleTable(uint32_t tid);
+
+    void RecoverExternalFunction();
+
+    base::Status CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun);
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
@@ -415,15 +435,20 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     // collect deploy statistics into memory
     void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
 
- private:
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
-    bool InitClusterRouter();
+    // create a SQLClusterRouter instance and stored in sr_
+    // return true if success, false if any error happens
+    bool GetClusterRouter();
 
+    // refresh the pre-aggr tables info
+    bool RefreshAggrCatalog();
+
+ private:
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;
@@ -458,10 +483,11 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::string globalvar_changed_notify_path_;
     ::openmldb::type::StartupMode startup_mode_;
 
-    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
+    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
     std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
+    std::map<std::string, std::shared_ptr<DynamicLibHandle>> handle_map_;
 };
 
 }  // namespace tablet

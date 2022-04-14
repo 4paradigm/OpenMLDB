@@ -296,6 +296,8 @@ class SQLClusterRouter : public SQLRouter {
 
     std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() override;
 
+    void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
+
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
@@ -353,6 +355,8 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& null_value, const std::vector<std::string>& cols);
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
+
+    hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
 
     hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
                                             const std::set<std::pair<std::string, std::string>>& table_pair,

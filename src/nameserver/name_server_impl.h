@@ -117,6 +117,7 @@ struct ZkPath {
     std::string op_data_path_;
     std::string op_sync_path_;
     std::string globalvar_changed_notify_node_;
+    std::string external_function_path_;
 };
 
 class NameServerImplTest;
@@ -187,6 +188,15 @@ class NameServerImpl : public NameServer {
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request, ShowTableResponse* response,
                    Closure* done);
+
+    void CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                        CreateFunctionResponse* response, Closure* done);
+
+    void DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                        DropFunctionResponse* response, Closure* done);
+
+    void ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                        ShowFunctionResponse* response, Closure* done);
 
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
@@ -757,6 +767,8 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
 
+    std::vector<std::shared_ptr<TabletInfo>> GetAllHealthTablet();
+
     bool AllocateTableId(uint32_t* id);
 
     base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
@@ -805,6 +817,7 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
+    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
     // database
     //    -> procedure
     //       -> (db_name, table_name)

@@ -16,6 +16,7 @@
 
 #include "tablet/tablet_impl.h"
 
+#include <dlfcn.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -221,6 +222,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     if (!catalog_->UpdateClient(real_endpoint_map)) {
         PDLOG(WARNING, "update client failed");
         return false;
+    }
+
+    if (IsClusterMode()) {
+        RecoverExternalFunction();
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -479,6 +484,36 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
     if (IsClusterMode()) {
         if (RefreshSingleTable(request->tid())) {
             PDLOG(INFO, "refresh success. tid %u", request->tid());
+        }
+    }
+}
+
+void TabletImpl::RecoverExternalFunction() {
+    std::string external_function_path = zk_path_ + "/data/function";
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(external_function_path) == 0) {
+        if (!zk_client_->GetChildren(external_function_path, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << external_function_path;
+            return;
+        }
+    }
+    if (functions.empty()) {
+        LOG(INFO) << "no external functions to recover";
+        return;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(external_function_path + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        ::openmldb::common::ExternalFun fun;
+        if (!fun.ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        if (CreateFunctionInternal(fun).OK()) {
+            LOG(INFO) << "recover " << name << " function success";
         }
     }
 }
@@ -2926,6 +2961,9 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 return 0;
             }
         } else {
+            if (!table->GetDB().empty()) {
+                catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            }
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
     } while (0);
@@ -2956,9 +2994,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        engine_->ClearCacheLocked(table->GetTableMeta()->db());
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -2975,9 +3013,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
-        }
-        if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
@@ -3522,13 +3557,19 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
-    if (!table_meta->db().empty()) {
+    if (!table_meta->db().empty() && table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_->ClearCacheLocked(table_meta->db());
         if (ok) {
             LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+        }
+
+        // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
+        // if it is cluster mode, RefreshTableInfo will be triggered automatically
+        if (!IsClusterMode() && boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+            RefreshAggrCatalog();
         }
     }
     return 0;
@@ -3562,6 +3603,9 @@ void TabletImpl::DropTable(RpcController* controller, const ::openmldb::api::Dro
                 response->set_msg("table status is kMakingSnapshot");
                 break;
             }
+        }
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -3878,13 +3922,14 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 
 void TabletImpl::UpdateGlobalVarTable() {
     // todo: should support distribute iterate
-    if (!sr_) return;
+    if (!GetClusterRouter()) return;
+    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
 
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
     std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
     hybridse::sdk::Status status;
-    auto rs = sr_->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    auto rs = sr->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
     if (status.code != 0) {
         LOG(ERROR) << "update global var table failed: " << status.msg;
         return;
@@ -4010,37 +4055,91 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
 
-    // refresh the pre-aggr tables info
-    if (InitClusterRouter()) {
-        auto entries = sr_->GetAggrTables();
-        catalog_->RefreshAggrTables(entries);
+    RefreshAggrCatalog();
+}
+
+bool TabletImpl::RefreshAggrCatalog() {
+    if (IsClusterMode()) {
+        if (GetClusterRouter()) {
+            auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
+            auto table_infos = sr->GetAggrTables();
+            catalog_->RefreshAggrTables(table_infos);
+            DLOG(INFO) << "Refresh agg catalog in cluster mode (size = " << table_infos.size() << ")";
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        std::string meta_db = nameserver::INTERNAL_DB;
+        std::string meta_table = nameserver::PRE_AGG_META_NAME;
+        std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
+        if (!table) {
+            PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
+            return false;
+        }
+        static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
+
+        auto it = table->GetIterator();
+        it->SeekToFirst();
+        ::hybridse::vm::AggrTableInfo table_info;
+        std::vector<::hybridse::vm::AggrTableInfo> table_infos;
+        while (it->Valid()) {
+            auto row = it->GetValue();
+            const char* str = nullptr;
+            uint32_t len = 0;
+
+            row_view.GetValue(row.buf(), 0, &str, &len);
+            table_info.aggr_table.assign(str, len);
+            row_view.GetValue(row.buf(), 1, &str, &len);
+            table_info.aggr_db.assign(str, len);
+            row_view.GetValue(row.buf(), 2, &str, &len);
+            table_info.base_db.assign(str, len);
+            row_view.GetValue(row.buf(), 3, &str, &len);
+            table_info.base_table.assign(str, len);
+            row_view.GetValue(row.buf(), 4, &str, &len);
+            table_info.aggr_func.assign(str, len);
+            row_view.GetValue(row.buf(), 5, &str, &len);
+            table_info.aggr_col.assign(str, len);
+            row_view.GetValue(row.buf(), 6, &str, &len);
+            table_info.partition_cols.assign(str, len);
+            row_view.GetValue(row.buf(), 7, &str, &len);
+            table_info.order_by_col.assign(str, len);
+            row_view.GetValue(row.buf(), 8, &str, &len);
+            table_info.bucket_size.assign(str, len);
+
+            table_infos.push_back(std::move(table_info));
+            it->Next();
+        }
+        catalog_->RefreshAggrTables(table_infos);
+        DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
+        return true;
     }
 }
 
-bool TabletImpl::InitClusterRouter() {
-    if (sr_) return true;
+bool TabletImpl::GetClusterRouter() {
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire)) return true;
 
     PDLOG(INFO, "Init ClusterSDK in tablet server");
-    if (!zk_cluster_.empty()) {
+    if (IsClusterMode()) {
         ::openmldb::sdk::SQLRouterOptions copt;
         copt.zk_cluster = zk_cluster_;
         copt.zk_path = zk_path_;
-        sr_ = std::make_unique<::openmldb::sdk::SQLClusterRouter>(copt);
-        if (sr_) {
-            if (!sr_->Init()) {
+        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(copt);
+        if (sr) {
+            if (!sr->Init()) {
                 PDLOG(WARNING, "Fail to init sql cluster router");
-                sr_.release();
                 return false;
             }
 
             ::hybridse::sdk::Status status;
-            sr_->ExecuteSQL("SET @@execute_mode='online';", &status);
+            sr->ExecuteSQL("SET @@execute_mode='online';", &status);
             if (!status.IsOK()) {
                 PDLOG(WARNING, "set online mode failed: %s ", status.msg);
-                sr_.release();
                 return false;
             } else {
                 DLOG(INFO) << "set online mode succeed";
+                std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
+                return true;
             }
         } else {
             PDLOG(WARNING, "create sql router failed");
@@ -5259,6 +5358,144 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     }
 }
 
+void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+        openmldb::api::CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    auto status = CreateFunctionInternal(request->fun());
+    response->set_code(status.code);
+    response->set_msg(status.msg);
+}
+
+base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun) {
+    hybridse::node::DataType return_type;
+    openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    std::shared_ptr<DynamicLibHandle> so_handle;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = handle_map_.find(fun.file());
+        if (iter != handle_map_.end()) {
+            so_handle = iter->second;
+            so_handle->ref_cnt++;
+        }
+    }
+    if (!so_handle) {
+        void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
+        if (handle == nullptr) {
+            LOG(WARNING) << "can not open the dynamic library: " << fun.file();
+            return {base::kCreateFunctionFailed, "can not open the dynamic library: " + fun.file()};
+        }
+        so_handle = std::make_shared<DynamicLibHandle>(handle);
+        std::lock_guard<std::mutex> lock(mu_);
+        handle_map_.emplace(fun.file(), so_handle);
+    }
+    std::string name = fun.name();
+    std::vector<void*> funcs;
+    bool run_ok = false;
+    std::string err_msg;
+    do {
+        if (fun.is_aggregate()) {
+            auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
+            if (init_fun == nullptr) {
+                err_msg = "can not find the init function: " + name;
+                break;
+            }
+            funcs.emplace_back(init_fun);
+            auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
+            if (update_fun == nullptr) {
+                err_msg = "can not find the update function: " + name;
+                break;
+            }
+            funcs.emplace_back(update_fun);
+            auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
+            if (output_fun == nullptr) {
+                err_msg = "can not find the output function: " + name;
+                break;
+            }
+            funcs.emplace_back(output_fun);
+        } else {
+            auto fun = dlsym(so_handle->handle, name.c_str());
+            if (fun == nullptr) {
+                err_msg = "can not find the function: " + name;
+                break;
+            }
+            funcs.emplace_back(fun);
+            run_ok = true;
+        }
+    } while (0);
+    if (run_ok) {
+        auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
+        if (status.isOK()) {
+            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+        } else {
+            err_msg = status.msg;
+            run_ok = false;
+        }
+    }
+    if (!run_ok) {
+        LOG(WARNING) << err_msg;
+        std::shared_ptr<DynamicLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            dlclose(so_handle->handle);
+        }
+        return {base::kCreateFunctionFailed, err_msg};
+    }
+    return {};
+}
+
+void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
+        openmldb::api::DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const auto& fun = request->fun();
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    engine_->ClearCacheLocked("");
+    auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
+    if (status.isOK()) {
+        LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
+        base::SetResponseOK(response);
+        std::shared_ptr<DynamicLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            LOG(INFO) << "close the handle. path " << fun.file();
+            dlclose(so_handle->handle);
+        }
+    } else {
+        LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
+        response->set_msg(status.msg);
+        response->set_code(base::kRPCRunError);
+    }
+}
 
 void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
                              ::openmldb::api::CreateAggregatorResponse* response, Closure* done) {
@@ -5302,9 +5539,9 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
     for (auto& r : rs) {
         auto new_row = response->add_rows();
         new_row->set_deploy_name(r.deploy_name_);
-        new_row->set_time(r.GetTimeAsStr());
+        new_row->set_time(r.GetTimeAsStr(statistics::TimeUnit::MICRO_SECOND));
         new_row->set_count(r.count_);
-        new_row->set_total(r.GetTotalAsStr());
+        new_row->set_total(r.GetTotalAsStr(statistics::TimeUnit::MICRO_SECOND));
     }
     response->set_code(ReturnCode::kOk);
 }

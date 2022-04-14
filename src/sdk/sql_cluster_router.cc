@@ -27,6 +27,8 @@
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
+#include "boost/property_tree/ini_parser.hpp"
+#include "boost/property_tree/ptree.hpp"
 #include "brpc/channel.h"
 #include "cmd/display.h"
 #include "common/timer.h"
@@ -46,6 +48,7 @@
 
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
+DEFINE_string(spark_conf, "", "The config file of Spark job");
 
 namespace openmldb {
 namespace sdk {
@@ -928,6 +931,8 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
 
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
                 LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
+                status.msg = "fail to get tablet";
+                status.code = hybridse::common::kRunError;
                 return false;
             }
 
@@ -1073,8 +1078,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
             status->code = -1;
             return {};
         }
-        auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
-        return rs;
+        return ResultSetSQL::MakeResultSet(response, cntl, status);
     } else {
         // Batch query from multiple tablets and merge the result set
         std::vector<std::shared_ptr<ResultSetSQL>> result_set_list;
@@ -1509,6 +1513,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdDropFunction: {
+            std::string name = cmd_node->GetArgs()[0];
+            auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
+            if (base_status.OK()) {
+                cluster_sdk_->RemoveExternalFun(name);
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+            }
+            return {};
+        }
         case hybridse::node::kCmdShowCreateSp: {
             auto& args = cmd_node->GetArgs();
             std::string db_name, sp_name;
@@ -1778,7 +1793,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         return base::Status(sql_status.code, sql_status.msg);
     }
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     return {};
@@ -2028,7 +2043,12 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 }
 
 bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
-    return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    auto ret = cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    if (!ret.OK()) {
+        LOG(WARNING) << "update offline table info failed: " << ret.msg;
+        return false;
+    }
+    return true;
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
@@ -2158,7 +2178,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     }
 
     std::string msg;
-    if (!ns_ptr->CreateTable(table_info, msg)) {
+    if (!ns_ptr->CreateTable(table_info, true, msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }
     RefreshCatalog();
@@ -2308,6 +2328,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 // Run offline query
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 if (IsSyncJob()) {
                     // Run offline sql and wait to get output
@@ -2316,7 +2337,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                     if (base_status.OK()) {
                         *status = {};
                         // Print the output from job output
-                        // TODO: return result set if want to format the output
+                        // TODO(tobe): return result set if want to format the output
                         std::vector<std::string> value = {output};
                         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     } else {
@@ -2339,7 +2360,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
                 }
-
             }
             return {};
         }
@@ -2363,6 +2383,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
                 auto base_status = ExportOfflineData(sql, config, db, IsSyncJob(), job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2393,6 +2414,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
@@ -2415,6 +2437,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in standalone mode
                 *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), plan->Options());
             }
+            return {};
+        }
+        case hybridse::node::kPlanTypeCreateFunction: {
+            *status = HandleCreateFunction(dynamic_cast<hybridse::node::CreateFunctionPlanNode*>(node));
             return {};
         }
         case hybridse::node::kPlanTypeDelete: {
@@ -2746,6 +2772,49 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
         return {::hybridse::common::StatusCode::kCmdError, "insert row failed"};
     }
+    return {};
+}
+
+hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node) {
+    if (node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    ::openmldb::common::ExternalFun fun;
+    fun.set_name(node->Name());
+    auto type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(node->GetReturnType());
+    if (type_node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    openmldb::type::DataType data_type;
+    if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal return type"};
+    }
+    fun.set_return_type(data_type);
+    for (const auto arg_node : node->GetArgsType()) {
+        type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(arg_node);
+        if (type_node == nullptr) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+        }
+        if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal argument type"};
+        }
+        fun.add_arg_type(data_type);
+    }
+    if (node->IsAggregate()) {
+        return {::hybridse::common::StatusCode::kCmdError, "unsupport udaf function"};
+    }
+    fun.set_is_aggregate(node->IsAggregate());
+    auto option = node->Options();
+    if (!option || option->find("FILE") == option->end()) {
+        return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
+    }
+    fun.set_file((*option)["FILE"]->GetExprString());
+    auto ns = cluster_sdk_->GetNsClient();
+    auto ret = ns->CreateFunction(fun);
+    if (!ret.OK()) {
+        return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+    }
+    cluster_sdk_->RegisterExternalFun(fun);
     return {};
 }
 
@@ -3438,6 +3507,35 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
+}
+
+void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config) {
+    if (!conf_file.empty()) {
+        boost::property_tree::ptree pt;
+
+        try {
+            boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
+            LOG(INFO) << "Load Spark conf file: " << conf_file;
+        } catch (...) {
+            LOG(WARNING) << "Fail to load Spark conf file: " << conf_file;
+            return;
+        }
+
+        if (pt.empty()) {
+            LOG(WARNING) << "Spark conf file is empty";
+        }
+
+        for (auto& section : pt) {
+            // Only supports Spark section
+            if (section.first == "Spark") {
+                for (auto& key : section.second) {
+                    (*config).emplace(key.first, key.second.get_value<std::string>());
+                }
+            } else {
+                LOG(WARNING) << "The section " + section.first + " is not supported, please use Spark section";
+            }
+        }
+    }
 }
 
 }  // namespace sdk
