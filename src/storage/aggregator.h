@@ -37,8 +37,6 @@ using ::openmldb::log::LogParts;
 using ::openmldb::replica::LogReplicator;
 using ::openmldb::type::DataType;
 
-const int AGG_VAL_IDX = 4;
-
 enum class AggrType {
     kSum = 1,
     kMin = 2,
@@ -163,7 +161,6 @@ class Aggregator {
     codec::RowView base_row_view_;
     codec::RowView aggr_row_view_;
     codec::RowBuilder row_builder_;
-    std::mutex rb_mu_;
 };
 
 class SumAggregator : public Aggregator {

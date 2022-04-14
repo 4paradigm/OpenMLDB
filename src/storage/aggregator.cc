@@ -64,7 +64,9 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 Aggregator::~Aggregator() {
     if (aggr_col_type_ == DataType::kString || aggr_col_type_ == DataType::kVarchar) {
         for (const auto& it : aggr_buffer_map_) {
-            if (it.second.buffer_.aggr_val_.vstring.data) delete[] it.second.buffer_.aggr_val_.vstring.data;
+            if (it.second.buffer_.aggr_val_.vstring.data) {
+                delete[] it.second.buffer_.aggr_val_.vstring.data;
+            }
         }
     }
 }
@@ -171,6 +173,7 @@ bool Aggregator::Init() {
         return false;
     }
     auto log_parts = base_replicator_->GetLogPart();
+
     if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
@@ -232,11 +235,13 @@ bool Aggregator::Init() {
         }
 
         if (!status.ok()) {
+            PDLOG(WARNING, "read binlog failed: %s", status.ToString().c_str());
             continue;
         }
 
         bool ok = entry.ParseFromString(record.ToString());
         if (!ok) {
+            PDLOG(WARNING, "parse binlog failed");
             continue;
         }
         if (cur_offset >= entry.log_index()) {
@@ -255,6 +260,7 @@ bool Aggregator::Init() {
         }
         cur_offset = entry.log_index();
     }
+    PDLOG(INFO, "aggregator recovery finished");
     status_.store(AggrStat::kInited, std::memory_order_relaxed);
     return true;
 }
@@ -341,9 +347,6 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     entry.set_value(encoded_row);
     entry.set_term(aggr_replicator_->GetLeaderTerm());
     entry.mutable_dimensions()->CopyFrom(dimensions_);
-    // if (request->ts_dimensions_size() > 0) {
-    //     entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
-    // }
     aggr_replicator_->AppendEntry(entry);
     return true;
 }
@@ -835,7 +838,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         }
     }
 
-    if (aggr_func == "sum") {
+    if (aggr_type == "sum") {
         return std::make_shared<SumAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
                                                AggrType::kSum, ts_col, window_type, window_size);
     } else if (aggr_type == "min") {

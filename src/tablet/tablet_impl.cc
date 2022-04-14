@@ -2933,7 +2933,9 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                     for (auto& aggr : *aggrs) {
                         if (!aggr->GetBaseReplicator())
                             aggr->SetBaseReplicator(replicator);
-                        aggr->Init();
+                        if (!aggr->Init()) {
+                            PDLOG(WARNING, "aggregator init failed");
+                        }
                     }
                 }
             }
