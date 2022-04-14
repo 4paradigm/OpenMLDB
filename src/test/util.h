@@ -260,6 +260,36 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>&
     }
 }
 
+std::string GetExeDir() {
+    char path[1024];
+    int cnt = readlink("/proc/self/exe", path, 1024);
+    if (cnt < 0 || cnt >= 1024) {
+        return "";
+    }
+    for (int i = cnt; i >= 0; i--) {
+        if (path[i] == '/') {
+            path[i + 1] = '\0';
+            break;
+        }
+    }
+    return std::string(path);
+}
+
+std::string GetParentDir(const std::string& path) {
+    if (path.empty()) {
+        return "";
+    }
+    std::string dir = path;
+    if (dir.back() == '/') {
+        dir.pop_back();
+    }
+    auto pos = dir.find_last_of('/');
+    if (pos != std::string::npos && pos != 0) {
+        return dir.substr(0, pos);
+    }
+    return dir;
+}
+
 }  // namespace test
 }  // namespace openmldb
 #endif  // SRC_TEST_UTIL_H_

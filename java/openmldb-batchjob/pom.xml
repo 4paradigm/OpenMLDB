@@ -67,7 +67,14 @@
       <scope>${spark.scope}</scope>
     </dependency>
 
-    <!-- OpenMLDB Batch -->
+    <!-- OpenMLDB -->
+    <dependency>
+      <groupId>com.4paradigm.openmldb</groupId>
+      <artifactId>openmldb-native</artifactId>
+      <version>${variant.native.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
     <dependency>
       <groupId>com.4paradigm.openmldb</groupId>
       <artifactId>openmldb-batch</artifactId>

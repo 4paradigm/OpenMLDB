@@ -823,6 +823,23 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DropFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
 
 message CreateAggregatorRequest {
     optional TableMeta base_table_meta = 1;
@@ -839,6 +856,7 @@ message CreateAggregatorResponse {
     optional int32 code = 1;
     optional string msg = 2;
 }
+
 message GAFDeployStatsRequest {}
 
 message DeployStatsResponse {
@@ -925,6 +943,8 @@ service TabletServer {
     // TODO(hw): nameserver call this?
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
 
 
     // pre aggregator interfaces

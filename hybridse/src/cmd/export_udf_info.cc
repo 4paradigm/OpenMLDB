@@ -110,7 +110,7 @@ class UdfTypeExtractor {
 
 int ExportUdfInfo(const std::string& dir, const std::string& filename) {
     auto library = udf::DefaultUdfLibrary::get();
-    auto& registries = library->GetAllRegistries();
+    auto registries = library->GetAllRegistries();
     YAML::Emitter yaml_out;
 
     UdfTypeExtractor udf_extractor;

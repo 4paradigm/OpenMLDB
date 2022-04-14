@@ -178,7 +178,7 @@ object ExpressionUtil {
         val castType = cast.getCast_type_
         val childCol = recursiveGetSparkColumnFromExpr(cast.GetChild(0), node, leftDf, rightDf, hasIndexColumn)
         // Convert OpenMLDB node datatype to Spark datatype
-        childCol.cast(HybridseUtil.nodeDataTypeToSparkType(castType))
+        childCol.cast(DataTypeUtil.openmldbTypeToSparkType(castType))
 
       case _ => throw new UnsupportedHybridSeException(
         s"Do not support convert expression type ${expr.GetExprType} to Spark Column")
