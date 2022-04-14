@@ -20,14 +20,12 @@ import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.node.{ConstNode, ExprType, DataType => HybridseDataType}
 import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
-import com._4paradigm.openmldb.batch.utils.{ExpressionUtil, HybridseUtil}
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExpressionUtil}
 import org.apache.spark.sql.Column
-import org.apache.spark.sql.functions.{lit, to_date, to_timestamp, typedLit, when}
+import org.apache.spark.sql.functions.{to_date, to_timestamp, when}
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType,
   StringType, TimestampType}
-
 import scala.collection.JavaConverters.asScalaBufferConverter
-
 
 object ConstProjectPlan {
 
@@ -39,7 +37,7 @@ object ConstProjectPlan {
     ).toList
 
     val outputColTypeList = node.GetOutputSchema().asScala.map(col =>
-      HybridseUtil.getInnerTypeFromSchemaType(col.getType)
+      DataTypeUtil.hybridseProtoTypeToOpenmldbType(col.getType)
     ).toList
 
     // Get the select columns

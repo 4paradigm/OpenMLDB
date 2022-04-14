@@ -83,6 +83,8 @@ enum StatusCode {
     kCodegenEncodeError = 1108;
     // error when generate code to decode a row
     kCodegenDecodeError = 1109;
+    // error when register external udf function
+    kExternalUDFError = 1110;
 
     // error with catalog
     kCatalogError = 1200;

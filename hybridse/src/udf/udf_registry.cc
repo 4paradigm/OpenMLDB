@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "passes/resolve_fn_and_attrs.h"
+#include "udf/openmldb_udf.h"
 
 using ::hybridse::common::kCodegenError;
 
@@ -112,6 +113,15 @@ Status ExternalFuncRegistry::ResolveFunction(UdfResolveContext* ctx,
     return Status::OK();
 }
 
+Status DynamicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
+                                             node::FnDefNode** result) {
+    CHECK_TRUE(extern_def_->ret_type() != nullptr, kCodegenError,
+               "No return type specified for ", extern_def_->GetName());
+    DLOG(INFO) << "Resolve udf \"" << name() << "\" -> " << extern_def_->GetFlatString();
+    *result = extern_def_;
+    return Status::OK();
+}
+
 Status SimpleUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                           node::FnDefNode** result) {
     *result = fn_def_;
@@ -171,6 +181,51 @@ Status UdafRegistry::ResolveFunction(UdfResolveContext* ctx,
     }
     *result = nm->MakeUdafDefNode(name(), list_types, init_expr, update_func,
                                   merge_func, output_func);
+    return Status::OK();
+}
+
+DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
+        node::DataType return_type, const std::vector<node::DataType>& arg_types, void* udfcontext_fun)
+    : UdfRegistryHelper(basename, library), fn_name_(basename), fn_ptr_(fn), udfcontext_fun_ptr_(udfcontext_fun) {
+    auto nm = node_manager();
+    return_type_ = nm->MakeTypeNode(return_type);
+    for (const auto type : arg_types) {
+        auto type_node = nm->MakeTypeNode(type);
+        arg_types_.emplace_back(type_node);
+        fn_name_.append(".").append(type_node->GetName());
+        arg_nullable_.emplace_back(0);
+    }
+    switch (return_type) {
+        case node::kVarchar:
+        case node::kDate:
+        case node::kTimestamp:
+            return_by_arg_ = true;
+            break;
+        default:
+            return_by_arg_ = false;
+    }
+}
+
+Status DynamicUdfRegistryHelper::Register() {
+    if (fn_ptr_ == nullptr || udfcontext_fun_ptr_ == nullptr) {
+        LOG(WARNING) << "fun_ptr or udfcontext_fun_ptr is null";
+        return Status(kCodegenError, "fun_ptr or udfcontext_fun_ptr is null");
+    }
+    if (return_type_ == nullptr) {
+        LOG(WARNING) << "No return type specified for udf registry " << name();
+        return Status(kCodegenError, "No return type specified for udf registry");;
+    }
+    std::string init_context_fn_name = "init_udfcontext.opaque";
+    auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
+    auto init_context_node = node_manager()->MakeExternalFnDefNode(
+            init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
+    auto def = node_manager()->MakeDynamicUdfFnDefNode(
+        fn_name_, fn_ptr_, return_type_, return_nullable_, arg_types_,
+        arg_nullable_, return_by_arg_, init_context_node);
+    auto registry = std::make_shared<DynamicUdfRegistry>(name(), def);
+    library()->AddExternalFunction(fn_name_, fn_ptr_);
+    this->InsertRegistry(arg_types_, false, registry);
+    LOG(INFO) << "register function success. name: " << fn_name_ << " return type:" << return_type_->GetName();
     return Status::OK();
 }
 

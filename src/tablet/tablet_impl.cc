@@ -16,6 +16,7 @@
 
 #include "tablet/tablet_impl.h"
 
+#include <dlfcn.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -221,6 +222,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     if (!catalog_->UpdateClient(real_endpoint_map)) {
         PDLOG(WARNING, "update client failed");
         return false;
+    }
+
+    if (IsClusterMode()) {
+        RecoverExternalFunction();
     }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -479,6 +484,36 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
     if (IsClusterMode()) {
         if (RefreshSingleTable(request->tid())) {
             PDLOG(INFO, "refresh success. tid %u", request->tid());
+        }
+    }
+}
+
+void TabletImpl::RecoverExternalFunction() {
+    std::string external_function_path = zk_path_ + "/data/function";
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(external_function_path) == 0) {
+        if (!zk_client_->GetChildren(external_function_path, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << external_function_path;
+            return;
+        }
+    }
+    if (functions.empty()) {
+        LOG(INFO) << "no external functions to recover";
+        return;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(external_function_path + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        ::openmldb::common::ExternalFun fun;
+        if (!fun.ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        if (CreateFunctionInternal(fun).OK()) {
+            LOG(INFO) << "recover " << name << " function success";
         }
     }
 }
@@ -2957,6 +2992,9 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 return 0;
             }
         } else {
+            if (!table->GetDB().empty()) {
+                catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            }
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
     } while (0);
@@ -2987,9 +3025,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        engine_->ClearCacheLocked(table->GetTableMeta()->db());
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3006,9 +3044,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
-        }
-        if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
@@ -3599,6 +3634,9 @@ void TabletImpl::DropTable(RpcController* controller, const ::openmldb::api::Dro
                 response->set_msg("table status is kMakingSnapshot");
                 break;
             }
+        }
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -5351,6 +5389,144 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     }
 }
 
+void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+        openmldb::api::CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    auto status = CreateFunctionInternal(request->fun());
+    response->set_code(status.code);
+    response->set_msg(status.msg);
+}
+
+base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun) {
+    hybridse::node::DataType return_type;
+    openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    std::shared_ptr<DynamicLibHandle> so_handle;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = handle_map_.find(fun.file());
+        if (iter != handle_map_.end()) {
+            so_handle = iter->second;
+            so_handle->ref_cnt++;
+        }
+    }
+    if (!so_handle) {
+        void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
+        if (handle == nullptr) {
+            LOG(WARNING) << "can not open the dynamic library: " << fun.file();
+            return {base::kCreateFunctionFailed, "can not open the dynamic library: " + fun.file()};
+        }
+        so_handle = std::make_shared<DynamicLibHandle>(handle);
+        std::lock_guard<std::mutex> lock(mu_);
+        handle_map_.emplace(fun.file(), so_handle);
+    }
+    std::string name = fun.name();
+    std::vector<void*> funcs;
+    bool run_ok = false;
+    std::string err_msg;
+    do {
+        if (fun.is_aggregate()) {
+            auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
+            if (init_fun == nullptr) {
+                err_msg = "can not find the init function: " + name;
+                break;
+            }
+            funcs.emplace_back(init_fun);
+            auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
+            if (update_fun == nullptr) {
+                err_msg = "can not find the update function: " + name;
+                break;
+            }
+            funcs.emplace_back(update_fun);
+            auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
+            if (output_fun == nullptr) {
+                err_msg = "can not find the output function: " + name;
+                break;
+            }
+            funcs.emplace_back(output_fun);
+        } else {
+            auto fun = dlsym(so_handle->handle, name.c_str());
+            if (fun == nullptr) {
+                err_msg = "can not find the function: " + name;
+                break;
+            }
+            funcs.emplace_back(fun);
+            run_ok = true;
+        }
+    } while (0);
+    if (run_ok) {
+        auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
+        if (status.isOK()) {
+            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+        } else {
+            err_msg = status.msg;
+            run_ok = false;
+        }
+    }
+    if (!run_ok) {
+        LOG(WARNING) << err_msg;
+        std::shared_ptr<DynamicLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            dlclose(so_handle->handle);
+        }
+        return {base::kCreateFunctionFailed, err_msg};
+    }
+    return {};
+}
+
+void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
+        openmldb::api::DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const auto& fun = request->fun();
+    std::vector<hybridse::node::DataType> arg_types;
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        hybridse::node::DataType data_type;
+        openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    engine_->ClearCacheLocked("");
+    auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
+    if (status.isOK()) {
+        LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
+        base::SetResponseOK(response);
+        std::shared_ptr<DynamicLibHandle> so_handle;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = handle_map_.find(fun.file());
+            if (iter != handle_map_.end()) {
+                iter->second->ref_cnt--;
+                if (iter->second->ref_cnt == 0) {
+                    so_handle = iter->second;
+                    handle_map_.erase(iter);
+                }
+            }
+        }
+        if (so_handle) {
+            LOG(INFO) << "close the handle. path " << fun.file();
+            dlclose(so_handle->handle);
+        }
+    } else {
+        LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
+        response->set_msg(status.msg);
+        response->set_code(base::kRPCRunError);
+    }
+}
 
 void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
                              ::openmldb::api::CreateAggregatorResponse* response, Closure* done) {

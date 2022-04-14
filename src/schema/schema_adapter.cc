@@ -176,6 +176,46 @@ bool SchemaAdapter::ConvertType(hybridse::node::DataType hybridse_type, openmldb
     return true;
 }
 
+bool SchemaAdapter::ConvertType(openmldb::type::DataType type, hybridse::node::DataType* hybridse_type) {
+    if (hybridse_type == nullptr) {
+        return false;
+    }
+    switch (type) {
+        case openmldb::type::kBool:
+            *hybridse_type = hybridse::node::kBool;
+            break;
+        case openmldb::type::kSmallInt:
+            *hybridse_type = hybridse::node::kInt16;
+            break;
+        case openmldb::type::kInt:
+            *hybridse_type = hybridse::node::kInt32;
+            break;
+        case openmldb::type::kBigInt:
+            *hybridse_type = hybridse::node::kInt64;
+            break;
+        case openmldb::type::kFloat:
+            *hybridse_type = hybridse::node::kFloat;
+            break;
+        case openmldb::type::kDouble:
+            *hybridse_type = hybridse::node::kDouble;
+            break;
+        case openmldb::type::kDate:
+            *hybridse_type = hybridse::node::kDate;
+            break;
+        case openmldb::type::kTimestamp:
+            *hybridse_type = hybridse::node::kTimestamp;
+            break;
+        case openmldb::type::kString:
+        case openmldb::type::kVarchar:
+            *hybridse_type = hybridse::node::kVarchar;
+            break;
+        default:
+            LOG(WARNING) << "unsupported type" << openmldb::type::DataType_Name(type);
+            return false;
+    }
+    return true;
+}
+
 bool SchemaAdapter::ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* openmldb_type) {
     if (openmldb_type == nullptr) {
         return false;

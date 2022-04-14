@@ -118,6 +118,7 @@ if(TESTING_ENABLE)
     compile_test(schema)
     compile_test(log)
     compile_test(apiserver)
+    add_library(test_udf SHARED examples/test_udf.cc)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
