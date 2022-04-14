@@ -670,7 +670,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
 
-TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
+TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);

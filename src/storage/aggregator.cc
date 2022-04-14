@@ -178,9 +178,7 @@ bool Aggregator::Init() {
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
     }
-    auto table_it = aggr_table_->NewTraverseIterator(0);
-    // TODO: need abstract TraverseIterator?
-    auto it = dynamic_cast<MemTableTraverseIterator*>(table_it);
+    auto it = aggr_table_->NewTraverseIterator(0);
     it->SeekToFirst();
     uint64_t recovery_offset = INT64_MAX;
     while (it->Valid()) {
