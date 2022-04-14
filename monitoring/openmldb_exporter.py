@@ -23,7 +23,7 @@ import sys
 import logging
 from typing import (Iterable)
 
-from openmldb_collector import (ConfigStore, CollectorBase, TableStatusCollector, DeployQueryStatCollector,
+from openmldb_collector import (ConfigStore, Collector, TableStatusCollector, DeployQueryStatCollector,
                                 ComponentStatusCollector, AppMemCollector)
 from prometheus_client.twisted import MetricsResource
 from sqlalchemy import engine
@@ -34,9 +34,9 @@ from twisted.web.server import Site
 dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 
-def collect_task(collectors: Iterable[CollectorBase]):
+def collect_task(collectors: Iterable[Collector]):
     for collector in collectors:
-        logging.info(type(collector).__qualname__, " collecting")
+        logging.info("%s collecting", type(collector).__qualname__)
         collector.collect()
 
 
@@ -50,11 +50,13 @@ def main():
     eng = engine.create_engine(f"openmldb:///?zk={cfg_store.zk_root}&zkPath={cfg_store.zk_path}")
     conn = eng.connect()
 
-    collectors = (TableStatusCollector(conn), DeployQueryStatCollector(conn), ComponentStatusCollector(conn),
-                  AppMemCollector([]))
+    collectors = (
+        TableStatusCollector(conn),
+        DeployQueryStatCollector(conn),
+        ComponentStatusCollector(conn), AppMemCollector([]))
 
     repeated_task = task.LoopingCall(collect_task, collectors)
-    repeated_task.start(10.0)
+    repeated_task.start(cfg_store.pull_interval)
 
     root = Resource()
     root.putChild(cfg_store.telemetry_path, MetricsResource())

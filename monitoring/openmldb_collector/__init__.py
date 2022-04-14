@@ -23,7 +23,7 @@ from openmldb_collector.collectors import (
     DeployQueryStatCollector,
     ComponentStatusCollector,
     AppMemCollector,
-    CollectorBase,
+    Collector,
 )
 
 __all__ = [
@@ -43,5 +43,5 @@ __all__ = [
     "DeployQueryStatCollector",
     "ComponentStatusCollector",
     "AppMemCollector",
-    "CollectorBase",
+    "Collector",
 ]

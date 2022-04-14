@@ -16,25 +16,40 @@
 Collector definations
 """
 
-from sqlalchemy import engine, select
+from abc import ABC, abstractmethod
+from sqlalchemy import (engine, Table, Column, MetaData, String, Integer)
 from openmldb_collector import (connected_seconds, component_status, table_rows, table_partitions,
                                 table_partitions_unalive, table_memory, table_disk, table_replica, deploy_response_time,
                                 tablet_memory_application, tablet_memory_actual)
 from urllib import request
 
 from typing import (Iterable)
+import logging
 
-class CollectorBase(object):
+class Collector(ABC):
+    '''
+    ABC for OpenMLDB prometheus collectors
+    '''
+    @abstractmethod
+    def collect(self):
+        '''
+        define how to collect and save metric values
+        '''
+        pass
+
+
+class SDKConnectable(object):
+    '''
+    base class that hold a OpenMLDB connection through python sdk
+    '''
     _conn: engine.Connection
 
     def __init__(self, conn: engine.Connection):
         self._conn = conn
 
-    def collect(self):
-        raise NotImplementedError("collect not implemented in base class")
 
 
-class TableStatusCollector(CollectorBase):
+class TableStatusCollector(Collector, SDKConnectable):
     '''
     table statistics metric collector
     '''
@@ -43,6 +58,8 @@ class TableStatusCollector(CollectorBase):
         rs = self._conn.execute("SHOW TABLE STATUS")
         rows = rs.fetchall()
         for row in rows:
+            logging.debug(row)
+
             # TODO: use storage_type
             tid, tb_name, db_name, storage_type, rows, mem, disk, partition, partition_unalive, replica, *_ = row
             tb_path = f"{db_name}_{tb_name}"
@@ -54,15 +71,24 @@ class TableStatusCollector(CollectorBase):
             table_memory.labels(tb_path, tid).set(int(mem))
             table_disk.labels(tb_path, tid).set(int(disk))
 
-class DeployQueryStatCollector(CollectorBase):
+class DeployQueryStatCollector(Collector, SDKConnectable):
     '''
     deploy query statistics collector
     '''
+    _metadata: MetaData
+    _deploy_response_time: Table
+
+    def __init__(self, conn: engine.Connection):
+        super().__init__(conn)
+        self._init_table_info()
+
     def collect(self):
-        rs = self._conn.execute("SELECT * FROM INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME")
+        rs = self._conn.execute(self._deploy_response_time.select())
         row = rs.fetchone()
         acc = 0
         while row is not None:
+            logging.debug(row)
+
             dp_name, time, count, total = row
             time = float(time)
             acc += float(total)
@@ -74,8 +100,20 @@ class DeployQueryStatCollector(CollectorBase):
             deploy_response_time.labels(dp_name)._sum.set(acc)
             row = rs.fetchone()
 
+    def _init_table_info(self):
+        self._metadata = MetaData(schema="INFORMATION_SCHEMA", bind=self._conn, quote_schema=False)
+        self._deploy_response_time = Table(
+            "DEPLOY_RESPONSE_TIME",
+            self._metadata,
+            Column("DEPLOY_NAME", String, quote=False),
+            Column("TIME", String, quote=False),
+            Column("COUNT", Integer, quote=False),
+            Column("TOTAL", String, quote=False),
+            quote=False,
+        )
 
-class ComponentStatusCollector(CollectorBase):
+
+class ComponentStatusCollector(Collector, SDKConnectable):
     '''
     component statistics collector
     '''
@@ -84,6 +122,8 @@ class ComponentStatusCollector(CollectorBase):
         rs = self._conn.execute("SHOW COMPONENTS")
         components = rs.fetchall()
         for row in components:
+            logging.debug(row)
+
             endpoint = row[0]
             # connect time in millisecond
             connect_time = int(row[2])
@@ -92,7 +132,7 @@ class ComponentStatusCollector(CollectorBase):
             connected_seconds.labels(endpoint)._value.set(connect_time / 1000)
             component_status.labels(endpoint).state(status)
 
-class AppMemCollector(object):
+class AppMemCollector(Collector):
     '''
     collector for OpenMLDB instance memory statistics
     '''

@@ -30,6 +30,7 @@ class ConfigStore(object):
     zk_path: str
     listen_port: int
     telemetry_path: str
+    pull_interval: float
 
     def __init__(self):
         parser = argparse.ArgumentParser(description="OpenMLDB exporter")
@@ -41,6 +42,10 @@ class ConfigStore(object):
                             help="Path under which to expose metrics")
         parser.add_argument("--config.zk_root", type=str, default="127.0.0.1:6181", help="endpoint to zookeeper")
         parser.add_argument("--config.zk_path", type=str, default="/", help="root path in zookeeper for OpenMLDB")
+        parser.add_argument("--config.interval",
+                            type=float,
+                            default=10.0,
+                            help="interval in seconds to pull metrics periodically")
         self._args = parser.parse_args()
         self._store_cfgs()
 
@@ -59,6 +64,7 @@ class ConfigStore(object):
         self.zk_path = self._get_cfg("config.zk_path")
         self.listen_port = self._get_cfg("web.listen_address")
         self.telemetry_path = self._get_cfg("web.telemetry_path")
+        self.pull_interval = self._get_cfg("config.interval")
 
     def get_log_level(self):
         numeric_level = getattr(logging, self.log_level.upper(), None)
