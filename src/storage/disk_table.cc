@@ -1034,7 +1034,8 @@ void DiskTableRowIterator::Next() {
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (row_pk_ == pk_) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx, iterator will never get to (pk, ts_idx_) again. Can break here. 
+                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
+                // iterator will never get to (pk, ts_idx_) again. Can break here.
                 pk_valid_ = false;
                 break;
             }
@@ -1069,7 +1070,8 @@ void DiskTableRowIterator::Seek(const uint64_t& key) {
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (pk_ == row_pk_) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx, iterator will never get to (pk, ts_idx_) again. Can break here. 
+                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
+                // iterator will never get to (pk, ts_idx_) again. Can break here.
                 pk_valid_ = false;
                 break;
             }
@@ -1096,7 +1098,8 @@ void DiskTableRowIterator::SeekToFirst() {
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
         if (pk_ == row_pk_) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx, iterator will never get to (pk, ts_idx_) again. Can break here. 
+                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
+                // iterator will never get to (pk, ts_idx_) again. Can break here.
                 pk_valid_ = false;
                 break;
             }

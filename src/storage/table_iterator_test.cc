@@ -443,7 +443,6 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
     wit->Seek(now + 50 * (60 * 1000));
     ASSERT_TRUE(wit->Valid());
     ASSERT_EQ(0, now - wit->GetKey());
-
 }
 
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableIteratorTest,
