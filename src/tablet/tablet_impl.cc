@@ -2374,7 +2374,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
         }
     } else {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
+        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
         response->set_msg("table is not memtable");
         return;
     }

@@ -1630,12 +1630,13 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    // FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    // FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
-    // FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
-    FLAGS_db_root_path = "/tmp/1";
-    FLAGS_ssd_root_path = "/tmp/ssd/1";
-    FLAGS_hdd_root_path = "/tmp/hdd/1";
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
+    // used to check if files are removed properly.
+    // FLAGS_db_root_path = "/tmp/1";
+    // FLAGS_ssd_root_path = "/tmp/ssd/1";
+    // FLAGS_hdd_root_path = "/tmp/hdd/1";
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }
