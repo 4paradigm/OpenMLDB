@@ -22,6 +22,7 @@
 #include <snappy.h>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -78,6 +79,15 @@ std::shared_ptr<::openmldb::client::TaskManagerClient> DBSDK::GetTaskManagerClie
     return taskmanager_client;
 }
 
+std::string DBSDK::GetFunSignature(const ::openmldb::common::ExternalFun& fun) {
+    std::string signature = fun.name();
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        signature.append(".");
+        signature.append(DataType_Name(fun.arg_type(idx)));
+    }
+    return signature;
+}
+
 bool DBSDK::InitExternalFun() {
     auto ns_client = GetNsClient();
     if (!ns_client) {
@@ -87,26 +97,58 @@ bool DBSDK::InitExternalFun() {
     if (!ns_client->ShowFunction("", &fun_vec).OK()) {
         return false;
     }
-    for (const auto& fun : fun_vec) {
+    std::vector<std::string> remove_funs;
+    std::vector<std::shared_ptr<openmldb::common::ExternalFun>> add_funs;
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        for (const auto& kv : external_fun_) {
+            bool not_in = true;
+            for (const auto& fun : fun_vec) {
+                if (fun.name() == kv.first) {
+                    not_in = false;
+                    break;
+                }
+            }
+            if (not_in) {
+                remove_funs.emplace_back(kv.first);
+            }
+        }
+        for (const auto& fun : fun_vec) {
+            auto iter = external_fun_.find(fun.name());
+            if (iter == external_fun_.end()) {
+                add_funs.emplace_back(std::make_shared<openmldb::common::ExternalFun>(fun));
+            } else if (GetFunSignature(*iter->second) != GetFunSignature(fun)) {
+                remove_funs.emplace_back(fun.name());
+                add_funs.emplace_back(std::make_shared<openmldb::common::ExternalFun>(fun));
+            }
+        }
+    }
+    for (const auto& name : remove_funs) {
+        RemoveExternalFun(name);
+    }
+    for (const auto& fun : add_funs) {
         RegisterExternalFun(fun);
     }
     return true;
 }
 
-bool DBSDK::RegisterExternalFun(const ::openmldb::common::ExternalFun& fun) {
+bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun) {
+    if (!fun) {
+        return false;
+    }
     void* fun_ptr = reinterpret_cast<void*>(trivial_fun);
     ::hybridse::node::DataType return_type;
-    ::openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
+    ::openmldb::schema::SchemaAdapter::ConvertType(fun->return_type(), &return_type);
     std::vector<::hybridse::node::DataType> arg_types;
-    for (int i = 0; i < fun.arg_type_size(); i++) {
+    for (int i = 0; i < fun->arg_type_size(); i++) {
         ::hybridse::node::DataType data_type;
-        ::openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(i), &data_type);
+        ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
     std::vector<void*> fun_vec = {fun_ptr, fun_ptr, fun_ptr};
-    if (engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun_vec).isOK()) {
+    if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), fun_vec).isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-        external_fun_.emplace(fun.name(), std::make_shared<::openmldb::common::ExternalFun>(fun));
+        external_fun_.emplace(fun->name(), fun);
         return true;
     }
     return false;
@@ -193,6 +235,12 @@ void ClusterSDK::WatchNotify() {
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
+    zk_client_->WatchChildren(options_.zk_path + "/data/function",
+            std::bind(&ClusterSDK::RefreshExternalFun, this, std::placeholders::_1));
+}
+
+void ClusterSDK::RefreshExternalFun(const std::vector<std::string>& funs) {
+    InitExternalFun();
 }
 
 bool ClusterSDK::TriggerNotify() const {

@@ -2779,8 +2779,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (node == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
     }
-    ::openmldb::common::ExternalFun fun;
-    fun.set_name(node->Name());
+    auto fun = std::make_shared<openmldb::common::ExternalFun>();
+    fun->set_name(node->Name());
     auto type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(node->GetReturnType());
     if (type_node == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
@@ -2789,7 +2789,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal return type"};
     }
-    fun.set_return_type(data_type);
+    fun->set_return_type(data_type);
     for (const auto arg_node : node->GetArgsType()) {
         type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(arg_node);
         if (type_node == nullptr) {
@@ -2798,19 +2798,19 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
             return {::hybridse::common::StatusCode::kCmdError, "illegal argument type"};
         }
-        fun.add_arg_type(data_type);
+        fun->add_arg_type(data_type);
     }
     if (node->IsAggregate()) {
         return {::hybridse::common::StatusCode::kCmdError, "unsupport udaf function"};
     }
-    fun.set_is_aggregate(node->IsAggregate());
+    fun->set_is_aggregate(node->IsAggregate());
     auto option = node->Options();
     if (!option || option->find("FILE") == option->end()) {
         return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
     }
-    fun.set_file((*option)["FILE"]->GetExprString());
+    fun->set_file((*option)["FILE"]->GetExprString());
     auto ns = cluster_sdk_->GetNsClient();
-    auto ret = ns->CreateFunction(fun);
+    auto ret = ns->CreateFunction(*fun);
     if (!ret.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, ret.msg};
     }

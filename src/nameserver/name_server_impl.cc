@@ -642,6 +642,38 @@ bool NameServerImpl::Recover() {
         UpdateRemoteRealEpMap();
     }
     UpdateTaskStatus(true);
+    if (!RecoverExternalFunction()) {
+        return false;
+    }
+    return true;
+}
+
+bool NameServerImpl::RecoverExternalFunction() {
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(zk_path_.external_function_path_) == 0) {
+        if (!zk_client_->GetChildren(zk_path_.external_function_path_, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << zk_path_.external_function_path_;
+            return false;
+        }
+    }
+    external_fun_.clear();
+    if (functions.empty()) {
+        return true;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(zk_path_.external_function_path_ + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        auto fun = std::make_shared<::openmldb::common::ExternalFun>();
+        if (!fun->ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        external_fun_.emplace(name, fun);
+        LOG(INFO) << "recover function " << name;
+    }
     return true;
 }
 
