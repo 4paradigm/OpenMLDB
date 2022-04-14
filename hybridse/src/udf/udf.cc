@@ -881,6 +881,11 @@ void lcase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
+void init_udfcontext(UDFContext* context) {
+    context->pool = vm::JitRuntime::get()->GetMemPool();
+    context->ptr = nullptr;
+}
+
 //
 
 template <>

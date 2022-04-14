@@ -55,7 +55,7 @@ std::shared_ptr<SqlCompileInfo> Compile(
     BatchRunSession session;
     Engine engine(catalog, options);
     if (!engine.Get(sql, "db", session, status)) {
-        LOG(WARNING) << "Fail to compile sql";
+        LOG(WARNING) << "Fail to compile sql. error " << status.msg;
         return nullptr;
     }
     return std::dynamic_pointer_cast<SqlCompileInfo>(session.GetCompileInfo());

@@ -26,6 +26,7 @@
 #include "codec/type_codec.h"
 #include "node/node_manager.h"
 #include "proto/fe_type.pb.h"
+#include "udf/openmldb_udf.h"
 
 namespace hybridse {
 namespace udf {
@@ -267,6 +268,7 @@ void string_to_double(StringRef *str, double *v, bool *is_null_ptr);
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
+void init_udfcontext(UDFContext* context);
 /**
  * Allocate string buffer from jit runtime.
  */

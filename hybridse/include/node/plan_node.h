@@ -452,10 +452,19 @@ class CmdPlanNode : public LeafPlanNode {
         if_not_exist_ = b;
     }
 
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
+
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 class DeletePlanNode : public LeafPlanNode {
@@ -477,7 +486,7 @@ class DeletePlanNode : public LeafPlanNode {
 
 class DeployPlanNode : public LeafPlanNode {
  public:
-    explicit DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+    DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                             const std::shared_ptr<OptionsMap> options, bool if_not_exist)
         : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str),
         options_(options), if_not_exist_(if_not_exist) {}
@@ -500,9 +509,29 @@ class DeployPlanNode : public LeafPlanNode {
     const bool if_not_exist_ = false;
 };
 
+class CreateFunctionPlanNode : public LeafPlanNode {
+ public:
+    CreateFunctionPlanNode(const std::string& name, const SqlNode* return_type,
+            const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeCreateFunction), function_name_(name), return_type_(return_type),
+        args_type_(args_type), is_aggregate_(is_aggregate), options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const SqlNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
+    void Print(std::ostream& output, const std::string& tab) const override;
+ private:
+    const std::string function_name_;
+    const SqlNode* return_type_;
+    NodePointVector args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class SelectIntoPlanNode : public LeafPlanNode {
  public:
-    explicit SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
+    SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
                                 const std::shared_ptr<OptionsMap> options,
                                 const std::shared_ptr<OptionsMap> config_options)
         : LeafPlanNode(kPlanTypeSelectInto),

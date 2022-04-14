@@ -64,46 +64,9 @@ class DBSDK {
     }
     inline ::hybridse::vm::Engine* GetEngine() { return engine_; }
 
-    std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
-        auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
-        if (ns_client) return ns_client;
+    std::shared_ptr<::openmldb::client::NsClient> GetNsClient();
 
-        std::string endpoint, real_endpoint;
-        if (!GetNsAddress(&endpoint, &real_endpoint)) {
-            DLOG(ERROR) << "fail to get ns address";
-            return {};
-        }
-        ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
-        int ret = ns_client->Init();
-        if (ret != 0) {
-            // We GetNsClient and use it without checking not null. It's intolerable.
-            LOG(DFATAL) << "fail to init ns client with endpoint " << endpoint;
-            return {};
-        }
-        LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
-        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
-        return ns_client;
-    }
-
-    std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient() {
-        auto taskmanager_client = std::atomic_load_explicit(&taskmanager_client_, std::memory_order_relaxed);
-        if (taskmanager_client) return taskmanager_client;
-
-        std::string endpoint, real_endpoint;
-        if (!GetTaskManagerAddress(&endpoint, &real_endpoint)) {
-            LOG(ERROR) << "fail to get TaskManager address";
-            return {};
-        }
-        taskmanager_client = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint);
-        int ret = taskmanager_client->Init();
-        if (ret != 0) {
-            LOG(DFATAL) << "fail to init TaskManager client with endpoint " << endpoint;
-            return {};
-        }
-        LOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
-        std::atomic_store_explicit(&taskmanager_client_, taskmanager_client, std::memory_order_relaxed);
-        return taskmanager_client;
-    }
+    std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient();
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
@@ -126,6 +89,8 @@ class DBSDK {
     virtual bool GlobalVarNotify() const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
+    bool RegisterExternalFun(const ::openmldb::common::ExternalFun& fun);
+    bool RemoveExternalFun(const std::string& name);
 
  protected:
     virtual bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) = 0;
@@ -133,6 +98,8 @@ class DBSDK {
     virtual bool BuildCatalog() = 0;
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
+
+    bool InitExternalFun();
 
  protected:
     std::atomic<uint64_t> cluster_version_{0};
@@ -144,6 +111,7 @@ class DBSDK {
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> table_to_tablets_;
 
     ::hybridse::vm::Engine* engine_ = nullptr;
+    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
 
  private:
     // get/set op should be atomic(actually no reset now)
@@ -218,7 +186,6 @@ class StandAloneSDK : public DBSDK {
     }
 
  protected:
-
     bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override {
         // Standalone mode does not provide TaskManager service
         return false;
