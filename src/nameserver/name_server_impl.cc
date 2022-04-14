@@ -5007,9 +5007,6 @@ void NameServerImpl::SchedMakeSnapshot() {
                 iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
         }
         for (auto iter = table_info_.begin(); iter != table_info_.end(); ++iter) {
-            if (iter->second->storage_mode() != common::kMemory) {
-                continue;
-            }
             table_infos.insert(std::make_pair(iter->first, iter->second));
         }
     }
@@ -5024,9 +5021,6 @@ void NameServerImpl::SchedMakeSnapshot() {
                 continue;
             }
             for (const auto& table : tables) {
-                if (table.storage_mode() != common::kMemory) {
-                    continue;
-                }
                 auto table_iter = table_part_offset.find(table.name());
                 if (table_iter == table_part_offset.end()) {
                     std::map<uint32_t, uint64_t> part_offset;
@@ -5080,9 +5074,6 @@ void NameServerImpl::SchedMakeSnapshot() {
     }
     PDLOG(INFO, "start make snapshot");
     for (const auto& table : table_infos) {
-        if (table.second->storage_mode() != common::kMemory) {
-            continue;
-        }
         auto table_iter = table_part_offset.find(table.second->name());
         if (table_iter == table_part_offset.end()) {
             continue;
