@@ -252,12 +252,12 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "openmldb"
-version = "0.5.0a1"
+version = "0.5.0a0"
 description = "OpenMLDB Python SDK"
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
+develop = true
 
 [package.dependencies]
 IPython = "*"
@@ -604,7 +604,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b591e1670781f8ba57eb624a1a7406d74237a7a13f2f4cb8f5e120a6f4c7f764"
+content-hash = "3475b4cb18c7608bb824eddfc421d0c0d3ec4506333bdc5a714fb770ad73f0e1"
 
 [metadata.files]
 appnope = [
