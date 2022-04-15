@@ -37,7 +37,7 @@ class TestUnsafeFormatForWindowAppendSlice extends SparkTestSuite {
     val data = Seq(
       Row("a", "4817", "583e2", "14447111", new Timestamp(1480464000000L), null),
       Row("b", "3425", "5233a", "24142424", null, new Timestamp(1990464000000L)),
-      Row("b", "3425", "5233a", "24142424", null, null),
+      Row("b", "3425", "5233a", "24142424", null, null)
     )
     val schema = StructType(List(
       StructField("reqId", StringType),
@@ -52,16 +52,15 @@ class TestUnsafeFormatForWindowAppendSlice extends SparkTestSuite {
     df.createOrReplaceTempView("t1")
 
     val sqlText = """
-                    |select
-                    |    count(`f_cId`) over w1,
-                    |    count(`f_cId`) over w2
-                    |from
-                    |    `t1`
-                    |window w1 as (partition by `f_requestId` order by `eventTime` rows between 6048 preceding and CURRENT ROW),
-                    |       w2 as (partition by `f_uId` order by `eventTime` rows between 6048 preceding and CURRENT ROW)
-                    |
-                    |""".stripMargin
-
+        |select
+        |    count(`f_cId`) over w1,
+        |    count(`f_cId`) over w2
+        |from
+        |    `t1`
+        |window w1 as (partition by `f_requestId` order by `eventTime` rows between 6048 preceding and CURRENT ROW),
+        |       w2 as (partition by `f_uId` order by `eventTime` rows between 6048 preceding and CURRENT ROW)
+        |
+        |""".stripMargin
 
     val outputDf = sess.sql(sqlText)
     val sparksqlOutputDf = sess.sparksql(sqlText)
