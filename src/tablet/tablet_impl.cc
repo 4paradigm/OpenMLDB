@@ -5594,9 +5594,7 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     }
 
     auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
-    if (!base_replicator) {
-        PDLOG(WARNING, "base table replicator is not exist. tid %u, pid %u", base_meta->tid(), base_meta->pid());
-    } else {
+    if (base_replicator) {
         aggregator->SetBaseReplicator(base_replicator);
     }
     if (!aggregator->Init()) {
