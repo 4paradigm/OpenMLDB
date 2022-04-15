@@ -1,11 +1,24 @@
-# Pulsar OpenMLDB JDBC Connector Usage Demo
-We use Pulsar Standalone, OpenMLDB cluster and a simple JSON message producer to show how the OpenMLDB JDBC Connector works.
+# Integration with Pulsar
 
-You should download the demo files pkg in [here](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/releases/download/v0.2/files.tar.gz), which are needed by this demo, such as the connector nar, schema files, config files.
-All steps are recorded, see [terminalizer page](https://terminalizer.com/view/be2309235671), or download the demo script [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
+## Introduction
 
-The demo includes the following steps, as shown below.
+Apache Pulsar is a cloud-native, distributed messaging and streaming platform. It can be used as online data source for OpenMLDB to import real-time data streams. You can learn more about Pulsar from the project website [https://pulsar.apache.org/](https://pulsar.apache.org/). We have developed an OpenMLDB JDBC Connector to work seamlessly with Pulsar. In this document, you will learn the concepts and usages of this connector.
+
+Note that, for the sake of simplicity, for this document, we use Pulsar Standalone, OpenMLDB cluster and a simple JSON message producer to show how the OpenMLDB JDBC Connector works. The connector also works well with the Pulsar Cluster.
+
+## Overview
+
+### Download
+
+- You can download the entire demo package [here](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/releases/download/v0.2/files.tar.gz), which are needed by this demo, including the connector nar, schema files, and config files. 
+
+- If you would like to download the connector only, you can [download it here](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar) from the OpenMLDB release. 
+
+### Workflow
+
+The below figure summarizes the workflow of using this connector. We will further explain the detail later. Moreover, we have recorded the steps at [terminalizer page](https://terminalizer.com/view/be2309235671) for easy reference; or you can also download the demo script [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
 ![demo steps](images/demo_steps.png)
+
 
 ## Step 1
 ### Create OpenMLDB Cluster
@@ -85,12 +98,15 @@ Q:
 2022-04-07T03:15:59,289+0000 [main] ERROR org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble - Exception while instantiating ZooKeeper
 java.net.BindException: Address already in use
 ```
+
 A: change the address of zk ‘zookeeperServers’ in conf/standalone.conf, Pulsar wants an unused address to start zk server.
 
 Q: 8080 is already used.
+
 A: change the port ‘webServicePort’ in conf/standalone.conf. Don’t forget the ‘webServiceUrl’ in conf/client.conf, pulsar-admin needs the conf.
 
 Q: 6650 port
+
 A: ‘brokerServicePort’ in conf/standalone.conf
 
 ### Connector installation(Optional)
