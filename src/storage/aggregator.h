@@ -117,9 +117,9 @@ class Aggregator {
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
 
-    void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) { base_replicator_ = replicator; };
+    void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) { base_replicator_ = replicator; }
 
-    std::shared_ptr<LogReplicator> GetBaseReplicator() { return base_replicator_; };
+    std::shared_ptr<LogReplicator> GetBaseReplicator() { return base_replicator_; }
 
  protected:
     codec::Schema base_table_schema_;

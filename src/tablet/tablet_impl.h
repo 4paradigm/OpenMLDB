@@ -425,7 +425,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                      const ::openmldb::storage::Dimensions& dimensions, uint64_t log_offset);
 
     bool CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request,
-                                  std::string& msg);
+                                  std::string& msg); //NOLINT
 
     inline bool IsClusterMode() const {
         return startup_mode_ == ::openmldb::type::StartupMode::kCluster;

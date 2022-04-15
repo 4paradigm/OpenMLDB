@@ -5544,7 +5544,8 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get pre-aggr table db root path");
-        PDLOG(WARNING, "pre-aggr table db path is not found. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
+        PDLOG(WARNING, "pre-aggr table db path is not found. tid %u, pid %u",
+              request->aggr_table_tid(), request->aggr_table_pid());
         return;
     }
     std::string aggr_table_path = GetDBPath(aggr_path, request->aggr_table_tid(), request->aggr_table_pid());

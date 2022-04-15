@@ -5875,7 +5875,7 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        //create aggr
+        // create aggr
         ::openmldb::api::CreateAggregatorRequest aggr_request;
         table_meta = aggr_request.mutable_base_table_meta();
         table_meta->CopyFrom(base_table_meta);
@@ -5971,9 +5971,6 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(aggr_buffer.aggr_cnt_, 2);
         ASSERT_EQ(aggr_buffer.aggr_val_.vlong, 199);
         ASSERT_EQ(aggr_buffer.binlog_offset_, 200);
-
-
-        
 
         ::openmldb::api::DropTableRequest dr;
         dr.set_tid(base_table_id);

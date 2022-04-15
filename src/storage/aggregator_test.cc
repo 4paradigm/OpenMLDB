@@ -35,7 +35,7 @@ class AggregatorTest : public ::testing::Test {
     AggregatorTest() {}
     ~AggregatorTest() {}
 };
-std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }
+std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } //NOLINT
 void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_name("t0");
     table_meta->set_pid(0);

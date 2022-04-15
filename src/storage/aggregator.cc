@@ -15,6 +15,8 @@
  */
 
 #include "boost/algorithm/string.hpp"
+#include<algorithm>
+#include<utility>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
