@@ -35,7 +35,7 @@ docker exec -it openmldb bash
 ```{note}
 Even the host network, docker on macOS cannot support connecting to the container from the host. You only can connect openmldb cluster in other containers, like pulsar container.
 ```
-In OpenMLDB container, start the cluster, and enter the client, and create the table:
+In OpenMLDB container, start the cluster:
 ```
 ./init.sh
 ```
@@ -55,7 +55,7 @@ Run the script:
 ![table desc](images/table.png)
 
 ```{note}
-JSONSchema and JDBC connector can't support 'java.sql.Timestamp' now. So we use 'bigint' to be the timestamp column type(it works in OpenMLDB).
+JSONSchema and JDBC base connector can't support 'java.sql.Timestamp' now. So we use 'bigint' to be the timestamp column type(it works in OpenMLDB).
 ```
 ## Step 2
 ### Start Pulsar Standalone
@@ -72,19 +72,19 @@ docker run -dit --network host -v `pwd`/files:/pulsar/files --name pulsar apache
 docker exec -it pulsar bash
 ```
 
-In pulsar container, start the pulsar standalone server.
+In Pulsar container, start the pulsar standalone server.
 ```
 bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```
 ```{note}
-openmldb want to use the port 2181, so we should change the zk port here. We will use openmldb zk port to connect openmldb, but zk port in pulsar standalone won’t affect anything.
+OpenMLDB want to use the port 2181, so we should change the zk port here. We will use zk port 2181 to connect OpenMLDB, but zk port in Pulsar standalone won’t affect anything.
 ```
 You can check if the pulsar runs well, `ps` or check the log.
 ```
 ps axu|grep pulsar
 ```
 
-When you start a local standalone cluster, a public/default namespace is created automatically. The namespace is used for development purposes,  ref [pulsar doc](https://pulsar.apache.org/docs/en/2.2.0/standalone/#starting-the-cluster).
+When you start a local standalone cluster, a public/default namespace is created automatically. The namespace is used for development purposes,  ref [pulsar doc](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
 
 **We will create the sink in the namespace**.
 
@@ -94,20 +94,18 @@ If you really want to start pulsar locally, see [Set up a standalone Pulsar loca
 #### Q&A
 Q:
 ```
-2022-04-07T03:15:59,289+0000 [main] INFO  org.apache.zookeeper.server.NIOServerCnxnFactory - binding to port 0.0.0.0/0.0.0.0:2181
+2022-04-07T03:15:59,289+0000 [main] INFO  org.apache.zookeeper.server.NIOServerCnxnFactory - binding to port 0.0.0.0/0.0.0.0:5181
 2022-04-07T03:15:59,289+0000 [main] ERROR org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble - Exception while instantiating ZooKeeper
 java.net.BindException: Address already in use
 ```
+How to fix it?
+A: Pulsar wants an unused address to start zk server，5181 is used too. Change another port in '--zookeeper-port'.
 
-A: change the address of zk ‘zookeeperServers’ in conf/standalone.conf, Pulsar wants an unused address to start zk server.
+Q: 8080 is already used?
+A: change the port 'webServicePort' in `conf/standalone.conf`. Don’t forget the 'webServiceUrl' in `conf/client.conf`, pulsar-admin needs the conf.
 
-Q: 8080 is already used.
-
-A: change the port ‘webServicePort’ in conf/standalone.conf. Don’t forget the ‘webServiceUrl’ in conf/client.conf, pulsar-admin needs the conf.
-
-Q: 6650 port
-
-A: ‘brokerServicePort’ in conf/standalone.conf
+Q: 6650 is already used?
+A: change 'brokerServicePort' in `conf/standalone.conf` and 'brokerServiceUrl' in `conf/client.conf`.
 
 ### Connector installation(Optional)
 In the previous step, we bind mount ‘files’, the connector nar is in it.
@@ -155,7 +153,7 @@ Then create a sink and check it, notice that the input topic is 'test_openmldb'.
 ![init sink status](images/init_sink_status.png)
 
 ### Create Schema
-Upload schema to topic 'test_openmldb', schema type is JSON. We’ll produce the JSON message in the same schema later. The chema file is ‘files/openmldb-table-schema’.
+Upload schema to topic 'test_openmldb', schema type is JSON. We’ll produce the JSON message in the same schema later. The schema file is ‘files/openmldb-table-schema’.
 Schema content:
 ```
  {
@@ -180,8 +178,7 @@ We use the first 2 rows of sample data(in openmldb docker `data/taxi_tour_table_
 
 Producer JAVA code in [demo producer](https://github.com/vagetablechicken/pulsar-client-java). Essential code is ![snippet](images/producer_code.png)
 
-
-So the producer will send the 2 messages to topic ‘test_openmldb’, and then Pulsar will read the message and write it to OpenMLDB cluster online storage.
+So the producer will send the 2 messages to topic ‘test_openmldb’. And then Pulsar will read the messages and write them to OpenMLDB cluster online storage.
 
 The package is in ‘files’. You can run it directly.
 
@@ -203,7 +200,7 @@ We can check the sink status:
 ```
 
 #### Check in OpenMLDB
-And we can check the OpenMLDB table’s **online storage** now. 
+And we can get these messages data in the OpenMLDB table’s **online storage** now. 
 The script select.sql content:
 ```
 set @@execute_mode='online';
