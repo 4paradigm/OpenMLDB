@@ -60,7 +60,8 @@ def main():
     repeated_task.start(cfg_store.pull_interval)
 
     root = Resource()
-    root.putChild(cfg_store.telemetry_path, MetricsResource())
+    # child path must be bytes
+    root.putChild(cfg_store.telemetry_path.encode(), MetricsResource())
     factory = Site(root)
     reactor.listenTCP(cfg_store.listen_port, factory)
     reactor.run()
