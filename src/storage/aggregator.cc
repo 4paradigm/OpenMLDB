@@ -138,6 +138,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return true;
         } else {
             PDLOG(ERROR, "logical error: current offset is smaller than binlog offset");
+            return false;
         }
     }
     if (cur_ts < aggr_buffer.ts_begin_) {
@@ -181,6 +182,7 @@ bool Aggregator::Init() {
     auto it = aggr_table_->NewTraverseIterator(0);
     it->SeekToFirst();
     uint64_t recovery_offset = INT64_MAX;
+    uint64_t aggr_latest_offset = 0;
     while (it->Valid()) {
         AggrBufferLocked tmp_buffer;
         auto& buffer = tmp_buffer.buffer_;
@@ -193,6 +195,7 @@ bool Aggregator::Init() {
             return false;
         }
         recovery_offset = std::min(recovery_offset, buffer.binlog_offset_);
+        aggr_latest_offset = std::max(aggr_latest_offset, buffer.binlog_offset_);
         int64_t latest_ts = buffer.ts_end_ + 1;
         uint64_t latest_binlog = buffer.binlog_offset_ + 1;
         buffer.clear();
@@ -257,6 +260,11 @@ bool Aggregator::Init() {
             }
         }
         cur_offset = entry.log_index();
+    }
+    if (cur_offset < aggr_latest_offset) {
+        PDLOG(ERROR, "base table is slower than aggregator");
+        status_.store(AggrStat::kUnInit, std::memory_order_relaxed);
+        return false;
     }
     PDLOG(INFO, "aggregator recovery finished");
     status_.store(AggrStat::kInited, std::memory_order_relaxed);
