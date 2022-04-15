@@ -1,24 +1,29 @@
-# Pulsar OpenMLDB Connector使用案例
+# Pulsar OpenMLDB Connector 使用
 
 ## 简介
-Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解过多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。
-我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
+Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解过多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
 
-注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。connector是可以在Pulsar Cluster中使用的。
+注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。该connector是完全可以在Pulsar Cluster中正常使用的。
 
 ## 概览
 
 ### 下载
 
 - 你需要下载本文中所需要的所有文件，请点击[files](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/releases/download/v0.1/files.tar.gz)下载。文件包括connector包，schema文件，配置文件等等。
-- 如果你只想要下载connector包，请点击[connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar)。
+- 如果你只想要下载connector包用于自己的项目，请点击[connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar)。
 
 ### 流程
 
-使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。我们也录制了所有步骤，详情见[terminalizer分享](https://terminalizer.com/view/be2309235671), 你也可以下载脚本[demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml)。
+Pulsar OpenMLDB connector 用于 OpenMLDB 线上模式的实时数据流接入。使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。我们也录制了所有步骤，详情见[terminalizer分享](https://terminalizer.com/view/be2309235671), 你也可以在此下载录制的脚本[demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml)。
+
+整体上，使用流程可以概括为三步：
+1. 在 OpenMLDB 创建相关的数据库和表
+2. 在 Pulsar 创建 sink，来把 Pulsar 数据流和 OpenMLDB 连接起来，同时需要在 Pulsar 配置相应的 schema，使得数据流可以正确的被 OpenMLDB 接收并且存入到线上数据库。
+3. 进行测试或者正常使用
+
 ![demo steps](images/demo_steps.png)
 
-## 步骤 1
+## 步骤 1：在 OpenMLDB 创建数据库和数据表
 ### 启动 OpenMLDB 集群
 使用Docker可以快速启动OpenMLDB，除此之外，我们还需要创建测试用的表。创建OpenMLDB详请可以参考[集群版OpenMLDB 快速上手](https://openmldb.ai/docs/zh/v0.4/quickstart/openmldb_quickstart.html#id11)。
 ```{caution}
@@ -29,12 +34,14 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.4.4 bash
 docker exec -it openmldb bash
 ```
-```{note}
-即使是host network，macOS的docker也不支持从Even the host network, docker on macOS cannot support connecting to the container from the host. You only can connect openmldb cluster in the containers(pulsar container, or openmldb container itself).
-```
+
 在OpenMLDB容器中，启动集群:
 ```
 ./init.sh
+```
+
+```{note}
+目前 OpenMLDB 的 docker 镜像不支持从容器外部去连接容器内的 OpenMLDB 服务器，因此只能从 OpenMLDB 或者 Pulsar 的容器去连接 OpenMLDB。
 ```
 ### 创建表
 我们使用一个脚本快速创建表，脚本内容如下： 
@@ -54,12 +61,10 @@ desc connector_test;
 目前，Pulsar中JSONSchema和JDBC base connector都不支持'java.sql.Timestamp'。所以我们使用'long'作为timestamp列的数据类型（在OpenMLDB可以使用long作为时间戳）。
 ```
 
-## 步骤 2
+## 步骤 2：在 Pulsar 创建 sink 和 schema
 ### 启动 Pulsar Standalone
-使用docker，可以更简单快速的启动Pulsar。
-我们推荐你使用'host network'来运行docker，这样可以避免诸多容器相关的网络连接问题。
-而且，我们需要使用pulsar-admin来进行sink创建，这个程序在Pulsar镜像内。所以，我们使用bash运行容器，在容器内部逐一执行命令。
-此处，也需要绑定'files'文件目录。
+使用docker，可以更简单快速的启动Pulsar。我们推荐你使用'host network'来运行docker，这样可以避免诸多容器相关的网络连接问题。而且，我们需要使用pulsar-admin来进行sink创建，这个程序在Pulsar镜像内。所以，我们使用bash运行容器，在容器内部逐一执行命令。此处，也需要绑定'files'文件目录。
+
 ```
 docker run -dit --network host -v `pwd`/files:/pulsar/files --name pulsar apachepulsar/pulsar:2.9.1 bash
 docker exec -it pulsar bash
@@ -84,7 +89,7 @@ ps axu|grep pulsar
 如果你想要在本地直接启动Pulsar，参考[Set up a standalone Pulsar locally](https://pulsar.apache.org/docs/en/standalone/).
 ```
 #### Q&A
-Q:
+Q: 碰到以下问题是什么原因
 ```
 2022-04-07T03:15:59,289+0000 [main] INFO  org.apache.zookeeper.server.NIOServerCnxnFactory - binding to port 0.0.0.0/0.0.0.0:5181
 2022-04-07T03:15:59,289+0000 [main] ERROR org.apache.pulsar.zookeeper.LocalBookkeeperEnsemble - Exception while instantiating ZooKeeper
@@ -93,13 +98,15 @@ java.net.BindException: Address already in use
 A: Pulsar需要一个未被使用的端口来启动zk，端口5181页已经被使用，需要再更改一下'--zookeeper-port'的端口号。
 
 Q: 8080端口已被使用？
+
 A: 8080是'webServicePort'默认配置端口，在`conf/standalone.conf`中，可以更换这个端口。但注意，pulsar-admin会使用`conf/client.conf`中的'webServiceUrl'进行连接，也需要同步更改。
 
 Q: 6650端口已被使用？
+
 A: 需要同步更改`conf/standalone.conf`中的'brokerServicePort'和`conf/client.conf`中的'brokerServiceUrl'配置项。
 
 ### Connector安装(Optional)
-前面的步骤中我们绑定了'files'目录，里面已经提供了connector的nar包。我们可以使用“非内建connector”模式来设置connector(在sink配置中指定'archive'配置项)。
+前面的步骤中我们绑定了'files'目录，里面已经提供了connector的nar包。我们可以使用“非内建connector”模式来设置connector(即在sink配置中指定'archive'配置项，将在下一个步骤中描述)。
 
 但如果你希望将OpenMLDB connector作为内建的connector，你需要创建'connectors'目录，并拷贝nar文件到'connectors'目录。
 ```
@@ -158,7 +165,8 @@ bin/pulsar-admin sinks reload
 ./bin/pulsar-admin schemas get test_openmldb
 ```
 ![topic schema](images/topic_schema.png)
-## 测试
+
+## 步骤三：测试
 ### 发送消息
 我们使用两条OpenMLDB镜像中`data/taxi_tour_table_train_simple.csv`的样本数据，作为测试用的消息。数据如下图所示：
 ![test data](images/test_data.png)
