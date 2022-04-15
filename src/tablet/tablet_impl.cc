@@ -5560,6 +5560,9 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
     FILE* fd_write = fopen(aggr_info_path.c_str(), "w");
     if (fd_write == NULL) {
         PDLOG(WARNING, "fail to open file %s. err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg("open aggr info file failed");
+        return;
     }
     if (fputs(aggr_info.c_str(), fd_write) == EOF) {
         PDLOG(WARNING, "write error. path[%s], err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));

@@ -108,7 +108,7 @@ class LogReplicator {
 
     bool DelAllReplicateNode();
 
-    std::string GetLogPath() {return log_path_;}
+    const std::string& GetLogPath() {return log_path_;}
 
  private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);

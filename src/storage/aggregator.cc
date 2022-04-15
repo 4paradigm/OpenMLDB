@@ -166,12 +166,10 @@ bool Aggregator::Init() {
         PDLOG(INFO, "aggregator is normal or recovering");
         return true;
     }
-
-    status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     if (!base_replicator_) {
-        status_.store(AggrStat::kUnInit, std::memory_order_relaxed);
         return false;
     }
+    status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     auto log_parts = base_replicator_->GetLogPart();
 
     if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
