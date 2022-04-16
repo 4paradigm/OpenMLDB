@@ -858,5 +858,56 @@ uint64_t DiskTable::GetRecordIdxByteSize() {
     return 0;
 }
 
+int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
+    if (index_def && !index_def->IsReady()) {
+        return -1;
+    }
+    uint32_t inner_pos = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_pos);
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+
+    bool has_ts_idx;
+    uint32_t ts_idx;
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        has_ts_idx = true;
+        auto ts_col = index_def->GetTsColumn();
+        ts_idx = ts_col->GetId();
+    }
+
+    std::string combine;
+    uint64_t tmp_ts = UINT64_MAX;
+    if (has_ts_idx) {
+        combine = CombineKeyTs(pk, tmp_ts, ts_idx);
+    } else {
+        combine = CombineKeyTs(pk, tmp_ts);
+    }
+    it->Seek(rocksdb::Slice(combine));
+
+    count = 0;
+    for (; it->Valid(); it->Next()) {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        std::string cur_pk;
+        uint64_t cur_ts;
+
+        ParseKeyAndTs(has_ts_idx, it->key(), cur_pk, cur_ts, cur_ts_idx);
+        if (cur_pk == pk) {
+            if (has_ts_idx && (cur_ts_idx != ts_idx)) {
+                break;
+            }
+            count++;
+        } else {
+            break;
+        }
+    }
+
+    return count;
+}
+
 }  // namespace storage
 }  // namespace openmldb

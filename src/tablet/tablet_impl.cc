@@ -1321,18 +1321,31 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     }
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
-    // This way to get Count only available for memtable
-    if (!request->filter_expired_data() && table->GetStorageMode() == common::kMemory) {
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table != NULL) {
-            uint64_t count = 0;
-            if (mem_table->GetCount(index, request->key(), count) < 0) {
-                count = 0;
+    if (!request->filter_expired_data()) {
+        if (table->GetStorageMode() == common::kMemory) {
+            MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+            if (mem_table != NULL) {
+                uint64_t count = 0;
+                if (mem_table->GetCount(index, request->key(), count) < 0) {
+                    count = 0;
+                }
+                response->set_code(::openmldb::base::ReturnCode::kOk);
+                response->set_msg("ok");
+                response->set_count(count);
+                return;
             }
-            response->set_code(::openmldb::base::ReturnCode::kOk);
-            response->set_msg("ok");
-            response->set_count(count);
-            return;
+        } else {
+            DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
+            if (disk_table != NULL) {
+                uint64_t count = 0;
+                if (disk_table->GetCount(index, request->key(), count) < 0) {
+                    count = 0;
+                }
+                response->set_code(::openmldb::base::ReturnCode::kOk);
+                response->set_msg("ok");
+                response->set_count(count);
+                return;
+            }
         }
     }
     ::openmldb::storage::Ticket ticket;
