@@ -41,7 +41,7 @@ docker exec -it openmldb bash
 ```
 
 ```{caution}
-在macOS平台上，不支持从容器外部去连接容器内的 OpenMLDB 服务器。但从 OpenMLDB 或者 Pulsar 的容器去连接 OpenMLDB服务，是可行的。
+在macOS平台上，即使使用host网络，也不支持从容器外部去连接容器内的 OpenMLDB 服务器。但从容器内，去连接别的容器内的OpenMLDB服务，是可行的。
 ```
 ### 创建表
 我们使用一个脚本快速创建表，脚本内容如下： 
@@ -166,7 +166,7 @@ bin/pulsar-admin sinks reload
 ```
 ![topic schema](images/topic_schema.png)
 
-## 步骤三：测试
+## 步骤 3：测试
 ### 发送消息
 我们使用两条OpenMLDB镜像中`data/taxi_tour_table_train_simple.csv`的样本数据，作为测试用的消息。数据如下图所示：
 ![test data](images/test_data.png)
