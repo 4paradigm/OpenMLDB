@@ -1,7 +1,7 @@
 # Pulsar OpenMLDB Connector 使用
 
 ## 简介
-Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解过多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
+Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
 
 注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。该connector是完全可以在Pulsar Cluster中正常使用的。
 
@@ -40,8 +40,8 @@ docker exec -it openmldb bash
 ./init.sh
 ```
 
-```{note}
-目前 OpenMLDB 的 docker 镜像不支持从容器外部去连接容器内的 OpenMLDB 服务器，因此只能从 OpenMLDB 或者 Pulsar 的容器去连接 OpenMLDB。
+```{caution}
+在macOS平台上，不支持从容器外部去连接容器内的 OpenMLDB 服务器。但从 OpenMLDB 或者 Pulsar 的容器去连接 OpenMLDB服务，是可行的。
 ```
 ### 创建表
 我们使用一个脚本快速创建表，脚本内容如下： 
@@ -132,7 +132,7 @@ bin/pulsar-admin sinks reload
      jdbcUrl: "jdbc:openmldb:///pulsar_test?zk=localhost:2181&zkPath=/openmldb"
      tableName: "connector_test"
 ```
-```{describe}
+```{note}
 'name'：sink名。
 
 'archive'：我们使用'archive'来指定sink connector, 所以这里我们是将OpenMLDB connector当作非内建connector使用。
@@ -188,7 +188,7 @@ java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.exa
 ./bin/pulsar-admin sinks status --name openmldb-test-sink 
 ```
 ![sink status](images/sink_status.png)
-```{describe}
+```{note}
 "numReadFromPulsar": pulsar发送了2条message到sink实例中。
 "numWrittenToSink": sink实例向OpenMLDB写入2条message。
 ```
