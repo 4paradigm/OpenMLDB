@@ -997,6 +997,15 @@ TEST_F(UdfIRBuilderTest, reverse) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(""), StringRef(""));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, nullptr);
 }
+TEST_F(UdfIRBuilderTest, degrees) {
+    auto udf_name = "degrees";
+    constexpr double pi = 3.141592653589793238463L;
+    CheckUdf<double, double>(udf_name, 180.0, pi);
+    CheckUdf<double, double>(udf_name, 90.0, pi/2);
+    CheckUdf<double, double>(udf_name, 0.0, 0.0);
+    CheckUdf<double, double>(udf_name, -180.0, -pi);
+    CheckUdf<double, double>(udf_name, -90.0, -pi/2);
+}
 }  // namespace codegen
 }  // namespace hybridse
 
