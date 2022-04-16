@@ -49,6 +49,7 @@
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
+DECLARE_uint32(replica_num);
 
 namespace openmldb {
 namespace sdk {
@@ -1776,16 +1777,10 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
 
-    auto ns_client = cluster_sdk_->GetNsClient();
-    std::vector<::openmldb::client::TabletInfo> tablets;
-    std::string msg;
-    bool ok = ns_client->ShowTablet(tablets, msg);
-    if (!ok) {
-        return base::Status(base::ReturnCode::kCreateTableFailedOnTablet, "set default replica num failed");
-    }
-    int tablets_size = tablets.size();
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+    all_tablet = cluster_sdk_->GetAllTablet();
     // set dafault value
-    uint32_t default_replica_num = std::min(tablets_size, 3);
+    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
@@ -1794,6 +1789,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
+    std::string msg;
     if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
     }

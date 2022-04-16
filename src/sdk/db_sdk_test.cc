@@ -97,6 +97,7 @@ TEST_F(DBSDKTest, smokeTest) {
     CreateTable();
     sleep(5);  // let sdk find the new table
 
+    ASSERT_EQ(2u ,sdk.GetAllTablet().size());
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
     ASSERT_TRUE(sdk.GetTablet(db_name_, table_name_, &tablet));
     ASSERT_EQ(8u, tablet.size());
