@@ -348,8 +348,7 @@ class DiskTable : public Table {
     inline uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
-    int GetCount(uint32_t index, const std::string& pk,
-                 uint64_t& count);
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
 
  private:
     rocksdb::DB* db_;

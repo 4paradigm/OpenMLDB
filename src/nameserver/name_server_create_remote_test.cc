@@ -1462,7 +1462,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path4);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path5);
         ::openmldb::base::RemoveDirRecursive(old_hdd_root_path6);
-
     }
 }
 

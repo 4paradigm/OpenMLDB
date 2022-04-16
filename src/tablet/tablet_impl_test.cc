@@ -6224,7 +6224,8 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
 }
 
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD, ::openmldb::common::kHDD));
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD,
+                                          ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;
