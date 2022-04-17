@@ -45,8 +45,6 @@ src/proto/*.h
 build
 build_mac
 
-#!/hybridse/include/nlohmann/thirdparty
-#./thirdparty*/
 
 thirdsrc
 **/*.log
