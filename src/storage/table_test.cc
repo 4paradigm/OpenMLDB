@@ -1963,8 +1963,8 @@ TEST_P(TableTest, AbsAndLatGC) {
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
 
-        std::vector<std::string> row = {"test" + std::to_string(i),
-                                        "testnew" + std::to_string(i),
+        std::vector<std::string> row = {"test" + std::to_string(i % 10),
+                                        "testnew" + std::to_string(i % 10),
                                         ts_str,
                                         ts_str,
                                         ts_str};
@@ -2041,8 +2041,8 @@ TEST_P(TableTest, AbsAndLatGC1) {
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
 
-        std::vector<std::string> row = {"test",
-                                        "testnew",
+        std::vector<std::string> row = {"test" + std::to_string(i % 10),
+                                        "testnew" + std::to_string(i % 10),
                                         ts_str,
                                         ts_str,
                                         ts_str};
@@ -2070,7 +2070,7 @@ TEST_P(TableTest, AbsAndLatGC1) {
         if (i == 1) {
             ASSERT_EQ(80, count);
         } else if (i == 2) {
-            ASSERT_EQ(70, count);
+            ASSERT_EQ(50, count);
         } else {
             ASSERT_EQ(100, count);
         }
@@ -2153,7 +2153,7 @@ TEST_P(TableTest, AbsAndLatGC2) {
 
     EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
     table->SchedGc();
-    EXPECT_EQ(180, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(122, (int64_t)table->GetRecordIdxCnt());
 
     delete table;
 }
