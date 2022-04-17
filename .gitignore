@@ -44,8 +44,10 @@ src/proto/*.h
 # ignore some build directory
 build
 build_mac
-!/hybridse/include/nlohmann/thirdparty
-thirdparty*/
+
+#!/hybridse/include/nlohmann/thirdparty
+#./thirdparty*/
+
 thirdsrc
 **/*.log
 onebox/*binlogs*
