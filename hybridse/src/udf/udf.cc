@@ -1045,7 +1045,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
         return ;
     }
     std::vector<std::string> path_elems = str_split(path_str, '.');
-    for (size_t i = 1; i < path_elems.size(); ++i) {
+    for (int i = 1; i < path_elems.size(); ++i) {
         bool skip_map = is_root_array && i == path_start;
         if (path_elems[i].substr(0, 1) == "[" && path_elems[i].substr(path_elems[i].length() - 1, 1) == "]") {
             skip_map = true;
@@ -1058,7 +1058,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
 
     }
     std::string output_data = json_obj.dump();
-    output_size = output_data.length();
+    int output_size = output_data.length();
     char *buffer = udf::v1::AllocManagedStringBuf(output_size);
     memcpy(buffer, output_data, output_size)
     output->size_ = output_size;
