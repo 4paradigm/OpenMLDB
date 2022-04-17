@@ -1,6 +1,6 @@
 build
 build_mac
-thirdparty
+#thirdparty
 thirdsrc
 
 .vscode/
