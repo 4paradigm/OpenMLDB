@@ -44,7 +44,7 @@ class ConfigStore(object):
         parser.add_argument("--config.zk_path", type=str, default="/", help="root path in zookeeper for OpenMLDB")
         parser.add_argument("--config.interval",
                             type=float,
-                            default=10.0,
+                            default=30.0,
                             help="interval in seconds to pull metrics periodically")
         self._args = parser.parse_args()
         self._store_cfgs()
