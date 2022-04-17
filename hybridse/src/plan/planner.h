@@ -18,7 +18,9 @@
 #define HYBRIDSE_SRC_PLAN_PLANNER_H_
 
 #include <map>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "base/fe_status.h"
 #include "gflags/gflags.h"
@@ -39,12 +41,8 @@ using node::SqlNode;
 class Planner {
  public:
     Planner(node::NodeManager *manager, const bool is_batch_mode, const bool is_cluster_optimized,
-            const bool enable_batch_window_parallelization)
-        : is_batch_mode_(is_batch_mode),
-          is_cluster_optimized_(is_cluster_optimized),
-          enable_window_maxsize_merged_(true),
-          enable_batch_window_parallelization_(enable_batch_window_parallelization),
-          node_manager_(manager) {}
+            const bool enable_batch_window_parallelization,
+            const std::unordered_map<std::string, std::string>* extra_options = nullptr);
     virtual ~Planner() {}
     virtual base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                         PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
@@ -81,6 +79,7 @@ class Planner {
     base::Status CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output);
     base::Status CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output);
     base::Status CreateSetPlanNode(const node::SetNode *root, node::PlanNode **output);
+    base::Status CreateCreateFunctionPlanNode(const node::CreateFunctionNode *root, node::PlanNode **output);
     base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
                                            node::PlanNode **output);
     node::NodeManager *node_manager_;
@@ -88,14 +87,19 @@ class Planner {
     std::string MakeTableName(const PlanNode *node) const;
     base::Status MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                                  std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
+
+ private:
+    const std::unordered_map<std::string, std::string>* extra_options_ = nullptr;
+    std::set<std::string> long_windows_;
 };
 
 class SimplePlanner : public Planner {
  public:
     explicit SimplePlanner(node::NodeManager *manager) : Planner(manager, true, false, false) {}
     SimplePlanner(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
-                  bool enable_batch_window_parallelization = true)
-        : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization) {}
+                  bool enable_batch_window_parallelization = true,
+                  const std::unordered_map<std::string, std::string>* extra_options = nullptr)
+        : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization, extra_options) {}
     ~SimplePlanner() {}
     base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                 PlanNodeList &plan_trees);  // NOLINT

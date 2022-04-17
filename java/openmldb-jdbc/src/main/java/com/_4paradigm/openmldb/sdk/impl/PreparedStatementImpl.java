@@ -16,16 +16,12 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
+import java.sql.SQLException;
+import java.util.TreeMap;
+
 import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.SQLRouter;
-import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.jdbc.PreparedStatement;
-import com._4paradigm.openmldb.jdbc.RequestPreparedStatement;
-
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.TreeMap;
 
 public class PreparedStatementImpl extends PreparedStatement  {
 

@@ -27,6 +27,7 @@
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
+#include "vm/aggregator.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
@@ -248,7 +249,6 @@ class IndexSeekGenerator {
         const Row& row, const Row& parameter, std::shared_ptr<DataHandler> input);
     const bool Valid() const { return index_key_gen_.Valid(); }
 
- private:
     KeyGenerator index_key_gen_;
 };
 
@@ -336,8 +336,10 @@ enum RunnerType {
     kRunnerSelectSlice,
     kRunnerGroupAgg,
     kRunnerAgg,
+    kRunnerReduce,
     kRunnerWindowAgg,
     kRunnerRequestUnion,
+    kRunnerRequestAggUnion,
     kRunnerPostRequestUnion,
     kRunnerIndexSeek,
     kRunnerLastJoin,
@@ -374,10 +376,14 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "GROUP_AGG_PROJECT";
         case kRunnerAgg:
             return "AGG_PROJECT";
+        case kRunnerReduce:
+            return "REDUCE_PROJECT";
         case kRunnerWindowAgg:
             return "WINDOW_AGG_PROJECT";
         case kRunnerRequestUnion:
             return "REQUEST_UNION";
+        case kRunnerRequestAggUnion:
+            return "REQUEST_AGG_UNION";
         case kRunnerPostRequestUnion:
             return "POST_REQUEST_UNION";
         case kRunnerIndexSeek:
@@ -398,6 +404,7 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "UNKNOW";
     }
 }
+
 class Runner : public node::NodeBase<Runner> {
  public:
     explicit Runner(const int32_t id)
@@ -418,7 +425,8 @@ class Runner : public node::NodeBase<Runner> {
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
-          output_schemas_(output_schemas) {}
+          output_schemas_(output_schemas),
+          row_parser_(std::make_unique<RowParser>(output_schemas)) {}
     Runner(const int32_t id, const RunnerType type,
            const vm::SchemasContext* output_schemas, const int32_t limit_cnt)
         : id_(id),
@@ -428,7 +436,8 @@ class Runner : public node::NodeBase<Runner> {
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
-          output_schemas_(output_schemas) {}
+          output_schemas_(output_schemas),
+          row_parser_(std::make_unique<RowParser>(output_schemas)) {}
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
     bool SetProducer(size_t idx, Runner* runner) {
@@ -509,6 +518,9 @@ class Runner : public node::NodeBase<Runner> {
     static void PrintData(std::ostringstream& oss,
                           const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
+    static void PrintRow(std::ostringstream& oss,
+                          const vm::SchemasContext* schema_list,
+                          Row row);
     static const bool IsProxyRunner(const RunnerType& type) {
         return kRunnerRequestRunProxy == type ||
                kRunnerBatchRequestRunProxy == type;
@@ -523,12 +535,17 @@ class Runner : public node::NodeBase<Runner> {
 
     void set_output_schemas(const vm::SchemasContext* schemas) {
         output_schemas_ = schemas;
+        row_parser_.reset(new RowParser(output_schemas_));
     }
 
     virtual const std::string GetTypeName() const {
         return RunnerTypeName(type_);
     }
     virtual bool Equals(const Runner* other) const { return this == other; }
+
+    const RowParser* row_parser() const {
+        return row_parser_.get();
+    }
 
  protected:
     bool is_lazy_;
@@ -547,6 +564,7 @@ class Runner : public node::NodeBase<Runner> {
     bool need_batch_cache_;
     std::vector<Runner*> producers_;
     const vm::SchemasContext* output_schemas_;
+    std::unique_ptr<RowParser> row_parser_ = nullptr;
 };
 
 class IteratorStatus {
@@ -868,6 +886,21 @@ class AggRunner : public Runner {
     ConditionGenerator having_condition_;
     AggGenerator agg_gen_;
 };
+
+class ReduceRunner : public Runner {
+ public:
+    ReduceRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt,
+                 const ConditionFilter& having_condition, const FnInfo& fn_info)
+        : Runner(id, kRunnerReduce, schema, limit_cnt),
+          having_condition_(having_condition.fn_info()),
+          agg_gen_(fn_info) {}
+    ~ReduceRunner() {}
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
+                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+    ConditionGenerator having_condition_;
+    AggGenerator agg_gen_;
+};
+
 class WindowAggRunner : public Runner {
  public:
     WindowAggRunner(const int32_t id, const SchemasContext* schema,
@@ -938,6 +971,39 @@ class RequestUnionRunner : public Runner {
     RangeGenerator range_gen_;
     bool exclude_current_time_;
     bool output_request_row_;
+};
+
+class RequestAggUnionRunner : public Runner {
+ public:
+    RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
+                          bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
+                          const node::ColumnRefNode* agg_col)
+        : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
+          range_gen_(range),
+          exclude_current_time_(exclude_current_time),
+          output_request_row_(output_request_row),
+          func_(func),
+          agg_col_(agg_col) {}
+
+    void InitAggregator();
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
+                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+    std::shared_ptr<TableHandler> RequestUnionWindow(
+        const Row& request,
+        std::vector<std::shared_ptr<TableHandler>> union_segments,
+        int64_t request_ts, const WindowRange& window_range,
+        const bool output_request_row, const bool exclude_current_time);
+    void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
+        windows_union_gen_.AddWindowUnion(window, runner);
+    }
+
+    RequestWindowUnionGenerator windows_union_gen_;
+    RangeGenerator range_gen_;
+    bool exclude_current_time_;
+    bool output_request_row_;
+    const node::FnDefNode* func_ = nullptr;
+    const node::ColumnRefNode* agg_col_ = nullptr;
+    std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
 
 class PostRequestUnionRunner : public Runner {
@@ -1412,6 +1478,8 @@ class RunnerBuilder {
     std::unordered_map<hybridse::vm::Runner*, ::hybridse::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
+    ClusterTask MultipleInherit(const std::vector<const ClusterTask*>& children, Runner* runner,
+                                                const Key& index_key, const TaskBiasType bias);
     ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
                               Runner* runner, const Key& index_key,
                               const TaskBiasType bias = kNoBias);
@@ -1431,6 +1499,7 @@ class RunnerBuilder {
         std::string index);
     ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
+    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);
 };
 
 class RunnerContext {

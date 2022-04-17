@@ -27,8 +27,30 @@
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
+#include "vm/engine.h"
 namespace hybridse {
 namespace plan {
+
+Planner::Planner(node::NodeManager *manager, const bool is_batch_mode, const bool is_cluster_optimized,
+        const bool enable_batch_window_parallelization,
+        const std::unordered_map<std::string, std::string>* extra_options)
+    : is_batch_mode_(is_batch_mode),
+      is_cluster_optimized_(is_cluster_optimized),
+      enable_window_maxsize_merged_(true),
+      enable_batch_window_parallelization_(enable_batch_window_parallelization),
+      node_manager_(manager),
+      extra_options_(extra_options) {
+    if (extra_options_ && extra_options_->count(vm::LONG_WINDOWS)) {
+        std::vector<std::string> tokens;
+        boost::split(tokens, extra_options_->at(vm::LONG_WINDOWS), boost::is_any_of(","));
+        for (auto& w : tokens) {
+            std::vector<std::string> window_info;
+            boost::split(window_info, w, boost::is_any_of(":"));
+            boost::trim(window_info[0]);
+            long_windows_.insert(window_info[0]);
+        }
+    }
+}
 
 base::Status Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "can not create query plan node with null query node");
@@ -181,7 +203,26 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     }
     // merge window map
     std::map<const node::WindowDefNode *, node::ProjectListNode *> merged_project_list_map;
-    CHECK_STATUS(MergeProjectMap(window_project_list_map, &merged_project_list_map))
+    bool long_window_exist = false;
+    // only support long-window optimization for request-mode
+    if (!is_batch_mode_ && !long_windows_.empty()) {
+        for (const auto &it : window_project_list_map) {
+            if (it.first == nullptr) continue;
+
+            if (long_windows_.count(it.first->GetName())) {
+                long_window_exist = true;
+                DLOG(INFO) << it.first->GetName() << " is long window. Disable project merge";
+                break;
+            }
+        }
+    }
+
+    if (long_window_exist) {
+        merged_project_list_map = window_project_list_map;
+    } else {
+        CHECK_STATUS(MergeProjectMap(window_project_list_map, &merged_project_list_map))
+    }
+
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
     for (auto &v : merged_project_list_map) {
@@ -191,7 +232,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     }
 
     // merge simple project with 1st window project
-    if (nullptr != project_list_vec[0] && project_list_vec.size() > 1) {
+    if (!long_window_exist && nullptr != project_list_vec[0] && project_list_vec.size() > 1) {
         auto simple_project = dynamic_cast<node::ProjectListNode *>(project_list_vec[0]);
         auto first_window_project = dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
@@ -327,6 +368,13 @@ base::Status Planner::CreateLoadDataPlanNode(const node::LoadDataNode *root, nod
     return base::Status::OK();
 }
 
+base::Status Planner::CreateCreateFunctionPlanNode(const node::CreateFunctionNode *root, node::PlanNode **output) {
+    CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create create function plan with null node");
+    *output = node_manager_->MakeCreateFunctionPlanNode(root->Name(), root->GetReturnType(), root->GetArgsType(),
+                                                        root->IsAggregate(), root->Options());
+    return base::Status::OK();
+}
+
 base::Status Planner::CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create select into plan with null node");
     PlanNode *query = nullptr;
@@ -347,8 +395,11 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
     auto create_tree = dynamic_cast<const node::CreateStmt *>(root);
     *output = node_manager_->MakeCreateTablePlanNode(create_tree->GetDbName(), create_tree->GetTableName(),
                                                      create_tree->GetReplicaNum(),
-                                                     create_tree->GetPartitionNum(), create_tree->GetColumnDefList(),
-                                                     create_tree->GetDistributionList());
+                                                     create_tree->GetPartitionNum(),
+                                                     create_tree->GetStorageMode(),
+                                                     create_tree->GetColumnDefList(),
+                                                     create_tree->GetDistributionList(),
+                                                     create_tree->GetOpIfNotExist());
     return base::Status::OK();
 }
 /// Check if current plan node is depend on a [table|simple select table/rename table/ sub query table)
@@ -680,6 +731,13 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 CHECK_TRUE(delete_node != nullptr, common::kPlanError, "not an DeleteNode");
                 node::PlanNode *delete_plan_node = node_manager_->MakeDeletePlanNode(delete_node);
                 plan_trees.push_back(delete_plan_node);
+                break;
+            }
+            case ::hybridse::node::kCreateFunctionStmt: {
+                node::PlanNode *create_function_plan_node = nullptr;
+                CHECK_STATUS(CreateCreateFunctionPlanNode(dynamic_cast<node::CreateFunctionNode *>(parser_tree),
+                            &create_function_plan_node));
+                plan_trees.push_back(create_function_plan_node);
                 break;
             }
             default: {

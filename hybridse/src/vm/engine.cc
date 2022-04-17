@@ -27,6 +27,7 @@
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
+#include "udf/default_udf_library.h"
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
@@ -231,6 +232,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_window_column_pruning = options_.IsEnableWindowColumnPruning();
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
+    sql_context.options = session.GetOptions();
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
     } else if (session.engine_mode() == kBatchRequestMode) {
@@ -265,6 +267,28 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
+}
+
+base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
+                                         const std::vector<node::DataType>& arg_types, bool is_aggregate,
+                                         const std::vector<void*>& funcs) {
+    if (name.empty()) {
+        return {common::kExternalUDFError, "function name is empty"};
+    }
+    auto lib = udf::DefaultUdfLibrary::get();
+    if (is_aggregate) {
+        return {};
+    } else {
+        if (funcs.empty() || funcs[0] == nullptr) {
+            return {common::kExternalUDFError, name + " is nullptr"};
+        }
+        return lib->RegisterDynamicUdf(name, funcs[0], return_type, arg_types);
+    }
+}
+
+base::Status Engine::RemoveExternalFunction(const std::string& name,
+        const std::vector<node::DataType>& arg_types) {
+    return udf::DefaultUdfLibrary::get()->RemoveDynamicUdf(name, arg_types);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
@@ -358,6 +382,10 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
 
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
+    if (db.empty()) {
+        lru_cache_.clear();
+        return;
+    }
     for (auto& cache : lru_cache_) {
         auto& mode_cache = cache.second;
         mode_cache.erase(db);

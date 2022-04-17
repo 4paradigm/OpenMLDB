@@ -223,11 +223,11 @@ class Cursor(object):
             name = schema.GetColumnName(idx)
             colType = schema.GetColumnType(idx)
 
-            if type(row) is tuple:
+            if isinstance(row, tuple):
                 ok = appendMap[colType](row[i])
                 if not ok:
                     raise DatabaseError("error at append data seq {}".format(i))
-            elif type(row) is dict:
+            elif isinstance(row, dict):
                 if row[name] is None:
                     builder.AppendNULL()
                     continue
@@ -274,6 +274,8 @@ class Cursor(object):
             ok, rs = self.connection._sdk.execute_sql(self.db, command)
             if not ok:
                 raise DatabaseError(rs)
+            self._pre_process_result(rs)
+            return self
 
     @classmethod
     def __get_append_map(cls, builder, row, hold_idxs, schema):
@@ -357,9 +359,11 @@ class Cursor(object):
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
             else:
-                ok, error = self.connection._sdk.execute_sql(self.db, command)
+                ok, rs = self.connection._sdk.execute_sql(self.db, command)
                 if not ok:
-                    raise DatabaseError(error)
+                    raise DatabaseError(rs)
+                self._pre_process_result(rs)
+                return self
         else:
             raise DatabaseError("unsupport sql")
 
@@ -460,7 +464,7 @@ class Cursor(object):
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
-
+    
     def executeRequest(self, sql, parameter):
         command = sql.strip(' \t\n\r')
         if selectRE.match(command) == False:
@@ -545,11 +549,11 @@ class Connection(object):
 # Constructor for creating connection to db
 def connect(db, zk=None, zkPath=None, host=None, port=None):
     # standalone
-    if type(zkPath) is int:
+    if isinstance(zkPath, int):
         host, port = zk, zkPath
         return Connection(db, False, host, port)
     # cluster
-    elif type(zkPath) is str:
+    elif isinstance(zkPath, str):
         return Connection(db, True, zk, zkPath)
     elif zkPath is None:
         return Connection(db, False, host, int(port))

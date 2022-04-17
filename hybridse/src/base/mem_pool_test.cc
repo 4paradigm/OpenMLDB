@@ -29,14 +29,14 @@ class MemPoolTest : public ::testing::Test {
 
 TEST_F(MemPoolTest, ByteMemoryPoolTest) {
     {
-        ByteMemoryPool mem_pool;
+        ::openmldb::base::ByteMemoryPool mem_pool;
         char* s1 = mem_pool.Alloc(10);
         memcpy(s1, "helloworld", 10);
         ASSERT_EQ("helloworld", std::string(s1, 10));
     }
 
     {
-        ByteMemoryPool mem_pool;
+        ::openmldb::base::ByteMemoryPool mem_pool;
         const char src1[] = "helloworld";
         char* s1 = mem_pool.Alloc(10);
         memcpy(s1, src1, strlen(src1));

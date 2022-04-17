@@ -19,14 +19,20 @@
 #include <stdint.h>
 #include <string>
 #include <tuple>
+#include "base/string_ref.h"
+#include "base/type.h"
 #include "boost/lexical_cast.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "node/node_manager.h"
 #include "proto/fe_type.pb.h"
+#include "udf/openmldb_udf.h"
 
 namespace hybridse {
 namespace udf {
+using openmldb::base::StringRef;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 
 namespace v1 {
 
@@ -198,72 +204,71 @@ struct IncOne {
 };
 
 int32_t month(int64_t ts);
-int32_t month(hybridse::codec::Timestamp *ts);
+int32_t month(Timestamp *ts);
 
 int32_t year(int64_t ts);
-int32_t year(hybridse::codec::Timestamp *ts);
+int32_t year(Timestamp *ts);
 
 int32_t dayofyear(int64_t ts);
-int32_t dayofyear(hybridse::codec::Timestamp *ts);
-int32_t dayofyear(hybridse::codec::Date *ts);
+int32_t dayofyear(Timestamp *ts);
+int32_t dayofyear(Date *ts);
 
 int32_t dayofmonth(int64_t ts);
-int32_t dayofmonth(hybridse::codec::Timestamp *ts);
+int32_t dayofmonth(Timestamp *ts);
 
 int32_t dayofweek(int64_t ts);
-int32_t dayofweek(hybridse::codec::Timestamp *ts);
-int32_t dayofweek(hybridse::codec::Date *ts);
+int32_t dayofweek(Timestamp *ts);
+int32_t dayofweek(Date *ts);
 
 int32_t weekofyear(int64_t ts);
-int32_t weekofyear(hybridse::codec::Timestamp *ts);
-int32_t weekofyear(hybridse::codec::Date *ts);
+int32_t weekofyear(Timestamp *ts);
+int32_t weekofyear(Date *ts);
 
 float Cotf(float x);
 
-void date_format(codec::Date *date, const std::string &format,
-                 hybridse::codec::StringRef *output);
-void date_format(codec::Timestamp *timestamp, const std::string &format,
-                 hybridse::codec::StringRef *output);
+void date_format(Date *date, const std::string &format,
+                 StringRef *output);
+void date_format(Timestamp *timestamp, const std::string &format,
+                 StringRef *output);
 
-void date_format(codec::Timestamp *timestamp,
-                 hybridse::codec::StringRef *format,
-                 hybridse::codec::StringRef *output);
-void date_format(codec::Date *date, hybridse::codec::StringRef *format,
-                 hybridse::codec::StringRef *output);
+void date_format(Timestamp *timestamp,
+                 StringRef *format,
+                 StringRef *output);
+void date_format(Date *date, StringRef *format,
+                 StringRef *output);
 
-void timestamp_to_string(codec::Timestamp *timestamp,
-                         hybridse::codec::StringRef *output);
-void timestamp_to_date(codec::Timestamp *timestamp,
-                       hybridse::codec::Date *output, bool *is_null);
+void timestamp_to_string(Timestamp *timestamp,
+                         StringRef *output);
+void timestamp_to_date(Timestamp *timestamp, Date *output, bool *is_null);
 
-void date_to_string(codec::Date *date, hybridse::codec::StringRef *output);
+void date_to_string(Date *date, StringRef *output);
 
-void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null);
-void like(codec::StringRef *name, codec::StringRef *pattern, bool *out, bool *is_null);
-void ilike(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null);
-void ilike(codec::StringRef *name, codec::StringRef *pattern, bool *out, bool *is_null);
+void like(StringRef *name, StringRef *pattern,
+        StringRef *escape, bool *out, bool *is_null);
+void like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
+void ilike(StringRef *name, StringRef *pattern,
+        StringRef *escape, bool *out, bool *is_null);
+void ilike(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 
-void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
-                       bool *is_null);
-void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
-                    bool *is_null);
-void string_to_timestamp(codec::StringRef *str,
-                         hybridse::codec::Timestamp *output, bool *is_null);
-void sub_string(hybridse::codec::StringRef *str, int32_t pos,
-                hybridse::codec::StringRef *output);
-void sub_string(hybridse::codec::StringRef *str, int32_t pos, int32_t len,
-                hybridse::codec::StringRef *output);
-int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2);
-void bool_to_string(bool v, hybridse::codec::StringRef *output);
-void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
-void string_to_int(codec::StringRef *str, int32_t *v, bool *is_null_ptr);
-void string_to_smallint(codec::StringRef *str, int16_t *v, bool *is_null_ptr);
-void string_to_bigint(codec::StringRef *str, int64_t *v, bool *is_null_ptr);
-void string_to_float(codec::StringRef *str, float *v, bool *is_null_ptr);
-void string_to_double(codec::StringRef *str, double *v, bool *is_null_ptr);
-void reverse(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr);
-void lcase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr);
-void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr);
+void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
+void string_to_date(StringRef *str, Date *output, bool *is_null);
+void string_to_timestamp(StringRef *str, Timestamp *output, bool *is_null);
+void sub_string(StringRef *str, int32_t pos,
+                StringRef *output);
+void sub_string(StringRef *str, int32_t pos, int32_t len,
+                StringRef *output);
+int32_t strcmp(StringRef *s1, StringRef *s2);
+void bool_to_string(bool v, StringRef *output);
+void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr);
+void string_to_int(StringRef *str, int32_t *v, bool *is_null_ptr);
+void string_to_smallint(StringRef *str, int16_t *v, bool *is_null_ptr);
+void string_to_bigint(StringRef *str, int64_t *v, bool *is_null_ptr);
+void string_to_float(StringRef *str, float *v, bool *is_null_ptr);
+void string_to_double(StringRef *str, double *v, bool *is_null_ptr);
+void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
+void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
+void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
+void init_udfcontext(UDFContext* context);
 /**
  * Allocate string buffer from jit runtime.
  */
@@ -273,7 +278,7 @@ template <class V>
 struct ToString {
     using Args = std::tuple<V>;
 
-    void operator()(V v, codec::StringRef *output) {
+    void operator()(V v, StringRef *output) {
         std::ostringstream ss;
         ss << v;
         output->size_ = ss.str().size();

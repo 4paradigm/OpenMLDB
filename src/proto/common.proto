@@ -85,7 +85,17 @@ message CatalogInfo {
 }
 
 enum StorageMode {
+    kUnknown = 0;
     kMemory = 1;
     kSSD = 2;
     kHDD = 3;
+}
+
+message ExternalFun {
+    optional string name = 1;
+    optional openmldb.type.DataType return_type = 2;
+    repeated openmldb.type.DataType arg_type = 3;
+    optional bool is_aggregate = 4;
+    optional string file = 5;
+    optional string offline_file = 6;
 }

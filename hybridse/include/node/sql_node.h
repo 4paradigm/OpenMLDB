@@ -386,6 +386,31 @@ inline const std::string FnNodeName(const SqlNodeType &type) {
     }
 }
 
+inline const std::string StorageModeName(StorageMode mode) {
+    switch (mode) {
+        case kMemory:
+            return "memory";
+        case kHDD:
+            return "hdd";
+        case kSSD:
+            return "ssd";
+        default:
+            return "unknown";
+    }
+}
+
+inline const StorageMode NameToStorageMode(const std::string& name) {
+    if (boost::iequals(name, "memory")) {
+        return kMemory;
+    } else if (boost::iequals(name, "hdd")) {
+        return kHDD;
+    } else if (boost::iequals(name, "ssd")) {
+        return kSSD;
+    } else {
+        return kUnknown;
+    }
+}
+
 inline const std::string RoleTypeName(RoleType type) {
     switch (type) {
         case kLeader:
@@ -1497,6 +1522,10 @@ class BinaryExpr : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
+    static BinaryExpr *CastFrom(ExprNode *node) {
+        return dynamic_cast<BinaryExpr *>(node);
+    }
+
  private:
     FnOperator op_;
 };
@@ -1791,19 +1820,43 @@ class InsertStmt : public SqlNode {
     const std::vector<ExprNode *> values_;
     const bool is_all_;
 };
+
+class StorageModeNode : public SqlNode {
+ public:
+    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_(kMemory) {}
+
+    explicit StorageModeNode(StorageMode storage_mode)
+        : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
+
+    ~StorageModeNode() {}
+
+    StorageMode GetStorageMode() const { return storage_mode_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    StorageMode storage_mode_;
+};
+
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
-        : SqlNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false), replica_num_(1), partition_num_(1) {}
+        : SqlNode(kCreateStmt, 0, 0),
+          table_name_(""),
+          op_if_not_exist_(false),
+          replica_num_(1),
+          partition_num_(1),
+          storage_mode_(kMemory) {}
 
     CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num)
+               int partition_num, StorageMode storage_mode = kMemory)
         : SqlNode(kCreateStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
           replica_num_(replica_num),
-          partition_num_(partition_num) {}
+          partition_num_(partition_num),
+          storage_mode_(storage_mode) {}
 
     ~CreateStmt() {}
 
@@ -1819,6 +1872,8 @@ class CreateStmt : public SqlNode {
 
     int GetPartitionNum() const { return partition_num_; }
 
+    StorageMode GetStorageMode() const { return storage_mode_; }
+
     NodePointVector &GetDistributionList() { return distribution_list_; }
     const NodePointVector &GetDistributionList() const { return distribution_list_; }
 
@@ -1831,6 +1886,7 @@ class CreateStmt : public SqlNode {
     NodePointVector column_desc_list_;
     int replica_num_;
     int partition_num_;
+    StorageMode storage_mode_;
     NodePointVector distribution_list_;
 };
 class IndexKeyNode : public SqlNode {
@@ -1929,73 +1985,7 @@ class ColumnIndexNode : public SqlNode {
     int64_t GetAbsTTL() const { return abs_ttl_; }
     int64_t GetLatTTL() const { return lat_ttl_; }
 
-    void SetTTL(ExprListNode *ttl_node_list) {
-        if (nullptr == ttl_node_list) {
-            abs_ttl_ = -1;
-            lat_ttl_ = -1;
-            return;
-        } else {
-            uint32_t node_num = ttl_node_list->GetChildNum();
-            if (node_num > 2) {
-                abs_ttl_ = -1;
-                lat_ttl_ = -1;
-                return;
-            }
-            for (uint32_t i = 0; i < node_num; i++) {
-                auto ttl_node = ttl_node_list->GetChild(i);
-                if (ttl_node == nullptr) {
-                    abs_ttl_ = -1;
-                    lat_ttl_ = -1;
-                    return;
-                }
-                switch (ttl_node->GetExprType()) {
-                    case kExprPrimary: {
-                        const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
-                        switch (ttl->GetDataType()) {
-                            case hybridse::node::kInt32:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetInt();
-                                }
-                                break;
-                            case hybridse::node::kInt64:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetLong();
-                                }
-                                break;
-                            case hybridse::node::kDay:
-                            case hybridse::node::kHour:
-                            case hybridse::node::kMinute:
-                            case hybridse::node::kSecond:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = ttl->GetMillis();
-                                } else {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                }
-                                break;
-                            default: {
-                                return;
-                            }
-                        }
-                        break;
-                    }
-                    default: {
-                        LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
-                        return;
-                    }
-                }
-            }
-        }
-    }
+    void SetTTL(ExprListNode *ttl_node_list);
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -2017,13 +2007,33 @@ class CmdNode : public SqlNode {
 
     void AddArg(const std::string &arg) { args_.push_back(arg); }
     const std::vector<std::string> &GetArgs() const { return args_; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
 
     const node::CmdType GetCmdType() const { return cmd_type_; }
+
+    bool IsIfNotExists() const {
+        return if_not_exist_;
+    }
+
+    void SetIfNotExists(bool b) {
+        if_not_exist_ = b;
+    }
+
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
 
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+    bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 enum class DeleteTarget {
@@ -2078,9 +2088,33 @@ class SelectIntoNode : public SqlNode {
     const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
+class CreateFunctionNode : public SqlNode {
+ public:
+     CreateFunctionNode(const std::string& function_name, const TypeNode* return_type,
+             const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : SqlNode(kCreateFunctionStmt, 0, 0),
+          function_name_(function_name),
+          return_type_(return_type),
+          args_type_(args_type),
+          is_aggregate_(is_aggregate),
+          options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    const TypeNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+ private:
+    const std::string function_name_;
+    const TypeNode* return_type_;
+    const NodePointVector args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class LoadDataNode : public SqlNode {
  public:
-    explicit LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
+    LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
                           const std::shared_ptr<OptionsMap>&& op, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op), config_options_(op2) {}
     ~LoadDataNode() {}
@@ -2381,6 +2415,65 @@ class ExternalFnDefNode : public FnDefNode {
     int variadic_pos_;
 
     bool return_by_arg_;
+};
+
+class DynamicUdfFnDefNode : public FnDefNode {
+ public:
+    DynamicUdfFnDefNode(const std::string &name, void *fn_ptr, const node::TypeNode *ret_type, bool ret_nullable,
+                      const std::vector<const node::TypeNode *> &arg_types, const std::vector<int> &arg_nullable,
+                      bool return_by_arg, ExternalFnDefNode *init_node)
+        : FnDefNode(kDynamicUdfFnDef),
+          function_name_(name),
+          function_ptr_(fn_ptr),
+          ret_type_(ret_type),
+          ret_nullable_(ret_nullable),
+          arg_types_(arg_types),
+          arg_nullable_(arg_nullable),
+          return_by_arg_(return_by_arg),
+          init_context_node_(init_node) {}
+
+    const std::string GetName() const override { return function_name_; }
+
+    void *function_ptr() const { return function_ptr_; }
+    const node::TypeNode *ret_type() const { return ret_type_; }
+    const std::vector<const node::TypeNode *> &arg_types() const { return arg_types_; }
+    bool return_by_arg() const { return return_by_arg_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SqlNode *node) const override;
+
+    void SetReturnType(const node::TypeNode *dtype) { this->ret_type_ = dtype; }
+    void SetReturnNullable(bool flag) { this->ret_nullable_ = flag; }
+
+    void SetReturnByArg(bool flag) { this->return_by_arg_ = flag; }
+
+    bool IsResolved() const { return ret_type_ != nullptr; }
+
+    base::Status Validate(const std::vector<const TypeNode *> &arg_types) const override;
+
+    const TypeNode *GetReturnType() const override { return ret_type_; }
+    size_t GetArgSize() const override { return arg_types_.size(); }
+    const TypeNode *GetArgType(size_t i) const override { return arg_types_[i]; }
+    bool IsArgNullable(size_t i) const override { return arg_nullable_[i] > 0; }
+    bool IsReturnNullable() const override { return ret_nullable_; }
+
+    // bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
+    bool IsListReturn(ExprAnalysisContext *ctx) const override { return false; };
+
+    DynamicUdfFnDefNode *ShadowCopy(NodeManager *) const override;
+    DynamicUdfFnDefNode *DeepCopy(NodeManager *) const override;
+
+    const ExternalFnDefNode *GetInitContextNode() const { return init_context_node_; }
+
+ private:
+    std::string function_name_;
+    void *function_ptr_;
+    const node::TypeNode *ret_type_;
+    bool ret_nullable_;
+    std::vector<const node::TypeNode *> arg_types_;
+    std::vector<int> arg_nullable_;
+    bool return_by_arg_;
+    ExternalFnDefNode *init_context_node_;
 };
 
 class UdfDefNode : public FnDefNode {

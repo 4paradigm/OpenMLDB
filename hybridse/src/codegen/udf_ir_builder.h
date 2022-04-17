@@ -43,32 +43,30 @@ class UdfIRBuilder {
                      const std::vector<NativeValue>& args, NativeValue* output);
 
     Status BuildUdfCall(const node::UdfDefNode* fn,
-                        const std::vector<const node::TypeNode*>& arg_types,
                         const std::vector<NativeValue>& args,
                         NativeValue* output);
 
     Status BuildLambdaCall(const node::LambdaNode* fn,
-                           const std::vector<const node::TypeNode*>& arg_types,
                            const std::vector<NativeValue>& args,
                            NativeValue* output);
 
     Status BuildExternCall(const node::ExternalFnDefNode* fn,
-                           const std::vector<const node::TypeNode*>& arg_types,
+                           const std::vector<NativeValue>& args,
+                           NativeValue* output);
+
+    Status BuildDynamicUdfCall(const node::DynamicUdfFnDefNode* fn,
                            const std::vector<NativeValue>& args,
                            NativeValue* output);
 
     Status BuildCodeGenUdfCall(
         const node::UdfByCodeGenDefNode* fn,
-        const std::vector<const node::TypeNode*>& arg_types,
         const std::vector<NativeValue>& args, NativeValue* output);
 
     Status BuildUdafCall(const node::UdafDefNode* fn,
-                         const std::vector<const node::TypeNode*>& arg_types,
                          const std::vector<NativeValue>& args,
                          NativeValue* output);
 
     Status GetUdfCallee(const node::UdfDefNode* fn,
-                        const std::vector<const node::TypeNode*>& arg_types,
                         ::llvm::FunctionCallee* callee, bool* return_by_arg);
 
  private:
@@ -94,11 +92,10 @@ class UdfIRBuilder {
 
     Status BuildLlvmCall(const node::FnDefNode* fn,
                          ::llvm::FunctionCallee callee,
+                         const std::vector<const node::TypeNode*>& arg_types,
+                         const std::vector<int>& arg_nullable,
                          const std::vector<NativeValue>& args,
                          bool return_by_arg, NativeValue* output);
-
-    Status GetLlvmFunctionType(const node::FnDefNode* fn,
-                               ::llvm::FunctionType** func_ty);
 
     CodeGenContext* ctx_;
     node::ExprNode* frame_arg_;

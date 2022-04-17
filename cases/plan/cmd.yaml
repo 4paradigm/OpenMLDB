@@ -21,6 +21,15 @@ cases:
         +-node[CMD]
           +-cmd_type: create database
           +-args: [db1]
+  - id: 1-1
+    desc: create db if not exists
+    sql: create database if not exists db2;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: create database
+          +-if_not_exists: true
+          +-args: [db2]
   - id: 2
     desc: CREATE TABLE
     sql: CREATE TABLE schema.sql;
@@ -32,6 +41,7 @@ cases:
           +-column_desc_list: []
           +-replica_num: 1
           +-partition_num: 1
+          +-storage_mode: memory
           +-distribution_list: []
   - id: 3
     desc: CREATE GROUP
@@ -537,3 +547,20 @@ cases:
         +-node[CMD]
           +-cmd_type: show table status
           +-args: []
+  - id: drop_function_stmt
+    desc: drop_function
+    sql: DROP FUNCTION func1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop function
+          +-args: [func1]
+  - id: drop_function_if_exists_stmt
+    desc: drop_function
+    sql: DROP FUNCTION IF EXISTS func1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop function
+          +-if_exists: true
+          +-args: [func1]

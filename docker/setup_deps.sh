@@ -18,6 +18,7 @@ set -eE
 
 INPUT=$(arch)
 ZETASQL_VERSION=
+THIRDPARTY_VERSION=
 
 #===  FUNCTION  ================================================================
 #         NAME:  usage
@@ -30,6 +31,7 @@ function usage ()
     Options:
     -h       Display this message
     -a       Specify os architecture, default $(arch)
+    -t       hybridsql thirdparty version, required
     -z       Specify zetasql version, required"
 
 }    # ----------  end of function usage  ----------
@@ -38,13 +40,15 @@ function usage ()
 #  Handle command line arguments
 #-----------------------------------------------------------------------
 
-while getopts ":ha:z:" opt
+while getopts ":ha:z:t:" opt
 do
   case $opt in
 
     h)  usage; exit 0   ;;
 
     a)  INPUT=$OPTARG ;;
+
+    t) THIRDPARTY_VERSION=$OPTARG ;;
 
     z)  ZETASQL_VERSION=$OPTARG ;;
 
@@ -55,8 +59,8 @@ do
 done
 shift $((OPTIND-1))
 
-if [[ -z "$ZETASQL_VERSION" ]]; then
-    echo "ZETASQL_VERSION number required"
+if [[ -z "$ZETASQL_VERSION" || -z "$THIRDPARTY_VERSION" ]]; then
+    echo "ZETASQL_VERSION and THIRDPARTY_VERSION number required"
     exit 1
 fi
 
@@ -79,14 +83,15 @@ rm -v cmake.tar.gz
 mkdir -p /deps/usr
 
 if [[ "$ARCH" = "x86_64" ]]; then
-    curl -Lo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-centos.tar.gz && \
+    curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
         echo "downloaded thirdparty.tar.gz for $ARCH"
     curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
         echo "downloaed zetasql.tar.gz for $ARCH"
 elif [[ "$ARCH" = "aarch64" ]]; then
+    # NOTE(aceforeverd): thirdparty for arm is out-of-date
     curl -Lo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz && \
         echo "downloaded thirdparty.tar.gz for $ARCH"
-    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz" && \
+    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v0.2.6/libzetasql-0.2.6-linux-gnu-aarch64-centos.tar.gz" && \
         echo "downloaed zetasql.tar.gz for $ARCH"
 else
     echo "no pre-compiled deps for arch=$ARCH"

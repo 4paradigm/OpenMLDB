@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager.client;
 
+import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com.baidu.brpc.RpcContext;
@@ -195,10 +196,10 @@ public class TaskManagerClient {
      *
      * @param sql query sql string.
      * @param outputPath output path.
-     * @return id of job.
+     * @return the output string.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String outputPath) throws Exception {
+    public String runBatchSql(String sql, String outputPath) throws Exception {
         return runBatchSql(sql, outputPath, new HashMap<String, String>(), "");
     }
     /**
@@ -207,22 +208,21 @@ public class TaskManagerClient {
      * @param sql query sql string.
      * @param outputPath output path.
      * @param default_db default database.
-     * @return id of job.
+     * @return the output string.
      * @throws Exception
      */
-    public int runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
+    public String runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
-                .setOutputPath(outputPath)
                 .putAllConf(conf)
                 .setDefaultDb(default_db)
                 .build();
-        TaskManager.ShowJobResponse response = taskManagerInterface.RunBatchSql(request);
+        TaskManager.RunBatchSqlResponse response = taskManagerInterface.RunBatchSql(request);
         if (response.getCode() != 0) {
             String errorMessage = "Fail to request, code: " + response.getCode() + ", error: " + response.getMsg();
             throw new Exception(errorMessage);
         }
-        return response.getJob().getId();
+        return response.getOutput();
     }
     /**
      * Run batch sql statements and display the results without default_db.
@@ -460,6 +460,37 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
         return response.getLog();
+    }
+
+    /**
+     * Drop Function
+     *
+     * @throws Exception
+     */
+    public void dropFunction(String name, boolean if_exists) throws Exception {
+        TaskManager.DropFunctionRequest request = TaskManager.DropFunctionRequest.newBuilder()
+                .setName(name)
+                .setIfExists(if_exists)
+                .build();
+        TaskManager.DropFunctionResponse response = taskManagerInterface.DropFunction(request);
+        if (response.getCode() != 0) {
+            throw new Exception(response.getMsg());
+        }
+    }
+
+    /**
+     * Create Function
+     *
+     * @throws Exception
+     */
+    public void createFunction(Common.ExternalFun fun) throws Exception {
+        TaskManager.CreateFunctionRequest request = TaskManager.CreateFunctionRequest.newBuilder()
+                .setFun(fun)
+                .build();
+        TaskManager.CreateFunctionResponse response = taskManagerInterface.CreateFunction(request);
+        if (response.getCode() != 0) {
+            throw new Exception(response.getMsg());
+        }
     }
 
 }

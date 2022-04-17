@@ -77,5 +77,7 @@ public interface SqlExecutor {
 
     NS.TableInfo getTableInfo(String db, String table) throws SQLException;
 
+    List<String> getTableNames(String db);
+
     void close();
 }

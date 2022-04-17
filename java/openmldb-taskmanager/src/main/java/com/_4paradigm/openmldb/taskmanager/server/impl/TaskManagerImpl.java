@@ -16,21 +16,69 @@
 
 package com._4paradigm.openmldb.taskmanager.server.impl;
 
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.proto.TaskManager;
+import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import com._4paradigm.openmldb.taskmanager.LogManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
-import com.baidu.brpc.protocol.BrpcMeta;
 import lombok.extern.slf4j.Slf4j;
 import scala.Option;
 
+import java.util.Map;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
+
+    private Map<String, String> functionMap = new ConcurrentHashMap<>();
+    private volatile static ZKClient zkClient;
+
+    static {
+        try {
+            zkClient = new ZKClient(ZKConfig.builder()
+                    .cluster(TaskManagerConfig.ZK_CLUSTER)
+                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                    .build());
+            zkClient.connect();
+        } catch (Exception e) {
+            zkClient = null;
+            e.printStackTrace();
+        }
+    }
+
+    public TaskManagerImpl() {
+        initExternalFunction();
+    }
+
+    private void initExternalFunction() {
+        String funPath = TaskManagerConfig.ZK_ROOT_PATH + "/data/function";
+        try {
+            List<String> funNames = zkClient.getChildren(funPath);
+            for (String name : funNames) {
+                try {
+                    String value = zkClient.getNodeValue(funPath + "/" + name);
+                    Common.ExternalFun fun = Common.ExternalFun.parseFrom(value.getBytes());
+                    functionMap.put(fun.getName(), value);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * Covert JobInfo object to protobuf object.
@@ -39,7 +87,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
      * @return the protobuf object
      */
     public TaskManager.JobInfo jobInfoToProto(JobInfo job) {
-        TaskManager.JobInfo.Builder builder =  TaskManager.JobInfo.newBuilder();
+        TaskManager.JobInfo.Builder builder = TaskManager.JobInfo.newBuilder();
         builder.setId(job.getId());
         if (job.getJobType() != null) {
             builder.setJobType(job.getJobType());
@@ -75,7 +123,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
             TaskManager.ShowJobsResponse.Builder builder = TaskManager.ShowJobsResponse.newBuilder();
             builder.setCode(StatusCode.SUCCESS);
-            for (int i=0; i < jobInfos.size(); ++i) {
+            for (int i = 0; i < jobInfos.size(); ++i) {
                 builder.addJobs(i, jobInfoToProto(jobInfos.get(i)));
             }
             return builder.build();
@@ -139,21 +187,49 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
-    public TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request) {
+    public TaskManager.RunBatchSqlResponse RunBatchSql(TaskManager.RunBatchSqlRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getOutputPath(), request.getConfMap(), request.getDefaultDb());
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
-                    .build();
+            String output = OpenmldbBatchjobManager.runBatchSql(request.getSql(), request.getConfMap(),
+                    request.getDefaultDb());
+            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+        }
+    }
+
+    // no max wait time
+    private JobInfo busyWaitJobInfo(int jobId) throws InterruptedException {
+        while (true) {
+            Option<JobInfo> info = JobInfoManager.getJob(jobId);
+            if (info.nonEmpty() && info.get().isFinished()) {
+                return info.get();
+            }
+            Thread.sleep(10000);
+        }
+    }
+
+    private JobInfo waitJobInfoWrapper(int jobId) throws Exception {
+        try {
+            busyWaitJobInfo(jobId);
+            // Ref https://github.com/4paradigm/OpenMLDB/issues/1436#issuecomment-1066314684
+            Thread.sleep(2000);
+            return busyWaitJobInfo(jobId);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new Exception("wait for job failed, use show job to get the job status. Job " + jobId);
         }
     }
 
     @Override
     public TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request) {
         try {
+
             JobInfo jobInfo = OpenmldbBatchjobManager.runBatchAndShow(request.getSql(), request.getConfMap(), request.getDefaultDb());
+            if (request.getSyncJob()) {
+                // wait for final state
+                jobInfo = waitJobInfoWrapper(jobInfo.getId());
+            }
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
@@ -166,6 +242,10 @@ public class TaskManagerImpl implements TaskManagerInterface {
     public TaskManager.ShowJobResponse ImportOnlineData(TaskManager.ImportOnlineDataRequest request) {
         try {
             JobInfo jobInfo = OpenmldbBatchjobManager.importOnlineData(request.getSql(), request.getConfMap(), request.getDefaultDb());
+            if (request.getSyncJob()) {
+                // wait for final state
+                jobInfo = waitJobInfoWrapper(jobInfo.getId());
+            }
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
@@ -178,6 +258,10 @@ public class TaskManagerImpl implements TaskManagerInterface {
     public TaskManager.ShowJobResponse ImportOfflineData(TaskManager.ImportOfflineDataRequest request) {
         try {
             JobInfo jobInfo = OpenmldbBatchjobManager.importOfflineData(request.getSql(), request.getConfMap(), request.getDefaultDb());
+            if (request.getSyncJob()) {
+                // wait for final state
+                jobInfo = waitJobInfoWrapper(jobInfo.getId());
+            }
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
@@ -190,6 +274,10 @@ public class TaskManagerImpl implements TaskManagerInterface {
     public TaskManager.ShowJobResponse ExportOfflineData(TaskManager.ExportOfflineDataRequest request) {
         try {
             JobInfo jobInfo = OpenmldbBatchjobManager.exportOfflineData(request.getSql(), request.getConfMap(), request.getDefaultDb());
+            if (request.getSyncJob()) {
+                // wait for final state
+                jobInfo = waitJobInfoWrapper(jobInfo.getId());
+            }
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
@@ -212,11 +300,43 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
         try {
-            String log = LogManager.getJobLog(request.getId());
+            String outLog = LogManager.getJobLog(request.getId());
+            String errorLog = LogManager.getJobErrorLog(request.getId());
+            String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {
             e.printStackTrace();
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
     }
+
+    @Override
+    public TaskManager.CreateFunctionResponse CreateFunction(TaskManager.CreateFunctionRequest request) {
+        Common.ExternalFun fun = request.getFun();
+        if (fun.getOfflineFile().isEmpty()) {
+            return TaskManager.CreateFunctionResponse.newBuilder()
+                    .setCode(StatusCode.FAILED)
+                    .setMsg("has not offline path")
+                    .build();
+        }
+        String str = fun.toString();
+        if (!functionMap.containsKey(request.getFun().getName())) {
+            functionMap.put(fun.getName(), str);
+        }
+        return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
+    }
+
+    @Override
+    public TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request) {
+        if (functionMap.containsKey(request.getName())) {
+            functionMap.remove(request.getName());
+        } else if (!request.getIfExists()) {
+            return TaskManager.DropFunctionResponse.newBuilder()
+                    .setCode(StatusCode.FAILED)
+                    .setMsg(request.getName() + " is not exist")
+                    .build();
+        }
+        return TaskManager.DropFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
+    }
+
 }

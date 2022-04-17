@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager.server;
 
+import com._4paradigm.openmldb.taskmanager.tracker.JobTrackerService;
 import com._4paradigm.openmldb.taskmanager.zk.FailoverWatcher;
 import lombok.extern.slf4j.Slf4j;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
@@ -39,6 +40,12 @@ public class TaskManagerServer {
             logger.info("The server runs and prepares for leader election");
             if (failoverWatcher.blockUntilActive()) {
                 logger.info("The server becomes active master and prepare to do business logic");
+                if (TaskManagerConfig.TRACK_UNFINISHED_JOBS) {
+                    // Start threads to track unfinished jobs
+                    JobTrackerService.startTrackerThreads();
+                }
+
+                // Start brpc server
                 startBrpcServer();
             }
             failoverWatcher.close();
@@ -56,6 +63,7 @@ public class TaskManagerServer {
             options.setSendBufferSize(64 * 1024 * 1024);
             options.setIoThreadNum(TaskManagerConfig.WORKER_THREAD);
             options.setWorkThreadNum(TaskManagerConfig.IO_THREAD);
+            options.setKeepAliveTime(TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME);
             rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
             rpcServer.registerService(new TaskManagerImpl());
             rpcServer.start();

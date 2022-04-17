@@ -253,22 +253,27 @@ class SQLClusterRouter : public SQLRouter {
 
     ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
                                                  const std::map<std::string, std::string>& config,
-                                                 const std::string& default_db,
-                                                 ::openmldb::taskmanager::JobInfo& job_info) override;
+                                                 const std::string& default_db, bool sync_job,
+                                                 ::openmldb::taskmanager::JobInfo& job_info) override; // NOLINT
+
+    ::openmldb::base::Status ExecuteOfflineQueryGetOutput(const std::string& sql,
+                                                          const std::map<std::string, std::string>& config,
+                                                          const std::string& default_db,
+                                                          std::string& output); // NOLINT
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                               const std::map<std::string, std::string>& config,
-                                              const std::string& default_db,
+                                              const std::string& default_db, bool sync_job,
                                               ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql,
                                                const std::map<std::string, std::string>& config,
-                                               const std::string& default_db,
+                                               const std::string& default_db, bool sync_job,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status ExportOfflineData(const std::string& sql,
                                                const std::map<std::string, std::string>& config,
-                                               const std::string& default_db,
+                                               const std::string& default_db, bool sync_job,
                                                ::openmldb::taskmanager::JobInfo& job_info) override;
 
     ::openmldb::base::Status CreatePreAggrTable(const std::string& aggr_db,
@@ -283,12 +288,15 @@ class SQLClusterRouter : public SQLRouter {
 
     bool IsOnlineMode() override;
     bool IsEnableTrace();
+    bool IsSyncJob();
 
     std::string GetDatabase();
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
 
     std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() override;
+
+    void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
  private:
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
@@ -347,6 +355,8 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& null_value, const std::vector<std::string>& cols);
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
+
+    hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
 
     hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
                                             const std::set<std::pair<std::string, std::string>>& table_pair,

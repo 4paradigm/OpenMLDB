@@ -108,6 +108,7 @@ message CreateTableRequest {
     required TableInfo table_info = 1;
     optional ZoneInfo zone_info = 2;
     optional openmldb.api.TaskInfo task_info = 3;
+    optional bool create_if_not_exist = 4 [default = false];
 }
 
 message DropTableRequest {
@@ -438,6 +439,7 @@ message DeleteIndexRequest {
 
 message CreateDatabaseRequest {
     optional string db = 1;
+    optional bool if_not_exists = 2 [default = false];
 }
 
 message UseDatabaseRequest {
@@ -468,6 +470,35 @@ message ShowCatalogResponse {
     repeated openmldb.common.CatalogInfo catalog = 1;
     optional int32 code = 2;
     optional string msg = 3;
+}
+
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DropFunctionRequest {
+    optional string name = 1;
+    optional bool if_exists = 2;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message ShowFunctionRequest {
+    optional string name = 1;
+}
+
+message ShowFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated openmldb.common.ExternalFun fun = 3;
 }
 
 service NameServer {
@@ -517,6 +548,9 @@ service NameServer {
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
     rpc UpdateOfflineTableInfo(TableInfo) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
+    rpc ShowFunction(ShowFunctionRequest) returns (ShowFunctionResponse);
 
     // sql procedure interfaces
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);

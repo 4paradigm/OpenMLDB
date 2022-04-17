@@ -82,6 +82,7 @@ enum SqlNodeType {
     kPartitionMeta,
     kReplicaNum,
     kDistributions,
+    kStorageMode,
     kCreateSpStmt,
     kInputParameter,
     kPartitionNum,
@@ -90,6 +91,9 @@ enum SqlNodeType {
     kDeployStmt,
     kSetStmt,
     kDeleteStmt,
+    kCreateFunctionStmt,
+    kDynamicUdfFnDef,
+    kDynamicUdafFnDef,
     kUnknow = -1
 };
 
@@ -256,6 +260,7 @@ enum CmdType {
     kCmdShowSessionVariables,
     kCmdShowComponents,
     kCmdShowTableStatus,
+    kCmdDropFunction,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -290,6 +295,7 @@ enum PlanType {
     kPlanTypeDeploy,
     kPlanTypeSet,
     kPlanTypeDelete,
+    kPlanTypeCreateFunction,
     kUnknowPlan = -1,
 };
 
@@ -301,6 +307,13 @@ enum TTLType {
 enum VariableScope {
     kGlobalSystemVariable,
     kSessionSystemVariable,
+};
+
+enum StorageMode {
+    kUnknown = 0,
+    kMemory = 1,
+    kSSD = 2,
+    kHDD = 3,
 };
 
 // batch plan node type

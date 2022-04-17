@@ -42,7 +42,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 **以 SQL 为核心的开发和管理体验：** 低门槛且功能强大的数据库开发体验，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
 
-**面向特征计算的定制化性能优化：** 离线特征计算使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/dev/tutorial/openmldbspark_distribution.html)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
+**面向特征计算的定制化性能优化：** 离线特征计算使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)；线上实时特征计算在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
 
 **生产级特性：** 为大规模企业应用而设计，不断完善诸多生产级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、异构内存架构支持等。
 
@@ -58,7 +58,7 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
    
 3. **OpenMLDB 是否就是一个 feature store？**
    
-   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/dev/tutorial/openmldbspark_distribution.html)，针对实时特征计算优化的索引结构，特征上线服务、生产级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
+   OpenMLDB 包含 feature store 的全部功能，并且提供更为完整的 FeatureOps 全栈方案。除了提供特征存储功能，还具有基于 SQL 的数据库开发体验、[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)，针对实时特征计算优化的索引结构，特征上线服务、生产级运维和管理等功能。此外，OpenMLDB 也被用作一个高性能的时序特征数据库。
    
 4. **OpenMLDB 为什么选择 SQL 作为开发语言？**
    
@@ -66,17 +66,17 @@ MLOps 为人工智能工程化落地提供全栈技术方案，作为其中的�
 
 ## 5. 编译和安装
 
-:point_right: [点击这里](https://openmldb.ai/docs/zh/dev/deploy/index.html)
+:point_right: [点击这里](https://openmldb.ai/docs/zh/main/deploy/index.html)
 
 ## 6. QuickStart
 
 **集群版和单机版**
 
-OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/dev/tutorial/standalone_vs_cluster.html)。
+OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)。
 
 **准备开始体验 OpenMLDB**
 
-:point_right: [OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/dev/quickstart/openmldb_quickstart.html)
+:point_right: [OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
 
 ## 7. 使用案例
 
@@ -84,7 +84,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 | 应用                                                         | 所用工具           | 简介                                                         |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/dev/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
+| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 
 ## 8. OpenMLDB 文档
 

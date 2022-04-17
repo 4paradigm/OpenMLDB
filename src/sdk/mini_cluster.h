@@ -53,6 +53,7 @@ DECLARE_bool(auto_failover);
 DECLARE_bool(enable_distsql);
 DECLARE_uint32(system_table_replica_num);
 DECLARE_uint32(get_table_diskused_interval);
+DECLARE_uint32(sync_deploy_stats_timeout);
 
 namespace openmldb {
 namespace sdk {
@@ -81,14 +82,17 @@ class MiniCluster {
     }
 
     bool SetUp(int tablet_num = 2) {
+        LOG(INFO) << "start tablet number " << tablet_num;
         if (tablet_num > MAX_TABLET_NUM) {
             return false;
         }
         FLAGS_system_table_replica_num = 1;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
-        FLAGS_get_table_diskused_interval = 5000;
+        FLAGS_get_table_diskused_interval = 2000;
+        FLAGS_sync_deploy_stats_timeout = 2000;
         srand(time(NULL));
-        FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
+        db_root_path_ = "/tmp/mini_cluster" + GenRand();
+        FLAGS_db_root_path = db_root_path_;
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
         FLAGS_zk_cluster = zk_cluster_;
         std::string ns_endpoint = "127.0.0.1:" + GenRand();
@@ -137,6 +141,7 @@ class MiniCluster {
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
         }
+        base::RemoveDirRecursive(db_root_path_);
     }
 
     std::string GetZkCluster() { return zk_cluster_; }
@@ -190,6 +195,7 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
+        LOG(INFO) << "start tablet " << tb_endpoint;
         tablets_.emplace(tb_endpoint, tablet);
         sleep(2);
         auto* client = new ::openmldb::client::TabletClient(tb_endpoint, tb_endpoint);
@@ -212,6 +218,7 @@ class MiniCluster {
     ::openmldb::client::NsClient* ns_client_;
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
+    std::string db_root_path_;
 };
 
 class StandaloneEnv {
@@ -228,7 +235,8 @@ class StandaloneEnv {
 
     bool SetUp() {
         srand(time(nullptr));
-        FLAGS_db_root_path = "/tmp/mini_cluster" + std::to_string(GenRand());
+        db_root_path_ = "/tmp/standalone_env" + std::to_string(GenRand());
+        FLAGS_db_root_path = db_root_path_;
         if (!StartTablet(&tb_server_)) {
             LOG(WARNING) << "fail to start tablet";
             return false;
@@ -236,7 +244,8 @@ class StandaloneEnv {
         sleep(1);
         FLAGS_tablet = tb_endpoint_;
         // lower diskused pull interval needed by SHOW TABLE STATUS tests
-        FLAGS_get_table_diskused_interval = 5000;
+        FLAGS_get_table_diskused_interval = 2000;
+        FLAGS_sync_deploy_stats_timeout = 2000;
         ns_port_ = GenRand();
         std::string ns_endpoint = "127.0.0.1:" + std::to_string(ns_port_);
         ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
@@ -268,6 +277,7 @@ class StandaloneEnv {
     void Close() {
         ns_.Stop(10);
         tb_server_.Stop(10);
+        base::RemoveDirRecursive(db_root_path_);
     }
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
@@ -316,6 +326,7 @@ class StandaloneEnv {
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;
     ::openmldb::client::TabletClient* tb_client_;
+    std::string db_root_path_;
 };
 
 }  // namespace sdk

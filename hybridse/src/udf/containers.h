@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "base/type.h"
 #include "codec/type_codec.h"
 #include "udf/literal_traits.h"
 #include "udf/udf.h"
@@ -41,7 +42,7 @@ struct ContainerStorageTypeTrait {
 };
 
 template <>
-struct ContainerStorageTypeTrait<codec::StringRef> {
+struct ContainerStorageTypeTrait<openmldb::base::StringRef> {
     using type = codec::StringRef;
     static codec::StringRef to_stored_value(codec::StringRef* t) {
         return t == nullptr ? codec::StringRef() : *t;
@@ -49,18 +50,18 @@ struct ContainerStorageTypeTrait<codec::StringRef> {
 };
 
 template <>
-struct ContainerStorageTypeTrait<codec::Date> {
-    using type = codec::Date;
-    static codec::Date to_stored_value(codec::Date* t) {
-        return t == nullptr ? codec::Date(0) : *t;
+struct ContainerStorageTypeTrait<openmldb::base::Date> {
+    using type = openmldb::base::Date;
+    static openmldb::base::Date to_stored_value(openmldb::base::Date* t) {
+        return t == nullptr ? openmldb::base::Date(0) : *t;
     }
 };
 
 template <>
-struct ContainerStorageTypeTrait<codec::Timestamp> {
-    using type = codec::Timestamp;
-    static codec::Timestamp to_stored_value(codec::Timestamp* t) {
-        return t == nullptr ? codec::Timestamp(0) : *t;
+struct ContainerStorageTypeTrait<openmldb::base::Timestamp> {
+    using type = openmldb::base::Timestamp;
+    static openmldb::base::Timestamp to_stored_value(openmldb::base::Timestamp* t) {
+        return t == nullptr ? openmldb::base::Timestamp(0) : *t;
     }
 };
 
@@ -112,6 +113,11 @@ class TopKContainer {
         }
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
         // fill string buffer
         char* cur = buffer;
         uint32_t remain_space = str_len;
@@ -243,6 +249,11 @@ class BoundedGroupByDict {
 
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
 
         // fill string buffer
         char* cur = buffer;

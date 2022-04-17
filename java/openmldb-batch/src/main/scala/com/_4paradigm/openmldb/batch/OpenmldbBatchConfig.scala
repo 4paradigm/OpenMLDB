@@ -131,12 +131,13 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
   var enableUnsafeRowOptForGroupby = false
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.join", doc = "Enable UnsafeRow optimization for join")
-  var enableUnsafeRowOptForJoin = false
+  // Join optimization
+  @ConfigOption(name = "openmldb.opt.join.spark_expr", doc = "Enable join with original Spark expression")
+  var enableJoinWithSparkExpr = true
 
-  // Switch for disable OpenMLDB
-  @ConfigOption(name = "openmldb.disable", doc = "Disable OpenMLDB optimization or not")
-  var disableOpenmldb = false
+  // Use SparkSQL
+  @ConfigOption(name = "openmldb.sparksql", doc = "Enable SparkSQL instead of using OpenMLDB execution engine")
+  var enableSparksql = false
 
   // OpenMLDB Java SDK dynamic library path, notice that this should not be set hybridse jsdk so
   @ConfigOption(name = "openmldb.jsdk.library.path", doc = "The path of OpenMLDB Java SDK core file path")

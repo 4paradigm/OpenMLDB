@@ -18,6 +18,7 @@
 
 #include <set>
 
+#include "absl/container/flat_hash_map.h"
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -26,6 +27,54 @@ namespace vm {
 using hybridse::base::Status;
 
 const char INDENT[] = "  ";
+
+static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTypeNamesMap() {
+    absl::flat_hash_map<PhysicalOpType, absl::string_view> map = {
+        {kPhysicalOpDataProvider, "DATA_PROVIDER"},
+        {kPhysicalOpGroupBy, "GROUP_BY"},
+        {kPhysicalOpSortBy, "SORT_BY"},
+        {kPhysicalOpFilter, "FILTER_BY"},
+        {kPhysicalOpProject, "PROJECT"},
+        {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
+        {kPhysicalOpConstProject, "CONST_PROJECT"},
+        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpLimit, "LIMIT"},
+        {kPhysicalOpRename, "RENAME"},
+        {kPhysicalOpDistinct, "DISTINCT"},
+        {kPhysicalOpWindow, "WINDOW"},
+        {kPhysicalOpJoin, "JOIN"},
+        {kPhysicalOpUnion, "UNION"},
+        {kPhysicalOpPostRequestUnion, "POST_REQUEST_UNION"},
+        {kPhysicalOpRequestUnion, "REQUEST_UNION"},
+        {kPhysicalOpRequestAggUnion, "REQUEST_AGG_UNION"},
+        {kPhysicalOpRequestJoin, "REQUEST_JOIN"},
+        {kPhysicalOpIndexSeek, "INDEX_SEEK"},
+        {kPhysicalOpLoadData, "LOAD_DATA"},
+        {kPhysicalOpDelete, "DELETE"},
+        {kPhysicalOpSelectInto, "SELECT_INTO"},
+        {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
+        {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
+        {kPhysicalOpInsert, "INSERT"},
+    };
+    for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
+        DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());
+    }
+    return map;
+}
+
+static const absl::flat_hash_map<PhysicalOpType, absl::string_view>& GetPhysicalOpNamesMap() {
+  static const absl::flat_hash_map<PhysicalOpType, std::string_view>& map = *new auto(CreatePhysicalOpTypeNamesMap());
+  return map;
+}
+
+absl::string_view PhysicalOpTypeName(PhysicalOpType type) {
+    auto& map = GetPhysicalOpNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return it->second;
+    }
+    return "UNKNOWN";
+}
 
 void printOptionsMap(std::ostream &output, const node::OptionsMap* value, const std::string_view item_name) {
     output << ", " << item_name << "=";
@@ -530,6 +579,44 @@ void PhysicalAggrerationNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
+Status PhysicalReduceAggregationNode::InitSchema(PhysicalPlanContext* ctx) {
+    // init reduce project schema
+    schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    SchemaSource* project_source = schemas_ctx_.AddSource();
+    project_source->SetSchema(orig_aggr_->GetOutputSchema());
+    for (size_t i = 0; i < project_.size(); i++) {
+        auto column_id = ctx->GetNewColumnID();
+        project_source->SetColumnID(i, column_id);
+        project_source->SetNonSource(i);
+    }
+    return Status();
+}
+
+void PhysicalReduceAggregationNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(type=" << ProjectTypeName(project_type_);
+    output << ": ";
+    for (size_t i = 0; i < project_.size(); i++) {
+        output << project_.GetExpr(i)->GetExprString();
+        if (project_.GetFrame(i)) {
+            output << " (" << project_.GetFrame(i)->GetExprString() << ")";
+        }
+        if (i < project_.size() - 1) output << ", ";
+    }
+    if (having_condition_.ValidCondition()) {
+        output << ", having_" << having_condition_.ToString();
+    }
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -1174,6 +1261,57 @@ base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+void PhysicalRequestAggUnionNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(";
+    if (!output_request_row_) {
+        output << "EXCLUDE_REQUEST_ROW, ";
+    }
+    if (exclude_current_time_) {
+        output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    output << window_.ToString() << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+void PhysicalRequestAggUnionNode::PrintChildren(std::ostream& output, const std::string& tab) const {
+    if (3 != producers_.size() || nullptr == producers_[0] || nullptr == producers_[1] || nullptr == producers_[2]) {
+        LOG(WARNING) << "fail to print PhysicalRequestAggUnionNode children";
+        return;
+    }
+    producers_[0]->Print(output, tab + INDENT);
+    for (size_t i = 1; i < producers_.size(); i++) {
+        output << "\n";
+        producers_[i]->Print(output, tab + INDENT);
+    }
+}
+
+base::Status PhysicalRequestAggUnionNode::InitSchema(PhysicalPlanContext* ctx) {
+    CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
+    schemas_ctx_.Clear();
+    agg_schema_.Clear();
+
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    auto source = schemas_ctx_.AddSource();
+    if (parent_schema_context_) {
+        source->SetSchema(parent_schema_context_->GetOutputSchema());
+    } else {
+        auto column = agg_schema_.Add();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("agg_val");
+        source->SetSchema(&agg_schema_);
+    }
+
+    source->SetColumnID(0, ctx->GetNewColumnID());
+    source->SetNonSource(0);
+    return Status::OK();
+}
+
+PhysicalRequestAggUnionNode* PhysicalRequestAggUnionNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestAggUnionNode*>(node);
+}
+
 base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty procedures");
     schemas_ctx_.Clear();
@@ -1308,6 +1446,12 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
 void PhysicalDeleteNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
+}
+
+void PhysicalInsertNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(db=" << GetInsertStmt()->db_name_ << ", table=" << GetInsertStmt()->table_name_
+           << ", is_all=" << (GetInsertStmt()->is_all_ ? "true" : "false") << ")";
 }
 
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {

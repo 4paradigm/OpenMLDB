@@ -46,9 +46,11 @@ class SchemaAdapter {
 
     static bool ConvertType(hybridse::node::DataType hybridse_type, openmldb::type::DataType* type);
 
-    static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* oepnmldb_type);
+    static bool ConvertType(openmldb::type::DataType type, hybridse::node::DataType* hybridse_type);
 
-    static bool ConvertType(openmldb::type::DataType oepnmldb_type, hybridse::type::Type* hybridse_type);
+    static bool ConvertType(hybridse::type::Type hybridse_type, openmldb::type::DataType* openmldb_type);
+
+    static bool ConvertType(openmldb::type::DataType openmldb_type, hybridse::type::Type* hybridse_type);
 
     static bool ConvertType(hybridse::sdk::DataType type, hybridse::type::Type *cased_type);
 

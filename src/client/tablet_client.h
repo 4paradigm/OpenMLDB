@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/ddl_parser.h"
 #include "base/kv_iterator.h"
 #include "base/status.h"
 #include "brpc/channel.h"
@@ -271,6 +272,11 @@ class TabletClient : public Client {
 
     bool SubBatchRequestQuery(const ::openmldb::api::SQLBatchRequestQueryRequest& request,
                               openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    bool CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
+
+    bool DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
+
     bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 
@@ -278,6 +284,12 @@ class TabletClient : public Client {
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch> row_batch, bool is_debug,
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    bool CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
+                          uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,
+                          const ::openmldb::base::LongWindowInfo& window_info);
+
+    bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;

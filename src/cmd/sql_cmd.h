@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+#include "absl/strings/strip.h"
 #include "base/linenoise.h"
 #include "boost/regex.hpp"
 #include "base/texttable.h"
@@ -90,6 +91,7 @@ void HandleSQL(const std::string& sql) {
                     t.end_of_row();
                 }
                 std::cout << t;
+                std::cout << std::endl << result_set->Size() << " rows in set" << std::endl;
             }
         } else {
             if (status.msg != "ok") {
@@ -151,7 +153,22 @@ void Shell() {
                 continue;
             }
         }
-        sql.append(buffer);
+        // todo: should support multiple sql.
+        // trim space after last semicolon in sql
+        auto last_semicolon_pos = buffer.find_last_of(';');
+        if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
+            absl::string_view input(buffer.substr(last_semicolon_pos + 1, buffer.size() - last_semicolon_pos));
+            std::string prefix(" ");
+            while (true) {
+                if (!absl::ConsumePrefix(&input, prefix)) {
+                    break;
+                }
+            }
+            sql.append(buffer.begin(), buffer.begin() + last_semicolon_pos + 1);
+            sql.append(input.begin(), input.end());
+        } else {
+            sql.append(buffer);
+        }
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
                 absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {

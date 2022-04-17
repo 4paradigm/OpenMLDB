@@ -225,6 +225,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeSet";
         case kPlanTypeDelete:
             return "kPlanTypeDelete";
+        case kPlanTypeCreateFunction:
+            return "kPlanTypeCreateFunction";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -698,6 +700,8 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
     output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", false);
+    output << "\n";
     PrintSqlVector(output, tab, distribution_list_, "distribution", false);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -727,6 +731,21 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     PrintValue(output, tab, Options().get(), "options", false);
     output << "\n";
     PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
+}
+
+void CreateFunctionPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string new_tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, new_tab, args_type_, "args_type", false);
+    output << "\n";
+    PrintValue(output, new_tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -768,5 +787,14 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     PrintValue(output, next_tab, GetJobId(), "job_id", true);
 }
 
+bool CmdPlanNode::Equals(const PlanNode *that) const {
+    if (!LeafPlanNode::Equals(that)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdPlanNode*>(that);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
 }  // namespace node
 }  // namespace hybridse

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.9)
-set(ZETASQL_TAG 31e5647ccd7afb0b137a6c9e93999e01c5f97ef3) # the commit hash for v0.2.9
+set(ZETASQL_VERSION 0.2.10)
+set(ZETASQL_TAG bb709569a50bf309faa269760e3a35019672fa7c) # the commit hash for v0.2.9
 
 function(init_zetasql_urls)
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -33,16 +33,16 @@ function(init_zetasql_urls)
 
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH 32c70da94a1a7c9379c85ac80b2c07ea2654d5b65513824746fe6d81cf353c7d PARENT_SCOPE)
+      set(ZETASQL_HASH eb2728151818f4dd4c1be3721302d6f474d472d38cfcc77c172573f55dd89eed PARENT_SCOPE)
     elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH cb7a752d3a0df92e71d5b3876abde99ce8997c2111cefb2f400b7b312a867942 PARENT_SCOPE)
+      set(ZETASQL_HASH 086cb1d029a88c48bf2572c9aaf99f49d69b4a77a4d4445299beb13c590e2f56 PARENT_SCOPE)
     else()
       message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with '-DBUILD_BUNDLED_ZETASQL=ON'")
     endif()
   elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz" PARENT_SCOPE)
-    set(ZETASQL_HASH 5ce0904cb947b9e83b33513d3a1a908d03fb52011e3f702ec193cedc76e37a84 PARENT_SCOPE)
+    set(ZETASQL_HASH ad90307bc775c6cf72f28a6f26f443f3249f3e78a7ab86d30a458ad3cce7803a PARENT_SCOPE)
   endif()
 endfunction()
 
