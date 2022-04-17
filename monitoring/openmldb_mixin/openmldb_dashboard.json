@@ -28,7 +28,7 @@
   "liveNow": false,
   "panels": [
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -36,726 +36,727 @@
         "y": 0
       },
       "id": 173,
-      "panels": [],
-      "title": "OpenMLDB Cluster Overview",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "whether a component is online or offline",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
           },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "dark-red",
-                  "index": 0,
-                  "text": "OFFLINE"
-                },
-                "1": {
-                  "color": "dark-green",
-                  "index": 1,
-                  "text": "ONLINE"
-                }
+          "description": "whether a component is online or offline",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-GrYlRd"
               },
-              "type": "value"
+              "decimals": 0,
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "dark-red",
+                      "index": 0,
+                      "text": "OFFLINE"
+                    },
+                    "1": {
+                      "color": "dark-green",
+                      "index": 1,
+                      "text": "ONLINE"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bool"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "id": 61,
+          "links": [],
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "value_and_name"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "openmldb_status{job=~\"$job\", openmldb_status=\"online\", endpoint=~\"$endpoint\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "{{endpoint}}-{{role}}",
+              "refId": "A"
             }
           ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bool"
+          "title": "Component Status",
+          "type": "stat"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 1
-      },
-      "id": 61,
-      "links": [],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "text": {},
-        "textMode": "value_and_name"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "openmldb_status{job=~\"$job\", openmldb_status=\"online\", endpoint=~\"$endpoint\"}",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "{{endpoint}}-{{role}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Component Status",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "connected time in seconds for each components in the OpenMLDB cluster",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 1
-      },
-      "id": 62,
-      "links": [],
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "exemplar": true,
-          "expr": "openmldb_connected_seconds_total{job=~\"$job\", endpoint=~\"$endpoint\"}",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{endpoint}}-{{role}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Component Connected Time",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "thresholds": {
-            "mode": "percentage",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
+          "description": "connected time in seconds for each components in the OpenMLDB cluster",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
               },
-              {
-                "color": "orange",
-                "value": 70
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               },
-              {
-                "color": "red",
-                "value": 85
-              }
-            ]
+              "unit": "s"
+            },
+            "overrides": []
           },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "id": 80,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "id": 62,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "openmldb_connected_seconds_total{job=~\"$job\", endpoint=~\"$endpoint\"}",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{endpoint}}-{{role}}",
+              "refId": "A"
+            }
           ],
-          "fields": "",
-          "values": false
+          "title": "Component Connected Time",
+          "type": "stat"
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "process_memory_virtual{job=~\"$component_job\", instance=~\"$endpoint\"}",
-          "interval": "",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Process Virtual Memory",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 7
           },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 3,
-        "x": 12,
-        "y": 7
-      },
-      "id": 379,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+          "id": 80,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "process_memory_virtual{job=~\"$component_job\", instance=~\"$endpoint\"}",
+              "interval": "",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
           ],
-          "fields": "",
-          "values": false
+          "title": "Process Virtual Memory",
+          "type": "gauge"
         },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "OkWeXB0nk"
-          },
-          "exemplar": true,
-          "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_query_count\", job=~\"$component_job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Query RPC Request ",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 3,
-        "x": 15,
-        "y": 7
-      },
-      "id": 380,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "OkWeXB0nk"
-          },
-          "exemplar": true,
-          "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_query_count\", job=~\"$component_job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Sub Query RPC Request ",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 3,
-        "x": 18,
-        "y": 7
-      },
-      "id": 381,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "OkWeXB0nk"
-          },
-          "exemplar": true,
-          "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sqlbatch_request_query_count\", job=~\"$component_job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Batch Request Query RPC Request $endpoint",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 3,
-        "x": 21,
-        "y": 7
-      },
-      "id": 470,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "OkWeXB0nk"
-          },
-          "exemplar": true,
-          "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_batch_request_query_count\", job=~\"$component_job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Sub Batch Request Query RPC Request ",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Table Rows Count for all tables",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 0,
-        "y": 13
-      },
-      "id": 214,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "sum(openmldb_table_rows{job=~\"$job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Table Row Count Total",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Table Memory Used for all tables",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 12,
+            "y": 7
           },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 4,
-        "y": 13
-      },
-      "id": 252,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+          "id": 379,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "OkWeXB0nk"
+              },
+              "exemplar": true,
+              "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_query_count\", job=~\"$component_job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
           ],
-          "fields": "",
-          "values": false
+          "title": "Total Query RPC Request ",
+          "type": "stat"
         },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "sum(openmldb_table_memory_bytes{job=~\"$job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Table Memory Used Total",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Table Disk Used for all tables",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 15,
+            "y": 7
           },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 8,
-        "y": 13
-      },
-      "id": 251,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+          "id": 380,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "OkWeXB0nk"
+              },
+              "exemplar": true,
+              "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_query_count\", job=~\"$component_job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
           ],
-          "fields": "",
-          "values": false
+          "title": "Total Sub Query RPC Request ",
+          "type": "stat"
         },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "sum (openmldb_table_disk_bytes{job=~\"$job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "Table Disk Used Total",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Deploy Query Count for all deployments",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 18,
+            "y": 7
           },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 12,
-        "y": 13
-      },
-      "id": 250,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+          "id": 381,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "OkWeXB0nk"
+              },
+              "exemplar": true,
+              "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sqlbatch_request_query_count\", job=~\"$component_job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
           ],
-          "fields": "",
-          "values": false
+          "title": "Total Batch Request Query RPC Request $endpoint",
+          "type": "stat"
         },
-        "textMode": "auto"
-      },
-      "pluginVersion": "8.3.3",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "exemplar": true,
-          "expr": "sum (openmldb_info_schema_deploy_response_time_seconds_count{job=~\"$job\"})",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 3,
+            "x": 21,
+            "y": 7
+          },
+          "id": 470,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "OkWeXB0nk"
+              },
+              "exemplar": true,
+              "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_batch_request_query_count\", job=~\"$component_job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Sub Batch Request Query RPC Request ",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Table Rows Count for all tables",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 0,
+            "y": 13
+          },
+          "id": 214,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(openmldb_table_rows{job=~\"$job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Table Row Count Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Table Memory Used for all tables",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 4,
+            "y": 13
+          },
+          "id": 252,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum(openmldb_table_memory_bytes{job=~\"$job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Table Memory Used Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Table Disk Used for all tables",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 8,
+            "y": 13
+          },
+          "id": 251,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum (openmldb_table_disk_bytes{job=~\"$job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Table Disk Used Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Deploy Query Count for all deployments",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 12,
+            "y": 13
+          },
+          "id": 250,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "exemplar": true,
+              "expr": "sum (openmldb_info_schema_deploy_response_time_seconds_count{job=~\"$job\"})",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Deploy Query Count Total",
+          "type": "stat"
         }
       ],
-      "title": "Deploy Query Count Total",
-      "type": "stat"
+      "title": "OpenMLDB Cluster Overview",
+      "type": "row"
     },
     {
       "collapsed": true,
@@ -763,7 +764,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 1
       },
       "id": 74,
       "panels": [
@@ -783,7 +784,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               }
@@ -794,7 +796,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 2
+            "y": 19
           },
           "id": 106,
           "links": [],
@@ -820,7 +822,7 @@
                 "uid": "OkWeXB0nk"
               },
               "exemplar": false,
-              "expr": "openmldb_table_partitions{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_partitions{job=~\"$job\", table_path=~\"$table_path\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -848,7 +850,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               }
@@ -859,7 +862,7 @@
             "h": 6,
             "w": 5,
             "x": 7,
-            "y": 2
+            "y": 19
           },
           "id": 16,
           "links": [],
@@ -885,7 +888,7 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "openmldb_table_replica{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_replica{job=~\"$job\", table_path=~\"$table_path\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{table_path}}-{{tid}}-{{storage_mode}}",
@@ -911,7 +914,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               }
@@ -922,7 +926,7 @@
             "h": 6,
             "w": 4,
             "x": 12,
-            "y": 2
+            "y": 19
           },
           "id": 107,
           "links": [],
@@ -948,7 +952,7 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "openmldb_table_rows{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_rows{job=~\"$job\", table_path=~\"$table_path\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{table_path}}-{{tid}}-{{storage_mode}}",
@@ -974,7 +978,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -986,7 +991,7 @@
             "h": 6,
             "w": 4,
             "x": 16,
-            "y": 2
+            "y": 19
           },
           "id": 108,
           "links": [],
@@ -1012,7 +1017,7 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "openmldb_table_memory_bytes{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_memory_bytes{job=~\"$job\", table_path=~\"$table_path\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{table_path}}-{{tid}}-{{storage_mode}}",
@@ -1038,7 +1043,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -1050,7 +1056,7 @@
             "h": 6,
             "w": 4,
             "x": 20,
-            "y": 2
+            "y": 19
           },
           "id": 109,
           "links": [],
@@ -1076,7 +1082,7 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "openmldb_table_disk_bytes{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_disk_bytes{job=~\"$job\", table_path=~\"$table_path\"}",
               "hide": false,
               "interval": "",
               "legendFormat": "{{table_path}}-{{tid}}-{{storage_mode}}",
@@ -1102,7 +1108,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1117,7 +1124,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 5
+            "y": 22
           },
           "id": 105,
           "links": [],
@@ -1143,7 +1150,7 @@
                 "uid": "OkWeXB0nk"
               },
               "exemplar": true,
-              "expr": "openmldb_table_partitions_unalive{job=~\"$job\", table_path=~\"$table_path\", storage_mode!=\"\"}",
+              "expr": "openmldb_table_partitions_unalive{job=~\"$job\", table_path=~\"$table_path\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -1199,7 +1206,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1215,7 +1223,7 @@
             "h": 10,
             "w": 8,
             "x": 0,
-            "y": 8
+            "y": 25
           },
           "id": 32,
           "links": [],
@@ -1296,7 +1304,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1312,7 +1321,7 @@
             "h": 10,
             "w": 8,
             "x": 8,
-            "y": 8
+            "y": 25
           },
           "id": 2,
           "links": [],
@@ -1392,7 +1401,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1408,7 +1418,7 @@
             "h": 10,
             "w": 8,
             "x": 16,
-            "y": 8
+            "y": 25
           },
           "id": 65,
           "options": {
@@ -1450,7 +1460,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 3
       },
       "id": 84,
       "panels": [
@@ -1498,7 +1508,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1513,7 +1524,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 3
+            "y": 21
           },
           "id": 93,
           "options": {
@@ -1586,7 +1597,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1602,7 +1614,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 3
+            "y": 21
           },
           "id": 620,
           "options": {
@@ -1675,7 +1687,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1691,7 +1704,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 29
           },
           "id": 692,
           "options": {
@@ -1764,7 +1777,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -1792,7 +1806,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 29
           },
           "id": 676,
           "options": {
@@ -1881,7 +1895,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 4
       },
       "id": 76,
       "panels": [
@@ -1898,7 +1912,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -1910,7 +1925,7 @@
             "h": 5,
             "w": 6,
             "x": 0,
-            "y": 4
+            "y": 22
           },
           "id": 78,
           "options": {
@@ -1963,7 +1978,8 @@
                 "mode": "percentage",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "#EAB839",
@@ -1983,7 +1999,7 @@
             "h": 5,
             "w": 4,
             "x": 6,
-            "y": 4
+            "y": 22
           },
           "id": 266,
           "options": {
@@ -2032,7 +2048,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2044,7 +2061,7 @@
             "h": 5,
             "w": 3,
             "x": 10,
-            "y": 4
+            "y": 22
           },
           "id": 265,
           "options": {
@@ -2093,7 +2110,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2105,7 +2123,7 @@
             "h": 5,
             "w": 3,
             "x": 13,
-            "y": 4
+            "y": 22
           },
           "id": 679,
           "options": {
@@ -2154,7 +2172,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2166,7 +2185,7 @@
             "h": 5,
             "w": 3,
             "x": 16,
-            "y": 4
+            "y": 22
           },
           "id": 681,
           "options": {
@@ -2215,7 +2234,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2227,7 +2247,7 @@
             "h": 5,
             "w": 3,
             "x": 19,
-            "y": 4
+            "y": 22
           },
           "id": 680,
           "options": {
@@ -2305,7 +2325,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2317,7 +2338,7 @@
             "h": 12,
             "w": 6,
             "x": 0,
-            "y": 9
+            "y": 27
           },
           "id": 267,
           "links": [],
@@ -2419,7 +2440,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2435,7 +2457,7 @@
             "h": 12,
             "w": 6,
             "x": 6,
-            "y": 9
+            "y": 27
           },
           "id": 97,
           "options": {
@@ -2510,7 +2532,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2522,7 +2545,7 @@
             "h": 12,
             "w": 6,
             "x": 12,
-            "y": 9
+            "y": 27
           },
           "id": 677,
           "links": [],
@@ -2615,7 +2638,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2627,7 +2651,7 @@
             "h": 12,
             "w": 6,
             "x": 18,
-            "y": 9
+            "y": 27
           },
           "id": 268,
           "links": [],
@@ -2718,7 +2742,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2730,7 +2755,7 @@
             "h": 10,
             "w": 6,
             "x": 0,
-            "y": 21
+            "y": 39
           },
           "id": 545,
           "links": [],
@@ -2809,7 +2834,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2821,7 +2847,7 @@
             "h": 10,
             "w": 6,
             "x": 6,
-            "y": 21
+            "y": 39
           },
           "id": 269,
           "links": [],
@@ -2899,7 +2925,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2911,7 +2938,7 @@
             "h": 10,
             "w": 6,
             "x": 12,
-            "y": 21
+            "y": 39
           },
           "id": 678,
           "options": {
@@ -2964,7 +2991,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 10
       },
       "id": 283,
       "panels": [
@@ -2984,7 +3011,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -2996,7 +3024,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 10
+            "y": 11
           },
           "id": 423,
           "options": {
@@ -3046,7 +3074,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3058,7 +3087,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 10
+            "y": 11
           },
           "id": 382,
           "options": {
@@ -3108,7 +3137,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3120,7 +3150,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 16
           },
           "id": 471,
           "options": {
@@ -3170,7 +3200,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3182,7 +3213,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 16
           },
           "id": 469,
           "options": {
@@ -3260,7 +3291,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3272,7 +3304,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 20
+            "y": 21
           },
           "id": 484,
           "links": [],
@@ -3368,7 +3400,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3380,7 +3413,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 34
+            "y": 35
           },
           "id": 87,
           "links": [],
@@ -3476,7 +3509,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3488,7 +3522,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 48
+            "y": 49
           },
           "id": 336,
           "links": [],
@@ -3584,7 +3618,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -3596,7 +3631,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 62
+            "y": 63
           },
           "id": 378,
           "links": [],
@@ -3695,7 +3730,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -3711,7 +3747,7 @@
             "h": 10,
             "w": 8,
             "x": 0,
-            "y": 76
+            "y": 77
           },
           "id": 66,
           "links": [],
@@ -4018,6 +4054,6 @@
   "timezone": "",
   "title": "OpenMLDB databoard",
   "uid": "SXUXvsbMk",
-  "version": 49,
+  "version": 50,
   "weekStart": ""
 }
