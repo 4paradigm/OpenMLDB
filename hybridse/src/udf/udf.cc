@@ -1060,7 +1060,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
     std::string output_data = json_obj.dump();
     int output_size = output_data.length();
     char *buffer = udf::v1::AllocManagedStringBuf(output_size);
-    memcpy(buffer, output_data.c_str(), output_size)
+    memcpy(buffer, output_data.c_str(), output_size);
     output->size_ = output_size;
     output->data_ = buffer;
     return ;
