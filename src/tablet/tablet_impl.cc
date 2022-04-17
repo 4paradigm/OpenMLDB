@@ -5616,6 +5616,10 @@ void TabletImpl::CreateFunction(RpcController* controller, const openmldb::api::
 base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun) {
     hybridse::node::DataType return_type;
     openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
+    if (fun.file().empty()) {
+        LOG(WARNING) << "file is empty";
+        return {base::kCreateFunctionFailed, "file is empty"};
+    }
     std::vector<hybridse::node::DataType> arg_types;
     for (int idx = 0; idx < fun.arg_type_size(); idx++) {
         hybridse::node::DataType data_type;
