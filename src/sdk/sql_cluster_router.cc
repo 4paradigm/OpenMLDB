@@ -1518,6 +1518,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
                 cluster_sdk_->RemoveExternalFun(name);
+                auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+                if (taskmanager_client) {
+                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    if (!base_status.OK()) {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                        return {};
+                    }
+                }
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -2809,6 +2817,24 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
     }
     fun.set_file((*option)["FILE"]->GetExprString());
+    if (cluster_sdk_->IsClusterMode()) {
+        if (option->find("OFFLINE_FILE") == option->end()) {
+            if (fun.file().find('/') == std::string::npos) {
+                fun.set_offline_file(fun.file());
+            } else {
+                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+            }
+        } else {
+            fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
+        }
+    }
+    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+    if (taskmanager_client) {
+        auto ret = taskmanager_client->CreateFunction(fun);
+        if (!ret.OK()) {
+            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+        }
+    }
     auto ns = cluster_sdk_->GetNsClient();
     auto ret = ns->CreateFunction(fun);
     if (!ret.OK()) {
