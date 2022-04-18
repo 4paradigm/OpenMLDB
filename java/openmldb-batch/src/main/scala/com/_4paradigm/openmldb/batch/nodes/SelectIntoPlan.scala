@@ -37,7 +37,7 @@ object SelectIntoPlan {
     logger.info("select into offline storage: format[{}], options[{}], write mode[{}], out path {}", format, options,
       mode, outPath)
     if (input.getDf().isEmpty) {
-      logger.info("select empty, skip save")
+      throw new Exception("select empty, skip save")
     } else {
       input.getDf().write.format(format).options(options).mode(mode).save(outPath)
     }

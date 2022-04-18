@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "common.proto";
+
 package openmldb.taskmanager;
 
 option java_package = "com._4paradigm.openmldb.proto";
@@ -121,6 +123,25 @@ message GetJobLogResponse {
     optional string log = 3;
 };
 
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+};
+
+message CreateFunctionResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message DropFunctionRequest {
+    optional string name = 1;
+    optional bool if_exists = 2;
+};
+
+message DropFunctionResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
 service TaskManagerServer {
     // Job management
     rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
@@ -137,4 +158,6 @@ service TaskManagerServer {
     rpc ExportOfflineData(ExportOfflineDataRequest) returns (ShowJobResponse);
     rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
     rpc GetJobLog(GetJobLogRequest) returns (GetJobLogResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
 };
