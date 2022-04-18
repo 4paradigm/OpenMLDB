@@ -4566,7 +4566,7 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         return;
     }
     std::string root_path;
-    if (!ChooseDBRootPath(tid, pid, ::openmldb::common::kMemory, root_path)) {
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get table db root path");
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
@@ -5122,6 +5122,12 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
         return;
     }
+    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
+        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+        response->set_msg("only support mem_table");
+        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
+        return;
+    }
     auto* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
@@ -5145,7 +5151,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         }
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, common::kMemory, db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
     if (!ok) {
         base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
