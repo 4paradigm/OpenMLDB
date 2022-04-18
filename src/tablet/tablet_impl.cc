@@ -3053,10 +3053,13 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         uint64_t snapshot_offset = 0;
         std::string data_path = table_path + "/data";
         if (::openmldb::base::IsExists(data_path)) {
-            if (!::openmldb::base::RemoveDir(data_path)) {
-                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, data_path.c_str());
+            std::string old_data_path = table_path + "/old_data";
+            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", data_path.c_str(), old_data_path.c_str(), tid, pid);
+            if (!::openmldb::base::Rename(data_path, old_data_path)) {
+                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, data_path.c_str());
                 break;
             }
+            
         }
         std::string manifest_file = snapshot_path + "MANIFEST";
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
@@ -3119,6 +3122,11 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                                  boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
+            std::string old_data_path = table_path + "/old_data";
+            if (!::openmldb::base::RemoveDir(old_data_path)) {
+                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, old_data_path.c_str());
+                break;
+            }
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
                 task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
@@ -3128,6 +3136,27 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
     } while (0);
+    std::string db_root_path;
+    bool ok = ChooseDBRootPath(tid, pid, table_meta.storage_mode(), db_root_path);
+    if (ok) {
+        std::string table_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string old_data_path = table_path + "/old_data";
+        std::string data_path = table_path + "/data";
+        if (::openmldb::base::IsExists(data_path)) {
+            if (!::openmldb::base::RemoveDir(data_path)) {
+                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, data_path.c_str());
+            }
+        }
+        if (::openmldb::base::IsExists(old_data_path)) {
+            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", old_data_path.c_str(), data_path.c_str(), tid, pid);
+            if (!::openmldb::base::Rename(old_data_path, data_path)) {
+                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, old_data_path.c_str());
+            }
+        }
+    } else {
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+    }
+
     SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
     return -1;
 }
