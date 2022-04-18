@@ -35,7 +35,7 @@ class AggregatorTest : public ::testing::Test {
     AggregatorTest() {}
     ~AggregatorTest() {}
 };
-std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } //NOLINT
+std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_name("t0");
     table_meta->set_pid(0);
@@ -103,7 +103,7 @@ bool UpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder
 
 bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
                       const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
-                      std::shared_ptr<Table>& table, AggrBuffer*& buffer) {                      // NOLINT
+                      std::shared_ptr<Table>& table, AggrBuffer*& buffer) {                     // NOLINT
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);
