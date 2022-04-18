@@ -50,9 +50,20 @@ public class TestFEDBDeploy {
 
     @Test
     public void testTmp(){
+        FEDBDeploy deploy = new FEDBDeploy("tmp2");
+        deploy.setCluster(true);
+        deploy.setSparkMaster("local");
+        // deploy.setBatchJobJarPath("hdfs://172.27.128.215:8020/Users/tobe/openmldb-batchjob-0.4.0-SNAPSHOT.jar");
+        // deploy.setSparkYarnJars("hdfs://172.27.128.215:8020/Users/tobe/openmldb_040_jars/*");
+        FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
+        System.out.println(fedbInfo);
+    }
+    @Test
+    public void testTmpByPath(){
         FEDBDeploy deploy = new FEDBDeploy("tmp");
         deploy.setCluster(true);
         deploy.setSparkMaster("local");
+        deploy.setInstallPath("/Users/zhaowei/Desktop/openmldb-auto-test");
         // deploy.setBatchJobJarPath("hdfs://172.27.128.215:8020/Users/tobe/openmldb-batchjob-0.4.0-SNAPSHOT.jar");
         // deploy.setSparkYarnJars("hdfs://172.27.128.215:8020/Users/tobe/openmldb_040_jars/*");
         FEDBInfo fedbInfo = deploy.deployFEDB(2, 3);
