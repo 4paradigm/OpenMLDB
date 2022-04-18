@@ -1008,7 +1008,7 @@ TEST_F(UdfIRBuilderTest, ilike_match) {
 }
 TEST_F(UdfIRBuilderTest, reverse) {
     auto udf_name = "reverse";
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("SQL"), StringRef("LQS"));
+    CheckUdf<Nullable<StringRef>>(udf_name, StringRef("SQL"), StringRef("LQS"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("abc"), StringRef("cba"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("a"), StringRef("a"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("123456789"), StringRef("987654321"));
