@@ -1025,7 +1025,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
     if (path_str.substr(0, 1) != "$") {
         return ;
     }
-    int path_start = 1;
+    size_t path_start = 1;
     bool is_root_array = false;
     if (path_str.length() > 1) {
         if (path_str.substr(1, 1) == "[") {
