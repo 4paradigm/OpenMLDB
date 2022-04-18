@@ -16,7 +16,7 @@
 
 import requests
 
-url = "http://127.0.0.1:8887/predict"
+url = "http://127.0.0.1:8881/predict"
 req ={"ip":114904,
 	"app":11,
 	"device":1,

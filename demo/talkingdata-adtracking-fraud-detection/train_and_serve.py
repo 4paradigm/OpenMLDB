@@ -1,14 +1,12 @@
 import gc
 import os
-from matplotlib.pyplot import table
 import pandas as pd
 import time
-import numpy as np
-from sklearn.model_selection import train_test_split
 import xgboost as xgb
 import sqlalchemy as db
+import glob
 
-def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary', metrics='auc',
+def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary:logistic', metrics='auc',
                       feval=None,num_boost_round=3000,early_stopping_rounds=20):
     xgb_params = {
         'booster': 'gbtree',
@@ -66,7 +64,8 @@ train_schema = common_schema + [('is_attributed', 'int')]
 test_schema = common_schema + [('click_id', 'int')]
 print('Prepare train data...')
 
-train_df = pd.read_csv(path + "train.csv", nrows=4000000,
+sample_cnt = 4000000
+train_df = pd.read_csv(path + "train.csv", nrows=sample_cnt, 
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
 len_train = len(train_df)
 # take a portion from train sample data
@@ -82,13 +81,14 @@ schema_string = ','.join(list(map(column_string, train_schema)))
 del train_df
 gc.collect()
 
-
+zk="127.0.0.1:8181"
+zk_path="/hw"
 db_name = "demo_db"
 table_name = "talkingdata" + str(int(time.time()))
 print("Prepare openmldb, db {} table {}".format(db_name, table_name))
 
 engine = db.create_engine(
-    'openmldb:///{}?zk=127.0.0.1:6181&zkPath=/openmldb'.format(db_name))
+    'openmldb:///{}?zk={}&zkPath={}'.format(db_name, zk, zk_path))
 connection = engine.connect()
 
 
@@ -117,7 +117,7 @@ connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format
 
 
 print('Feature extraction')
-train_feature_files = "/tmp/train_feature"
+train_feature_dir = "/home/huangwei/tmp/train_feature"
 sql_part = """
 select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
@@ -131,27 +131,17 @@ w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED 
 """.format(db_name, table_name)
 # extraction will take time
 connection.execute("SET @@job_timeout=1200000;")
-connection.execute("{} INTO OUTFILE '{}';".format(
-    sql_part, os.path.abspath(train_feature_files)))
-
-# concat the feature files
-train_feature_file = "./train_feature_file.csv"
-frames = []
-for file_name in os.listdir(train_feature_files):
-    full_path = os.path.abspath(train_feature_files) + '/' + file_name
-    if full_path.endswith(".csv"):
-        df = pd.read_csv(full_path)
-        frames.append(df)
-train_feature = pd.concat(frames)
-train_feature.to_csv(train_feature_file)
-
-del train_feature
-gc.collect()
+connection.execute("{} INTO OUTFILE '{}' OPTIONS(mode='overwrite');".format(
+    sql_part, train_feature_dir))
 
 # load features from train_feature_file
-train_df = pd.read_csv(train_feature_file)
-train_df = train_df[(len_train - 3000000):len_train]
-val_df = train_df[:(len_train - 3000000)]
+# train_feature_dir has multi csv files
+train_df = pd.concat(map(lambda file: pd.read_csv(file), glob.glob(os.path.join('', train_feature_dir + "/*.csv"))))
+print(train_df.head())
+assert len(train_df) == len_train
+train_row_cnt = int(len_train * 3 / 4)
+train_df = train_df[(len_train - train_row_cnt):len_train]
+val_df = train_df[:(len_train - train_row_cnt)]
 
 print("train size: ", len(train_df))
 print("valid size: ", len(val_df))
@@ -184,7 +174,7 @@ bst = xgb_modelfit_nocv(params_xgb,
                          watchlist,
                          predictors,
                          target,
-                         objective='binary',
+                         objective='binary:logistic',
                          metrics='auc',
                          num_boost_round=300,
                          early_stopping_rounds=50)
@@ -192,7 +182,7 @@ bst = xgb_modelfit_nocv(params_xgb,
 del train_df
 del val_df
 gc.collect()
-
+ 
 print("Save model.txt")
 bst.save_model("./model.json")
 
@@ -200,8 +190,11 @@ bst.save_model("./model.json")
 print("Prepare online serving")
 
 print("Deploy sql")
+# predict server needs this name
+deploy_name="demo"
 connection.execute("SET @@execute_mode='online';")
 connection.execute("USE {}".format(db_name))
+nothrow_execute("DROP DEPLOYMENT {}".format(deploy_name))
 sql_part = """
 select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
@@ -213,9 +206,10 @@ w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND C
 w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
 w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """.format(table_name)
-connection.execute("DEPLOY demo " + sql_part)
+#connection.execute("DEPLOY " + deploy_name + " " + sql_part)
 print("Import data to online")
 # online feature extraction needs history data
 # set job_timeout bigger if the `LOAD DATA` job timeout
 connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(mode='append',format='csv',header=true);".format(
     os.path.abspath("train_sample.csv"), db_name, table_name))
+
