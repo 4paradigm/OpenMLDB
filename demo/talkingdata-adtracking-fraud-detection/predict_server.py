@@ -1,4 +1,4 @@
-#!/usr/bin/env python3                                                                                            
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
+
 import numpy as np
 import tornado.web
 import tornado.ioloop
@@ -37,30 +37,36 @@ table_schema = [
 
 url = ""
 
+
 def get_schema():
     dict_schema = {}
     for i in table_schema:
         dict_schema[i[0]] = i[1]
     return dict_schema
 
+
 dict_schema = get_schema()
 json_schema = json.dumps(dict_schema)
 print(json_schema)
- # the label is different
+# the label is different
+
+
 def build_feature(rs):
     var_Y = [rs[-1]]
     var_X = [rs[:-1]]
-    return np.array(var_X)   
+    return np.array(var_X)
+
 
 class SchemaHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(json_schema)
 
+
 class PredictHandler(tornado.web.RequestHandler):
     def post(self):
         row = json.loads(self.request.body)
         data = {}
-        data["input"] = []  
+        data["input"] = []
         row_data = []
         for i in table_schema:
             if i[1] == "string":
@@ -70,7 +76,7 @@ class PredictHandler(tornado.web.RequestHandler):
             else:
                 row_data.append(None)
         print('receive request: ', row_data)
-        data["input"].append(row_data)                             
+        data["input"].append(row_data)
         rs = requests.post(url, json=data)
         result = json.loads(rs.text)
         print(result)
@@ -78,18 +84,21 @@ class PredictHandler(tornado.web.RequestHandler):
             ins = build_feature(r)
             self.write("----------------ins---------------\n")
             self.write(str(ins) + "\n")
-            #print("==========",ins,type(ins),ins.shape)
+            # print("==========",ins,type(ins),ins.shape)
             label = ins[0][5].reshape(1,)
-            ins = np.delete(ins,5).reshape(1,9)
+            ins = np.delete(ins, 5).reshape(1, 9)
             ins = xgb.DMatrix(ins, label=label)
             prediction = bst.predict(ins)
-            self.write("---------------predict whether is attributed -------------\n")
+            self.write(
+                "---------------predict whether is attributed -------------\n")
             print(prediction)
-            self.write("%s"%str(prediction[0]))
+            self.write("%s" % str(prediction[0]))
+
 
 class MainHandler(tornado.web.RequestHandler):
-    def get(self):                   
+    def get(self):
         self.write("real time execute sparksql demo")
+
 
 def make_app():
     return tornado.web.Application([
@@ -97,6 +106,7 @@ def make_app():
         (r"/schema", SchemaHandler),
         (r"/predict", PredictHandler),
     ])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -108,4 +118,4 @@ if __name__ == "__main__":
     print("model is ready")
     app = make_app()
     app.listen(8881)
-    tornado.ioloop.IOLoop.current().start()       
+    tornado.ioloop.IOLoop.current().start()

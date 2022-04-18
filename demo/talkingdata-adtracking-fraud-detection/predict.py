@@ -17,12 +17,12 @@
 import requests
 
 url = "http://127.0.0.1:8881/predict"
-req ={"ip":114904,
-	"app":11,
-	"device":1,
-	"os":15,
-	"channel":319,
-	"click_time":1509960088000,
-	"is_attributed":0}
+req = {"ip": 114904,
+       "app": 11,
+       "device": 1,
+       "os": 15,
+       "channel": 319,
+       "click_time": 1509960088000,
+       "is_attributed": 0}
 r = requests.post(url, json=req)
 print(r.text)

@@ -6,8 +6,9 @@ import xgboost as xgb
 import sqlalchemy as db
 import glob
 
+
 def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary:logistic', metrics='auc',
-                      feval=None,num_boost_round=3000,early_stopping_rounds=20):
+                      feval=None, num_boost_round=3000, early_stopping_rounds=20):
     xgb_params = {
         'booster': 'gbtree',
         'obj': objective,
@@ -45,6 +46,7 @@ def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
 
     return bst1
 
+
 path = 'data/'
 
 # use pandas extension types to support NA in integer column
@@ -65,7 +67,7 @@ test_schema = common_schema + [('click_id', 'int')]
 print('Prepare train data...')
 
 sample_cnt = 4000000
-train_df = pd.read_csv(path + "train.csv", nrows=sample_cnt, 
+train_df = pd.read_csv(path + "train.csv", nrows=sample_cnt,
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
 len_train = len(train_df)
 # take a portion from train sample data
@@ -81,8 +83,8 @@ schema_string = ','.join(list(map(column_string, train_schema)))
 del train_df
 gc.collect()
 
-zk="127.0.0.1:8181"
-zk_path="/hw"
+zk = "127.0.0.1:8181"
+zk_path = "/hw"
 db_name = "demo_db"
 table_name = "talkingdata" + str(int(time.time()))
 print("Prepare openmldb, db {} table {}".format(db_name, table_name))
@@ -136,7 +138,8 @@ connection.execute("{} INTO OUTFILE '{}' OPTIONS(mode='overwrite');".format(
 
 # load features from train_feature_file
 # train_feature_dir has multi csv files
-train_df = pd.concat(map(lambda file: pd.read_csv(file), glob.glob(os.path.join('', train_feature_dir + "/*.csv"))))
+train_df = pd.concat(map(lambda file: pd.read_csv(file), glob.glob(
+    os.path.join('', train_feature_dir + "/*.csv"))))
 print(train_df.head())
 assert len(train_df) == len_train
 train_row_cnt = int(len_train * 3 / 4)
@@ -155,34 +158,35 @@ gc.collect()
 
 print("Training...")
 params_xgb = {
-     'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
-     'max_depth': 3,  # -1 means no limit
-     'min_child_samples': 100,
-     'max_bin': 100,  # Number of bucketed bin for feature values
-     'subsample': 0.7,  # Subsample ratio of the training instance.
-     # Subsample ratio of columns when constructing each tree.
-     'colsample_bytree': 0.7,
-     # Minimum sum of instance weight(hessian) needed in a child(leaf)
-     'min_child_weight': 0
+    'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
+    'max_depth': 3,  # -1 means no limit
+    'min_child_samples': 100,
+    'max_bin': 100,  # Number of bucketed bin for feature values
+    'subsample': 0.7,  # Subsample ratio of the training instance.
+    # Subsample ratio of columns when constructing each tree.
+    'colsample_bytree': 0.7,
+    # Minimum sum of instance weight(hessian) needed in a child(leaf)
+    'min_child_weight': 0
 }
-xgtrain = xgb.DMatrix(train_df[predictors].values, label=train_df[target].values)
+xgtrain = xgb.DMatrix(train_df[predictors].values,
+                      label=train_df[target].values)
 xgvalid = xgb.DMatrix(val_df[predictors].values, label=val_df[target].values)
 watchlist = [(xgvalid, 'eval'), (xgtrain, 'train')]
 
 bst = xgb_modelfit_nocv(params_xgb,
-                         xgtrain,
-                         watchlist,
-                         predictors,
-                         target,
-                         objective='binary:logistic',
-                         metrics='auc',
-                         num_boost_round=300,
-                         early_stopping_rounds=50)
+                        xgtrain,
+                        watchlist,
+                        predictors,
+                        target,
+                        objective='binary:logistic',
+                        metrics='auc',
+                        num_boost_round=300,
+                        early_stopping_rounds=50)
 
 del train_df
 del val_df
 gc.collect()
- 
+
 print("Save model.txt")
 bst.save_model("./model.json")
 
@@ -191,7 +195,7 @@ print("Prepare online serving")
 
 print("Deploy sql")
 # predict server needs this name
-deploy_name="demo"
+deploy_name = "demo"
 connection.execute("SET @@execute_mode='online';")
 connection.execute("USE {}".format(db_name))
 nothrow_execute("DROP DEPLOYMENT {}".format(deploy_name))
@@ -212,4 +216,3 @@ print("Import data to online")
 # set job_timeout bigger if the `LOAD DATA` job timeout
 connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(mode='append',format='csv',header=true);".format(
     os.path.abspath("train_sample.csv"), db_name, table_name))
-
