@@ -912,7 +912,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.b") as str1;
                 --output null
             @endcode
-            @since 0.5.0)");
+            @since 0.4.5)");
 
     RegisterExternal("reverse")
         .args<StringRef>(
