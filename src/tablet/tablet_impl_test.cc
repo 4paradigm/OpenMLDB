@@ -5963,11 +5963,11 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
         ::openmldb::storage::AggrBuffer* aggr_buffer;
-        aggr->GetAggrBuffer("id1", aggr_buffer);
+        aggr->GetAggrBuffer("id1", &aggr_buffer);
         ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
         ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
         ASSERT_EQ(aggr_buffer->binlog_offset_, 100);
-        aggr->GetAggrBuffer("id2", aggr_buffer);
+        aggr->GetAggrBuffer("id2", &aggr_buffer);
         ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
         ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
         ASSERT_EQ(aggr_buffer->binlog_offset_, 200);

@@ -266,13 +266,13 @@ bool Aggregator::Init() {
     return true;
 }
 
-bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer*& buffer) {
+bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer** buffer) {
     std::lock_guard<std::mutex> lock(mu_);
     auto it = aggr_buffer_map_.find(key);
     if (it == aggr_buffer_map_.end()) {
         return false;
     }
-    buffer = &aggr_buffer_map_.at(key).buffer_;
+    *buffer = &aggr_buffer_map_.at(key).buffer_;
     return true;
 }
 

@@ -140,7 +140,7 @@ class Aggregator {
 
     uint32_t GetStat() const { return status_.load(std::memory_order_relaxed); }
 
-    bool GetAggrBuffer(const std::string& key, AggrBuffer*& buffer);
+    bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
     void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) {
         std::lock_guard<std::mutex> lock(mu_);
