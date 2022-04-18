@@ -2961,9 +2961,6 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 return 0;
             }
         } else {
-            if (!table->GetDB().empty()) {
-                catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
-            }
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
     } while (0);
@@ -2994,9 +2991,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-        engine_->ClearCacheLocked(table->GetTableMeta()->db());
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3013,6 +3010,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
+        }
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
@@ -3603,9 +3603,6 @@ void TabletImpl::DropTable(RpcController* controller, const ::openmldb::api::Dro
                 response->set_msg("table status is kMakingSnapshot");
                 break;
             }
-        }
-        if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
         task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         response->set_code(::openmldb::base::ReturnCode::kOk);
