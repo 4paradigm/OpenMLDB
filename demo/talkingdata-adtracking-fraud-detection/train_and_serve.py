@@ -7,6 +7,23 @@ import sqlalchemy as db
 import glob
 
 
+# configs
+data_path = 'data/'
+
+sample_cnt = 4000000  # talking data train file is too big, you can trim it.
+
+# openmldb cluster configs
+zk = "127.0.0.1:2181"
+zk_path = "/openmldb"
+db_name = "demo_db"  # db name, predict_server.py will use it, be careful.
+table_name = "talkingdata" + str(int(time.time()))
+
+train_feature_dir = "/tmp/train_feature" # make sure that taskmanager can access the path
+
+def column_string(col_tuple) -> str:
+    return ' '.join(col_tuple)
+
+
 def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objective='binary:logistic', metrics='auc',
                       feval=None, num_boost_round=3000, early_stopping_rounds=20):
     xgb_params = {
@@ -47,8 +64,6 @@ def xgb_modelfit_nocv(params, dtrain, dvalid, predictors, target='target', objec
     return bst1
 
 
-path = 'data/'
-
 # use pandas extension types to support NA in integer column
 dtypes = {
     'ip': 'UInt32',
@@ -64,29 +79,17 @@ common_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
                  ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp')]
 train_schema = common_schema + [('is_attributed', 'int')]
 test_schema = common_schema + [('click_id', 'int')]
-print('Prepare train data...')
 
-sample_cnt = 4000000
-train_df = pd.read_csv(path + "train.csv", nrows=sample_cnt,
+print('Prepare train data, use {} rows, save it as train_sample.csv'.format(sample_cnt))
+train_df = pd.read_csv(data_path + "train.csv", nrows=sample_cnt,
                        dtype=dtypes, usecols=[c[0] for c in train_schema])
 len_train = len(train_df)
+assert len_train == sample_cnt
 # take a portion from train sample data
 train_df.to_csv("train_sample.csv", index=False)
-
-
-def column_string(col_tuple) -> str:
-    return ' '.join(col_tuple)
-
-
-schema_string = ','.join(list(map(column_string, train_schema)))
-
 del train_df
 gc.collect()
 
-zk = "127.0.0.1:8181"
-zk_path = "/hw"
-db_name = "demo_db"
-table_name = "talkingdata" + str(int(time.time()))
 print("Prepare openmldb, db {} table {}".format(db_name, table_name))
 
 engine = db.create_engine(
@@ -105,10 +108,10 @@ def nothrow_execute(sql):
 
 
 connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
+schema_string = ','.join(list(map(column_string, train_schema)))
 nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
-print("Load data to offline storage for training(hard copy)")
-
+print("Load train_sample data to offline storage for training(hard copy)")
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute("SET @@sync_job=true;")
@@ -119,7 +122,6 @@ connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format
 
 
 print('Feature extraction')
-train_feature_dir = "/home/huangwei/tmp/train_feature"
 sql_part = """
 select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
@@ -136,10 +138,11 @@ connection.execute("SET @@job_timeout=1200000;")
 connection.execute("{} INTO OUTFILE '{}' OPTIONS(mode='overwrite');".format(
     sql_part, train_feature_dir))
 
-# load features from train_feature_file
+print("Load features from feature dir {}".format(train_feature_dir))
 # train_feature_dir has multi csv files
 train_df = pd.concat(map(lambda file: pd.read_csv(file), glob.glob(
     os.path.join('', train_feature_dir + "/*.csv"))))
+print("peek:")
 print(train_df.head())
 assert len(train_df) == len_train
 train_row_cnt = int(len_train * 3 / 4)
@@ -156,7 +159,7 @@ categorical = ['app', 'device', 'os', 'channel', 'hour']
 
 gc.collect()
 
-print("Training...")
+print("Training by xgb")
 params_xgb = {
     'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
     'max_depth': 3,  # -1 means no limit
@@ -187,9 +190,8 @@ del train_df
 del val_df
 gc.collect()
 
-print("Save model.txt")
+print("Save model.json")
 bst.save_model("./model.json")
-
 
 print("Prepare online serving")
 
@@ -210,7 +212,7 @@ w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND C
 w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
 w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """.format(table_name)
-#connection.execute("DEPLOY " + deploy_name + " " + sql_part)
+connection.execute("DEPLOY " + deploy_name + " " + sql_part)
 print("Import data to online")
 # online feature extraction needs history data
 # set job_timeout bigger if the `LOAD DATA` job timeout
