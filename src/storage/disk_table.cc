@@ -906,7 +906,7 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
         }
     }
 
-    return count;
+    return 0;
 }
 
 }  // namespace storage
