@@ -22,6 +22,7 @@
 
 #include "base/status.h"
 #include "client/client.h"
+#include "proto/common.pb.h"
 #include "proto/taskmanager.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -69,6 +70,10 @@ class TaskManagerClient : public Client {
                                                ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
 
     ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table);
+
+    ::openmldb::base::Status CreateFunction(const ::openmldb::common::ExternalFun& fun);
+
+    ::openmldb::base::Status DropFunction(const std::string& name, bool if_exists);
 
     std::string GetJobLog(const int id, ::openmldb::base::Status* status);
 
