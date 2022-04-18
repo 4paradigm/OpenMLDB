@@ -1045,7 +1045,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
         return ;
     }
     std::vector<std::string> path_elems = str_split(path_str, '.');
-    for (int i = 1; i < path_elems.size(); ++i) {
+    for (size_t i = 1; i < path_elems.size(); ++i) {
         bool skip_map = is_root_array && i == path_start;
         if (path_elems[i].substr(0, 1) == "[" && path_elems[i].substr(path_elems[i].length() - 1, 1) == "]") {
             skip_map = true;
