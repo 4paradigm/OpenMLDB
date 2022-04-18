@@ -181,8 +181,7 @@ class MemTable : public Table {
 
     void SchedGc() override;
 
-    int GetCount(uint32_t index, const std::string& pk,
-                 uint64_t& count);  // NOLINT
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override;  // NOLINT
 
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;

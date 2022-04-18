@@ -1322,31 +1322,14 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     index = index_def->GetId();
     ttl = *index_def->GetTTL();
     if (!request->filter_expired_data()) {
-        if (table->GetStorageMode() == common::kMemory) {
-            MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-            if (mem_table != NULL) {
-                uint64_t count = 0;
-                if (mem_table->GetCount(index, request->key(), count) < 0) {
-                    count = 0;
-                }
-                response->set_code(::openmldb::base::ReturnCode::kOk);
-                response->set_msg("ok");
-                response->set_count(count);
-                return;
-            }
-        } else {
-            DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-            if (disk_table != NULL) {
-                uint64_t count = 0;
-                if (disk_table->GetCount(index, request->key(), count) < 0) {
-                    count = 0;
-                }
-                response->set_code(::openmldb::base::ReturnCode::kOk);
-                response->set_msg("ok");
-                response->set_count(count);
-                return;
-            }
+        uint64_t count = 0;
+        if (table->GetCount(index, request->key(), count) < 0) {
+            count = 0;
         }
+        response->set_code(::openmldb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        response->set_count(count);
+        return;
     }
     ::openmldb::storage::Ticket ticket;
     ::openmldb::storage::TableIterator* it = table->NewIterator(index, request->key(), ticket);
@@ -4599,7 +4582,7 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table == NULL) {
             PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
+            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
             response->set_msg("table is not memtable");
             break;
         }
@@ -5116,7 +5099,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     auto* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
+        base::SetResponseStatus(base::ReturnCode::kOperatorNotSupport, "table is not memtable", response);
         return;
     }
     if (request->column_keys_size() > 0) {

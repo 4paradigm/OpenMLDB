@@ -2133,7 +2133,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
                   "table[%s] is not memory table, can't do snapshot with end "
                   "offset",
                   request->name().c_str());
-            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
+            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
             response->set_msg("table is not memory table, can't do snapshot with end offset");
             return;
         } else {
@@ -6819,18 +6819,12 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
 
-    common::StorageMode cur_storage_mode = common::kMemory;
-    if (storage_mode == ::openmldb::common::StorageMode::kSSD) {
-        cur_storage_mode = ::openmldb::common::StorageMode::kSSD;
-    } else if (storage_mode == ::openmldb::common::StorageMode::kHDD) {
-        cur_storage_mode = ::openmldb::common::StorageMode::kHDD;
-    }
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name(name);
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_seg_cnt(seg_cnt);
-    table_meta.set_storage_mode(cur_storage_mode);
+    table_meta.set_storage_mode(storage_mode);
     if (is_leader) {
         table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     } else {
@@ -9012,7 +9006,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         return;
     }
     if (table_info->storage_mode() != ::openmldb::common::kMemory) {
-        response->set_code(ReturnCode::kTableTypeMismatch);
+        response->set_code(ReturnCode::kOperatorNotSupport);
         response->set_msg("only memory support addindex");
         LOG(WARNING) << "cannot add index. table " << name;
         return;
