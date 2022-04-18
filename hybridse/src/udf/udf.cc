@@ -1018,12 +1018,14 @@ json extract_json(json &json_obj, const std::string &path, bool skip_map) {
 }
 
 void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *output) {
-    if (json_string == nullptr || json_string->size_ ==0 || path_string == nullptr || path_string->size_ == 0) {
+    if (json_string == nullptr || path_string == nullptr) {
         return ;
     }
     std::string json_str = json_string->ToString();
     std::string path_str = path_string->ToString();
-
+    if (json_str.empty() || path_str.empty()) {
+        return ;
+    }
     if (path_str.substr(0, 1) != "$") {
         return ;
     }
