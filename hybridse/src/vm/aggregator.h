@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <string>
 #include <boost/algorithm/string/compare.hpp>
 
@@ -45,7 +46,13 @@ class BaseAggregator {
     // output final row
     virtual Row Output() = 0;
 
+    // aggr col type
     type::Type type() const {
+        return type_;
+    }
+
+    // representative type of the aggr val
+    virtual type::Type rep_type() const {
         return type_;
     }
 
@@ -86,7 +93,7 @@ class Aggregator : public BaseAggregator {
     // T is numeric
     void UpdateInternal(const std::string& bval, std::enable_if_t<std::is_arithmetic<T>{}>* = nullptr) {
         if (bval.size() != sizeof(T)) {
-            LOG(ERROR) << "encoded aggr val is not valid";
+            LOG(ERROR) << "ERROR: encoded aggr val is not valid";
             return;
         }
 
@@ -124,8 +131,14 @@ class Aggregator : public BaseAggregator {
                 case type::kInt32:
                     this->row_builder_.AppendInt32(output_val);
                     break;
+                case type::kDate:
+                    this->row_builder_.AppendInt32(output_val);
+                    break;
                 case type::kInt64:
                     this->row_builder_.AppendInt64(output_val);
+                    break;
+                case type::kTimestamp:
+                    this->row_builder_.AppendTimestamp(output_val);
                     break;
                 case type::kFloat:
                     this->row_builder_.AppendFloat(output_val);
@@ -174,6 +187,44 @@ class Aggregator : public BaseAggregator {
 };
 
 template <class T>
+std::enable_if_t<std::is_arithmetic<T>{}> UpdateWrapper(BaseAggregator* aggregator, const T& val) {
+    switch (aggregator->rep_type()) {
+        case type::kInt16:
+            dynamic_cast<Aggregator<int16_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kDate:
+        case type::kInt32:
+            dynamic_cast<Aggregator<int32_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kTimestamp:
+        case type::kInt64:
+            dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kFloat:
+            dynamic_cast<Aggregator<float>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kDouble:
+            dynamic_cast<Aggregator<double>*>(aggregator)->UpdateValue(val);
+            break;
+        default:
+            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->rep_type());
+            break;
+    }
+}
+
+template <class T>
+std::enable_if_t<!std::is_arithmetic<T>{}> UpdateWrapper(BaseAggregator* aggregator, const T& val) {
+    switch (aggregator->rep_type()) {
+        case type::kVarchar:
+            dynamic_cast<Aggregator<std::string>*>(aggregator)->UpdateValue(val);
+            break;
+        default:
+            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->rep_type());
+            break;
+    }
+}
+
+template <class T>
 class SumAggregator : public Aggregator<T> {
  public:
     SumAggregator(type::Type type, const Schema& output_schema)
@@ -184,6 +235,19 @@ class SumAggregator : public Aggregator<T> {
         this->val_ += val;
         this->counter_++;
         DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", sum = " << this->val_;
+    }
+
+    type::Type rep_type() const override {
+        switch (this->type()) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kDate:  // actually sum doesn't support `Date` type
+            case type::kTimestamp:
+                return type::kInt64;
+            default:
+                return this->type();
+        }
     }
 };
 
@@ -201,6 +265,10 @@ class CountAggregator : public Aggregator<int64_t> {
 
     bool IsNull() const override {
         return false;
+    }
+
+    type::Type rep_type() const override {
+        return type::kInt64;
     }
 };
 
@@ -242,6 +310,19 @@ class AvgAggregator : public Aggregator<T> {
             LOG(ERROR) << "Aggregator value is null";
         }
         return avg_;
+    }
+
+    type::Type rep_type() const override {
+        switch (this->type()) {
+            case type::kInt16:
+            case type::kInt32:
+            case type::kInt64:
+            case type::kDate:  // actually sum doesn't support `Date` type
+            case type::kTimestamp:
+                return type::kInt64;
+            default:
+                return this->type();
+        }
     }
 
  private:
@@ -301,6 +382,56 @@ class MaxAggregator : public MinAggregator<T> {
         }
     }
 };
+
+template <template<class> class AggregatorClass>
+std::unique_ptr<BaseAggregator> MakeOverflowAggregator(type::Type agg_col_type, const Schema& output_schema) {
+    switch (agg_col_type) {
+        case type::kInt16:
+        case type::kInt32:
+        case type::kTimestamp:
+        case type::kInt64: {
+            return std::make_unique<AggregatorClass<int64_t>>(agg_col_type, output_schema);
+        }
+        case type::kFloat: {
+            return std::make_unique<AggregatorClass<float>>(agg_col_type, output_schema);
+            break;
+        }
+        case type::kDouble: {
+            return std::make_unique<AggregatorClass<double>>(agg_col_type, output_schema);
+            break;
+        }
+        default:
+            LOG(ERROR) << "Not support for type " << Type_Name(agg_col_type);
+            return nullptr;
+    }
+}
+
+template <template<class> class AggregatorClass>
+std::unique_ptr<BaseAggregator> MakeSameTypeAggregator(type::Type agg_col_type, const Schema& output_schema) {
+    switch (agg_col_type) {
+        case type::kInt16:
+            return std::make_unique<AggregatorClass<int16_t>>(agg_col_type, output_schema);
+        case type::kInt32:
+        case type::kDate:
+            return std::make_unique<AggregatorClass<int32_t>>(agg_col_type, output_schema);
+        case type::kTimestamp:
+        case type::kInt64: {
+            return std::make_unique<AggregatorClass<int64_t>>(agg_col_type, output_schema);
+        }
+        case type::kFloat: {
+            return std::make_unique<AggregatorClass<float>>(agg_col_type, output_schema);
+        }
+        case type::kDouble: {
+            return std::make_unique<AggregatorClass<double>>(agg_col_type, output_schema);
+        }
+        case type::kVarchar: {
+            return std::make_unique<AggregatorClass<std::string>>(agg_col_type, output_schema);
+        }
+        default:
+            LOG(ERROR) << "Not support for type " << Type_Name(agg_col_type);
+            return nullptr;
+    }
+}
 
 }  // namespace vm
 }  // namespace hybridse

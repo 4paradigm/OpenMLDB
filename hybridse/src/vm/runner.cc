@@ -2683,38 +2683,34 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
 
 bool RequestAggUnionRunner::InitAggregator() {
     auto func_name = func_->GetName();
-    auto agg_col_type = producers_[1]->row_parser()->GetType(*agg_col_);
-    // TODO(zhanghao): other supported ops
-    if (boost::iequals(func_name, "sum")) {
-        switch (agg_col_type) {
-            case type::kInt16:
-            case type::kInt32:
-            case type::kDate:
-            case type::kTimestamp:
-            case type::kInt64: {
-                aggregator_ = std::make_unique<SumAggregator<int64_t>>(agg_col_type,
-                                                                            *output_schemas_->GetOutputSchema());
-                break;
-            }
-            case type::kFloat: {
-                aggregator_ =
-                    std::make_unique<SumAggregator<float>>(agg_col_type, *output_schemas_->GetOutputSchema());
-                break;
-            }
-            case type::kDouble: {
-                aggregator_ =
-                    std::make_unique<SumAggregator<double>>(agg_col_type, *output_schemas_->GetOutputSchema());
-                break;
-            }
-            default:
-                LOG(ERROR) << "RequestAggUnionRunner does not support for type " << Type_Name(agg_col_type);
-                return false;
-        }
-    } else {
-        LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
+    auto type_it = agg_type_map_.find(func_name);
+    if (type_it == agg_type_map_.end()) {
+        LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_name;
         return false;
     }
-    return true;
+
+    agg_type_ = type_it->second;
+    auto agg_col_type = producers_[1]->row_parser()->GetType(*agg_col_);
+    switch (agg_type_) {
+        case kSum:
+            aggregator_ = MakeOverflowAggregator<SumAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kAvg:
+            aggregator_ = MakeOverflowAggregator<AvgAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kCount:
+            aggregator_ = std::make_unique<CountAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kMin:
+            aggregator_ = MakeSameTypeAggregator<MinAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kMax:
+            aggregator_ = MakeSameTypeAggregator<MaxAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        default:
+            LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_name;
+            return false;
+    }
 }
 
 std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
@@ -2866,41 +2862,48 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
         auto type = aggregator_->type();
         auto aggregator = aggregator_.get();
+        if (agg_type_ == kCount) {
+            dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
+            return;
+        }
+
         switch (type) {
             case type::Type::kInt16: {
                 int16_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
+            case type::Type::kDate:
             case type::Type::kInt32: {
                 int32_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
+            case type::Type::kTimestamp:
             case type::Type::kInt64: {
                 int64_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
             case type::Type::kFloat: {
                 float val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<float>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
             case type::Type::kDouble: {
                 double val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<double>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
             case type::Type::kVarchar: {
                 std::string val;
                 row_parser->GetString(row, *agg_col_, &val);
-                dynamic_cast<Aggregator<std::string>*>(aggregator)->UpdateValue(val);
+                UpdateWrapper(aggregator, val);
                 break;
             }
             default:
@@ -2914,29 +2917,9 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             return;
         }
 
-        auto type = aggregator_->type();
-        auto aggregator = aggregator_.get();
         std::string agg_val;
         row_parser->GetString(row, "agg_val", &agg_val);
-        switch (type) {
-            case type::Type::kInt16:
-            case type::Type::kInt32:
-            case type::Type::kInt64: {
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            case type::Type::kFloat: {
-                dynamic_cast<Aggregator<float>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            case type::Type::kDouble: {
-                dynamic_cast<Aggregator<double>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            default:
-                LOG(ERROR) << "Not support type: " << Type_Name(type);
-                break;
-        }
+        aggregator_->Update(agg_val);
     };
 
     int64_t cnt = 0;

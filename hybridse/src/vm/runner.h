@@ -997,11 +997,25 @@ class RequestAggUnionRunner : public Runner {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
 
+ private:
+    enum AggType {
+        kSum,
+        kCount,
+        kAvg,
+        kMin,
+        kMax
+    };
+
+    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
+        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
+    };
+
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
+    AggType agg_type_;
     const node::ColumnRefNode* agg_col_ = nullptr;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
