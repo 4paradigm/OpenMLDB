@@ -884,11 +884,6 @@ void lcase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
-void init_udfcontext(UDFContext* context) {
-    context->pool = vm::JitRuntime::get()->GetMemPool();
-    context->ptr = nullptr;
-}
-
 // json functions
 using json = nlohmann::json;
 
@@ -1017,8 +1012,9 @@ json extract_json(json &json_obj, const std::string &path, bool skip_map) {
     }
 }
 
-void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *output) {
-    if (json_string == nullptr || path_string == nullptr) {
+void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *output, bool *is_null_ptr) {
+    *is_null_ptr = true;
+    if (json_string == nullptr || json_string->size_ == 0 || path_string == nullptr || path_string->size_ == 0) {
         return ;
     }
     std::string json_str = json_string->ToString();
@@ -1064,10 +1060,15 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
     memcpy(buffer, output_data.c_str(), output_size);
     output->size_ = output_size;
     output->data_ = buffer;
+    *is_null_ptr = false;
     return ;
 }
 
-//
+void init_udfcontext(UDFContext* context) {
+    context->pool = vm::JitRuntime::get()->GetMemPool();
+    context->ptr = nullptr;
+}
+
 
 template <>
 uint32_t to_string_len<int16_t>(const int16_t &v) {
