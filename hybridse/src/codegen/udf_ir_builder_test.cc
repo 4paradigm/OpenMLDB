@@ -659,8 +659,8 @@ TEST_F(UdfIRBuilderTest, get_json_object) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", StringRef("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"),StringRef("$.a.[0].b"), StringRef("[\"b1\"]"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", StringRef("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"),StringRef("$"), StringRef("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", StringRef("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"),StringRef("$.b"), nullptr);
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", "{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}", nullptr , nullptr);
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", nullptr, "$.b", nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", StringRef("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"), nullptr , nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("get_json_object", nullptr, StringRef("$.b"), nullptr);
 }
 
 TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
