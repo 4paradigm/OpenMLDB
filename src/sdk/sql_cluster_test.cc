@@ -265,7 +265,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) options(partitionnum=8, replicanum=1);";
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -296,7 +296,9 @@ TEST_F(SQLClusterTest, ClusterInsert) {
         for (const auto& table_status : response.all_table_status()) {
             count += table_status.record_cnt();
             auto iter = key_map.find(table_status.pid());
-            ASSERT_EQ(iter->second.size(), table_status.record_cnt());
+            if (table_status.record_cnt() != 0) {
+                ASSERT_EQ(iter->second.size(), table_status.record_cnt());
+            }
         }
     }
     ASSERT_EQ(100u, count);
