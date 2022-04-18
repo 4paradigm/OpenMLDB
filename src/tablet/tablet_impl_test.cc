@@ -6124,7 +6124,7 @@ TEST_P(TabletImplTest, AddIndex) {
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
     if (storage_mode != openmldb::common::kMemory) {
-        ASSERT_EQ(145, add_index_response.code());
+        ASSERT_EQ(701, add_index_response.code());
     } else {
         ASSERT_EQ(0, add_index_response.code());
 
@@ -6328,10 +6328,9 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
     FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::tablet::GenRand();
     FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::tablet::GenRand();
-    // used to check if files are removed properly.
-    // FLAGS_db_root_path = "/tmp/1";
-    // FLAGS_hdd_root_path = "/tmp/hdd/1";
-    // FLAGS_ssd_root_path = "/tmp/ssd/1";
+    FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_ssd_root_path = "/tmp/ssd/recycle/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle/" + ::openmldb::tablet::GenRand();
     FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }
