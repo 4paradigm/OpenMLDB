@@ -457,7 +457,5 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     FLAGS_hdd_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
     FLAGS_ssd_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
-    // FLAGS_hdd_root_path = "/tmp/" + std::to_string(1);
-    // FLAGS_ssd_root_path = "/tmp/" + std::to_string(1);
     return RUN_ALL_TESTS();
 }

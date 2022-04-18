@@ -932,10 +932,6 @@ void DiskTableKeyIterator::NextPK() {
                 it_->Next();
                 continue;
             }
-            // Like KeyIterator in MemTable, maybe no need to check IsExpired here
-            // if (!IsExpired()) {
-            //     return;
-            // }
             break;
         } else {
             it_->Next();
