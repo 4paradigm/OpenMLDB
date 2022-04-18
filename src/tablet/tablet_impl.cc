@@ -2963,14 +2963,15 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                         PDLOG(WARNING, "create aggregator failed. msg %s", msg.c_str());
                     }
                 }
-                auto aggrs = GetAggregators(tid, pid);
-                if (aggrs != nullptr) {
-                    for (auto& aggr : *aggrs) {
-                        if (!aggr->GetBaseReplicator())
-                            aggr->SetBaseReplicator(replicator);
-                        if (!aggr->Init()) {
-                            PDLOG(WARNING, "aggregator init failed");
-                        }
+            }
+            // init aggregator related to base table if need.
+            auto aggrs = GetAggregators(tid, pid);
+            if (aggrs != nullptr) {
+                for (auto& aggr : *aggrs) {
+                    if (!aggr->GetBaseReplicator())
+                        aggr->SetBaseReplicator(replicator);
+                    if (!aggr->Init()) {
+                        PDLOG(WARNING, "aggregator init failed");
                     }
                 }
             }

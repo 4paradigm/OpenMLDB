@@ -117,9 +117,15 @@ class Aggregator {
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
 
-    void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) { base_replicator_ = replicator; }
+    void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) {
+        std::lock_guard<std::mutex> lock(mu_);
+        base_replicator_ = replicator;
+    }
 
-    std::shared_ptr<LogReplicator> GetBaseReplicator() { return base_replicator_; }
+    std::shared_ptr<LogReplicator> GetBaseReplicator() {
+        std::lock_guard<std::mutex> lock(mu_);
+        return base_replicator_;
+    }
 
  protected:
     codec::Schema base_table_schema_;
@@ -145,6 +151,7 @@ class Aggregator {
  private:
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
+    virtual bool DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) = 0;
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -176,6 +183,8 @@ class SumAggregator : public Aggregator {
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) override;
 };
 
 class MinMaxBaseAggregator : public Aggregator {
@@ -189,6 +198,8 @@ class MinMaxBaseAggregator : public Aggregator {
 
  private:
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) override;
 };
 class MinAggregator : public MinMaxBaseAggregator {
  public:
@@ -229,6 +240,8 @@ class CountAggregator : public Aggregator {
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) override;
 };
 
 class AvgAggregator : public Aggregator {
@@ -244,6 +257,8 @@ class AvgAggregator : public Aggregator {
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
