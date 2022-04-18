@@ -1109,7 +1109,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             tablets_.insert(std::make_pair(*it, tablet));
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         } else {
             if (tit->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 if (FLAGS_use_name) {
@@ -1309,19 +1309,9 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
         }
     }
     if (!exist_globalvar) {
-        NotifyGlobalVarChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kGlobalVar);
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
-}
-
-void NameServerImpl::NotifyGlobalVarChanged() {
-    if (!IsClusterMode()) {
-        return;
-    }
-    if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
-        PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_.c_str());
-        return;
-    }
-    PDLOG(INFO, "notify globalvar changed ok");
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletRequest* request,
@@ -3101,7 +3091,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         }
     }
     if (IsClusterMode()) {
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
 }
 
@@ -3244,7 +3234,7 @@ void NameServerImpl::AddTableField(RpcController* controller, const AddTableFiel
         added_column_desc->CopyFrom(request->column_desc());
         openmldb::common::VersionPair* added_version_pair = table_info->add_schema_versions();
         added_version_pair->CopyFrom(new_pair);
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     response->set_code(ReturnCode::kOk);
     response->set_msg("ok");
@@ -3620,7 +3610,7 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_table_info_[table_info->db()].insert(std::make_pair(table_info->name(), table_info));
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         }
     } else {
         if (!zk_client_->CreateNode(zk_path_.table_data_path_ + "/" + table_info->name(), table_value)) {
@@ -3634,7 +3624,7 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
         {
             std::lock_guard<std::mutex> lock(mu_);
             table_info_.insert(std::make_pair(table_info->name(), table_info));
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         }
     }
     return true;
@@ -5529,7 +5519,6 @@ void NameServerImpl::OnLocked() {
         CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
         InitGlobalVarTable();
     }
-
     if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
         CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
     }
@@ -7515,7 +7504,7 @@ int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool i
             return ret;
         }
     }
-    NotifyTableChanged();
+    NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     return 0;
 }
 
@@ -7882,16 +7871,25 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::openmldb::api::TaskInfo>
     task_info->set_status(::openmldb::api::TaskStatus::kFailed);
 }
 
-void NameServerImpl::NotifyTableChanged() {
+void NameServerImpl::NotifyTableChanged(::openmldb::type::NotifyType type) {
     if (!IsClusterMode()) {
         return;
     }
-    bool ok = zk_client_->Increment(zk_path_.table_changed_notify_node_);
-    if (!ok) {
-        PDLOG(WARNING, "increment failed. node is %s", zk_path_.table_changed_notify_node_.c_str());
-        return;
+    if (type == ::openmldb::type::NotifyType::kTable) {
+        if (!zk_client_->Increment(zk_path_.table_changed_notify_node_)) {
+            PDLOG(WARNING, "increment failed. node is %s", zk_path_.table_changed_notify_node_.c_str());
+            return;
+        }
+        PDLOG(INFO, "notify table changed ok");
+    } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
+        if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
+            PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_.c_str());
+            return;
+        }
+        PDLOG(INFO, "notify globalvar changed ok");
+    } else {
+        PDLOG(ERROR, "unsupport notify type");
     }
-    PDLOG(INFO, "notify table changed ok");
 }
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name, const std::string& db_name,
@@ -8869,9 +8867,9 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
 
 bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
     if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         if (table_info->db() == INFORMATION_SCHEMA_DB && table_info->name() == GLOBAL_VARIABLES) {
-            NotifyGlobalVarChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kGlobalVar);
         }
         return true;
     }
@@ -9724,7 +9722,7 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
     {
         std::lock_guard<std::mutex> lock(mu_);
         sdk_endpoint_map_.swap(tmp_map);
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s", server_name.c_str(), sdk_endpoint.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -9935,7 +9933,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const api::Creat
             }
             db_sp_info_map_[sp_db_name][sp_name] = sp_info;
         }
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", sp_db_name.c_str(),
               sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -10119,7 +10117,7 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
         if (db_sp_info_map_[db_name].empty()) {
             db_sp_info_map_.erase(db_name);
         }
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -10379,7 +10377,7 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         }
         // update in this
         table_infos[table_name] = new_info;
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
 }

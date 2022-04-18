@@ -715,6 +715,11 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             replicator->Notify();
         }
     }
+    // update global var in standalone mode
+    if (!IsClusterMode() && table->GetDB() == openmldb::nameserver::INFORMATION_SCHEMA_DB &&
+        table->GetName() == openmldb::nameserver::GLOBAL_VARIABLES) {
+        UpdateGlobalVarTable();
+    }
 }
 
 int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::string& msg) {
