@@ -872,7 +872,7 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
 
-    bool has_ts_idx;
+    bool has_ts_idx = false;
     uint32_t ts_idx;
     if (inner_index && inner_index->GetIndex().size() > 1) {
         has_ts_idx = true;
