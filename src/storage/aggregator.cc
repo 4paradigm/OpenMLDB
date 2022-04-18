@@ -63,15 +63,7 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
     dimension->set_idx(0);
 }
 
-Aggregator::~Aggregator() {
-    if (aggr_col_type_ == DataType::kString || aggr_col_type_ == DataType::kVarchar) {
-        for (const auto& it : aggr_buffer_map_) {
-            if (it.second.buffer_.aggr_val_.vstring.data) {
-                delete[] it.second.buffer_.aggr_val_.vstring.data;
-            }
-        }
-    }
-}
+Aggregator::~Aggregator() {}
 
 bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover) {
     if (!recover && GetStat() != AggrStat::kInited) {
@@ -112,6 +104,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
 
     // init buffer timestamp range
     if (aggr_buffer.ts_begin_ == -1) {
+        aggr_buffer.data_type_ = aggr_col_type_;
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
             aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
@@ -273,12 +266,13 @@ bool Aggregator::Init() {
     return true;
 }
 
-bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer* buffer) {
+bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer*& buffer) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (aggr_buffer_map_.find(key) == aggr_buffer_map_.end()) {
+    auto it = aggr_buffer_map_.find(key);
+    if (it == aggr_buffer_map_.end()) {
         return false;
     }
-    *buffer = aggr_buffer_map_.at(key).buffer_;
+    buffer = &aggr_buffer_map_.at(key).buffer_;
     return true;
 }
 
@@ -286,6 +280,7 @@ bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const 
     if (buffer == nullptr) {
         return false;
     }
+    buffer->data_type_ = aggr_col_type_;
     row_view.GetValue(row_ptr, 1, DataType::kTimestamp, &buffer->ts_begin_);
     row_view.GetValue(row_ptr, 2, DataType::kTimestamp, &buffer->ts_end_);
     row_view.GetValue(row_ptr, 3, DataType::kInt, &buffer->aggr_cnt_);

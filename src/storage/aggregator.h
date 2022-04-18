@@ -56,7 +56,8 @@ enum AggrStat {
     kInited = 3,
 };
 
-struct AggrBuffer {
+class AggrBuffer {
+   public:
     union AggrVal {
         int16_t vsmallint;
         int32_t vint;
@@ -73,8 +74,34 @@ struct AggrBuffer {
     int32_t aggr_cnt_;
     uint64_t binlog_offset_;
     int64_t non_null_cnt;
+    DataType data_type_;
     AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0), non_null_cnt(0) {}
+    AggrBuffer(const AggrBuffer & buffer) {
+         memcpy(&aggr_val_, &buffer.aggr_val_, sizeof(aggr_val_));
+         ts_begin_ = buffer.ts_begin_;
+         ts_end_ = buffer.ts_end_;
+         aggr_cnt_ = buffer.aggr_cnt_;
+         binlog_offset_ = buffer.binlog_offset_;
+         non_null_cnt = buffer.non_null_cnt;
+         data_type_ = buffer.data_type_;
+         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
+            if (buffer.aggr_val_.vstring.data != NULL) {
+                aggr_val_.vstring.data = new char[buffer.aggr_val_.vstring.len];
+                memcpy(aggr_val_.vstring.data, buffer.aggr_val_.vstring.data, buffer.aggr_val_.vstring.len);
+            }
+        }
+    }
+    AggrBuffer& operator=(const AggrBuffer& buffer) = delete;
+    ~AggrBuffer() {
+       clear();
+    }
     void clear() {
+        if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
+            if (aggr_val_.vstring.data != NULL) {
+                delete[] aggr_val_.vstring.data;
+                aggr_val_.vstring.data = NULL;
+            }
+        }
         memset(&aggr_val_, 0, sizeof(aggr_val_));
         ts_begin_ = -1;
         ts_end_ = 0;
@@ -115,7 +142,7 @@ class Aggregator {
 
     uint32_t GetStat() const { return status_.load(std::memory_order_relaxed); }
 
-    bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
+    bool GetAggrBuffer(const std::string& key, AggrBuffer*& buffer);
 
     void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) {
         std::lock_guard<std::mutex> lock(mu_);
