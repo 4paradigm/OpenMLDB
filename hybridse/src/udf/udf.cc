@@ -927,19 +927,19 @@ json extract_json_with_key(const json &j, const std::string &key) {
         // 新建一个json对象数组，遍历j将每个元素添加到json中
         json j_new = json::array();
         for (auto &item: j) {
-            // 判断item是否是map类型
-            if (item.is_object()) {
-                // 判断item中是否有key
-                if (item.contains(key)) {
-                    j_new.push_back(item[key]);
-                }
-            } else { continue; }
             if (item.is_array()) {
                 for (auto &item_array: item) {
                     j_new.push_back(item_array);
                 }
-            } else {
-                return j_new;
+            }
+            else if (item.is_object()){
+                json item_key = {};
+                if (item.contains(key)) {
+                    item_key = item[key];
+                }
+                if (!item_key.is_null()){
+                    j_new.push_back(item_key);
+                }
             }
         }
         return j_new;
@@ -949,8 +949,7 @@ json extract_json_with_key(const json &j, const std::string &key) {
         } else {
             return {};
         }
-    }
-    else {
+    } else {
         return {};
     }
 }

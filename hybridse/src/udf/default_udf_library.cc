@@ -878,6 +878,42 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "sql"
             @endcode
             @since 0.5.0)");
+    RegisterExternal("get_json_object")
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, StringRef*)>(udf::v1::get_json_object)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"(
+            @brief Get the value of a JSON object by the given key.
+
+            Example:
+
+            @code{.sql}
+                SELECT get_json_object("{\"a\": {\"c\": \"c1\"}}", "$.a.c") as str1;
+                --output "c1"
+                SELECT get_json_object("[{\"b\": \"b1\"}, {\"b\": \"b2\"}]",  "$.[*].b") as str1;
+                --output "[\"b1\",\"b2\"]"
+                SELECT get_json_object("{\"b\": {\"c\": \"c1\"}}, {\"b\": {\"c\": \"c2\"}}]",  "$.[*].b.c") as str1;
+                --output "[\"c1\", \"c2\"]"
+                SELECT get_json_object("{\"ab\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.ab[*]") as str1;
+                --output "[{\"b\": \"b1\"}, {\"b\": \"b2\"}]"
+                SELECT get_json_object("{\"ab\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.ab.[*]") as str1;
+                --output "[{\"b\": \"b1\"}, {\"b\": \"b2\"}]"
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.a.[*].b") as str1;
+                --output "[\"b1\",\"b2\"]"
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.a.[*].a") as str1;
+                --output null
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.a.[0,1].b") as str1;
+                --output "[\"b1\",\"b2\"]"
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.a.[0,1].b") as str1;
+                --output "[\"b1\"]"
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$") as str1;
+                --output "{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}"
+                SELECT get_json_object("{\"a\": [{\"b\": \"b1\"}, {\"b\": \"b2\"}]}",  "$.b") as str1;
+                --output null
+            @endcode
+            @since 0.5.0)");
+
     RegisterExternal("reverse")
         .args<StringRef>(
             reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::reverse)))
