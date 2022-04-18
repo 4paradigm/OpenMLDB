@@ -859,6 +859,7 @@ uint64_t DiskTable::GetRecordIdxByteSize() {
 }
 
 int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
+    PDLOG(WARNING, "Count in disk table is slow");
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (index_def && !index_def->IsReady()) {
         return -1;
