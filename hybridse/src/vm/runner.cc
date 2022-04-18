@@ -2696,7 +2696,7 @@ bool RequestAggUnionRunner::InitAggregator() {
             aggregator_ = MakeOverflowAggregator<SumAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
             return true;
         case kAvg:
-            aggregator_ = MakeOverflowAggregator<AvgAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            aggregator_ = std::make_unique<AvgAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
             return true;
         case kCount:
             aggregator_ = std::make_unique<CountAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
@@ -2866,7 +2866,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
             return;
         }
-
         switch (type) {
             case type::Type::kInt16: {
                 int16_t val = 0;

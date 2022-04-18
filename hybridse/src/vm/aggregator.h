@@ -132,7 +132,7 @@ class Aggregator : public BaseAggregator {
                     this->row_builder_.AppendInt32(output_val);
                     break;
                 case type::kDate:
-                    this->row_builder_.AppendInt32(output_val);
+                    this->row_builder_.AppendDate(output_val);
                     break;
                 case type::kInt64:
                     this->row_builder_.AppendInt64(output_val);
@@ -272,18 +272,17 @@ class CountAggregator : public Aggregator<int64_t> {
     }
 };
 
-template <class T>
-class AvgAggregator : public Aggregator<T> {
+class AvgAggregator : public Aggregator<double> {
  public:
     AvgAggregator(type::Type type, const Schema& output_schema)
-        : Aggregator<T>(type, output_schema, 0) {}
+        : Aggregator<double>(type, output_schema, 0) {}
 
-    void UpdateValue(const T& sum_val) override {
+    void UpdateValue(const double& sum_val) override {
         UpdateAvgValue(sum_val, 1);
     }
 
     // val is assumed to be not null
-    void UpdateAvgValue(const T& sum_val, int64_t count) {
+    void UpdateAvgValue(const double& sum_val, int64_t count) {
         this->val_ += sum_val;
         this->counter_ += count;
         DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << sum_val << ", sum = " << this->val_
@@ -291,19 +290,19 @@ class AvgAggregator : public Aggregator<T> {
     }
 
     void Update(const std::string& bval) override {
-        size_t bval_size_expected = sizeof(T) + sizeof(int64_t);
+        size_t bval_size_expected = sizeof(double) + sizeof(int64_t);
         if (bval.size() != bval_size_expected) {
             LOG(ERROR) << "encoded aggr val is not valid";
             return;
         }
 
-        T val = *reinterpret_cast<const T*>(bval.c_str());
-        int64_t count = *reinterpret_cast<const int64_t*>(&bval.at(sizeof(T)));
+        double val = *reinterpret_cast<const double*>(bval.c_str());
+        int64_t count = *reinterpret_cast<const int64_t*>(&bval.at(sizeof(double)));
         DLOG(INFO) << "Update binary value " << "sum = " << val << ", count = " << count;
         UpdateAvgValue(val, count);
     }
 
-    const T& val() override {
+    const double& val() override {
         if (this->counter_ != 0) {
             avg_ = this->val_ / this->counter_;
         } else {
@@ -313,20 +312,11 @@ class AvgAggregator : public Aggregator<T> {
     }
 
     type::Type rep_type() const override {
-        switch (this->type()) {
-            case type::kInt16:
-            case type::kInt32:
-            case type::kInt64:
-            case type::kDate:  // actually sum doesn't support `Date` type
-            case type::kTimestamp:
-                return type::kInt64;
-            default:
-                return this->type();
-        }
+        return type::kDouble;
     }
 
  private:
-    T avg_ = 0;
+    double avg_ = 0;
 };
 
 template <class T>

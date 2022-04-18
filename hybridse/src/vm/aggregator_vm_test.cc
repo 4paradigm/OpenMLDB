@@ -169,29 +169,7 @@ TEST_P(AggregatorVMTest, AvgTest) {
     auto column = schema.Add();
     column->set_type(agg_col_type);
     column->set_name("val");
-
-    switch (agg_col_type) {
-        case type::kInt16:
-        case type::kInt32:
-        case type::kDate:
-        case type::kTimestamp:
-        case type::kInt64: {
-            aggregator = std::make_unique<AvgAggregator<int64_t>>(agg_col_type, schema);
-            break;
-        }
-        case type::kFloat: {
-            aggregator = std::make_unique<AvgAggregator<float>>(agg_col_type, schema);
-            break;
-        }
-        case type::kDouble: {
-            aggregator = std::make_unique<AvgAggregator<double>>(agg_col_type, schema);
-            break;
-        }
-        default:
-            LOG(ERROR) << "AvgAggregator does not support for type " << Type_Name(agg_col_type);
-            EXPECT_TRUE(false);
-            break;
-    }
+    aggregator = std::make_unique<AvgAggregator>(agg_col_type, schema);
 
     int pre_agg_values_size = 10;
     double sum = 0;
@@ -208,25 +186,27 @@ TEST_P(AggregatorVMTest, AvgTest) {
             case type::kTimestamp:
             case type::kInt64: {
                 int64_t val = i;
-                dynamic_cast<Aggregator<int64_t>*>(aggregator.get())->UpdateValue(val);
+                dynamic_cast<AvgAggregator*>(aggregator.get())->UpdateValue(val);
                 if (i % 2 == 1) {
                     val += (i - 1);
-                    bval.assign(reinterpret_cast<char*>(&val), sizeof(int64_t));
+                    double dval = val;
+                    bval.assign(reinterpret_cast<char*>(&dval), sizeof(double));
                 }
                 break;
             }
             case type::kFloat: {
                 float val = i;
-                dynamic_cast<Aggregator<float>*>(aggregator.get())->UpdateValue(val);
+                dynamic_cast<AvgAggregator*>(aggregator.get())->UpdateValue(val);
                 if (i % 2 == 1) {
                     val += (i - 1);
-                    bval.assign(reinterpret_cast<char*>(&val), sizeof(float));
+                    double dval = val;
+                    bval.assign(reinterpret_cast<char*>(&dval), sizeof(double));
                 }
                 break;
             }
             case type::kDouble: {
                 double val = i;
-                dynamic_cast<Aggregator<double>*>(aggregator.get())->UpdateValue(val);
+                dynamic_cast<AvgAggregator*>(aggregator.get())->UpdateValue(val);
                 if (i % 2 == 1) {
                     val += (i - 1);
                     bval.assign(reinterpret_cast<char*>(&val), sizeof(double));
@@ -253,16 +233,15 @@ TEST_P(AggregatorVMTest, AvgTest) {
         case type::kDate:
         case type::kTimestamp:
         case type::kInt64: {
-            int64_t expect = static_cast<int64_t>(sum);
-            EXPECT_EQ(expect, dynamic_cast<Aggregator<int64_t>*>(aggregator.get())->val());
+            EXPECT_EQ(sum, dynamic_cast<AvgAggregator*>(aggregator.get())->val());
             break;
         }
         case type::kFloat: {
-            EXPECT_EQ(sum, dynamic_cast<Aggregator<float>*>(aggregator.get())->val());
+            EXPECT_EQ(sum, dynamic_cast<AvgAggregator*>(aggregator.get())->val());
             break;
         }
         case type::kDouble: {
-            EXPECT_EQ(sum, dynamic_cast<Aggregator<double>*>(aggregator.get())->val());
+            EXPECT_EQ(sum, dynamic_cast<AvgAggregator*>(aggregator.get())->val());
             break;
         }
         default:
@@ -551,7 +530,7 @@ TEST_F(AggregatorVMTest, NullTest) {
 
     std::unique_ptr<BaseAggregator> aggregator = std::make_unique<SumAggregator<int64_t>>(agg_col_type, schema);
     check_null(aggregator.get());
-    aggregator = std::make_unique<AvgAggregator<int64_t>>(agg_col_type, schema);
+    aggregator = std::make_unique<AvgAggregator>(agg_col_type, schema);
     check_null(aggregator.get());
     aggregator = std::make_unique<CountAggregator>(agg_col_type, schema);
     check_not_null(aggregator.get());
