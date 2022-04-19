@@ -628,6 +628,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
         }
     }
     ASSERT_EQ(3, partition_meta_list.size());
+    ASSERT_EQ(node::kMemory, createStmt->GetStorageMode());
     {
         ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());
         node::PartitionMetaNode *partition = dynamic_cast<node::PartitionMetaNode *>(partition_meta_list[0]);

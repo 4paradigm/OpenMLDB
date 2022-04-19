@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "codec/fe_row_codec.h"
+#include "node/node_enum.h"
 #include "proto/fe_type.pb.h"
 namespace hybridse {
 namespace sqlcase {
@@ -44,6 +45,7 @@ class SqlCase {
         std::set<size_t> common_column_indices_;
         std::string repeat_tag_;
         int64_t repeat_ = 1;
+        node::StorageMode storage_mode_ = node::kMemory;
     };
     struct ExpectInfo {
         int64_t count_ = -1;
