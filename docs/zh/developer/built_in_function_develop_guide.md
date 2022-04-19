@@ -70,9 +70,9 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 | BIGINT    | `int64_t`          |
 | FLOAT     | `float`            |
 | DOUBLE    | `double`           |
-| STRING    | `codec::StringRef` |
-| TIMESTAMP | `codec::Timestamp` |
-| DATE      | `codec::Date`      |
+| STRING    | `StringRef` |
+| TIMESTAMP | `Timestamp` |
+| DATE      | `Date`      |
 
 #### 2.1.4 函数参数和返回值
 
@@ -89,18 +89,18 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
       double func_return_double(int); 
       ```
 
-  - 当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`codec::StringRef*`, `codec::Timestamp*`或 `codec::Date*`)用来存放和返回结果值
+  - 当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值
 
     - ```c++
       // SQL: STRING FUNC_STR(INT)
-      void func_output_str(int32_t, codec::StringRef*); 
+      void func_output_str(int32_t, StringRef*); 
       ```
 
   - 当SQL函数的返回值可能为空(**Nullable**)时，额外要有一个`bool*`类型的**输出参数**来存放结果为空与否
 
     - ```c++
       // SQL: Nullable<DATE> FUNC_NULLABLE_DATE(BIGINT)
-      void func_output_nullable_date(int64_t, codec::Date*, bool*); 
+      void func_output_nullable_date(int64_t, Date*, bool*); 
       ```
     
   - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3. SQL函数开发模版](#3.-SQL函数开发模版)。
@@ -125,7 +125,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 namespace hybridse {
   namespace udf {
     namespace v1 {
-      void bool_to_string(bool v, hybridse::codec::StringRef *output) {
+      void bool_to_string(bool v, hybridse::StringRef *output) {
           if (v) {
               char *buffer = AllocManagedStringBuf(4);
               output->size_ = 4;
@@ -227,8 +227,8 @@ RegisterExternal("function_name")
 ```c++
 RegisterExternal("substring")
         .args<StringRef, int32_t, int32_t>(
-            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string))
+            static_cast<void (*)(StringRef*, int32_t, int32_t,
+                                 StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
             @brief Return a substring `len` characters long from string str, starting at position `pos`.
@@ -284,7 +284,7 @@ TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
 // date(timestamp) normal check
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>(
-        "date", codec::Date(2020, 05, 20), codec::Timestamp(1589958000000L));
+        "date", Date(2020, 05, 20), Timestamp(1589958000000L));
 }
 // date(timestamp) null check
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
@@ -356,7 +356,7 @@ RegisterExternal("my_func")
 
 ### 3.2 SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**
 
-当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，普通参数后额外有一个指针类型的参数（`codec::StringRef*`, `codec::Timestamp*`或 `codec::Date*`)用来存放和返回结果值。
+当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，普通参数后额外有一个指针类型的参数（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值。
 
 具体地，我们可以将函数设计为如下的样子：
 
@@ -512,7 +512,7 @@ namespace hybridse {
   namespace udf{
     namespace v1 {
       int32_t month(int64_t ts);
-      int32_t month(codec::Timestamp *ts);
+      int32_t month(Timestamp *ts);
     } // namespace v1
   } // namespace udf
 } // namepsace hybridse
@@ -531,7 +531,7 @@ namespace hybridse {
           gmtime_r(&time, &t);
           return t.tm_mon + 1;
       }
-      int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
+      int32_t month(Timestamp *ts) { return month(ts->ts_); }
     } // namespace v1
   } // namespace udf
 } // namepsace hybridse
@@ -599,7 +599,7 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
 namespace hybridse {
   namespace udf{
     namespace v1 {
-      void bool_to_string(bool v, hybridse::codec::StringRef *output);
+      void bool_to_string(bool v, hybridse::StringRef *output);
     } // namespace v1
   } // namespace udf
 } // namepsace hybridse
@@ -612,7 +612,7 @@ namespace hybridse {
 namespace hybridse {
   namespace udf {
     namespace v1 {
-        void bool_to_string(bool v, hybridse::codec::StringRef *output) {
+        void bool_to_string(bool v, hybridse::StringRef *output) {
             if (v) {
                 char *buffer = AllocManagedStringBuf(4);
                 output->size_ = 4;
@@ -642,7 +642,7 @@ namespace hybridse {
     void DefaultUdfLibrary::InitTypeUdf() {
       // ...    
         RegisterExternal("string")
-          .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
+          .args<bool>(static_cast<void (*)(bool, StringRef*)>(
                           udf::v1::bool_to_string))
           .return_by_arg(true)
           .doc(R"(
@@ -704,8 +704,8 @@ select STRING(true) as str_true, string(false) as str_false;
 namespace hybridse {
   namespace udf{
     namespace v1 {
-      void timestamp_to_date(codec::Timestamp *timestamp,
-            codec::Date *ret /*result output*/, bool *is_null /*null flag*/);
+      void timestamp_to_date(Timestamp *timestamp,
+            Date *ret /*result output*/, bool *is_null /*null flag*/);
     } // namespace v1
   } // namespace udf
 } // namespace hybridse
@@ -718,15 +718,15 @@ namespace hybridse {
 namespace hybridse {
   namespace udf {
     namespace v1 {
-        void timestamp_to_date(codec::Timestamp *timestamp,
-              codec::Date *ret /*result output*/, bool *is_null /*null flag*/) {
+        void timestamp_to_date(Timestamp *timestamp,
+              Date *ret /*result output*/, bool *is_null /*null flag*/) {
           time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
           struct tm t;
           if (nullptr == gmtime_r(&time, &t)) {
               *is_null = true;
               return;
           }
-          *ret = codec::Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+          *ret = Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
           *is_null = false;
           return;
         }
@@ -750,7 +750,7 @@ namespace hybridse {
     void DefaultUdfLibrary::InitTimeAndDateUdf() {
       // ...    
         RegisterExternal("date")
-          .args<codec::Timestamp>(
+          .args<Timestamp>(
               static_cast<void (*)(Timestamp*, Date*, bool*)>(v1::timestamp_to_date))
           .return_by_arg(true)
           .returns<Nullable<Date>>()
@@ -776,7 +776,7 @@ namespace hybridse {
 // date(timestamp) normal check
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>(
-        "date", codec::Date(2020, 05, 20), codec::Timestamp(1589958000000L));
+        "date", Date(2020, 05, 20), Timestamp(1589958000000L));
 }
 // date(timestamp) null check
 TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
