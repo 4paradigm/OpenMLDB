@@ -76,6 +76,8 @@ TEST_P(DBSDKTest, CreateFunction) {
                             "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
     std::string int2str_sql = absl::StrCat("CREATE FUNCTION int2str(x INT) RETURNS STRING "
                             "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+    auto result = sr->ExecuteSQL("show functions", &status);
+    ExpectResultSetStrEq({{"Udf_function"}, {"cut2"}, {"int2str"}, {"strlength"}}, rs.get());
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
@@ -89,7 +91,7 @@ TEST_P(DBSDKTest, CreateFunction) {
                     strlength_sql,
                     int2str_sql
                 });
-    auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
+    result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
     result->Next();

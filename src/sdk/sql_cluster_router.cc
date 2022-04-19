@@ -1514,6 +1514,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdShowFunctions: {
+            std::vector<::openmldb::common::ExternalFun> funs;
+            base::Status st = ns_ptr->ShowFunction("", &funs);
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "show udf function failed"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& fun_info : funs) {
+                std::vector<std::string> vec = {fun_info.name()};
+                lines.push_back(vec);
+            }
+            return ResultSetSQL::MakeResultSet({"Udf_function"}, lines, status);
+        }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
