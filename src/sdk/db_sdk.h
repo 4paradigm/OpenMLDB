@@ -74,6 +74,7 @@ class DBSDK {
     std::vector<std::string> GetAllTables();
     std::vector<std::string> GetTableNames(const std::string& db);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet();
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> GetAllTablet();
     bool GetTablet(const std::string& db, const std::string& name,
                    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name);
