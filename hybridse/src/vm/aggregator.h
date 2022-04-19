@@ -52,7 +52,7 @@ class BaseAggregator {
     }
 
     // representative type of the aggr val
-    virtual type::Type rep_type() const {
+    virtual type::Type GetRepType() const {
         return type_;
     }
 
@@ -191,44 +191,6 @@ class Aggregator : public BaseAggregator {
 };
 
 template <class T>
-std::enable_if_t<std::is_arithmetic<T>{}> UpdateWrapper(BaseAggregator* aggregator, const T& val) {
-    switch (aggregator->rep_type()) {
-        case type::kInt16:
-            dynamic_cast<Aggregator<int16_t>*>(aggregator)->UpdateValue(val);
-            break;
-        case type::kDate:
-        case type::kInt32:
-            dynamic_cast<Aggregator<int32_t>*>(aggregator)->UpdateValue(val);
-            break;
-        case type::kTimestamp:
-        case type::kInt64:
-            dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
-            break;
-        case type::kFloat:
-            dynamic_cast<Aggregator<float>*>(aggregator)->UpdateValue(val);
-            break;
-        case type::kDouble:
-            dynamic_cast<Aggregator<double>*>(aggregator)->UpdateValue(val);
-            break;
-        default:
-            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->rep_type());
-            break;
-    }
-}
-
-template <class T>
-std::enable_if_t<!std::is_arithmetic<T>{}> UpdateWrapper(BaseAggregator* aggregator, const T& val) {
-    switch (aggregator->rep_type()) {
-        case type::kVarchar:
-            dynamic_cast<Aggregator<std::string>*>(aggregator)->UpdateValue(val);
-            break;
-        default:
-            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->rep_type());
-            break;
-    }
-}
-
-template <class T>
 class SumAggregator : public Aggregator<T> {
  public:
     SumAggregator(type::Type type, const Schema& output_schema)
@@ -241,7 +203,7 @@ class SumAggregator : public Aggregator<T> {
         DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", sum = " << this->val_;
     }
 
-    type::Type rep_type() const override {
+    type::Type GetRepType() const override {
         switch (this->type()) {
             case type::kInt16:
             case type::kInt32:
@@ -271,7 +233,7 @@ class CountAggregator : public Aggregator<int64_t> {
         return false;
     }
 
-    type::Type rep_type() const override {
+    type::Type GetRepType() const override {
         return type::kInt64;
     }
 };
@@ -315,7 +277,7 @@ class AvgAggregator : public Aggregator<double> {
         return avg_;
     }
 
-    type::Type rep_type() const override {
+    type::Type GetRepType() const override {
         return type::kDouble;
     }
 
@@ -433,6 +395,44 @@ std::unique_ptr<BaseAggregator> MakeSameTypeAggregator(type::Type agg_col_type, 
         default:
             LOG(ERROR) << "Not support for type " << Type_Name(agg_col_type);
             return nullptr;
+    }
+}
+
+template <class T>
+std::enable_if_t<std::is_arithmetic<T>{}> AggregatorUpdate(BaseAggregator* aggregator, const T& val) {
+    switch (aggregator->GetRepType()) {
+        case type::kInt16:
+            dynamic_cast<Aggregator<int16_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kDate:
+        case type::kInt32:
+            dynamic_cast<Aggregator<int32_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kTimestamp:
+        case type::kInt64:
+            dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kFloat:
+            dynamic_cast<Aggregator<float>*>(aggregator)->UpdateValue(val);
+            break;
+        case type::kDouble:
+            dynamic_cast<Aggregator<double>*>(aggregator)->UpdateValue(val);
+            break;
+        default:
+            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->GetRepType());
+            break;
+    }
+}
+
+template <class T>
+std::enable_if_t<!std::is_arithmetic<T>{}> AggregatorUpdate(BaseAggregator* aggregator, const T& val) {
+    switch (aggregator->GetRepType()) {
+        case type::kVarchar:
+            dynamic_cast<Aggregator<std::string>*>(aggregator)->UpdateValue(val);
+            break;
+        default:
+            LOG(ERROR) << "ERROR: unsupport type " << Type_Name(aggregator->GetRepType());
+            break;
     }
 }
 

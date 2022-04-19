@@ -449,8 +449,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     sr = cli->sr;
     ::hybridse::sdk::Status status;
     sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
     bool ok;
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
@@ -559,8 +559,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     sr = cli->sr;
     ::hybridse::sdk::Status status;
     sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
     bool ok;
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
@@ -663,8 +663,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     sr = cli->sr;
     ::hybridse::sdk::Status status;
     sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
     bool ok;
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
@@ -791,8 +791,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     sr = cli->sr;
     ::hybridse::sdk::Status status;
     sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
     bool ok;
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
@@ -919,8 +919,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     sr = cli->sr;
     ::hybridse::sdk::Status status;
     sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
     bool ok;
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);

@@ -2870,39 +2870,39 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             case type::Type::kInt16: {
                 int16_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kDate:
             case type::Type::kInt32: {
                 int32_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kTimestamp:
             case type::Type::kInt64: {
                 int64_t val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kFloat: {
                 float val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kDouble: {
                 double val = 0;
                 row_parser->GetValue(row, *agg_col_, type, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kVarchar: {
                 std::string val;
                 row_parser->GetString(row, *agg_col_, &val);
-                UpdateWrapper(aggregator, val);
+                AggregatorUpdate(aggregator, val);
                 break;
             }
             default:
