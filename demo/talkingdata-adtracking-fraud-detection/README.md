@@ -37,4 +37,9 @@ We use OpenMLDB to do feature extraction, see `train_and_serve.py`.
 
 And then, we use predict server to do online request.
 1. start preidct server, using model
-2. 
+2. run predict
+
+# Q&A
+Q: train_and_serve.py core dump at SetGPUAttribute...
+A: You may need install the xgboost without use-cuda. Build it from source.
+

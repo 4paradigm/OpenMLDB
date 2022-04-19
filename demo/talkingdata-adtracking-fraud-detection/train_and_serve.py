@@ -112,13 +112,14 @@ schema_string = ','.join(list(map(column_string, train_schema)))
 nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
 print("Load train_sample data to offline storage for training(hard copy)")
+connection.execute("USE {}".format(db_name))
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute("SET @@sync_job=true;")
 connection.execute("SET @@job_timeout=1200000;")
 # use soft link after https://github.com/4paradigm/OpenMLDB/issues/1565 fixed
-connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(format='csv',header=true);".format(
-    os.path.abspath("train_sample.csv"), db_name, table_name))
+connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {} OPTIONS(format='csv',header=true);".format(
+    os.path.abspath("train_sample.csv"), table_name))
 
 
 print('Feature extraction')
@@ -127,12 +128,12 @@ select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, da
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
 count(channel) over w3 as ip_app_os_count
-from {}.{} 
+from {} 
 window 
 w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
 w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
 w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-""".format(db_name, table_name)
+""".format(table_name)
 # extraction will take time
 connection.execute("SET @@job_timeout=1200000;")
 connection.execute("{} INTO OUTFILE '{}' OPTIONS(mode='overwrite');".format(
@@ -201,18 +202,9 @@ deploy_name = "demo"
 connection.execute("SET @@execute_mode='online';")
 connection.execute("USE {}".format(db_name))
 nothrow_execute("DROP DEPLOYMENT {}".format(deploy_name))
-sql_part = """
-select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
-count(channel) over w1 as qty, 
-count(channel) over w2 as ip_app_count, 
-count(channel) over w3 as ip_app_os_count
-from {} 
-window 
-w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
-w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
-w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-""".format(table_name)
-connection.execute("DEPLOY " + deploy_name + " " + sql_part)
+deploy_sql = """DEPLOY {} {}""".format(deploy_name, sql_part)
+print(deploy_sql)
+connection.execute(deploy_sql)
 print("Import data to online")
 # online feature extraction needs history data
 # set job_timeout bigger if the `LOAD DATA` job timeout
