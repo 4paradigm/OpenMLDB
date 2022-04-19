@@ -4585,10 +4585,16 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
             response->set_msg("table is not exist");
             break;
         }
+        if (table->GetStorageMode() != ::openmldb::common::kMemory) {
+            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+            response->set_msg("only support mem_table");
+            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", request->tid(), request->pid());
+            return;
+        }
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table == NULL) {
             PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
             response->set_msg("table is not memtable");
             break;
         }
@@ -5111,7 +5117,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     auto* mem_table = dynamic_cast<MemTable*>(table.get());
     if (mem_table == NULL) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kOperatorNotSupport, "table is not memtable", response);
+        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
         return;
     }
     if (request->column_keys_size() > 0) {
@@ -5439,6 +5445,12 @@ void TabletImpl::GetBulkLoadInfo(RpcController* controller, const ::openmldb::ap
         PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
+        return;
+    }
+    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
+        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+        response->set_msg("only support mem_table");
+        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
 
