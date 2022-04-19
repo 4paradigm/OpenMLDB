@@ -91,7 +91,8 @@ class Aggregator : public BaseAggregator {
 
  protected:
     // T is numeric
-    void UpdateInternal(const std::string& bval, std::enable_if_t<std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    void UpdateInternal(const std::string& bval, std::enable_if_t<std::is_arithmetic<TT>{}>* = nullptr) {
         if (bval.size() != sizeof(T)) {
             LOG(ERROR) << "ERROR: encoded aggr val is not valid";
             return;
@@ -103,12 +104,14 @@ class Aggregator : public BaseAggregator {
     }
 
     // T is std::string
-    void UpdateInternal(const std::string& bval, std::enable_if_t<!std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    void UpdateInternal(const std::string& bval, std::enable_if_t<!std::is_arithmetic<TT>{}>* = nullptr) {
         UpdateValue(bval);
     }
 
     // T is numeric
-    Row OutputInternal(std::enable_if_t<std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    Row OutputInternal(std::enable_if_t<std::is_arithmetic<TT>{}>* = nullptr) {
         int str_len = 0;
         auto output_type = output_schema_.Get(0).type();
         DLOG(INFO) << "output_type = " << Type_Name(output_type);
@@ -159,7 +162,8 @@ class Aggregator : public BaseAggregator {
     }
 
     // T is std::string
-    Row OutputInternal(std::enable_if_t<!std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    Row OutputInternal(std::enable_if_t<!std::is_arithmetic<TT>{}>* = nullptr) {
         int str_len = 0;
         auto output_type = output_schema_.Get(0).type();
         DLOG(INFO) << "output_type = " << Type_Name(output_type);
@@ -333,11 +337,13 @@ class MinAggregator : public Aggregator<T> {
     }
 
  protected:
-    virtual void UpdateInternal(const T& val, std::enable_if_t<std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    void UpdateInternal(const TT& val, std::enable_if_t<std::is_arithmetic<TT>{}>* = nullptr) {
         this->val_ = std::min(val, this->val_);
     }
 
-    virtual void UpdateInternal(const T& val, std::enable_if_t<!std::is_arithmetic<T>{}>* = nullptr) {
+    template <class TT = T>
+    void UpdateInternal(const TT& val, std::enable_if_t<!std::is_arithmetic<TT>{}>* = nullptr) {
         if (this->IsNull()) {
             this->val_ = val;
         } else {
@@ -349,20 +355,27 @@ class MinAggregator : public Aggregator<T> {
 };
 
 template <class T>
-class MaxAggregator : public MinAggregator<T> {
+class MaxAggregator : public Aggregator<T> {
  public:
     MaxAggregator(type::Type type, const Schema& output_schema)
-        : MinAggregator<T>(type, output_schema) {
-        this->val_ = std::numeric_limits<T>::min();
+        : Aggregator<T>(type, output_schema, std::numeric_limits<T>::min()) {}
+
+    // val is assumed to be not null
+    void UpdateValue(const T& val) override {
+        UpdateInternal(val);
+        this->counter_++;
+        DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", min = " << this->val_;
     }
 
  protected:
     // val is assumed to be not null
-    void UpdateInternal(const T& val, std::enable_if_t<std::is_arithmetic<T>{}>* = nullptr) override {
+    template <class TT = T>
+    void UpdateInternal(const TT& val, std::enable_if_t<std::is_arithmetic<TT>{}>* = nullptr) {
         this->val_ = std::max(val, this->val_);
     }
 
-    void UpdateInternal(const T& val, std::enable_if_t<!std::is_arithmetic<T>{}>* = nullptr) override {
+    template <class TT = T>
+    void UpdateInternal(const TT& val, std::enable_if_t<!std::is_arithmetic<TT>{}>* = nullptr) {
         if (this->IsNull()) {
             this->val_ = val;
         } else {
