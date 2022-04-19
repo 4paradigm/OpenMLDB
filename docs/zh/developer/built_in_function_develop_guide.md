@@ -125,7 +125,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 namespace hybridse {
   namespace udf {
     namespace v1 {
-      void bool_to_string(bool v, hybridse::StringRef *output) {
+      void bool_to_string(bool v, StringRef *output) {
           if (v) {
               char *buffer = AllocManagedStringBuf(4);
               output->size_ = 4;
@@ -599,7 +599,7 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
 namespace hybridse {
   namespace udf{
     namespace v1 {
-      void bool_to_string(bool v, hybridse::StringRef *output);
+      void bool_to_string(bool v, StringRef *output);
     } // namespace v1
   } // namespace udf
 } // namepsace hybridse
@@ -612,7 +612,7 @@ namespace hybridse {
 namespace hybridse {
   namespace udf {
     namespace v1 {
-        void bool_to_string(bool v, hybridse::StringRef *output) {
+        void bool_to_string(bool v, StringRef *output) {
             if (v) {
                 char *buffer = AllocManagedStringBuf(4);
                 output->size_ = 4;
