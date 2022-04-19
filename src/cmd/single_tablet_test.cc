@@ -77,7 +77,7 @@ TEST_P(DBSDKTest, CreateFunction) {
     std::string int2str_sql = absl::StrCat("CREATE FUNCTION int2str(x INT) RETURNS STRING "
                             "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
     auto result = sr->ExecuteSQL("show functions", &status);
-    ExpectResultSetStrEq({{"Udf_function"}, {"cut2"}, {"int2str"}, {"strlength"}}, rs.get());
+    ExpectResultSetStrEq({{"Udf_function"}, {"cut2"}, {"int2str"}, {"strlength"}}, result.get());
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
