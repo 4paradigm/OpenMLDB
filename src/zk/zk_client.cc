@@ -503,6 +503,7 @@ bool ZkClient::GetChildrenUnLocked(const std::string& path, std::vector<std::str
     for (int32_t i = 0; i < data.count; i++) {
         children.push_back(std::string(data.data[i]));
     }
+    deallocate_String_vector(&data);
     std::sort(children.begin(), children.end());
     return true;
 }
@@ -528,6 +529,7 @@ bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     for (int32_t i = 0; i < data.count; i++) {
         endpoints.push_back(std::string(data.data[i]));
     }
+    deallocate_String_vector(&data);
     return true;
 }
 
