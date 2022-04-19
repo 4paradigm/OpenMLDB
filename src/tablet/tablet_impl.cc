@@ -224,40 +224,58 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         return false;
     }
 
-    if (FLAGS_db_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
-        PDLOG(WARNING, "fail to create db root path %s",
-              FLAGS_db_root_path.c_str());
-        return false;
+    if (FLAGS_db_root_path != "") {
+        if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
+            PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create dir as db_root_path is not set");
     }
 
-    if (FLAGS_ssd_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create ssd root path %s",
-              FLAGS_ssd_root_path.c_str());
-        return false;
+    if (FLAGS_ssd_root_path != "") {
+        if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
+            PDLOG(WARNING, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create dir as ssd_root_path is not set");
     }
 
-    if (FLAGS_hdd_root_path != "" && !CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create hdd root path %s",
-              FLAGS_hdd_root_path.c_str());
-        return false;
+    if (FLAGS_hdd_root_path != "") {
+        if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
+            PDLOG(WARNING, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create dir as hdd_root_path is not set");
     }
 
-    if (FLAGS_recycle_bin_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
-        PDLOG(WARNING, "fail to create recycle bin root path %s",
-              FLAGS_recycle_bin_root_path.c_str());
-        return false;
+    if (FLAGS_recycle_bin_enabled && FLAGS_db_root_path != "" && FLAGS_recycle_bin_root_path != "") {
+        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
+            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create recycle_bin_root_path");
     }
 
-    if (FLAGS_recycle_bin_ssd_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
-        PDLOG(WARNING, "fail to create recycle ssd bin root path %s",
-              FLAGS_recycle_bin_ssd_root_path.c_str());
-        return false;
+    if (FLAGS_recycle_bin_enabled && FLAGS_ssd_root_path != "" && FLAGS_recycle_bin_ssd_root_path != "") {
+        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
+            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_ssd_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create recycle_bin_ssd_root_path");
     }
 
-    if (FLAGS_recycle_bin_hdd_root_path != "" && !CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
-        PDLOG(WARNING, "fail to create recycle bin root path %s",
-              FLAGS_recycle_bin_hdd_root_path.c_str());
-        return false;
+    if (FLAGS_recycle_bin_enabled && FLAGS_hdd_root_path != "" && FLAGS_recycle_bin_hdd_root_path != "") {
+        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
+            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_hdd_root_path.c_str());
+            return false;
+        }
+    } else {
+        PDLOG(INFO, "Will not create recycle_bin_hdd_root_path");
     }
 
     std::map<std::string, std::string> real_endpoint_map = {{endpoint, real_endpoint}};
