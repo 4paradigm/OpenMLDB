@@ -3123,9 +3123,11 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
             std::string old_data_path = table_path + "/old_data";
-            if (!::openmldb::base::RemoveDir(old_data_path)) {
-                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, old_data_path.c_str());
-                break;
+            if (::openmldb::base::IsExists(old_data_path)) {
+                if (!::openmldb::base::RemoveDir(old_data_path)) {
+                    PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, old_data_path.c_str());
+                    break;
+                }
             }
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
