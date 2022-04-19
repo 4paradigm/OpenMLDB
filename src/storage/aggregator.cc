@@ -24,7 +24,6 @@
 #include "base/strings.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
-#include "storage/mem_table.h"
 #include "storage/table.h"
 
 namespace openmldb {
@@ -467,6 +466,7 @@ bool SumAggregator::DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) {
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
+        case DataType::kTimestamp:
         case DataType::kBigInt: {
             int64_t origin_val = *reinterpret_cast<int64_t*>(aggr_val);
             buffer->aggr_val_.vlong = origin_val;
@@ -850,32 +850,9 @@ bool AvgAggregator::DecodeAggrVal(AggrBuffer* buffer, const int8_t* row_ptr) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
     aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length);
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt:
-        case DataType::kInt:
-        case DataType::kBigInt: {
-            int64_t origin_val = *reinterpret_cast<int64_t*>(aggr_val);
-            buffer->aggr_val_.vlong = origin_val;
-            buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(int64_t));
-            break;
-        }
-        case DataType::kFloat: {
-            float origin_val = *reinterpret_cast<float*>(aggr_val);
-            buffer->aggr_val_.vfloat = origin_val;
-            buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(float));
-            break;
-        }
-        case DataType::kDouble: {
-            double origin_val = *reinterpret_cast<double*>(aggr_val);
-            buffer->aggr_val_.vdouble = origin_val;
-            buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));
-            break;
-        }
-        default: {
-            PDLOG(ERROR, "Unsupported data type");
-            return false;
-        }
-    }
+    double origin_val = *reinterpret_cast<double*>(aggr_val);
+    buffer->aggr_val_.vdouble = origin_val;
+    buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));
     return true;
 }
 
