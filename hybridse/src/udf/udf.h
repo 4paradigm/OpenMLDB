@@ -266,6 +266,7 @@ void string_to_bigint(StringRef *str, int64_t *v, bool *is_null_ptr);
 void string_to_float(StringRef *str, float *v, bool *is_null_ptr);
 void string_to_double(StringRef *str, double *v, bool *is_null_ptr);
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
+void string_test(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void init_udfcontext(UDFContext* context);

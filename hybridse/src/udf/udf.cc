@@ -845,6 +845,21 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
+void string_test(StringRef *str, StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
+        return;
+    }
+    if (str->size_ != 0) {
+        output->size_ = str->size_;
+        output->data_ = str->data_;
+        *is_null_ptr = false;
+    } else {
+        output->size_ = 0;
+        output->data_ = nullptr;
+        *is_null_ptr = true;
+    }
+}
+
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
         return;
