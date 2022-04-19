@@ -669,13 +669,14 @@ TEST_F(SqlNodeTest, CreateIndexNodeTest) {
     index_items->PushBack(node_manager_->MakeIndexTsNode("col5"));
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(node_manager_->MakeColumnIndexNode(index_items));
     CreatePlanNode *node = node_manager_->MakeCreateTablePlanNode(
-        "", "t1", 3, 8, kMemory,
+        "", "t1",
         {node_manager_->MakeColumnDescNode("col1", node::kInt32, true),
          node_manager_->MakeColumnDescNode("col2", node::kInt32, true),
          node_manager_->MakeColumnDescNode("col3", node::kFloat, true),
          node_manager_->MakeColumnDescNode("col4", node::kVarchar, true),
          node_manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
-        {},
+        {node_manager_->MakeReplicaNumNode(3), node_manager_->MakePartitionNumNode(8),
+         node_manager_->MakeStorageModeNode(kMemory)},
         false);
     ASSERT_TRUE(nullptr != node);
     std::vector<std::string> columns;

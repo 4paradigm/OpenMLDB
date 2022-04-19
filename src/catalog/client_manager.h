@@ -293,6 +293,7 @@ class ClientManager {
     ClientManager() : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef) {}
     std::shared_ptr<TabletAccessor> GetTablet(const std::string& name) const;
     std::shared_ptr<TabletAccessor> GetTablet() const;
+    std::vector<std::shared_ptr<TabletAccessor>> GetAllTablet() const;
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
