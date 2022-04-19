@@ -309,13 +309,9 @@ class NodeManager {
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
-    CreatePlanNode *MakeCreateTablePlanNode(
-        const std::string& db_name,
-        const std::string &table_name, int replica_num, int partition_num,
-        StorageMode storage_mode,
-        const NodePointVector &column_list,
-        const NodePointVector &partition_meta_list,
-        const bool if_not_exist);
+    CreatePlanNode *MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
+                                            const NodePointVector &column_list,
+                                            const NodePointVector &table_option_list, const bool if_not_exist);
 
     CreateProcedurePlanNode *MakeCreateProcedurePlanNode(
         const std::string &sp_name, const NodePointVector &input_parameter_list,

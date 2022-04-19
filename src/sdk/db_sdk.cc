@@ -457,6 +457,10 @@ bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string*
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
+std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetAllTablet() {
+    return GetCatalog()->GetAllTablet();
+}
+
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {

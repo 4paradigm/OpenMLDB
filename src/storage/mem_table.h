@@ -66,7 +66,10 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
         return row_;
     }
     inline void Seek(const uint64_t& key) { it_->Seek(key); }
-    inline void SeekToFirst() { it_->SeekToFirst(); }
+    inline void SeekToFirst() {
+        record_idx_ = 1;
+        it_->SeekToFirst();
+    }
     inline bool IsSeekable() const { return true; }
 
  private:
