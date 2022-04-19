@@ -1005,6 +1005,7 @@ TEST_F(UdfIRBuilderTest, degrees) {
     CheckUdf<double, double>(udf_name, 0.0, 0.0);
     CheckUdf<double, double>(udf_name, -180.0, -pi);
     CheckUdf<double, double>(udf_name, -90.0, -pi/2);
+    CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
 }  // namespace codegen
 }  // namespace hybridse
