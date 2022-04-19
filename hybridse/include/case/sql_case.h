@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 #include "codec/fe_row_codec.h"
-#include "node/node_enum.h"
 #include "proto/fe_type.pb.h"
 namespace hybridse {
 namespace sqlcase {
