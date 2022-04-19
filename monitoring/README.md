@@ -105,5 +105,3 @@ pip install openmldb_exporter==0.5.0
    openmldb_connected_seconds_created{endpoint="172.17.0.15:9623",role="nameserver"} 1.650181386051238e+09                
    openmldb_connected_seconds_created{endpoint="172.17.0.15:9624",role="nameserver"} 1.6501813860512598e+09               
    ```
-
-   

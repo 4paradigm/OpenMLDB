@@ -2,17 +2,19 @@
 
 ## 概述
 
-OpenMLDB 的监控方案如图：
-
-![monitoring-architecture](./images/OpenMLDB-Monitoring.drawio.png)
+OpenMLDB 的监控方案设计详见 [Online Monitoring RPC](https://docs.google.com/document/d/1O-JL-slBneDnpVuR3_FORQ6kPGdfwn7QmdmSTxv2eXo/edit?usp=sharing)
 
 - 使用 [prometheus](https://prometheus.io) 收集监控指标，[grafana](https://grafana.com/oss/grafana/) 可视化指标
 - OpenMLDB exporter 暴露数据库级别和组件级别的监控指标
-- 监控节点内部使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
-
-## 安装配置 OpenMLDB exporter
+- 节点内部使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
 
 源代码路径: [OpenMLDB/monitoring](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)
+
+## 安装运行 OpenMLDB exporter
+
+### 简介
+
+OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会跟随 OpenMLDB 版本更新发布到 PyPI，生产使用可以直接通过 pip 安装最新发布的 `openmldb_exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)。
 
 ### 环境要求
 
@@ -105,8 +107,6 @@ OpenMLDB 的监控方案如图：
       
    ```
 
-如何基于最新的 commit 编译部署 exporter, 详见 [monitoring](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring/README.md)
-
 ## 部署 node exporter
 
 [node_exporter](https://github.com/prometheus/node_exporter) 是 prometheus 官方实现的暴露系统指标的组件。
@@ -121,7 +121,7 @@ cd node_exporter-1.3.1-*/
 ./node_exporter
 ```
 
-## 部署 Prometheus & Grafana
+## 部署 Prometheus 和 Grafana
 
 如何安装部署 prometheus, grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。
 OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [OpenMLDB mixin](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring/openmldb_mixin/README.md)
@@ -131,3 +131,59 @@ OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [Ope
    1. 在 grafana data source 页面下，添加启动的 prometheus server 地址作为数据源
    2. 在 dashboard 浏览页面下，点击新建导入一个 dashboard, 上传该 json 配置文件
 
+## 理解现有的监控指标
+
+以 OpenMLDB 集群系统为例，监控指标根据 prometheus pull job 不同，分为两类：
+
+1. DB-Level 指标，通过 OpenMLDB exporter 暴露，在 `prometheus_example.yml` 配置中对应 `job_name=openmldb_exporter`的一项：
+
+   ```yaml
+     - job_name: openmldb_exporter
+       # pull OpenMLDB DB-Level specific metric
+       # change the 'targets' value to your deployed OpenMLDB exporter endpoint
+       static_configs:
+         - targets:
+           - 172.17.0.15:8000
+   ```
+
+   暴露的指标类别主要为:
+
+   - component status: 集群组件状态
+
+   - table status: 数据库表相关信息，如 `rows_cout`, `memory_bytes`
+
+   - deploy query reponse time: deployment query 在 tablet 内部的运行时间
+
+   可通过
+
+   ```bash
+   curl http://172.17.0.15:8000/metrics
+   ```
+
+   查看完整 DB-Level 指标和帮助信息。
+
+2. Component-Level 指标。OpenMLDB 的相关组件（即 nameserver, tablet, etc), 本身作为 BRPC server，以及暴露了 [prometheus 相关指标](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar.md#export-to-prometheus)， 只需要配置 prometheus server 从对应地址拉取指标即可。对应 `prometheus_example.yml`中 `job_name=openmldb_components` 项：
+
+   ```yaml
+     - job_name: openmldb_components
+       # job to pull component metrics from OpenMLDB like tablet/nameserver
+       # tweak the 'targets' list in 'static_configs' on your need
+       # every nameserver/tablet component endpoint should be added into targets
+       metrics_path: /brpc_metrics
+       static_configs:
+         - targets:
+           - 172.17.0.15:9622
+   ```
+
+   暴露的指标主要是
+
+   - BRPC server 进程相关信息
+   - 对应 BRPC server 定义的 RPC method 相关指标，例如该 RPC 的请求 `count`, `error_count`, `qps` 和 `response_time`
+
+   通过
+
+   ```bash
+   curl http://${COMPONENT_IP}:${COMPONENT_PORT}/brpc_metrics
+   ```
+
+   查看指标和帮助信息。注意不同的组件暴露的指标会有所不同。

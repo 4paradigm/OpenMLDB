@@ -39,13 +39,14 @@ scrape_configs:
   - job_name: openmldb_components
     # job to pull component metrics from OpenMLDB like tablet/nameserver
     # tweak the 'targets' list in 'static_configs' on your need
+    # every nameserver/tablet component endpoint should be added into targets
     metrics_path: /brpc_metrics
     static_configs:
       - targets:
         - 172.17.0.15:9622
 
   - job_name: openmldb_exporter
-    # pull OpenMLDB specific metric
+    # pull OpenMLDB DB-Level specific metric
     # change the 'targets' value to your deployed OpenMLDB exporter endpoint
     static_configs:
       - targets:
