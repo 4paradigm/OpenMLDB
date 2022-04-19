@@ -311,14 +311,15 @@ Status UdfLibrary::Transform(const std::string& name, UdfResolveContext* ctx,
     std::shared_ptr<UdfRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
+    DLOG(INFO) << "Transform Resolve '" << canonical_name << "'<"
+               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << signature << ")";
     CHECK_STATUS(
         signature_table.Find(ctx, &registry, &signature, &variadic_pos),
         "Fail to find matching argument signature for ", canonical_name, ": <",
         ctx->GetArgSignature(), ">");
 
-    DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
-               << signature << ")";
+
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
 }
@@ -340,14 +341,15 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
     std::shared_ptr<UdfRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
+    DLOG(INFO) << "ResolveFunction Resolve '" << canonical_name << "'<"
+               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << signature << ")";
     CHECK_STATUS(
         signature_table.Find(ctx, &registry, &signature, &variadic_pos),
         "Fail to find matching argument signature for ", canonical_name, ": <",
         ctx->GetArgSignature(), ">");
 
-    DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
-               << signature << ")";
+
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);
 }
