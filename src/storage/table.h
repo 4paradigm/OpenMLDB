@@ -176,7 +176,7 @@ class Table {
     virtual inline uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
 
-    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0;
+    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0; // NOLINT
 
  protected:
     void UpdateTTL();
