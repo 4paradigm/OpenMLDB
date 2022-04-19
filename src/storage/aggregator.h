@@ -143,13 +143,11 @@ class Aggregator {
     bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
     void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) {
-        std::lock_guard<std::mutex> lock(mu_);
-        base_replicator_ = replicator;
+        std::atomic_store_explicit(&base_replicator_, replicator, std::memory_order_relaxed);
     }
 
     std::shared_ptr<LogReplicator> GetBaseReplicator() {
-        std::lock_guard<std::mutex> lock(mu_);
-        return base_replicator_;
+        return std::atomic_load_explicit(&base_replicator_, std::memory_order_relaxed);
     }
 
  protected:
