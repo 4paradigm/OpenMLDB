@@ -124,6 +124,8 @@ class SDKCatalog : public ::hybridse::vm::Catalog {
 
     std::shared_ptr<TabletAccessor> GetTablet() const;
 
+    std::vector<std::shared_ptr<TabletAccessor>> GetAllTablet() const;
+
     std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
                                                                      const std::string& sp_name) override;
 

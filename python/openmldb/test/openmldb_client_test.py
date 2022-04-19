@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.WARNING)
 class TestOpenMLDBClient(unittest.TestCase):
 
   def test_basic(self):
-    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));"
+    ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(partitionnum=1);"
     logging.info("test_basic ...")
     engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:6181&zkPath=/onebox')
     
