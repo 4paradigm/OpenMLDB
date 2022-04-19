@@ -325,7 +325,6 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(const std::string& cre
     table_info->name_ = create_plan->GetTableName();
     CHECK_TRUE(create_plan->ExtractColumnsAndIndexs(table_info->columns_, table_info->indexs_), common::kPlanError,
                "Invalid Create Plan Node");
-    table_info->storage_mode_ = create_plan->GetStorageMode();
     std::ostringstream oss;
     oss << "name: " << table_info->name_ << "\n";
     oss << "columns: [";
@@ -338,7 +337,6 @@ Status EngineTestRunner::ExtractTableInfoFromCreateString(const std::string& cre
         oss << index << ",";
     }
     oss << "]\n";
-    oss << "storage_mode: " << StorageModeName(table_info->storage_mode_) << "\n";
     LOG(INFO) << oss.str();
     return Status::OK();
 }
