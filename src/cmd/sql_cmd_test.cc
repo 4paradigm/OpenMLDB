@@ -384,49 +384,98 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, DeployLongWindowsExecute) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
+void CreateDBTableForLongWindow(const std::string& base_db, const std::string& base_table) {
     ::hybridse::sdk::Status status;
-    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t" + GenRand();
-    std::string base_db = "d" + GenRand();
     bool ok = sr->CreateDB(base_db, &status);
-    ASSERT_TRUE(ok);
-    std::string ddl = "create table " + base_table +
-                      "(col1 string, col2 string, col3 timestamp, col4 bigint, index(key=(col1,col2), ts=col3, "
-                      "abs_ttl=0, ttl_type=absolute)) "
-                      "options(partitionnum=8);";
+    ASSERT_TRUE(ok) << status.msg;
+    std::string ddl =
+        "create table " + base_table +
+        "(col1 string, col2 string, col3 timestamp, i64_col bigint, i16_col smallint, i32_col int, f_col "
+        "float, d_col double, t_col timestamp, s_col string, date_col date, index(key=(col1,col2), ts=col3, "
+        "abs_ttl=0, ttl_type=absolute)) "
+        "options(partitionnum=8);";
     ok = sr->ExecuteDDL(base_db, ddl, &status);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(ok) << status.msg;
     ASSERT_TRUE(sr->RefreshCatalog());
 
     auto ns_client = cs->GetNsClient();
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
-    ASSERT_EQ(tables.size(), 1);
+    ASSERT_EQ(tables.size(), 1) << msg;
+}
+
+void PrepareDataForLongWindow(const std::string& base_db, const std::string& base_table) {
+    ::hybridse::sdk::Status status;
+    for (int i = 1; i <= 11; i++) {
+        std::string val = std::to_string(i);
+        std::string date;
+        if (i < 10) {
+            date = absl::StrCat("1900-01-0", std::to_string(i));
+        } else {
+            date = absl::StrCat("1900-01-", std::to_string(i));
+        }
+        std::string insert =
+            absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", val, ", ", val, ", ", val, ", ", val,
+                         ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
+        bool ok = sr->ExecuteInsert(base_db, insert, &status);
+        ASSERT_TRUE(ok) << status.msg;
+    }
+}
+
+void PrepareRequestRowForLongWindow(const std::string& base_db, const std::string& sp_name,
+                                    std::shared_ptr<sdk::SQLRequestRow>& req) {  // NOLINT
+    ::hybridse::sdk::Status status;
+    req = sr->GetRequestRowByProcedure(base_db, sp_name, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(req->Init(strlen("str1") + strlen("str2") + strlen("11")));
+    ASSERT_TRUE(req->AppendString("str1"));
+    ASSERT_TRUE(req->AppendString("str2"));
+    ASSERT_TRUE(req->AppendTimestamp(11));
+    ASSERT_TRUE(req->AppendInt64(11));
+    ASSERT_TRUE(req->AppendInt16(11));
+    ASSERT_TRUE(req->AppendInt32(11));
+    ASSERT_TRUE(req->AppendFloat(11));
+    ASSERT_TRUE(req->AppendDouble(11));
+    ASSERT_TRUE(req->AppendTimestamp(11));
+    ASSERT_TRUE(req->AppendString("11"));
+    ASSERT_TRUE(req->AppendDate(11));
+    ASSERT_TRUE(req->Build());
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
 
     std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
-        " sum(col4) over w1 as w1_sum_col4, sum(col3) over w2 as w2_sum_col3"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " sum(i16_col) over w1 as w1_sum_i16_col,"
+        " sum(i32_col) over w1 as w1_sum_i32_col,"
+        " sum(f_col) over w1 as w1_sum_f_col,"
+        " sum(d_col) over w1 as w1_sum_d_col,"
+        " sum(t_col) over w1 as w1_sum_t_col,"
+        " sum(col3) over w2 as w2_sum_col3"
         " from " + base_table +
         " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
-        " w2 AS (PARTITION BY col1,col2 ORDER BY col4"
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
         " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
 
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    for (int i = 1; i <= 11; i++) {
-        std::string insert = "insert into " + base_table + " values('str1', 'str2', " +
-                             std::to_string(i) + ", " + std::to_string(i) +");";
-        ok = sr->ExecuteInsert(base_db, insert, &status);
-        ASSERT_TRUE(ok);
-    }
-
-    std::string result_sql = "select * from pre_test_aggr_w1_sum_col4;";
+    std::string result_sql = "select * from pre_test_aggr_w1_sum_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -442,15 +491,28 @@ TEST_P(DBSDKTest, DeployLongWindowsExecute) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    auto req = sr->GetRequestRowByProcedure(base_db, "test_aggr", &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_TRUE(req->Init(8));
-    ASSERT_TRUE(req->AppendString("str1"));
-    ASSERT_TRUE(req->AppendString("str2"));
-    ASSERT_TRUE(req->AppendTimestamp(11));
-    ASSERT_TRUE(req->AppendInt64(11));
-    ASSERT_TRUE(req->Build());
+    result_sql = "select * from pre_test_aggr_w1_sum_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
 
+    result_sql = "select * from pre_test_aggr_w1_sum_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_t_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    std::shared_ptr<sdk::SQLRequestRow> req;
+    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
     auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, res->Size());
@@ -459,10 +521,520 @@ TEST_P(DBSDKTest, DeployLongWindowsExecute) {
     ASSERT_EQ("str2", res->GetStringUnsafe(1));
     int64_t exp = 11 + 11 + 19 + 15 + 6;
     ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(3));
+    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(8));
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_sum_col4";
+    std::string pre_aggr_table = "pre_test_aggr_w1_sum_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " avg(i64_col) over w1 as w1_avg_i64_col,"
+        " avg(i16_col) over w1 as w1_avg_i16_col,"
+        " avg(i32_col) over w1 as w1_avg_i32_col,"
+        " avg(f_col) over w1 as w1_avg_f_col,"
+        " avg(d_col) over w1 as w1_avg_d_col,"
+        " avg(i64_col) over w2 as w2_avg_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_avg_i64_col;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    for (int i = 5; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        ASSERT_EQ(16, aggr_val_str.size());
+        double aggr_sum = *reinterpret_cast<double*>(&aggr_val_str[0]);
+        ASSERT_EQ(i * 4 - 1, aggr_sum);
+        int64_t aggr_count = *reinterpret_cast<int64_t*>(&aggr_val_str[sizeof(int64_t)]);
+        ASSERT_EQ(2, aggr_count);
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
+    }
+
+    result_sql = "select * from pre_test_aggr_w1_avg_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_avg_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_avg_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_avg_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    std::shared_ptr<sdk::SQLRequestRow> req;
+    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, res->Size());
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("str1", res->GetStringUnsafe(0));
+    ASSERT_EQ("str2", res->GetStringUnsafe(1));
+    double exp = static_cast<double>(11 + 11 + 19 + 15 + 6) / 7;
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(2));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(3));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(4));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(5));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(7));
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_avg_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_avg_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_avg_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_avg_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_avg_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " min(i64_col) over w1 as w1_min_i64_col,"
+        " min(i16_col) over w1 as w1_min_i16_col,"
+        " min(i32_col) over w1 as w1_min_i32_col,"
+        " min(f_col) over w1 as w1_min_f_col,"
+        " min(d_col) over w1 as w1_min_d_col,"
+        " min(t_col) over w1 as w1_min_t_col,"
+        " min(s_col) over w1 as w1_min_s_col,"
+        " min(date_col) over w1 as w1_min_date_col,"
+        " min(col3) over w2 as w2_min_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_min_i64_col;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    for (int i = 5; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
+        ASSERT_EQ(i * 2 - 1, aggr_val);
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
+    }
+
+    result_sql = "select * from pre_test_aggr_w1_min_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_t_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_s_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_min_date_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    std::shared_ptr<sdk::SQLRequestRow> req;
+    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, res->Size());
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("str1", res->GetStringUnsafe(0));
+    ASSERT_EQ("str2", res->GetStringUnsafe(1));
+    int64_t exp = 6;
+    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+    ASSERT_EQ("10", res->GetStringUnsafe(8));
+    ASSERT_EQ(exp, res->GetDateUnsafe(9));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_min_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_s_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_min_date_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " max(i64_col) over w1 as w1_max_i64_col,"
+        " max(i16_col) over w1 as w1_max_i16_col,"
+        " max(i32_col) over w1 as w1_max_i32_col,"
+        " max(f_col) over w1 as w1_max_f_col,"
+        " max(d_col) over w1 as w1_max_d_col,"
+        " max(t_col) over w1 as w1_max_t_col,"
+        " max(s_col) over w1 as w1_max_s_col,"
+        " max(date_col) over w1 as w1_max_date_col,"
+        " max(col3) over w2 as w2_max_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_max_i64_col;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    for (int i = 5; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
+        ASSERT_EQ(i * 2, aggr_val);
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
+    }
+
+    result_sql = "select * from pre_test_aggr_w1_max_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_t_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_s_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_max_date_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    std::shared_ptr<sdk::SQLRequestRow> req;
+    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, res->Size());
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("str1", res->GetStringUnsafe(0));
+    ASSERT_EQ("str2", res->GetStringUnsafe(1));
+    int64_t exp = 11;
+    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+    ASSERT_EQ("9", res->GetStringUnsafe(8));
+    ASSERT_EQ(exp, res->GetDateUnsafe(9));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_max_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_s_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_max_date_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " count(i64_col) over w1 as w1_count_i64_col,"
+        " count(i16_col) over w1 as w1_count_i16_col,"
+        " count(i32_col) over w1 as w1_count_i32_col,"
+        " count(f_col) over w1 as w1_count_f_col,"
+        " count(d_col) over w1 as w1_count_d_col,"
+        " count(t_col) over w1 as w1_count_t_col,"
+        " count(s_col) over w1 as w1_count_s_col,"
+        " count(date_col) over w1 as w1_count_date_col,"
+        " count(col3) over w2 as w2_count_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_count_i64_col;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    for (int i = 5; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
+        ASSERT_EQ(2, aggr_val);
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
+    }
+
+    result_sql = "select * from pre_test_aggr_w1_count_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_t_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_s_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_date_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    std::shared_ptr<sdk::SQLRequestRow> req;
+    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+    LOG(WARNING) << "Before CallProcedure";
+    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+    LOG(WARNING) << "After CallProcedure";
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, res->Size());
+    ASSERT_TRUE(res->Next());
+    ASSERT_EQ("str1", res->GetStringUnsafe(0));
+    ASSERT_EQ("str2", res->GetStringUnsafe(1));
+    int64_t exp = 7;
+    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(3));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(4));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(5));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(6));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(7));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(8));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(9));
+    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_count_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_s_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_date_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
