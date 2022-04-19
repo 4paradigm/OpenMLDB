@@ -645,13 +645,6 @@ TEST_F(UdfIRBuilderTest, lower_lcase) {
     delete buf2;
     delete buf3;
 }
-TEST_F(UdfIRBuilderTest, string_test) {
-    auto udf_name = "string_test";
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("\"{\\\"a\\\": {\\\"c\\\": \\\"c1\\\"}}\""), StringRef("{\"a\": {\"c\": \"c1\"}}"));
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("aa"), StringRef("aa"));
-    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, nullptr);
-}
-
 
 TEST_F(UdfIRBuilderTest, get_json_object) {
     auto udf_name = "get_json_object";

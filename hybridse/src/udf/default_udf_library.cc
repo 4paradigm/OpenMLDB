@@ -914,23 +914,6 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.4.5)");
 
-    RegisterExternal("string_test")
-        .args<StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::string_test)))
-        .return_by_arg(true)
-        .returns<Nullable<StringRef>>()
-        .doc(R"(
-            @brief Returns the reversed given string.
-
-            Example:
-
-            @code{.sql}
-                SELECT REVERSE('abc') as str1;
-                --output "cba"
-            @endcode
-            @since 0.4.0)");
-
-
     RegisterExternal("reverse")
         .args<StringRef>(
             reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::reverse)))
