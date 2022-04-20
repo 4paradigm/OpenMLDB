@@ -16,7 +16,6 @@
 
 #include "tablet/tablet_impl.h"
 
-#include <dlfcn.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -5376,88 +5375,13 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    std::shared_ptr<DynamicLibHandle> so_handle;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto iter = handle_map_.find(fun.file());
-        if (iter != handle_map_.end()) {
-            so_handle = iter->second;
-            so_handle->ref_cnt++;
-        }
+    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun.file());
+    if (status.isOK()) {
+        LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
+        return {};
+    } else {
+        return {base::kCreateFunctionFailed, status.msg};
     }
-    if (!so_handle) {
-        void* handle = dlopen(fun.file().c_str(), RTLD_LAZY);
-        if (handle == nullptr) {
-            LOG(WARNING) << "can not open the dynamic library: " << fun.file();
-            return {base::kCreateFunctionFailed, "can not open the dynamic library: " + fun.file()};
-        }
-        so_handle = std::make_shared<DynamicLibHandle>(handle);
-        std::lock_guard<std::mutex> lock(mu_);
-        handle_map_.emplace(fun.file(), so_handle);
-    }
-    std::string name = fun.name();
-    std::vector<void*> funcs;
-    bool run_ok = false;
-    std::string err_msg;
-    do {
-        if (fun.is_aggregate()) {
-            auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
-            if (init_fun == nullptr) {
-                err_msg = "can not find the init function: " + name;
-                break;
-            }
-            funcs.emplace_back(init_fun);
-            auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
-            if (update_fun == nullptr) {
-                err_msg = "can not find the update function: " + name;
-                break;
-            }
-            funcs.emplace_back(update_fun);
-            auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
-            if (output_fun == nullptr) {
-                err_msg = "can not find the output function: " + name;
-                break;
-            }
-            funcs.emplace_back(output_fun);
-        } else {
-            auto fun = dlsym(so_handle->handle, name.c_str());
-            if (fun == nullptr) {
-                err_msg = "can not find the function: " + name;
-                break;
-            }
-            funcs.emplace_back(fun);
-            run_ok = true;
-        }
-    } while (0);
-    if (run_ok) {
-        auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), funcs);
-        if (status.isOK()) {
-            LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
-        } else {
-            err_msg = status.msg;
-            run_ok = false;
-        }
-    }
-    if (!run_ok) {
-        LOG(WARNING) << err_msg;
-        std::shared_ptr<DynamicLibHandle> so_handle;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto iter = handle_map_.find(fun.file());
-            if (iter != handle_map_.end()) {
-                iter->second->ref_cnt--;
-                if (iter->second->ref_cnt == 0) {
-                    so_handle = iter->second;
-                    handle_map_.erase(iter);
-                }
-            }
-        }
-        if (so_handle) {
-            dlclose(so_handle->handle);
-        }
-        return {base::kCreateFunctionFailed, err_msg};
-    }
-    return {};
 }
 
 void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
@@ -5471,26 +5395,10 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
         arg_types.emplace_back(data_type);
     }
     engine_->ClearCacheLocked("");
-    auto status = engine_->RemoveExternalFunction(fun.name(), arg_types);
+    auto status = engine_->RemoveExternalFunction(fun.name(), arg_types, fun.file());
     if (status.isOK()) {
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
-        std::shared_ptr<DynamicLibHandle> so_handle;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto iter = handle_map_.find(fun.file());
-            if (iter != handle_map_.end()) {
-                iter->second->ref_cnt--;
-                if (iter->second->ref_cnt == 0) {
-                    so_handle = iter->second;
-                    handle_map_.erase(iter);
-                }
-            }
-        }
-        if (so_handle) {
-            LOG(INFO) << "close the handle. path " << fun.file();
-            dlclose(so_handle->handle);
-        }
     } else {
         LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
         response->set_msg(status.msg);
