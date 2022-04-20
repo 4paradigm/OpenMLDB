@@ -186,6 +186,20 @@ void PackDefaultDimension(const std::string& key, ::openmldb::api::PutRequest* r
     dimension->set_idx(0);
 }
 
+int PutKVData(uint32_t tid, uint32_t pid, const std::string& key, const std::string& value, uint64_t time,
+        TabletImpl* tablet) {
+    ::openmldb::api::PutRequest prequest;
+    PackDefaultDimension(key, &prequest);
+    prequest.set_time(time);
+    prequest.set_value(::openmldb::test::EncodeKV(key, value));
+    prequest.set_tid(tid);
+    prequest.set_pid(pid);
+    ::openmldb::api::PutResponse presponse;
+    MockClosure closure;
+    tablet->Put(NULL, &prequest, &presponse, &closure);
+    return presponse.code();
+}
+
 int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name,  // NOLINT
            ::openmldb::common::TTLSt* ttl) {
     ::openmldb::api::GetTableSchemaRequest request;
@@ -207,6 +221,67 @@ int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& in
         }
     }
     return -1;
+}
+int CreateDefaultTable(const std::string& db, const std::string& name, uint32_t tid, uint32_t pid,
+        uint32_t abs_ttl, uint32_t lat_ttl, ::openmldb::type::TTLType ttl_type, TabletImpl* tablet) {
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_db(db);
+    table_meta->set_name(name);
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    AddDefaultSchema(abs_ttl, lat_ttl, ttl_type, table_meta);
+    ::openmldb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet->CreateTable(NULL, &request, &response, &closure);
+    return response.code();
+}
+
+TEST_F(TabletImplTest, ChangeRole) {
+    TabletImpl tablet;
+    tablet.Init("");
+    // create table
+    MockClosure closure;
+    uint32_t id = counter++;
+    ASSERT_EQ(CreateDefaultTable("db0", "t0", id, 0, 0, 0, ::openmldb::type::TTLType::kLatestTime, &tablet), 0);
+    PutKVData(id, 0, "key", "value1", 1, &tablet);
+    {
+        ::openmldb::api::QueryRequest request;
+        request.set_db("db0");
+        request.set_sql("select * from t0;");
+        request.set_is_batch(true);
+        request.set_parameter_row_size(0);
+        request.set_parameter_row_slices(1);
+        ::openmldb::api::QueryResponse response;
+        brpc::Controller cntl;
+        tablet.Query(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.count());
+    }
+    {
+        ::openmldb::api::ChangeRoleRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_mode(::openmldb::api::TableMode::kTableFollower);
+        ::openmldb::api::ChangeRoleResponse response;
+        MockClosure closure;
+        tablet.ChangeRole(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    {
+        ::openmldb::api::QueryRequest request;
+        request.set_db("db0");
+        request.set_sql("select * from t0;");
+        request.set_is_batch(true);
+        request.set_parameter_row_size(0);
+        request.set_parameter_row_slices(1);
+        ::openmldb::api::QueryResponse response;
+        brpc::Controller cntl;
+        tablet.Query(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, response.count());
+    }
 }
 
 TEST_F(TabletImplTest, Count_Latest_Table) {
@@ -5836,6 +5911,7 @@ TEST_F(TabletImplTest, CreateAggregator) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
