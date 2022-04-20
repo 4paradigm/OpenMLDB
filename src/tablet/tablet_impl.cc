@@ -2364,9 +2364,6 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
-            } else {
-                PDLOG(WARNING, "can not get all table status now for disktable. tid %u, pid %u", request->tid(),
-                      request->pid());
             }
         }
     }
