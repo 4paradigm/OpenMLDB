@@ -2950,17 +2950,18 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 int fd = open(aggr_path.c_str(), O_RDONLY);
                 ::openmldb::api::CreateAggregatorRequest request;
                 if (fd < 0) {
-                    PDLOG(ERROR, "[%s] is not exist", aggr_path.c_str());
+                    PDLOG(ERROR, "open file failed: [%s] ", aggr_path.c_str());
                 } else {
                     google::protobuf::io::FileInputStream fileInput(fd);
                     fileInput.SetCloseOnDelete(true);
                     if (!google::protobuf::TextFormat::Parse(&fileInput, &request)) {
                         PDLOG(WARNING, "parse create aggregator meta failed");
-                    }
-                    std::string msg;
-                    bool ok = CreateAggregatorInternal(&request, msg);
-                    if (!ok) {
-                        PDLOG(WARNING, "create aggregator failed. msg %s", msg.c_str());
+                    } else {
+                        std::string msg;
+                        bool ok = CreateAggregatorInternal(&request, msg);
+                        if (!ok) {
+                            PDLOG(WARNING, "create aggregator failed. msg %s", msg.c_str());
+                        }
                     }
                 }
             }
@@ -2968,8 +2969,9 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             auto aggrs = GetAggregators(tid, pid);
             if (aggrs != nullptr) {
                 for (auto& aggr : *aggrs) {
-                    if (!aggr->GetBaseReplicator())
+                    if (!aggr->GetBaseReplicator()) {
                         aggr->SetBaseReplicator(replicator);
+                    }
                     if (!aggr->Init()) {
                         PDLOG(WARNING, "aggregator init failed");
                     }
@@ -5534,11 +5536,6 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
                              ::openmldb::api::CreateAggregatorResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string msg;
-    if (!CreateAggregatorInternal(request, msg)) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg(msg.c_str());
-        return;
-    }
 
     // persistent aggregator meta
     std::string aggr_path;
@@ -5572,6 +5569,11 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
         fclose(fd_write);
     }
     fclose(fd_write);
+    if (!CreateAggregatorInternal(request, msg)) {
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg(msg.c_str());
+        return;
+    }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     return;
 }
