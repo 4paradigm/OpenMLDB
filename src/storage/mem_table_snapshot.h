@@ -54,7 +54,8 @@ class MemTableSnapshot : public Snapshot {
 
     int MakeSnapshot(std::shared_ptr<Table> table,
                      uint64_t& out_offset,  // NOLINT
-                     uint64_t end_offset) override;
+                     uint64_t end_offset,
+                     uint64_t term = 0) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest, WriteHandle* wh,
                     uint64_t& count, uint64_t& expired_key_num,  // NOLINT

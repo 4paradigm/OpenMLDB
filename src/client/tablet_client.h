@@ -178,18 +178,19 @@ class TabletClient : public Client {
     bool UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type::TTLType& type, uint64_t abs_ttl,
                    uint64_t lat_ttl, const std::string& index_name);
 
-    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+    bool DeleteBinlog(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode);
 
     bool GetTaskStatus(::openmldb::api::TaskStatusResponse& response);  // NOLINT
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTermPair(uint32_t tid, uint32_t pid,
+                     ::openmldb::common::StorageMode storage_mode,  // NOLINT
                      uint64_t& term,                     // NOLINT
                      uint64_t& offset, bool& has_table,  // NOLINT
                      bool& is_leader);                   // NOLINT
 
-    bool GetManifest(uint32_t tid, uint32_t pid,
+    bool GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
                      ::openmldb::api::Manifest& manifest);  // NOLINT
 
     bool GetTableStatus(::openmldb::api::GetTableStatusResponse& response);  // NOLINT

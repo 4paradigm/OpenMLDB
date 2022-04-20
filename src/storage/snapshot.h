@@ -33,7 +33,8 @@ class Snapshot {
     virtual bool Init() = 0;
     virtual int MakeSnapshot(std::shared_ptr<Table> table,
                              uint64_t& out_offset,  // NOLINT
-                             uint64_t end_offset) = 0;
+                             uint64_t end_offset,
+                             uint64_t term = 0) = 0;
     virtual bool Recover(std::shared_ptr<Table> table,
                          uint64_t& latest_offset) = 0;  // NOLINT
     uint64_t GetOffset() { return offset_; }
