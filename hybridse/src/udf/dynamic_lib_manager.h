@@ -43,9 +43,7 @@ class DynamicLibManager {
 
     base::Status ExtractFunction(const std::string& name, bool is_aggregate,
             const std::string& file, std::vector<void*>* funs) {
-        if (funs == nullptr) {
-            return {common::kExternalUDFError, "funs is nullptr"};
-        }
+        CHECK_TRUE(funs != nullptr, common::kExternalUDFError, "funs is nullptr")
         std::shared_ptr<DynamicLibHandle> so_handle;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -57,9 +55,7 @@ class DynamicLibManager {
         }
         if (!so_handle) {
             void* handle = dlopen(file.c_str(), RTLD_LAZY);
-            if (handle == nullptr) {
-                return {common::kExternalUDFError, "can not open the dynamic library: " + file};
-            }
+            CHECK_TRUE(handle != nullptr, common::kExternalUDFError, "can not open the dynamic library: " + file)
             so_handle = std::make_shared<DynamicLibHandle>(handle);
             std::lock_guard<std::mutex> lock(mu_);
             handle_map_.emplace(file, so_handle);

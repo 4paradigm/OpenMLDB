@@ -199,9 +199,9 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
 
 Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type,
         const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
-    CHECK_TRUE(is_aggregate, kCodegenError, "unsupport register udaf")
+    CHECK_TRUE(!is_aggregate, kCodegenError, "unsupport register udaf")
     std::string canon_name = GetCanonicalName(name);
-    CHECK_TRUE(HasFunction(canon_name), kCodegenError, name + " has exist")
+    CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
     std::vector<void*> funs;
     if (file.empty()) {
         // use trivial_fun for compile only
@@ -209,7 +209,7 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     }  else {
         CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
     }
-    CHECK_TRUE(funs.empty() || funs[0] == nullptr, kCodegenError, name + " is nullptr")
+    CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
     void* fn = funs[0];
     DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
