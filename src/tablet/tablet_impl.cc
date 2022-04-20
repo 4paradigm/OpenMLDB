@@ -847,6 +847,10 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
             }
         }
     }
+    if (table_meta->storage_mode() == common::kUnknown) {
+        msg = "storage_mode is unknown";
+        return -1;
+    }
     return 0;
 }
 
