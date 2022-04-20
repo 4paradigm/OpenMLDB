@@ -342,7 +342,8 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     return cur_offset;
 }
 
-int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) {
+int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset,
+                                   uint64_t term) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now!");
         return 0;
@@ -375,7 +376,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     uint64_t write_count = 0;
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
-    uint64_t last_term = 0;
+    uint64_t last_term = term;
     int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
         // filter old snapshot

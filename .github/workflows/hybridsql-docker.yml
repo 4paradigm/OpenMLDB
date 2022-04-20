@@ -50,13 +50,22 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
             ${{ env.DOCKERHUB_REPO }}/${{ env.IMAGE_NAME }}
-          # tagging ruels, means in order(event -> result tag):
-          # 1. push tag docker-0.4.1 -> 0.4.1
-          # 2. push tag docker-0.4.1 -> 0.4
-          # 3. pull request
-          # 4. push to main -> latest
-          # 5. workflow_dispatch -> workflow_dispatch
+          flavor:
+            # turn latest=false to avoid generate latest tag for any 'docker-*' tag push event
+            # refer https://github.com/docker/metadata-action#latest-tag
+            latest=false
+          # expected tag results by trigger event
+          # 1. tag docker-0.4.1 -> [0.4, 0.4.1]
+          # 2. push to main -> latest
+          # 3. pull request -> pull request name (won't publish)
+          # 4. workflow_dispatch -> workflow_dispatch (won't publish)
           tags: |
+            # tagging rules, means in order(event -> result tag):
+            # 1. push tag docker-0.4.1 -> 0.4.1
+            # 2. push tag docker-0.4.1 -> 0.4
+            # 3. pull request -> pull request name
+            # 4. push to main -> latest
+            # 5. workflow_dispatch -> workflow_dispatch
             type=ref,event=pr
             type=match,pattern=docker-(.*),group=1
             type=match,pattern=docker-(\d.\d),group=1

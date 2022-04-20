@@ -49,6 +49,7 @@
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
+DECLARE_uint32(replica_num);
 
 namespace openmldb {
 namespace sdk {
@@ -1482,6 +1483,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 std::vector<std::string> vec2 = {ss.str()};
                 result.emplace_back(std::move(vec2));
             }
+            ss.str("");
+            std::unordered_map<std::string, std::string> options;
+            options["storage_mode"] = StorageMode_Name(table->storage_mode());
+            // remove the prefix 'k', i.e., change kMemory to Memory
+            options["storage_mode"] = options["storage_mode"].substr(1, options["storage_mode"].size() - 1);
+            ::openmldb::cmd::PrintTableOptions(options, ss);
+            result.emplace_back(std::vector{ss.str()});
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
 
@@ -1784,19 +1792,15 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
 
-    if (!cluster_sdk_->IsClusterMode()) {
-        if (create_node->GetReplicaNum() != 1) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the replica configuration in standalone mode");
-        }
-        if (!create_node->GetDistributionList().empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the distribution configuration in standalone mode");
-        }
-    }
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+    all_tablet = cluster_sdk_->GetAllTablet();
+    // set dafault value
+    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
+    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, default_replica_num,
+                                                      is_cluster_mode, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
