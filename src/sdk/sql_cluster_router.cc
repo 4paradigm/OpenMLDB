@@ -49,6 +49,7 @@
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
+DECLARE_uint32(replica_num);
 
 namespace openmldb {
 namespace sdk {
@@ -1518,6 +1519,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
                 cluster_sdk_->RemoveExternalFun(name);
+                auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+                if (taskmanager_client) {
+                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    if (!base_status.OK()) {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                        return {};
+                    }
+                }
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
@@ -1776,19 +1785,15 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
 
-    if (!cluster_sdk_->IsClusterMode()) {
-        if (create_node->GetReplicaNum() != 1) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the replica configuration in standalone mode");
-        }
-        if (!create_node->GetDistributionList().empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the distribution configuration in standalone mode");
-        }
-    }
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+    all_tablet = cluster_sdk_->GetAllTablet();
+    // set dafault value
+    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
+    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, default_replica_num,
+                                                      is_cluster_mode, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
@@ -2809,6 +2814,24 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
     }
     fun.set_file((*option)["FILE"]->GetExprString());
+    if (cluster_sdk_->IsClusterMode()) {
+        if (option->find("OFFLINE_FILE") == option->end()) {
+            if (fun.file().find('/') == std::string::npos) {
+                fun.set_offline_file(fun.file());
+            } else {
+                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+            }
+        } else {
+            fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
+        }
+    }
+    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+    if (taskmanager_client) {
+        auto ret = taskmanager_client->CreateFunction(fun);
+        if (!ret.OK()) {
+            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+        }
+    }
     auto ns = cluster_sdk_->GetNsClient();
     auto ret = ns->CreateFunction(fun);
     if (!ret.OK()) {

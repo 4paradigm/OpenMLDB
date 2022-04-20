@@ -225,6 +225,7 @@ int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
 float Cotf(float x);
+double Degrees(double x);
 
 void date_format(Date *date, const std::string &format,
                  StringRef *output);
