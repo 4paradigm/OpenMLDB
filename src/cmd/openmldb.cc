@@ -53,8 +53,6 @@
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
-#include "schema/schema_adapter.h"
-#include "sdk/result_set_sql.h"
 #include "version.h"  // NOLINT
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
@@ -1878,13 +1876,27 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
         return;
     }
     uint32_t tid = tables[0].tid();
-    ::hybridse::vm::Schema schema;
-    ::openmldb::schema::SchemaAdapter::ConvertSchema(tables[0].column_desc(), &schema);
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    for (int idx = 0; idx < tables[0].column_desc_size(); idx++) {
-        t.add(tables[0].column_desc(idx).name());
+    ::openmldb::codec::SDKCodec codec(tables[0]);
+    bool has_ts_col = codec.HasTSCol();
+    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
+    std::vector<std::string> row;
+    uint64_t max_size = 0;
+    if (no_schema) {
+        row.push_back("#");
+        row.push_back("key");
+        row.push_back("ts");
+        row.push_back("data");
+    } else {
+        row = codec.GetColNames();
+        if (!has_ts_col) {
+            row.insert(row.begin(), "ts");
+        }
+        row.insert(row.begin(), "#");
+        max_size = row.size();
     }
-    t.end_of_row();
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+    tp.AddRow(row);
+    uint32_t index = 1;
     for (uint32_t pid = 0; pid < (uint32_t)tables[0].table_partition_size(); pid++) {
         if (limit == 0) {
             break;
@@ -1894,26 +1906,51 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             std::cout << "failed to preview. error msg: " << msg << std::endl;
             return;
         }
-        auto cntl = std::make_shared<brpc::Controller>();
-        ::openmldb::api::TraverseResponse response;
-        if (!tb_client->Traverse(tid, pid, "", "", 0, limit, cntl.get(), &response)) {
+        uint32_t count = 0;
+        ::openmldb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        if (it == NULL) {
             std::cout << "Fail to preview table" << std::endl;
             return;
         }
-        uint32_t count = response.count();
         limit -= count;
-        auto result_set = ::openmldb::sdk::ResultSetSQL::MakeResultSet(schema, response.count(),
-                response.buf_size(), cntl);
-        while (result_set->Next()) {
-            for (int idx = 0; idx < tables[0].column_desc_size(); idx++) {
-                std::string val;
-                result_set->GetAsString(idx, val);
-                t.add(val);
+        while (it->Valid()) {
+            row.clear();
+            row.push_back(std::to_string(index));
+
+            if (no_schema) {
+                std::string value = it->GetValue().ToString();
+                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
+                    std::string uncompressed;
+                    ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+                    value = uncompressed;
+                }
+                row.push_back(it->GetPK());
+                row.push_back(std::to_string(it->GetKey()));
+                row.push_back(value);
+            } else {
+                if (!has_ts_col) {
+                    row.push_back(std::to_string(it->GetKey()));
+                }
+                std::string value;
+                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
+                    ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
+                } else {
+                    value.assign(it->GetValue().data(), it->GetValue().size());
+                }
+                codec.DecodeRow(value, &row);
+                ::openmldb::cmd::TransferString(&row);
+                uint64_t row_size = row.size();
+                for (uint64_t i = 0; i < max_size - row_size; i++) {
+                    row.push_back("");
+                }
             }
-            t.end_of_row();
+            tp.AddRow(row);
+            index++;
+            it->Next();
         }
+        delete it;
     }
-    std::cout << t;
+    tp.Print(true);
 }
 
 void HandleNSAddTableField(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {

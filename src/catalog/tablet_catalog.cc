@@ -118,8 +118,9 @@ bool TabletTableHandler::UpdateIndex(
 
 std::unique_ptr<::hybridse::codec::RowIterator> TabletTableHandler::GetIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients;
     if (!tables->empty()) {
-        return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
+        return std::make_unique<catalog::FullTableIterator>(GetTid(), tables, tablet_clients);
     }
     return std::unique_ptr<::hybridse::codec::RowIterator>();
 }
@@ -133,8 +134,7 @@ std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindow
     DLOG(INFO) << "get window it with index " << idx_name;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     if (!tables->empty()) {
-        return std::unique_ptr<::hybridse::codec::WindowIterator>(
-            new DistributeWindowIterator(tables, iter->second.index));
+        return std::make_unique<DistributeWindowIterator>(tables, iter->second.index);
     }
     return std::unique_ptr<::hybridse::codec::WindowIterator>();
 }
@@ -150,8 +150,9 @@ const ::hybridse::codec::Row TabletTableHandler::Get(int32_t pos) {
 
 ::hybridse::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
+    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients;
     if (!tables->empty()) {
-        return new catalog::FullTableIterator(tables);
+        return new catalog::FullTableIterator(GetTid(), tables, tablet_clients);
     }
     return nullptr;
 }
@@ -248,7 +249,7 @@ std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std:
 
 std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
                                                                       const std::vector<std::string>& pks) {
-    std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
+    auto tablets_accessor = std::make_shared<TabletsAccessor>();
     for (const auto& pk : pks) {
         auto tablet_accessor = GetTablet(index_name, pk);
         if (tablet_accessor) {
