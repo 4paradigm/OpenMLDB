@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 #include <mutex>
 #include "base/fe_status.h"
 
@@ -40,7 +41,8 @@ class DynamicLibManager {
  public:
     DynamicLibManager() = default;
 
-    base::Status ExtractFunction(const std::string& name, bool is_aggregate, const std::string& file, std::vector<void*>* funs) {
+    base::Status ExtractFunction(const std::string& name, bool is_aggregate,
+            const std::string& file, std::vector<void*>* funs) {
         if (funs == nullptr) {
             return {common::kExternalUDFError, "funs is nullptr"};
         }

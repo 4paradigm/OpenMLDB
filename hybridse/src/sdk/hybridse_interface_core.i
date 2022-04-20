@@ -122,8 +122,6 @@ using hybridse::codec::WindowIterator;
 using hybridse::node::DataType;
 %}
 
-%template(VectorDataType) std::vector<hybridse::node::DataType>;
-
 %rename(BaseStatus) hybridse::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
@@ -176,3 +174,5 @@ using hybridse::node::DataType;
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
 %include "vm/mem_catalog.h"
+
+%template(VectorDataType) std::vector<hybridse::node::DataType>;
