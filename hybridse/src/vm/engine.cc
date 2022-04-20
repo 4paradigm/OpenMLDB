@@ -275,9 +275,6 @@ base::Status Engine::RegisterExternalFunction(const std::string& name, node::Dat
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }
-    if (file.empty()) {
-        return {common::kExternalUDFError, "so name is empty"};
-    }
     auto lib = udf::DefaultUdfLibrary::get();
     return lib->RegisterDynamicUdf(name, return_type, arg_types, is_aggregate, file);
 }

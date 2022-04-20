@@ -104,9 +104,8 @@ class DynamicLibManager {
             }
         }
         if (so_handle) {
-            if (dlclose(so_handle->handle) != 0) {
-                return {common::kExternalUDFError, "dlclose run error. file is " + file};
-            }
+            CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError,
+                    "dlclose run error. file is " + file)
         }
         return {};
     }
