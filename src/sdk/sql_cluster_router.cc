@@ -1529,13 +1529,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 }
                 std::string arg_type = "";
                 for (int i = 0; i < fun_info.arg_type_size(); i++) {
-                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)));
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
                     if (i != fun_info.arg_type_size() - 1) {
                         arg_type = absl::StrCat(arg_type, "|");
                     }
                 }
                 std::vector<std::string> vec = {fun_info.name(),
-                                                openmldb::type::DataType_Name(fun_info.return_type()),
+                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
                                                 arg_type,
                                                 is_aggregate,
                                                 fun_info.file(),

@@ -90,11 +90,23 @@ TEST_P(DBSDKTest, CreateFunction) {
                     int2str_sql
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
-    ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
-                          {"cut2", "string", "string", "false", "libtest_udf.so", "libtest_udf.so"},
-                          {"int2str", "int", "string", "false", "libtest_udf.so", "libtest_udf.so"},
-                          {"strlength", "string", "int", "false", "libtest_udf.so", "libtest_udf.so"}},
-                         result.get());
+    if (cs->IsClusterMode()) {
+        ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+                              {"cut2", "Varchar", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
+                               "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"},
+                              {"int2str", "Varchar", "Int", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
+                               "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"},
+                              {"strlength", "Int", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
+                               "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"}},
+                             result.get());
+    } else {
+        ExpectResultSetStrEq(
+            {{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+             {"cut2", "Varchar", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""},
+             {"int2str", "Varchar", "Int", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""},
+             {"strlength", "Int", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""}},
+            result.get());
+    }
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
