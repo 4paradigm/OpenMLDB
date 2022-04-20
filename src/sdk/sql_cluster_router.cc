@@ -1523,10 +1523,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> lines;
             for (auto& fun_info : funs) {
-                std::vector<std::string> vec = {fun_info.name()};
+                std::vector<std::string> vec = {fun_info.name(),     fun_info.return_type(),
+                                                fun_info.arg_type(), fun_info.is_aggerate(),
+                                                fun_info.file(),     fun_info.offline_file()};
                 lines.push_back(vec);
             }
-            return ResultSetSQL::MakeResultSet({"Udf_function"}, lines, status);
+            return ResultSetSQL::MakeResultSet(
+                {"name", "return_type", "arg_type", "is_aggerate", "file", "offline_file"}, lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
