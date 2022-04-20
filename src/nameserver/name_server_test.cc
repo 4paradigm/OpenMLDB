@@ -34,6 +34,8 @@
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -62,7 +64,8 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
-class NameServerImplTest : public ::testing::Test {
+
+class NameServerImplTest : public ::testing::TestWithParam<::openmldb::common::StorageMode> {
  public:
     NameServerImplTest() {}
     ~NameServerImplTest() {}
@@ -125,7 +128,9 @@ bool CreateDB(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& na
     return ret;
 }
 
-TEST_F(NameServerImplTest, MakesnapshotTask) {
+TEST_P(NameServerImplTest, MakesnapshotTask) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
     FLAGS_zk_cluster = "127.0.0.1:6181";
     int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
@@ -146,6 +151,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     TablePartition* partion = table_info->add_table_partition();
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     partion->set_pid(0);
@@ -181,9 +187,17 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string table_index_node = FLAGS_zk_root_path + "/table/table_index";
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
-    std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+
+    std::string snapshot_path;
+    if (storage_mode == ::openmldb::common::kMemory) {
+        snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        snapshot_path = FLAGS_ssd_root_path + "/" + value + "_0/snapshot/";
+    } else {
+        snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
+    }
     std::vector<std::string> vec;
-    int cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
+    int cnt = ::openmldb::base::GetChildFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, (int64_t)vec.size());
 
@@ -250,9 +264,15 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     table_index_node = FLAGS_zk_root_path + "/table/table_index";
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
-    snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    if (storage_mode == ::openmldb::common::kMemory) {
+        snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        snapshot_path = FLAGS_ssd_root_path + "/" + value + "_0/snapshot/";
+    } else {
+        snapshot_path = FLAGS_hdd_root_path + "/" + value + "_0/snapshot/";
+    }
     vec.clear();
-    cnt = ::openmldb::base::GetFileName(snapshot_path, vec);
+    cnt = ::openmldb::base::GetChildFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, (int64_t)vec.size());
 
@@ -273,9 +293,12 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_FALSE(ok);
 
     FLAGS_make_snapshot_threshold_offset = old_offset;
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
 }
 
-TEST_F(NameServerImplTest, ConfigGetAndSet) {
+TEST_P(NameServerImplTest, ConfigGetAndSet) {
+    openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -337,7 +360,9 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     delete nameserver1;
 }
 
-TEST_F(NameServerImplTest, CreateTable) {
+TEST_P(NameServerImplTest, CreateTable) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -385,6 +410,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -412,9 +438,19 @@ TEST_F(NameServerImplTest, CreateTable) {
     ASSERT_EQ(0, response.code());
     delete nameserver;
     delete tablet;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_2");
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_2");
 }
 
-TEST_F(NameServerImplTest, Offline) {
+TEST_P(NameServerImplTest, Offline) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_auto_failover = true;
@@ -437,7 +473,12 @@ TEST_F(NameServerImplTest, Offline) {
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
+    std::string old_db_root_path = FLAGS_db_root_path;
+    std::string old_ssd_root_path = FLAGS_ssd_root_path;
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
@@ -457,6 +498,10 @@ TEST_F(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
+    std::string tmp_ssd_root_path = FLAGS_ssd_root_path;
+    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
+    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
@@ -482,6 +527,7 @@ TEST_F(NameServerImplTest, Offline) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
     PartitionMeta* meta = partion->add_partition_meta();
@@ -530,9 +576,18 @@ TEST_F(NameServerImplTest, Offline) {
     delete nameserver;
     delete tablet;
     delete tablet2;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path);
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    ::openmldb::base::RemoveDirRecursive(tmp_ssd_root_path);
+    ::openmldb::base::RemoveDirRecursive(tmp_hdd_root_path);
+    FLAGS_ssd_root_path = old_ssd_root_path;
+    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-TEST_F(NameServerImplTest, SetTablePartition) {
+TEST_P(NameServerImplTest, SetTablePartition) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -589,6 +644,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
@@ -648,6 +704,14 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 
     delete nameserver;
     delete tablet;
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_2");
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_2");
 }
 
 TEST_F(NameServerImplTest, CancelOP) {
@@ -731,6 +795,8 @@ void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl
     }
     for (uint64_t i = 0; i < services.size(); i++) {
         FLAGS_db_root_path = "/tmp/test4" + ::openmldb::test::GenRand();
+        FLAGS_ssd_root_path = "/tmp/ssd/test4" + openmldb::test::GenRand();
+        FLAGS_hdd_root_path = "/tmp/hdd/test4" + openmldb::test::GenRand();
         port += 500;
         FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
 
@@ -783,7 +849,12 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     return;
 }
 
-TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
+TEST_P(NameServerImplTest, AddAndRemoveReplicaCluster) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
+    std::string old_ssd_root_path = FLAGS_ssd_root_path;
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
+
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -888,6 +959,7 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
+    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
@@ -948,9 +1020,19 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
+    ::openmldb::base::RemoveDirRecursive("/tmp/ssd/test4");
+    FLAGS_ssd_root_path = old_ssd_root_path;
+    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
+TEST_P(NameServerImplTest, SyncTableReplicaCluster) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
+    std::string old_ssd_root_path = FLAGS_ssd_root_path;
+    std::string old_hdd_root_path = FLAGS_hdd_root_path;
+
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -1051,6 +1133,7 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     TableInfo* table_info = create_table_request.mutable_table_info();
     string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
+    table_info->set_storage_mode(storage_mode);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
@@ -1105,6 +1188,11 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/ssd/test4");
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
+    FLAGS_ssd_root_path = old_ssd_root_path;
+    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
 /* TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
@@ -1426,7 +1514,9 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     }
 } */
 
-TEST_F(NameServerImplTest, ShowCatalogVersion) {
+TEST_P(NameServerImplTest, ShowCatalogVersion) {
+    openmldb::common::StorageMode storage_mode = GetParam();
+
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -1453,6 +1543,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1490,6 +1581,7 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
+        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1517,7 +1609,17 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
         PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
     }
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_1");
+
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
+    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
 }
+
+INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, NameServerImplTest,
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD,
+                                          ::openmldb::common::kHDD));
 
 }  // namespace nameserver
 }  // namespace openmldb
@@ -1529,6 +1631,12 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
+    // used to check if files are removed properly.
+    // FLAGS_db_root_path = "/tmp/1";
+    // FLAGS_ssd_root_path = "/tmp/ssd/1";
+    // FLAGS_hdd_root_path = "/tmp/hdd/1";
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

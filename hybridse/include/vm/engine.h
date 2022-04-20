@@ -401,10 +401,11 @@ class Engine {
 
     base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
                                      const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                     const std::vector<void*>& funcs);
+                                     const std::string& file);
 
     base::Status RemoveExternalFunction(const std::string& name,
-                                     const std::vector<node::DataType>& arg_types);
+                                     const std::vector<node::DataType>& arg_types,
+                                     const std::string& file);
 
     /// \brief Same as above, but allowing compiling with configuring common column indices.
     ///

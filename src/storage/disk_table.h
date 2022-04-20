@@ -363,8 +363,6 @@ class DiskTable : public Table {
 
     bool Init() override;
 
-    bool LoadTable();
-
     static void initOptionTemplate();
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
@@ -424,6 +422,8 @@ class DiskTable : public Table {
     uint64_t GetRecordPkCnt() override;
     inline uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
+
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
 
  private:
     rocksdb::DB* db_;

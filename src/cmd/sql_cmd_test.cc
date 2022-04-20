@@ -243,6 +243,67 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
+TEST_P(DBSDKTest, Desc) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
+    std::string db = "db" + GenRand();
+    sr->ExecuteSQL("create database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date) options(storage_mode='Memory');";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    std::string desc_sql = "desc trans;";
+    auto rs = sr->ExecuteSQL(desc_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(3, rs->Size());
+
+    std::string expect_schema =
+        " --- ------- ----------- ------ --------- \n"
+        "  #   Field   Type        Null   Default  \n"
+        " --- ------- ----------- ------ --------- \n"
+        "  1   c1      Varchar     YES             \n"
+        "  2   c3      Int         YES             \n"
+        "  3   c4      BigInt      YES             \n"
+        "  4   c5      Float       YES             \n"
+        "  5   c6      Double      YES             \n"
+        "  6   c7      Timestamp   YES             \n"
+        "  7   c8      Date        YES             \n"
+        " --- ------- ----------- ------ --------- \n";
+
+    std::string expect_options =
+        " -------------- \n"
+        "  storage_mode  \n"
+        " -------------- \n"
+        "  Memory        \n"
+        " -------------- \n\n";
+
+    // index name is dynamically assigned. do not check here
+    std::vector<std::string> expect = {expect_schema, "", expect_options};
+    int count = 0;
+    while (rs->Next()) {
+        std::string val;
+        rs->GetString(0, &val);
+        if (!expect[count].empty()) {
+            EXPECT_EQ(expect[count], val);
+        }
+        count++;
+    }
+    sr->ExecuteSQL("drop table trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL("drop database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+}
+
 TEST_F(SqlCmdTest, LoadData) {
     sr = standalone_cli.sr;
     cs = standalone_cli.cs;

@@ -180,12 +180,16 @@ bool DiskTable::Init() {
     }
     InitColumnFamilyDescriptor();
     std::string path = table_path_ + "/data";
+    if (!openmldb::base::IsExists(path)) {
+        PDLOG(INFO, "Create new disk table with path %s", path);
+    }
+
     if (!::openmldb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
     }
     options_.create_if_missing = true;
-    options_.error_if_exists = true;
+    options_.error_if_exists = false;
     options_.create_missing_column_families = true;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
@@ -310,27 +314,6 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 }
 
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
-
-bool DiskTable::LoadTable() {
-    if (!InitFromMeta()) {
-        return false;
-    }
-    InitColumnFamilyDescriptor();
-    std::string path = table_path_ + "/data";
-    if (!openmldb::base::IsExists(path)) {
-        return false;
-    }
-    options_.create_if_missing = false;
-    options_.error_if_exists = false;
-    options_.create_missing_column_families = false;
-    rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
-    DEBUGLOG("Load DB. tid %u pid %u ColumnFamilyHandle size %u,", id_, pid_, GetIdxCnt());
-    if (!s.ok()) {
-        PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-        return false;
-    }
-    return true;
-}
 
 void DiskTable::SchedGc() {
     GcHead();
@@ -1130,6 +1113,58 @@ uint64_t DiskTable::GetRecordPkCnt() {
 
 uint64_t DiskTable::GetRecordIdxByteSize() {
     // TODO(litongxin)
+    return 0;
+}
+
+int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
+    PDLOG(WARNING, "Count in disk table is slow");
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
+    if (index_def && !index_def->IsReady()) {
+        return -1;
+    }
+    uint32_t inner_pos = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_pos);
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+
+    bool has_ts_idx = false;
+    uint32_t ts_idx;
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        has_ts_idx = true;
+        auto ts_col = index_def->GetTsColumn();
+        ts_idx = ts_col->GetId();
+    }
+
+    std::string combine;
+    uint64_t tmp_ts = UINT64_MAX;
+    if (has_ts_idx) {
+        combine = CombineKeyTs(pk, tmp_ts, ts_idx);
+    } else {
+        combine = CombineKeyTs(pk, tmp_ts);
+    }
+    it->Seek(rocksdb::Slice(combine));
+
+    count = 0;
+    for (; it->Valid(); it->Next()) {
+        uint32_t cur_ts_idx = UINT32_MAX;
+        std::string cur_pk;
+        uint64_t cur_ts;
+
+        ParseKeyAndTs(has_ts_idx, it->key(), cur_pk, cur_ts, cur_ts_idx);
+        if (cur_pk == pk) {
+            if (has_ts_idx && (cur_ts_idx != ts_idx)) {
+                break;
+            }
+            count++;
+        } else {
+            break;
+        }
+    }
+
     return 0;
 }
 

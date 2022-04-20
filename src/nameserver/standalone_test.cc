@@ -19,6 +19,7 @@
 #include <sched.h>
 #include <unistd.h>
 
+#include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
@@ -32,6 +33,8 @@
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -83,6 +86,27 @@ TEST_F(StandaloneTest, smoketest) {
     ASSERT_TRUE(client.CreateTable(table_info, false, msg));
 }
 
+TEST_F(StandaloneTest, smoketestdisk) {
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
+    brpc::Server tablet;
+    ASSERT_TRUE(::openmldb::test::StartTablet("127.0.0.1:9530", &tablet));
+
+    brpc::Server server;
+    ASSERT_TRUE(::openmldb::test::StartNS("127.0.0.1:9631", "127.0.0.1:9530", &server));
+    ::openmldb::client::NsClient client("127.0.0.1:9631", "");
+    ASSERT_EQ(client.Init(), 0);
+
+    TableInfo table_info;
+    table_info.set_storage_mode(openmldb::common::kHDD);
+    std::string name = "test" + ::openmldb::test::GenRand();
+    table_info.set_name(name);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, &table_info);
+    std::string msg;
+    ASSERT_TRUE(client.CreateTable(table_info, false, msg));
+
+    openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+}
+
 
 }  // namespace nameserver
 }  // namespace openmldb
@@ -94,5 +118,6 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
     return RUN_ALL_TESTS();
 }
