@@ -104,6 +104,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_partition_num(partition_num);
 
     table->set_format_version(1);
+    table->set_storage_mode(static_cast<common::StorageMode>(storage_mode));
     bool has_generate_index = false;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {

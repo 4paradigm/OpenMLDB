@@ -847,6 +847,10 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
             }
         }
     }
+    if (table_meta->storage_mode() == common::kUnknown) {
+        msg = "storage_mode is unknown";
+        return -1;
+    }
     return 0;
 }
 
@@ -3025,7 +3029,8 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
         std::string db_root_path;
         bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
         if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, pid,
+                  common::StorageMode_Name(table->GetStorageMode()));
             break;
         }
         std::string binlog_path = GetDBPath(db_root_path, tid, pid) + "/binlog/";
@@ -3062,7 +3067,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         std::string db_root_path;
         bool ok = ChooseDBRootPath(tid, pid, table_meta.storage_mode(), db_root_path);
         if (!ok) {
-            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+            PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, pid,
+                  common::StorageMode_Name(table_meta.storage_mode()));
             break;
         }
         std::string table_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
@@ -3277,7 +3283,8 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, table_meta->storage_mode(), db_root_path);
     if (!ok) {
-        PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u]", tid, pid);
+        PDLOG(WARNING, "fail to find db root path tid[%u] pid[%u] storage_mode[%s]", tid, pid,
+              common::StorageMode_Name(table_meta->storage_mode()));
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to find db root path");
         return;
@@ -4641,7 +4648,8 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
     uint32_t pid = table->GetPid();
     std::string db_root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
-        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, pid,
+              common::StorageMode_Name(table->GetStorageMode()));
         SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
@@ -4665,7 +4673,8 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
             }
             std::string des_db_root_path;
             if (!ChooseDBRootPath(tid, kv.first, table->GetStorageMode(), des_db_root_path)) {
-                PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, kv.first);
+                PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, kv.first,
+                      common::StorageMode_Name(table->GetStorageMode()));
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
@@ -4793,7 +4802,8 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
     uint32_t pid = table->GetPid();
     std::string db_root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
-        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, pid,
+              common::StorageMode_Name(table->GetStorageMode()));
         SetTaskStatus(task, ::openmldb::api::kFailed);
         return;
     }
@@ -4911,7 +4921,8 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
     std::string db_root_path;
     bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
     if (!ok) {
-        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u", tid, pid);
+        PDLOG(WARNING, "fail to find db root path for table tid %u pid %u storage_mode %s", tid, pid,
+              common::StorageMode_Name(table->GetStorageMode()));
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }

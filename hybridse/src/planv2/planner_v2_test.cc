@@ -621,6 +621,11 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
                 }
                 break;
             }
+            case hybridse::node::kStorageMode: {
+                ASSERT_EQ(node::kMemory,
+                          dynamic_cast<hybridse::node::StorageModeNode *>(table_option)->GetStorageMode());
+                break;
+            }
             default: {
                 LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
                              << " for table node";
