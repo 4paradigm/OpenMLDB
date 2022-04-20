@@ -90,10 +90,10 @@ TEST_P(DBSDKTest, CreateFunction) {
                     int2str_sql
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
-    ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggerate", "file", "offline_file"},
-                          {"cut2", "STRING", "STRING", "false", "libtest_udf.so", "libtest_udf.so"},
-                          {"int2str", "INT", "STRING", "false", "libtest_udf.so", "libtest_udf.so"},
-                          {"strlength", "STRING", "INT", "false", "libtest_udf.so", "libtest_udf.so"}},
+    ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+                          {"cut2", "string", "string", "false", "libtest_udf.so", "libtest_udf.so"},
+                          {"int2str", "int", "string", "false", "libtest_udf.so", "libtest_udf.so"},
+                          {"strlength", "string", "int", "false", "libtest_udf.so", "libtest_udf.so"}},
                          result.get());
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());

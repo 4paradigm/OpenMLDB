@@ -1523,13 +1523,27 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> lines;
             for (auto& fun_info : funs) {
-                std::vector<std::string> vec = {fun_info.name(),     fun_info.return_type(),
-                                                fun_info.arg_type(), fun_info.is_aggerate(),
-                                                fun_info.file(),     fun_info.offline_file()};
+                std::string is_aggregate = "false";
+                if (fun_info.is_aggregate()) {
+                    is_aggregate = "true";
+                }
+                std::string arg_type = "";
+                for (int i = 0; i < fun_info.arg_type_size(); i++) {
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)));
+                    if (i != fun_info.arg_type_size() - 1) {
+                        arg_type = absl::StrCat(arg_type, "|");
+                    }
+                }
+                std::vector<std::string> vec = {fun_info.name(),
+                                                openmldb::type::DataType_Name(fun_info.return_type()),
+                                                arg_type,
+                                                is_aggregate,
+                                                fun_info.file(),
+                                                fun_info.offline_file()};
                 lines.push_back(vec);
             }
             return ResultSetSQL::MakeResultSet(
-                {"name", "return_type", "arg_type", "is_aggerate", "file", "offline_file"}, lines, status);
+                {"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"}, lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
