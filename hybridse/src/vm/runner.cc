@@ -2746,15 +2746,21 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 
     auto& key_gen = windows_union_gen_.windows_gen_[0].index_seek_gen_.index_key_gen_;
     std::string key = key_gen.Gen(request, ctx.GetParameterRow());
-    auto agg_segment = std::dynamic_pointer_cast<PartitionHandler>(union_inputs[1])->GetSegment(key);
+    // do not use codegen to gen the union outputs for aggr segment
+    union_inputs.pop_back();
 
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
     // code_gen result of agg_segment is not correct. we correct the result here
-    union_segments[1] = agg_segment;
+    auto agg_segment = std::dynamic_pointer_cast<PartitionHandler>(union_inputs[1])->GetSegment(key);
+    if (agg_segment) {
+        union_segments.emplace_back(agg_segment);
+    }
 
     if (ctx.is_debug()) {
         for (size_t i = 0; i < union_segments.size(); i++) {
+            if (!union_segments[i]) continue;
+
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_segments[i]);
             LOG(INFO) << "union output " << i << ": " << sss.str();
@@ -2762,9 +2768,15 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     }
 
     // build window with start and end offset
-    auto window = RequestUnionWindow(request, union_segments, ts_gen,
-                              range_gen_.window_range_, output_request_row_,
-                              exclude_current_time_);
+    std::shared_ptr<TableHandler> window;
+    if (agg_segment) {
+        window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
+                                    exclude_current_time_);
+    } else {
+        LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
+                                                        output_request_row_, exclude_current_time_);
+    }
 
     if (ctx.is_debug()) {
         std::ostringstream oss;
@@ -2819,41 +2831,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         max_size = window_range.max_size_;
     }
     int64_t request_key = ts_gen > 0 ? ts_gen : 0;
-
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-
-    auto base_it = union_segments[0]->GetIterator();
-    base_it->Seek(end);
-    auto agg_it = union_segments[1]->GetIterator();
-    agg_it->Seek(end);
-
-    // we'll iterate over the following ranges:
-    // - base(end_base, end] if end_base < end
-    // - agg[start_base, end_base]
-    // - base[start, start_base) if start < start_base
-    int64_t end_base = start;
-    int64_t start_base = start + 1;
-    if (agg_it->Valid()) {
-        int64_t ts_start = agg_it->GetKey();
-        int64_t ts_end = -1;
-        agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
-
-        if (ts_end > end) {  // [ts_start, ts_end] covers beyond the [start, end] region
-            end_base = ts_start;
-            agg_it->Next();
-            if (agg_it->Valid()) {
-                agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
-                end_base = ts_end;
-            } else {
-                // only base table will be used
-                end_base = start;
-                start_base = start + 1;
-            }
-        } else {
-            end_base = ts_end;
-        }
-    }
 
     auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
         if (row_parser->IsNull(row, *agg_col_)) {
@@ -2932,6 +2909,51 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         cnt++;
     }
 
+    auto window_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto base_it = union_segments[0]->GetIterator();
+    if (!base_it) {
+        LOG(WARNING) << "Base window is empty.";
+        window_table->AddRow(start, aggregator_->Output());
+        DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
+        return window_table;
+    }
+    base_it->Seek(end);
+
+    auto agg_it = union_segments[1]->GetIterator();
+    if (agg_it) {
+         agg_it->Seek(end);
+    } else {
+        LOG(WARNING) << "Agg window is empty. Use base window only";
+    }
+
+    // we'll iterate over the following ranges:
+    // - base(end_base, end] if end_base < end
+    // - agg[start_base, end_base]
+    // - base[start, start_base) if start < start_base
+    int64_t end_base = start;
+    int64_t start_base = start + 1;
+    if (agg_it && agg_it->Valid()) {
+        int64_t ts_start = agg_it->GetKey();
+        int64_t ts_end = -1;
+        agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
+
+        if (ts_end > end) {  // [ts_start, ts_end] covers beyond the [start, end] region
+            end_base = ts_start;
+            agg_it->Next();
+            if (agg_it->Valid()) {
+                agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
+                end_base = ts_end;
+            } else {
+                // only base table will be used
+                end_base = start;
+                start_base = start + 1;
+            }
+        } else {
+            end_base = ts_end;
+        }
+    }
+
     // iterate over base table from end (inclusive) to end_base (exclusive)
     if (end_base < end) {
         while (base_it->Valid()) {
@@ -2957,7 +2979,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     // iterate over agg table from end_base until start (both inclusive)
     int64_t last_ts_start = INT64_MAX;
-    while (agg_it->Valid()) {
+    while (agg_it && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
@@ -3014,6 +3036,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     window_table->AddRow(start, aggregator_->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
+    // reset the aggregator
+    aggregator_->Reset();
     return window_table;
 }
 
