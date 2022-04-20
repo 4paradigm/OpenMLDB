@@ -5733,7 +5733,10 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
 
     // persistent aggregator meta
     std::string aggr_path;
-    bool ok = ChooseDBRootPath(request->aggr_table_tid(), request->aggr_table_pid(), aggr_path);
+    std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
+    auto table_meta = aggr_table->GetTableMeta();
+    ::openmldb::common::StorageMode mode = table_meta->storage_mode();
+    bool ok = ChooseDBRootPath(request->aggr_table_tid(), request->aggr_table_pid(), mode, aggr_path);
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get pre-aggr table db root path");
@@ -5761,8 +5764,10 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
     if (fputs(aggr_info.c_str(), fd_write) == EOF) {
         PDLOG(WARNING, "write error. path[%s], err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
         fclose(fd_write);
+        return;
     }
     fclose(fd_write);
+
     if (!CreateAggregatorInternal(request, msg)) {
         response->set_code(::openmldb::base::ReturnCode::kError);
         response->set_msg(msg.c_str());
