@@ -1,15 +1,18 @@
 #pragma once
 
-#include <array>    // array
-#include <cmath>    // signbit, isfinite
-#include <cstdint>  // intN_t, uintN_t
-#include <cstring>  // memcpy, memmove
-#include <limits>   // numeric_limits
-#include <nlohmann/detail/macro_scope.hpp>
-#include <type_traits>  // conditional
+#include <array> // array
+#include <cmath>   // signbit, isfinite
+#include <cstdint> // intN_t, uintN_t
+#include <cstring> // memcpy, memmove
+#include <limits> // numeric_limits
+#include <type_traits> // conditional
 
-namespace nlohmann {
-namespace detail {
+#include <nlohmann/detail/macro_scope.hpp>
+
+namespace nlohmann
+{
+namespace detail
+{
 
 /*!
 @brief implements the Grisu2 algorithm for binary to decimal floating-point
@@ -30,10 +33,12 @@ For a detailed description of the algorithm see:
     Proceedings of the ACM SIGPLAN 1996 Conference on Programming Language
     Design and Implementation, PLDI 1996
 */
-namespace dtoa_impl {
+namespace dtoa_impl
+{
 
-template <typename Target, typename Source>
-Target reinterpret_bits(const Source source) {
+template<typename Target, typename Source>
+Target reinterpret_bits(const Source source)
+{
     static_assert(sizeof(Target) == sizeof(Source), "size mismatch");
 
     Target target;
@@ -41,9 +46,9 @@ Target reinterpret_bits(const Source source) {
     return target;
 }
 
-struct diyfp  // f * 2^e
+struct diyfp // f * 2^e
 {
-    static constexpr int kPrecision = 64;  // = q
+    static constexpr int kPrecision = 64; // = q
 
     std::uint64_t f = 0;
     int e = 0;
@@ -54,7 +59,8 @@ struct diyfp  // f * 2^e
     @brief returns x - y
     @pre x.e == y.e and x.f >= y.f
     */
-    static diyfp sub(const diyfp& x, const diyfp& y) noexcept {
+    static diyfp sub(const diyfp& x, const diyfp& y) noexcept
+    {
         JSON_ASSERT(x.e == y.e);
         JSON_ASSERT(x.f >= y.f);
 
@@ -65,7 +71,8 @@ struct diyfp  // f * 2^e
     @brief returns x * y
     @note The result is rounded. (Only the upper q bits are returned.)
     */
-    static diyfp mul(const diyfp& x, const diyfp& y) noexcept {
+    static diyfp mul(const diyfp& x, const diyfp& y) noexcept
+    {
         static_assert(kPrecision == 64, "internal error");
 
         // Computes:
@@ -118,7 +125,7 @@ struct diyfp  // f * 2^e
         // Effectively we only need to add the highest bit in p_lo to p_hi (and
         // Q_hi + 1 does not overflow).
 
-        Q += std::uint64_t{1} << (64u - 32u - 1u);  // round, ties up
+        Q += std::uint64_t{1} << (64u - 32u - 1u); // round, ties up
 
         const std::uint64_t h = p3 + p2_hi + p1_hi + (Q >> 32u);
 
@@ -129,10 +136,12 @@ struct diyfp  // f * 2^e
     @brief normalize x such that the significand is >= 2^(q-1)
     @pre x.f != 0
     */
-    static diyfp normalize(diyfp x) noexcept {
+    static diyfp normalize(diyfp x) noexcept
+    {
         JSON_ASSERT(x.f != 0);
 
-        while ((x.f >> 63u) == 0) {
+        while ((x.f >> 63u) == 0)
+        {
             x.f <<= 1u;
             x.e--;
         }
@@ -144,7 +153,8 @@ struct diyfp  // f * 2^e
     @brief normalize x such that the result has the exponent E
     @pre e >= x.e and the upper e - x.e bits of x.f must be zero.
     */
-    static diyfp normalize_to(const diyfp& x, const int target_exponent) noexcept {
+    static diyfp normalize_to(const diyfp& x, const int target_exponent) noexcept
+    {
         const int delta = x.e - target_exponent;
 
         JSON_ASSERT(delta >= 0);
@@ -154,7 +164,8 @@ struct diyfp  // f * 2^e
     }
 };
 
-struct boundaries {
+struct boundaries
+{
     diyfp w;
     diyfp minus;
     diyfp plus;
@@ -166,8 +177,9 @@ boundaries.
 
 @pre value must be finite and positive
 */
-template <typename FloatType>
-boundaries compute_boundaries(FloatType value) {
+template<typename FloatType>
+boundaries compute_boundaries(FloatType value)
+{
     JSON_ASSERT(std::isfinite(value));
     JSON_ASSERT(value > 0);
 
@@ -181,19 +193,21 @@ boundaries compute_boundaries(FloatType value) {
     static_assert(std::numeric_limits<FloatType>::is_iec559,
                   "internal error: dtoa_short requires an IEEE-754 floating-point implementation");
 
-    constexpr int kPrecision = std::numeric_limits<FloatType>::digits;  // = p (includes the hidden bit)
-    constexpr int kBias = std::numeric_limits<FloatType>::max_exponent - 1 + (kPrecision - 1);
-    constexpr int kMinExp = 1 - kBias;
-    constexpr std::uint64_t kHiddenBit = std::uint64_t{1} << (kPrecision - 1);  // = 2^(p-1)
+    constexpr int      kPrecision = std::numeric_limits<FloatType>::digits; // = p (includes the hidden bit)
+    constexpr int      kBias      = std::numeric_limits<FloatType>::max_exponent - 1 + (kPrecision - 1);
+    constexpr int      kMinExp    = 1 - kBias;
+    constexpr std::uint64_t kHiddenBit = std::uint64_t{1} << (kPrecision - 1); // = 2^(p-1)
 
-    using bits_type = typename std::conditional<kPrecision == 24, std::uint32_t, std::uint64_t>::type;
+    using bits_type = typename std::conditional<kPrecision == 24, std::uint32_t, std::uint64_t >::type;
 
     const auto bits = static_cast<std::uint64_t>(reinterpret_bits<bits_type>(value));
     const std::uint64_t E = bits >> (kPrecision - 1);
     const std::uint64_t F = bits & (kHiddenBit - 1);
 
     const bool is_denormal = E == 0;
-    const diyfp v = is_denormal ? diyfp(F, kMinExp) : diyfp(F + kHiddenBit, static_cast<int>(E) - kBias);
+    const diyfp v = is_denormal
+                    ? diyfp(F, kMinExp)
+                    : diyfp(F + kHiddenBit, static_cast<int>(E) - kBias);
 
     // Compute the boundaries m- and m+ of the floating-point value
     // v = f * 2^e.
@@ -218,8 +232,9 @@ boundaries compute_boundaries(FloatType value) {
 
     const bool lower_boundary_is_closer = F == 0 && E > 1;
     const diyfp m_plus = diyfp(2 * v.f + 1, v.e - 1);
-    const diyfp m_minus = lower_boundary_is_closer ? diyfp(4 * v.f - 1, v.e - 2)   // (B)
-                                                   : diyfp(2 * v.f - 1, v.e - 1);  // (A)
+    const diyfp m_minus = lower_boundary_is_closer
+                          ? diyfp(4 * v.f - 1, v.e - 2)  // (B)
+                          : diyfp(2 * v.f - 1, v.e - 1); // (A)
 
     // Determine the normalized w+ = m+.
     const diyfp w_plus = diyfp::normalize(m_plus);
@@ -288,7 +303,7 @@ boundaries compute_boundaries(FloatType value) {
 constexpr int kAlpha = -60;
 constexpr int kGamma = -32;
 
-struct cached_power  // c = f * 2^e ~= 10^k
+struct cached_power // c = f * 2^e ~= 10^k
 {
     std::uint64_t f;
     int e;
@@ -302,7 +317,8 @@ satisfies (Definition 3.2 from [1])
 
      alpha <= e_c + e + q <= gamma.
 */
-inline cached_power get_cached_power_for_binary_exponent(int e) {
+inline cached_power get_cached_power_for_binary_exponent(int e)
+{
     // Now
     //
     //      alpha <= e_c + e + q <= gamma                                    (1)
@@ -356,42 +372,97 @@ inline cached_power get_cached_power_for_binary_exponent(int e) {
     constexpr int kCachedPowersMinDecExp = -300;
     constexpr int kCachedPowersDecStep = 8;
 
-    static constexpr std::array<cached_power, 79> kCachedPowers = {{
-        {0xAB70FE17C79AC6CA, -1060, -300}, {0xFF77B1FCBEBCDC4F, -1034, -292}, {0xBE5691EF416BD60C, -1007, -284},
-        {0x8DD01FAD907FFC3C, -980, -276},  {0xD3515C2831559A83, -954, -268},  {0x9D71AC8FADA6C9B5, -927, -260},
-        {0xEA9C227723EE8BCB, -901, -252},  {0xAECC49914078536D, -874, -244},  {0x823C12795DB6CE57, -847, -236},
-        {0xC21094364DFB5637, -821, -228},  {0x9096EA6F3848984F, -794, -220},  {0xD77485CB25823AC7, -768, -212},
-        {0xA086CFCD97BF97F4, -741, -204},  {0xEF340A98172AACE5, -715, -196},  {0xB23867FB2A35B28E, -688, -188},
-        {0x84C8D4DFD2C63F3B, -661, -180},  {0xC5DD44271AD3CDBA, -635, -172},  {0x936B9FCEBB25C996, -608, -164},
-        {0xDBAC6C247D62A584, -582, -156},  {0xA3AB66580D5FDAF6, -555, -148},  {0xF3E2F893DEC3F126, -529, -140},
-        {0xB5B5ADA8AAFF80B8, -502, -132},  {0x87625F056C7C4A8B, -475, -124},  {0xC9BCFF6034C13053, -449, -116},
-        {0x964E858C91BA2655, -422, -108},  {0xDFF9772470297EBD, -396, -100},  {0xA6DFBD9FB8E5B88F, -369, -92},
-        {0xF8A95FCF88747D94, -343, -84},   {0xB94470938FA89BCF, -316, -76},   {0x8A08F0F8BF0F156B, -289, -68},
-        {0xCDB02555653131B6, -263, -60},   {0x993FE2C6D07B7FAC, -236, -52},   {0xE45C10C42A2B3B06, -210, -44},
-        {0xAA242499697392D3, -183, -36},   {0xFD87B5F28300CA0E, -157, -28},   {0xBCE5086492111AEB, -130, -20},
-        {0x8CBCCC096F5088CC, -103, -12},   {0xD1B71758E219652C, -77, -4},     {0x9C40000000000000, -50, 4},
-        {0xE8D4A51000000000, -24, 12},     {0xAD78EBC5AC620000, 3, 20},       {0x813F3978F8940984, 30, 28},
-        {0xC097CE7BC90715B3, 56, 36},      {0x8F7E32CE7BEA5C70, 83, 44},      {0xD5D238A4ABE98068, 109, 52},
-        {0x9F4F2726179A2245, 136, 60},     {0xED63A231D4C4FB27, 162, 68},     {0xB0DE65388CC8ADA8, 189, 76},
-        {0x83C7088E1AAB65DB, 216, 84},     {0xC45D1DF942711D9A, 242, 92},     {0x924D692CA61BE758, 269, 100},
-        {0xDA01EE641A708DEA, 295, 108},    {0xA26DA3999AEF774A, 322, 116},    {0xF209787BB47D6B85, 348, 124},
-        {0xB454E4A179DD1877, 375, 132},    {0x865B86925B9BC5C2, 402, 140},    {0xC83553C5C8965D3D, 428, 148},
-        {0x952AB45CFA97A0B3, 455, 156},    {0xDE469FBD99A05FE3, 481, 164},    {0xA59BC234DB398C25, 508, 172},
-        {0xF6C69A72A3989F5C, 534, 180},    {0xB7DCBF5354E9BECE, 561, 188},    {0x88FCF317F22241E2, 588, 196},
-        {0xCC20CE9BD35C78A5, 614, 204},    {0x98165AF37B2153DF, 641, 212},    {0xE2A0B5DC971F303A, 667, 220},
-        {0xA8D9D1535CE3B396, 694, 228},    {0xFB9B7CD9A4A7443C, 720, 236},    {0xBB764C4CA7A44410, 747, 244},
-        {0x8BAB8EEFB6409C1A, 774, 252},    {0xD01FEF10A657842C, 800, 260},    {0x9B10A4E5E9913129, 827, 268},
-        {0xE7109BFBA19C0C9D, 853, 276},    {0xAC2820D9623BF429, 880, 284},    {0x80444B5E7AA7CF85, 907, 292},
-        {0xBF21E44003ACDD2D, 933, 300},    {0x8E679C2F5E44FF8F, 960, 308},    {0xD433179D9C8CB841, 986, 316},
-        {0x9E19DB92B4E31BA9, 1013, 324},
-    }};
+    static constexpr std::array<cached_power, 79> kCachedPowers =
+    {
+        {
+            { 0xAB70FE17C79AC6CA, -1060, -300 },
+            { 0xFF77B1FCBEBCDC4F, -1034, -292 },
+            { 0xBE5691EF416BD60C, -1007, -284 },
+            { 0x8DD01FAD907FFC3C,  -980, -276 },
+            { 0xD3515C2831559A83,  -954, -268 },
+            { 0x9D71AC8FADA6C9B5,  -927, -260 },
+            { 0xEA9C227723EE8BCB,  -901, -252 },
+            { 0xAECC49914078536D,  -874, -244 },
+            { 0x823C12795DB6CE57,  -847, -236 },
+            { 0xC21094364DFB5637,  -821, -228 },
+            { 0x9096EA6F3848984F,  -794, -220 },
+            { 0xD77485CB25823AC7,  -768, -212 },
+            { 0xA086CFCD97BF97F4,  -741, -204 },
+            { 0xEF340A98172AACE5,  -715, -196 },
+            { 0xB23867FB2A35B28E,  -688, -188 },
+            { 0x84C8D4DFD2C63F3B,  -661, -180 },
+            { 0xC5DD44271AD3CDBA,  -635, -172 },
+            { 0x936B9FCEBB25C996,  -608, -164 },
+            { 0xDBAC6C247D62A584,  -582, -156 },
+            { 0xA3AB66580D5FDAF6,  -555, -148 },
+            { 0xF3E2F893DEC3F126,  -529, -140 },
+            { 0xB5B5ADA8AAFF80B8,  -502, -132 },
+            { 0x87625F056C7C4A8B,  -475, -124 },
+            { 0xC9BCFF6034C13053,  -449, -116 },
+            { 0x964E858C91BA2655,  -422, -108 },
+            { 0xDFF9772470297EBD,  -396, -100 },
+            { 0xA6DFBD9FB8E5B88F,  -369,  -92 },
+            { 0xF8A95FCF88747D94,  -343,  -84 },
+            { 0xB94470938FA89BCF,  -316,  -76 },
+            { 0x8A08F0F8BF0F156B,  -289,  -68 },
+            { 0xCDB02555653131B6,  -263,  -60 },
+            { 0x993FE2C6D07B7FAC,  -236,  -52 },
+            { 0xE45C10C42A2B3B06,  -210,  -44 },
+            { 0xAA242499697392D3,  -183,  -36 },
+            { 0xFD87B5F28300CA0E,  -157,  -28 },
+            { 0xBCE5086492111AEB,  -130,  -20 },
+            { 0x8CBCCC096F5088CC,  -103,  -12 },
+            { 0xD1B71758E219652C,   -77,   -4 },
+            { 0x9C40000000000000,   -50,    4 },
+            { 0xE8D4A51000000000,   -24,   12 },
+            { 0xAD78EBC5AC620000,     3,   20 },
+            { 0x813F3978F8940984,    30,   28 },
+            { 0xC097CE7BC90715B3,    56,   36 },
+            { 0x8F7E32CE7BEA5C70,    83,   44 },
+            { 0xD5D238A4ABE98068,   109,   52 },
+            { 0x9F4F2726179A2245,   136,   60 },
+            { 0xED63A231D4C4FB27,   162,   68 },
+            { 0xB0DE65388CC8ADA8,   189,   76 },
+            { 0x83C7088E1AAB65DB,   216,   84 },
+            { 0xC45D1DF942711D9A,   242,   92 },
+            { 0x924D692CA61BE758,   269,  100 },
+            { 0xDA01EE641A708DEA,   295,  108 },
+            { 0xA26DA3999AEF774A,   322,  116 },
+            { 0xF209787BB47D6B85,   348,  124 },
+            { 0xB454E4A179DD1877,   375,  132 },
+            { 0x865B86925B9BC5C2,   402,  140 },
+            { 0xC83553C5C8965D3D,   428,  148 },
+            { 0x952AB45CFA97A0B3,   455,  156 },
+            { 0xDE469FBD99A05FE3,   481,  164 },
+            { 0xA59BC234DB398C25,   508,  172 },
+            { 0xF6C69A72A3989F5C,   534,  180 },
+            { 0xB7DCBF5354E9BECE,   561,  188 },
+            { 0x88FCF317F22241E2,   588,  196 },
+            { 0xCC20CE9BD35C78A5,   614,  204 },
+            { 0x98165AF37B2153DF,   641,  212 },
+            { 0xE2A0B5DC971F303A,   667,  220 },
+            { 0xA8D9D1535CE3B396,   694,  228 },
+            { 0xFB9B7CD9A4A7443C,   720,  236 },
+            { 0xBB764C4CA7A44410,   747,  244 },
+            { 0x8BAB8EEFB6409C1A,   774,  252 },
+            { 0xD01FEF10A657842C,   800,  260 },
+            { 0x9B10A4E5E9913129,   827,  268 },
+            { 0xE7109BFBA19C0C9D,   853,  276 },
+            { 0xAC2820D9623BF429,   880,  284 },
+            { 0x80444B5E7AA7CF85,   907,  292 },
+            { 0xBF21E44003ACDD2D,   933,  300 },
+            { 0x8E679C2F5E44FF8F,   960,  308 },
+            { 0xD433179D9C8CB841,   986,  316 },
+            { 0x9E19DB92B4E31BA9,  1013,  324 },
+        }
+    };
 
     // This computation gives exactly the same results for k as
     //      k = ceil((kAlpha - e - 1) * 0.30102999566398114)
     // for |e| <= 1500, but doesn't require floating-point operations.
     // NB: log_10(2) ~= 78913 / 2^18
     JSON_ASSERT(e >= -1500);
-    JSON_ASSERT(e <= 1500);
+    JSON_ASSERT(e <=  1500);
     const int f = kAlpha - e - 1;
     const int k = (f * 78913) / (1 << 18) + static_cast<int>(f > 0);
 
@@ -410,52 +481,63 @@ inline cached_power get_cached_power_for_binary_exponent(int e) {
 For n != 0, returns k, such that pow10 := 10^(k-1) <= n < 10^k.
 For n == 0, returns 1 and sets pow10 := 1.
 */
-inline int find_largest_pow10(const std::uint32_t n, std::uint32_t& pow10) {
+inline int find_largest_pow10(const std::uint32_t n, std::uint32_t& pow10)
+{
     // LCOV_EXCL_START
-    if (n >= 1000000000) {
+    if (n >= 1000000000)
+    {
         pow10 = 1000000000;
         return 10;
     }
     // LCOV_EXCL_STOP
-    if (n >= 100000000) {
+    if (n >= 100000000)
+    {
         pow10 = 100000000;
-        return 9;
+        return  9;
     }
-    if (n >= 10000000) {
+    if (n >= 10000000)
+    {
         pow10 = 10000000;
-        return 8;
+        return  8;
     }
-    if (n >= 1000000) {
+    if (n >= 1000000)
+    {
         pow10 = 1000000;
-        return 7;
+        return  7;
     }
-    if (n >= 100000) {
+    if (n >= 100000)
+    {
         pow10 = 100000;
-        return 6;
+        return  6;
     }
-    if (n >= 10000) {
+    if (n >= 10000)
+    {
         pow10 = 10000;
-        return 5;
+        return  5;
     }
-    if (n >= 1000) {
+    if (n >= 1000)
+    {
         pow10 = 1000;
-        return 4;
+        return  4;
     }
-    if (n >= 100) {
+    if (n >= 100)
+    {
         pow10 = 100;
-        return 3;
+        return  3;
     }
-    if (n >= 10) {
+    if (n >= 10)
+    {
         pow10 = 10;
-        return 2;
+        return  2;
     }
 
     pow10 = 1;
     return 1;
 }
 
-inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t delta, std::uint64_t rest,
-                         std::uint64_t ten_k) {
+inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t delta,
+                         std::uint64_t rest, std::uint64_t ten_k)
+{
     JSON_ASSERT(len >= 1);
     JSON_ASSERT(dist <= delta);
     JSON_ASSERT(rest <= delta);
@@ -480,7 +562,10 @@ inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t d
     // The tests are written in this order to avoid overflow in unsigned
     // integer arithmetic.
 
-    while (rest < dist && delta - rest >= ten_k && (rest + ten_k < dist || dist - rest > rest + ten_k - dist)) {
+    while (rest < dist
+            && delta - rest >= ten_k
+            && (rest + ten_k < dist || dist - rest > rest + ten_k - dist))
+    {
         JSON_ASSERT(buf[len - 1] != '0');
         buf[len - 1]--;
         rest += ten_k;
@@ -491,7 +576,9 @@ inline void grisu2_round(char* buf, int len, std::uint64_t dist, std::uint64_t d
 Generates V = buffer * 10^decimal_exponent, such that M- <= V <= M+.
 M- and M+ must be normalized and share the same exponent -60 <= e <= -32.
 */
-inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, diyfp M_minus, diyfp w, diyfp M_plus) {
+inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
+                             diyfp M_minus, diyfp w, diyfp M_plus)
+{
     static_assert(kAlpha >= -60, "internal error");
     static_assert(kGamma <= -32, "internal error");
 
@@ -510,8 +597,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
     JSON_ASSERT(M_plus.e >= kAlpha);
     JSON_ASSERT(M_plus.e <= kGamma);
 
-    std::uint64_t delta = diyfp::sub(M_plus, M_minus).f;  // (significand of (M+ - M-), implicit exponent is e)
-    std::uint64_t dist = diyfp::sub(M_plus, w).f;         // (significand of (M+ - w ), implicit exponent is e)
+    std::uint64_t delta = diyfp::sub(M_plus, M_minus).f; // (significand of (M+ - M-), implicit exponent is e)
+    std::uint64_t dist  = diyfp::sub(M_plus, w      ).f; // (significand of (M+ - w ), implicit exponent is e)
 
     // Split M+ = f * 2^e into two parts p1 and p2 (note: e < 0):
     //
@@ -522,9 +609,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
 
     const diyfp one(std::uint64_t{1} << -M_plus.e, M_plus.e);
 
-    auto p1 =
-        static_cast<std::uint32_t>(M_plus.f >> -one.e);  // p1 = f div 2^-e (Since -e >= 32, p1 fits into a 32-bit int.)
-    std::uint64_t p2 = M_plus.f & (one.f - 1);           // p2 = f mod 2^-e
+    auto p1 = static_cast<std::uint32_t>(M_plus.f >> -one.e); // p1 = f div 2^-e (Since -e >= 32, p1 fits into a 32-bit int.)
+    std::uint64_t p2 = M_plus.f & (one.f - 1);                    // p2 = f mod 2^-e
 
     // 1)
     //
@@ -554,7 +640,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
     //      rest * 2^e = (d[n-1]...d[0] * 2^-e + p2) * 2^e <= delta * 2^e
 
     int n = k;
-    while (n > 0) {
+    while (n > 0)
+    {
         // Invariants:
         //      M+ = buffer * 10^n + (p1 + p2 * 2^e)    (buffer = 0 for n = k)
         //      pow10 = 10^(n-1) <= p1 < 10^n
@@ -566,7 +653,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
         //         = (buffer * 10 + d) * 10^(n-1) + (r + p2 * 2^e)
         //
         JSON_ASSERT(d <= 9);
-        buffer[length++] = static_cast<char>('0' + d);  // buffer := buffer * 10 + d
+        buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
         //
         //      M+ = buffer * 10^(n-1) + (r + p2 * 2^e)
         //
@@ -586,7 +673,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
         // Since rest and delta share the same exponent e, it suffices to
         // compare the significands.
         const std::uint64_t rest = (std::uint64_t{p1} << -one.e) + p2;
-        if (rest <= delta) {
+        if (rest <= delta)
+        {
             // V = buffer * 10^n, with M- <= V <= M+.
 
             decimal_exponent += n;
@@ -654,7 +742,8 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
     JSON_ASSERT(p2 > delta);
 
     int m = 0;
-    for (;;) {
+    for (;;)
+    {
         // Invariant:
         //      M+ = buffer * 10^-m + 10^-m * (d[-m-1] / 10 + d[-m-2] / 10^2 + ...) * 2^e
         //         = buffer * 10^-m + 10^-m * (p2                                 ) * 2^e
@@ -663,15 +752,15 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
         //
         JSON_ASSERT(p2 <= (std::numeric_limits<std::uint64_t>::max)() / 10);
         p2 *= 10;
-        const std::uint64_t d = p2 >> -one.e;      // d = (10 * p2) div 2^-e
-        const std::uint64_t r = p2 & (one.f - 1);  // r = (10 * p2) mod 2^-e
+        const std::uint64_t d = p2 >> -one.e;     // d = (10 * p2) div 2^-e
+        const std::uint64_t r = p2 & (one.f - 1); // r = (10 * p2) mod 2^-e
         //
         //      M+ = buffer * 10^-m + 10^-m * (1/10 * (d * 2^-e + r) * 2^e
         //         = buffer * 10^-m + 10^-m * (1/10 * (d + r * 2^e))
         //         = (buffer * 10 + d) * 10^(-m-1) + 10^(-m-1) * r * 2^e
         //
         JSON_ASSERT(d <= 9);
-        buffer[length++] = static_cast<char>('0' + d);  // buffer := buffer * 10 + d
+        buffer[length++] = static_cast<char>('0' + d); // buffer := buffer * 10 + d
         //
         //      M+ = buffer * 10^(-m-1) + 10^(-m-1) * r * 2^e
         //
@@ -687,8 +776,9 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent, d
         //              p2 * 2^e <= 10^m * delta * 2^e
         //                    p2 <= 10^m * delta
         delta *= 10;
-        dist *= 10;
-        if (p2 <= delta) {
+        dist  *= 10;
+        if (p2 <= delta)
+        {
             break;
         }
     }
@@ -727,7 +817,9 @@ len is the length of the buffer (number of decimal digits)
 The buffer must be large enough, i.e. >= max_digits10.
 */
 JSON_HEDLEY_NON_NULL(1)
-inline void grisu2(char* buf, int& len, int& decimal_exponent, diyfp m_minus, diyfp v, diyfp m_plus) {
+inline void grisu2(char* buf, int& len, int& decimal_exponent,
+                   diyfp m_minus, diyfp v, diyfp m_plus)
+{
     JSON_ASSERT(m_plus.e == m_minus.e);
     JSON_ASSERT(m_plus.e == v.e);
 
@@ -742,12 +834,12 @@ inline void grisu2(char* buf, int& len, int& decimal_exponent, diyfp m_minus, di
 
     const cached_power cached = get_cached_power_for_binary_exponent(m_plus.e);
 
-    const diyfp c_minus_k(cached.f, cached.e);  // = c ~= 10^-k
+    const diyfp c_minus_k(cached.f, cached.e); // = c ~= 10^-k
 
     // The exponent of the products is = v.e + c_minus_k.e + q and is in the range [alpha,gamma]
-    const diyfp w = diyfp::mul(v, c_minus_k);
+    const diyfp w       = diyfp::mul(v,       c_minus_k);
     const diyfp w_minus = diyfp::mul(m_minus, c_minus_k);
-    const diyfp w_plus = diyfp::mul(m_plus, c_minus_k);
+    const diyfp w_plus  = diyfp::mul(m_plus,  c_minus_k);
 
     //  ----(---+---)---------------(---+---)---------------(---+---)----
     //          w-                      w                       w+
@@ -771,9 +863,9 @@ inline void grisu2(char* buf, int& len, int& decimal_exponent, diyfp m_minus, di
     // Note that this does not mean that Grisu2 always generates the shortest
     // possible number in the interval (m-, m+).
     const diyfp M_minus(w_minus.f + 1, w_minus.e);
-    const diyfp M_plus(w_plus.f - 1, w_plus.e);
+    const diyfp M_plus (w_plus.f  - 1, w_plus.e );
 
-    decimal_exponent = -cached.k;  // = -(-k) = k
+    decimal_exponent = -cached.k; // = -(-k) = k
 
     grisu2_digit_gen(buf, len, decimal_exponent, M_minus, w, M_plus);
 }
@@ -783,9 +875,10 @@ v = buf * 10^decimal_exponent
 len is the length of the buffer (number of decimal digits)
 The buffer must be large enough, i.e. >= max_digits10.
 */
-template <typename FloatType>
+template<typename FloatType>
 JSON_HEDLEY_NON_NULL(1)
-void grisu2(char* buf, int& len, int& decimal_exponent, FloatType value) {
+void grisu2(char* buf, int& len, int& decimal_exponent, FloatType value)
+{
     static_assert(diyfp::kPrecision >= std::numeric_limits<FloatType>::digits + 3,
                   "internal error: not enough precision");
 
@@ -824,28 +917,37 @@ void grisu2(char* buf, int& len, int& decimal_exponent, FloatType value) {
 */
 JSON_HEDLEY_NON_NULL(1)
 JSON_HEDLEY_RETURNS_NON_NULL
-inline char* append_exponent(char* buf, int e) {
+inline char* append_exponent(char* buf, int e)
+{
     JSON_ASSERT(e > -1000);
-    JSON_ASSERT(e < 1000);
+    JSON_ASSERT(e <  1000);
 
-    if (e < 0) {
+    if (e < 0)
+    {
         e = -e;
         *buf++ = '-';
-    } else {
+    }
+    else
+    {
         *buf++ = '+';
     }
 
     auto k = static_cast<std::uint32_t>(e);
-    if (k < 10) {
+    if (k < 10)
+    {
         // Always print at least two digits in the exponent.
         // This is for compatibility with printf("%g").
         *buf++ = '0';
         *buf++ = static_cast<char>('0' + k);
-    } else if (k < 100) {
+    }
+    else if (k < 100)
+    {
         *buf++ = static_cast<char>('0' + k / 10);
         k %= 10;
         *buf++ = static_cast<char>('0' + k);
-    } else {
+    }
+    else
+    {
         *buf++ = static_cast<char>('0' + k / 100);
         k %= 100;
         *buf++ = static_cast<char>('0' + k / 10);
@@ -867,7 +969,9 @@ notation. Otherwise it will be printed in exponential notation.
 */
 JSON_HEDLEY_NON_NULL(1)
 JSON_HEDLEY_RETURNS_NON_NULL
-inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp, int max_exp) {
+inline char* format_buffer(char* buf, int len, int decimal_exponent,
+                           int min_exp, int max_exp)
+{
     JSON_ASSERT(min_exp < 0);
     JSON_ASSERT(max_exp > 0);
 
@@ -878,7 +982,8 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp
     // k is the length of the buffer (number of decimal digits)
     // n is the position of the decimal point relative to the start of the buffer.
 
-    if (k <= n && n <= max_exp) {
+    if (k <= n && n <= max_exp)
+    {
         // digits[000]
         // len <= max_exp + 2
 
@@ -889,7 +994,8 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp
         return buf + (static_cast<size_t>(n) + 2);
     }
 
-    if (0 < n && n <= max_exp) {
+    if (0 < n && n <= max_exp)
+    {
         // dig.its
         // len <= max_digits10 + 1
 
@@ -900,7 +1006,8 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp
         return buf + (static_cast<size_t>(k) + 1U);
     }
 
-    if (min_exp < n && n <= 0) {
+    if (min_exp < n && n <= 0)
+    {
         // 0.[000]digits
         // len <= 2 + (-min_exp - 1) + max_digits10
 
@@ -911,12 +1018,15 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp
         return buf + (2U + static_cast<size_t>(-n) + static_cast<size_t>(k));
     }
 
-    if (k == 1) {
+    if (k == 1)
+    {
         // dE+123
         // len <= 1 + 5
 
         buf += 1;
-    } else {
+    }
+    else
+    {
         // d.igitsE+123
         // len <= max_digits10 + 1 + 5
 
@@ -929,7 +1039,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent, int min_exp
     return append_exponent(buf, n - 1);
 }
 
-}  // namespace dtoa_impl
+} // namespace dtoa_impl
 
 /*!
 @brief generates a decimal representation of the floating-point number value in [first, last).
@@ -941,14 +1051,17 @@ format. Returns an iterator pointing past-the-end of the decimal representation.
 @note The buffer must be large enough.
 @note The result is NOT null-terminated.
 */
-template <typename FloatType>
+template<typename FloatType>
 JSON_HEDLEY_NON_NULL(1, 2)
-JSON_HEDLEY_RETURNS_NON_NULL char* to_chars(char* first, const char* last, FloatType value) {
-    static_cast<void>(last);  // maybe unused - fix warning
+JSON_HEDLEY_RETURNS_NON_NULL
+char* to_chars(char* first, const char* last, FloatType value)
+{
+    static_cast<void>(last); // maybe unused - fix warning
     JSON_ASSERT(std::isfinite(value));
 
     // Use signbit(value) instead of (value < 0) since signbit works for -0.
-    if (std::signbit(value)) {
+    if (std::signbit(value))
+    {
         value = -value;
         *first++ = '-';
     }
@@ -957,7 +1070,7 @@ JSON_HEDLEY_RETURNS_NON_NULL char* to_chars(char* first, const char* last, Float
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #endif
-    if (value == 0)  // +-0
+    if (value == 0) // +-0
     {
         *first++ = '0';
         // Make it look like a floating-point number (#362, #378)
@@ -993,5 +1106,5 @@ JSON_HEDLEY_RETURNS_NON_NULL char* to_chars(char* first, const char* last, Float
     return dtoa_impl::format_buffer(first, len, decimal_exponent, kMinExp, kMaxExp);
 }
 
-}  // namespace detail
-}  // namespace nlohmann
+} // namespace detail
+} // namespace nlohmann
