@@ -285,6 +285,7 @@ class RowParser {
     int32_t GetValue(const Row& row, const std::string& col, type::Type type, void* val) const;
     int32_t GetValue(const Row& row, const std::string& col, void* val) const;
     int32_t GetString(const Row& row, const std::string& col, std::string* val) const;
+    int32_t GetString(const Row& row, const node::ColumnRefNode& col, std::string* val) const;
 
     type::Type GetType(const node::ColumnRefNode& col) const;
     type::Type GetType(const std::string& col) const;

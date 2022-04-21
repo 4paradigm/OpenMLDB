@@ -42,15 +42,19 @@
 #include "test/util.h"
 
 DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
+DECLARE_int32(disk_gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_bool(recycle_bin_enabled);
-DECLARE_string(db_root_path);
 DECLARE_string(recycle_bin_root_path);
+DECLARE_string(recycle_bin_ssd_root_path);
+DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_string(endpoint);
 DECLARE_uint32(recycle_ttl);
 
@@ -75,7 +79,23 @@ class MockClosure : public ::google::protobuf::Closure {
     void Run() {}
 };
 
-class TabletImplTest : public ::testing::Test {
+void RemoveData(const std::string& path) {
+    ::openmldb::base::RemoveDir(path + "/data");
+    ::openmldb::base::RemoveDir(path);
+    ::openmldb::base::RemoveDir(FLAGS_hdd_root_path);
+    ::openmldb::base::RemoveDir(FLAGS_ssd_root_path);
+}
+
+class DiskTestEnvironment : public ::testing::Environment{
+    virtual void SetUp() {
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    }
+    virtual void TearDown() {
+        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
+    }
+};
+
+class TabletImplTest : public ::testing::TestWithParam<::openmldb::common::StorageMode> {
  public:
     TabletImplTest() {}
     ~TabletImplTest() {}
@@ -209,7 +229,8 @@ int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& in
     return -1;
 }
 
-TEST_F(TabletImplTest, Count_Latest_Table) {
+TEST_P(TabletImplTest, CountLatestTable) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -222,6 +243,7 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
@@ -265,7 +287,13 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
         ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(100u, response.count());
+        // disktable and memtable behave inconsistently when putting duplicate data
+        // See issue #1240 for more information
+        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+            ASSERT_EQ(100u, response.count());
+        } else {
+            ASSERT_EQ(10u, response.count());
+        }
     }
 
     {
@@ -343,7 +371,8 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
     }
 }
 
-TEST_F(TabletImplTest, Count_Time_Table) {
+TEST_P(TabletImplTest, CountTimeTable) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -355,6 +384,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -399,7 +429,13 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::openmldb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(100, (signed)response.count());
+        // disktable and memtable behave inconsistently when putting duplicate data
+        // See issue #1240 for more information
+        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+            ASSERT_EQ(100, (signed)response.count());
+        } else {
+            ASSERT_EQ(10, (signed)response.count());
+        }
     }
 
     {
@@ -477,7 +513,8 @@ TEST_F(TabletImplTest, Count_Time_Table) {
     }
 }
 
-TEST_F(TabletImplTest, SCAN_latest_table) {
+TEST_P(TabletImplTest, ScanLatestTable) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -489,6 +526,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -541,7 +579,8 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     }
 }
 
-TEST_F(TabletImplTest, Get) {
+TEST_P(TabletImplTest, Get) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     // table not found
@@ -564,6 +603,7 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -695,6 +735,7 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_name("t1");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -741,10 +782,14 @@ TEST_F(TabletImplTest, Get) {
     }
 }
 
-TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
+
+TEST_P(TabletImplTest, UpdateTTLAbsoluteTime) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -755,6 +800,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         AddDefaultSchema(100, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -917,12 +963,16 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(100, cur_ttl.abs_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, UpdateTTLLatest) {
+TEST_P(TabletImplTest, UpdateTTLLatest) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -933,6 +983,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 1, ::openmldb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -997,9 +1048,11 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ASSERT_EQ(2, cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, CreateTableWithSchema) {
+TEST_P(TabletImplTest, CreateTableWithSchema) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     {
@@ -1009,6 +1062,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
@@ -1022,6 +1076,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         auto column = table_meta->add_column_desc();
         column->set_name("card");
@@ -1049,7 +1104,8 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
     }
 }
 
-TEST_F(TabletImplTest, MultiGet) {
+TEST_P(TabletImplTest, MultiGet) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     uint32_t id = counter++;
@@ -1058,6 +1114,7 @@ TEST_F(TabletImplTest, MultiGet) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     auto column = table_meta->add_column_desc();
     column->set_name("card");
@@ -1129,12 +1186,24 @@ TEST_F(TabletImplTest, MultiGet) {
     deleteindex_request.set_tid(id);
     deleteindex_request.set_pid(1);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
-    ASSERT_EQ(142, deleteindex_response.code());
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
+    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        ASSERT_EQ(142, deleteindex_response.code());
+    } else {
+        ASSERT_EQ(701, deleteindex_response.code());
+    }
     // delete other index
     deleteindex_request.set_idx_name("amt");
     deleteindex_request.set_tid(id);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
-    ASSERT_EQ(0, deleteindex_response.code());
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
+    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        ASSERT_EQ(0, deleteindex_response.code());
+    } else {
+        ASSERT_EQ(701, deleteindex_response.code());
+    }
 
     // get index not found
     get_request.set_tid(id);
@@ -1143,7 +1212,13 @@ TEST_F(TabletImplTest, MultiGet) {
     get_request.set_ts(1100);
     get_request.set_idx_name("amt");
     tablet.Get(NULL, &get_request, &get_response, &closure);
-    ASSERT_EQ(108, get_response.code());
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
+    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        ASSERT_EQ(108, get_response.code());
+    } else {
+        ASSERT_EQ(0, get_response.code());
+    }
 
     // scan index not found
     ::openmldb::api::ScanRequest scan_request;
@@ -1154,10 +1229,18 @@ TEST_F(TabletImplTest, MultiGet) {
     scan_request.set_st(1100);
     scan_request.set_idx_name("amt");
     tablet.Scan(NULL, &scan_request, &scan_response, &closure);
-    ASSERT_EQ(108, scan_response.code());
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
+    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        ASSERT_EQ(108, scan_response.code());
+    } else {
+        ASSERT_EQ(0, scan_response.code());
+    }
 }
 
-TEST_F(TabletImplTest, CreateTable) {
+
+TEST_P(TabletImplTest, CreateTable) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init("");
@@ -1168,12 +1251,20 @@ TEST_F(TabletImplTest, CreateTable) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        std::string file;
+        if (storage_mode == ::openmldb::common::kMemory) {
+            file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else if (storage_mode == ::openmldb::common::kHDD) {
+            file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else {
+            file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        }
         int fd = open(file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -1184,12 +1275,14 @@ TEST_F(TabletImplTest, CreateTable) {
         ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
 
         table_meta->set_name("");
+        table_meta->set_storage_mode(storage_mode);
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(129, response.code());
     }
     {
         ::openmldb::api::CreateTableRequest request;
         ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_name("t0");
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -1199,7 +1292,9 @@ TEST_F(TabletImplTest, CreateTable) {
     }
 }
 
-TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
+
+TEST_P(TabletImplTest, ScanWithDuplicateSkip) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1208,6 +1303,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1272,7 +1368,8 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     ASSERT_EQ(3, (signed)srp.count());
 }
 
-TEST_F(TabletImplTest, Scan_with_latestN) {
+TEST_P(TabletImplTest, ScanWithLatestN) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1281,6 +1378,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1319,7 +1417,9 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     delete kv_it;
 }
 
-TEST_F(TabletImplTest, Traverse) {
+
+TEST_P(TabletImplTest, Traverse) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1328,6 +1428,7 @@ TEST_F(TabletImplTest, Traverse) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1364,7 +1465,13 @@ TEST_F(TabletImplTest, Traverse) {
     delete kv_it;
 }
 
-TEST_F(TabletImplTest, TraverseTTL) {
+TEST_P(TabletImplTest, TraverseTTL) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    // disktable and memtable behave inconsistently with max_traverse_cnt
+    // refer to issue #1249
+    if (storage_mode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
     uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
@@ -1375,6 +1482,7 @@ TEST_F(TabletImplTest, TraverseTTL) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     table_meta->set_seg_cnt(1);
     AddDefaultSchema(5, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
@@ -1451,7 +1559,13 @@ TEST_F(TabletImplTest, TraverseTTL) {
     FLAGS_max_traverse_cnt = old_max_traverse;
 }
 
-TEST_F(TabletImplTest, TraverseTTLTS) {
+TEST_P(TabletImplTest, TraverseTTLTS) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    // disktable and memtable behave inconsistently with max_traverse_cnt
+    // refer to issue #1249
+    if (storage_mode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
     uint32_t old_max_traverse = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
@@ -1462,6 +1576,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     table_meta->set_seg_cnt(1);
     table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
@@ -1603,7 +1718,8 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     FLAGS_max_traverse_cnt = old_max_traverse;
 }
 
-TEST_F(TabletImplTest, Scan_with_limit) {
+TEST_P(TabletImplTest, ScanWithLimit) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1612,6 +1728,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1664,7 +1781,8 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     ASSERT_EQ(2, (signed)srp.count());
 }
 
-TEST_F(TabletImplTest, Scan) {
+TEST_P(TabletImplTest, Scan) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1673,6 +1791,7 @@ TEST_F(TabletImplTest, Scan) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1733,10 +1852,14 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(1, (signed)srp.count());
 }
 
-TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
+
+TEST_P(TabletImplTest, GCWithUpdateLatest) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1748,6 +1871,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 3, ::openmldb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -1875,9 +1999,11 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
     }
 
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, GC) {
+TEST_P(TabletImplTest, GC) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1886,6 +2012,7 @@ TEST_F(TabletImplTest, GC) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(3, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -1916,7 +2043,8 @@ TEST_F(TabletImplTest, GC) {
     ASSERT_EQ(1, (signed)srp.count());
 }
 
-TEST_F(TabletImplTest, DropTable) {
+TEST_P(TabletImplTest, DropTable) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -1933,6 +2061,7 @@ TEST_F(TabletImplTest, DropTable) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     ::openmldb::api::CreateTableResponse response;
@@ -1955,7 +2084,7 @@ TEST_F(TabletImplTest, DropTable) {
     ASSERT_EQ(0, response.code());
 }
 
-TEST_F(TabletImplTest, DropTableNoRecycle) {
+TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
     std::string tmp_db_root_path = FLAGS_db_root_path;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
@@ -1980,6 +2109,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(openmldb::common::kMemory);
     AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     ::openmldb::api::CreateTableResponse response;
@@ -2011,7 +2141,65 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
-TEST_F(TabletImplTest, Recover) {
+TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
+    bool tmp_recycle_bin_enabled = FLAGS_recycle_bin_enabled;
+    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
+    std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
+    std::vector<std::string> file_vec;
+    FLAGS_recycle_bin_enabled = false;
+    FLAGS_hdd_root_path = "/tmp/gtest/db/hdd";
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init("");
+    MockClosure closure;
+    ::openmldb::api::DropTableRequest dr;
+    dr.set_tid(id);
+    dr.set_pid(1);
+    ::openmldb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(100, drs.code());
+
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_storage_mode(::openmldb::common::kHDD);
+    AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
+    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    ::openmldb::api::CreateTableResponse response;
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    ::openmldb::api::PutRequest prequest;
+    PackDefaultDimension("test1", &prequest);
+    prequest.set_time(9527);
+    prequest.set_value(::openmldb::test::EncodeKV("test1", "test0"));
+    prequest.set_tid(id);
+    prequest.set_pid(1);
+    ::openmldb::api::PutResponse presponse;
+    tablet.Put(NULL, &prequest, &presponse, &closure);
+    ASSERT_EQ(0, presponse.code());
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
+    sleep(1);
+    ::openmldb::base::GetChildFileName(FLAGS_hdd_root_path, file_vec);
+    ASSERT_TRUE(file_vec.empty());
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_TRUE(file_vec.empty());
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
+    FLAGS_hdd_root_path = tmp_hdd_root_path;
+    FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
+}
+
+TEST_P(TabletImplTest, Recover) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     {
@@ -2022,6 +2210,7 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_term(1024);
         table_meta->add_replicas("127.0.0.1:9527");
@@ -2049,20 +2238,30 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(64);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->add_replicas("127.0.0.1:9530");
         table_meta->add_replicas("127.0.0.1:9531");
         ::openmldb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
 
-        std::string file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        std::string file;
+        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+            file = FLAGS_db_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else if (storage_mode == ::openmldb::common::StorageMode::kSSD) {
+            file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        } else {
+            file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_" + std::to_string(1) + "/table_meta.txt";
+        }
         int fd = open(file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
         ::openmldb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
-        ASSERT_EQ(table_meta_test.seg_cnt(), 64);
+        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+            ASSERT_EQ(table_meta_test.seg_cnt(), 64);
+        }
         ASSERT_EQ(table_meta_test.term(), 1024lu);
         ASSERT_EQ(table_meta_test.replicas_size(), 2);
         ASSERT_STREQ(table_meta_test.replicas(0).c_str(), "127.0.0.1:9530");
@@ -2081,6 +2280,7 @@ TEST_F(TabletImplTest, Recover) {
         ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
+        grq.set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
@@ -2105,6 +2305,7 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response, &closure);
@@ -2123,7 +2324,8 @@ TEST_F(TabletImplTest, Recover) {
     }
 }
 
-TEST_F(TabletImplTest, LoadWithDeletedKey) {
+TEST_P(TabletImplTest, LoadWithDeletedKey) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     ::openmldb::api::TableMeta table_meta_test;
@@ -2138,6 +2340,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
         table_meta->set_format_version(1);
+        table_meta->set_storage_mode(storage_mode);
         ::openmldb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
         column_desc1->set_name("card");
         column_desc1->set_data_type(::openmldb::type::kString);
@@ -2180,7 +2383,13 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         deleteindex_request.set_tid(id);
         deleteindex_request.set_pid(1);
         tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
-        ASSERT_EQ(0, deleteindex_response.code());
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
+        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+            ASSERT_EQ(0, deleteindex_response.code());
+        } else {
+            ASSERT_EQ(701, deleteindex_response.code());
+        }
     }
     // load
     {
@@ -2191,6 +2400,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse response;
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
@@ -2205,7 +2415,13 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         sr.set_et(1000);
         ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(108, srp.code());
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(108, srp.code());
+        } else {
+            ASSERT_EQ(0, srp.code());
+        }
         sr.set_pk("card0");
         sr.set_idx_name("card");
         tablet.Scan(NULL, &sr, &srp, &closure);
@@ -2214,14 +2430,23 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
     }
 }
 
-TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
+TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int old_offset = FLAGS_make_snapshot_threshold_offset;
     int old_interval = FLAGS_binlog_delete_interval;
     FLAGS_binlog_delete_interval = 1000;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t tid = counter++;
     ::openmldb::storage::LogParts* log_part = new ::openmldb::storage::LogParts(12, 4, scmp);
-    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    std::string binlog_dir;
+
+    if (storage_mode == ::openmldb::common::kMemory) {
+        binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        binlog_dir = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    } else {
+        binlog_dir = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    }
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
     ::openmldb::storage::WriteHandle* wh = NULL;
@@ -2292,6 +2517,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         table_meta->set_name("t0");
         table_meta->set_tid(tid);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::GeneralResponse response;
@@ -2333,12 +2559,22 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ::openmldb::api::GeneralRequest grq;
         grq.set_tid(tid);
         grq.set_pid(0);
+        grq.set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        std::string manifest_file;
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        }
+
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -2349,7 +2585,16 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
 
         sleep(10);
         std::vector<std::string> vec;
-        std::string binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        std::string binlog_path;
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            binlog_path = FLAGS_ssd_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        } else {
+            binlog_path = FLAGS_hdd_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        }
+
         ::openmldb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
@@ -2362,10 +2607,13 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     FLAGS_binlog_delete_interval = old_interval;
 }
 
-TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
+TEST_P(TabletImplTest, GCWithUpdateTTL) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2377,6 +2625,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         // 3 minutes
         AddDefaultSchema(3, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -2469,9 +2718,11 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ASSERT_EQ("invalid args", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, DropTableFollower) {
+TEST_P(TabletImplTest, DropTableFollower) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init("");
@@ -2488,6 +2739,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     table_meta->set_mode(::openmldb::api::TableMode::kTableFollower);
     table_meta->add_replicas("127.0.0.1:9527");
@@ -2517,7 +2769,8 @@ TEST_F(TabletImplTest, DropTableFollower) {
     ASSERT_EQ(0, response.code());
 }
 
-TEST_F(TabletImplTest, TestGetType) {
+TEST_P(TabletImplTest, TestGetType) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2526,6 +2779,7 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 4, ::openmldb::type::TTLType::kLatestTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -2658,7 +2912,8 @@ TEST_F(TabletImplTest, TestGetType) {
     }
 }
 
-TEST_F(TabletImplTest, Snapshot) {
+TEST_P(TabletImplTest, Snapshot) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2667,6 +2922,7 @@ TEST_F(TabletImplTest, Snapshot) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
@@ -2691,6 +2947,7 @@ TEST_F(TabletImplTest, Snapshot) {
     ::openmldb::api::GeneralResponse gresponse;
     grequest.set_tid(id);
     grequest.set_pid(1);
+    grequest.set_storage_mode(storage_mode);
     tablet.PauseSnapshot(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
 
@@ -2704,7 +2961,8 @@ TEST_F(TabletImplTest, Snapshot) {
     ASSERT_EQ(0, gresponse.code());
 }
 
-TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
+TEST_P(TabletImplTest, CreateTableLatestTestDefault) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2716,6 +2974,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -2729,11 +2988,14 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(1, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(1, (signed)ts.skiplist_height());
+        }
     }
 }
 
-TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
+TEST_P(TabletImplTest, CreateTableLatestTestSpecify) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2744,6 +3006,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kLatestTime, table_meta);
         table_meta->set_key_entry_max_height(2);
@@ -2758,11 +3021,14 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(2, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(2, (signed)ts.skiplist_height());
+        }
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
+TEST_P(TabletImplTest, CreateTableAbsoluteTestDefault) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2773,6 +3039,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -2786,11 +3053,14 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(4, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(4, (signed)ts.skiplist_height());
+        }
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
+TEST_P(TabletImplTest, CreateTableAbsoluteTestSpecify) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2801,6 +3071,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
@@ -2815,11 +3086,14 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(8, (signed)ts.skiplist_height());
+        }
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
+TEST_P(TabletImplTest, CreateTableAbsAndLatTest) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2830,6 +3104,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(10, 20, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -2846,7 +3121,8 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
+TEST_P(TabletImplTest, CreateTableAbsAndOrTest) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2857,6 +3133,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(10, 20, ::openmldb::type::TTLType::kAbsOrLat, table_meta);
         ::openmldb::api::CreateTableResponse response;
@@ -2873,7 +3150,8 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
     }
 }
 
-TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
+TEST_P(TabletImplTest, CreateTableAbsAndLatTestSpecify) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
@@ -2884,6 +3162,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_key_entry_max_height(8);
@@ -2898,11 +3177,14 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, (signed)ts.skiplist_height());
+        if (storage_mode == ::openmldb::common::kMemory) {
+            ASSERT_EQ(8, (signed)ts.skiplist_height());
+        }
     }
 }
 
-TEST_F(TabletImplTest, GetTermPair) {
+TEST_P(TabletImplTest, GetTermPair) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
@@ -2917,6 +3199,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -2938,6 +3221,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         ::openmldb::api::GeneralResponse gresponse;
         grequest.set_tid(id);
         grequest.set_pid(1);
+        grequest.set_storage_mode(storage_mode);
         tablet.MakeSnapshot(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
         sleep(1);
@@ -2946,6 +3230,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         ::openmldb::api::GetTermPairResponse pair_response;
         pair_request.set_tid(id);
         pair_request.set_pid(1);
+        pair_request.set_storage_mode(storage_mode);
         tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
         ASSERT_EQ(0, pair_response.code());
         ASSERT_TRUE(pair_response.has_table());
@@ -2957,28 +3242,60 @@ TEST_F(TabletImplTest, GetTermPair) {
     ::openmldb::api::GetTermPairResponse pair_response;
     pair_request.set_tid(id);
     pair_request.set_pid(1);
+    pair_request.set_storage_mode(storage_mode);
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(1, (signed)pair_response.offset());
 
-    std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    std::string manifest_file;
+
+    if (storage_mode == ::openmldb::common::kMemory) {
+        manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    } else {
+        manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    }
+
     int fd = open(manifest_file.c_str(), O_RDONLY);
     ASSERT_GT(fd, 0);
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     ::openmldb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-    std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
-    unlink(snapshot_file.c_str());
+
+    std::string snapshot_file;
+
+    if (storage_mode == ::openmldb::common::kMemory) {
+        snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    } else if (storage_mode == ::openmldb::common::kSSD) {
+        snapshot_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    } else {
+        snapshot_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    }
+
+    // for memtable snapshot is a file
+    // for disktable snapshot is a directory
+    if (storage_mode == openmldb::common::kMemory) {
+        unlink(snapshot_file.c_str());
+    } else {
+        ::openmldb::base::RemoveDirRecursive(snapshot_file.c_str());
+    }
+
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, (signed)pair_response.offset());
     FLAGS_make_snapshot_threshold_offset = offset;
+
+    if (storage_mode == openmldb::common::kMemory) {
+        unlink(manifest_file.c_str());
+    }
 }
 
-TEST_F(TabletImplTest, MakeSnapshotThreshold) {
+TEST_P(TabletImplTest, MakeSnapshotThreshold) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -2992,6 +3309,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(1, 0, ::openmldb::type::TTLType::kAbsoluteTime, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3013,12 +3331,21 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
+        grq.set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file;
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        }
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3050,12 +3377,21 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::openmldb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
+        grq.set_storage_mode(storage_mode);
         ::openmldb::api::GeneralResponse grp;
         grp.set_code(-1);
         tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
         ASSERT_EQ(0, grp.code());
         sleep(1);
-        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        std::string manifest_file;
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        }
         int fd = open(manifest_file.c_str(), O_RDONLY);
         ASSERT_GT(fd, 0);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3063,16 +3399,27 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::openmldb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, (signed)manifest.offset());
-        std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        std::string snapshot_file;
+
+        if (storage_mode == ::openmldb::common::kMemory) {
+            manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        } else if (storage_mode == ::openmldb::common::kSSD) {
+            manifest_file = FLAGS_ssd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        } else {
+            manifest_file = FLAGS_hdd_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        }
         unlink(snapshot_file.c_str());
         FLAGS_make_snapshot_threshold_offset = offset;
     }
 }
 
-TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
+TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -3083,6 +3430,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(100, 50, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3296,12 +3644,16 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
+TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int32_t old_gc_interval = FLAGS_gc_interval;
+    int32_t old_disk_gc_interval = FLAGS_disk_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
+    FLAGS_disk_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init("");
     // create table
@@ -3312,6 +3664,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(100, 50, ::openmldb::type::TTLType::kAbsOrLat, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3526,9 +3879,11 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
+    FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_F(TabletImplTest, ScanAtLeast) {
+TEST_P(TabletImplTest, ScanAtLeast) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -3539,6 +3894,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
         AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         ::openmldb::api::CreateTableResponse response;
@@ -3628,7 +3984,8 @@ TEST_F(TabletImplTest, ScanAtLeast) {
     }
 }
 
-TEST_F(TabletImplTest, AbsAndLat) {
+TEST_P(TabletImplTest, AbsAndLat) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -3640,6 +3997,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_format_version(1);
+        table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts2", ::openmldb::type::kBigInt);
@@ -4501,7 +4859,8 @@ TEST_F(TabletImplTest, AbsAndLat) {
     }
 }  // NOLINT
 
-TEST_F(TabletImplTest, AbsOrLat) {
+TEST_P(TabletImplTest, AbsOrLat) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -4513,6 +4872,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_format_version(1);
+        table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts2", ::openmldb::type::kBigInt);
@@ -5351,7 +5711,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
     }
 }  // NOLINT
 
-TEST_F(TabletImplTest, DelRecycle) {
+TEST_F(TabletImplTest, DelRecycleMem) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     FLAGS_recycle_ttl = 1;
@@ -5395,7 +5755,51 @@ TEST_F(TabletImplTest, DelRecycle) {
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
 }
 
-TEST_F(TabletImplTest, DumpIndex) {
+TEST_F(TabletImplTest, DelRecycleDisk) {
+    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
+    std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
+    FLAGS_recycle_ttl = 1;
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/gtest/recycle/";
+    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_2_20191111115149/binlog/");
+    TabletImpl tablet;
+    tablet.Init("");
+
+    std::vector<std::string> file_vec;
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(2, (signed)file_vec.size());
+    std::cout << "sleep for 30s" << std::endl;
+    sleep(30);
+
+    std::string now_time = ::openmldb::base::GetNowTime();
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_3_" + now_time + "/binlog/");
+    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_4_binlog_" + now_time + "/binlog/");
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(4, (signed)file_vec.size());
+
+    std::cout << "sleep for 35s" << std::endl;
+    sleep(35);
+
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(2, (signed)file_vec.size());
+
+    std::cout << "sleep for 65s" << std::endl;
+    sleep(65);
+
+    file_vec.clear();
+    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
+    ASSERT_EQ(0, (signed)file_vec.size());
+
+    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/gtest");
+    FLAGS_recycle_ttl = tmp_recycle_ttl;
+    FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
+}
+
+TEST_P(TabletImplTest, DumpIndex) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     int old_offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t id = counter++;
@@ -5425,6 +5829,7 @@ TEST_F(TabletImplTest, DumpIndex) {
     table_meta->set_name("t0");
     table_meta->set_tid(id);
     table_meta->set_pid(1);
+    table_meta->set_storage_mode(storage_mode);
     ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
@@ -5460,6 +5865,7 @@ TEST_F(TabletImplTest, DumpIndex) {
     ::openmldb::api::GeneralRequest grq;
     grq.set_tid(id);
     grq.set_pid(1);
+    grq.set_storage_mode(storage_mode);
     ::openmldb::api::GeneralResponse grp;
     grp.set_code(-1);
     tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
@@ -5504,12 +5910,23 @@ TEST_F(TabletImplTest, DumpIndex) {
         column_key->set_ts_name("ts2");
         ::openmldb::api::GeneralResponse dump_response;
         tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
-        ASSERT_EQ(0, dump_response.code());
+        // Some functions in tablet_impl only support memtable now
+        // refer to issue #1438
+        if (storage_mode == openmldb::common::kMemory) {
+            ASSERT_EQ(0, dump_response.code());
+        } else {
+            ASSERT_EQ(701, dump_response.code());
+        }
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
 }
 
-TEST_F(TabletImplTest, SendIndexData) {
+TEST_P(TabletImplTest,  SendIndexData) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    // only support Memtable now
+    if (storage_mode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
@@ -5569,7 +5986,13 @@ TEST_F(TabletImplTest, SendIndexData) {
     ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
-TEST_F(TabletImplTest, BulkLoad) {
+TEST_P(TabletImplTest, BulkLoad) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+
+    // only support Memtable now
+    if (storage_mode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
     // create table, empty data
     TabletImpl tablet;
     tablet.Init("");
@@ -5580,6 +6003,7 @@ TEST_F(TabletImplTest, BulkLoad) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
+        table_meta->set_storage_mode(storage_mode);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         auto column = table_meta->add_column_desc();
         column->set_name("card");
@@ -5665,7 +6089,8 @@ TEST_F(TabletImplTest, BulkLoad) {
     // TODO(hw): bulk load meaningful data, and get data from the table
 }
 
-TEST_F(TabletImplTest, AddIndex) {
+TEST_P(TabletImplTest, AddIndex) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -5677,6 +6102,7 @@ TEST_F(TabletImplTest, AddIndex) {
     table_meta->set_pid(1);
     table_meta->set_seg_cnt(1);
     table_meta->set_format_version(1);
+    table_meta->set_storage_mode(storage_mode);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -5695,52 +6121,111 @@ TEST_F(TabletImplTest, AddIndex) {
     SchemaCodec::SetIndex(add_index_request.mutable_column_key(), "mcc", "mcc", "ts1",
             ::openmldb::type::kAbsoluteTime, 20, 0);
     tablet.AddIndex(NULL, &add_index_request, &add_index_response, &closure);
-    ASSERT_EQ(0, response.code());
+    // Some functions in tablet_impl only support memtable now
+    // refer to issue #1438
+    if (storage_mode != openmldb::common::kMemory) {
+        ASSERT_EQ(701, add_index_response.code());
+    } else {
+        ASSERT_EQ(0, add_index_response.code());
 
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t key_base = 10000;
-    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
-    for (int i = 0; i < 10; i++) {
-        uint64_t ts_value = cur_time - 10 * 60 * 1000 - i;
-        uint64_t ts1_value = cur_time - i;
-        std::vector<std::string> row = {"card" + std::to_string(key_base + i),
-                "mcc" + std::to_string(key_base + i), "12", std::to_string(ts_value), std::to_string(ts1_value)};
-        ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("card" + std::to_string(key_base + i));
-        dim = prequest.add_dimensions();
-        dim->set_idx(1);
-        dim->set_key("mcc" + std::to_string(key_base + i));
-        auto value = prequest.mutable_value();
-        sdk_codec.EncodeRow(row, value);
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        prequest.set_time(cur_time);
-        ::openmldb::api::PutResponse presponse;
-        tablet.Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(0, presponse.code());
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        uint64_t key_base = 10000;
+        ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts_value = cur_time - 10 * 60 * 1000 - i;
+            uint64_t ts1_value = cur_time - i;
+            std::vector<std::string> row = {"card" + std::to_string(key_base + i), "mcc" + std::to_string(key_base + i),
+                                            "12", std::to_string(ts_value), std::to_string(ts1_value)};
+            ::openmldb::api::PutRequest prequest;
+            ::openmldb::api::Dimension* dim = prequest.add_dimensions();
+            dim->set_idx(0);
+            dim->set_key("card" + std::to_string(key_base + i));
+            dim = prequest.add_dimensions();
+            dim->set_idx(1);
+            dim->set_key("mcc" + std::to_string(key_base + i));
+            auto value = prequest.mutable_value();
+            sdk_codec.EncodeRow(row, value);
+            prequest.set_tid(id);
+            prequest.set_pid(1);
+            prequest.set_time(cur_time);
+            ::openmldb::api::PutResponse presponse;
+            tablet.Put(NULL, &prequest, &presponse, &closure);
+            ASSERT_EQ(0, presponse.code());
+        }
+        ::openmldb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(1);
+        sr.set_pk("card10005");
+        sr.set_idx_name("card");
+        sr.set_st(0);
+        sr.set_et(0);
+        ::openmldb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, (signed)srp.count());
+
+        sr.set_pk("mcc10005");
+        sr.set_idx_name("mcc");
+        sr.set_st(0);
+        sr.set_et(0);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, (signed)srp.count());
     }
-    ::openmldb::api::ScanRequest sr;
-    sr.set_tid(id);
-    sr.set_pid(1);
-    sr.set_pk("card10005");
-    sr.set_idx_name("card");
-    sr.set_st(0);
-    sr.set_et(0);
-    ::openmldb::api::ScanResponse srp;
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, (signed)srp.count());
-
-    sr.set_pk("mcc10005");
-    sr.set_idx_name("mcc");
-    sr.set_st(0);
-    sr.set_et(0);
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, (signed)srp.count());
 }
+
+TEST_P(TabletImplTest, CountWithFilterExpire) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    TabletImpl tablet;
+    tablet.Init("");
+    // create table
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet, id, 0);
+    }
+
+    {
+        //
+        ::openmldb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        ::openmldb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, (int32_t)response.count());
+    }
+
+    {
+        //
+        ::openmldb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_filter_expired_data(true);
+        ::openmldb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(5, (int32_t)response.count());
+    }
+}
+
+INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD,
+                                          ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;
@@ -5835,10 +6320,17 @@ TEST_F(TabletImplTest, CreateAggregator) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
+    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::tablet::GenRand();
+    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_ssd_root_path = "/tmp/ssd/recycle/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle/" + ::openmldb::tablet::GenRand();
+    FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }

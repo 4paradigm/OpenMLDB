@@ -584,8 +584,11 @@ ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status
     }
     auto task = RegisterTask(node, MultipleInherit({&request_task, &base_table_task, &agg_table_task}, runner,
                                                    index_key, kRightBias));
-    runner->InitAggregator();
-    return task;
+    if (!runner->InitAggregator()) {
+        return fail;
+    } else {
+        return task;
+    }
 }
 
 ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
@@ -2678,35 +2681,35 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
     }
 }
 
-void RequestAggUnionRunner::InitAggregator() {
+bool RequestAggUnionRunner::InitAggregator() {
     auto func_name = func_->GetName();
+    auto type_it = agg_type_map_.find(func_name);
+    if (type_it == agg_type_map_.end()) {
+        LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_name;
+        return false;
+    }
+
+    agg_type_ = type_it->second;
     auto agg_col_type = producers_[1]->row_parser()->GetType(*agg_col_);
-    // TODO(zhanghao): other supported ops
-    if (func_name.compare("sum") == 0) {
-        switch (agg_col_type) {
-            case type::kInt16:
-            case type::kInt32:
-            case type::kInt64: {
-                aggregator_ = std::make_unique<SumStateAggregator<int64_t>>(agg_col_type,
-                                                                            *output_schemas_->GetOutputSchema());
-                break;
-            }
-            case type::kFloat: {
-                aggregator_ =
-                    std::make_unique<SumStateAggregator<float>>(agg_col_type, *output_schemas_->GetOutputSchema());
-                break;
-            }
-            case type::kDouble: {
-                aggregator_ =
-                    std::make_unique<SumStateAggregator<double>>(agg_col_type, *output_schemas_->GetOutputSchema());
-                break;
-            }
-            default:
-                LOG(ERROR) << "RequestAggUnionRunner does not support for type " << Type_Name(agg_col_type);
-                break;
-        }
-    } else {
-        LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
+    switch (agg_type_) {
+        case kSum:
+            aggregator_ = MakeOverflowAggregator<SumAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kAvg:
+            aggregator_ = std::make_unique<AvgAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kCount:
+            aggregator_ = std::make_unique<CountAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kMin:
+            aggregator_ = MakeSameTypeAggregator<MinAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        case kMax:
+            aggregator_ = MakeSameTypeAggregator<MaxAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
+            return true;
+        default:
+            LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_name;
+            return false;
     }
 }
 
@@ -2743,15 +2746,21 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 
     auto& key_gen = windows_union_gen_.windows_gen_[0].index_seek_gen_.index_key_gen_;
     std::string key = key_gen.Gen(request, ctx.GetParameterRow());
-    auto agg_segment = std::dynamic_pointer_cast<PartitionHandler>(union_inputs[1])->GetSegment(key);
+    // do not use codegen to gen the union outputs for aggr segment
+    union_inputs.pop_back();
 
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
     // code_gen result of agg_segment is not correct. we correct the result here
-    union_segments[1] = agg_segment;
+    auto agg_segment = std::dynamic_pointer_cast<PartitionHandler>(union_inputs[1])->GetSegment(key);
+    if (agg_segment) {
+        union_segments.emplace_back(agg_segment);
+    }
 
     if (ctx.is_debug()) {
         for (size_t i = 0; i < union_segments.size(); i++) {
+            if (!union_segments[i]) continue;
+
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_segments[i]);
             LOG(INFO) << "union output " << i << ": " << sss.str();
@@ -2759,9 +2768,15 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     }
 
     // build window with start and end offset
-    auto window = RequestUnionWindow(request, union_segments, ts_gen,
-                              range_gen_.window_range_, output_request_row_,
-                              exclude_current_time_);
+    std::shared_ptr<TableHandler> window;
+    if (agg_segment) {
+        window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
+                                    exclude_current_time_);
+    } else {
+        LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
+                                                        output_request_row_, exclude_current_time_);
+    }
 
     if (ctx.is_debug()) {
         std::ostringstream oss;
@@ -2817,13 +2832,100 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
     int64_t request_key = ts_gen > 0 ? ts_gen : 0;
 
+    auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
+        if (row_parser->IsNull(row, *agg_col_)) {
+            return;
+        }
+
+        auto type = aggregator_->type();
+        auto aggregator = aggregator_.get();
+        if (agg_type_ == kCount) {
+            dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
+            return;
+        }
+        switch (type) {
+            case type::Type::kInt16: {
+                int16_t val = 0;
+                row_parser->GetValue(row, *agg_col_, type, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            case type::Type::kDate:
+            case type::Type::kInt32: {
+                int32_t val = 0;
+                row_parser->GetValue(row, *agg_col_, type, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            case type::Type::kTimestamp:
+            case type::Type::kInt64: {
+                int64_t val = 0;
+                row_parser->GetValue(row, *agg_col_, type, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            case type::Type::kFloat: {
+                float val = 0;
+                row_parser->GetValue(row, *agg_col_, type, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            case type::Type::kDouble: {
+                double val = 0;
+                row_parser->GetValue(row, *agg_col_, type, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            case type::Type::kVarchar: {
+                std::string val;
+                row_parser->GetString(row, *agg_col_, &val);
+                AggregatorUpdate(aggregator, val);
+                break;
+            }
+            default:
+                LOG(ERROR) << "Not support type: " << Type_Name(type);
+                break;
+        }
+    };
+
+    auto update_agg_aggregator = [row_parser = agg_row_parser, this](const Row& row) {
+        if (row_parser->IsNull(row, "agg_val")) {
+            return;
+        }
+
+        std::string agg_val;
+        row_parser->GetString(row, "agg_val", &agg_val);
+        aggregator_->Update(agg_val);
+    };
+
+    int64_t cnt = 0;
+    auto range_status = window_range.GetWindowPositionStatus(
+        cnt > rows_start_preceding, window_range.end_offset_ < 0,
+        request_key < start);
+    if (output_request_row) {
+        update_base_aggregator(request);
+    }
+    if (WindowRange::kInWindow == range_status) {
+        cnt++;
+    }
+
     auto window_table =
         std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-
     auto base_it = union_segments[0]->GetIterator();
+    if (!base_it) {
+        LOG(WARNING) << "Base window is empty.";
+        window_table->AddRow(start, aggregator_->Output());
+        DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
+        return window_table;
+    }
     base_it->Seek(end);
+
     auto agg_it = union_segments[1]->GetIterator();
-    agg_it->Seek(end);
+    if (agg_it) {
+         agg_it->Seek(end);
+    } else {
+        LOG(WARNING) << "Agg window is empty. Use base window only";
+    }
 
     // we'll iterate over the following ranges:
     // - base(end_base, end] if end_base < end
@@ -2831,7 +2933,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     // - base[start, start_base) if start < start_base
     int64_t end_base = start;
     int64_t start_base = start + 1;
-    if (agg_it->Valid()) {
+    if (agg_it && agg_it->Valid()) {
         int64_t ts_start = agg_it->GetKey();
         int64_t ts_end = -1;
         agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
@@ -2850,91 +2952,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         } else {
             end_base = ts_end;
         }
-    }
-
-    auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
-        if (row_parser->IsNull(row, *agg_col_)) {
-            return;
-        }
-
-        auto type = aggregator_->type();
-        auto aggregator = aggregator_.get();
-        switch (type) {
-            case type::Type::kInt16: {
-                int16_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->Update(val);
-                break;
-            }
-            case type::Type::kInt32: {
-                int32_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->Update(val);
-                break;
-            }
-            case type::Type::kInt64: {
-                int64_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->Update(val);
-                break;
-            }
-            case type::Type::kFloat: {
-                float val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<float>*>(aggregator)->Update(val);
-                break;
-            }
-            case type::Type::kDouble: {
-                double val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
-                dynamic_cast<Aggregator<double>*>(aggregator)->Update(val);
-                break;
-            }
-            default:
-                LOG(ERROR) << "Not support type: " << Type_Name(type);
-                break;
-        }
-    };
-
-    auto update_agg_aggregator = [row_parser = agg_row_parser, this](const Row& row) {
-        if (row_parser->IsNull(row, "agg_val")) {
-            return;
-        }
-
-        auto type = aggregator_->type();
-        auto aggregator = aggregator_.get();
-        std::string agg_val;
-        row_parser->GetString(row, "agg_val", &agg_val);
-        switch (type) {
-            case type::Type::kInt16:
-            case type::Type::kInt32:
-            case type::Type::kInt64: {
-                dynamic_cast<Aggregator<int64_t>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            case type::Type::kFloat: {
-                dynamic_cast<Aggregator<float>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            case type::Type::kDouble: {
-                dynamic_cast<Aggregator<double>*>(aggregator)->Update(agg_val);
-                break;
-            }
-            default:
-                LOG(ERROR) << "Not support type: " << Type_Name(type);
-                break;
-        }
-    };
-
-    int64_t cnt = 0;
-    auto range_status = window_range.GetWindowPositionStatus(
-        cnt > rows_start_preceding, window_range.end_offset_ < 0,
-        request_key < start);
-    if (output_request_row) {
-        update_base_aggregator(request);
-    }
-    if (WindowRange::kInWindow == range_status) {
-        cnt++;
     }
 
     // iterate over base table from end (inclusive) to end_base (exclusive)
@@ -2962,7 +2979,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     // iterate over agg table from end_base until start (both inclusive)
     int64_t last_ts_start = INT64_MAX;
-    while (agg_it->Valid()) {
+    while (agg_it && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
@@ -3019,6 +3036,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     window_table->AddRow(start, aggregator_->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
+    // reset the aggregator
+    aggregator_->Reset();
     return window_table;
 }
 
