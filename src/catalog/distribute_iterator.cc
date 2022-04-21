@@ -15,13 +15,18 @@
  */
 
 #include "catalog/distribute_iterator.h"
+#include "gflags/gflags.h"
+
+DECLARE_uint32(traverse_cnt);
 
 namespace openmldb {
 namespace catalog {
 
+constexpr uint32_t INVALID_PID = UINT32_MAX;
+
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
         const std::map<uint32_t, std::shared_ptr<TabletAccessor>>& tablet_clients)
-    : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(UINT32_MAX),
+    : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(INVALID_PID),
     it_(), kv_it_(), key_(0), last_pk_(), value_() {
 }
 
@@ -44,13 +49,13 @@ void FullTableIterator::Next() {
 void FullTableIterator::Reset() {
     it_.reset();
     kv_it_.reset();
-    cur_pid_ = UINT32_MAX;
+    cur_pid_ = INVALID_PID;
     in_local_ = true;
 }
 
 void FullTableIterator::EndLocal() {
     in_local_ = false;
-    cur_pid_ = UINT32_MAX;
+    cur_pid_ = INVALID_PID;
     it_.reset();
 }
 
@@ -67,7 +72,7 @@ bool FullTableIterator::NextFromLocal() {
     }
     it_.reset();
     auto iter = tables_->begin();
-    if (cur_pid_ == UINT32_MAX) {
+    if (cur_pid_ == INVALID_PID) {
         cur_pid_ = iter->first;
     } else {
         iter = tables_->find(cur_pid_);;
@@ -104,14 +109,14 @@ bool FullTableIterator::NextFromRemote() {
     }
     if (kv_it_) {
         kv_it_->Next();
-        if (it_->Valid()) {
-            key_ = it_->GetKey();
-            last_pk_ = it_->GetPK();
+        if (kv_it_->Valid()) {
+            key_ = kv_it_->GetKey();
+            last_pk_ = kv_it_->GetPK();
             return true;
         }
     }
     auto iter = tablet_clients_.end();;
-    if (cur_pid_ == UINT32_MAX) {
+    if (cur_pid_ == INVALID_PID) {
         cur_pid_ = iter->first;
         iter = tablet_clients_.begin();
     } else {
@@ -125,14 +130,18 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
-                kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", last_pk_, key_, 100, count));
+                kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", last_pk_, key_,
+                            FLAGS_traverse_cnt, count));
+                DLOG(INFO) << "last pk " << last_pk_ << " key " << key_ << " count " << count;
             } else {
                 iter++;
                 kv_it_.reset();
                 continue;
             }
         } else {
-            kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", "", 0, 100, count));
+            kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", "", 0,
+                        FLAGS_traverse_cnt, count));
+            LOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
             last_pk_ = kv_it_->GetPK();

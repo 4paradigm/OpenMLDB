@@ -16,14 +16,21 @@
 
 #include "catalog/distribute_iterator.h"
 
-#include <absl/strings/str_cat.h>
+#include <string>
 #include <vector>
+#include <utility>
 
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "codec/sdk_codec.h"
+#include "client/tablet_client.h"
 #include "storage/mem_table.h"
 #include "storage/table.h"
+#include "tablet/tablet_impl.h"
+#include "test/util.h"
+#include "rpc/rpc_client.h"
+
+DECLARE_string(db_root_path);
 
 namespace openmldb {
 namespace catalog {
@@ -32,7 +39,7 @@ using ::openmldb::codec::SchemaCodec;
 
 class DistributeIteratorTest : public ::testing::Test {};
 
-std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid) {
+::openmldb::api::TableMeta CreateTableMeta(uint32_t tid, uint32_t pid) {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_db("db1");
     table_meta.set_name("table1");
@@ -45,7 +52,12 @@ std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts", ::openmldb::type::kBigInt);
     codec::SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts",
             ::openmldb::type::kAbsoluteTime, 0, 0);
-    auto table = std::make_shared<openmldb::storage::MemTable>(table_meta);
+    return table_meta;
+
+}
+
+std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid) {
+    auto table = std::make_shared<openmldb::storage::MemTable>(CreateTableMeta(tid, pid));
     table->Init();
     return table;
 }
@@ -64,6 +76,22 @@ void PutData(std::shared_ptr<openmldb::storage::Table> table) {
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
             table->Put(0, value, request.dimensions());
+        }
+    }
+}
+
+void PutData(const ::openmldb::api::TableMeta& table_meta,
+        std::shared_ptr<openmldb::client::TabletClient> client) {
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    for (int i = 0; i < 5; i++) {
+        std::string key = "card" + std::to_string(table_meta.tid()) + std::to_string(i);
+        for (int j = 0; j < 10; j++) {
+            std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+            std::string value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &value));
+            std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
+            client->Put(table_meta.tid(), table_meta.pid(), 0, value, dimensions);
         }
     }
 }
@@ -94,6 +122,98 @@ TEST_F(DistributeIteratorTest, AllInMemory) {
         it.Next();
     }
     ASSERT_EQ(count, 100);
+}
+
+TEST_F(DistributeIteratorTest, Empty) {
+    uint32_t tid = 2;
+    FullTableIterator it(tid, {}, {});
+    it.SeekToFirst();
+    ASSERT_FALSE(it.Valid());
+}
+
+TEST_F(DistributeIteratorTest, AllInRemote) {
+    uint32_t tid = 3;
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    brpc::Server tablet2;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[1], &tablet2));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
+    ASSERT_EQ(client2->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    auto access1 = std::make_shared<TabletAccessor>(endpoints[0], client1);
+    auto access2 = std::make_shared<TabletAccessor>(endpoints[1], client2);
+    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients = {{1, access1}, {4, access2}};
+    FullTableIterator it(tid, {}, tablet_clients);
+    it.SeekToFirst();
+    ASSERT_FALSE(it.Valid());
+    PutData(metas[0], client1);
+    it.SeekToFirst();
+    int count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, 50);
+    PutData(metas[1], client2);
+    it.SeekToFirst();
+    count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, 100);
+}
+
+TEST_F(DistributeIteratorTest, Hybrid) {
+    uint32_t tid = 3;
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    auto tables = std::make_shared<Tables>();
+    auto table1 = CreateTable(tid, 3);
+    auto table2 = CreateTable(tid, 7);
+    tables->emplace(3, table1);
+    tables->emplace(7, table2);
+    std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    brpc::Server tablet2;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[1], &tablet2));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
+    ASSERT_EQ(client2->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    auto access1 = std::make_shared<TabletAccessor>(endpoints[0], client1);
+    auto access2 = std::make_shared<TabletAccessor>(endpoints[1], client2);
+    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients = {{1, access1}, {4, access2}};
+    FullTableIterator it(tid, tables, tablet_clients);
+    it.SeekToFirst();
+    ASSERT_FALSE(it.Valid());
+    PutData(metas[0], client1);
+    it.SeekToFirst();
+    int count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, 50);
+    PutData(metas[1], client2);
+    PutData((*tables)[3]);
+    PutData((*tables)[7]);
+    it.SeekToFirst();
+    count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, 200);
 }
 
 }  // namespace catalog

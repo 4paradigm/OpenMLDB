@@ -34,6 +34,7 @@ class KvIterator {
     explicit KvIterator(::openmldb::api::ScanResponse* response)
         : response_(response),
           buffer_(NULL),
+          is_finish_(true),
           tsize_(0),
           offset_(0),
           c_size_(0),
@@ -49,6 +50,7 @@ class KvIterator {
     explicit KvIterator(::openmldb::api::TraverseResponse* response)
         : response_(response),
           buffer_(NULL),
+          is_finish_(response->is_finish()),
           tsize_(0),
           offset_(0),
           c_size_(0),
