@@ -91,13 +91,13 @@ TEST_P(DBSDKTest, CreateFunction) {
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
     if (cs->IsClusterMode()) {
-        ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
                               {"cut2", "Varchar", "Varchar", "false", so_path, so_path},
                               {"int2str", "Varchar", "Int", "false", so_path, so_path},
                               {"strlength", "Int", "Varchar", "false", so_path, so_path}},
                              result.get());
     } else {
-        ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
                               {"cut2", "Varchar", "Varchar", "false", so_path, ""},
                               {"int2str", "Varchar", "Int", "false", so_path, ""},
                               {"strlength", "Int", "Varchar", "false", so_path, ""}},
