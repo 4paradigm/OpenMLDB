@@ -2213,7 +2213,7 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
     return log;
 }
 
-bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
+bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kTable); }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
@@ -2502,7 +2502,7 @@ bool SQLClusterRouter::IsSyncJob() {
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
             return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
         }
-        if (!cluster_sdk_->GlobalVarNotify()) {
+        if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
             return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
         return {};

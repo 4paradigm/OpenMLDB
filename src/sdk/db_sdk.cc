@@ -191,13 +191,15 @@ void ClusterSDK::WatchNotify() {
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
-bool ClusterSDK::TriggerNotify() const {
-    LOG(INFO) << "Trigger table notify node";
-    return zk_client_->Increment(notify_path_);
-}
-
-bool ClusterSDK::GlobalVarNotify() const {
-    return zk_client_->Increment(globalvar_changed_notify_path_);
+bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
+    if (type == ::openmldb::type::NotifyType::kTable) {
+        LOG(INFO) << "Trigger table notify node";
+        return zk_client_->Increment(notify_path_);
+    } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
+        return zk_client_->Increment(globalvar_changed_notify_path_);
+    }
+    LOG(ERROR) << "unsupport notify type";
+    return false;
 }
 
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
