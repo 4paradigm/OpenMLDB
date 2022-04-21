@@ -119,7 +119,7 @@ void from_json(const BasicJsonType& j, const typename BasicJsonType::number_inte
 }
 
 template <typename BasicJsonType, typename EnumType, enable_if_t<std::is_enum<EnumType>::value, int> = 0>
-void from_json(const BasicJsonType& j, EnumType& e) {
+void from_json(const BasicJsonType& j, const EnumType& e) {
     typename std::underlying_type<EnumType>::type val;
     get_arithmetic_value(j, val);
     e = static_cast<EnumType>(val);
