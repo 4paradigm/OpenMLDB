@@ -312,7 +312,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         "                   c6 double,\n"
         "                   c7 timestamp,\n"
         "                   c8 date,\n"
-        "                   index(key=c1, ts=c7));";
+        "                   index(key=c1, ts=c7))OPTIONS(partitionnum=4);";
     std::string ddl2 =
         "create table trans1(c1 string,\n"
         "                   c3 int,\n"
@@ -321,7 +321,7 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
         "                   c6 double,\n"
         "                   c7 timestamp,\n"
         "                   c8 date,\n"
-        "                   index(key=c1, ts=c7));";
+        "                   index(key=c1, ts=c7))OPTIONS(partitionnum=4);";
     auto router = GetNewSQLRouter();
     if (!router) {
         FAIL() << "Fail new cluster sql router";
