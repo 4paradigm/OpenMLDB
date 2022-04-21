@@ -1543,7 +1543,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 lines.push_back(vec);
             }
             return ResultSetSQL::MakeResultSet(
-                {"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"}, lines, status);
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];

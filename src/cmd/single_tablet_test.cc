@@ -91,22 +91,17 @@ TEST_P(DBSDKTest, CreateFunction) {
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
     if (cs->IsClusterMode()) {
-        ExpectResultSetStrEq(
-            {{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
-             {"cut2", "Varchar", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
-              "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"},
-             {"int2str", "Varchar", "Int", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
-              "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"},
-             {"strlength", "Int", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so",
-              "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so"}},
-            result.get());
+        ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+                              {"cut2", "Varchar", "Varchar", "false", so_path, so_path},
+                              {"int2str", "Varchar", "Int", "false", so_path, so_path},
+                              {"strlength", "Int", "Varchar", "false", so_path, so_path}},
+                             result.get());
     } else {
-        ExpectResultSetStrEq(
-            {{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
-             {"cut2", "Varchar", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""},
-             {"int2str", "Varchar", "Int", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""},
-             {"strlength", "Int", "Varchar", "false", "/__w/OpenMLDB/OpenMLDB/build/src/libtest_udf.so", ""}},
-            result.get());
+        ExpectResultSetStrEq({{"name", "return_type", "arg_type", "is_aggregate", "file", "offline_file"},
+                              {"cut2", "Varchar", "Varchar", "false", so_path, ""},
+                              {"int2str", "Varchar", "Int", "false", so_path, ""},
+                              {"strlength", "Int", "Varchar", "false", so_path, ""}},
+                             result.get());
     }
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
