@@ -1964,6 +1964,12 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
                 replicator->SetLeaderTerm(request->term());
             }
         }
+        PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
+        if (catalog_->AddTable(*(table->GetTableMeta()), table)) {
+            LOG(INFO) << "add table " << table->GetName() << " to catalog with db " << table->GetDB();
+        } else {
+            LOG(WARNING) << "fail to add table " << table->GetName() << " to catalog with db " << table->GetDB();
+        }
         if (replicator->AddReplicateNode(real_ep_map) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
@@ -1991,6 +1997,9 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
         replicator->SetRole(ReplicatorRole::kFollowerNode);
         table->SetLeader(false);
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+        }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
