@@ -21,20 +21,13 @@ namespace catalog {
 
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
         const std::map<uint32_t, std::shared_ptr<TabletAccessor>>& tablet_clients)
-    : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), it_(), key_(0), value_() {
+    : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(UINT32_MAX),
+    it_(), kv_it_(), key_(0), last_pk_(), value_() {
 }
 
 void FullTableIterator::SeekToFirst() {
-    it_.reset();
-    for (const auto& kv : *tables_) {
-        it_.reset(kv.second->NewTraverseIterator(0));
-        it_->SeekToFirst();
-        if (it_->Valid()) {
-            cur_pid_ = kv.first;
-            key_ = it_->GetKey();
-            break;
-        }
-    }
+    Reset();
+    Next();
 }
 
 bool FullTableIterator::Valid() const {
@@ -42,13 +35,26 @@ bool FullTableIterator::Valid() const {
 }
 
 void FullTableIterator::Next() {
-    if (NextInLocal()) {
+    if (NextFromLocal()) {
         return;
     }
-    NextInRemote();
+    NextFromRemote();
 }
 
-bool FullTableIterator::NextInLocal() {
+void FullTableIterator::Reset() {
+    it_.reset();
+    kv_it_.reset();
+    cur_pid_ = UINT32_MAX;
+    in_local_ = true;
+}
+
+void FullTableIterator::EndLocal() {
+    in_local_ = false;
+    cur_pid_ = UINT32_MAX;
+    it_.reset();
+}
+
+bool FullTableIterator::NextFromLocal() {
     if (!in_local_ || !tables_ || tables_->empty()) {
         return false;
     }
@@ -66,16 +72,14 @@ bool FullTableIterator::NextInLocal() {
     } else {
         iter = tables_->find(cur_pid_);;
         if (iter == tables_->end()) {
-            in_local_ = false;
-            cur_pid_ = UINT32_MAX;
+            EndLocal();
             return false;
         }
         iter++;
     }
     do {
         if (iter == tables_->end()) {
-            in_local_ = false;
-            cur_pid_ = UINT32_MAX;
+            EndLocal();
             return false;
         }
         cur_pid_ = iter->first;
@@ -90,13 +94,11 @@ bool FullTableIterator::NextInLocal() {
         key_ = it_->GetKey();
         return true;
     }
-    in_local_ = false;
-    cur_pid_ = UINT32_MAX;
-    it_.reset();
+    EndLocal();
     return false;
 }
 
-bool FullTableIterator::NextInRemote() {
+bool FullTableIterator::NextFromRemote() {
     if (tablet_clients_.empty()) {
         return false;
     }

@@ -46,8 +46,10 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     const uint64_t& GetKey() const override { return key_; }
 
  private:
-    bool NextInLocal();
-    bool NextInRemote();
+    bool NextFromLocal();
+    bool NextFromRemote();
+    void Reset();
+    void EndLocal();
 
  private:
     uint32_t tid_;
