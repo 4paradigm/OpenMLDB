@@ -3418,39 +3418,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
     return {};
 }
 
-std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
-    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
-    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-    std::string select_sql = absl::StrCat("select * from ", meta_table);
-
-    hybridse::sdk::Status status;
-    std::vector<::hybridse::vm::AggrTableInfo> table_infos;
-    auto rs = ExecuteSQL(meta_db, select_sql, &status);
-    if (!status.IsOK()) {
-        LOG(WARNING) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
-        return table_infos;
-    } else {
-        DLOG(INFO) << "Get pre-aggr table info succeed, size: " << rs->Size();
-    }
-
-    while (rs->Next()) {
-        ::hybridse::vm::AggrTableInfo table_info;
-        rs->GetString(0, &table_info.aggr_table);
-        rs->GetString(1, &table_info.aggr_db);
-        rs->GetString(2, &table_info.base_db);
-        rs->GetString(3, &table_info.base_table);
-        rs->GetString(4, &table_info.aggr_func);
-        rs->GetString(5, &table_info.aggr_col);
-        rs->GetString(6, &table_info.partition_cols);
-        rs->GetString(7, &table_info.order_by_col);
-        rs->GetString(8, &table_info.bucket_size);
-
-        table_infos.push_back(std::move(table_info));
-    }
-
-    return table_infos;
-}
-
 static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
         "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",

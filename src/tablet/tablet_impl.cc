@@ -4158,27 +4158,34 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
-    // todo: should support distribute iterate
-    if (!GetClusterRouter()) return;
-    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
-
-    std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
-    std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
-    std::string sql = "select * from " + table;
-    hybridse::sdk::Status status;
-    auto rs = sr->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-    if (status.code != 0) {
-        LOG(ERROR) << "update global var table failed: " << status.msg;
+    auto table_handler = catalog_->GetTable(nameserver::INFORMATION_SCHEMA_DB, nameserver::GLOBAL_VARIABLES);
+    if (!table_handler) {
+        LOG(WARNING) << "fail to get table handler. db " << nameserver::INFORMATION_SCHEMA_DB <<
+            " table " << nameserver::GLOBAL_VARIABLES;
+        return;
+    }
+    auto it = table_handler->GetIterator();
+    if (!it) {
+        LOG(WARNING) << "fail to get full iterator. db " << nameserver::INFORMATION_SCHEMA_DB <<
+            " table " << nameserver::GLOBAL_VARIABLES;
         return;
     }
     auto old_global_var = std::atomic_load_explicit(&global_variables_, std::memory_order_relaxed);
     auto new_global_var = std::make_shared<std::map<std::string, std::string>>(*old_global_var);
     std::string key;
     std::string value;
-    while (rs->Next()) {
-        key = rs->GetStringUnsafe(0);
-        value = rs->GetStringUnsafe(1);
+    static ::hybridse::codec::RowView row_view(*(table_handler->GetSchema()));
+    it->SeekToFirst();
+    while (it->Valid()) {
+        auto row = it->GetValue();
+        const char* ch = nullptr;
+        uint32_t len = 0;
+        row_view.GetValue(row.buf(), 0, &ch, &len);
+        key.assign(ch, len);
+        row_view.GetValue(row.buf(), 1, &ch, &len);
+        value.assign(ch, len);
         (*new_global_var)[key] = value;
+        it->Next();
     }
     std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
     return;
@@ -4296,96 +4303,50 @@ void TabletImpl::RefreshTableInfo() {
 }
 
 bool TabletImpl::RefreshAggrCatalog() {
-    if (IsClusterMode()) {
-        if (GetClusterRouter()) {
-            auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
-            auto table_infos = sr->GetAggrTables();
-            catalog_->RefreshAggrTables(table_infos);
-            DLOG(INFO) << "Refresh agg catalog in cluster mode (size = " << table_infos.size() << ")";
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        std::string meta_db = nameserver::INTERNAL_DB;
-        std::string meta_table = nameserver::PRE_AGG_META_NAME;
-        std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
-        if (!table) {
-            PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
-            return false;
-        }
-        static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
-
-        auto it = table->GetIterator();
-        it->SeekToFirst();
-        ::hybridse::vm::AggrTableInfo table_info;
-        std::vector<::hybridse::vm::AggrTableInfo> table_infos;
-        while (it->Valid()) {
-            auto row = it->GetValue();
-            const char* str = nullptr;
-            uint32_t len = 0;
-
-            row_view.GetValue(row.buf(), 0, &str, &len);
-            table_info.aggr_table.assign(str, len);
-            row_view.GetValue(row.buf(), 1, &str, &len);
-            table_info.aggr_db.assign(str, len);
-            row_view.GetValue(row.buf(), 2, &str, &len);
-            table_info.base_db.assign(str, len);
-            row_view.GetValue(row.buf(), 3, &str, &len);
-            table_info.base_table.assign(str, len);
-            row_view.GetValue(row.buf(), 4, &str, &len);
-            table_info.aggr_func.assign(str, len);
-            row_view.GetValue(row.buf(), 5, &str, &len);
-            table_info.aggr_col.assign(str, len);
-            row_view.GetValue(row.buf(), 6, &str, &len);
-            table_info.partition_cols.assign(str, len);
-            row_view.GetValue(row.buf(), 7, &str, &len);
-            table_info.order_by_col.assign(str, len);
-            row_view.GetValue(row.buf(), 8, &str, &len);
-            table_info.bucket_size.assign(str, len);
-
-            table_infos.push_back(std::move(table_info));
-            it->Next();
-        }
-        catalog_->RefreshAggrTables(table_infos);
-        DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
-        return true;
-    }
-}
-
-bool TabletImpl::GetClusterRouter() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire)) return true;
-
-    PDLOG(INFO, "Init ClusterSDK in tablet server");
-    if (IsClusterMode()) {
-        ::openmldb::sdk::SQLRouterOptions copt;
-        copt.zk_cluster = zk_cluster_;
-        copt.zk_path = zk_path_;
-        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(copt);
-        if (sr) {
-            if (!sr->Init()) {
-                PDLOG(WARNING, "Fail to init sql cluster router");
-                return false;
-            }
-
-            ::hybridse::sdk::Status status;
-            sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-            if (!status.IsOK()) {
-                PDLOG(WARNING, "set online mode failed: %s ", status.msg);
-                return false;
-            } else {
-                DLOG(INFO) << "set online mode succeed";
-                std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
-                return true;
-            }
-        } else {
-            PDLOG(WARNING, "create sql router failed");
-            return false;
-        }
-    } else {
-        PDLOG(ERROR, "Un-support standalone mode for now");
+    std::string meta_db = nameserver::INTERNAL_DB;
+    std::string meta_table = nameserver::PRE_AGG_META_NAME;
+    std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
+    if (!table) {
+        PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
         return false;
     }
+    static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
+    auto it = table->GetIterator();
+    if (!it) {
+        PDLOG(WARNING, "fail to get iterator. %s.%s", meta_db, meta_table);
+        return false;
+    }
+    it->SeekToFirst();
+    std::vector<::hybridse::vm::AggrTableInfo> table_infos;
+    while (it->Valid()) {
+        auto row = it->GetValue();
+        const char* str = nullptr;
+        uint32_t len = 0;
+        ::hybridse::vm::AggrTableInfo table_info;
+        row_view.GetValue(row.buf(), 0, &str, &len);
+        table_info.aggr_table.assign(str, len);
+        row_view.GetValue(row.buf(), 1, &str, &len);
+        table_info.aggr_db.assign(str, len);
+        row_view.GetValue(row.buf(), 2, &str, &len);
+        table_info.base_db.assign(str, len);
+        row_view.GetValue(row.buf(), 3, &str, &len);
+        table_info.base_table.assign(str, len);
+        row_view.GetValue(row.buf(), 4, &str, &len);
+        table_info.aggr_func.assign(str, len);
+        row_view.GetValue(row.buf(), 5, &str, &len);
+        table_info.aggr_col.assign(str, len);
+        row_view.GetValue(row.buf(), 6, &str, &len);
+        table_info.partition_cols.assign(str, len);
+        row_view.GetValue(row.buf(), 7, &str, &len);
+        table_info.order_by_col.assign(str, len);
+        row_view.GetValue(row.buf(), 8, &str, &len);
+        table_info.bucket_size.assign(str, len);
+
+        table_infos.emplace_back(std::move(table_info));
+        it->Next();
+    }
+    catalog_->RefreshAggrTables(table_infos);
+    DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
     return true;
 }
 

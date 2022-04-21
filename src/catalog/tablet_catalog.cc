@@ -34,7 +34,8 @@ namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::openmldb::api::TableMeta& meta,
                                        std::shared_ptr<hybridse::vm::Tablet> local_tablet)
-    : schema_(),
+    : partition_num_(meta.table_partition_size()),
+      schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
@@ -45,7 +46,8 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::api::TableMeta& meta,
 
 TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& meta,
                                        std::shared_ptr<hybridse::vm::Tablet> local_tablet)
-    : schema_(),
+    : partition_num_(meta.partition_num()),
+      schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
@@ -117,12 +119,7 @@ bool TabletTableHandler::UpdateIndex(
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> TabletTableHandler::GetIterator() {
-    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
-    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients;
-    if (!tables->empty()) {
-        return std::make_unique<catalog::FullTableIterator>(GetTid(), tables, tablet_clients);
-    }
-    return std::unique_ptr<::hybridse::codec::RowIterator>();
+    return std::unique_ptr<::hybridse::codec::RowIterator>(GetRawIterator());
 }
 
 std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
@@ -151,6 +148,11 @@ const ::hybridse::codec::Row TabletTableHandler::Get(int32_t pos) {
 ::hybridse::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
     std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients;
+    for (uint32_t pid = 0; pid < partition_num_; pid++) {
+        if (tables->count(pid) == 0) {
+            tablet_clients.emplace(pid, table_client_manager_->GetTablet(pid));
+        }
+    }
     if (!tables->empty()) {
         return new catalog::FullTableIterator(GetTid(), tables, tablet_clients);
     }

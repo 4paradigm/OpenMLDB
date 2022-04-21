@@ -294,8 +294,6 @@ class SQLClusterRouter : public SQLRouter {
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
 
-    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() override;
-
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
  private:
