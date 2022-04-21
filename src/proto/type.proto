@@ -73,8 +73,3 @@ enum ProcedureType {
     kReqProcedure = 0;
     kReqDeployment = 1;
 }
-
-enum NotifyType {
-    kTable = 1;
-    kGlobalVar = 2;
-}

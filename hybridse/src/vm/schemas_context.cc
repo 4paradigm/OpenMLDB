@@ -794,19 +794,6 @@ int32_t RowParser::GetString(const Row& row, const std::string& col, std::string
     return 0;
 }
 
-int32_t RowParser::GetString(const Row& row, const node::ColumnRefNode& col, std::string* val) const {
-    size_t schema_idx, col_idx;
-    schema_ctx_->ResolveColumnRefIndex(&col, &schema_idx, &col_idx);
-    const codec::RowView& row_view = row_view_list_[schema_idx];
-    const char* ch = nullptr;
-    uint32_t str_size;
-    row_view.GetValue(row.buf(schema_idx), col_idx, &ch, &str_size);
-
-    std::string tmp(ch, str_size);
-    val->swap(tmp);
-    return 0;
-}
-
 type::Type RowParser::GetType(const std::string& col) const {
     size_t schema_idx, col_idx;
     schema_ctx_->ResolveColumnIndexByName("", "", col, &schema_idx, &col_idx);

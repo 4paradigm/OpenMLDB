@@ -14,16 +14,6 @@ from openmldb_collector.metrics import (
     tablet_memory_application,
     tablet_memory_actual,
 )
-from openmldb_collector.configstore import (
-    ConfigStore
-)
-
-from openmldb_collector.collectors import (
-    TableStatusCollector,
-    DeployQueryStatCollector,
-    ComponentStatusCollector,
-    Collector,
-)
 
 __all__ = [
     "connected_seconds",
@@ -37,9 +27,4 @@ __all__ = [
     "deploy_response_time",
     "tablet_memory_application",
     "tablet_memory_actual",
-    "ConfigStore",
-    "TableStatusCollector",
-    "DeployQueryStatCollector",
-    "ComponentStatusCollector",
-    "Collector",
 ]

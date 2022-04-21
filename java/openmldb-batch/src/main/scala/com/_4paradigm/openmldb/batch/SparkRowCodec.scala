@@ -115,10 +115,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
       }
 
       val field = schema(outputColIndex)
-      // Notice that we should check the actual col index for row1 or row2
-      // TODO(tobe): refactor this to explicitly access row1 or row2
-      //if (rowView.IsNULL(outputColIndex)) {
-      if (rowView.IsNULL(inputRowIndex)) {
+      if (rowView.IsNULL(outputColIndex)) {
         output(outputColIndex) = null
       } else {
         field.dataType match {

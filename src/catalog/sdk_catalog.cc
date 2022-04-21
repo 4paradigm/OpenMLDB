@@ -156,10 +156,6 @@ std::shared_ptr<::hybridse::vm::TableHandler> SDKCatalog::GetTable(const std::st
 
 std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const { return client_manager_->GetTablet(); }
 
-std::vector<std::shared_ptr<TabletAccessor>> SDKCatalog::GetAllTablet() const {
-    return client_manager_->GetAllTablet();
-}
-
 std::shared_ptr<::hybridse::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(const std::string& db,
                                                                              const std::string& sp_name) {
     auto db_sp_it = db_sp_map_.find(db);

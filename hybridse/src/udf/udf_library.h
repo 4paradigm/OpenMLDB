@@ -28,7 +28,6 @@
 #include "base/fe_status.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
-#include "udf/dynamic_lib_manager.h"
 
 namespace hybridse {
 
@@ -105,11 +104,10 @@ class UdfLibrary {
     bool RequireListAt(const std::string& name, size_t index) const;
     bool IsListReturn(const std::string& name) const;
 
-    Status RegisterDynamicUdf(const std::string& name, node::DataType return_type,
-            const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file);
+    Status RegisterDynamicUdf(const std::string& name, void* fn,
+            node::DataType return_type, const std::vector<node::DataType>& arg_types);
 
-    Status RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types,
-            const std::string& file);
+    Status RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types);
 
     // register interfaces
     ExprUdfRegistryHelper RegisterExprUdf(const std::string& name);
@@ -167,8 +165,6 @@ class UdfLibrary {
     std::unordered_map<std::string, void*> external_symbols_;
 
     node::NodeManager nm_;
-
-    DynamicLibManager lib_manager_;
 
     const bool case_sensitive_ = false;
     mutable std::mutex mu_;

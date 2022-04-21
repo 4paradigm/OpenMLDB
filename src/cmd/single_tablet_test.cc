@@ -89,21 +89,7 @@ TEST_P(DBSDKTest, CreateFunction) {
                     strlength_sql,
                     int2str_sql
                 });
-    auto result = sr->ExecuteSQL("show functions", &status);
-    if (cs->IsClusterMode()) {
-        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
-                              {"cut2", "Varchar", "Varchar", "false", so_path, so_path},
-                              {"int2str", "Varchar", "Int", "false", so_path, so_path},
-                              {"strlength", "Int", "Varchar", "false", so_path, so_path}},
-                             result.get());
-    } else {
-        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
-                              {"cut2", "Varchar", "Varchar", "false", so_path, ""},
-                              {"int2str", "Varchar", "Int", "false", so_path, ""},
-                              {"strlength", "Int", "Varchar", "false", so_path, ""}},
-                             result.get());
-    }
-    result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
+    auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
     result->Next();

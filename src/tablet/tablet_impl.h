@@ -66,6 +66,15 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 namespace openmldb {
 namespace tablet {
 
+struct DynamicLibHandle {
+    explicit DynamicLibHandle(void* ptr) {
+        handle = ptr;
+        ref_cnt = 1;
+    }
+    void* handle = nullptr;
+    uint32_t ref_cnt = 0;
+};
+
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>> Snapshots;
@@ -306,7 +315,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
                        std::string& msg);  // NOLINT
 
-    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
+    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta,
+                            std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::openmldb::api::TaskInfo> task);
@@ -351,8 +361,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
-    int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openmldb::api::TableMeta& table_meta,
-                                      std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path, const ::openmldb::api::TableMeta* table_meta);
 
     int UpdateTableMeta(const std::string& path, ::openmldb::api::TableMeta* table_meta, bool for_add_column);
@@ -385,20 +393,19 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool CheckGetDone(::openmldb::api::GetType type, uint64_t ts, uint64_t target_ts);
 
-    bool ChooseDBRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
+    bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
                           std::string& path);  // NOLINT
 
-    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
+    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
                                   std::string& path);  // NOLINT
 
-    bool ChooseTableRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
+    bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
                              std::string& path);  // NOLINT
 
-    bool GetTableRootSize(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
+    bool GetTableRootSize(uint32_t tid, uint32_t pid,
                           uint64_t& size);  // NOLINT
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                              ::openmldb::common::StorageMode storageMode,
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
@@ -458,10 +465,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     BulkLoadMgr bulk_load_mgr_;
-    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
-        mode_root_paths_;
-    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
-        mode_recycle_root_paths_;
+    std::vector<std::string> mode_root_paths_;
+    std::vector<std::string> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
@@ -482,6 +487,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
     std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
+    std::map<std::string, std::shared_ptr<DynamicLibHandle>> handle_map_;
 };
 
 }  // namespace tablet

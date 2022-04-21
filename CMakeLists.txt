@@ -206,7 +206,7 @@ list(
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)
-    message(STATUS "ICU find_package failed, try to use `find_library()` to find")
+    message(STATUS "ICU package Not Found")
     find_library(ICU_I18N icui18n)
     find_library(ICU_IO icuio)
     find_library(ICU_UC icuuc)

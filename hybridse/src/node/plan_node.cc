@@ -696,7 +696,13 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
+    output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", false);
+    output << "\n";
+    PrintSqlVector(output, tab, distribution_list_, "distribution", false);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     PlanNode::Print(output, tab);

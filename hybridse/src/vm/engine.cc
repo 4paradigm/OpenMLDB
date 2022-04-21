@@ -271,17 +271,24 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
 
 base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
                                          const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                         const std::string& file) {
+                                         const std::vector<void*>& funcs) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }
     auto lib = udf::DefaultUdfLibrary::get();
-    return lib->RegisterDynamicUdf(name, return_type, arg_types, is_aggregate, file);
+    if (is_aggregate) {
+        return {};
+    } else {
+        if (funcs.empty() || funcs[0] == nullptr) {
+            return {common::kExternalUDFError, name + " is nullptr"};
+        }
+        return lib->RegisterDynamicUdf(name, funcs[0], return_type, arg_types);
+    }
 }
 
 base::Status Engine::RemoveExternalFunction(const std::string& name,
-        const std::vector<node::DataType>& arg_types, const std::string& file) {
-    return udf::DefaultUdfLibrary::get()->RemoveDynamicUdf(name, arg_types, file);
+        const std::vector<node::DataType>& arg_types) {
+    return udf::DefaultUdfLibrary::get()->RemoveDynamicUdf(name, arg_types);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,

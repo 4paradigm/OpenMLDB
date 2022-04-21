@@ -296,9 +296,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
         for (const auto& table_status : response.all_table_status()) {
             count += table_status.record_cnt();
             auto iter = key_map.find(table_status.pid());
-            if (table_status.record_cnt() != 0) {
-                ASSERT_EQ(iter->second.size(), table_status.record_cnt());
-            }
+            ASSERT_EQ(iter->second.size(), table_status.record_cnt());
         }
     }
     ASSERT_EQ(100u, count);
@@ -427,12 +425,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         hybridse::sdk::Status sdk_status;
         auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, sdk_status);
         int pid = ::openmldb::base::hash64(pk) % 2;
-        // only assert leader paritition
-        for (int i = 0; i < 3; i++) {
-            if (tables[0].table_partition(pid).partition_meta(i).is_leader()) {
-                ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(i).endpoint());
-            }
-        }
+        ASSERT_EQ(client->GetEndpoint(), tables[0].table_partition(pid).partition_meta(0).endpoint());
     }
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
