@@ -75,7 +75,7 @@ void get_arithmetic_value(const BasicJsonType& j, ArithmeticType& val) {
 }
 
 template <typename BasicJsonType>
-void from_json(const BasicJsonType& j, typename BasicJsonType::boolean_t& b) {
+void from_json(const BasicJsonType& j, const typename BasicJsonType::boolean_t& b) {
     if (JSON_HEDLEY_UNLIKELY(!j.is_boolean())) {
         JSON_THROW(type_error::create(302, concat("type must be boolean, but is ", j.type_name()), &j));
     }

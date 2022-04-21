@@ -920,7 +920,6 @@ std::vector<std::string> str_split(const std::string &s, char delim) {
 
 json extract_json_with_key(const json &j, const std::string &key) {
     if (j.is_array()) {
-        // 新建一个json对象数组，遍历j将每个元素添加到json中
         json j_new = json::array();
         for (auto &item: j) {
             if (item.is_array()) {
@@ -954,21 +953,17 @@ json extract_json_with_key(const json &j, const std::string &key) {
 json extract_json_with_index(const json &j, std::vector<std::string> &index_list) {
     json j_new = json::array();
     for (auto &index: index_list) {
-        // index字符串转小写
         std::transform(index.begin(), index.end(), index.begin(), ::tolower);
         if (index =="*") {
             if (j.is_array()){
-                // 合并j到j_new
                 for (auto &item: j) {
                     j_new.push_back(item);
                 }
             }
         }
         else {
-            // 解析index为size_t类型
             size_t index_num = std::stoi(index);
             if (j.is_array()) {
-                // 判断index是否越界
                 if (index_num < j.size()) {
                     j_new.push_back(j[index_num]);
                 }
@@ -976,7 +971,6 @@ json extract_json_with_index(const json &j, std::vector<std::string> &index_list
         }
 
     }
-    // 判断j_new是否为空
     if (j_new.empty()) {
         return {};
     }
@@ -1001,9 +995,7 @@ json extract_json(json &json_obj, const std::string &path, bool skip_map) {
             return {};
         }
         std::string index_str = base_match[1];
-        // 去除index_str字符串的空格返回给index_str
         index_str.erase(std::remove(index_str.begin(), index_str.end(), ' '), index_str.end());
-        // 然后按照","分割
         std::vector<std::string> index_list = str_split(index_str, ',');
         if (index_list.empty()) {
             return {};
@@ -1048,7 +1040,7 @@ void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *
         if (path_elems[i].substr(0, 1) == "[" && path_elems[i].substr(path_elems[i].length() - 1, 1) == "]") {
             skip_map = true;
         }
-        // 调用extract_json(json_obj, path_elems[i], skip_map);函数，将返回值给json_obj
+        //call extract_json(json_obj, path_elems[i], skip_map); return json_obj
         json_obj = extract_json(json_obj, path_elems[i], skip_map);
     }
     if (json_obj.empty()) {
