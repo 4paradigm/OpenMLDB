@@ -1310,7 +1310,6 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     }
     if (!exist_globalvar) {
         NotifyTableChanged(::openmldb::type::NotifyType::kGlobalVar);
-        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
 }
 
