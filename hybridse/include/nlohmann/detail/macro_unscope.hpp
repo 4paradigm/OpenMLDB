@@ -2,7 +2,7 @@
 
 // restore clang diagnostic settings
 #if defined(__clang__)
-    #pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 // clean up
@@ -16,15 +16,15 @@
 #undef NLOHMANN_CAN_CALL_STD_FUNC_IMPL
 
 #ifndef JSON_TEST_KEEP_MACROS
-    #undef JSON_CATCH
-    #undef JSON_TRY
-    #undef JSON_HAS_CPP_11
-    #undef JSON_HAS_CPP_14
-    #undef JSON_HAS_CPP_17
-    #undef JSON_HAS_CPP_20
-    #undef JSON_HAS_FILESYSTEM
-    #undef JSON_HAS_EXPERIMENTAL_FILESYSTEM
-    #undef JSON_HAS_THREE_WAY_COMPARISON
+#undef JSON_CATCH
+#undef JSON_TRY
+#undef JSON_HAS_CPP_11
+#undef JSON_HAS_CPP_14
+#undef JSON_HAS_CPP_17
+#undef JSON_HAS_CPP_20
+#undef JSON_HAS_FILESYSTEM
+#undef JSON_HAS_EXPERIMENTAL_FILESYSTEM
+#undef JSON_HAS_THREE_WAY_COMPARISON
 #endif
 
 #include <nlohmann/thirdparty/hedley/hedley_undef.hpp>
