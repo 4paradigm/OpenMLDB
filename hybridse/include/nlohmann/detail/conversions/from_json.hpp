@@ -83,7 +83,7 @@ void from_json(const BasicJsonType& j, const typename BasicJsonType::boolean_t& 
 }
 
 template <typename BasicJsonType>
-void from_json(const BasicJsonType& j, typename BasicJsonType::string_t& s) {
+void from_json(const BasicJsonType& j, const typename BasicJsonType::string_t& s) {
     if (JSON_HEDLEY_UNLIKELY(!j.is_string())) {
         JSON_THROW(type_error::create(302, concat("type must be string, but is ", j.type_name()), &j));
     }
@@ -104,17 +104,17 @@ void from_json(const BasicJsonType& j, StringType& s) {
 }
 
 template <typename BasicJsonType>
-void from_json(const BasicJsonType& j, typename BasicJsonType::number_float_t& val) {
+void from_json(const BasicJsonType& j, const typename BasicJsonType::number_float_t& val) {
     get_arithmetic_value(j, val);
 }
 
 template <typename BasicJsonType>
-void from_json(const BasicJsonType& j, typename BasicJsonType::number_unsigned_t& val) {
+void from_json(const BasicJsonType& j, const typename BasicJsonType::number_unsigned_t& val) {
     get_arithmetic_value(j, val);
 }
 
 template <typename BasicJsonType>
-void from_json(const BasicJsonType& j, typename BasicJsonType::number_integer_t& val) {
+void from_json(const BasicJsonType& j, const typename BasicJsonType::number_integer_t& val) {
     get_arithmetic_value(j, val);
 }
 
