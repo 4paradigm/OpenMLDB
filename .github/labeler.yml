@@ -8,9 +8,9 @@ execute-engine:
 
 storage-engine:
   - any:
-    - 'src/**/*'
+      - 'src/**/*'
     all:
-    - '!src/apiserver/**/*'
+      - '!src/apiserver/**/*'
 
 api-server:
   - 'src/apiserver/**/*'
