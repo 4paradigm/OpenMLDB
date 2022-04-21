@@ -43,14 +43,16 @@ object SparkJobManager {
       launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
     }
 
-    TaskManagerConfig.SPARK_MASTER.toLowerCase match {
-      case "local" =>
-        launcher.setMaster("local")
-      case "yarn" | "yarn-cluster" =>
-        launcher.setMaster("yarn").setDeployMode("cluster")
-      case "yarn-client" =>
-        launcher.setMaster("yarn").setDeployMode("client")
-      case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+    if (TaskManagerConfig.SPARK_MASTER.toLowerCase.startsWith("local")) {
+      launcher.setMaster(TaskManagerConfig.SPARK_MASTER)
+    } else {
+      TaskManagerConfig.SPARK_MASTER.toLowerCase match {
+        case "yarn" | "yarn-cluster" =>
+          launcher.setMaster("yarn").setDeployMode("cluster")
+        case "yarn-client" =>
+          launcher.setMaster("yarn").setDeployMode("client")
+        case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+      }
     }
 
     if (TaskManagerConfig.SPARK_YARN_JARS != null && TaskManagerConfig.SPARK_YARN_JARS.nonEmpty) {

@@ -94,8 +94,10 @@ public class TaskManagerConfig {
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
         SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
-        if (!Arrays.asList("local", "yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER) ) {
-            throw new ConfigException("spark.master", "should be one of local, yarn, yarn-cluster or yarn-client");
+        if (!SPARK_MASTER.startsWith("local")) {
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            }
         }
         boolean isLocal = SPARK_MASTER.equals("local");
         boolean isYarn = SPARK_MASTER.startsWith("yarn");
