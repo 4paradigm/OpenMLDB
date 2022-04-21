@@ -50,7 +50,7 @@ enum class WindowType {
     kRowsRange = 2,
 };
 
-enum AggrStat {
+enum class AggrStat {
     kUnInit = 1,
     kRecovering = 2,
     kInited = 3,
@@ -97,7 +97,6 @@ class AggrBuffer {
         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
             if (aggr_val_.vstring.data != NULL) {
                 delete[] aggr_val_.vstring.data;
-                aggr_val_.vstring.data = NULL;
             }
         }
         memset(&aggr_val_, 0, sizeof(aggr_val_));
@@ -126,6 +125,8 @@ class Aggregator {
 
     bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
 
+    bool FlushAll();
+
     bool Init();
 
     uint32_t GetIndexPos() const { return index_pos_; }
@@ -138,7 +139,7 @@ class Aggregator {
 
     uint32_t GetWindowSize() const { return window_size_; }
 
-    uint32_t GetStat() const { return status_.load(std::memory_order_relaxed); }
+    AggrStat GetStat() const { return status_.load(std::memory_order_relaxed); }
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
@@ -163,7 +164,7 @@ class Aggregator {
     std::shared_ptr<LogReplicator> base_replicator_;
     std::shared_ptr<Table> aggr_table_;
     std::shared_ptr<LogReplicator> aggr_replicator_;
-    std::atomic<uint32_t> status_;
+    std::atomic<AggrStat> status_;
     Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);

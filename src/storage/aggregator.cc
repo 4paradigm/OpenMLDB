@@ -26,21 +26,22 @@
 #include "storage/aggregator.h"
 #include "storage/table.h"
 
+DECLARE_bool(binlog_notify_on_put);
 namespace openmldb {
 namespace storage {
 
 using ::openmldb::base::StringCompare;
 
-std::string AggrStatToString(uint32_t type) {
+std::string AggrStatToString(AggrStat type) {
     std::string output;
     switch (type) {
-        case kUnInit:
+        case AggrStat::kUnInit:
             output = "UnInit";
             break;
-        case kRecovering:
+        case AggrStat::kRecovering:
             output = "Recovering";
             break;
-        case kInited:
+        case AggrStat::kInited:
             output = "Inited";
             break;
         default:
@@ -171,6 +172,28 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         if (!ok) {
             PDLOG(ERROR, "Update aggr value failed");
             return false;
+        }
+    }
+    return true;
+}
+
+bool Aggregator::FlushAll() {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto& it : aggr_buffer_map_) {
+        auto& aggr_buffer = it.second.buffer_;
+        if (aggr_buffer.aggr_cnt_ == 0) {
+            continue;
+        }
+        if (!FlushAggrBuffer(it.first, aggr_buffer)) {
+            return false;
+        }
+        int64_t latest_ts = aggr_buffer.ts_end_ + 1;
+        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
+        aggr_buffer.clear();
+        aggr_buffer.ts_begin_ = latest_ts;
+        aggr_buffer.binlog_offset_ = latest_binlog;
+        if (window_type_ == WindowType::kRowsRange) {
+            aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
         }
     }
     return true;
@@ -348,6 +371,9 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     entry.set_term(aggr_replicator_->GetLeaderTerm());
     entry.mutable_dimensions()->CopyFrom(dimensions_);
     aggr_replicator_->AppendEntry(entry);
+    if (FLAGS_binlog_notify_on_put) {
+        aggr_replicator_->Notify();
+    }
     return true;
 }
 
@@ -565,7 +591,9 @@ bool MinMaxBaseAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* 
 bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
-    aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length);
+    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) { // null value
+        return true;
+    }
     switch (aggr_col_type_) {
         case DataType::kSmallInt: {
             int16_t origin_val = *reinterpret_cast<int16_t*>(aggr_val);

@@ -725,6 +725,18 @@ TEST_F(AggregatorTest, OutOfOrder) {
     ::openmldb::base::RemoveDir(folder);
 }
 
+TEST_F(AggregatorTest, FlushAll) {
+    std::shared_ptr<Aggregator> aggregator;
+    AggrBuffer* last_buffer;
+    std::shared_ptr<Table> aggr_table;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
+    aggregator->FlushAll();
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", &last_buffer));
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 51);
+    ASSERT_EQ(last_buffer->aggr_cnt_, 0);
+    counter += 2;
+}
+
 }  // namespace storage
 }  // namespace openmldb
 

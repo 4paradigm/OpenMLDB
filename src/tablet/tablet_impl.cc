@@ -3056,16 +3056,17 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                         }
                     }
                 }
-            }
-            // init aggregator related to base table if need.
-            auto aggrs = GetAggregators(tid, pid);
-            if (aggrs != nullptr) {
-                for (auto& aggr : *aggrs) {
-                    if (!aggr->GetBaseReplicator()) {
-                        aggr->SetBaseReplicator(replicator);
-                    }
-                    if (!aggr->Init()) {
-                        PDLOG(WARNING, "aggregator init failed");
+            } else {
+                // init aggregator related to base table if need.
+                auto aggrs = GetAggregators(tid, pid);
+                if (aggrs != nullptr) {
+                    for (auto& aggr : *aggrs) {
+                        if (!aggr->GetBaseReplicator()) {
+                            aggr->SetBaseReplicator(replicator);
+                        }
+                        if (!aggr->Init()) {
+                            PDLOG(WARNING, "aggregator init failed");
+                        }
                     }
                 }
             }
@@ -4444,6 +4445,13 @@ void TabletImpl::SchedSyncDisk(uint32_t tid, uint32_t pid) {
 
 void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    // TODO(nauta): need better way to handle aggregator volatile status lost.
+    auto aggrs = GetAggregators(tid, pid);
+    if (!aggrs) {
+        for (auto& aggr : *aggrs) {
+            aggr->FlushAll();
+        }
+    }
     if (replicator) {
         replicator->DeleteBinlog();
         task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
