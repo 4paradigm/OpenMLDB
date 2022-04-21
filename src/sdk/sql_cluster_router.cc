@@ -1521,6 +1521,37 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdShowFunctions: {
+            std::vector<::openmldb::common::ExternalFun> funs;
+            base::Status st = ns_ptr->ShowFunction("", &funs);
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "show udf function failed"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& fun_info : funs) {
+                std::string is_aggregate = "false";
+                if (fun_info.is_aggregate()) {
+                    is_aggregate = "true";
+                }
+                std::string arg_type = "";
+                for (int i = 0; i < fun_info.arg_type_size(); i++) {
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
+                    if (i != fun_info.arg_type_size() - 1) {
+                        arg_type = absl::StrCat(arg_type, "|");
+                    }
+                }
+                std::vector<std::string> vec = {fun_info.name(),
+                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
+                                                arg_type,
+                                                is_aggregate,
+                                                fun_info.file(),
+                                                fun_info.offline_file()};
+                lines.push_back(vec);
+            }
+            return ResultSetSQL::MakeResultSet(
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
+        }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
