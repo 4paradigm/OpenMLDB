@@ -676,7 +676,7 @@ class NameServerImpl : public NameServer {
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
                           uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
-    // kTable for normal table && kGlobalVar for global var table
+    // kTable for normal table and kGlobalVar for global var table
     void NotifyTableChanged(::openmldb::type::NotifyType type);
     void DeleteDoneOP();
     void UpdateTableStatus();

@@ -165,7 +165,7 @@ class StandAloneSDK : public DBSDK {
     zk::ZkClient* GetZkClient() override { return nullptr; }
 
     bool IsClusterMode() const override { return false; }
-    // kTable for normal table && kGlobalVar for global var table, return true directly in standalone
+    // kTable for normal table and kGlobalVar for global var table, return true directly in standalone
     bool TriggerNotify(::openmldb::type::NotifyType type) const override {
         if (type == ::openmldb::type::kTable) {
             return true;
