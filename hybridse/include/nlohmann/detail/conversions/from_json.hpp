@@ -95,7 +95,7 @@ template <typename BasicJsonType, typename StringType,
                           !std::is_same<typename BasicJsonType::string_t, StringType>::value &&
                           !is_json_ref<StringType>::value,
                       int> = 0>
-void from_json(const BasicJsonType& j, StringType& s) {
+void from_json(const BasicJsonType& j, const StringType& s) {
     if (JSON_HEDLEY_UNLIKELY(!j.is_string())) {
         JSON_THROW(type_error::create(302, concat("type must be string, but is ", j.type_name()), &j));
     }
