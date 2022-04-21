@@ -654,8 +654,8 @@ TEST_F(UdfIRBuilderTest, get_json_object) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"(["c1","c2"])"), StringRef(R"([{"b": {"c": "c1"}}, {"b": {"c": "c2"}}])"),StringRef("$.[*].b.c"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"([{"b":"b1"},{"b":"b2"}])"), StringRef(R"({"ab": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.ab[*]"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"([{"b":"b1"},{"b":"b2"}])"), StringRef(R"({"ab": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.ab.[*]"));
-//    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"(["b1","b2"])"), StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.a.[*].b"));
-//    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"), nullptr, StringRef("$.a.[a]"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"(["b1","b2"])"), StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.a.[*].b"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, nullptr, StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"), StringRef("$.a.[a]"));
 //    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"(["b1","b2"])"), StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.a.[0,1].b"));
 //    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"(["b1"])"), StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$.a.[0].b"));
 //    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"), StringRef(R"({"a": [{"b": "b1"}, {"b": "b2"}]})"),StringRef("$"));
