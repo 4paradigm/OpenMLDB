@@ -11,8 +11,7 @@ openmldb_exporter = "openmldb_exporter:main"
 [tool.poetry.dependencies]
 python = "^3.8"
 prometheus-client = "^0.13.0"
-# set develop = true so changes in python will take effect immediately
-openmldb = { path = "../python/", develop = true }
+openmldb = { path = "../python/", develop = false }
 Twisted = "^22.2.0"
 
 [tool.poetry.dev-dependencies]

@@ -30,8 +30,9 @@ namespace storage {
 
 const std::string MANIFEST = "MANIFEST";  // NOLINT
 
-DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, const std::string& db_root_path)
-    : Snapshot(tid, pid), db_root_path_(db_root_path) {}
+DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
+                                     const std::string& db_root_path)
+    : Snapshot(tid, pid), storage_mode_(storage_mode), term_(0), db_root_path_(db_root_path) {}
 
 bool DiskTableSnapshot::Init() {
     snapshot_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
@@ -51,17 +52,11 @@ bool DiskTableSnapshot::Init() {
     return true;
 }
 
-int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset,
-                                    uint64_t term) {
+int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now! tid %u pid %u", tid_, pid_);
         return 0;
     }
-    if (end_offset > 0) {
-        PDLOG(ERROR, "disk table snapshot doesn't support end_offset > 0");
-        return -1;
-    }
-
     making_snapshot_.store(true, std::memory_order_release);
     int ret = 0;
     do {
@@ -105,7 +100,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         }
         ::openmldb::api::Manifest manifest;
         GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
-        if (GenManifest(snapshot_dir_name, record_count, cur_offset, term) == 0) {
+        if (GenManifest(snapshot_dir_name, record_count, cur_offset, term_) == 0) {
             if (manifest.has_name() && manifest.name() != snapshot_dir) {
                 DEBUGLOG("delete old checkpoint[%s]", manifest.name().c_str());
                 if (!::openmldb::base::RemoveDir(snapshot_path_ + manifest.name())) {

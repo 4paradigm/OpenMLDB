@@ -231,9 +231,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         LOG(ERROR) << "Fail to create PhysicalReduceAggregationNode: " << status;
         return false;
     }
-    LOG(INFO) << "[LongWindowOptimized] Before transform sql:\n" << (*output)->GetTreeString();
     *output = reduce_aggr;
-    LOG(INFO) << "[LongWindowOptimized] After transform sql:\n" << (*output)->GetTreeString();
     return true;
 }
 

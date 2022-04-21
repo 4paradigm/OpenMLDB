@@ -454,18 +454,6 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
     return std::shared_ptr<TabletAccessor>();
 }
 
-std::vector<std::shared_ptr<TabletAccessor>> ClientManager::GetAllTablet() const {
-    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-    if (clients_.empty()) {
-        return {};
-    }
-    std::vector<std::shared_ptr<TabletAccessor>> allTablet;
-    for (const auto& kv : clients_) {
-        allTablet.emplace_back(kv.second);
-    }
-    return allTablet;
-}
-
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
     if (endpoint_map.empty()) {
         DLOG(INFO) << "endpoint_map is empty";

@@ -35,6 +35,8 @@
 
 namespace openmldb::sdk {
 
+void trivial_fun() {}
+
 std::shared_ptr<::openmldb::client::NsClient> DBSDK::GetNsClient() {
     auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
     if (ns_client) return ns_client;
@@ -92,6 +94,7 @@ bool DBSDK::InitExternalFun() {
 }
 
 bool DBSDK::RegisterExternalFun(const ::openmldb::common::ExternalFun& fun) {
+    void* fun_ptr = reinterpret_cast<void*>(trivial_fun);
     ::hybridse::node::DataType return_type;
     ::openmldb::schema::SchemaAdapter::ConvertType(fun.return_type(), &return_type);
     std::vector<::hybridse::node::DataType> arg_types;
@@ -100,7 +103,8 @@ bool DBSDK::RegisterExternalFun(const ::openmldb::common::ExternalFun& fun) {
         ::openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    if (engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), "").isOK()) {
+    std::vector<void*> fun_vec = {fun_ptr, fun_ptr, fun_ptr};
+    if (engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun_vec).isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun.name(), std::make_shared<::openmldb::common::ExternalFun>(fun));
         return true;
@@ -124,7 +128,7 @@ bool DBSDK::RemoveExternalFun(const std::string& name) {
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    engine_->RemoveExternalFunction(fun->name(), arg_types, "");
+    engine_->RemoveExternalFunction(fun->name(), arg_types);
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     external_fun_.erase(name);
     return true;
@@ -191,15 +195,13 @@ void ClusterSDK::WatchNotify() {
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
 }
 
-bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
-    if (type == ::openmldb::type::NotifyType::kTable) {
-        LOG(INFO) << "Trigger table notify node";
-        return zk_client_->Increment(notify_path_);
-    } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
-        return zk_client_->Increment(globalvar_changed_notify_path_);
-    }
-    LOG(ERROR) << "unsupport notify type";
-    return false;
+bool ClusterSDK::TriggerNotify() const {
+    LOG(INFO) << "Trigger table notify node";
+    return zk_client_->Increment(notify_path_);
+}
+
+bool ClusterSDK::GlobalVarNotify() const {
+    return zk_client_->Increment(globalvar_changed_notify_path_);
 }
 
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
@@ -454,10 +456,6 @@ bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string*
 }
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet() { return GetCatalog()->GetTablet(); }
-
-std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetAllTablet() {
-    return GetCatalog()->GetAllTablet();
-}
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);

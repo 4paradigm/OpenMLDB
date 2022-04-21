@@ -38,11 +38,10 @@ public class StatementTest {
             Assert.assertTrue(ret);
             java.sql.ResultSet rs = state.getResultSet();
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getLong(1), 1001);
-            Assert.assertEquals(rs.getString(2), "xxxx");
-            Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getLong(1), 1000);
             Assert.assertEquals(rs.getString(2), "hello");
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getLong(1), 1001);
             Assert.assertFalse(rs.next());
 
             ret = state.execute("drop table testtable111");

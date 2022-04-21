@@ -356,14 +356,22 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string &db_name, const std::string &table_name, NodePointVector column_list,
-                   const bool if_not_exist, NodePointVector table_option_list)
+    CreatePlanNode(const std::string& db_name,
+                   const std::string& table_name, int replica_num, int partition_num,
+                   StorageMode storage_mode,
+                   NodePointVector column_list,
+                   NodePointVector distribution_list,
+                   const bool if_not_exist)
         : LeafPlanNode(kPlanTypeCreate),
           database_(db_name),
           table_name_(table_name),
+          replica_num_(replica_num),
+          partition_num_(partition_num),
+          storage_mode_(storage_mode),
           column_desc_list_(column_list),
-          table_option_list_(table_option_list),
+          distribution_list_(distribution_list),
           if_not_exist_(if_not_exist) {}
+
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
@@ -371,6 +379,8 @@ class CreatePlanNode : public LeafPlanNode {
     void setDatabase(const std::string &database) { database_ = database; }
 
     std::string GetTableName() const { return table_name_; }
+
+    StorageMode GetStorageMode() const { return storage_mode_; }
 
     void setTableName(const std::string &table_name) { table_name_ = table_name; }
 
@@ -416,9 +426,21 @@ class CreatePlanNode : public LeafPlanNode {
         return true;
     }
 
-    const NodePointVector &GetColumnDescList() const { return column_desc_list_; }
+    NodePointVector &GetColumnDescList() { return column_desc_list_; }
 
-    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
+    void SetColumnDescList(const NodePointVector &column_desc_list) { column_desc_list_ = column_desc_list; }
+
+    int GetReplicaNum() const { return replica_num_; }
+
+    void setReplicaNum(int replica_num) { replica_num_ = replica_num; }
+
+    int GetPartitionNum() const { return partition_num_; }
+
+    void setPartitionNum(int partition_num) { partition_num_ = partition_num; }
+
+    NodePointVector &GetDistributionList() { return distribution_list_; }
+
+    void SetDistributionList(const NodePointVector &distribution_list) { distribution_list_ = distribution_list; }
 
     bool GetIfNotExist() const { return if_not_exist_; }
 
@@ -429,8 +451,11 @@ class CreatePlanNode : public LeafPlanNode {
  private:
     std::string database_;
     std::string table_name_;
+    int replica_num_;
+    int partition_num_;
+    StorageMode storage_mode_;
     NodePointVector column_desc_list_;
-    NodePointVector table_option_list_;
+    NodePointVector distribution_list_;
     bool if_not_exist_;
 };
 

@@ -628,9 +628,9 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
         const Row& row, const Row& parameter,
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
+        std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
         if (!windows_gen_.empty()) {
-            for (size_t i = 0; i < union_inputs.size(); i++) {
+            for (size_t i = 0; i < inputs_cnt_; i++) {
                 union_segments[i] =
                     windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
             }
@@ -985,7 +985,7 @@ class RequestAggUnionRunner : public Runner {
           func_(func),
           agg_col_(agg_col) {}
 
-    bool InitAggregator();
+    void InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     std::shared_ptr<TableHandler> RequestUnionWindow(
@@ -997,25 +997,11 @@ class RequestAggUnionRunner : public Runner {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
 
- private:
-    enum AggType {
-        kSum,
-        kCount,
-        kAvg,
-        kMin,
-        kMax
-    };
-
-    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
-    };
-
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
-    AggType agg_type_;
     const node::ColumnRefNode* agg_col_ = nullptr;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
@@ -1513,7 +1499,7 @@ class RunnerBuilder {
         std::string index);
     ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
-    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);  // NOLINT
+    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);
 };
 
 class RunnerContext {

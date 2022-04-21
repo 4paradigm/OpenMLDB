@@ -80,7 +80,6 @@ class RowBuilder {
     bool AppendInt64(int64_t val);
     bool AppendTimestamp(int64_t val);
     bool AppendDate(int32_t year, int32_t month, int32_t day);
-    bool AppendDate(int32_t date);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const char* val, uint32_t length);

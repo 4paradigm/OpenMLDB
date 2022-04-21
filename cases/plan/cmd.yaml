@@ -39,7 +39,10 @@ cases:
           +-table: schema.sql
           +-IF NOT EXIST: 0
           +-column_desc_list: []
-          +-table_option_list: []
+          +-replica_num: 1
+          +-partition_num: 1
+          +-storage_mode: memory
+          +-distribution_list: []
   - id: 3
     desc: CREATE GROUP
     mode: zetasql-unsupport
@@ -187,14 +190,6 @@ cases:
         +-node[CMD]
           +-cmd_type: show deployment
           +-args: [foo]
-  - id: show_functions
-    desc: show functions
-    sql: SHOW FUNCTIONS;
-    expect:
-      node_tree_str: |
-        +-node[CMD]
-          +-cmd_type: show functions
-          +-args: []
   - id: drop_deployment
     desc: drop deployment foo
     sql: DROP DEPLOYMENT foo;

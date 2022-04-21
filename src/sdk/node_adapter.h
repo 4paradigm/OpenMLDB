@@ -31,8 +31,7 @@ namespace sdk {
 class NodeAdapter {
  public:
     static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
-                                    ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
-                                    bool is_cluster_mode, hybridse::base::Status* status);
+                                    ::openmldb::nameserver::TableInfo* table, hybridse::base::Status* status);
 
     static bool TransformToColumnKey(hybridse::node::ColumnIndexNode* column_index,
                                      const std::map<std::string, ::openmldb::common::ColumnDesc*>& column_names,

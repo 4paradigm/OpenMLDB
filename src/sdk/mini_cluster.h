@@ -79,7 +79,6 @@ class MiniCluster {
         for (auto & t : tablets_) {
             delete t.second;
         }
-        base::RemoveDirRecursive(db_root_path_);
     }
 
     bool SetUp(int tablet_num = 2) {
@@ -142,6 +141,7 @@ class MiniCluster {
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
         }
+        base::RemoveDirRecursive(db_root_path_);
     }
 
     std::string GetZkCluster() { return zk_cluster_; }
@@ -231,7 +231,6 @@ class StandaloneEnv {
         if (ns_client_) {
             delete ns_client_;
         }
-        base::RemoveDirRecursive(db_root_path_);
     }
 
     bool SetUp() {
@@ -278,6 +277,7 @@ class StandaloneEnv {
     void Close() {
         ns_.Stop(10);
         tb_server_.Stop(10);
+        base::RemoveDirRecursive(db_root_path_);
     }
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }

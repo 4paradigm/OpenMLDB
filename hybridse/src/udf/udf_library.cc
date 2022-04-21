@@ -197,32 +197,18 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
     return UdafRegistryHelper(GetCanonicalName(name), this);
 }
 
-Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type,
-        const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
-    CHECK_TRUE(!is_aggregate, kCodegenError, "unsupport register udaf")
+Status UdfLibrary::RegisterDynamicUdf(const std::string& name, void* fn,
+        node::DataType return_type, const std::vector<node::DataType>& arg_types) {
     std::string canon_name = GetCanonicalName(name);
-    CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
-    std::vector<void*> funs;
-    if (file.empty()) {
-        // use trivial_fun for compile only
-        funs.emplace_back(reinterpret_cast<void*>(udf::v1::trivial_fun));
-    }  else {
-        CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
+    if (HasFunction(canon_name)) {
+        return {kCodegenError, name + " has exist"};
     }
-    CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
-    void* fn = funs[0];
     DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
-    auto status = helper.Register();
-    if (!status.isOK()) {
-        lib_manager_.RemoveHandler(file);
-        return status;
-    }
-    return {};
+    return helper.Register();
 }
 
-Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types,
-        const std::string& file) {
+Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types) {
     std::string canonical_name = GetCanonicalName(name);
     std::string lib_name = canonical_name;
     for (const auto type : arg_types) {
@@ -235,7 +221,7 @@ Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<n
     if (external_symbols_.erase(lib_name) <= 0) {
         return Status(kCodegenError, "can not find the function " + lib_name);
     }
-    return lib_manager_.RemoveHandler(file);
+    return {};
 }
 
 Status UdfLibrary::RegisterAlias(const std::string& alias,

@@ -23,7 +23,6 @@
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
-#include "absl/cleanup/cleanup.h"
 
 namespace openmldb {
 namespace zk {
@@ -496,9 +495,6 @@ bool ZkClient::GetChildrenUnLocked(const std::string& path, std::vector<std::str
     struct String_vector data;
     data.count = 0;
     data.data = NULL;
-    absl::Cleanup data_deallocator = [&data] {
-        deallocate_String_vector(&data);
-    };
     int ret = zoo_get_children(zk_, path.c_str(), 0, &data);
     if (ret != ZOK) {
         PDLOG(WARNING, "fail to get children from path %s with errno %d", path.c_str(), ret);
@@ -524,9 +520,6 @@ bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     struct String_vector data;
     data.count = 0;
     data.data = NULL;
-    absl::Cleanup data_deallocator = [&data] {
-        deallocate_String_vector(&data);
-    };
     int ret = zoo_get_children(zk_, nodes_root_path_.c_str(), 0, &data);
     if (ret != ZOK) {
         PDLOG(WARNING, "fail to get children from path %s with errno %d", nodes_root_path_.c_str(), ret);
