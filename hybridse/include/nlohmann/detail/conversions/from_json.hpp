@@ -5,6 +5,12 @@
 #include <forward_list>  // forward_list
 #include <iterator>      // inserter, front_inserter, end
 #include <map>           // map
+#include <string>         // string
+#include <tuple>          // tuple, make_tuple
+#include <type_traits>    // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
+#include <unordered_map>  // unordered_map
+#include <utility>        // pair, declval
+#include <valarray>       // valarray
 #include <nlohmann/detail/exceptions.hpp>
 #include <nlohmann/detail/macro_scope.hpp>
 #include <nlohmann/detail/meta/cpp_future.hpp>
@@ -12,12 +18,7 @@
 #include <nlohmann/detail/meta/type_traits.hpp>
 #include <nlohmann/detail/string_concat.hpp>
 #include <nlohmann/detail/value_t.hpp>
-#include <string>         // string
-#include <tuple>          // tuple, make_tuple
-#include <type_traits>    // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
-#include <unordered_map>  // unordered_map
-#include <utility>        // pair, declval
-#include <valarray>       // valarray
+
 
 #if JSON_HAS_EXPERIMENTAL_FILESYSTEM
 #include <experimental/filesystem>
