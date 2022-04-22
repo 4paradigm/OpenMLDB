@@ -6545,7 +6545,6 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
             ASSERT_EQ(0, presponse.code());
         }
     }
-
     // recovery
     {
         TabletImpl tablet;
