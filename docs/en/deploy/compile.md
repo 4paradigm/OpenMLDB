@@ -54,8 +54,7 @@ Now you've finished the compilation job, and you may try run OpenMLDB inside the
 - **Disk Space**: >=25GB of free disk space for full compilation.
 - **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.15, other systems are not carefully tested but issue/PR welcome
 
-💡 Note: By default, the parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option
-If your machine's resource is enough. This will reduce the compile time but also consume more memory. For example, the following command set the number of concurrent build jobs to 4:
+Note: By default, the parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option if your machine's resource is enough. This will reduce the compile time but also consume more memory. For example, the following command set the number of concurrent build jobs to 4:
 
 ```bash
 make NPROC=4
@@ -90,7 +89,7 @@ All of the three methods above will install OpenMLDB binaries into `${PROJECT_RO
 
 [make-opts]: make-opts
 
-You can customize the `make` behavior by passing following arguments. For example, changing the build mode to `Debug` instead of `Release`:
+You can customize the `make` behavior by passing following arguments, e.g., changing the build mode to `Debug` instead of `Release`:
 
 ```bash
 make CMAKE_BUILD_TYPE=Debug
@@ -141,7 +140,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 [OpenMLDB Spark Distribution](https://github.com/4paradigm/spark) is the fork of [Apache Spark](https://github.com/apache/spark). It adopts specific optimization techniques for OpenMLDB. It provides native `LastJoin` implementation and achieves 10x~100x performance improvement compared with the original Spark distribution. The Java/Scala/Python/SQL APIs of the OpenMLDB Spark distribution are fully compatible with the standard Spark distribution.
 
-1. Downloading the pre-built of OpenMLDB Spark distribution:
+1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
 wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.2.3/spark-3.0.0-bin-openmldbspark.tgz
