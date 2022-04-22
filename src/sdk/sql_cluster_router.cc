@@ -1523,6 +1523,37 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdShowFunctions: {
+            std::vector<::openmldb::common::ExternalFun> funs;
+            base::Status st = ns_ptr->ShowFunction("", &funs);
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "show udf function failed"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& fun_info : funs) {
+                std::string is_aggregate = "false";
+                if (fun_info.is_aggregate()) {
+                    is_aggregate = "true";
+                }
+                std::string arg_type = "";
+                for (int i = 0; i < fun_info.arg_type_size(); i++) {
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
+                    if (i != fun_info.arg_type_size() - 1) {
+                        arg_type = absl::StrCat(arg_type, "|");
+                    }
+                }
+                std::vector<std::string> vec = {fun_info.name(),
+                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
+                                                arg_type,
+                                                is_aggregate,
+                                                fun_info.file(),
+                                                fun_info.offline_file()};
+                lines.push_back(vec);
+            }
+            return ResultSetSQL::MakeResultSet(
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
+        }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
@@ -2157,6 +2188,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto table_partition = table_info.mutable_table_partition();
     table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
+    table_info.set_storage_mode(base_table_info.storage_mode());
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
@@ -2215,7 +2247,7 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
     return log;
 }
 
-bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
+bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kTable); }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
@@ -2504,7 +2536,7 @@ bool SQLClusterRouter::IsSyncJob() {
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
             return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
         }
-        if (!cluster_sdk_->GlobalVarNotify()) {
+        if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
             return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
         return {};
