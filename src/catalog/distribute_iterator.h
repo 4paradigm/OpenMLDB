@@ -23,7 +23,7 @@
 
 #include "base/hash.h"
 #include "base/kv_iterator.h"
-#include "catalog/client_manager.h"
+#include "client/tablet_client.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
 
@@ -35,7 +35,7 @@ using Tables = std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>;
 class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hybridse::codec::Row> {
  public:
     FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
-            const std::map<uint32_t, std::shared_ptr<TabletAccessor>>& tablet_clients);
+            const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients);
     void Seek(const uint64_t& ts) override {}
     void SeekToFirst() override;
     bool Valid() const override;
@@ -54,7 +54,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
  private:
     uint32_t tid_;
     std::shared_ptr<Tables> tables_;
-    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients_;
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients_;
     bool in_local_;
     uint32_t cur_pid_;
     std::unique_ptr<::openmldb::storage::TableIterator> it_;

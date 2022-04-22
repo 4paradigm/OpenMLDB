@@ -25,7 +25,7 @@ namespace catalog {
 constexpr uint32_t INVALID_PID = UINT32_MAX;
 
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
-        const std::map<uint32_t, std::shared_ptr<TabletAccessor>>& tablet_clients)
+        const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients)
     : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(INVALID_PID),
     it_(), kv_it_(), key_(0), last_pk_(), value_() {
 }
@@ -130,8 +130,7 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
-                kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", last_pk_, key_,
-                            FLAGS_traverse_cnt, count));
+                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, key_, FLAGS_traverse_cnt, count));
                 DLOG(INFO) << "last pk " << last_pk_ << " key " << key_ << " count " << count;
             } else {
                 iter++;
@@ -139,8 +138,7 @@ bool FullTableIterator::NextFromRemote() {
                 continue;
             }
         } else {
-            kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", "", 0,
-                        FLAGS_traverse_cnt, count));
+            kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt, count));
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {

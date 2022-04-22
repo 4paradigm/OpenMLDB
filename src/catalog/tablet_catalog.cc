@@ -147,16 +147,17 @@ const ::hybridse::codec::Row TabletTableHandler::Get(int32_t pos) {
 
 ::hybridse::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
-    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients;
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients;
     for (uint32_t pid = 0; pid < partition_num_; pid++) {
         if (tables->count(pid) == 0) {
-            tablet_clients.emplace(pid, table_client_manager_->GetTablet(pid));
+            auto accessor = table_client_manager_->GetTablet(pid);
+            if (accessor) {
+                tablet_clients.emplace(pid, accessor->GetClient());
+            }
         }
     }
-    if (!tables->empty()) {
-        return new catalog::FullTableIterator(GetTid(), tables, tablet_clients);
-    }
-    return nullptr;
+    DLOG(INFO) << "table size " << tables->size() << " tablet_clients size " << tablet_clients.size();
+    return new catalog::FullTableIterator(GetTid(), tables, tablet_clients);
 }
 
 const uint64_t TabletTableHandler::GetCount() {

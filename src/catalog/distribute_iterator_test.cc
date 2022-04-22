@@ -20,10 +20,10 @@
 #include <vector>
 #include <utility>
 
+#include "client/tablet_client.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
-#include "codec/sdk_codec.h"
-#include "client/tablet_client.h"
 #include "storage/mem_table.h"
 #include "storage/table.h"
 #include "tablet/tablet_impl.h"
@@ -146,9 +146,7 @@ TEST_F(DistributeIteratorTest, AllInRemote) {
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
     ASSERT_TRUE(client1->CreateTable(metas[0]));
     ASSERT_TRUE(client2->CreateTable(metas[1]));
-    auto access1 = std::make_shared<TabletAccessor>(endpoints[0], client1);
-    auto access2 = std::make_shared<TabletAccessor>(endpoints[1], client2);
-    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients = {{1, access1}, {4, access2}};
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
     FullTableIterator it(tid, {}, tablet_clients);
     it.SeekToFirst();
     ASSERT_FALSE(it.Valid());
@@ -190,9 +188,7 @@ TEST_F(DistributeIteratorTest, Hybrid) {
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
     ASSERT_TRUE(client1->CreateTable(metas[0]));
     ASSERT_TRUE(client2->CreateTable(metas[1]));
-    auto access1 = std::make_shared<TabletAccessor>(endpoints[0], client1);
-    auto access2 = std::make_shared<TabletAccessor>(endpoints[1], client2);
-    std::map<uint32_t, std::shared_ptr<TabletAccessor>> tablet_clients = {{1, access1}, {4, access2}};
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
     FullTableIterator it(tid, tables, tablet_clients);
     it.SeekToFirst();
     ASSERT_FALSE(it.Valid());
