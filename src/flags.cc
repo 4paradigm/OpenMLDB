@@ -95,7 +95,7 @@ DEFINE_int32(request_timeout_ms, 20000, "request timeout");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
-DEFINE_uint32(traverse_cnt, 1000, "traverse iter loop cnt");
+DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
 DEFINE_string(hdd_root_path, "", "the root hdd path of db");
 
