@@ -572,22 +572,25 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    std::shared_ptr<sdk::SQLRequestRow> req;
-    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, res->Size());
-    ASSERT_TRUE(res->Next());
-    ASSERT_EQ("str1", res->GetStringUnsafe(0));
-    ASSERT_EQ("str2", res->GetStringUnsafe(1));
-    int64_t exp = 11 + 11 + 19 + 15 + 6;
-    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
-    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
-    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
-    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(8));
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11 + 11 + 19 + 15 + 6;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+        ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+        ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+        ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+        ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(8));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     std::string pre_aggr_table = "pre_test_aggr_w1_sum_i64_col";
@@ -680,21 +683,24 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    std::shared_ptr<sdk::SQLRequestRow> req;
-    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, res->Size());
-    ASSERT_TRUE(res->Next());
-    ASSERT_EQ("str1", res->GetStringUnsafe(0));
-    ASSERT_EQ("str2", res->GetStringUnsafe(1));
-    double exp = static_cast<double>(11 + 11 + 19 + 15 + 6) / 7;
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(2));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(3));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(4));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(5));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(7));
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        double exp = static_cast<double>(11 + 11 + 19 + 15 + 6) / 7;
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(2));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(3));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(4));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(5));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(7));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     std::string pre_aggr_table = "pre_test_aggr_w1_avg_i64_col";
@@ -796,24 +802,27 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    std::shared_ptr<sdk::SQLRequestRow> req;
-    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, res->Size());
-    ASSERT_TRUE(res->Next());
-    ASSERT_EQ("str1", res->GetStringUnsafe(0));
-    ASSERT_EQ("str2", res->GetStringUnsafe(1));
-    int64_t exp = 6;
-    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
-    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
-    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
-    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
-    ASSERT_EQ("10", res->GetStringUnsafe(8));
-    ASSERT_EQ(exp, res->GetDateUnsafe(9));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 6;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+        ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+        ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+        ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+        ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+        ASSERT_EQ("10", res->GetStringUnsafe(8));
+        ASSERT_EQ(exp, res->GetDateUnsafe(9));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     std::string pre_aggr_table = "pre_test_aggr_w1_min_i64_col";
@@ -924,24 +933,27 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    std::shared_ptr<sdk::SQLRequestRow> req;
-    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, res->Size());
-    ASSERT_TRUE(res->Next());
-    ASSERT_EQ("str1", res->GetStringUnsafe(0));
-    ASSERT_EQ("str2", res->GetStringUnsafe(1));
-    int64_t exp = 11;
-    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-    ASSERT_EQ(exp, res->GetInt16Unsafe(3));
-    ASSERT_EQ(exp, res->GetInt32Unsafe(4));
-    ASSERT_EQ(exp, res->GetFloatUnsafe(5));
-    ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
-    ASSERT_EQ(exp, res->GetTimeUnsafe(7));
-    ASSERT_EQ("9", res->GetStringUnsafe(8));
-    ASSERT_EQ(exp, res->GetDateUnsafe(9));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+        ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+        ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+        ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+        ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+        ASSERT_EQ("9", res->GetStringUnsafe(8));
+        ASSERT_EQ(exp, res->GetDateUnsafe(9));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     std::string pre_aggr_table = "pre_test_aggr_w1_max_i64_col";
@@ -1052,26 +1064,29 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    std::shared_ptr<sdk::SQLRequestRow> req;
-    PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-    LOG(WARNING) << "Before CallProcedure";
-    auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-    LOG(WARNING) << "After CallProcedure";
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, res->Size());
-    ASSERT_TRUE(res->Next());
-    ASSERT_EQ("str1", res->GetStringUnsafe(0));
-    ASSERT_EQ("str2", res->GetStringUnsafe(1));
-    int64_t exp = 7;
-    ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(3));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(4));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(5));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(6));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(7));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(8));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(9));
-    ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        LOG(WARNING) << "Before CallProcedure";
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        LOG(WARNING) << "After CallProcedure";
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 7;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(3));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(4));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(5));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(6));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(7));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(8));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(9));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     std::string pre_aggr_table = "pre_test_aggr_w1_count_i64_col";

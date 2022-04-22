@@ -70,6 +70,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowComponents, "show components"},
         {CmdType::kCmdShowTableStatus, "show table status"},
         {CmdType::kCmdDropFunction, "drop function"},
+        {CmdType::kCmdShowFunctions, "show functions"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());

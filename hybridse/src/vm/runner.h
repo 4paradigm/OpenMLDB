@@ -628,9 +628,9 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
         const Row& row, const Row& parameter,
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
+        std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
         if (!windows_gen_.empty()) {
-            for (size_t i = 0; i < inputs_cnt_; i++) {
+            for (size_t i = 0; i < union_inputs.size(); i++) {
                 union_segments[i] =
                     windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
             }
@@ -1513,7 +1513,7 @@ class RunnerBuilder {
         std::string index);
     ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
-    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);
+    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);  // NOLINT
 };
 
 class RunnerContext {
