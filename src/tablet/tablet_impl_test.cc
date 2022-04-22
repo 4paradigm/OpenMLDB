@@ -181,7 +181,8 @@ void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col3", openmldb::type::DataType::kInt);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "col4", openmldb::type::DataType::kDouble);
 
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx", "id", "ts_col", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx1", "id", "ts_col", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "idx2", "col3", "ts_col", ::openmldb::type::kAbsoluteTime, 0, 0);
     return;
 }
 

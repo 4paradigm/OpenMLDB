@@ -158,7 +158,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (cur_ts < aggr_buffer.ts_begin_) {
         // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
         lock.unlock();
-        if (recover) { // avoid out-of-order duplicate writes during the recovery phase
+        if (recover) {
+            // avoid out-of-order duplicate writes during the recovery phase
             return true;
         }
         bool ok = UpdateFlushedBuffer(key, row_ptr, cur_ts, offset);
@@ -182,7 +183,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
 }
 
 bool Aggregator::FlushAll() {
-    //TODO(nauta): optimize the flush process
+    // TODO(nauta): optimize the flush process
     std::unique_lock<std::mutex> lock(mu_);
     std::unordered_map<std::string, AggrBuffer> flushed_buffer_map;
     for (auto& it : aggr_buffer_map_) {
@@ -247,7 +248,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         it->NextPK();
     }
     if (aggr_table_->GetRecordCnt() == 0) {
-        recovery_offset = 0;    
+        recovery_offset = 0;
     }
 
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
@@ -599,7 +600,7 @@ bool MinMaxBaseAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* 
 bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
-    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) { // null value
+    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {  // null value
         return true;
     }
     switch (aggr_col_type_) {
