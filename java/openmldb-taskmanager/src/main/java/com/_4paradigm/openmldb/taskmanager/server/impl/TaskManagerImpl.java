@@ -27,17 +27,14 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
+import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import lombok.extern.slf4j.Slf4j;
 import scala.Option;
-
-import java.util.Map;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
 
-    private Map<String, String> functionMap = new ConcurrentHashMap<>();
     private volatile static ZKClient zkClient;
 
     static {
@@ -70,7 +67,14 @@ public class TaskManagerImpl implements TaskManagerInterface {
                 try {
                     String value = zkClient.getNodeValue(funPath + "/" + name);
                     Common.ExternalFun fun = Common.ExternalFun.parseFrom(value.getBytes());
-                    functionMap.put(fun.getName(), value);
+
+                    // TODO(tobe): get the library for preset path
+                    String libraryFilePath = TaskManagerConfig.EXTERNAL_FUNCTION_DIR + fun.getFile();
+                    if (fun.hasOfflineFile()) {
+                        libraryFilePath = fun.getOfflineFile();
+                    }
+                    ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -319,23 +323,15 @@ public class TaskManagerImpl implements TaskManagerInterface {
                     .setMsg("has not offline path")
                     .build();
         }
-        String str = fun.toString();
-        if (!functionMap.containsKey(request.getFun().getName())) {
-            functionMap.put(fun.getName(), str);
-        }
+
+        String libraryFilePath = fun.getOfflineFile();
+        ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
         return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 
     @Override
     public TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request) {
-        if (functionMap.containsKey(request.getName())) {
-            functionMap.remove(request.getName());
-        } else if (!request.getIfExists()) {
-            return TaskManager.DropFunctionResponse.newBuilder()
-                    .setCode(StatusCode.FAILED)
-                    .setMsg(request.getName() + " is not exist")
-                    .build();
-        }
+        ExternalFunctionManager.dropFunction(request.getName());
         return TaskManager.DropFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 

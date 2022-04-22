@@ -51,6 +51,7 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String JOB_LOG_PATH;
+    public static String EXTERNAL_FUNCTION_DIR;
     public static boolean TRACK_UNFINISHED_JOBS;
     public static int JOB_TRACKER_INTERVAL;
     public static String SPARK_DEFAULT_CONF;
@@ -152,6 +153,8 @@ public class TaskManagerConfig {
                 }
             }
         }
+
+        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./external_function/");
 
         TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
 
