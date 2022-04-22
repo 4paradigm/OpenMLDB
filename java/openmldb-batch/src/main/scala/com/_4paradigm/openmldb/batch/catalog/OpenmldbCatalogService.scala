@@ -74,11 +74,13 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val open
 
     val externalFunMap = mutable.Map[String, com._4paradigm.openmldb.proto.Common.ExternalFun]()
 
-    val funNames = zkClient.getChildren(funPath)
-    for (name <- funNames.asScala) {
-      val value = zkClient.getNodeValue(funPath + "/" + name);
-      val funProto = com._4paradigm.openmldb.proto.Common.ExternalFun.parseFrom(value.getBytes());
-      externalFunMap.put(name, funProto)
+    if (zkClient.checkExists(funPath)) {
+      val funNames = zkClient.getChildren(funPath)
+      for (name <- funNames.asScala) {
+        val value = zkClient.getNodeValue(funPath + "/" + name);
+        val funProto = com._4paradigm.openmldb.proto.Common.ExternalFun.parseFrom(value.getBytes());
+        externalFunMap.put(name, funProto)
+      }
     }
 
     externalFunMap.toMap
