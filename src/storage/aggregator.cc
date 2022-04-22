@@ -154,9 +154,13 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return false;
         }
     }
+
     if (cur_ts < aggr_buffer.ts_begin_) {
         // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
         lock.unlock();
+        if (recover) { // avoid out-of-order duplicate writes during the recovery phase
+            return true;
+        }
         bool ok = UpdateFlushedBuffer(key, row_ptr, cur_ts, offset);
         if (!ok) {
             PDLOG(ERROR, "Update flushed buffer failed");
