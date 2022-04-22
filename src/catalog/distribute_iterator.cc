@@ -141,7 +141,7 @@ bool FullTableIterator::NextFromRemote() {
         } else {
             kv_it_.reset(iter->second->GetClient()->Traverse(tid_, cur_pid_, "", "", 0,
                         FLAGS_traverse_cnt, count));
-            LOG(INFO) << "count " << count;
+            DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
             last_pk_ = kv_it_->GetPK();
