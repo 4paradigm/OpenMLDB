@@ -4447,7 +4447,7 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     // TODO(nauta): need better way to handle aggregator volatile status lost.
     auto aggrs = GetAggregators(tid, pid);
-    if (!aggrs) {
+    if (aggrs) {
         for (auto& aggr : *aggrs) {
             aggr->FlushAll();
         }
