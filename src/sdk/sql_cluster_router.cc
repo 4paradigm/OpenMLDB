@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/strip.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -3537,8 +3539,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto tid = tinfo.tid();
         auto table_name = tinfo.name();
         auto db = tinfo.db();
-        // TODO(aceforeverd): support disk type
-        std::string storage_type = "memory";
+        auto& inner_storage_mode = StorageMode_Name(tinfo.storage_mode());
+        std::string storage_type = absl::AsciiStrToLower(absl::StripPrefix(inner_storage_mode, "k"));
+
         auto partition_num = tinfo.partition_num();
         auto replica_num = tinfo.replica_num();
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
