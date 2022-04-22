@@ -73,7 +73,7 @@ class LogReplicator {
 
     bool RollWLogFile();
 
-    void DeleteBinlog();
+    void DeleteBinlog(bool* deleted = NULL);
 
     // add replication
     int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map);

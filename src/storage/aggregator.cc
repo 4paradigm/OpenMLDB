@@ -178,40 +178,39 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
 }
 
 bool Aggregator::FlushAll() {
-    std::lock_guard<std::mutex> lock(mu_);
+    //TODO(nauta): optimize the flush process
+    std::unique_lock<std::mutex> lock(mu_);
+    std::unordered_map<std::string, AggrBuffer> flushed_buffer_map;
     for (auto& it : aggr_buffer_map_) {
         auto& aggr_buffer = it.second.buffer_;
         if (aggr_buffer.aggr_cnt_ == 0) {
             continue;
         }
-        if (!FlushAggrBuffer(it.first, aggr_buffer)) {
+        flushed_buffer_map.emplace(it.first, aggr_buffer);
+    }
+    lock.unlock();
+    for (auto& it : flushed_buffer_map) {
+        if (!FlushAggrBuffer(it.first, it.second)) {
             return false;
-        }
-        int64_t latest_ts = aggr_buffer.ts_end_ + 1;
-        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
-        aggr_buffer.clear();
-        aggr_buffer.ts_begin_ = latest_ts;
-        aggr_buffer.binlog_offset_ = latest_binlog;
-        if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
         }
     }
     return true;
 }
 
-bool Aggregator::Init() {
+bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     std::unique_lock<std::mutex> lock(mu_);
     if (GetStat() != AggrStat::kUnInit) {
         PDLOG(INFO, "aggregator status is %s", AggrStatToString(GetStat()));
         return true;
     }
     lock.unlock();
-    if (!base_replicator_) {
+    if (!base_replicator) {
         return false;
     }
     status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
-    auto log_parts = base_replicator_->GetLogPart();
+    auto log_parts = base_replicator->GetLogPart();
 
+    // TODO(nauta): support base table that existing data to init aggregator when deploy
     if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
@@ -243,8 +242,11 @@ bool Aggregator::Init() {
         }
         it->NextPK();
     }
+    if (aggr_table_->GetRecordCnt() == 0) {
+        recovery_offset = 0;    
+    }
 
-    ::openmldb::log::LogReader log_reader(log_parts, base_replicator_->GetLogPath(), false);
+    ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
     log_reader.SetOffset(recovery_offset);
     ::openmldb::api::LogEntry entry;
     uint64_t cur_offset = recovery_offset;
@@ -509,7 +511,9 @@ bool SumAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_va
 bool SumAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
-    aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length);
+    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
+        return true;
+    }
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
@@ -825,7 +829,9 @@ bool CountAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_
 bool CountAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
-    aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length);
+    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
+        return true;
+    }
     buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val);
     return true;
 }
@@ -898,7 +904,9 @@ bool AvgAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_va
 bool AvgAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     char* aggr_val = NULL;
     uint32_t ch_length = 0;
-    aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length);
+    if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
+        return true;
+    }
     double origin_val = *reinterpret_cast<double*>(aggr_val);
     buffer->aggr_val_.vdouble = origin_val;
     buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));

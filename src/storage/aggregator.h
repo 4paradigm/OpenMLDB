@@ -127,7 +127,7 @@ class Aggregator {
 
     bool FlushAll();
 
-    bool Init();
+    bool Init(std::shared_ptr<LogReplicator> base_replicator);
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -142,14 +142,6 @@ class Aggregator {
     AggrStat GetStat() const { return status_.load(std::memory_order_relaxed); }
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
-
-    void SetBaseReplicator(std::shared_ptr<LogReplicator> replicator) {
-        std::atomic_store_explicit(&base_replicator_, replicator, std::memory_order_relaxed);
-    }
-
-    std::shared_ptr<LogReplicator> GetBaseReplicator() {
-        return std::atomic_load_explicit(&base_replicator_, std::memory_order_relaxed);
-    }
 
  protected:
     codec::Schema base_table_schema_;
