@@ -6544,7 +6544,6 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
             tablet.Put(NULL, &prequest, &presponse, &closure);
             ASSERT_EQ(0, presponse.code());
         }
-
     }
 
     // recovery
