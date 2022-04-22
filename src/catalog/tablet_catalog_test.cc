@@ -121,6 +121,26 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
         }
     }
 
+    // if empty table, also have to construct a request row
+    if (value.empty()) {
+        uint64_t ts = 100;
+        pk = "pk";
+        auto ts_str = std::to_string(ts);
+        uint32_t size = rb.CalTotalLength(pk.size() + ts_str.size());
+        value.resize(size);
+        rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
+        rb.AppendString(pk.c_str(), pk.size());
+        rb.AppendInt64(ts);
+        rb.AppendInt16(ts);
+        rb.AppendInt32(ts);
+        rb.AppendInt64(ts);
+        rb.AppendFloat(ts);
+        rb.AppendDouble(ts);
+        rb.AppendTimestamp(ts);
+        rb.AppendString(ts_str.c_str(), ts_str.size());
+        args.ts = ts;
+    }
+
     args.pk = pk;
     args.row = value;
     std::shared_ptr<::openmldb::storage::MemTable> mtable(table);
@@ -1115,6 +1135,7 @@ TEST_F(TabletCatalogTest, long_window_empty) {
     hybridse::codec::Row output;
     const char *data = NULL;
     uint32_t data_size = 0;
+    int64_t val;
     ::hybridse::codec::Row request_row(::hybridse::base::RefCountedSlice::Create(args.row.c_str(), args.row.size()));
 
     {
@@ -1130,7 +1151,8 @@ TEST_F(TabletCatalogTest, long_window_empty) {
         ASSERT_EQ(0, session.Run(request_row, &output));
         ASSERT_EQ(2, session.GetSchema().size());
         rv.Reset(output.buf(), output.size());
-        ASSERT_TRUE(rv.IsNULL(1));
+        ASSERT_EQ(0, rv.GetInt64(1, &val));
+        ASSERT_EQ(args.ts, val);
         ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
         std::string pk(data, data_size);
         ASSERT_EQ(args.pk, pk);
