@@ -53,7 +53,6 @@ class DistributeIteratorTest : public ::testing::Test {};
     codec::SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts",
             ::openmldb::type::kAbsoluteTime, 0, 0);
     return table_meta;
-
 }
 
 std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid) {

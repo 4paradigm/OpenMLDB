@@ -130,7 +130,8 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
-                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, key_, FLAGS_traverse_cnt_limit, count));
+                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, key_,
+                            FLAGS_traverse_cnt_limit, count));
                 DLOG(INFO) << "last pk " << last_pk_ << " key " << key_ << " count " << count;
             } else {
                 iter++;
