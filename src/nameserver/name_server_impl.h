@@ -486,7 +486,8 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                               ::openmldb::api::OPType op_type, const std::string& name, uint32_t tid,
-                                              uint32_t pid, uint32_t seg_cnt, bool is_leader);
+                                              uint32_t pid, uint32_t seg_cnt, bool is_leader,
+                                              ::openmldb::common::StorageMode storage_mode);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
@@ -676,7 +677,8 @@ class NameServerImpl : public NameServer {
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
                           uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
-    void NotifyTableChanged();
+    // kTable for normal table and kGlobalVar for global var table
+    void NotifyTableChanged(::openmldb::type::NotifyType type);
     void DeleteDoneOP();
     void UpdateTableStatus();
     int DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info);
@@ -774,8 +776,6 @@ class NameServerImpl : public NameServer {
     base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
 
     uint64_t GetTerm() const;
-
-    void NotifyGlobalVarChanged();
 
     // write deploy statistics into table
     void SyncDeployStats();

@@ -618,10 +618,6 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
     }
 }
 
-int64_t myfun(UDFContext* ctx, int input) {
-    return input + 2;
-}
-
 void cut2(UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output, bool* is_null) {
     if (input == nullptr || output == nullptr) {
         *is_null = true;
@@ -653,21 +649,17 @@ TEST_F(EngineCompileTest, ExternalFunctionTest) {
     std::string sql = "select myfun(col1 + 1) from t1;";
     EngineOptions options;
     Engine engine(catalog, options);
-    ASSERT_TRUE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false,
-                {reinterpret_cast<void*>(myfun)}).isOK());
-    ASSERT_FALSE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false,
-                {reinterpret_cast<void*>(myfun)}).isOK());
-    ASSERT_FALSE(engine.RegisterExternalFunction("lcase", node::kInt64, {node::kInt32}, false,
-                {reinterpret_cast<void*>(myfun)}).isOK());
+    ASSERT_TRUE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false, "").isOK());
+    ASSERT_FALSE(engine.RegisterExternalFunction("myfun", node::kInt64, {node::kInt32}, false, "").isOK());
+    ASSERT_FALSE(engine.RegisterExternalFunction("lcase", node::kInt64, {node::kInt32}, false, "").isOK());
     base::Status get_status;
     BatchRunSession session;
     ASSERT_TRUE(engine.Get(sql, "simple_db", session, get_status));
-    ASSERT_TRUE(engine.RemoveExternalFunction("myfun", {node::kInt32}).isOK());
+    ASSERT_TRUE(engine.RemoveExternalFunction("myfun", {node::kInt32}, "").isOK());
     std::string sql1 = "select myfun(col1 + 2) from t1;";
     ASSERT_FALSE(engine.Get(sql1, "simple_db", session, get_status));
 
-    ASSERT_TRUE(engine.RegisterExternalFunction("cut2", node::kVarchar, {node::kVarchar}, false,
-                {reinterpret_cast<void*>(cut2)}).isOK());
+    ASSERT_TRUE(engine.RegisterExternalFunction("cut2", node::kVarchar, {node::kVarchar}, false, "").isOK());
     std::string sql2 = "select cut2(col0) from t1;";
     ASSERT_TRUE(engine.Get(sql2, "simple_db", session, get_status));
 }

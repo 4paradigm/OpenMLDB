@@ -54,6 +54,8 @@ constexpr time_t TZ_OFFSET = TZ * 3600000;
 constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
+void trivial_fun() {}
+
 int32_t dayofyear(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -156,6 +158,8 @@ int32_t weekofyear(Date *date) {
 }
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
+
+double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
 
 void date_format(Timestamp *timestamp,
                  StringRef *format,

@@ -270,6 +270,83 @@ class DiskTableTraverseIterator : public TableIterator {
     uint64_t traverse_cnt_;
 };
 
+class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
+ public:
+    DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+                         ::openmldb::storage::TTLType ttl_type, uint64_t expire_time, uint64_t expire_cnt,
+                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx);
+
+    ~DiskTableRowIterator();
+
+    bool Valid() const override;
+
+    void Next() override;
+
+    inline const uint64_t& GetKey() const override;
+
+    const ::hybridse::codec::Row& GetValue() override;
+
+    void Seek(const uint64_t& key) override;
+    void SeekToFirst() override;
+    inline bool IsSeekable() const override;
+
+ private:
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
+    uint32_t record_idx_;
+    TTLSt expire_value_;
+    std::string pk_;
+    std::string row_pk_;
+    bool has_ts_idx_;
+    uint64_t ts_;
+    uint32_t ts_idx_;
+    ::hybridse::codec::Row row_;
+    bool pk_valid_;
+};
+
+class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
+ public:
+    DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+                         ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
+                         int32_t ts_idx, rocksdb::ColumnFamilyHandle* column_handle);
+
+    DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+                         ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
+                         rocksdb::ColumnFamilyHandle* column_handle);
+
+    ~DiskTableKeyIterator() override;
+
+    void Seek(const std::string& pk) override;
+
+    void SeekToFirst() override;
+
+    void Next() override;
+
+    bool Valid() override;
+
+    std::unique_ptr<::hybridse::vm::RowIterator> GetValue() override;
+    ::hybridse::vm::RowIterator* GetRawValue() override;
+
+    const hybridse::codec::Row GetKey() override;
+
+ private:
+    void NextPK();
+
+ private:
+    rocksdb::DB* db_;
+    rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
+    ::openmldb::storage::TTLType ttl_type_;
+    uint64_t expire_time_;
+    uint64_t expire_cnt_;
+    std::string pk_;
+    bool has_ts_idx_;
+    uint64_t ts_;
+    uint32_t ts_idx_;
+    rocksdb::ColumnFamilyHandle* column_handle_;
+};
+
 class DiskTable : public Table {
  public:
     DiskTable(const std::string& name, uint32_t id, uint32_t pid, const std::map<std::string, uint32_t>& mapping,
@@ -285,8 +362,6 @@ class DiskTable : public Table {
     bool InitColumnFamilyDescriptor();
 
     bool Init() override;
-
-    bool LoadTable();
 
     static void initOptionTemplate();
 
@@ -323,9 +398,7 @@ class DiskTable : public Table {
 
     TableIterator* NewTraverseIterator(uint32_t idx) override;
 
-    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) { return NULL; }
-
-    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx, uint32_t ts_idx) { return NULL; }
+    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) override;
 
     void SchedGc() override;
 
@@ -349,6 +422,8 @@ class DiskTable : public Table {
     uint64_t GetRecordPkCnt() override;
     inline uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
+
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
 
  private:
     rocksdb::DB* db_;

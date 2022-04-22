@@ -74,6 +74,7 @@ class DBSDK {
     std::vector<std::string> GetAllTables();
     std::vector<std::string> GetTableNames(const std::string& db);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet();
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> GetAllTablet();
     bool GetTablet(const std::string& db, const std::string& name,
                    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name);
@@ -85,8 +86,7 @@ class DBSDK {
     std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db, const std::string& sp_name,
                                                                    std::string* msg);
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
-    virtual bool TriggerNotify() const = 0;
-    virtual bool GlobalVarNotify() const = 0;
+    virtual bool TriggerNotify(::openmldb::type::NotifyType type) const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
 
@@ -128,8 +128,7 @@ class ClusterSDK : public DBSDK {
     ~ClusterSDK() override;
     bool Init() override;
     bool IsClusterMode() const override { return true; }
-    bool TriggerNotify() const override;
-    bool GlobalVarNotify() const override;
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
     const ClusterOptions& GetClusterOptions() const { return options_; }
@@ -170,14 +169,20 @@ class StandAloneSDK : public DBSDK {
     zk::ZkClient* GetZkClient() override { return nullptr; }
 
     bool IsClusterMode() const override { return false; }
-
-    bool TriggerNotify() const override { return false; }
+    // kTable for normal table and kGlobalVar for global var table, return true directly in standalone
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override {
+        if (type == ::openmldb::type::kTable) {
+            return true;
+        } else if (type == ::openmldb::type::kGlobalVar) {
+            return true;
+        }
+        DLOG(ERROR) << "unsupport notify type";
+        return false;
+    }
 
     const std::string& GetHost() const { return host_; }
 
     int GetPort() const { return port_; }
-
-    bool GlobalVarNotify() const override { return true; }
 
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.

@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager.client;
 
+import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com.baidu.brpc.RpcContext;
@@ -459,6 +460,37 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
         return response.getLog();
+    }
+
+    /**
+     * Drop Function
+     *
+     * @throws Exception
+     */
+    public void dropFunction(String name, boolean if_exists) throws Exception {
+        TaskManager.DropFunctionRequest request = TaskManager.DropFunctionRequest.newBuilder()
+                .setName(name)
+                .setIfExists(if_exists)
+                .build();
+        TaskManager.DropFunctionResponse response = taskManagerInterface.DropFunction(request);
+        if (response.getCode() != 0) {
+            throw new Exception(response.getMsg());
+        }
+    }
+
+    /**
+     * Create Function
+     *
+     * @throws Exception
+     */
+    public void createFunction(Common.ExternalFun fun) throws Exception {
+        TaskManager.CreateFunctionRequest request = TaskManager.CreateFunctionRequest.newBuilder()
+                .setFun(fun)
+                .build();
+        TaskManager.CreateFunctionResponse response = taskManagerInterface.CreateFunction(request);
+        if (response.getCode() != 0) {
+            throw new Exception(response.getMsg());
+        }
     }
 
 }
