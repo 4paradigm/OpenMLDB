@@ -17,6 +17,7 @@
 #define HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -38,6 +39,22 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
         : TransformUpPysicalPass(plan_ctx) {}
 
     ~GroupAndSortOptimized() {}
+
+ private:
+   struct ColIndexInfo {
+      ColIndexInfo(uint32_t idx) : index(idx) {} // NOLINT
+
+      // the vector index for column reference of the index definition, if column hit one of indexes
+      uint32_t index;
+   };
+   struct IndexBitMap {
+      IndexBitMap() {}
+      IndexBitMap(std::vector<std::optional<ColIndexInfo>> mp) : bitmap(mp) {} // NOLINT
+
+      std::vector<std::optional<ColIndexInfo>> bitmap;
+      // total size of keys from the best matched index
+      uint32_t refered_index_key_count = 0;
+   };
 
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
@@ -72,10 +89,6 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         PhysicalOpNode** new_in);
     bool SortOptimized(const SchemasContext* root_schemas_ctx,
                        PhysicalOpNode* in, Sort* sort);
-    bool TransformGroupExpr(const SchemasContext* schemas_ctx,
-                            const node::ExprListNode* group,
-                            std::shared_ptr<TableHandler> table_handler,
-                            std::string* index, std::vector<bool>* best_bitmap);
     bool TransformOrderExpr(const SchemasContext* schemas_ctx,
                             const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
@@ -85,12 +98,13 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                                    const node::OrderByNode* order,
                                    std::shared_ptr<TableHandler> table_handler,
                                    std::string* index,
-                                   std::vector<bool>* best_bitmap);
+                                   IndexBitMap* best_bitmap);
     bool MatchBestIndex(const std::vector<std::string>& columns,
                         const std::vector<std::string>& order_columns,
                         std::shared_ptr<TableHandler> table_handler,
-                        std::vector<bool>* bitmap, std::string* index_name,
-                        std::vector<bool>* best_bitmap);  // NOLINT
+                        IndexBitMap* bitmap,
+                        std::string* index_name,
+                        IndexBitMap* best_bitmap);  // NOLINT
 };
 }  // namespace passes
 }  // namespace hybridse

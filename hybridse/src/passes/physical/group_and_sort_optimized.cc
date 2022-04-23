@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include "passes/physical/group_and_sort_optimized.h"
+#include <absl/strings/string_view.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
@@ -265,12 +267,10 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             const node::ExprListNode* right_partition =
                 right_key == nullptr ? left_key->keys() : right_key->keys();
 
-            size_t key_num = right_partition->GetChildNum();
-            std::vector<bool> bitmap(key_num, false);
-            node::ExprListNode order_values;
-
+            IndexBitMap bitmap((std::vector<std::optional<ColIndexInfo>>(right_partition->GetChildNum())));
             PhysicalPartitionProviderNode* partition_op = nullptr;
             std::string index_name;
+
             if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
                 // Apply key columns and order column optimization with all indexes binding to scan_op->table_handler_
                 // Return false if fail to find an appropriate index
@@ -296,14 +296,17 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                 }
             }
 
-
             auto new_left_keys = node_manager_->MakeExprList();
             auto new_right_keys = node_manager_->MakeExprList();
             auto new_index_keys = node_manager_->MakeExprList();
-            for (size_t i = 0; i < bitmap.size(); ++i) {
+
+            new_index_keys->children_.resize(bitmap.refered_index_key_count);
+            for (size_t i = 0; i < bitmap.bitmap.size(); ++i) {
                 auto left = left_key->keys()->GetChild(i);
-                if (bitmap[i]) {
-                    new_index_keys->AddChild(left);
+                if (bitmap.bitmap[i].has_value()) {
+                    // reorder index keys to the index definition order, for the runner to correctly filter rows if
+                    // condtion keys has different order to index keys
+                    new_index_keys->SetChild(bitmap.bitmap[i].value().index, left);
                 } else {
                     new_left_keys->AddChild(left);
                     if (right_key != nullptr) {
@@ -312,6 +315,17 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                     }
                 }
             }
+
+            // remove those in expr list that are null
+            auto it = new_index_keys->children_.begin();
+            while (it != new_index_keys->children_.end()) {
+                if (*it == nullptr) {
+                    it = new_index_keys->children_.erase(it);
+                } else {
+                    it++;
+                }
+            }
+
             if (right_key != nullptr) {
                 right_key->set_keys(new_right_keys);
             }
@@ -461,19 +475,12 @@ bool GroupAndSortOptimized::SortOptimized(
     return false;
 }
 
-bool GroupAndSortOptimized::TransformGroupExpr(
-    const SchemasContext* root_schemas_ctx, const node::ExprListNode* groups,
-    std::shared_ptr<TableHandler> table_handler, std::string* index_name,
-    std::vector<bool>* output_bitmap) {
-    return TransformKeysAndOrderExpr(root_schemas_ctx, groups, nullptr,
-                                     table_handler, index_name, output_bitmap);
-}
 bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root_schemas_ctx,
                                                       const node::ExprListNode* groups,
                                                       const node::OrderByNode* order,
                                                       std::shared_ptr<TableHandler> table_handler,
                                                       std::string* index_name,
-                                                      std::vector<bool>* output_bitmap) {
+                                                      IndexBitMap* output_bitmap) {
     if (nullptr == groups || nullptr == output_bitmap || nullptr == index_name) {
         DLOG(WARNING) << "fail to transform keys expr : key expr or output "
                          "or index_name ptr is null";
@@ -527,30 +534,33 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
         return false;
     }
 
-    std::vector<bool> match_bitmap;
-    std::vector<bool> state_bitmap(columns.size(), true);
+    IndexBitMap match_bitmap;
+    // internal structure for MatchBestIndex, initially turn every bit true
+    IndexBitMap state_bitmap(std::vector<std::optional<ColIndexInfo>>(columns.size(), std::make_optional(0)));
     if (!MatchBestIndex(columns, order_columns, table_handler, &state_bitmap, index_name, &match_bitmap)) {
         return false;
     }
-    if (match_bitmap.size() != columns.size()) {
+    if (match_bitmap.bitmap.size() != columns.size()) {
         return false;
     }
     for (size_t i = 0; i < columns.size(); ++i) {
-        if (match_bitmap[i]) {
+        if (match_bitmap.bitmap[i].has_value()) {
             size_t origin_idx = result_bitmap_mapping[i];
-            (*output_bitmap)[origin_idx] = true;
+            output_bitmap->bitmap.at(origin_idx) = match_bitmap.bitmap[i].value();
         }
     }
+    output_bitmap->refered_index_key_count = match_bitmap.refered_index_key_count;
     return true;
 }
 
 // When *index_name is empty, return true if we can find the best index for key columns and order column
 // When *index_name isn't empty, return true if the given index_name match key columns and order column
-bool GroupAndSortOptimized::MatchBestIndex(
-    const std::vector<std::string>& columns,
-    const std::vector<std::string>& order_columns,
-    std::shared_ptr<TableHandler> table_handler, std::vector<bool>* bitmap_ptr,
-    std::string* index_name, std::vector<bool>* index_bitmap) {
+bool GroupAndSortOptimized::MatchBestIndex(const std::vector<std::string>& columns,
+                                           const std::vector<std::string>& order_columns,
+                                           std::shared_ptr<TableHandler> table_handler,
+                                           IndexBitMap* bitmap_ptr,
+                                           std::string* index_name,
+                                           IndexBitMap* index_bitmap) {
     if (nullptr == bitmap_ptr || nullptr == index_name) {
         LOG(WARNING)
             << "fail to match best index: bitmap or index_name ptr is null";
@@ -561,19 +571,11 @@ bool GroupAndSortOptimized::MatchBestIndex(
         LOG(WARNING) << "fail to match best index: table is null";
         return false;
     }
-    auto& index_hint = table_handler->GetIndex();
-    auto schema = table_handler->GetSchema();
+    const auto& index_hint = table_handler->GetIndex();
+    auto* schema = table_handler->GetSchema();
     if (nullptr == schema) {
         LOG(WARNING) << "fail to match best index: table schema null";
         return false;
-    }
-
-    std::set<std::string> column_set;
-    auto& bitmap = *bitmap_ptr;
-    for (size_t i = 0; i < columns.size(); ++i) {
-        if (bitmap[i]) {
-            column_set.insert(columns[i]);
-        }
     }
 
     if (order_columns.size() > 1) {
@@ -599,27 +601,55 @@ bool GroupAndSortOptimized::MatchBestIndex(
                 continue;
             }
         }
-        std::set<std::string> keys;
-        for (auto key_iter = index.keys.cbegin(); key_iter != index.keys.cend();
-             key_iter++) {
-            keys.insert(key_iter->name);
+
+        // key column name -> (idx of index definition, whether hitted by one of columns)
+        std::unordered_map<absl::string_view, std::pair<uint32_t, bool>> key_name_idx_map;
+        for (uint32_t i = 0; i < index.keys.size(); ++i) {
+            key_name_idx_map[index.keys[i].name] = std::make_pair(i, false);
         }
-        if (column_set == keys) {
+
+        // flag whether all the true bitted columns matches key in the same index
+        bool exact_match_all = true;
+        // construct a copy of IndexBitMap for matching
+        IndexBitMap matching = *bitmap_ptr;
+        for (size_t i = 0; i < columns.size(); ++i) {
+            if (matching.bitmap[i].has_value()) {
+                auto it = key_name_idx_map.find(columns[i]);
+                if (it == key_name_idx_map.end()) {
+                    exact_match_all = false;
+                    break;
+                }
+                it->second.second = true;
+                // reset to the correct index of matched Index definition
+                matching.bitmap[i].emplace(it->second.first);
+            }
+        }
+        for (auto & kv : key_name_idx_map) {
+            exact_match_all &= kv.second.second;
+        }
+
+        if (exact_match_all) {
+            // index absolute match
+            matching.refered_index_key_count = index.keys.size();
             *index_name = index.name;
-            *index_bitmap = bitmap;
+            *index_bitmap = matching;
             return true;
         }
     }
 
+    // try match best index
     std::string best_index_name;
-    std::vector<bool> best_index_bitmap;
+    IndexBitMap best_index_bitmap;
 
     bool succ = false;
-    for (size_t i = 0; i < bitmap.size(); ++i) {
-        if (bitmap[i]) {
-            bitmap[i] = false;
+    for (size_t i = 0; i < bitmap_ptr->bitmap.size(); ++i) {
+        // find solutions recursively by flip one of the hitted bit
+        // then choose the best one among those
+        if (bitmap_ptr->bitmap[i].has_value()) {
+            auto val = bitmap_ptr->bitmap[i].value();
+            bitmap_ptr->bitmap[i] = {};
             std::string name;
-            std::vector<bool> sub_best_bitmap;
+            IndexBitMap sub_best_bitmap;
             if (MatchBestIndex(columns, order_columns, table_handler,
                                bitmap_ptr, &name, &sub_best_bitmap)) {
                 succ = true;
@@ -630,12 +660,13 @@ bool GroupAndSortOptimized::MatchBestIndex(
                     auto org_index = index_hint.at(best_index_name);
                     auto new_index = index_hint.at(name);
                     if (org_index.keys.size() < new_index.keys.size()) {
+                        // override with better index
                         best_index_name = name;
                         best_index_bitmap = sub_best_bitmap;
                     }
                 }
             }
-            bitmap[i] = true;
+            bitmap_ptr->bitmap[i] = val;
         }
     }
     *index_name = best_index_name;
