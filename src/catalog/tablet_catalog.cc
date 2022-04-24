@@ -130,10 +130,21 @@ std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindow
     }
     DLOG(INFO) << "get window it with index " << idx_name;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
-    if (!tables->empty()) {
-        return std::make_unique<DistributeWindowIterator>(tables, iter->second.index);
+    if (tables) {
+        return {};
     }
-    return std::unique_ptr<::hybridse::codec::WindowIterator>();
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients;
+    for (uint32_t pid = 0; pid < partition_num_; pid++) {
+        if (tables->count(pid) == 0) {
+            auto accessor = table_client_manager_->GetTablet(pid);
+            if (accessor) {
+                tablet_clients.emplace(pid, accessor->GetClient());
+            }
+        }
+    }
+    DLOG(INFO) << "table size " << tables->size() << " tablet_clients size " << tablet_clients.size();
+    return std::make_unique<DistributeWindowIterator>(GetTid(), partition_num_, tables,
+            iter->second.index, idx_name, tablet_clients);
 }
 
 // TODO(chenjing): optimize Get(int pos) base segment

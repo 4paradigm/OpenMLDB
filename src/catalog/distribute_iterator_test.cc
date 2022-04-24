@@ -61,37 +61,46 @@ std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid
     return table;
 }
 
-void PutData(std::shared_ptr<openmldb::storage::Table> table) {
-    codec::SDKCodec codec(*(table->GetTableMeta()));
+void PutKey(const std::string& key, std::shared_ptr<openmldb::storage::Table> table) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    codec::SDKCodec codec(*(table->GetTableMeta()));
+    for (int j = 0; j < 10; j++) {
+        std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(key);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+}
+
+void PutKey(const std::string& key, const ::openmldb::api::TableMeta& table_meta,
+        std::shared_ptr<openmldb::client::TabletClient> client) {
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    codec::SDKCodec codec(table_meta);
+    for (int j = 0; j < 10; j++) {
+        std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
+        client->Put(table_meta.tid(), table_meta.pid(), 0, value, dimensions);
+    }
+}
+
+void PutData(std::shared_ptr<openmldb::storage::Table> table) {
     for (int i = 0; i < 5; i++) {
         std::string key = "card" + std::to_string(table->GetId()) + std::to_string(i);
-        for (int j = 0; j < 10; j++) {
-            std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
-            ::openmldb::api::PutRequest request;
-            ::openmldb::api::Dimension* dim = request.add_dimensions();
-            dim->set_idx(0);
-            dim->set_key(key);
-            std::string value;
-            ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
-        }
+        PutKey(key, table);
     }
 }
 
 void PutData(const ::openmldb::api::TableMeta& table_meta,
         std::shared_ptr<openmldb::client::TabletClient> client) {
-    codec::SDKCodec codec(table_meta);
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (int i = 0; i < 5; i++) {
         std::string key = "card" + std::to_string(table_meta.tid()) + std::to_string(i);
-        for (int j = 0; j < 10; j++) {
-            std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
-            std::string value;
-            ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
-            client->Put(table_meta.tid(), table_meta.pid(), 0, value, dimensions);
-        }
+        PutKey(key, table_meta, client);
     }
 }
 
@@ -209,6 +218,53 @@ TEST_F(DistributeIteratorTest, Hybrid) {
         it.Next();
     }
     ASSERT_EQ(count, 200);
+}
+
+TEST_F(DistributeIteratorTest, WindowIterator) {
+    uint32_t tid = 3;
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    auto tables = std::make_shared<Tables>();
+    auto table1 = CreateTable(tid, 0);
+    auto table2 = CreateTable(tid, 2);
+    tables->emplace(0, table1);
+    tables->emplace(2, table2);
+    std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    brpc::Server tablet2;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[1], &tablet2));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
+    ASSERT_EQ(client2->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
+    for (int i = 0; i < 20; i++) {
+        std::string key = "card" + std::to_string(i);
+        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key)) % 4;
+        if (pid % 2 == 0) {
+            PutKey(key, (*tables)[pid]);
+        } else {
+            PutKey(key, metas[pid == 1 ? 0 : 1], tablet_clients[pid]);
+        }
+    }
+    DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
+    for (int i = 0; i < 20; i++) {
+        std::string key = "card" + std::to_string(i);
+        w_it.Seek(key);
+        ASSERT_TRUE(w_it.Valid());
+        auto it = w_it.GetRawValue();
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            count++;
+            it->Next();
+        }
+        delete it;
+        ASSERT_EQ(count, 10);
+    }
 }
 
 }  // namespace catalog

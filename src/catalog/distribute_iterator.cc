@@ -115,10 +115,9 @@ bool FullTableIterator::NextFromRemote() {
             return true;
         }
     }
-    auto iter = tablet_clients_.end();;
+    auto iter = tablet_clients_.begin();
     if (cur_pid_ == INVALID_PID) {
         cur_pid_ = iter->first;
-        iter = tablet_clients_.begin();
     } else {
         iter = tablet_clients_.find(cur_pid_);
     }
@@ -165,17 +164,22 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
     }
 }
 
-DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> tables, uint32_t index)
-    : tables_(tables), index_(index), cur_pid_(0), pid_num_(1), it_() {
-    if (tables && !tables->empty()) {
-        pid_num_ = tables->begin()->second->GetTableMeta()->table_partition_size();
-    }
+DistributeWindowIterator::DistributeWindowIterator(uint32_t tid, uint32_t pid_num, std::shared_ptr<Tables> tables,
+        uint32_t index, const std::string& index_name,
+        const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients)
+    : tid_(tid), pid_num_(pid_num), tables_(tables), tablet_clients_(tablet_clients),
+    index_(index), index_name_(index_name),
+    cur_pid_(0), it_(), kv_it_() {}
+
+void DistributeWindowIterator::Reset() {
+    it_.reset();
+    kv_it_.reset();
+    cur_pid_ = INVALID_PID;
 }
 
 void DistributeWindowIterator::Seek(const std::string& key) {
-    // assume all partitions in one tablet
     DLOG(INFO) << "seek to key " << key;
-    it_.reset();
+    Reset();
     if (!tables_) {
         return;
     }
@@ -187,6 +191,15 @@ void DistributeWindowIterator::Seek(const std::string& key) {
         it_.reset(iter->second->NewWindowIterator(index_));
         it_->Seek(key);
         if (it_->Valid()) {
+            return;
+        }
+    }
+    auto client_iter = tablet_clients_.find(cur_pid_);
+    if (client_iter != tablet_clients_.end()) {
+        uint32_t count = 0;
+        kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0,
+                    FLAGS_traverse_cnt_limit, count));
+        if (kv_it_ && kv_it_->Valid()) {
             return;
         }
     }
@@ -205,7 +218,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
 
 void DistributeWindowIterator::SeekToFirst() {
     DLOG(INFO) << "seek to first";
-    it_.reset();
+    Reset();
     if (!tables_) {
         return;
     }
@@ -214,36 +227,62 @@ void DistributeWindowIterator::SeekToFirst() {
         it_->SeekToFirst();
         if (it_->Valid()) {
             cur_pid_ = kv.first;
-            break;
+            return;
+        }
+    }
+    for (const auto& kv : tablet_clients_) {
+        uint32_t count = 0;
+        cur_pid_ = kv.first;
+        kv_it_.reset(kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, count));
+        if (kv_it_ && kv_it_->Valid()) {
+            return;
         }
     }
 }
 
 void DistributeWindowIterator::Next() {
-    it_->Next();
-    if (!it_->Valid()) {
-        auto iter = tables_->find(cur_pid_);
-        if (iter == tables_->end()) {
-            return;
-        }
-        for (iter++; iter != tables_->end(); iter++) {
-            it_.reset(iter->second->NewWindowIterator(index_));
-            it_->SeekToFirst();
-            if (it_->Valid()) {
-                cur_pid_ = iter->first;
-                break;
+    // TODO(dl239) : next from remote
+    if (it_) {
+        it_->Next();
+        if (!it_->Valid()) {
+            auto iter = tables_->find(cur_pid_);
+            if (iter == tables_->end()) {
+                return;
+            }
+            for (iter++; iter != tables_->end(); iter++) {
+                it_.reset(iter->second->NewWindowIterator(index_));
+                it_->SeekToFirst();
+                if (it_->Valid()) {
+                    cur_pid_ = iter->first;
+                    break;
+                }
             }
         }
     }
 }
 
-bool DistributeWindowIterator::Valid() { return it_ && it_->Valid(); }
+bool DistributeWindowIterator::Valid() {
+    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
+}
 
-std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() { return it_->GetValue(); }
+std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() {
+    return std::unique_ptr<::hybridse::codec::RowIterator>(GetRawValue());
+}
 
-::hybridse::codec::RowIterator* DistributeWindowIterator::GetRawValue() { return it_->GetRawValue(); }
+::hybridse::codec::RowIterator* DistributeWindowIterator::GetRawValue() {
+    if (it_) {
+        return it_->GetRawValue();
+    }
+    return new RemoteWindowIterator(kv_it_.get());
+}
 
-const ::hybridse::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
+const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
+    if (it_) {
+        return it_->GetKey();
+    }
+    return hybridse::codec::Row(hybridse::base::RefCountedSlice::Create(kv_it_->GetPK().data(),
+                kv_it_->GetPK().size()));
+}
 
 }  // namespace catalog
 }  // namespace openmldb

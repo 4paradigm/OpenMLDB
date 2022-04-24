@@ -853,19 +853,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
 }
 
 std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
-    TimeEntries::Iterator* it = NULL;
-    if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-        it = entry->entries.NewIterator();
-        ticket_.Push(entry);
-    } else {
-        it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                 ->entries.NewIterator();
-        ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-    }
-    it->SeekToFirst();
-    std::unique_ptr<MemTableWindowIterator> wit(new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_));
-    return std::move(wit);
+    return std::unique_ptr<::hybridse::vm::RowIterator>(GetRawValue());
 }
 
 const hybridse::codec::Row MemTableKeyIterator::GetKey() {
