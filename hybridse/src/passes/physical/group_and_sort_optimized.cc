@@ -316,14 +316,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                 }
             }
 
-            // remove those in expr list that are null
-            auto it = new_index_keys->children_.begin();
-            while (it != new_index_keys->children_.end()) {
-                if (*it == nullptr) {
-                    it = new_index_keys->children_.erase(it);
-                } else {
-                    it++;
-                }
+            for (auto expr : new_index_keys->children_) {
+                DCHECK(expr != nullptr);
             }
 
             if (right_key != nullptr) {
