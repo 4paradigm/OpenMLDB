@@ -18,4 +18,5 @@ COMPONENT=$1
 
 ulimit -c unlimited
 ulimit -n 655360
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/lib"
 ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true
