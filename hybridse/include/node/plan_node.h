@@ -356,22 +356,14 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string& db_name,
-                   const std::string& table_name, int replica_num, int partition_num,
-                   StorageMode storage_mode,
-                   NodePointVector column_list,
-                   NodePointVector distribution_list,
-                   const bool if_not_exist)
+    CreatePlanNode(const std::string &db_name, const std::string &table_name, NodePointVector column_list,
+                   const bool if_not_exist, NodePointVector table_option_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(db_name),
           table_name_(table_name),
-          replica_num_(replica_num),
-          partition_num_(partition_num),
-          storage_mode_(storage_mode),
           column_desc_list_(column_list),
-          distribution_list_(distribution_list),
+          table_option_list_(table_option_list),
           if_not_exist_(if_not_exist) {}
-
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
@@ -379,8 +371,6 @@ class CreatePlanNode : public LeafPlanNode {
     void setDatabase(const std::string &database) { database_ = database; }
 
     std::string GetTableName() const { return table_name_; }
-
-    StorageMode GetStorageMode() const { return storage_mode_; }
 
     void setTableName(const std::string &table_name) { table_name_ = table_name; }
 
@@ -426,21 +416,9 @@ class CreatePlanNode : public LeafPlanNode {
         return true;
     }
 
-    NodePointVector &GetColumnDescList() { return column_desc_list_; }
+    const NodePointVector &GetColumnDescList() const { return column_desc_list_; }
 
-    void SetColumnDescList(const NodePointVector &column_desc_list) { column_desc_list_ = column_desc_list; }
-
-    int GetReplicaNum() const { return replica_num_; }
-
-    void setReplicaNum(int replica_num) { replica_num_ = replica_num; }
-
-    int GetPartitionNum() const { return partition_num_; }
-
-    void setPartitionNum(int partition_num) { partition_num_ = partition_num; }
-
-    NodePointVector &GetDistributionList() { return distribution_list_; }
-
-    void SetDistributionList(const NodePointVector &distribution_list) { distribution_list_ = distribution_list; }
+    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 
     bool GetIfNotExist() const { return if_not_exist_; }
 
@@ -451,11 +429,8 @@ class CreatePlanNode : public LeafPlanNode {
  private:
     std::string database_;
     std::string table_name_;
-    int replica_num_;
-    int partition_num_;
-    StorageMode storage_mode_;
     NodePointVector column_desc_list_;
-    NodePointVector distribution_list_;
+    NodePointVector table_option_list_;
     bool if_not_exist_;
 };
 
@@ -477,10 +452,19 @@ class CmdPlanNode : public LeafPlanNode {
         if_not_exist_ = b;
     }
 
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
+
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 class DeletePlanNode : public LeafPlanNode {
@@ -502,7 +486,7 @@ class DeletePlanNode : public LeafPlanNode {
 
 class DeployPlanNode : public LeafPlanNode {
  public:
-    explicit DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+    DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                             const std::shared_ptr<OptionsMap> options, bool if_not_exist)
         : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str),
         options_(options), if_not_exist_(if_not_exist) {}
@@ -525,9 +509,29 @@ class DeployPlanNode : public LeafPlanNode {
     const bool if_not_exist_ = false;
 };
 
+class CreateFunctionPlanNode : public LeafPlanNode {
+ public:
+    CreateFunctionPlanNode(const std::string& name, const SqlNode* return_type,
+            const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeCreateFunction), function_name_(name), return_type_(return_type),
+        args_type_(args_type), is_aggregate_(is_aggregate), options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const SqlNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
+    void Print(std::ostream& output, const std::string& tab) const override;
+ private:
+    const std::string function_name_;
+    const SqlNode* return_type_;
+    NodePointVector args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class SelectIntoPlanNode : public LeafPlanNode {
  public:
-    explicit SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
+    SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
                                 const std::shared_ptr<OptionsMap> options,
                                 const std::shared_ptr<OptionsMap> config_options)
         : LeafPlanNode(kPlanTypeSelectInto),

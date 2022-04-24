@@ -27,6 +27,8 @@
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
+#include "boost/property_tree/ini_parser.hpp"
+#include "boost/property_tree/ptree.hpp"
 #include "brpc/channel.h"
 #include "cmd/display.h"
 #include "common/timer.h"
@@ -46,6 +48,8 @@
 
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(mini_window_size);
+DEFINE_string(spark_conf, "", "The config file of Spark job");
+DECLARE_uint32(replica_num);
 
 namespace openmldb {
 namespace sdk {
@@ -928,6 +932,8 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
 
             if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
                 LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
+                status.msg = "fail to get tablet";
+                status.code = hybridse::common::kRunError;
                 return false;
             }
 
@@ -1073,8 +1079,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
             status->code = -1;
             return {};
         }
-        auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
-        return rs;
+        return ResultSetSQL::MakeResultSet(response, cntl, status);
     } else {
         // Batch query from multiple tablets and merge the result set
         std::vector<std::shared_ptr<ResultSetSQL>> result_set_list;
@@ -1478,6 +1483,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 std::vector<std::string> vec2 = {ss.str()};
                 result.emplace_back(std::move(vec2));
             }
+            ss.str("");
+            std::unordered_map<std::string, std::string> options;
+            options["storage_mode"] = StorageMode_Name(table->storage_mode());
+            // remove the prefix 'k', i.e., change kMemory to Memory
+            options["storage_mode"] = options["storage_mode"].substr(1, options["storage_mode"].size() - 1);
+            ::openmldb::cmd::PrintTableOptions(options, ss);
+            result.emplace_back(std::vector{ss.str()});
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
         }
 
@@ -1506,6 +1518,56 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, msg};
+            }
+            return {};
+        }
+        case hybridse::node::kCmdShowFunctions: {
+            std::vector<::openmldb::common::ExternalFun> funs;
+            base::Status st = ns_ptr->ShowFunction("", &funs);
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "show udf function failed"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& fun_info : funs) {
+                std::string is_aggregate = "false";
+                if (fun_info.is_aggregate()) {
+                    is_aggregate = "true";
+                }
+                std::string arg_type = "";
+                for (int i = 0; i < fun_info.arg_type_size(); i++) {
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
+                    if (i != fun_info.arg_type_size() - 1) {
+                        arg_type = absl::StrCat(arg_type, "|");
+                    }
+                }
+                std::vector<std::string> vec = {fun_info.name(),
+                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
+                                                arg_type,
+                                                is_aggregate,
+                                                fun_info.file(),
+                                                fun_info.offline_file()};
+                lines.push_back(vec);
+            }
+            return ResultSetSQL::MakeResultSet(
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
+        }
+        case hybridse::node::kCmdDropFunction: {
+            std::string name = cmd_node->GetArgs()[0];
+            auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
+            if (base_status.OK()) {
+                cluster_sdk_->RemoveExternalFun(name);
+                auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+                if (taskmanager_client) {
+                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    if (!base_status.OK()) {
+                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+                        return {};
+                    }
+                }
+                *status = {};
+            } else {
+                *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
             }
             return {};
         }
@@ -1761,19 +1823,15 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_db(db_name);
 
-    if (!cluster_sdk_->IsClusterMode()) {
-        if (create_node->GetReplicaNum() != 1) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the replica configuration in standalone mode");
-        }
-        if (!create_node->GetDistributionList().empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError,
-                                "Fail to create table with the distribution configuration in standalone mode");
-        }
-    }
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+    all_tablet = cluster_sdk_->GetAllTablet();
+    // set dafault value
+    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, &sql_status);
+    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, true, &table_info, default_replica_num,
+                                                      is_cluster_mode, &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
@@ -2028,7 +2086,12 @@ std::vector<std::string> SQLClusterRouter::GetTableNames(const std::string& db) 
 }
 
 bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) {
-    return cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    auto ret = cluster_sdk_->GetNsClient()->UpdateOfflineTableInfo(info);
+    if (!ret.OK()) {
+        LOG(WARNING) << "update offline table info failed: " << ret.msg;
+        return false;
+    }
+    return true;
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
@@ -2123,6 +2186,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto table_partition = table_info.mutable_table_partition();
     table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
+    table_info.set_storage_mode(base_table_info.storage_mode());
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
@@ -2181,7 +2245,7 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
     return log;
 }
 
-bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(); }
+bool SQLClusterRouter::NotifyTableChange() { return cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kTable); }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
@@ -2308,6 +2372,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 // Run offline query
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 if (IsSyncJob()) {
                     // Run offline sql and wait to get output
@@ -2316,7 +2381,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                     if (base_status.OK()) {
                         *status = {};
                         // Print the output from job output
-                        // TODO: return result set if want to format the output
+                        // TODO(tobe): return result set if want to format the output
                         std::vector<std::string> value = {output};
                         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
                     } else {
@@ -2339,7 +2404,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                     }
                 }
-
             }
             return {};
         }
@@ -2363,6 +2427,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
                 auto base_status = ExportOfflineData(sql, config, db, IsSyncJob(), job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2393,6 +2458,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
+                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
 
                 ::openmldb::base::Status base_status;
                 if (IsOnlineMode()) {
@@ -2415,6 +2481,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in standalone mode
                 *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), plan->Options());
             }
+            return {};
+        }
+        case hybridse::node::kPlanTypeCreateFunction: {
+            *status = HandleCreateFunction(dynamic_cast<hybridse::node::CreateFunctionPlanNode*>(node));
             return {};
         }
         case hybridse::node::kPlanTypeDelete: {
@@ -2464,7 +2534,7 @@ bool SQLClusterRouter::IsSyncJob() {
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
             return {::hybridse::common::StatusCode::kRunError, "set global variable failed"};
         }
-        if (!cluster_sdk_->GlobalVarNotify()) {
+        if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
             return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
         return {};
@@ -2746,6 +2816,67 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
         return {::hybridse::common::StatusCode::kCmdError, "insert row failed"};
     }
+    return {};
+}
+
+hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node) {
+    if (node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    ::openmldb::common::ExternalFun fun;
+    fun.set_name(node->Name());
+    auto type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(node->GetReturnType());
+    if (type_node == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+    }
+    openmldb::type::DataType data_type;
+    if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+        return {::hybridse::common::StatusCode::kCmdError, "illegal return type"};
+    }
+    fun.set_return_type(data_type);
+    for (const auto arg_node : node->GetArgsType()) {
+        type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(arg_node);
+        if (type_node == nullptr) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
+        }
+        if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
+            return {::hybridse::common::StatusCode::kCmdError, "illegal argument type"};
+        }
+        fun.add_arg_type(data_type);
+    }
+    if (node->IsAggregate()) {
+        return {::hybridse::common::StatusCode::kCmdError, "unsupport udaf function"};
+    }
+    fun.set_is_aggregate(node->IsAggregate());
+    auto option = node->Options();
+    if (!option || option->find("FILE") == option->end()) {
+        return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
+    }
+    fun.set_file((*option)["FILE"]->GetExprString());
+    if (cluster_sdk_->IsClusterMode()) {
+        if (option->find("OFFLINE_FILE") == option->end()) {
+            if (fun.file().find('/') == std::string::npos) {
+                fun.set_offline_file(fun.file());
+            } else {
+                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+            }
+        } else {
+            fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
+        }
+    }
+    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+    if (taskmanager_client) {
+        auto ret = taskmanager_client->CreateFunction(fun);
+        if (!ret.OK()) {
+            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+        }
+    }
+    auto ns = cluster_sdk_->GetNsClient();
+    auto ret = ns->CreateFunction(fun);
+    if (!ret.OK()) {
+        return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+    }
+    cluster_sdk_->RegisterExternalFun(fun);
     return {};
 }
 
@@ -3438,6 +3569,35 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
+}
+
+void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config) {
+    if (!conf_file.empty()) {
+        boost::property_tree::ptree pt;
+
+        try {
+            boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
+            LOG(INFO) << "Load Spark conf file: " << conf_file;
+        } catch (...) {
+            LOG(WARNING) << "Fail to load Spark conf file: " << conf_file;
+            return;
+        }
+
+        if (pt.empty()) {
+            LOG(WARNING) << "Spark conf file is empty";
+        }
+
+        for (auto& section : pt) {
+            // Only supports Spark section
+            if (section.first == "Spark") {
+                for (auto& key : section.second) {
+                    (*config).emplace(key.first, key.second.get_value<std::string>());
+                }
+            } else {
+                LOG(WARNING) << "The section " + section.first + " is not supported, please use Spark section";
+            }
+        }
+    }
 }
 
 }  // namespace sdk

@@ -1268,6 +1268,24 @@ void DefaultUdfLibrary::InitMathUdf() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("truncate", {cast}, nullptr);
         });
+
+    RegisterExternal("degrees")
+        .args<double>(static_cast<double (*)(double)>(v1::Degrees))
+        .doc(R"(
+            @brief Convert radians to degrees.
+
+            Example:
+
+            @code{.sql}
+
+                SELECT degrees(3.141592653589793);
+                -- output  180.0
+
+            @endcode
+
+            @param expr
+
+            @since 0.5.0)");
     InitTrigonometricUdf();
 }
 
@@ -1998,6 +2016,9 @@ void DefaultUdfLibrary::Init() {
     InitWindowFunctions();
     InitUdaf();
     InitFeatureZero();
+
+    AddExternalFunction("init_udfcontext.opaque",
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitUdaf() {

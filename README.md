@@ -67,17 +67,17 @@ The figure above shows the workflow of FeatureOps based on OpenMLDB. From offlin
 
 ## 5. Build & Install
 
-:point_right: [Read more](https://openmldb.ai/docs/zh/dev/deploy/index.html)
+:point_right: [Read more](https://openmldb.ai/docs/zh/main/deploy/index.html)
 
 ## 6. QuickStart
 
 **Cluster and Standalone Versions**
 
-OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/zh/dev/tutorial/standalone_vs_cluster.html)  for details. 
+OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)  for details. 
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/zh/dev/quickstart/openmldb_quickstart.html)
+:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
 
 ## 7. Use Cases
 
@@ -85,7 +85,7 @@ We are making efforts to build a list of real-world use cases based on OpenMLDB 
 
 | Application                                                  | Tools              | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/dev/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
 
 ## 8. Documentation
 

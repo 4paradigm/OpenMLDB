@@ -546,6 +546,30 @@ TEST_F(PlannerV2Test, LastJoinPlanTest) {
     }
 }
 
+TEST_F(PlannerV2Test, CreateFunctionPlanTest) {
+    std::string sql_str = "CREATE FUNCTION fun(x INT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
+    node::PlanNodeList trees;
+    base::Status status;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+
+    // validate create plan
+    ASSERT_EQ(node::kPlanTypeCreateFunction, plan_ptr->GetType());
+    auto create_function_plan = dynamic_cast<node::CreateFunctionPlanNode *>(plan_ptr);
+    ASSERT_EQ("fun", create_function_plan->Name());
+    ASSERT_FALSE(create_function_plan->IsAggregate());
+    ASSERT_EQ("string", (dynamic_cast<const node::TypeNode*>(create_function_plan->GetReturnType()))->GetName());
+    ASSERT_EQ(1, create_function_plan->GetArgsType().size());
+    ASSERT_EQ("int32", (dynamic_cast<node::TypeNode*>(create_function_plan->GetArgsType().front()))->GetName());
+    ASSERT_EQ(1, create_function_plan->Options()->size());
+    ASSERT_EQ("PATH", create_function_plan->Options()->begin()->first);
+    ASSERT_EQ("/tmp/libmyfun.so", create_function_plan->Options()->begin()->second->GetExprString());
+}
+
 TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     const std::string sql_str =
         "create table IF NOT EXISTS db1.test(\n"
@@ -576,27 +600,54 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     ASSERT_EQ(node::kPlanTypeCreate, plan_ptr->GetType());
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
     ASSERT_EQ("db1", createStmt->GetDatabase());
-    ASSERT_EQ(3, createStmt->GetReplicaNum());
-    ASSERT_EQ(8, createStmt->GetPartitionNum());
-    ASSERT_EQ(3, createStmt->GetDistributionList().size());
+    auto table_option_list = createStmt->GetTableOptionList();
+    node::NodePointVector partition_meta_list;
+    for (auto table_option : table_option_list) {
+        switch (table_option->GetType()) {
+            case node::kReplicaNum: {
+                ASSERT_EQ(3, dynamic_cast<node::ReplicaNumNode *>(table_option)->GetReplicaNum());
+                break;
+            }
+            case node::kPartitionNum: {
+                ASSERT_EQ(8, dynamic_cast<node::PartitionNumNode *>(table_option)->GetPartitionNum());
+                break;
+            }
+            case node::kDistributions: {
+                auto d_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
+                if (d_list != nullptr) {
+                    for (auto meta_ptr : d_list->GetList()) {
+                        partition_meta_list.push_back(meta_ptr);
+                    }
+                }
+                break;
+            }
+            case hybridse::node::kStorageMode: {
+                ASSERT_EQ(node::kMemory,
+                          dynamic_cast<hybridse::node::StorageModeNode *>(table_option)->GetStorageMode());
+                break;
+            }
+            default: {
+                LOG(WARNING) << "can not handle type " << NameOfSqlNodeType(table_option->GetType())
+                             << " for table node";
+            }
+        }
+    }
+    ASSERT_EQ(3, partition_meta_list.size());
     {
-        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[0]->GetType());
-        node::PartitionMetaNode *partition =
-            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[0]);
+        ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());
+        node::PartitionMetaNode *partition = dynamic_cast<node::PartitionMetaNode *>(partition_meta_list[0]);
         ASSERT_EQ(node::RoleType::kLeader, partition->GetRoleType());
         ASSERT_EQ("127.0.0.1:9927", partition->GetEndpoint());
     }
     {
-        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[1]->GetType());
-        node::PartitionMetaNode *partition =
-            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[1]);
+        ASSERT_EQ(node::kPartitionMeta, partition_meta_list[1]->GetType());
+        node::PartitionMetaNode *partition = dynamic_cast<node::PartitionMetaNode *>(partition_meta_list[1]);
         ASSERT_EQ(node::RoleType::kFollower, partition->GetRoleType());
         ASSERT_EQ("127.0.0.1:9926", partition->GetEndpoint());
     }
     {
-        ASSERT_EQ(node::kPartitionMeta, createStmt->GetDistributionList()[2]->GetType());
-        node::PartitionMetaNode *partition =
-            dynamic_cast<node::PartitionMetaNode *>(createStmt->GetDistributionList()[2]);
+        ASSERT_EQ(node::kPartitionMeta, partition_meta_list[2]->GetType());
+        node::PartitionMetaNode *partition = dynamic_cast<node::PartitionMetaNode *>(partition_meta_list[2]);
         ASSERT_EQ(node::RoleType::kFollower, partition->GetRoleType());
         ASSERT_EQ("127.0.0.1:9928", partition->GetEndpoint());
     }

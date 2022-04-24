@@ -206,7 +206,7 @@ list(
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)
-    message(STATUS "ICU package Not Found")
+    message(STATUS "ICU find_package failed, try to use `find_library()` to find")
     find_library(ICU_I18N icui18n)
     find_library(ICU_IO icuio)
     find_library(ICU_UC icuuc)
@@ -276,8 +276,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-add_subdirectory(monitoring)
 
 FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")

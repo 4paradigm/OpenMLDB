@@ -217,7 +217,8 @@ struct CellExpectInfo {
 
 // expect the output of a ResultSet, first row is schema, all compared in string
 // if expect[i][j].(expect_|expect_not_) is not set, assert will skip
-inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs) {
+inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs,
+                                 bool ordered = true) {
     ASSERT_EQ(expect.size(), rs->Size() + 1);
     size_t idx = 0;
     // schema check
@@ -231,14 +232,62 @@ inline void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>&
         for (size_t i = 0; i < expect[idx].size(); ++i) {
             std::string val;
             EXPECT_TRUE(rs->GetAsString(i, val));
-            if (expect[idx][i].expect_.has_value()) {
-                EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
-            }
-            if (expect[idx][i].expect_not_.has_value()) {
-                EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
+            if (ordered) {
+                if (expect[idx][i].expect_.has_value()) {
+                    EXPECT_EQ(expect[idx][i].expect_.value(), val) << "expect[" << idx << "][" << i << "]";
+                }
+                if (expect[idx][i].expect_not_.has_value()) {
+                    EXPECT_NE(expect[idx][i].expect_not_.value(), val) << "expect_not[" << idx << "][" << i << "]";
+                }
+            } else {
+                bool matched = false;
+                size_t null_counter = 0;
+                EXPECT_FALSE(expect[idx][i].expect_not_.has_value());
+                for (size_t j = 1; j < expect.size(); j++) {
+                    if (expect[j][i].expect_.has_value()) {
+                        if (expect[j][i].expect_.value() == val) {
+                            matched = true;
+                            break;
+                        }
+                    } else {
+                        null_counter++;
+                    }
+                }
+                EXPECT_TRUE(matched || null_counter == expect.size() - 1)
+                    << "rs[" << idx << "][" << i << "]: " << val << " not matched";
             }
         }
     }
+}
+
+std::string GetExeDir() {
+    char path[1024];
+    int cnt = readlink("/proc/self/exe", path, 1024);
+    if (cnt < 0 || cnt >= 1024) {
+        return "";
+    }
+    for (int i = cnt; i >= 0; i--) {
+        if (path[i] == '/') {
+            path[i + 1] = '\0';
+            break;
+        }
+    }
+    return std::string(path);
+}
+
+std::string GetParentDir(const std::string& path) {
+    if (path.empty()) {
+        return "";
+    }
+    std::string dir = path;
+    if (dir.back() == '/') {
+        dir.pop_back();
+    }
+    auto pos = dir.find_last_of('/');
+    if (pos != std::string::npos && pos != 0) {
+        return dir.substr(0, pos);
+    }
+    return dir;
 }
 
 }  // namespace test

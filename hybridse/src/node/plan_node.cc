@@ -225,6 +225,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeSet";
         case kPlanTypeDelete:
             return "kPlanTypeDelete";
+        case kPlanTypeCreateFunction:
+            return "kPlanTypeCreateFunction";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -694,13 +696,7 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
-    output << "\n";
-    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
-    output << "\n";
-    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", false);
-    output << "\n";
-    PrintSqlVector(output, tab, distribution_list_, "distribution", false);
+    PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     PlanNode::Print(output, tab);
@@ -729,6 +725,21 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     PrintValue(output, tab, Options().get(), "options", false);
     output << "\n";
     PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
+}
+
+void CreateFunctionPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string new_tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, new_tab, args_type_, "args_type", false);
+    output << "\n";
+    PrintValue(output, new_tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {

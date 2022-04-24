@@ -207,6 +207,7 @@ message GeneralRequest {
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
     optional uint64 offset = 4;
+    optional openmldb.common.StorageMode storage_mode = 5 [default = kMemory];
 }
 
 message TaskStatusRequest {}
@@ -437,6 +438,7 @@ message SendDataRequest {
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
     optional string dir_name = 7;
+    optional openmldb.common.StorageMode storage_mode = 8 [default = kMemory];
 }
 
 message ChangeRoleResponse {
@@ -475,6 +477,7 @@ message TableStatus {
     optional openmldb.type.CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional uint64 diskused = 19 [default = 0];
+    optional openmldb.common.StorageMode storage_mode = 20 [default = kMemory];
 }
 
 message GetTableStatusResponse {
@@ -526,6 +529,7 @@ message CountResponse {
 message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional openmldb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetTermPairResponse {
@@ -540,6 +544,7 @@ message GetTermPairResponse {
 message GetManifestRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional openmldb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetManifestResponse { 
@@ -571,6 +576,7 @@ message CheckFileRequest {
     optional string file = 3;
     optional uint64 size = 4;
     optional string dir_name = 5;
+    optional openmldb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
 message AddIndexRequest {
@@ -823,6 +829,23 @@ message BulkLoadInfoResponse {
     repeated InnerSegments inner_segments = 6; // MemTable::segments_
 }
 
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DropFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
 
 message CreateAggregatorRequest {
     optional TableMeta base_table_meta = 1;
@@ -839,6 +862,7 @@ message CreateAggregatorResponse {
     optional int32 code = 1;
     optional string msg = 2;
 }
+
 message GAFDeployStatsRequest {}
 
 message DeployStatsResponse {
@@ -846,6 +870,7 @@ message DeployStatsResponse {
     optional string msg = 2;
     message DeployStat {
         required string deploy_name = 1;
+        // NOTE: time and total is the microsecond string
         required string time = 2;
         required uint32 count = 3;
         required string total = 4;
@@ -924,6 +949,8 @@ service TabletServer {
     // TODO(hw): nameserver call this?
     rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
     rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
 
 
     // pre aggregator interfaces

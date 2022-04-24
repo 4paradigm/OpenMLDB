@@ -268,8 +268,6 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::str
     return false;
 }
 
-
-
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
                        uint32_t format_version) {
     ::openmldb::api::PutRequest request;
@@ -523,12 +521,13 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
-bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, bool& has_table,
-                               bool& is_leader) {
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode, uint64_t& term,
+                               uint64_t& offset, bool& has_table, bool& is_leader) {
     ::openmldb::api::GetTermPairRequest request;
     ::openmldb::api::GetTermPairResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetTermPair, &request, &response,
                                    FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
@@ -543,11 +542,13 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint6
     return true;
 }
 
-bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::api::Manifest& manifest) {
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
+                               ::openmldb::api::Manifest& manifest) {
     ::openmldb::api::GetManifestRequest request;
     ::openmldb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetManifest, &request, &response,
                                    FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
@@ -974,10 +975,11 @@ bool TabletClient::DisConnectZK() {
     return true;
 }
 
-bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::StorageMode storage_mode) {
     ::openmldb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     ::openmldb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::DeleteBinlog, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
@@ -1406,6 +1408,37 @@ bool TabletClient::CallSQLBatchRequestProcedure(
                                callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
+bool TabletClient::CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg) {
+    if (msg == nullptr) {
+        return false;
+    }
+    ::openmldb::api::CreateFunctionRequest request;
+    ::openmldb::api::CreateFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        *msg = response.msg();
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg) {
+    if (msg == nullptr) {
+        return false;
+    }
+    ::openmldb::api::DropFunctionRequest request;
+    ::openmldb::api::DropFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::DropFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        *msg = response.msg();
+        return false;
+    }
+    return true;
+}
 
 bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
                           uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,
@@ -1428,6 +1461,7 @@ bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table
     }
     return false;
 }
+
 bool TabletClient::GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res) {
     ::openmldb::api::GAFDeployStatsRequest req;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetAndFlushDeployStats, &req, res,
