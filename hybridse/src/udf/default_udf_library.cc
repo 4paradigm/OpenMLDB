@@ -1570,17 +1570,6 @@ void DefaultUdfLibrary::InitLogicalUdf() {
         @since 0.2.3
     )");
 
-    RegisterExprUdf("identity")
-        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
-            return ctx->node_manager()->MakeUnaryExprNode(input,
-                                                          node::kFnOpIdentity);
-        })
-        .doc(R"(
-            @brief  Return the input value as output.
-
-            @param input  Input value
-
-            @since 0.5.0)");
 }
 
 void DefaultUdfLibrary::InitTypeUdf() {
