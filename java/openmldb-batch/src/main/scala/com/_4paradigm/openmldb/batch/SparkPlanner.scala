@@ -342,7 +342,9 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       sqlEngine = new SqlEngine(dbs, engineOptions)
       val engine = sqlEngine.getEngine
 
-      if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty ) {
+      // TODO(tobe): If use SparkPlanner instead of OpenmldbSession, these will be null
+      if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty
+        && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
         val externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
         for ((functionName, functionProto) <- externalFunMap){
           logger.info("Register the external function: " + functionProto)
