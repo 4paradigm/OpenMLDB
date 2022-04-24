@@ -130,7 +130,8 @@ std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindow
     }
     DLOG(INFO) << "get window it with index " << idx_name;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
-    if (tables) {
+    if (!tables) {
+        LOG(WARNING) << " tables is null";
         return {};
     }
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients;

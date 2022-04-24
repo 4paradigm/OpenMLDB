@@ -194,6 +194,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
             return;
         }
     }
+    DLOG(INFO) << "seek to key " << key << " from remote";
     auto client_iter = tablet_clients_.find(cur_pid_);
     if (client_iter != tablet_clients_.end()) {
         uint32_t count = 0;
