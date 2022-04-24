@@ -99,7 +99,7 @@ public class TaskManagerConfig {
                 throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
             }
         }
-        boolean isLocal = SPARK_MASTER.equals("local");
+        boolean isLocal = SPARK_MASTER.startsWith("local");
         boolean isYarn = SPARK_MASTER.startsWith("yarn");
         boolean isYarnCluster = SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
 
