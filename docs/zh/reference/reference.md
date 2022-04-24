@@ -3,6 +3,7 @@
 - [OpenMLDB运维CLI](cli.md)
 - [REST APIs](rest_api.md)
 - [SQL](sql/reference.md)
+- [IP Tips](ip_tips.md)
 
 ## License
 
