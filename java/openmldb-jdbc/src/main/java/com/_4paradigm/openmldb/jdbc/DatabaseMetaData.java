@@ -82,12 +82,12 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getDatabaseProductName() throws SQLException {
-        return null;
+        return "OpenMLDB";
     }
 
     @Override
     public String getDatabaseProductVersion() throws SQLException {
-        return null;
+        return "unknown";
     }
 
     @Override
@@ -97,7 +97,10 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getDriverVersion() throws SQLException {
-        return null;
+        int n = getDriverMinorVersion();
+        String s = getDriverMajorVersion() + ".";
+        s += "" + n;
+        return s;
     }
 
     @Override
@@ -107,7 +110,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getDriverMinorVersion() {
-        return 0;
+        return 4;
     }
 
     @Override
@@ -983,12 +986,12 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getJDBCMajorVersion() throws SQLException {
-        return 0;
+        return 1;
     }
 
     @Override
     public int getJDBCMinorVersion() throws SQLException {
-        return 0;
+        return 4;
     }
 
     @Override

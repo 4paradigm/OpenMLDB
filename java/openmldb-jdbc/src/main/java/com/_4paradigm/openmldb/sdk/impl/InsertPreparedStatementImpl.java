@@ -708,9 +708,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
     }
 
     @Override
