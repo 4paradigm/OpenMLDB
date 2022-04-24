@@ -454,16 +454,16 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                       "("
                       "col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8);";
+                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
     auto ns_client = mc_->GetNsClient();
-    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::vector<::openmldb::nameserver::TableInfo> base_tables;
     std::string msg;
-    ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
-    ASSERT_EQ(tables.size(), 1);
+    ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, base_tables, msg));
+    ASSERT_EQ(base_tables.size(), 1);
 
     std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
                              " sum(col3) over w1 as w1_sum_col3 from " + base_table +
@@ -471,17 +471,23 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                              " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
 
-    tables.clear();
+    std::vector<::openmldb::nameserver::TableInfo> agg_tables;
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string aggr_table = "pre_test1_w1_sum_col3";
-    ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, tables, msg));
-    ASSERT_EQ(tables.size(), 1);
-    ASSERT_EQ(tables[0].column_key_size(), 1);
-    ASSERT_EQ(tables[0].column_key(0).col_name(0), "key");
-    ASSERT_EQ(tables[0].column_key(0).ts_name(), "ts_start");
-    ASSERT_EQ(tables[0].column_key(0).ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
-    ASSERT_EQ(tables[0].column_key(0).ttl().lat_ttl(), 1);
+    ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, agg_tables, msg));
+    ASSERT_EQ(1, agg_tables.size());
+    ASSERT_EQ(1, agg_tables[0].column_key_size());
+    ASSERT_EQ("key", agg_tables[0].column_key(0).col_name(0));
+    ASSERT_EQ("ts_start", agg_tables[0].column_key(0).ts_name());
+    ASSERT_EQ(base_tables[0].column_key(0).ttl().ttl_type(), agg_tables[0].column_key(0).ttl().ttl_type());
+    ASSERT_EQ(base_tables[0].column_key(0).ttl().lat_ttl(), agg_tables[0].column_key(0).ttl().lat_ttl());
+    ASSERT_EQ(base_tables[0].format_version(), agg_tables[0].format_version());
+    ASSERT_EQ(base_tables[0].replica_num(), agg_tables[0].replica_num());
+    ASSERT_EQ(base_tables[0].partition_num(), agg_tables[0].partition_num());
+    ASSERT_EQ(base_tables[0].table_partition().size(), agg_tables[0].table_partition().size());
+    ASSERT_EQ(base_tables[0].storage_mode(), agg_tables[0].storage_mode());
 
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
