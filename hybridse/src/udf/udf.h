@@ -269,8 +269,6 @@ void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void init_udfcontext(UDFContext* context);
-//json functions
-void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *output, bool *is_null_ptr);
 
 /**
  * Allocate string buffer from jit runtime.
