@@ -53,7 +53,7 @@ The following screenshots show the correct execution of the above docker command
 
 ### 2.2 Basic Usage Process
 
-The workflow of the standalone version of OpenMLDB generally includes several stages: Database and table establishment, data preparation, offline feature extraction, SQL solution online, and online real-time feature extraction.
+The workflow of the standalone version of OpenMLDB generally includes several stages: database and table establishment, data preparation, offline feature extraction, SQL solution online, and online real-time feature extraction.
 
 :bulb: Unless otherwise specified, the commands shown below are executed under the standalone version of OpenMLDB CLI by default (CLI commands start with the prompt `>` for distinction).
 
@@ -192,7 +192,7 @@ The following screenshot shows the screen after the cluster version of the OpenM
 
 ### 3.3 Basic Usage Process
 
-The workflow of the cluster version of OpenMLDB generally includes several stages: Database and table creation, offline data preparation, offline feature extraction, SQL solution online, online data preparation, and online real-time feature extraction.
+The workflow of the cluster version of OpenMLDB generally includes several stages: database and table creation, offline data preparation, offline feature extraction, SQL solution online, online data preparation, and online real-time feature extraction.
 
 The cluster version of OpenMLDB needs to manage offline data and online data separately. Therefore, after completing the SQL solution online, you must do the online data preparation steps.
 
@@ -325,7 +325,7 @@ Up to this point, you have completed all the development and deployment work bas
 
 #### 3.3.7 Real-Time Feature Extraction
 
-Notice: Warning: According to the default deployment configuration, the http port for apiserver deployment is 9080.
+Notice: According to the default deployment configuration, the http port for apiserver deployment is 9080.
 
 Real-time online services can be provided through the following Web APIs:
 
