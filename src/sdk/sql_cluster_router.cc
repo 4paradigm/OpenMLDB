@@ -3255,8 +3255,16 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 }
 
 // Implementation for SHOW COMPONENTS
-// it do not set status to fail even e.g. some zk query internally failed
-// which produce partial or empty result on internal error
+//
+// Error handling:
+// it do not set status to fail even e.g. some zk query internally failed,
+// which as a consequence, produce partial or empty result on internal error.
+//
+// in detail
+// 1. tablet and nameserver are required, error status or empty result considered error (warning log printed)
+// 2. task manager and api server are optional, only error status produce warning log
+// 3. task manager only query and show in cluster mode
+//
 //
 // output schema: (Endpoint: string, Role: string,
 //                 Connect_time: int64, Status: string, Ns_role: string)
@@ -3270,32 +3278,49 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
     DCHECK(status != nullptr);
     std::vector<std::shared_ptr<ResultSetSQL>> data;
 
-    auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(status));
-    if (tablets != nullptr && status->IsOK()) {
-        data.push_back(std::move(tablets));
-    } else {
-        LOG(WARNING) << "[WARN]: show tablets, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(&s));
+        if (tablets != nullptr && s.IsOK()) {
+            data.push_back(std::move(tablets));
+        } else {
+            LOG(WARNING) << "[WARN]: show tablets, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(status));
-    if (nameservers != nullptr && status->IsOK()) {
-        data.push_back(std::move(nameservers));
-    } else {
-        LOG(WARNING) << "[WARN]: show nameservers, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(&s));
+        if (nameservers != nullptr && s.IsOK()) {
+            data.push_back(std::move(nameservers));
+        } else {
+            LOG(WARNING) << "[WARN]: show nameservers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
-    if (task_managers != nullptr && status->IsOK()) {
-        data.push_back(std::move(task_managers));
-    } else {
-        LOG(WARNING) << "[WARN]: show taskmanagers, code: " << status->code << ", msg: " << status->msg;
+    if (cluster_sdk_->IsClusterMode()) {
+        // only get task managers in cluster mode
+        hybridse::sdk::Status s;
+        auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(&s));
+        if (s.IsOK()) {
+            if (task_managers != nullptr) {
+                data.push_back(std::move(task_managers));
+            }
+        } else {
+            LOG(WARNING) << "[WARN]: show taskmanagers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto api_servres = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowApiServers(status));
-    if (api_servres != nullptr && status->IsOK()) {
-        data.push_back(std::move(api_servres));
-    } else {
-        LOG(WARNING) << "[WARN]: show api servers, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto api_servres = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowApiServers(&s));
+        if (s.IsOK()) {
+            if (api_servres != nullptr) {
+                data.push_back(std::move(api_servres));
+            }
+        } else {
+            LOG(WARNING) << "[WARN]: show api servers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
     status->code = hybridse::common::kOk;
@@ -3422,8 +3447,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
-        status->code = hybridse::common::kRunError;
-        status->msg = "show taskmanagers not support in standalone mode";
+        status->code = hybridse::common::kUnSupport;
+        status->msg = "show taskmanagers not supported in standalone mode";
         return {};
     }
 
@@ -3431,8 +3456,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     std::string endpoint;
     Stat stat;
     if (!zk_client->GetNodeValueAndStat(node_path.c_str(), &endpoint, &stat)) {
-        status->code = hybridse::common::kRunError;
-        status->msg = "query taskmanager from zk failed";
+        // as task manager is optional, the zk query will fail if taskmanager not exist
+        // here will ignore all the zk errors since `GetNodeValueAndStat` lacks errcode
+        LOG(INFO) << "query taskmanager from zk failed";
         return {};
     }
 
