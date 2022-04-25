@@ -17,6 +17,7 @@
 #include "passes/physical/group_and_sort_optimized.h"
 
 #include <memory>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "llvm/IR/LLVMContext.h"

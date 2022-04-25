@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+
 #include "passes/physical/transform_up_physical_pass.h"
 
 namespace hybridse {
@@ -41,20 +42,20 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     ~GroupAndSortOptimized() {}
 
  private:
-   struct ColIndexInfo {
-      ColIndexInfo(uint32_t idx) : index(idx) {} // NOLINT
+    struct ColIndexInfo {
+        ColIndexInfo(uint32_t idx) : index(idx) {}  // NOLINT
 
-      // the vector index for column reference of the index definition, if column hit one of indexes
-      uint32_t index;
-   };
-   struct IndexBitMap {
-      IndexBitMap() {}
-      IndexBitMap(std::vector<std::optional<ColIndexInfo>> mp) : bitmap(mp) {} // NOLINT
+        // the vector index for column reference of the index definition, if column hit one of indexes
+        uint32_t index;
+    };
+    struct IndexBitMap {
+        IndexBitMap() {}
+        IndexBitMap(std::vector<std::optional<ColIndexInfo>> mp) : bitmap(mp) {}  // NOLINT
 
-      std::vector<std::optional<ColIndexInfo>> bitmap;
-      // total size of keys from the best matched index
-      uint32_t refered_index_key_count = 0;
-   };
+        std::vector<std::optional<ColIndexInfo>> bitmap;
+        // total size of keys from the best matched index
+        uint32_t refered_index_key_count = 0;
+    };
 
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);

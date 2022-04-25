@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 #include "passes/physical/group_and_sort_optimized.h"
-#include <absl/strings/string_view.h>
 
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include "absl/strings/string_view.h"
 #include "vm/physical_op.h"
 
 namespace hybridse {
