@@ -2863,12 +2863,12 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         } else {
             fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
         }
-    }
-    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
-    if (taskmanager_client) {
-        auto ret = taskmanager_client->CreateFunction(fun);
-        if (!ret.OK()) {
-            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+        auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+        if (taskmanager_client) {
+            auto ret = taskmanager_client->CreateFunction(fun);
+            if (!ret.OK()) {
+                return {::hybridse::common::StatusCode::kCmdError, ret.msg};
+            }
         }
     }
     auto ns = cluster_sdk_->GetNsClient();
