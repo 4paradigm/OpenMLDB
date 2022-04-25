@@ -356,7 +356,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
           // Get the correct file path
           val soFilePath = functionProto.getName.split("/").last
-          engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, false, soFilePath)
+          engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+            soFilePath)
         }
       }
 
