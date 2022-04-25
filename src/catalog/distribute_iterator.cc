@@ -27,7 +27,7 @@ constexpr uint32_t INVALID_PID = UINT32_MAX;
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
         const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients)
     : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(INVALID_PID),
-    it_(), kv_it_(), key_(0), last_pk_(), value_() {
+    it_(), kv_it_(), key_(0), last_ts_(0), last_pk_(), value_() {
 }
 
 void FullTableIterator::SeekToFirst() {
@@ -111,7 +111,6 @@ bool FullTableIterator::NextFromRemote() {
         kv_it_->Next();
         if (kv_it_->Valid()) {
             key_ = kv_it_->GetKey();
-            last_pk_ = kv_it_->GetPK();
             return true;
         }
     }
@@ -129,9 +128,9 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
-                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, key_,
+                DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ << " key " << last_ts_ << " count " << count;
+                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
                             FLAGS_traverse_cnt_limit, count));
-                DLOG(INFO) << "last pk " << last_pk_ << " key " << key_ << " count " << count;
             } else {
                 iter++;
                 kv_it_.reset();
@@ -142,7 +141,8 @@ bool FullTableIterator::NextFromRemote() {
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
-            last_pk_ = kv_it_->GetPK();
+            last_pk_ = kv_it_->GetLastPK();
+            last_ts_ = kv_it_->GetLastTS();
             key_ = kv_it_->GetKey();
             break;
         }

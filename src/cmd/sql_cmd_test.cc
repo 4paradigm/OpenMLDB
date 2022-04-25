@@ -37,6 +37,7 @@ DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
+DECLARE_uint32(traverse_cnt_limit);
 
 ::openmldb::sdk::StandaloneEnv env;
 
@@ -241,6 +242,40 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
     sr->ExecuteSQL("drop database " + db + ";", &status);
     ASSERT_TRUE(status.IsOK());
+}
+
+TEST_F(SqlCmdTest, SelectMultiPartition) {
+    auto sr = cluster_cli.sr;
+    std::string db_name = "test" + GenRand();
+    std::string name = "table" + GenRand();
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 int not null,"
+                      "col2 bigint default 112 not null,"
+                      "col4 string default 'test4' not null,"
+                      "col5 date default '2000-01-01' not null,"
+                      "col6 timestamp default 10000 not null,"
+                      "index(key=col1, ts=col2)) options(partitionnum=8);";
+    ProcessSQLs(sr, {"set @@execute_mode = 'online'",
+            absl::StrCat("create database ", db_name, ";"),
+            absl::StrCat("use ", db_name, ";"),
+            ddl});
+    std::string sql;
+    int expect = 1000;
+    hybridse::sdk::Status status;
+    for (int i = 0; i < expect; i++) {
+        sql = "insert into " + name + " values(" + std::to_string(i) + ", 1, '1', '2021-01-01', 1);";
+        ASSERT_TRUE(sr->ExecuteInsert(db_name, sql, &status));
+    }
+    auto res = sr->ExecuteSQL(db_name, "select * from " + name, &status);
+    ASSERT_TRUE(res);
+    int count = 0;
+    while (res->Next()) {
+        count++;
+    }
+    LOG(WARNING) << "count = " << count;
+    EXPECT_EQ(count, expect);
+    ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
 }
 
 TEST_P(DBSDKTest, Desc) {
@@ -1686,6 +1721,7 @@ int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;

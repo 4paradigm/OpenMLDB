@@ -55,6 +55,8 @@ class KvIterator {
           offset_(0),
           c_size_(0),
           tmp_(NULL),
+          last_pk_(response->pk()),
+          last_ts_(response->ts()),
           has_pk_(true),
           auto_clean_(true) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
@@ -87,6 +89,8 @@ class KvIterator {
           offset_(0),
           c_size_(0),
           tmp_(NULL),
+          last_pk_(response->pk()),
+          last_ts_(response->ts()),
           has_pk_(true),
           auto_clean_(clean) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
@@ -161,6 +165,10 @@ class KvIterator {
 
     bool IsFinish() const { return is_finish_; }
 
+    const std::string& GetLastPK() const { return last_pk_; }
+
+    uint64_t GetLastTS() const { return last_ts_; }
+
  private:
     ::google::protobuf::Message* response_;
     char* buffer_;
@@ -171,6 +179,8 @@ class KvIterator {
     uint64_t time_;
     Slice* tmp_;
     std::string pk_;
+    std::string last_pk_;
+    uint64_t last_ts_;
     bool has_pk_;
     bool auto_clean_;
 };

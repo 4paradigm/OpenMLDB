@@ -60,6 +60,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     std::unique_ptr<::openmldb::storage::TableIterator> it_;
     std::unique_ptr<::openmldb::base::KvIterator> kv_it_;
     uint64_t key_;
+    uint64_t last_ts_;
     std::string last_pk_;
     ::hybridse::codec::Row value_;
 };
