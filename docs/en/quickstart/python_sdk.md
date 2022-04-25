@@ -141,9 +141,9 @@ except Exception as e:
     print(e)
 ````
 
-### 3.6 Execute SQL On-Demand Queries
+### 3.6 Execute SQL Queries in the Request Mode
 
-Use `connection.execute(sql, request)` interface to execute SQL batch query statement: request query, you can put the input data in the second parameter of execution
+Use the `connection.execute(sql, request)` interface to execute SQLs in the request mode. You can put the input data in the second parameter.
 
 ````python
 try:
