@@ -451,10 +451,10 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
     bool ok = router->CreateDB(base_db, &status);
     ASSERT_TRUE(ok);
     std::string ddl = "create table " + base_table +
-                    "("
-                    "col1 string, col2 bigint, col3 int,"
-                    " index(key=col1, ts=col2,"
-                    " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
+                      "("
+                      "col1 string, col2 bigint, col3 int,"
+                      " index(key=col1, ts=col2,"
+                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
