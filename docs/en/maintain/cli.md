@@ -373,9 +373,9 @@ Quit the client
 bye
 ```
 
-## tablet client
+## Tablet Client
 
-To connect to the Tablet Client, you need to specify the endpoint and role. The endpoint is the endpoint that needs to be connected to the tablet, and the role is the role to start, which needs to be specified as client
+To connect to the tablet client, you need to specify the endpoint and role. The endpoint is the endpoint that needs to be connected to the tablet, and the role is the role to start, which needs to be specified as client
 
 ```bash
 $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
