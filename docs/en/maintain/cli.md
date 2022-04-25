@@ -255,7 +255,7 @@ change leader ok
 change leader ok
 ```
 
-### recoverable
+### recovertable
 
 Restore a shard data. This command is asynchronous and after the successful return, you can view the running status through showopstatus
 
