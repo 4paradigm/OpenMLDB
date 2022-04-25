@@ -154,7 +154,7 @@ partition migrate ok
 partition migrate ok
 ```
 
-### Confget
+### confget
 
 Get configuration information, currently only supports auto\_failover
 
