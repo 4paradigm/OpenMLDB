@@ -1064,6 +1064,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>> clients;
     if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients, *status)) {
         DLOG(INFO) << "no tablet available for sql " << sql;
+        status->msg = "no tablet available for sql";
+        status->code = -1;
         return {};
     }
     if (clients.size() == 1) {
@@ -3210,7 +3212,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                     return {base::ReturnCode::kError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
-                tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw);
+                if (!tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw)) {
+                    return {base::ReturnCode::kError, "create aggregator failed"};
+                }
             }
         }
     }

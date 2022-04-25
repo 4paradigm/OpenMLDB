@@ -3047,6 +3047,38 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
         ::openmldb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
         if (snapshot->Recover(table, snapshot_offset) &&
             binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
+            // recover aggregator if exists
+            std::string aggr_path = GetDBPath(db_root_path, tid, pid) + "/aggr_info.txt";
+            if (::openmldb::base::IsExists(aggr_path)) {
+                int fd = open(aggr_path.c_str(), O_RDONLY);
+                ::openmldb::api::CreateAggregatorRequest request;
+                if (fd < 0) {
+                    PDLOG(ERROR, "open file failed: [%s] ", aggr_path.c_str());
+                } else {
+                    google::protobuf::io::FileInputStream fileInput(fd);
+                    fileInput.SetCloseOnDelete(true);
+                    if (!google::protobuf::TextFormat::Parse(&fileInput, &request)) {
+                        PDLOG(WARNING, "parse create aggregator meta failed");
+                    } else {
+                        std::string msg;
+                        bool ok = CreateAggregatorInternal(&request, msg);
+                        if (!ok) {
+                            PDLOG(WARNING, "create aggregator failed. msg %s", msg.c_str());
+                        }
+                    }
+                }
+            } else {
+                // init aggregator related to base table if need.
+                auto aggrs = GetAggregators(tid, pid);
+                if (aggrs != nullptr) {
+                    for (auto& aggr : *aggrs) {
+                        if (!aggr->Init(replicator)) {
+                            PDLOG(WARNING, "aggregator init failed");
+                        }
+                    }
+                }
+            }
+
             table->SetTableStat(::openmldb::storage::kNormal);
             replicator->SetOffset(latest_offset);
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
@@ -4422,7 +4454,17 @@ void TabletImpl::SchedSyncDisk(uint32_t tid, uint32_t pid) {
 void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
-        replicator->DeleteBinlog();
+        // TODO(nauta): need better way to handle aggregator volatile status lost.
+        bool deleted = false;
+        replicator->DeleteBinlog(&deleted);
+        if (deleted) {
+            auto aggrs = GetAggregators(tid, pid);
+            if (aggrs) {
+                for (auto& aggr : *aggrs) {
+                    aggr->FlushAll();
+                }
+            }
+        }
         task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
 }
@@ -5706,22 +5748,76 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
 void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
                              ::openmldb::api::CreateAggregatorResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::string msg;
+
+    // persistent aggregator meta
+    std::string aggr_path;
+    std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
+    auto table_meta = aggr_table->GetTableMeta();
+    ::openmldb::common::StorageMode mode = table_meta->storage_mode();
+    bool ok = ChooseDBRootPath(request->aggr_table_tid(), request->aggr_table_pid(), mode, aggr_path);
+    if (!ok) {
+        response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
+        response->set_msg("fail to get pre-aggr table db root path");
+        PDLOG(WARNING, "pre-aggr table db path is not found. tid %u, pid %u",
+              request->aggr_table_tid(), request->aggr_table_pid());
+        return;
+    }
+    std::string aggr_table_path = GetDBPath(aggr_path, request->aggr_table_tid(), request->aggr_table_pid());
+    if (!::openmldb::base::IsExists(aggr_table_path)) {
+        response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
+        response->set_msg("pre-aggr table db path is not exist");
+        return;
+    }
+    std::string aggr_info;
+    google::protobuf::TextFormat::PrintToString(*request, &aggr_info);
+    std::string aggr_info_path = aggr_table_path + "/aggr_info.txt";
+
+    FILE* fd_write = fopen(aggr_info_path.c_str(), "w");
+    if (fd_write == NULL) {
+        PDLOG(WARNING, "fail to open file %s. err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg("open aggr info file failed");
+        return;
+    }
+    if (fputs(aggr_info.c_str(), fd_write) == EOF) {
+        PDLOG(WARNING, "write error. path[%s], err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
+        fclose(fd_write);
+        return;
+    }
+    fclose(fd_write);
+
+    if (!CreateAggregatorInternal(request, msg)) {
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg(msg.c_str());
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    return;
+}
+
+bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request,
+                                  std::string& msg) {
     const ::openmldb::api::TableMeta* base_meta = &request->base_table_meta();
     std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
     if (!aggr_table) {
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
-        return;
+        msg.assign("table is not exist");
+        return false;
     }
+    auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
     auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
-                                                            aggr_table, request->index_pos(),
+                                                            aggr_table, aggr_replicator, request->index_pos(),
                                                             request->aggr_col(), request->aggr_func(),
                                                             request->order_by_col(), request->bucket_size());
     if (!aggregator) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg("create aggregator failed");
-        return;
+        msg.assign("create aggregator failed");
+        return false;
+    }
+
+    auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
+    if (!aggregator->Init(base_replicator)) {
+        PDLOG(WARNING, "aggregator init failed");
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();
     {
@@ -5731,8 +5827,7 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
         }
         aggregators_[uid]->push_back(aggregator);
     }
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    return;
+    return true;
 }
 
 void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* controller,
