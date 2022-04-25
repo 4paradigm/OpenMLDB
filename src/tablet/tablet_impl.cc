@@ -3851,7 +3851,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
 
         // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
         // if it is cluster mode, RefreshTableInfo will be triggered automatically
-        if (!IsClusterMode() && boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+        if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
             RefreshAggrCatalog();
         }
     }
@@ -4389,7 +4389,7 @@ bool TabletImpl::RefreshAggrCatalog() {
         it->Next();
     }
     catalog_->RefreshAggrTables(table_infos);
-    LOG(INFO) << "Refresh agg catalog in (size = " << table_infos.size() << ")";
+    LOG(INFO) << "Refresh agg catalog (size = " << table_infos.size() << ")";
     return true;
 }
 
