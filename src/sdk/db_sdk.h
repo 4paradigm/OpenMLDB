@@ -89,7 +89,8 @@ class DBSDK {
     virtual bool TriggerNotify(::openmldb::type::NotifyType type) const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
-    bool RegisterExternalFun(const ::openmldb::common::ExternalFun& fun);
+
+    bool RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun);
     bool RemoveExternalFun(const std::string& name);
 
  protected:
@@ -99,6 +100,7 @@ class DBSDK {
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
 
+    std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
 
  protected:
@@ -111,7 +113,7 @@ class DBSDK {
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> table_to_tablets_;
 
     ::hybridse::vm::Engine* engine_ = nullptr;
-    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
+    std::map<std::string, std::shared_ptr<openmldb::common::ExternalFun>> external_fun_;
 
  private:
     // get/set op should be atomic(actually no reset now)
@@ -132,6 +134,8 @@ class ClusterSDK : public DBSDK {
     const ClusterOptions& GetClusterOptions() const { return options_; }
 
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
+
+    void RefreshExternalFun(const std::vector<std::string>& funs);
 
  protected:
     bool BuildCatalog() override;

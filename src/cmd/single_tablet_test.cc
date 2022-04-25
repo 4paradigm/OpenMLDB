@@ -68,6 +68,17 @@ TEST_P(DBSDKTest, CreateFunction) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    ::openmldb::sdk::SQLClusterRouter* sr_2 = nullptr;
+    if (cs->IsClusterMode()) {
+    ::openmldb::sdk::ClusterOptions copt;
+        copt.zk_cluster = mc.GetZkCluster();
+        copt.zk_path = mc.GetZkPath();
+        auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
+        cur_cs->Init();
+        sr_2 = new ::openmldb::sdk::SQLClusterRouter(cur_cs);
+        sr_2->Init();
+        ProcessSQLs(sr_2, {"set @@execute_mode = 'online'"});
+    }
     hybridse::sdk::Status status;
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
@@ -116,6 +127,13 @@ TEST_P(DBSDKTest, CreateFunction) {
     str.clear();
     result->GetString(2, &str);
     ASSERT_EQ(str, "11");
+    if (cs->IsClusterMode()) {
+        ProcessSQLs(sr_2, {"set @@execute_mode = 'online'", absl::StrCat("use ", db_name, ";")});
+        // check function in another sdk
+        result = sr_2->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(1, result->Size());
+    }
     ProcessSQLs(sr, {"DROP FUNCTION cut2;"});
     result = sr->ExecuteSQL("select cut2(c1) from t1;", &status);
     ASSERT_FALSE(status.IsOK());
