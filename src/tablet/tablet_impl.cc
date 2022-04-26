@@ -3860,8 +3860,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         }
         engine_->ClearCacheLocked(table_meta->db());
 
-        // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
-        // if it is cluster mode, RefreshTableInfo will be triggered automatically
+        // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
         if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
             RefreshAggrCatalog();
         }
