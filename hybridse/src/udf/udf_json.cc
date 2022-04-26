@@ -8,23 +8,13 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
+#include "udf/udf.h"
 
 namespace hybridse {
 using openmldb::base::StringRef;
 namespace udf {
 using json = nlohmann::json;
 namespace v1 {
-
-char *AllocManagedStringBuf(int32_t bytes) {
-    if (bytes < 0) {
-        return nullptr;
-    }
-    if (bytes > MAX_ALLOC_SIZE) {
-        LOG(ERROR) << "alloc string buf size " << bytes << " is larger than " << MAX_ALLOC_SIZE;
-        return nullptr;
-    }
-    return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));
-}
 
 auto loads_json(const std::string &json_str) {
     if (json_str.empty()) {
