@@ -48,7 +48,7 @@ ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
     std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view(new ::hybridse::sdk::RowIOBufView(schema_));
-    LOG(INFO) << "init result set sql with record cnt " << record_cnt_ << " buf size " << buf_size_;
+    DLOG(INFO) << "init result set sql with record cnt " << record_cnt_ << " buf size " << buf_size_;
     if (result_set_base_) {
         delete result_set_base_;
         result_set_base_ = nullptr;

@@ -48,7 +48,7 @@ bool ResultSetBase::Next() {
         // get row size
         uint32_t row_size = 0;
         io_buf_->copy_to(reinterpret_cast<void*>(&row_size), 4, position_ + 2);
-        LOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << buf_size_;
+        DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << buf_size_;
         butil::IOBuf tmp;
         io_buf_->append_to(&tmp, row_size, position_);
         position_ += row_size;
