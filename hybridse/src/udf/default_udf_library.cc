@@ -29,6 +29,7 @@
 #include "udf/containers.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
+#include "udf/udf_json.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
