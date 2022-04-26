@@ -29,7 +29,6 @@ import java.sql.{PreparedStatement, ResultSet, SQLException}
 import java.util.Calendar
 import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
-import scala.util.Using
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 
@@ -139,26 +138,34 @@ object JobInfoManager {
 
   def syncJob(job: JobInfo): Unit = {
     val insertSql = s"INSERT INTO $JOB_INFO_TABLE_NAME VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    Using.Manager { use =>
-      val statement = use(sqlExecutor.getInsertPreparedStmt(INTERNAL_DB_NAME, insertSql))
-      statement.setInt(1, job.getId)
-      statement.setString(2, job.getJobType)
-      statement.setString(3, job.getState)
-      statement.setTimestamp(4, job.getStartTime)
-      statement.setTimestamp(5, job.getEndTime)
-      statement.setString(6, job.getParameter)
-      statement.setString(7, job.getCluster)
-      statement.setString(8, job.getApplicationId)
-      statement.setString(9, job.getError)
+    val statement = sqlExecutor.getInsertPreparedStmt(INTERNAL_DB_NAME, insertSql)
+    statement.setInt(1, job.getId)
+    statement.setString(2, job.getJobType)
+    statement.setString(3, job.getState)
+    statement.setTimestamp(4, job.getStartTime)
+    statement.setTimestamp(5, job.getEndTime)
+    statement.setString(6, job.getParameter)
+    statement.setString(7, job.getCluster)
+    statement.setString(8, job.getApplicationId)
+    statement.setString(9, job.getError)
 
+    try {
       logger.info(s"Run insert SQL with job info: $job")
-      try {
-        val ok = statement.execute()
-        if (!ok) {
-          logger.error("Fail to execute insert SQL")
+      val ok = statement.execute()
+      if (!ok) {
+        logger.error("Fail to execute insert SQL")
+      }
+    } catch {
+      case e: SQLException =>
+        e.printStackTrace()
+    } finally {
+      if (statement != null) {
+        try {
+          statement.close()
+        } catch {
+          case throwables: SQLException =>
+            throwables.printStackTrace()
         }
-      } catch {
-        case e: SQLException => e.printStackTrace()
       }
     }
   }
