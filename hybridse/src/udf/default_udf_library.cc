@@ -881,7 +881,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.5.0)");
     RegisterExternal("get_json_object")
         .args<StringRef, StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::get_json_object)))
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::json_func::get_json_object)))
         .return_by_arg(true)
         .returns<Nullable<StringRef>>()
         .doc(R"(

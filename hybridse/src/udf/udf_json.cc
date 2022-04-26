@@ -14,7 +14,7 @@ namespace hybridse {
 using openmldb::base::StringRef;
 namespace udf {
 using json = nlohmann::json;
-namespace v1 {
+namespace json_func {
 
 auto loads_json(const std::string &json_str) {
     if (json_str.empty()) {

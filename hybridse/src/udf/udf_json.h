@@ -9,7 +9,7 @@
 namespace hybridse {
 namespace udf {
 using openmldb::base::StringRef;
-namespace v1 {
+namespace json_func {
 void get_json_object(StringRef *json_string, StringRef *path_string, StringRef *output, bool *is_null_ptr);
 
 }  // namespace v1
