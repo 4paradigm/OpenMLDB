@@ -90,7 +90,6 @@ endif ()
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
 endif()
-set(OPENSSL_ROOT_DIR /usr/lib/ssl)
 find_package(OpenSSL REQUIRED)
 
 find_library(BRPC_LIBRARY brpc)
