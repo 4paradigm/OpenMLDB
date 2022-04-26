@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.taskmanager.spark
 import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
 import org.slf4j.LoggerFactory
@@ -122,6 +123,9 @@ object SparkJobManager {
       launcher.redirectOutput(LogManager.getJobLogFile(jobInfo.getId))
       launcher.redirectError(LogManager.getJobErrorLogFile(jobInfo.getId))
     }
+
+    // Add the external function library files
+    ExternalFunctionManager.getAllLibraryFilePaths().forEach(filePath => launcher.addFile(filePath))
 
     // Submit Spark application and watch state with custom listener
     val sparkAppHandler = launcher.startApplication(new SparkJobListener(jobInfo))
