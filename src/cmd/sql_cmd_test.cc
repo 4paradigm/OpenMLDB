@@ -1429,20 +1429,21 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
     std::string db1_name = absl::StrCat("db1_", GenRand());
     std::string tb1_name = absl::StrCat("tb1_", GenRand());
 
-    ProcessSQLs(
-        sr, {
-                "set @@execute_mode = 'online'",
-                absl::StrCat("create database ", db1_name, ";"),
-                absl::StrCat("use ", db1_name, ";"),
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db1_name, ";"),
+                    absl::StrCat("use ", db1_name, ";"),
 
-                absl::StrCat("create table ", tb1_name, " (id int, c1 string, c2 int, c3 timestamp, c4 timestamp, index(key=(c1),ts=c4))options(partitionnum=1, replicanum=1);"),
-                absl::StrCat("insert into ", tb1_name, " values(1,'aa',1,1590738990000,1637056523316);"),
-                absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
-                absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
-                absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
-                absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
-        }
-    );
+                    absl::StrCat("create table ", tb1_name,
+                                 " (id int, c1 string, c2 int, c3 timestamp, c4 timestamp, "
+                                 "index(key=(c1),ts=c4))options(partitionnum=1, replicanum=1);"),
+                    absl::StrCat("insert into ", tb1_name, " values(1,'aa',1,1590738990000,1637056523316);"),
+                    absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
+                    absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
+                    absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
+                    absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
+                });
     absl::SleepFor(absl::Seconds(4));
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
