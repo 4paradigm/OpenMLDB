@@ -1,6 +1,7 @@
 //
 // Created by hezhaozhao on 2022/4/25.
 //
+#include "base/string_ref.h"
 
 #ifndef OPENMLDB_UDF_JSON_H
 #define OPENMLDB_UDF_JSON_H
