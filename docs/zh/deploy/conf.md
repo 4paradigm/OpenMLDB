@@ -1,4 +1,4 @@
-# 配置文件说明
+# 配置文件
 
 ## nameserver配置文件 conf/nameserver.flags
 
