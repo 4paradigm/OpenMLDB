@@ -242,7 +242,7 @@ void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     snapshot_log_part_index_.store(log_part_index, std::memory_order_relaxed);
 }
 
-void LogReplicator::DeleteBinlog() {
+void LogReplicator::DeleteBinlog(bool* deleted) {
     if (logs_->GetSize() <= 1) {
         DEBUGLOG("log part size is one or less, need not delete");
         return;
@@ -276,6 +276,9 @@ void LogReplicator::DeleteBinlog() {
             PDLOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", full_path.c_str(), errno,
                   strerror(errno));
         } else {
+            if (deleted) {
+                *deleted = true;
+            }
             PDLOG(INFO, "delete binlog[%s] success", full_path.c_str());
         }
         delete tmp_node;

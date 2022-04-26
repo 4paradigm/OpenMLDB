@@ -262,9 +262,9 @@ link_directories(
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  # FIXME(aceforeverd): api_server_test & tablet_impl_test failed to run on debug mode, skip temporarily
+  # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
   SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test|tablet_impl_test"
+    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
     DEPENDENCIES ${test_list})
 endif ()
 
