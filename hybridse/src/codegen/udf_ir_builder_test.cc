@@ -40,6 +40,7 @@
 #include "udf/udf.h"
 #include "udf/udf_test.h"
 #include "vm/sql_compiler.h"
+#include "udf/udf_json.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
