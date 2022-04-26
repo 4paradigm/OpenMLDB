@@ -259,8 +259,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                 return false;
             }
         } else {
-            PDLOG(ERROR, "recycle_bin_root_path is required");
-            return false;
+            PDLOG(ERROR, "recycle_bin_root_path is not configured. Deleted table is not recycled");
         }
 
         if (FLAGS_ssd_root_path != "") {
@@ -270,8 +269,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                     return false;
                 }
             } else {
-                PDLOG(ERROR, "recycle_bin_ssd_root_path is required");
-                return false;
+                PDLOG(ERROR, "recycle_bin_ssd_root_path is not configured. Deleted table is not recycled.");
             }
         }
 
@@ -282,8 +280,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                     return false;
                 }
             } else {
-                PDLOG(ERROR, "recycle_bin_hdd_root_path is required");
-                return false;
+                PDLOG(ERROR, "recycle_bin_hdd_root_path is not configured. Deleted table is not recycled.");
             }
         }
     }
