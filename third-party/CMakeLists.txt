@@ -52,6 +52,7 @@ option(BUILD_BUNDLED_BOOST "Build boost from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ROCKSDB "Build rocksdb from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_NLOHMANNJSON "Build nlohmann_json from source" ${BUILD_BUNDLED})
 
 # '-O3 -fPIC' reserved for thirdparty compilation
 set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
@@ -211,3 +212,8 @@ endif()
 if (BUILD_BUNDLED_ROCKSDB)
   include(FetchRocksDB)
 endif()
+
+if (BUILD_BUNDLED_NLOHMANNJSON)
+  include(FetchNlohmannJson)
+endif()
+

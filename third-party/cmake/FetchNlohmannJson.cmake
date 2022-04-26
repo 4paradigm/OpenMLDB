@@ -23,9 +23,11 @@ find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
         nlohmann_json
         URL ${NLOHMANNJSON_URL}
-        URL_HASH SHA256=885ff9b822c483aed4ba48c79f27b8ad3dd478bae0e769e12e4d23e3b5023237
+        URL_HASH SHA256=ea4b0084709fb934f92ca0a68669daa0fe6f2a2c6400bf353454993a834bb0bb
         PREFIX ${DEPS_BUILD_DIR}
         DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/nlohmann_json
         INSTALL_DIR ${DEPS_INSTALL_DIR}
         BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
-        INSTALL_COMMAND ${MAKE_EXE} install)
+        INSTALL_COMMAND ${MAKE_EXE} install
+)
+
