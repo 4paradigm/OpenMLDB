@@ -244,7 +244,7 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
-/*TEST_F(SqlCmdTest, SelectMultiPartition) {
+TEST_F(SqlCmdTest, SelectMultiPartition) {
     auto sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();
@@ -273,10 +273,9 @@ TEST_P(DBSDKTest, Select) {
     while (res->Next()) {
         count++;
     }
-    LOG(WARNING) << "count = " << count;
     EXPECT_EQ(count, expect);
     ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
-}*/
+}
 
 TEST_P(DBSDKTest, Desc) {
     auto cli = GetParam();

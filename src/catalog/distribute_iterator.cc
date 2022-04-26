@@ -128,21 +128,23 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
-                DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ << " key " << last_ts_ << " count " << count;
+                DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
+                    " key " << last_ts_ << " count " << count;
                 kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                            FLAGS_traverse_cnt_limit, count));
+                            FLAGS_traverse_cnt_limit, false, count));
             } else {
                 iter++;
                 kv_it_.reset();
                 continue;
             }
         } else {
-            kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, count));
+            kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count));
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
             last_pk_ = kv_it_->GetLastPK();
             last_ts_ = kv_it_->GetLastTS();
+            response_vec_.emplace_back(kv_it_->GetResponse());
             key_ = kv_it_->GetKey();
             break;
         }
@@ -199,8 +201,9 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     if (client_iter != tablet_clients_.end()) {
         uint32_t count = 0;
         kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0,
-                    FLAGS_traverse_cnt_limit, count));
+                    FLAGS_traverse_cnt_limit, false, count));
         if (kv_it_ && kv_it_->Valid()) {
+            response_vec_.emplace_back(kv_it_->GetResponse());
             return;
         }
     }
@@ -234,8 +237,9 @@ void DistributeWindowIterator::SeekToFirst() {
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
         cur_pid_ = kv.first;
-        kv_it_.reset(kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, count));
+        kv_it_.reset(kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count));
         if (kv_it_ && kv_it_->Valid()) {
+            response_vec_.emplace_back(kv_it_->GetResponse());
             return;
         }
     }

@@ -169,6 +169,8 @@ class KvIterator {
 
     uint64_t GetLastTS() const { return last_ts_; }
 
+    ::google::protobuf::Message* GetResponse() const { return response_; }
+
  private:
     ::google::protobuf::Message* response_;
     char* buffer_;

@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/hash.h"
 #include "base/kv_iterator.h"
@@ -63,6 +64,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     uint64_t last_ts_;
     std::string last_pk_;
     ::hybridse::codec::Row value_;
+    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
@@ -124,6 +126,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     uint32_t cur_pid_;
     std::unique_ptr<::hybridse::codec::WindowIterator> it_;
     std::unique_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 
 }  // namespace catalog

@@ -283,9 +283,6 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
             PutKey(key, metas[pid == 1 ? 0 : 1], tablet_clients[pid]);
         }
     }
-    for (const auto kv : cout_map) {
-        LOG(INFO) << "put pid " << kv.first << " count " << kv.second;
-    }
     FullTableIterator it(tid, tables, tablet_clients);
     it.SeekToFirst();
     int count = 0;
