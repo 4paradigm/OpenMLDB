@@ -82,11 +82,11 @@ TEST_P(DBSDKTest, CreateFunction) {
     hybridse::sdk::Status status;
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
-                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+                            "OPTIONS (FILE='", so_path, "');");
     std::string strlength_sql = absl::StrCat("CREATE FUNCTION strlength(x STRING) RETURNS INT "
-                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+                            "OPTIONS (FILE='", so_path, "');");
     std::string int2str_sql = absl::StrCat("CREATE FUNCTION int2str(x INT) RETURNS STRING "
-                            "OPTIONS (FILE='", so_path, "', OFFLINE_FILE='", so_path, "');");
+                            "OPTIONS (FILE='", so_path, "');");
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
@@ -101,19 +101,11 @@ TEST_P(DBSDKTest, CreateFunction) {
                     int2str_sql
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
-    if (cs->IsClusterMode()) {
-        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
-                              {"cut2", "Varchar", "Varchar", "false", so_path, so_path},
-                              {"int2str", "Varchar", "Int", "false", so_path, so_path},
-                              {"strlength", "Int", "Varchar", "false", so_path, so_path}},
-                             result.get());
-    } else {
-        ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"},
-                              {"cut2", "Varchar", "Varchar", "false", so_path, ""},
-                              {"int2str", "Varchar", "Int", "false", so_path, ""},
-                              {"strlength", "Int", "Varchar", "false", so_path, ""}},
-                             result.get());
-    }
+    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File"},
+                          {"cut2", "Varchar", "Varchar", "false", so_path},
+                          {"int2str", "Varchar", "Int", "false", so_path},
+                          {"strlength", "Int", "Varchar", "false", so_path}},
+                         result.get());
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());

@@ -70,8 +70,8 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
                     // TODO(tobe): get the library for preset path
                     String libraryFilePath = TaskManagerConfig.EXTERNAL_FUNCTION_DIR + fun.getFile();
-                    if (fun.hasOfflineFile()) {
-                        libraryFilePath = fun.getOfflineFile();
+                    if (fun.hasFile()) {
+                        libraryFilePath = fun.getFile();
                     }
                     ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
 
@@ -317,14 +317,14 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.CreateFunctionResponse CreateFunction(TaskManager.CreateFunctionRequest request) {
         Common.ExternalFun fun = request.getFun();
-        if (fun.getOfflineFile().isEmpty()) {
+        if (fun.getFile().isEmpty()) {
             return TaskManager.CreateFunctionResponse.newBuilder()
                     .setCode(StatusCode.FAILED)
                     .setMsg("has not offline path")
                     .build();
         }
 
-        String libraryFilePath = fun.getOfflineFile();
+        String libraryFilePath = fun.getFile();
         ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
         return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }

@@ -1547,12 +1547,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                                                 openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
                                                 arg_type,
                                                 is_aggregate,
-                                                fun_info.file(),
-                                                fun_info.offline_file()};
+                                                fun_info.file()};
                 lines.push_back(vec);
             }
             return ResultSetSQL::MakeResultSet(
-                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -2856,15 +2855,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     fun->set_file((*option)["FILE"]->GetExprString());
     if (cluster_sdk_->IsClusterMode()) {
-        if (option->find("OFFLINE_FILE") == option->end()) {
-            if (fun->file().find('/') == std::string::npos) {
-                fun->set_offline_file(fun->file());
-            } else {
-                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
-            }
-        } else {
-            fun->set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
-        }
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
             auto ret = taskmanager_client->CreateFunction(fun);
