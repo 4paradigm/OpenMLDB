@@ -21,8 +21,12 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -165,7 +169,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getIdentifierQuoteString() throws SQLException {
-        return null;
+        return "`";
     }
 
     @Override
@@ -360,7 +364,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getCatalogSeparator() throws SQLException {
-        return null;
+        return ".";
     }
 
     @Override
@@ -689,37 +693,45 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
      */
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
-        // TODO(hw): catalog == openmldb db?
+        // TODO(hw): catalog unsupported, schema == openmldb db? Ref https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema
         // hard to impl when 'SHOW xxx WHERE'
         if (catalog != null || schemaPattern != null) {
             throw new SQLException("unsupported");
         }
 
+        // we'll use regex to match, tableNamePattern needs fix
+        String regexPattern = tableNamePattern;
+        if (regexPattern != null) {
+            regexPattern = regexPattern.replace("_", ".");
+            regexPattern = regexPattern.replace("%", ".+");
+        }
         List<String> allTables = connection.getClient().getTableNames(connection.getDefaultDatabase());
 
         List<List<String>> table = new ArrayList<>();
         for (String tableName : allTables) {
-            if (tableNamePattern != null && !tableName.equals(tableNamePattern)) {
+            if (regexPattern != null && !Pattern.matches(regexPattern, tableName)) {
                 continue;
             }
 
             List<String> row = new ArrayList<>();
             // TABLE_CAT
-            row.add("null");
+            row.add(null);
             // TABLE_SCHEM schema name
-            row.add("null");
+            row.add(null);
             // TABLE_NAME table name
             row.add(tableName);
             // table type
             row.add("TABLE");
             // extra 6 columns
             for (int i = 0; i < 6; i++) {
-                row.add("null");
+                row.add(null);
             }
             table.add(row);
         }
 
-        return new SimpleResultSet(table);
+        return new SimpleResultSet(Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_TYPE",
+                "REMARKS", "TYPE_CAT", "TYPE_SCHEM", "TYPE_NAME", "SELF_REFERENCING_COL_NAME", "REF_GENERATION"),
+                Collections.nCopies(10, Types.VARCHAR), table);
     }
 
     @Override
@@ -734,13 +746,18 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
-        return null;
+        List<List<String>> table = new ArrayList<>();
+        table.add(Collections.singletonList("TABLE"));
+        return SimpleResultSet.createResultSet(Collections.singletonList("TABLE_TYPE"),
+                Collections.singletonList(Types.VARCHAR), table);
     }
 
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
         // hard to impl when 'SHOW xxx WHERE'
-        if (!catalog.equals("null") || !schemaPattern.equals("null") || columnNamePattern != null) {
+        // Note: If catalog, schemaPattern, tableNamePattern, columnNamePattern are null, they should be null, not a
+        // string "null"
+        if (catalog != null || schemaPattern != null || columnNamePattern != null) {
             throw new SQLException("unsupported");
         }
 
@@ -755,9 +772,9 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             List<String> rowFirstPart = new ArrayList<>();
 
             // TABLE_CAT
-            rowFirstPart.add("null");
+            rowFirstPart.add(null);
             // TABLE_SCHEM schema name
-            rowFirstPart.add("null");
+            rowFirstPart.add(null);
 
             String dbName = connection.getDefaultDatabase();
             // TABLE_NAME table name
@@ -777,14 +794,15 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 colParts.add("0");
                 // BUFFER_LENGTH
                 colParts.add("0");
-                // TODO(hw): DECIMAL_DIGITS, NUM_PREC_RADIX
+                // TODO(hw): DECIMAL_DIGITS
                 colParts.add("0");
-                colParts.add("0");
+                // NUM_PREC_RADIX
+                colParts.add("10");
                 // NULLABLE
                 colParts.add(col.isNotNull() ? "0" : "1");
                 // REMARKS, COLUMN_DEF string
-                colParts.add("");
-                colParts.add("");
+                colParts.add(null);
+                colParts.add(null);
                 // SQL_DATA_TYPE, SQL_DATETIME_SUB unused
                 colParts.add("0");
                 colParts.add("0");
@@ -794,19 +812,38 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 colParts.add(Integer.toString(i + 1));
                 // IS_NULLABLE
                 colParts.add(col.isNotNull() ? "NO" : "YES");
-                // extra 6 columns
-                for (int k = 0; k < 6; k++) {
-                    colParts.add("null");
+                // extra 4 columns
+                for (int k = 0; k < 4; k++) {
+                    colParts.add(null);
                 }
-
+                // IS_AUTOINCREMENT
+                colParts.add("NO");
+                // IS_GENERATEDCOLUMN
+                colParts.add("NO");
                 // append this column info
                 colParts.addAll(0, rowFirstPart);
                 table.add(colParts);
             }
 
         }
-
-        return new SimpleResultSet(table);
+        List<String> columnNames = Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_NAME",
+                "COLUMN_NAME", "DATA_TYPE", "TYPE_NAME",
+                "COLUMN_SIZE", "BUFFER_LENGTH", "DECIMAL_DIGITS", "NUM_PREC_RADIX",
+                "NULLABLE",
+                "REMARKS", "COLUMN_DEF", "SQL_DATA_TYPE", "SQL_DATETIME_SUB", "CHAR_OCTET_LENGTH", "ORDINAL_POSITION",
+                "IS_NULLABLE",
+                "SCOPE_CATALOG", "SCOPE_SCHEMA", "SCOPE_TABLE", "SOURCE_DATA_TYPE",
+                "IS_AUTOINCREMENT", "IS_GENERATEDCOLUMN");
+        List<Integer> columnSqlTypes = new ArrayList<>(Collections.nCopies(4, Types.VARCHAR));
+        columnSqlTypes.add(Types.INTEGER);
+        columnSqlTypes.add(Types.VARCHAR);
+        columnSqlTypes.addAll(Collections.nCopies(5, Types.INTEGER));
+        columnSqlTypes.addAll(Collections.nCopies(2, Types.VARCHAR));
+        columnSqlTypes.addAll(Collections.nCopies(4, Types.INTEGER));
+        columnSqlTypes.addAll(Collections.nCopies(4, Types.VARCHAR));
+        columnSqlTypes.add(Types.SMALLINT);
+        columnSqlTypes.addAll(Collections.nCopies(2, Types.VARCHAR));
+        return new SimpleResultSet(columnNames, columnSqlTypes, table);
     }
 
     @Override
@@ -831,7 +868,13 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-        return null;
+        // no primary keys
+        List<String> columns = Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_NAME", "COLUMN_NAME", "KEY_SEQ", "PK_NAME");
+        List<Integer> types = Arrays.asList(Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT,
+                Types.VARCHAR);
+        List<List<String>> rsTable = new ArrayList<>();
+        // TODO(hw):
+        return SimpleResultSet.createResultSet(columns, types, rsTable);
     }
 
     @Override

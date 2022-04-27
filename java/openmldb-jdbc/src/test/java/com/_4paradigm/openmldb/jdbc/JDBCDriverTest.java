@@ -16,13 +16,6 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import lombok.extern.slf4j.Slf4j;
-import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -33,6 +26,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
+
+import lombok.extern.slf4j.Slf4j;
+import org.testng.Assert;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class JDBCDriverTest {
@@ -79,8 +78,7 @@ public class JDBCDriverTest {
         try {
             stmt.execute(String.format("create table if not exists %s(c1 int, c2 string)", tableName));
         } catch (Exception e) {
-            // TODO(hw): support create table if not exists
-            e.printStackTrace();
+            Assert.fail();
         }
         // all pulsar jdbc sink connector will do
         connection.setAutoCommit(false); // useless but shouldn't be failed
@@ -99,7 +97,6 @@ public class JDBCDriverTest {
                 Assert.fail("Not able to find table: " + tableName);
             }
         }
-        List<String> keyList = new ArrayList<>(), nonKeyList = new ArrayList<>();
         String[][] expected = {{"c1", "INTEGER", "1"}, {"c2", "VARCHAR", "2"}};
         List<String> columns = new ArrayList<>();
         try (ResultSet rs = connection.getMetaData().getColumns(
@@ -177,26 +174,25 @@ public class JDBCDriverTest {
         Assert.assertFalse(connection.isValid(0), "unsupported now in 1.4");
         Statement stmt = connection.createStatement();
         Assert.assertTrue(stmt.execute("SELECT 1"));
-        ResultSet rs = stmt.getResultSet();
-        // do nothing with the result set
-        rs.close();
+        {
+            ResultSet rs = stmt.getResultSet();
+            // do nothing with the result set
+            rs.close();
+        }
 
         String tableName = "kafka_test";
-
         stmt = connection.createStatement();
         try {
             stmt.execute(String.format("create table if not exists %s(c1 int, c2 string)", tableName));
         } catch (Exception e) {
-            // TODO(hw): support create table if not exists
-            e.printStackTrace();
+            Assert.fail();
         }
 
         // only support insert sql
         // Quote `, ID_DELIM .
         String insertSql = "INSERT INTO " +
                 tableName +
-                "(`c1`,`c2`" +
-                ") VALUES(?,?)";
+                "(`c1`,`c2`) VALUES(?,?)";
         PreparedStatement pstmt = connection.prepareStatement(insertSql);
         // don't work, but do not throw exception
         pstmt.setFetchSize(100);
@@ -208,6 +204,90 @@ public class JDBCDriverTest {
             Assert.fail("delete is unsupported");
         } catch (Exception ignored) {
 
+        }
+
+        // sink, catalog and schema patterns are always be null
+        // OpenMLDB only has table, no view
+        List<String> typeResults = new ArrayList<>();
+        try (ResultSet rs = metadata.getTableTypes()) {
+            while (rs.next()) {
+                String tableType = rs.getString(1);
+                typeResults.add(tableType);
+            }
+        }
+        Assert.assertEquals(typeResults.size(), 1);
+        Assert.assertEquals(typeResults.get(0), "TABLE");
+
+        // if the arg tableTypes in `getTables` has 'VIEW', no effect
+        List<String> tableResults = new ArrayList<>();
+        try (ResultSet rs = metadata.getTables(null, null, "%", new String[]{"TABLE", "VIEW"})) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                String schemaName = rs.getString(2);
+                String tName = rs.getString(3);
+                // "null" string, not the null
+                Assert.assertNull(catalogName);
+                Assert.assertNull(schemaName);
+                log.info("get table {}", tName);
+                tableResults.add(tName);
+            }
+        }
+        Assert.assertTrue(tableResults.contains(tableName));
+
+        Assert.assertEquals(metadata.getIdentifierQuoteString(), "`");
+        Assert.assertEquals(metadata.getCatalogSeparator(), ".");
+
+        // kafka currentTimeOnDB, only source needs it?
+        String timeSql = "SELECT CURRENT_TIMESTAMP";
+
+        // no isolation
+        Assert.assertFalse(metadata.supportsTransactionIsolationLevel(Connection.TRANSACTION_NONE));
+        try {
+            connection.setTransactionIsolation(Connection.TRANSACTION_NONE);
+            Assert.fail();
+        } catch (Exception ignored) {
+
+        }
+
+        // won't work
+        connection.setAutoCommit(true);
+
+        // one table, not table pattern
+        try (ResultSet rs = connection.getMetaData().getPrimaryKeys(
+                null, null, tableName)) {
+            while (rs.next()) {
+                String catalogName = rs.getString(1);
+                String schemaName = rs.getString(2);
+                String tName = rs.getString(3);
+                final String colName = rs.getString(4);
+            }
+        }
+
+        try (ResultSet rs = connection.getMetaData().getColumns(
+                null,
+                null,
+                tableName,
+                null
+        )) {
+            final int rsColumnCount = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                final String catalogName = rs.getString(1);
+                final String schemaName = rs.getString(2);
+                final String tName = rs.getString(3);
+                final String columnName = rs.getString(4);
+                final int jdbcType = rs.getInt(5);
+                final String typeName = rs.getString(6);
+                final int precision = rs.getInt(7);
+                final int scale = rs.getInt(9);
+                final String typeClassName = null;
+                final int nullableValue = rs.getInt(11);
+                Boolean autoIncremented = null;
+                if (rsColumnCount >= 23) {
+                    // Not all drivers include all columns ...
+                    String isAutoIncremented = rs.getString(23);
+                    Assert.assertTrue("no".equalsIgnoreCase(isAutoIncremented));
+                }
+            }
         }
 
     }

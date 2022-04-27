@@ -41,16 +41,20 @@ import java.util.List;
 import java.util.Map;
 
 public class SimpleResultSet implements ResultSet {
-    public SimpleResultSet(List<List<String>> data) {
+    private final List<String> columnNames;
+    private final List<Integer> columnSqlTypes;
+    private final List<List<String>> data;
+    private int currentRowIdx = -1;
+
+    public SimpleResultSet(List<String> columnNames, List<Integer> columnSqlTypes, List<List<String>> data) {
+        this.columnNames = columnNames;
+        this.columnSqlTypes = columnSqlTypes;
         this.data = data;
     }
 
-    public static ResultSet createResultSet(String[] columnNames, Types[] columnTypes, List<List<String>> data) {
-        return new SimpleResultSet(data);
+    public static ResultSet createResultSet(List<String> columnNames, List<Integer> columnSqlTypes, List<List<String>> data) {
+        return new SimpleResultSet(columnNames, columnSqlTypes, data);
     }
-
-    List<List<String>> data;
-    private int currentRowIdx = -1;
 
     @Override
     public boolean next() throws SQLException {
@@ -244,7 +248,7 @@ public class SimpleResultSet implements ResultSet {
 
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
-        return null;
+        return new SimpleResultSetMetaData(columnNames, columnSqlTypes);
     }
 
     @Override
