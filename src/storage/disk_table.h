@@ -235,7 +235,7 @@ class DiskTableIterator : public TableIterator {
     bool has_ts_idx_ = false;
 };
 
-class DiskTableTraverseIterator : public TableIterator {
+class DiskTableTraverseIterator : public TraverseIterator {
  public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                               ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
@@ -246,6 +246,7 @@ class DiskTableTraverseIterator : public TableIterator {
     virtual ~DiskTableTraverseIterator();
     bool Valid() override;
     void Next() override;
+    void NextPK() override;
     openmldb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
@@ -254,7 +255,6 @@ class DiskTableTraverseIterator : public TableIterator {
     uint64_t GetCount() const override;
 
  private:
-    void NextPK();
     bool IsExpired();
 
  private:
@@ -321,7 +321,7 @@ class DiskTable : public Table {
 
     TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    TableIterator* NewTraverseIterator(uint32_t idx) override;
+    TraverseIterator* NewTraverseIterator(uint32_t idx) override;
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) { return NULL; }
 

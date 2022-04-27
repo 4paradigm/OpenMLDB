@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/strip.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -1063,6 +1065,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>> clients;
     if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients, *status)) {
         DLOG(INFO) << "no tablet available for sql " << sql;
+        status->msg = "no tablet available for sql";
+        status->code = -1;
         return {};
     }
     if (clients.size() == 1) {
@@ -1513,6 +1517,39 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+<<<<<<< HEAD
+=======
+        case hybridse::node::kCmdShowFunctions: {
+            std::vector<::openmldb::common::ExternalFun> funs;
+            base::Status st = ns_ptr->ShowFunction("", &funs);
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "show udf function failed"};
+                return {};
+            }
+            std::vector<std::vector<std::string>> lines;
+            for (auto& fun_info : funs) {
+                std::string is_aggregate = "false";
+                if (fun_info.is_aggregate()) {
+                    is_aggregate = "true";
+                }
+                std::string arg_type = "";
+                for (int i = 0; i < fun_info.arg_type_size(); i++) {
+                    arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
+                    if (i != fun_info.arg_type_size() - 1) {
+                        arg_type = absl::StrCat(arg_type, "|");
+                    }
+                }
+                std::vector<std::string> vec = {fun_info.name(),
+                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
+                                                arg_type,
+                                                is_aggregate,
+                                                fun_info.file()};
+                lines.push_back(vec);
+            }
+            return ResultSetSQL::MakeResultSet(
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines, status);
+        }
+>>>>>>> upstream/main
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
@@ -2151,6 +2188,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto table_partition = table_info.mutable_table_partition();
     table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
+    table_info.set_storage_mode(base_table_info.storage_mode());
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
@@ -2787,8 +2825,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (node == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
     }
-    ::openmldb::common::ExternalFun fun;
-    fun.set_name(node->Name());
+    auto fun = std::make_shared<openmldb::common::ExternalFun>();
+    fun->set_name(node->Name());
     auto type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(node->GetReturnType());
     if (type_node == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal create function statement"};
@@ -2797,7 +2835,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal return type"};
     }
-    fun.set_return_type(data_type);
+    fun->set_return_type(data_type);
     for (const auto arg_node : node->GetArgsType()) {
         type_node = dynamic_cast<const ::hybridse::node::TypeNode*>(arg_node);
         if (type_node == nullptr) {
@@ -2806,37 +2844,28 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         if (!::openmldb::schema::SchemaAdapter::ConvertType(type_node->base(), &data_type)) {
             return {::hybridse::common::StatusCode::kCmdError, "illegal argument type"};
         }
-        fun.add_arg_type(data_type);
+        fun->add_arg_type(data_type);
     }
     if (node->IsAggregate()) {
         return {::hybridse::common::StatusCode::kCmdError, "unsupport udaf function"};
     }
-    fun.set_is_aggregate(node->IsAggregate());
+    fun->set_is_aggregate(node->IsAggregate());
     auto option = node->Options();
     if (!option || option->find("FILE") == option->end()) {
         return {::hybridse::common::StatusCode::kCmdError, "missing FILE option"};
     }
-    fun.set_file((*option)["FILE"]->GetExprString());
+    fun->set_file((*option)["FILE"]->GetExprString());
     if (cluster_sdk_->IsClusterMode()) {
-        if (option->find("OFFLINE_FILE") == option->end()) {
-            if (fun.file().find('/') == std::string::npos) {
-                fun.set_offline_file(fun.file());
-            } else {
-                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
+        auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
+        if (taskmanager_client) {
+            auto ret = taskmanager_client->CreateFunction(fun);
+            if (!ret.OK()) {
+                return {::hybridse::common::StatusCode::kCmdError, ret.msg};
             }
-        } else {
-            fun.set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
-        }
-    }
-    auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
-    if (taskmanager_client) {
-        auto ret = taskmanager_client->CreateFunction(fun);
-        if (!ret.OK()) {
-            return {::hybridse::common::StatusCode::kCmdError, ret.msg};
         }
     }
     auto ns = cluster_sdk_->GetNsClient();
-    auto ret = ns->CreateFunction(fun);
+    auto ret = ns->CreateFunction(*fun);
     if (!ret.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, ret.msg};
     }
@@ -3174,7 +3203,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                     return {base::ReturnCode::kError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
-                tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw);
+                if (!tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw)) {
+                    return {base::ReturnCode::kError, "create aggregator failed"};
+                }
             }
         }
     }
@@ -3219,8 +3250,16 @@ static const std::initializer_list<std::string> GetComponetSchema() {
 }
 
 // Implementation for SHOW COMPONENTS
-// it do not set status to fail even e.g. some zk query internally failed
-// which produce partial or empty result on internal error
+//
+// Error handling:
+// it do not set status to fail even e.g. some zk query internally failed,
+// which as a consequence, produce partial or empty result on internal error.
+//
+// in detail
+// 1. tablet and nameserver are required, error status or empty result considered error (warning log printed)
+// 2. task manager and api server are optional, only error status produce warning log
+// 3. task manager only query and show in cluster mode
+//
 //
 // output schema: (Endpoint: string, Role: string,
 //                 Connect_time: int64, Status: string, Ns_role: string)
@@ -3234,32 +3273,49 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
     DCHECK(status != nullptr);
     std::vector<std::shared_ptr<ResultSetSQL>> data;
 
-    auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(status));
-    if (tablets != nullptr && status->IsOK()) {
-        data.push_back(std::move(tablets));
-    } else {
-        LOG(WARNING) << "[WARN]: show tablets, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto tablets = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTablets(&s));
+        if (tablets != nullptr && s.IsOK()) {
+            data.push_back(std::move(tablets));
+        } else {
+            LOG(WARNING) << "[WARN]: show tablets, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(status));
-    if (nameservers != nullptr && status->IsOK()) {
-        data.push_back(std::move(nameservers));
-    } else {
-        LOG(WARNING) << "[WARN]: show nameservers, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto nameservers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowNameServers(&s));
+        if (nameservers != nullptr && s.IsOK()) {
+            data.push_back(std::move(nameservers));
+        } else {
+            LOG(WARNING) << "[WARN]: show nameservers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(status));
-    if (task_managers != nullptr && status->IsOK()) {
-        data.push_back(std::move(task_managers));
-    } else {
-        LOG(WARNING) << "[WARN]: show taskmanagers, code: " << status->code << ", msg: " << status->msg;
+    if (cluster_sdk_->IsClusterMode()) {
+        // only get task managers in cluster mode
+        hybridse::sdk::Status s;
+        auto task_managers = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowTaskManagers(&s));
+        if (s.IsOK()) {
+            if (task_managers != nullptr) {
+                data.push_back(std::move(task_managers));
+            }
+        } else {
+            LOG(WARNING) << "[WARN]: show taskmanagers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
-    auto api_servres = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowApiServers(status));
-    if (api_servres != nullptr && status->IsOK()) {
-        data.push_back(std::move(api_servres));
-    } else {
-        LOG(WARNING) << "[WARN]: show api servers, code: " << status->code << ", msg: " << status->msg;
+    {
+        hybridse::sdk::Status s;
+        auto api_servres = std::dynamic_pointer_cast<ResultSetSQL>(ExecuteShowApiServers(&s));
+        if (s.IsOK()) {
+            if (api_servres != nullptr) {
+                data.push_back(std::move(api_servres));
+            }
+        } else {
+            LOG(WARNING) << "[WARN]: show api servers, code: " << s.code << ", msg: " << s.msg;
+        }
     }
 
     status->code = hybridse::common::kOk;
@@ -3386,8 +3442,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     auto zk_client = cluster_sdk_->GetZkClient();
     if (!cluster_sdk_->IsClusterMode() || zk_client == nullptr) {
         // standalone mode
-        status->code = hybridse::common::kRunError;
-        status->msg = "show taskmanagers not support in standalone mode";
+        status->code = hybridse::common::kUnSupport;
+        status->msg = "show taskmanagers not supported in standalone mode";
         return {};
     }
 
@@ -3395,8 +3451,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
     std::string endpoint;
     Stat stat;
     if (!zk_client->GetNodeValueAndStat(node_path.c_str(), &endpoint, &stat)) {
-        status->code = hybridse::common::kRunError;
-        status->msg = "query taskmanager from zk failed";
+        // as task manager is optional, the zk query will fail if taskmanager not exist
+        // here will ignore all the zk errors since `GetNodeValueAndStat` lacks errcode
+        LOG(INFO) << "query taskmanager from zk failed";
         return {};
     }
 
@@ -3501,8 +3558,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto tid = tinfo.tid();
         auto table_name = tinfo.name();
         auto db = tinfo.db();
-        // TODO(aceforeverd): support disk type
-        std::string storage_type = "memory";
+        auto& inner_storage_mode = StorageMode_Name(tinfo.storage_mode());
+        std::string storage_type = absl::AsciiStrToLower(absl::StripPrefix(inner_storage_mode, "k"));
+
         auto partition_num = tinfo.partition_num();
         auto replica_num = tinfo.replica_num();
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;

@@ -65,7 +65,7 @@ class Table {
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
 
-    virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
+    virtual TraverseIterator* NewTraverseIterator(uint32_t index) = 0;
 
     virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
 

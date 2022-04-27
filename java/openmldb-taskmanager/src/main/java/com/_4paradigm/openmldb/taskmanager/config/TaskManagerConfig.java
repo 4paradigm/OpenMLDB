@@ -51,6 +51,7 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String JOB_LOG_PATH;
+    public static String EXTERNAL_FUNCTION_DIR;
     public static boolean TRACK_UNFINISHED_JOBS;
     public static int JOB_TRACKER_INTERVAL;
     public static String SPARK_DEFAULT_CONF;
@@ -94,10 +95,12 @@ public class TaskManagerConfig {
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
         SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
-        if (!Arrays.asList("local", "yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER) ) {
-            throw new ConfigException("spark.master", "should be one of local, yarn, yarn-cluster or yarn-client");
+        if (!SPARK_MASTER.startsWith("local")) {
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            }
         }
-        boolean isLocal = SPARK_MASTER.equals("local");
+        boolean isLocal = SPARK_MASTER.startsWith("local");
         boolean isYarn = SPARK_MASTER.startsWith("yarn");
         boolean isYarnCluster = SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
 
@@ -152,6 +155,8 @@ public class TaskManagerConfig {
                 }
             }
         }
+
+        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./external_function/");
 
         TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
 

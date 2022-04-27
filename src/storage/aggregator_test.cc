@@ -18,6 +18,7 @@
 #include <utility>
 #include "gtest/gtest.h"
 
+#include "base/file_util.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "storage/aggregator.h"
@@ -34,7 +35,7 @@ class AggregatorTest : public ::testing::Test {
     AggregatorTest() {}
     ~AggregatorTest() {}
 };
-
+std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
     table_meta->set_name("t0");
     table_meta->set_pid(0);
@@ -102,7 +103,7 @@ bool UpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder
 
 bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
                       const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
-                      std::shared_ptr<Table>& table, AggrBuffer* buffer) {                      // NOLINT
+                      std::shared_ptr<Table>& table, AggrBuffer** buffer) {                     // NOLINT
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);
@@ -111,8 +112,19 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
-    auto aggr =
-        CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, aggr_col, aggr_type, "ts_col", bucket_size);
+
+    // replicator
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, aggr_col, aggr_type,
+                                 "ts_col", bucket_size);
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     UpdateAggr(aggr, &row_builder);
     std::string key = "id1|id2";
@@ -120,6 +132,7 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     if (!aggr->GetAggrBuffer("id1|id2", buffer)) {
         return false;
     }
+    ::openmldb::base::RemoveDir(folder);
     table = aggr_table;
     return true;
 }
@@ -255,6 +268,8 @@ void CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, i
 
 TEST_F(AggregatorTest, CreateAggregator) {
     // rows_num window type
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
     {
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
@@ -266,7 +281,15 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1000");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "1000");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsNum);
@@ -284,7 +307,15 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1d");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "1d");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -301,7 +332,15 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2s");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "2s");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -318,7 +357,15 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "3m");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "3m");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -335,17 +382,28 @@ TEST_F(AggregatorTest, CreateAggregator) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "100h");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum",
+                                     "ts_col", "100h");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
         ASSERT_EQ(aggr->GetWindowSize(), 100 * 60 * 60 * 1000);
     }
+    ::openmldb::base::RemoveDir(folder);
 }
 
 TEST_F(AggregatorTest, SumAggregatorUpdate) {
     // rows_num window type
     {
+        std::map<std::string, std::string> map;
+        std::string folder = "/tmp/" + GenRand() + "/";
         uint32_t id = counter++;
         ::openmldb::api::TableMeta base_table_meta;
         base_table_meta.set_tid(id);
@@ -359,7 +417,15 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::shared_ptr<Table> aggr_table =
             std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
         aggr_table->Init();
-        auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "2");
+        std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+            aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+        replicator->Init();
+        auto aggr =
+            CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "2");
+        std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+            base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+        base_replicator->Init();
+        aggr->Init(base_replicator);
         codec::RowBuilder row_builder(base_table_meta.column_desc());
         ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
@@ -380,87 +446,87 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
             ASSERT_EQ(val, i * 4 + 1);
             it->Next();
         }
-        AggrBuffer last_buffer;
+        AggrBuffer* last_buffer;
         auto ok = aggr->GetAggrBuffer(key, &last_buffer);
         ASSERT_TRUE(ok);
-        ASSERT_EQ(last_buffer.aggr_cnt_, 1);
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-        ASSERT_EQ(last_buffer.binlog_offset_, 100);
+        ASSERT_EQ(last_buffer->aggr_cnt_, 1);
+        ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer->binlog_offset_, 100);
+        ::openmldb::base::RemoveDir(folder);
     }
     // rows_range window type
     {
         std::shared_ptr<Aggregator> aggregator;
-        AggrBuffer last_buffer;
+        AggrBuffer* last_buffer;
         std::shared_ptr<Table> aggr_table;
         ASSERT_TRUE(GetUpdatedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt);
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col4", "sum", "1m", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<int64_t>(aggr_table, DataType::kSmallInt);
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col5", "sum", "2h", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<int64_t>(aggr_table, DataType::kBigInt);
-        ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", &last_buffer));
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col6", "sum", "3h", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<float>(aggr_table, DataType::kFloat);
-        ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        ASSERT_EQ(last_buffer->aggr_val_.vfloat, static_cast<float>(100));
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col7", "sum", "1d", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<double>(aggr_table, DataType::kDouble);
-        ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+        ASSERT_EQ(last_buffer->aggr_val_.vdouble, static_cast<double>(100));
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "sum", "1d", aggregator, aggr_table, &last_buffer));
         CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, 1);
-        ASSERT_EQ(last_buffer.aggr_val_.vlong, static_cast<int64_t>(0));
-        ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
+        ASSERT_EQ(last_buffer->aggr_val_.vlong, static_cast<int64_t>(0));
+        ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(0));
     }
 }
 
 TEST_F(AggregatorTest, MinAggregatorUpdate) {
     std::shared_ptr<Aggregator> aggregator;
-    AggrBuffer last_buffer;
+    AggrBuffer* last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "MIN", "1s", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<int32_t>(aggr_table, DataType::kInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vsmallint, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vsmallint, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col4", "min", "1m", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<int16_t>(aggr_table, DataType::kSmallInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vint, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vint, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col5", "min", "2h", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<int64_t>(aggr_table, DataType::kBigInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col6", "min", "3h", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<float>(aggr_table, DataType::kFloat);
-    ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vfloat, static_cast<float>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col7", "min", "1d", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<double>(aggr_table, DataType::kDouble);
-    ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col8", "min", "2d", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<int32_t>(aggr_table, DataType::kDate);
-    ASSERT_EQ(last_buffer.aggr_val_.vint, static_cast<int32_t>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vint, static_cast<int32_t>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "min", "2d", aggregator, aggr_table, &last_buffer));
     CheckMinAggrResult<int32_t>(aggr_table, DataType::kInt, 1);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(0));
     ASSERT_TRUE(GetUpdatedResult(counter, "col9", "min", "2d", aggregator, aggr_table, &last_buffer));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
@@ -478,46 +544,46 @@ TEST_F(AggregatorTest, MinAggregatorUpdate) {
         ASSERT_EQ(strcmp(ch, "abc"), 0);
         it->Next();
     }
-    ASSERT_EQ(strncmp(last_buffer.aggr_val_.vstring.data, "abc", 3), 0);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(strncmp(last_buffer->aggr_val_.vstring.data, "abc", 3), 0);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
 }
 
 TEST_F(AggregatorTest, MaxAggregatorUpdate) {
     std::shared_ptr<Aggregator> aggregator;
-    AggrBuffer last_buffer;
+    AggrBuffer* last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "MAX", "1s", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<int32_t>(aggr_table, DataType::kInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vsmallint, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vsmallint, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col4", "Max", "1m", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<int16_t>(aggr_table, DataType::kSmallInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vint, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vint, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col5", "max", "2h", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<int64_t>(aggr_table, DataType::kBigInt);
-    ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col6", "max", "3h", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<float>(aggr_table, DataType::kFloat);
-    ASSERT_EQ(last_buffer.aggr_val_.vfloat, static_cast<float>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vfloat, static_cast<float>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col7", "max", "1d", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<double>(aggr_table, DataType::kDouble);
-    ASSERT_EQ(last_buffer.aggr_val_.vdouble, static_cast<double>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col8", "max", "2d", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<int32_t>(aggr_table, DataType::kDate);
-    ASSERT_EQ(last_buffer.aggr_val_.vint, static_cast<int32_t>(100));
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(last_buffer->aggr_val_.vint, static_cast<int32_t>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
     ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "max", "2d", aggregator, aggr_table, &last_buffer));
     CheckMaxAggrResult<int32_t>(aggr_table, DataType::kInt, 1);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(0));
     ASSERT_TRUE(GetUpdatedResult(counter, "col9", "max", "2d", aggregator, aggr_table, &last_buffer));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
@@ -535,28 +601,29 @@ TEST_F(AggregatorTest, MaxAggregatorUpdate) {
         ASSERT_EQ(strcmp(ch, "hello"), 0);
         it->Next();
     }
-    ASSERT_EQ(strncmp(last_buffer.aggr_val_.vstring.data, "abc", 3), 0);
-    ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_EQ(strncmp(last_buffer->aggr_val_.vstring.data, "abc", 3), 0);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
 }
 
 TEST_F(AggregatorTest, CountAggregatorUpdate) {
     std::shared_ptr<Aggregator> aggregator;
-    AggrBuffer last_buffer;
+    AggrBuffer* last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "count", "1s", aggregator, aggr_table, &last_buffer));
     CheckCountAggrResult(aggr_table, DataType::kInt, 2);
-    ASSERT_EQ(last_buffer.non_null_cnt, 1);
+    ASSERT_EQ(last_buffer->non_null_cnt, 1);
     counter += 2;
     ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "COUNT", "1m", aggregator, aggr_table, &last_buffer));
     CheckCountAggrResult(aggr_table, DataType::kInt, 0);
-    ASSERT_EQ(last_buffer.non_null_cnt, 0);
+    ASSERT_EQ(last_buffer->non_null_cnt, 0);
 }
 
 TEST_F(AggregatorTest, AvgAggregatorUpdate) {
     std::shared_ptr<Aggregator> aggregator;
-    AggrBuffer last_buffer;
+    AggrBuffer* last_buffer;
     std::shared_ptr<Table> aggr_table;
     ASSERT_TRUE(GetUpdatedResult(counter, "col3", "AVG", "1s", aggregator, aggr_table, &last_buffer));
+<<<<<<< HEAD
     CheckAvgAggrResult<int64_t>(aggr_table, DataType::kInt);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, 100);
     ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(1));
@@ -584,9 +651,40 @@ TEST_F(AggregatorTest, AvgAggregatorUpdate) {
     CheckAvgAggrResult<int64_t>(aggr_table, DataType::kInt, 1);
     ASSERT_EQ(last_buffer.aggr_val_.vlong, static_cast<int64_t>(0));
     ASSERT_EQ(last_buffer.non_null_cnt, static_cast<int64_t>(0));
+=======
+    CheckAvgAggrResult<double>(aggr_table, DataType::kInt);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
+    counter += 2;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col4", "Avg", "1m", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kSmallInt);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
+    counter += 2;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col5", "avg", "2h", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kBigInt);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
+    counter += 2;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col6", "avg", "3h", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kFloat);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, static_cast<double>(100));
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
+    counter += 2;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col7", "avg", "1d", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kDouble);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, 100);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(1));
+    ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "avg", "1d", aggregator, aggr_table, &last_buffer));
+    CheckAvgAggrResult<double>(aggr_table, DataType::kInt, 1);
+    ASSERT_EQ(last_buffer->aggr_val_.vdouble, 0);
+    ASSERT_EQ(last_buffer->non_null_cnt, static_cast<int64_t>(0));
+>>>>>>> upstream/main
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
     uint32_t id = counter++;
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
@@ -597,7 +695,15 @@ TEST_F(AggregatorTest, OutOfOrder) {
     AddDefaultAggregatorSchema(&aggr_table_meta);
     std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
     aggr_table->Init();
-    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, 0, "col3", "sum", "ts_col", "1s");
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr =
+        CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "sum", "ts_col", "1s");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);
@@ -638,6 +744,18 @@ TEST_F(AggregatorTest, OutOfOrder) {
         int32_t update_val = *reinterpret_cast<int32_t*>(ch);
         ASSERT_EQ(update_val, 201);
     }
+    ::openmldb::base::RemoveDir(folder);
+}
+
+TEST_F(AggregatorTest, FlushAll) {
+    std::shared_ptr<Aggregator> aggregator;
+    AggrBuffer* last_buffer;
+    std::shared_ptr<Table> aggr_table;
+    ASSERT_TRUE(GetUpdatedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
+    aggregator->FlushAll();
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", &last_buffer));
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 51);
+    ASSERT_EQ(last_buffer->aggr_cnt_, 1);
 }
 
 }  // namespace storage

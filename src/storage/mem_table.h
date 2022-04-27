@@ -113,22 +113,20 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint32_t ts_idx_;
 };
 
-class MemTableTraverseIterator : public TableIterator {
+class MemTableTraverseIterator : public TraverseIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                              uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
     ~MemTableTraverseIterator() override;
     inline bool Valid() override;
     void Next() override;
+    void NextPK() override;
     void Seek(const std::string& key, uint64_t time) override;
     openmldb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
     uint64_t GetCount() const override;
-
- private:
-    void NextPK();
 
  private:
     Segment** segments_;
@@ -172,7 +170,7 @@ class MemTable : public Table {
 
     TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) override;
 
-    TableIterator* NewTraverseIterator(uint32_t index) override;
+    TraverseIterator* NewTraverseIterator(uint32_t index) override;
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
 

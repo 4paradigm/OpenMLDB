@@ -149,11 +149,8 @@ object JobInfoManager {
     statement.setString(8, job.getApplicationId)
     statement.setString(9, job.getError)
 
-    var pstmt: PreparedStatement = null
     try {
       logger.info(s"Run insert SQL with job info: $job")
-      pstmt = sqlExecutor.getInsertPreparedStmt(INTERNAL_DB_NAME, insertSql)
-
       val ok = statement.execute()
       if (!ok) {
         logger.error("Fail to execute insert SQL")
@@ -161,11 +158,15 @@ object JobInfoManager {
     } catch {
       case e: SQLException =>
         e.printStackTrace()
-    } finally if (pstmt != null) try {
-      pstmt.close()
-    } catch {
-      case throwables: SQLException =>
-        throwables.printStackTrace()
+    } finally {
+      if (statement != null) {
+        try {
+          statement.close()
+        } catch {
+          case throwables: SQLException =>
+            throwables.printStackTrace()
+        }
+      }
     }
   }
 

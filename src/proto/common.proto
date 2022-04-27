@@ -97,5 +97,4 @@ message ExternalFun {
     repeated openmldb.type.DataType arg_type = 3;
     optional bool is_aggregate = 4;
     optional string file = 5;
-    optional string offline_file = 6;
 }

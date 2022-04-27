@@ -18,6 +18,7 @@
 #define SRC_CLIENT_TASKMANAGER_CLIENT_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include "base/status.h"
@@ -71,7 +72,7 @@ class TaskManagerClient : public Client {
 
     ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table);
 
-    ::openmldb::base::Status CreateFunction(const ::openmldb::common::ExternalFun& fun);
+    ::openmldb::base::Status CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun);
 
     ::openmldb::base::Status DropFunction(const std::string& name, bool if_exists);
 

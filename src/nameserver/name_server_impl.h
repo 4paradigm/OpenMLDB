@@ -786,6 +786,8 @@ class NameServerImpl : public NameServer {
 
     void FreeSdkConnection();
 
+    bool RecoverExternalFunction();
+
  private:
     std::mutex mu_;
     Tablets tablets_;

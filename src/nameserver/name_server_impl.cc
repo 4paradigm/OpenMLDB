@@ -642,6 +642,38 @@ bool NameServerImpl::Recover() {
         UpdateRemoteRealEpMap();
     }
     UpdateTaskStatus(true);
+    if (!RecoverExternalFunction()) {
+        return false;
+    }
+    return true;
+}
+
+bool NameServerImpl::RecoverExternalFunction() {
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(zk_path_.external_function_path_) == 0) {
+        if (!zk_client_->GetChildren(zk_path_.external_function_path_, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << zk_path_.external_function_path_;
+            return false;
+        }
+    }
+    external_fun_.clear();
+    if (functions.empty()) {
+        return true;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(zk_path_.external_function_path_ + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        auto fun = std::make_shared<::openmldb::common::ExternalFun>();
+        if (!fun->ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        external_fun_.emplace(name, fun);
+        LOG(INFO) << "recover function " << name;
+    }
     return true;
 }
 
@@ -9103,10 +9135,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
             }
         }
     } else {
+        std::shared_ptr<TabletInfo> tablet_ptr = nullptr;
         for (const auto& partition : table_info->table_partition()) {
             uint32_t pid = partition.pid();
             for (const auto& meta : partition.partition_meta()) {
-                auto tablet_ptr = GetTablet(meta.endpoint());
+                tablet_ptr = GetTablet(meta.endpoint());
                 if (!tablet_ptr) {
                     PDLOG(WARNING, "endpoint[%s] can not find client", meta.endpoint().c_str());
                     base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet is not exist", response);
@@ -9117,6 +9150,12 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                     return;
                 }
             }
+        }
+        std::vector<::openmldb::common::ColumnKey> column_keys = {request->column_key()};
+        if (!tablet_ptr->client_->ExtractMultiIndexData(
+                table_info->tid(), 0, (uint32_t)table_info->table_partition_size(), column_keys)) {
+            base::SetResponseStatus(ReturnCode::kAddIndexFailed, "extract multi index failed", response);
+            return;
         }
         AddIndexToTableInfo(name, db, request->column_key(), table_info->column_key_size());
     }
