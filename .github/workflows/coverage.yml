@@ -27,7 +27,7 @@ jobs:
   coverage:
     runs-on: self-hosted
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.5
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
