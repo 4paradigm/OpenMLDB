@@ -987,12 +987,12 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
       snapshot_(snapshot),
       record_idx_(1),
       expire_value_(expire_time, expire_cnt, ttl_type),
-      row_(),
       pk_(pk),
       row_pk_(pk),
-      ts_(ts),
       has_ts_idx_(has_ts_idx),
-      ts_idx_(ts_idx) {}
+      ts_(ts),
+      ts_idx_(ts_idx),
+      row_() {}
 
 DiskTableRowIterator::~DiskTableRowIterator() {
     delete it_;
@@ -1097,6 +1097,27 @@ bool DiskTable::DeleteIndex(const std::string& idx_name) {
 }
 
 uint64_t DiskTable::GetRecordIdxCnt() {
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+
+    // for (size_t i = 0; i < inner_indexs->size(); i++) {
+    //     bool is_valid = false;
+    //     for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
+    //         if (index_def && index_def->IsReady()) {
+    //             rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[i + 1]);
+
+    //             for (; it->Valid(); it->Next()) {
+    //                 uint32_t cur_ts_idx = UINT32_MAX;
+    //                 std::string cur_pk;
+    //                 uint64_t cur_ts;
+
+    //                 ParseKeyAndTs(has_ts_idx, it->key(), cur_pk, cur_ts, cur_ts_idx);
+    //             }
+    //         }
+    //     }
+        
+    // }
     // TODO(litongxin)
     return 0;
 }
