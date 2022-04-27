@@ -338,6 +338,9 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       engineOptions.SetEnableSparkUnsaferowFormat(true)
     }
 
+    println("--------------------------- tobe call, get IsEnableSparkUnsaferowFormat")
+    println(engineOptions.IsEnableSparkUnsaferowFormat())
+
     try {
       sqlEngine = new SqlEngine(dbs, engineOptions)
       val engine = sqlEngine.getEngine

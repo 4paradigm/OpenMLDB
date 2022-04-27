@@ -57,8 +57,22 @@ EngineOptions::EngineOptions()
 }
 
 EngineOptions* EngineOptions::SetEnableSparkUnsaferowFormat(bool flag) {
+
+
+    // tobe
+
+    LOG(WARNING) << "tobe call SetEnableSparkUnsaferowFormat";
+
+
+
     enable_spark_unsaferow_format_ = flag;
     FLAGS_enable_spark_unsaferow_format = flag;
+
+    LOG(WARNING) << "tobe enable_spark_unsaferow_format_: " << enable_spark_unsaferow_format_;
+
+    LOG(WARNING) << "tobe FLAGS_enable_spark_unsaferow_format: " << FLAGS_enable_spark_unsaferow_format;
+
+
     return this;
 }
 
