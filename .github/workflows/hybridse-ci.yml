@@ -27,7 +27,7 @@ jobs:
   linux-build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.5
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       OS: linux
       ARCH: x86_64
