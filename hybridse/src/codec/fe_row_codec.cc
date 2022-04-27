@@ -52,6 +52,12 @@ const std::unordered_map<::hybridse::type::Type, uint8_t>&
         {::hybridse::type::kDate, 8},  {::hybridse::type::kDouble, 8}};
 
 const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap() {
+
+    // tobe
+    LOG(WARNING) << "tobe call GetTypeSizeMap";
+    LOG(WARNING) << "tobe print FLAGS_enable_spark_unsaferow_format: " << FLAGS_enable_spark_unsaferow_format;
+
+
     if (FLAGS_enable_spark_unsaferow_format) {
         return SPARK_UNSAFEROW_TYPE_SIZE_MAP;
     } else {
