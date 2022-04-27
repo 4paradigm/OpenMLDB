@@ -70,7 +70,6 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowComponents, "show components"},
         {CmdType::kCmdShowTableStatus, "show table status"},
         {CmdType::kCmdDropFunction, "drop function"},
-        {CmdType::kCmdShowFunctions, "show functions"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
@@ -1359,7 +1358,13 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
+    output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", false);
+    output << "\n";
+    PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {

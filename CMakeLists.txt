@@ -90,8 +90,8 @@ endif ()
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
 endif()
-
 find_package(OpenSSL REQUIRED)
+
 find_library(BRPC_LIBRARY brpc)
 
 set(Protobuf_USE_STATIC_LIBS ON)
@@ -206,7 +206,7 @@ list(
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)
-    message(STATUS "ICU find_package failed, try to use `find_library()` to find")
+    message(STATUS "ICU package Not Found")
     find_library(ICU_I18N icui18n)
     find_library(ICU_IO icuio)
     find_library(ICU_UC icuuc)

@@ -450,7 +450,7 @@ TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
         "                   c6 double,\n"
         "                   c7 timestamp,\n"
         "                   c8 date,\n"
-        "                   index(key=c1, ts=c7)) OPTIONS(replicanum=1, partitionnum=1);";
+        "                   index(key=c1, ts=c7));";
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -755,7 +755,7 @@ TEST_F(SQLSDKTest, CreateTable) {
             }
         }
     }
-    ASSERT_EQ(pid_map.size(), 3u);
+    ASSERT_EQ(pid_map.size(), 1u);
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));

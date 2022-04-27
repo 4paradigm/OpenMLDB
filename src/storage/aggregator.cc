@@ -457,7 +457,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             aggr_buffer->aggr_val_.vlong += val;
             break;
         }
-        case DataType::kTimestamp:
         case DataType::kBigInt: {
             int64_t val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
@@ -489,7 +488,6 @@ bool SumAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_va
     switch (aggr_col_type_) {
         case DataType::kSmallInt:
         case DataType::kInt:
-        case DataType::kTimestamp:
         case DataType::kBigInt: {
             int64_t tmp_val = buffer.aggr_val_.vlong;
             aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(int64_t));
@@ -863,25 +861,25 @@ bool AvgAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
         case DataType::kSmallInt: {
             int16_t val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            aggr_buffer->aggr_val_.vdouble += val;
+            aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kInt: {
             int32_t val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            aggr_buffer->aggr_val_.vdouble += val;
+            aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kBigInt: {
             int64_t val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            aggr_buffer->aggr_val_.vdouble += val;
+            aggr_buffer->aggr_val_.vlong += val;
             break;
         }
         case DataType::kFloat: {
             float val;
             row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            aggr_buffer->aggr_val_.vdouble += val;
+            aggr_buffer->aggr_val_.vfloat += val;
             break;
         }
         case DataType::kDouble: {
@@ -900,8 +898,29 @@ bool AvgAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
 }
 
 bool AvgAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) {
-    double tmp_val = buffer.aggr_val_.vdouble;
-    aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(double));
+    switch (aggr_col_type_) {
+        case DataType::kSmallInt:
+        case DataType::kInt:
+        case DataType::kBigInt: {
+            int64_t tmp_val = buffer.aggr_val_.vlong;
+            aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(int64_t));
+            break;
+        }
+        case DataType::kFloat: {
+            float tmp_val = buffer.aggr_val_.vfloat;
+            aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(float));
+            break;
+        }
+        case DataType::kDouble: {
+            double tmp_val = buffer.aggr_val_.vdouble;
+            aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(double));
+            break;
+        }
+        default: {
+            PDLOG(ERROR, "Unsupported data type");
+            return false;
+        }
+    }
     aggr_val->append(reinterpret_cast<char*>(const_cast<int64_t*>(&buffer.non_null_cnt)), sizeof(int64_t));
     return true;
 }

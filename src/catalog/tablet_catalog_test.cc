@@ -74,8 +74,6 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "i64_col", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "f_col", ::openmldb::type::kFloat);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "d_col", ::openmldb::type::kDouble);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "t_col", ::openmldb::type::kTimestamp);
-    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "s_col", ::openmldb::type::kString);
 
     SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
     args.idx_name = "index0";
@@ -90,8 +88,7 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     for (int i = 0; i < num_pk; i++) {
         for (uint64_t ts = 1; ts <= num_ts; ts++) {
             pk = "pk" + std::to_string(i);
-            auto ts_str = std::to_string(ts);
-            uint32_t size = rb.CalTotalLength(pk.size() + ts_str.size());
+            uint32_t size = rb.CalTotalLength(pk.size());
             value.resize(size);
             rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
             rb.AppendString(pk.c_str(), pk.size());
@@ -104,16 +101,12 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
                 rb.AppendNULL();
                 rb.AppendNULL();
                 rb.AppendNULL();
-                rb.AppendNULL();
-                rb.AppendNULL();
             } else {
                 rb.AppendInt16(ts);
                 rb.AppendInt32(ts);
                 rb.AppendInt64(ts);
                 rb.AppendFloat(ts);
                 rb.AppendDouble(ts);
-                rb.AppendTimestamp(ts);
-                rb.AppendString(ts_str.c_str(), ts_str.size());
             }
             table->Put(pk, ts, value.c_str(), value.size());
 
@@ -174,7 +167,7 @@ TestArgs PrepareAggTable(const std::string &tname, int num_pk, uint64_t num_ts, 
     ::hybridse::vm::Schema fe_schema;
     schema::SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
-    const int val_len = sizeof(T);
+    const int val_len = sizeof(uint64_t);
     for (int i = 0; i < num_pk; i++) {
         int count = 0;
         uint64_t ts_start = 0;
@@ -936,10 +929,10 @@ void CheckAggResult(::hybridse::vm::Engine* engine, ::hybridse::vm::RequestRunSe
     ::hybridse::base::Status status;
     hybridse::codec::Row output;
     engine->Get(sql, "db1", session, status);
-    if (status.code != ::hybridse::common::kOk) {
-        LOG(ERROR) << "status = " << status.msg;
-    }
     ::hybridse::codec::RowView rv(session.GetSchema());
+    if (status.code != ::hybridse::common::kOk) {
+        std::cout << status.msg << std::endl;
+    }
     ASSERT_EQ(::hybridse::common::kOk, status.code);
     ASSERT_EQ(0, session.Run(request_row, &output));
     ASSERT_EQ(2, session.GetSchema().size());
@@ -951,11 +944,11 @@ void CheckAggResult(::hybridse::vm::Engine* engine, ::hybridse::vm::RequestRunSe
 
 TestArgs PrepareMultipleAggCatalog(TabletCatalog* catalog, int num_pk, int num_ts, int bucket_size, bool add_null) {
     TestArgs args;
-    std::vector<std::string> agg_cols = {"i16_col", "i32_col", "i64_col", "f_col", "d_col", "t_col"};
+    std::vector<std::string> agg_cols = {"i16_col", "i32_col", "i64_col", "f_col", "d_col"};
     std::vector<::hybridse::vm::AggrTableInfo> infos;
     for (int i = 0; i < static_cast<int>(agg_cols.size()); i++) {
         const auto& agg_col = agg_cols[i];
-        if (agg_col == "i16_col" || agg_col == "i32_col" || agg_col == "i64_col" || agg_col == "t_col") {
+        if (agg_col == "i16_col" || agg_col == "i32_col" || agg_col == "i64_col") {
             args = PrepareAggTable(absl::StrCat("aggr_t1_", agg_col), num_pk, num_ts, bucket_size, i + 2, add_null);
         } else if (agg_col == "f_col") {
             args =
@@ -1004,7 +997,6 @@ TEST_F(TabletCatalogTest, long_window_nullvalue_test) {
     CheckAggResult<int64_t>(&engine, session, request_row, "i64_col", exp);
     CheckAggResult<float>(&engine, session, request_row, "f_col", exp);
     CheckAggResult<double>(&engine, session, request_row, "d_col", exp);
-    CheckAggResult<int64_t>(&engine, session, request_row, "t_col", exp);
 }
 
 TEST_F(TabletCatalogTest, long_window_multi_windows_test) {

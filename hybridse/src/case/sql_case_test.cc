@@ -513,7 +513,7 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
                 "col5 bigint,\n"
                 "col6 string,\n"
                 "index(key=(col1), ts=col5)\n"
-                ") options(partitionnum=1, replicanum=1);",
+                ");",
                 create_sql);
         }
     }

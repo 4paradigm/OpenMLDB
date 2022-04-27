@@ -383,7 +383,7 @@ bool SqlCase::BuildCreateSqlFromSchema(const type::TableDef& table,
         sql.append(std::to_string(partition_num));
         sql.append(");");
     } else {
-        sql.append(") options(partitionnum=1, replicanum=1);");
+        sql.append(");");
     }
     *create_sql = sql;
     return true;

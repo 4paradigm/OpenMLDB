@@ -66,10 +66,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
         return row_;
     }
     inline void Seek(const uint64_t& key) { it_->Seek(key); }
-    inline void SeekToFirst() {
-        record_idx_ = 1;
-        it_->SeekToFirst();
-    }
+    inline void SeekToFirst() { it_->SeekToFirst(); }
     inline bool IsSeekable() const { return true; }
 
  private:
@@ -182,7 +179,8 @@ class MemTable : public Table {
 
     void SchedGc() override;
 
-    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override;  // NOLINT
+    int GetCount(uint32_t index, const std::string& pk,
+                 uint64_t& count);  // NOLINT
 
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;

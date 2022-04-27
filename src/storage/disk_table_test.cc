@@ -713,7 +713,7 @@ TEST_F(DiskTableTest, Load) {
 
     table = new DiskTable("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                           ::openmldb::common::StorageMode::kHDD, table_path);
-    ASSERT_TRUE(table->Init());
+    ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
     it->SeekToFirst();
@@ -1166,7 +1166,7 @@ TEST_F(DiskTableTest, CheckPoint) {
 
     table = new DiskTable("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
                           ::openmldb::common::StorageMode::kHDD, table_path);
-    ASSERT_TRUE(table->Init());
+    ASSERT_TRUE(table->LoadTable());
     raw_key = "test35";
     it = table->NewIterator(raw_key, ticket);
     it->SeekToFirst();

@@ -461,24 +461,6 @@ __attribute__((unused)) static void PrintOfflineTableInfo(
     stream << t << std::endl;
 }
 
-__attribute__((unused)) static void PrintTableOptions(
-    const std::unordered_map<std::string, std::string>& options,
-    std::ostream& stream) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-
-    for (const auto& kv : options) {
-        t.add(kv.first);
-    }
-    t.end_of_row();
-
-    for (auto& kv : options) {
-        t.add(kv.second);
-    }
-    t.end_of_row();
-
-    stream << t << std::endl;
-}
-
 __attribute__((unused)) static void PrintTableIndex(const ::hybridse::vm::IndexList& index_list,
         std::ostream& stream) {
     ::hybridse::base::TextTable t('-', ' ', ' ');

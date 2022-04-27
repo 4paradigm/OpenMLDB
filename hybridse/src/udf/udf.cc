@@ -54,8 +54,6 @@ constexpr time_t TZ_OFFSET = TZ * 3600000;
 constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
-void trivial_fun() {}
-
 int32_t dayofyear(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
@@ -158,8 +156,6 @@ int32_t weekofyear(Date *date) {
 }
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
-
-double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
 
 void date_format(Timestamp *timestamp,
                  StringRef *format,
@@ -846,6 +842,7 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
+
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
         return;
@@ -885,12 +882,12 @@ void lcase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
+
 void init_udfcontext(UDFContext* context) {
     context->pool = vm::JitRuntime::get()->GetMemPool();
     context->ptr = nullptr;
 }
 
-//
 
 template <>
 uint32_t to_string_len<int16_t>(const int16_t &v) {

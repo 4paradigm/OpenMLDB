@@ -225,7 +225,6 @@ int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
 float Cotf(float x);
-double Degrees(double x);
 
 void date_format(Date *date, const std::string &format,
                  StringRef *output);
@@ -270,7 +269,7 @@ void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void init_udfcontext(UDFContext* context);
-void trivial_fun();
+
 /**
  * Allocate string buffer from jit runtime.
  */

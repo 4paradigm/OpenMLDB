@@ -236,17 +236,11 @@ bool RowBuilder::AppendDate(int32_t year, int32_t month, int32_t day) {
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
     if (!Check(::hybridse::type::kDate)) return false;
-
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
     int32_t data = (year - 1900) << 16;
     data = data | ((month - 1) << 8);
     data = data | day;
-    return AppendDate(data);
-}
-
-bool RowBuilder::AppendDate(int32_t date) {
-    if (!Check(::hybridse::type::kDate)) return false;
-    int8_t* ptr = buf_ + offset_vec_[cnt_];
-    *(reinterpret_cast<int32_t*>(ptr)) = date;
+    *(reinterpret_cast<int32_t*>(ptr)) = data;
     cnt_++;
     return true;
 }

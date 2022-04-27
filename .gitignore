@@ -44,7 +44,8 @@ src/proto/*.h
 # ignore some build directory
 build
 build_mac
-thirdparty*/
+
+
 thirdsrc
 **/*.log
 onebox/*binlogs*

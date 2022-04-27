@@ -102,7 +102,6 @@ message TableInfo {
     repeated string partition_key = 14;
     repeated common.VersionPair schema_versions = 15;
     optional OfflineTableInfo offline_table_info = 16;
-    optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
 }
 
 message CreateTableRequest {
