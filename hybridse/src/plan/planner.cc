@@ -254,11 +254,9 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     // add MergeNode if multi ProjectionLists exist
     PlanNodeList project_list_vec(w_id);
     for (auto &v : merged_project_list_map) {
-        if (v.second->GetW() == nullptr) {
-            project_list_vec[0] = v.second;
-        } else {
-            project_list_vec[v.second->GetW()->GetId()] = v.second;
-        }
+        node::ProjectListNode *project_list = v.second;
+        int pos = nullptr == project_list->GetW() ? 0 : project_list->GetW()->GetId();
+        project_list_vec[pos] = project_list;
     }
 
     // merge simple project with 1st window project
