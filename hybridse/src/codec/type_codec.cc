@@ -94,10 +94,10 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
         // Notice that for UnsafeRowOpt field_offset should be the actual offset of string column
 
         LOG(WARNING) << "print row object: " << row;
-        LOG(WARNING) << "print field_offset" << field_offset;
+        LOG(WARNING) << "print field_offset: " << field_offset;
 
 
-        LOG(WARNING) << "print HEADER_LENGTH" << HEADER_LENGTH;
+        LOG(WARNING) << "print HEADER_LENGTH: " << HEADER_LENGTH;
 
 
         // For Spark UnsafeRow, the first 32 bits is for length and the last 32 bits is for offset.
@@ -105,7 +105,7 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
         uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row + field_offset + 4)) + HEADER_LENGTH;
 
 
-        LOG(WARNING) << "print str_value_offset" << str_value_offset;
+        LOG(WARNING) << "print str_value_offset: " << str_value_offset;
 
 
         *data = reinterpret_cast<const char*>(row + str_value_offset);
