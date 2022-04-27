@@ -6,22 +6,18 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.List;
 
-public class SimpleResultSetMetaData implements ResultSetMetaData {
-    private final List<String> columnNames;
-    private final List<Integer> columnSqlTypes;
+import com._4paradigm.openmldb.sdk.Column;
 
-    public SimpleResultSetMetaData(List<String> columnNames, List<Integer> columnSqlTypes) throws SQLException {
-        this.columnNames = columnNames;
-        this.columnSqlTypes = columnSqlTypes;
-        if (columnNames.size() != columnSqlTypes.size()) {
-            throw new SQLException(String.format("column names size %s != types size %s", columnNames.size(),
-                    columnSqlTypes.size()));
-        }
+public class SimpleResultSetMetaData implements ResultSetMetaData {
+    private final List<Column> columns;
+
+    public SimpleResultSetMetaData(List<Column> columnsInfo) {
+        columns = columnsInfo;
     }
 
     @Override
     public int getColumnCount() throws SQLException {
-        return columnNames.size();
+        return columns.size();
     }
 
     @Override
@@ -66,7 +62,7 @@ public class SimpleResultSetMetaData implements ResultSetMetaData {
 
     @Override
     public String getColumnName(int column) throws SQLException {
-        return columnNames.get(column - 1);
+        return columns.get(column - 1).getColumnName();
     }
 
     @Override
@@ -96,12 +92,12 @@ public class SimpleResultSetMetaData implements ResultSetMetaData {
 
     @Override
     public int getColumnType(int column) throws SQLException {
-        return columnSqlTypes.get(column - 1);
+        return columns.get(column - 1).getSqlType();
     }
 
     @Override
     public String getColumnTypeName(int column) throws SQLException {
-        return sqlTypeToString(columnSqlTypes.get(column - 1));
+        return sqlTypeToString(columns.get(column - 1).getSqlType());
     }
 
     @Override

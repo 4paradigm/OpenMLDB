@@ -35,6 +35,45 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     public static final String DRIVER_NAME = "OpenMLDB Connector/J";
     private final SQLConnection connection;
 
+    public static List<Column> tableRsCols = Arrays.asList(
+            new Column("TABLE_CAT", Types.VARCHAR),
+            new Column("TABLE_SCHEM", Types.VARCHAR),
+            new Column("TABLE_NAME", Types.VARCHAR),
+            new Column("TABLE_TYPE", Types.VARCHAR),
+            new Column("REMARKS", Types.VARCHAR),
+            new Column("TYPE_CAT", Types.VARCHAR),
+            new Column("TYPE_SCHEM", Types.VARCHAR),
+            new Column("TYPE_NAME", Types.VARCHAR),
+            new Column("SELF_REFERENCING_COL_NAME", Types.VARCHAR),
+            new Column("REF_GENERATION", Types.VARCHAR)
+    );
+    public static List<Column> columnRsCols = Arrays.asList(
+            new Column("TABLE_CAT", Types.VARCHAR),
+            new Column("TABLE_SCHEM", Types.VARCHAR),
+            new Column("TABLE_NAME", Types.VARCHAR),
+            new Column("COLUMN_NAME", Types.VARCHAR),
+            new Column("DATA_TYPE", Types.INTEGER),
+            new Column("TYPE_NAME", Types.VARCHAR),
+            new Column("COLUMN_SIZE", Types.INTEGER),
+            new Column("BUFFER_LENGTH", Types.INTEGER),
+            new Column("DECIMAL_DIGITS", Types.INTEGER),
+            new Column("NUM_PREC_RADIX", Types.INTEGER),
+            new Column("NULLABLE", Types.INTEGER),
+            new Column("REMARKS", Types.VARCHAR),
+            new Column("COLUMN_DEF", Types.VARCHAR),
+            new Column("SQL_DATA_TYPE", Types.INTEGER),
+            new Column("SQL_DATETIME_SUB", Types.INTEGER),
+            new Column("CHAR_OCTET_LENGTH", Types.INTEGER),
+            new Column("ORDINAL_POSITION", Types.INTEGER),
+            new Column("IS_NULLABLE", Types.VARCHAR),
+            new Column("SCOPE_CATALOG", Types.VARCHAR),
+            new Column("SCOPE_SCHEMA", Types.VARCHAR),
+            new Column("SCOPE_TABLE", Types.VARCHAR),
+            new Column("SOURCE_DATA_TYPE", Types.SMALLINT),
+            new Column("IS_AUTOINCREMENT", Types.VARCHAR),
+            new Column("IS_GENERATEDCOLUMN", Types.VARCHAR)
+    );
+
     public DatabaseMetaData(SQLConnection connection) {
         this.connection = connection;
     }
@@ -642,55 +681,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return null;
     }
 
-    /**
-     * Retrieves a description of the tables available in the given catalog.
-     * Only table descriptions matching the catalog, schema, table
-     * name and type criteria are returned.  They are ordered by
-     * <code>TABLE_TYPE</code>, <code>TABLE_CAT</code>,
-     * <code>TABLE_SCHEM</code> and <code>TABLE_NAME</code>.
-     * <p>
-     * Each table description has the following columns:
-     * <OL>
-     * <LI><B>TABLE_CAT</B> String {@code =>} table catalog (may be <code>null</code>)
-     * <LI><B>TABLE_SCHEM</B> String {@code =>} table schema (may be <code>null</code>)
-     * <LI><B>TABLE_NAME</B> String {@code =>} table name
-     * <LI><B>TABLE_TYPE</B> String {@code =>} table type.  Typical types are "TABLE",
-     * "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY",
-     * "LOCAL TEMPORARY", "ALIAS", "SYNONYM".
-     * <LI><B>REMARKS</B> String {@code =>} explanatory comment on the table
-     * <LI><B>TYPE_CAT</B> String {@code =>} the types catalog (may be <code>null</code>)
-     * <LI><B>TYPE_SCHEM</B> String {@code =>} the types schema (may be <code>null</code>)
-     * <LI><B>TYPE_NAME</B> String {@code =>} type name (may be <code>null</code>)
-     * <LI><B>SELF_REFERENCING_COL_NAME</B> String {@code =>} name of the designated
-     * "identifier" column of a typed table (may be <code>null</code>)
-     * <LI><B>REF_GENERATION</B> String {@code =>} specifies how values in
-     * SELF_REFERENCING_COL_NAME are created. Values are
-     * "SYSTEM", "USER", "DERIVED". (may be <code>null</code>)
-     * </OL>
-     *
-     * <P><B>Note:</B> OpenMLDB only has columns:
-     * TABLE_CAT='null'
-     * TABLE_SCHEM='null'
-     * TABLE_NAME
-     * TABLE_TYPE='TABLE'
-     *
-     * @param catalog          a catalog name; must match the catalog name as it
-     *                         is stored in the database; "" retrieves those without a catalog;
-     *                         <code>null</code> means that the catalog name should not be used to narrow
-     *                         the search
-     * @param schemaPattern    a schema name pattern; must match the schema name
-     *                         as it is stored in the database; "" retrieves those without a schema;
-     *                         <code>null</code> means that the schema name should not be used to narrow
-     *                         the search
-     * @param tableNamePattern a table name pattern; must match the
-     *                         table name as it is stored in the database
-     * @param types            a list of table types, which must be from the list of table types
-     *                         returned from {@link #getTableTypes},to include; <code>null</code> returns
-     *                         all types
-     * @return <code>ResultSet</code> - each row is a table description
-     * @throws SQLException if a database access error occurs
-     * @see #getSearchStringEscape
-     */
+    // only has: TABLE_CAT=null, TABLE_SCHEM=null, TABLE_NAME, TABLE_TYPE='TABLE'
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
         // TODO(hw): catalog unsupported, schema == openmldb db? Ref https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema
@@ -729,9 +720,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             table.add(row);
         }
 
-        return new SimpleResultSet(Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_TYPE",
-                "REMARKS", "TYPE_CAT", "TYPE_SCHEM", "TYPE_NAME", "SELF_REFERENCING_COL_NAME", "REF_GENERATION"),
-                Collections.nCopies(10, Types.VARCHAR), table);
+        return SimpleResultSet.createResultSet(tableRsCols, table);
     }
 
     @Override
@@ -826,24 +815,8 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             }
 
         }
-        List<String> columnNames = Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_NAME",
-                "COLUMN_NAME", "DATA_TYPE", "TYPE_NAME",
-                "COLUMN_SIZE", "BUFFER_LENGTH", "DECIMAL_DIGITS", "NUM_PREC_RADIX",
-                "NULLABLE",
-                "REMARKS", "COLUMN_DEF", "SQL_DATA_TYPE", "SQL_DATETIME_SUB", "CHAR_OCTET_LENGTH", "ORDINAL_POSITION",
-                "IS_NULLABLE",
-                "SCOPE_CATALOG", "SCOPE_SCHEMA", "SCOPE_TABLE", "SOURCE_DATA_TYPE",
-                "IS_AUTOINCREMENT", "IS_GENERATEDCOLUMN");
-        List<Integer> columnSqlTypes = new ArrayList<>(Collections.nCopies(4, Types.VARCHAR));
-        columnSqlTypes.add(Types.INTEGER);
-        columnSqlTypes.add(Types.VARCHAR);
-        columnSqlTypes.addAll(Collections.nCopies(5, Types.INTEGER));
-        columnSqlTypes.addAll(Collections.nCopies(2, Types.VARCHAR));
-        columnSqlTypes.addAll(Collections.nCopies(4, Types.INTEGER));
-        columnSqlTypes.addAll(Collections.nCopies(4, Types.VARCHAR));
-        columnSqlTypes.add(Types.SMALLINT);
-        columnSqlTypes.addAll(Collections.nCopies(2, Types.VARCHAR));
-        return new SimpleResultSet(columnNames, columnSqlTypes, table);
+
+        return new SimpleResultSet(columnRsCols, table);
     }
 
     @Override
