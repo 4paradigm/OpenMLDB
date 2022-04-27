@@ -85,7 +85,11 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
     // tobe
     LOG(WARNING) << "tobe call  GetStrFieldUnsafe";
 
+    LOG(WARNING) << "tobe before get gflag";
 
+    LOG(WARNING) << "gflag value: " << FLAGS_enable_spark_unsaferow_format;
+
+    LOG(WARNING) << "tobe after  get gflag";
 
     // Support Spark UnsafeRow format
     if (FLAGS_enable_spark_unsaferow_format) {
@@ -115,6 +119,8 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
 
         return 0;
     }
+
+    LOG(WARNING) << "tobe use normal implementation";
 
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;
