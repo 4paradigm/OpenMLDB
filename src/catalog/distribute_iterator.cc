@@ -278,7 +278,7 @@ std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetVal
     if (it_) {
         return it_->GetRawValue();
     }
-    return new RemoteWindowIterator(kv_it_.get());
+    return new RemoteWindowIterator(kv_it_, response_vec_.back());
 }
 
 const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {

@@ -69,13 +69,23 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
 
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
  public:
-    explicit RemoteWindowIterator(::openmldb::base::KvIterator* kv_it) : kv_it_(kv_it) {
+    RemoteWindowIterator(std::shared_ptr<::openmldb::base::KvIterator> kv_it,
+            std::shared_ptr<::google::protobuf::Message> response)
+        : kv_it_(kv_it), response_(response) {
         if (kv_it_->Valid()) {
             pk_ = kv_it_->GetPK();
         }
     }
-    bool Valid() const override { return kv_it_->Valid() && pk_ == kv_it_->GetPK(); }
-    void Next() override { kv_it_->Next(); }
+    bool Valid() const override {
+        if (kv_it_->Valid() && pk_ == kv_it_->GetPK()) {
+            DLOG(INFO) << "RemoteWindowIterator Valid pk " << pk_ << " ts " << kv_it_->GetKey();
+            return true;
+        }
+        return false;
+    }
+    void Next() override {
+        kv_it_->Next();
+    }
     const uint64_t& GetKey() const override {
         ts_ = kv_it_->GetKey();
         return ts_;
@@ -94,7 +104,8 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     bool IsSeekable() const override { return true; }
 
  private:
-    ::openmldb::base::KvIterator* kv_it_;
+    std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::shared_ptr<::google::protobuf::Message> response_;
     ::hybridse::codec::Row row_;
     std::string pk_;
     mutable uint64_t ts_;
@@ -125,7 +136,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     std::string index_name_;
     uint32_t cur_pid_;
     std::unique_ptr<::hybridse::codec::WindowIterator> it_;
-    std::unique_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 
