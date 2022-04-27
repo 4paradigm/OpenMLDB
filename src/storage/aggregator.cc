@@ -334,37 +334,9 @@ bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const 
     row_view.GetValue(row_ptr, 1, DataType::kTimestamp, &buffer->ts_begin_);
     row_view.GetValue(row_ptr, 2, DataType::kTimestamp, &buffer->ts_end_);
     row_view.GetValue(row_ptr, 3, DataType::kInt, &buffer->aggr_cnt_);
-<<<<<<< HEAD
-    char* ch = NULL;
-    uint32_t ch_length = 0;
-    row_view.GetValue(row_ptr, 4, &ch, &ch_length);
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt:
-        case DataType::kInt:
-        case DataType::kBigInt: {
-            int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-            buffer->aggr_val_.vlong = origin_val;
-            break;
-        }
-        case DataType::kFloat: {
-            float origin_val = *reinterpret_cast<float*>(ch);
-            buffer->aggr_val_.vfloat = origin_val;
-            break;
-        }
-        case DataType::kDouble: {
-            double origin_val = *reinterpret_cast<double*>(ch);
-            buffer->aggr_val_.vdouble = origin_val;
-            break;
-        }
-        default: {
-            PDLOG(ERROR, "Unsupported data type");
-            return false;
-        }
-=======
     row_view.GetValue(row_ptr, 5, DataType::kBigInt, &buffer->binlog_offset_);
     if (!DecodeAggrVal(row_ptr, buffer)) {
         return false;
->>>>>>> upstream/main
     }
     return true;
 }

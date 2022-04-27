@@ -593,13 +593,6 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-<<<<<<< HEAD
-    ExpectResultSetStrEq(
-        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-         {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
-        rs.get());
-=======
     if (cs->IsClusterMode()) {
         // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
         ExpectResultSetStrEq(
@@ -666,7 +659,6 @@ TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
         rs.get());
 
     // runs HandleSQL only for the purpose of pretty print result in console
->>>>>>> upstream/main
     HandleSQL("show table status");
 
     // teardown
@@ -766,9 +758,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
             },
             rs.get());
     }
-
-<<<<<<< HEAD
-=======
+    
     // show only tables inside hidden db
     HandleSQL("use INFORMATION_SCHEMA");
     rs = sr->ExecuteSQL("show table status", &status);
@@ -807,7 +797,6 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
         },
         rs.get());
 
->>>>>>> upstream/main
     // teardown
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),

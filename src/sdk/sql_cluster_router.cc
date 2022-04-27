@@ -1517,8 +1517,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
-<<<<<<< HEAD
-=======
         case hybridse::node::kCmdShowFunctions: {
             std::vector<::openmldb::common::ExternalFun> funs;
             base::Status st = ns_ptr->ShowFunction("", &funs);
@@ -1549,7 +1547,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet(
                 {"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines, status);
         }
->>>>>>> upstream/main
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());

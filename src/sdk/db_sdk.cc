@@ -132,15 +132,10 @@ bool DBSDK::InitExternalFun() {
     return true;
 }
 
-<<<<<<< HEAD
-bool DBSDK::RegisterExternalFun(const ::openmldb::common::ExternalFun& fun) {
-    void* fun_ptr = reinterpret_cast<void*>(trivial_fun);
-=======
 bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun) {
     if (!fun) {
         return false;
     }
->>>>>>> upstream/main
     ::hybridse::node::DataType return_type;
     ::openmldb::schema::SchemaAdapter::ConvertType(fun->return_type(), &return_type);
     std::vector<::hybridse::node::DataType> arg_types;
@@ -149,12 +144,7 @@ bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::External
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-<<<<<<< HEAD
-    std::vector<void*> fun_vec = {fun_ptr, fun_ptr, fun_ptr};
-    if (engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun_vec).isOK()) {
-=======
     if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), "").isOK()) {
->>>>>>> upstream/main
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun->name(), fun);
         return true;

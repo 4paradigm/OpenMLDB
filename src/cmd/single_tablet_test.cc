@@ -100,9 +100,6 @@ TEST_P(DBSDKTest, CreateFunction) {
                     strlength_sql,
                     int2str_sql
                 });
-<<<<<<< HEAD
-    auto result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
-=======
     auto result = sr->ExecuteSQL("show functions", &status);
     ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File"},
                           {"cut2", "Varchar", "Varchar", "false", so_path},
@@ -110,7 +107,6 @@ TEST_P(DBSDKTest, CreateFunction) {
                           {"strlength", "Int", "Varchar", "false", so_path}},
                          result.get());
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
->>>>>>> upstream/main
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
     result->Next();

@@ -1052,8 +1052,6 @@ TEST_F(TabletCatalogTest, long_window_multi_windows_test) {
     }
 }
 
-<<<<<<< HEAD
-=======
 TEST_F(TabletCatalogTest, long_window_empty_agg) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
@@ -1153,7 +1151,6 @@ TEST_F(TabletCatalogTest, long_window_empty) {
     }
 }
 
->>>>>>> upstream/main
 }  // namespace catalog
 }  // namespace openmldb
 
