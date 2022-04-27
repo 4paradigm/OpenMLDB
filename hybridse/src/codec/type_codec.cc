@@ -93,7 +93,6 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
 
         // Notice that for UnsafeRowOpt field_offset should be the actual offset of string column
 
-        LOG(WARNING) << "print row object: " << row;
         LOG(WARNING) << "print field_offset: " << field_offset;
 
 
@@ -109,6 +108,8 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
 
 
         *data = reinterpret_cast<const char*>(row + str_value_offset);
+
+        LOG(WARNING) << "print data: " << *data;
 
         LOG(WARNING) << "tobe end of GetStrFieldUnsafe";
 
