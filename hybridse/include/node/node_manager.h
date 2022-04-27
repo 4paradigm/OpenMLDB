@@ -57,8 +57,7 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(WindowPlanNode *w,
-                                             const bool need_agg);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
 
@@ -128,7 +127,7 @@ class NodeManager {
                                const WindowDefNode *w2);
     OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);
     OrderByNode *MakeOrderByNode(const ExprListNode *order_expressions);
-    SqlNode *MakeFrameExtent(SqlNode *start, SqlNode *end);
+    FrameExtent *MakeFrameExtent(SqlNode *start, SqlNode *end);
     SqlNode *MakeFrameBound(BoundType bound_type);
     SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
     SqlNode *MakeFrameBound(BoundType bound_type, int64_t offset);

@@ -2353,7 +2353,7 @@ cases:
 
   - id: 57
     desc: |
-      correctness for at/lag when offset out-of-range window frame bound.
+      correctness for at/lag when offset out-of-range rows_range window frame bound.
       keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
       refer https://github.com/4paradigm/OpenMLDB/issues/1554
     inputs:
@@ -2393,7 +2393,7 @@ cases:
 
   - id: 58
     desc: |
-      correctness for at/lag when offset out-of-range window frame bound, together with other window function.
+      correctness for at/lag when offset out-of-range rows_range window frame bound, together with other window function.
       refer https://github.com/4paradigm/OpenMLDB/issues/1554
     # FIXME(ace): request/cluster run do not meet the expects
     mode: request-unsupport,cluster-unsupport
@@ -2407,9 +2407,9 @@ cases:
           3, 1612130402000, g1, 3
           4, 1612130403000, g1, 4
           5, 1612130404000, g1, 5
-          6, 1612130404000, g2, 4
-          7, 1612130405000, g2, 3
-          8, 1612130406000, g2, 2
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
     sql: |
       select
       `id`,
@@ -2419,6 +2419,85 @@ cases:
       first_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, NULL, 1
+        3, 3, 3, NULL, 2
+        4, 4, 4, 1,    3
+        5, 5, 5, 2,    4
+        6, 4, 4, NULL, NULL
+        7, 3, 3, NULL, 4
+        8, 2, 2, NULL, 3
+
+  - id: 59
+    desc: |
+      correctness for at/lag when offset out-of-range window frame bound.
+      keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 1) over w1 as agg2,
+      lag(val1, 3) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, 1,    NULL
+        3, 3, 3, 2,    NULL
+        4, 4, 4, 3,    1
+        5, 5, 5, 4,    2
+        6, 4, 4, NULL, NULL
+        7, 3, 3, 4,    NULL
+        8, 2, 2, 3,    NULL
+
+  - id: 60
+    desc: |
+      correctness for at/lag when offset out-of-range rows window frame bound
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 3) over w1 as agg2,
+      first_value(val1) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
     expect:
       columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
       order: id

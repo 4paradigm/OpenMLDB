@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "node/node_enum.h"
 #include "node/sql_node.h"
 
@@ -298,7 +297,7 @@ class ProjectListNode : public LeafPlanNode {
           w_ptr_(nullptr),
           having_condition_(nullptr),
           projects_({}) {}
-    ProjectListNode(WindowPlanNode *w_ptr, const bool has_agg)
+    ProjectListNode(const WindowPlanNode *w_ptr, const bool has_agg)
         : LeafPlanNode(kProjectList),
           has_row_project_(false),
           has_agg_project_(has_agg),
@@ -320,8 +319,7 @@ class ProjectListNode : public LeafPlanNode {
         }
     }
 
-    WindowPlanNode *GetW() const { return w_ptr_; }
-    void SetW(WindowPlanNode* window) { w_ptr_ = window; }
+    const WindowPlanNode *GetW() const { return w_ptr_; }
     const ExprNode* GetHavingCondition() const { return having_condition_;}
     void SetHavingCondition(const node::ExprNode* having_condition) {
         this->having_condition_ = having_condition;
@@ -339,7 +337,7 @@ class ProjectListNode : public LeafPlanNode {
  private:
     bool has_row_project_;
     bool has_agg_project_;
-    WindowPlanNode *w_ptr_;
+    const WindowPlanNode *w_ptr_;
     const ExprNode* having_condition_;
     PlanNodeList projects_;
 };

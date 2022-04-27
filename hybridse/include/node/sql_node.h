@@ -1230,6 +1230,7 @@ class FrameNode : public SqlNode {
     void SetFrameRows(FrameExtent* ext) { frame_rows_ = ext; }
 
     int64_t frame_maxsize() const { return frame_maxsize_; }
+    void set_frame_maxsize(int64_t s) { frame_maxsize_ = s; }
     int64_t GetHistoryRangeStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
             return INT64_MIN;
@@ -1359,9 +1360,6 @@ class WindowDefNode : public SqlNode {
     SqlNodeList *union_tables() const { return union_tables_; }
     void set_union_tables(SqlNodeList *union_table) { union_tables_ = union_table; }
 
-    bool PermitWindowMerge() const { return permit_window_merge_; }
-    void SetPermitWindowMerge(bool permit) { permit_window_merge_ = permit; }
-
     const bool instance_not_in_window() const { return instance_not_in_window_; }
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
@@ -1381,10 +1379,6 @@ class WindowDefNode : public SqlNode {
     SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
-
-    // whether allow two window merged into single
-    // one can explicitly set this to false to disable window merge over this window
-    bool permit_window_merge_ = true;
 };
 
 class AllNode : public ExprNode {
@@ -2773,8 +2767,13 @@ bool SqlListEquals(const SqlNodeList *left, const SqlNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
+
+// retrieve the `WindowDefNode` for the `ExprNode`, which is either from
+//  `ExprNode` itself inside if it is an anonymous window e.g `fn() over (window)`
+//  or find in `windows` map by window name
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
+
 bool IsAggregationExpression(const udf::UdfLibrary* lib, const node::ExprNode* node_ptr);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT

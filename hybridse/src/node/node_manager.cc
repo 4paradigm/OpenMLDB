@@ -239,7 +239,7 @@ SqlNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
     FrameBound *node_ptr = new FrameBound(bound_type, offset, false);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
+FrameExtent *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
     FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start), dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
@@ -566,7 +566,7 @@ WindowPlanNode *NodeManager::MakeWindowPlanNode(int w_id) {
     return node_ptr;
 }
 
-ProjectListNode *NodeManager::MakeProjectListPlanNode(WindowPlanNode *w_ptr, const bool need_agg) {
+ProjectListNode *NodeManager::MakeProjectListPlanNode(const WindowPlanNode *w_ptr, const bool need_agg) {
     ProjectListNode *node_ptr = new ProjectListNode(w_ptr, need_agg);
     RegisterNode(node_ptr);
     return node_ptr;

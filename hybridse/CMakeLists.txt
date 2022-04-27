@@ -203,6 +203,7 @@ list(
         absl::synchronization
         absl::time
         absl::status
+        absl::statusor
 )
 
 find_package(ICU COMPONENTS i18n io uc data)

@@ -632,7 +632,7 @@ bool FrameExtent::Equals(const SqlNode *node) const {
 }
 
 FrameExtent* FrameExtent::ShadowCopy(NodeManager* nm) const {
-    return dynamic_cast<FrameExtent *>(nm->MakeFrameExtent(start(), end()));
+    return nm->MakeFrameExtent(start(), end());
 }
 
 bool FrameNode::Equals(const SqlNode *node) const {
@@ -887,7 +887,6 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
 
 // test if two window can be merged into single one
 // besides the two windows is the same one, two can also merged when all of those condition meet:
-// - flag permit_window_merge_ is true
 // - union table equal
 // - exclude current time equal
 // - instance not in window equal
@@ -901,7 +900,7 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     if (Equals(that)) {
         return true;
     }
-    return PermitWindowMerge() && SqlListEquals(this->union_tables_, that->union_tables_) &&
+    return SqlListEquals(this->union_tables_, that->union_tables_) &&
            this->exclude_current_time_ == that->exclude_current_time_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
@@ -1252,6 +1251,7 @@ bool IsAggregationExpression(const udf::UdfLibrary *lib, const ExprNode *node_pt
     }
     return false;
 }
+
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over
@@ -1260,6 +1260,7 @@ bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &wind
         CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
         if (nullptr != func_node_ptr->GetOver()) {
             if (func_node_ptr->GetOver()->GetName().empty()) {
+                // anonymous over
                 *output = func_node_ptr->GetOver();
             } else {
                 auto iter = windows.find(func_node_ptr->GetOver()->GetName());

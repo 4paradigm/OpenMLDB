@@ -326,20 +326,26 @@ TEST_F(PlannerV2Test, WindowWithUnionTest) {
     ASSERT_EQ("t1", relation_node->table_);
 }
 
+inline void AssertPos(const node::ProjectListNode* list, uint32_t idx, uint32_t expect_pos) {
+    node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(list->GetProjects()[idx]);
+    ASSERT_EQ(expect_pos, project->GetPos());
+}
+
 TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
     node::NodePointVector list;
     node::PlanNodeList trees;
     base::Status status;
+    // rows window merged first, then rows range window
     const std::string sql =
         R"sql(SELECT
         sum(col1) OVER w1 as w1_col1_sum,
         sum(col3) OVER w2 as w2_col3_sum,
         sum(col4) OVER w2 as w2_col4_sum,
+        lag(col1, 0) OVER w2 as w2_col1_at_0,
         col1,
         sum(col3) OVER w1 as w1_col3_sum,
         col2,
         sum(col1) OVER w2 as w2_col1_sum,
-        lag(col1, 0) OVER w2 as w2_col1_at_0,
         lag(col1, 1) OVER w2 as w2_col1_at_1
         FROM t1 WINDOW
         w1 AS (PARTITION BY col2 ORDER BY `TS` ROWS_RANGE BETWEEN 1d PRECEDING AND 1s PRECEDING),
@@ -371,53 +377,50 @@ TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
 
     const std::vector<std::pair<uint32_t, uint32_t>>& pos_mapping = project_plan_node->pos_mapping_;
     ASSERT_EQ(9u, pos_mapping.size());
-    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[0]);
-    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[1]);
-    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[2]);
-    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[3]);
-    ASSERT_EQ(std::make_pair(0u, 2u), pos_mapping[4]);
-    ASSERT_EQ(std::make_pair(0u, 3u), pos_mapping[5]);
-    ASSERT_EQ(std::make_pair(1u, 2u), pos_mapping[6]);
-    ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[7]);
-    ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[8]);
+    ASSERT_EQ(std::make_pair(1u, 0u), pos_mapping[0]);
+    ASSERT_EQ(std::make_pair(2u, 0u), pos_mapping[1]);
+    ASSERT_EQ(std::make_pair(2u, 1u), pos_mapping[2]);
+    ASSERT_EQ(std::make_pair(0u, 0u), pos_mapping[3]);
+    ASSERT_EQ(std::make_pair(0u, 1u), pos_mapping[4]);
+    ASSERT_EQ(std::make_pair(1u, 1u), pos_mapping[5]);
+    ASSERT_EQ(std::make_pair(0u, 2u), pos_mapping[6]);
+    ASSERT_EQ(std::make_pair(2u, 2u), pos_mapping[7]);
+    ASSERT_EQ(std::make_pair(0u, 3u), pos_mapping[8]);
 
-    // validate projection 0: window agg over w1 [-1d, -1s]
     {
+        // validate projection 0: lag agg over w2
         node::ProjectListNode *project_list =
             dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(0));
-
         ASSERT_EQ(4u, project_list->GetProjects().size());
+        ASSERT_TRUE(nullptr != project_list->GetW());
+        ASSERT_EQ(1, project_list->GetW()->frame_node()->GetHistoryRowsStartPreceding());
+        ASSERT_EQ(0, project_list->GetW()->frame_node()->GetHistoryRowsEnd());
+        ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
+        ASSERT_TRUE(project_list->HasAggProject());
+
+        // validate w2_col1_at_0 pos 7
+        AssertPos(project_list, 0, 3);
+        AssertPos(project_list, 1, 4);
+        AssertPos(project_list, 2, 6);
+        AssertPos(project_list, 3, 8);
+    }
+    {
+        // validate projection 1: window agg over w1 [-1d, -1s]
+        node::ProjectListNode *project_list =
+            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(1));
+
+        ASSERT_EQ(2u, project_list->GetProjects().size());
         ASSERT_FALSE(nullptr == project_list->GetW());
         ASSERT_EQ(-1 * 86400000, project_list->GetW()->GetStartOffset());
         ASSERT_EQ(-1000, project_list->GetW()->GetEndOffset());
 
-        // validate w1_col1_sum pos 0
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
-            ASSERT_EQ(0u, project->GetPos());
-        }
-        // validate col1 pos 3
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
-            ASSERT_EQ(3u, project->GetPos());
-        }
-
-        // validate w1_col3_sum pos 0
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2]);
-            ASSERT_EQ(4u, project->GetPos());
-        }
-
-        // validate col2 pos 5
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[3]);
-            ASSERT_EQ(5u, project->GetPos());
-        }
+        AssertPos(project_list, 0, 0);
+        AssertPos(project_list, 1, 5);
     }
     {
-        // validate projection 1: window agg over w2
+        // validate projection 2: window agg over w2
         node::ProjectListNode *project_list =
-            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(1));
+            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(2));
 
         ASSERT_EQ(3u, project_list->GetProjects().size());
         ASSERT_TRUE(nullptr != project_list->GetW());
@@ -426,43 +429,9 @@ TEST_F(PlannerV2Test, MultiProjectListPlanPostTest) {
         ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
         ASSERT_TRUE(project_list->HasAggProject());
 
-        // validate w2_col3_sum pos 1
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
-            ASSERT_EQ(1u, project->GetPos());
-        }
-        // validate w2_col4_sum pos 2
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
-            ASSERT_EQ(2u, project->GetPos());
-        }
-        // validate w2_col1_sum pos 6
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[2]);
-            ASSERT_EQ(6u, project->GetPos());
-        }
-    }
-    {
-        // validate projection 3: lag agg over w2
-        node::ProjectListNode *project_list =
-            dynamic_cast<node::ProjectListNode *>(project_plan_node->project_list_vec_.at(2));
-        ASSERT_EQ(2u, project_list->GetProjects().size());
-        ASSERT_TRUE(nullptr != project_list->GetW());
-        ASSERT_EQ(INT64_MIN, project_list->GetW()->GetStartOffset());
-        ASSERT_EQ(0, project_list->GetW()->GetEndOffset());
-        ASSERT_EQ("(col3)", node::ExprString(project_list->GetW()->GetKeys()));
-        ASSERT_TRUE(project_list->HasAggProject());
-
-        // validate w2_col1_at_0 pos 7
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[0]);
-            ASSERT_EQ(7u, project->GetPos());
-        }
-        // validate w2_col1_at_1 pos 8
-        {
-            node::ProjectNode *project = dynamic_cast<node::ProjectNode *>(project_list->GetProjects()[1]);
-            ASSERT_EQ(8u, project->GetPos());
-        }
+        AssertPos(project_list, 0, 1);
+        AssertPos(project_list, 1, 2);
+        AssertPos(project_list, 2, 7);
     }
 
     plan_ptr = plan_ptr->GetChildren()[0];
