@@ -536,7 +536,6 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ(status.code, -1);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
-    
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(base_db, &status);
