@@ -34,8 +34,8 @@ import java.util.stream.IntStream;
 public class JDBCDriverTest {
     @Test
     public void testSmoke() {
-        String zk = "localhost:6181";
-        String zkPath = "/onebox";
+        String zk = TestConfig.ZK_CLUSTER;
+        String zkPath = TestConfig.ZK_PATH;
         try {
             Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
             // No database in jdbcUrl
