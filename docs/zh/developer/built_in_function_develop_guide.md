@@ -15,8 +15,8 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 - 聚合函数（Aggregate Function）对数据集（如一列数据）执行计算，并返回单个值。
 
 本文是SQL内置函数的开发入门指南，旨在指引开发者快速掌握基础的内置函数开发方法。
-首先会详细介绍单行函数（UDF）开发步骤、分类以及示例，让开发者可以理解基本的自定义函数的开发以及注册模式。
-之后会过渡到复杂的聚合函数（UDAF）开发细节。我们诚挚欢迎更多的开发者加入社区，帮助我们扩展和开发内置函数集。
+首先会详细介绍单行函数开发步骤、分类以及示例，让开发者可以理解基本的自定义函数的开发以及注册模式。
+之后会过渡到复杂的聚合函数开发细节。我们诚挚欢迎更多的开发者加入社区，帮助我们扩展和开发内置函数集。
 
 ## 2. SQL函数开发步骤
 
@@ -109,18 +109,18 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
       void func_output_nullable_date(int64_t, Date*, bool*); 
       ```
     
-  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3.2. SQL函数开发](#3.2.-UDF函数开发分类)。
+  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3.2. SQL函数开发](#3.2.-单行函数开发分类)。
   
 - 参数Nullable的处理方式：
 
-  - 一般地，OpenMLDB对所有built-in的UDF采取统一的NULL参数处理方式。即任意一个参数为NULL时，直接返回NULL。
-  - 但需要对NULL参数做特殊处理的UDF或者UDAF，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](#3.2.4-SQL函数参数是Nullable)。
+  - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个参数为NULL时，直接返回NULL。
+  - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](#3.2.4-SQL函数参数是Nullable)。
 
 #### 2.1.5 内存管理
 
-- C++内置UDF函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。 
-- C++内置UDAF函数，可以在初始化的时候使用`new`或者`malloc`函数开辟空间，但需要保证在`output`生成最终结果的时候，将空间释放。
-- UDF和UDAF中也可以使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
+- C++内置单行函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。 
+- C++内置聚合函数，可以在初始化的时候使用`new`或者`malloc`函数开辟空间，但需要保证在`output`生成最终结果的时候，将空间释放。
+- 单行函数和聚合函数中也可以使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
   - 若空间size大于2M字节，则分配失败，返回nullptr。
   - 若空间size < 0，则分配失败，返回nullptr。
 
@@ -163,7 +163,7 @@ OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。
 - 时间和日期函数：在`DefaultUdfLibrary::InitTimeAndDateUdf()`中注册
 - 字符串函数：在`DefaultUdfLibrary::InitStringUdf()`中注册
 - 类型转换函数：在`DefaultUdfLibrary::InitTypeUdf()`中注册
-- 聚合函数UDAF：在`DefaultUdfLibrary::InitUdaf()`中注册
+- 聚合函数：在`DefaultUdfLibrary::InitUdaf()`中注册
 
 #### 2.2.2 注册名
 
@@ -173,12 +173,12 @@ OpenMLDB的 `DefaultUdfLibrary` 负责存放和管理内置的全局SQL函数。
 - 用户使用SQL函数时，是函数名是[大小写不敏感](https://en.wiktionary.org/wiki/case_insensitive) 的。例如，注册名为"aaa_bb"。用户在SQL语句中通过AAA_BB(), Aaa_Bb(), aAa_bb()均可调用"aaa_bb"关联的函数。
 
 #### 2.2.3 注册函数接口
-- UDF函数注册：
-  - 注册支持单一输入类型的UDF：`RegisterExternal("register_func_name")`
-  - 注册支持泛型的UDF：`RegisterExternalTemplate<FTemplate>("register_func_name")`
-- UDAF函数注册：
-  - 注册支持单一输入类型的UDAF：`RegisterUdaf("register_func_name")`
-  - 注册支持泛型的UDAF：`RegisterUdafTemplate<FTemplate>("register_func_name")`
+- 单行函数注册：
+  - 支持单一输入类型：`RegisterExternal("register_func_name")`
+  - 支持泛型：`RegisterExternalTemplate<FTemplate>("register_func_name")`
+- 聚合函数注册：
+  - 支持单一输入类型：`RegisterUdaf("register_func_name")`
+  - 支持泛型：`RegisterUdafTemplate<FTemplate>("register_func_name")`
 
 具体的接口定义会分别在下面章节中详细说明。
 
@@ -222,8 +222,8 @@ RegisterAlias("substr", "substring");
 #### 2.3.1 添加函数单元测试
 
 函数开发完成后，开发者需要添加相对应的测试用例以确保系统运行正确。
-一般地，UDF测试可以在[hybridse/src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) ,
-UDAF测试可以在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
+一般地，单行函数测试可以在[hybridse/src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) ,
+聚合函数测试可以在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
 中添加`TEST_F`单测。我们提供了CheckUdf函数以便开发者检验函数结果。
 
 ```c++
@@ -239,7 +239,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
 **示例:**
 
 - 在[hybridse/src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc)
-添加UDF单测：
+添加单测：
   ```c++
   // month(timestamp) normal check
   TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
@@ -259,7 +259,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   ```
 
 - 在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
-添加UDAF单测：
+添加单测：
   ```c++
   // avg udaf test
   TEST_F(UdafTest, avg_test) {
@@ -269,7 +269,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
 
 #### 2.3.2 编译和执行单测
 
-- 编译UDF测试
+- 编译`udf_ir_builder_test`并测试
   ```bash
   # 编译 udf_ir_builder_test, 默认输出路径为 build/hybridse/src/codegen/udf_ir_builder_test
   make OPENMLDB_BUILD_TARGET=udf_ir_builder_test TESTING_ENABLE=ON
@@ -277,7 +277,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   # 运行测试程序, 注意需要指定环境变量 SQL_CASE_BASE_DIR 到 OpenMLDB 项目到克隆路径
   SQL_CASE_BASE_DIR=${OPENMLDB_DIR} ./build/hybridse/src/codegen/udf_ir_builder_test
   ```
-- 编译UDAF测试
+- 编译`udaf_test`测试
   ```bash
   # 编译 udaf_test, 默认输出路径为 build/hybridse/src/udf/udaf_test
   make OPENMLDB_BUILD_TARGET=udaf_test TESTING_ENABLE=ON
@@ -289,12 +289,12 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
 如果需要通过SDK或者命令行的方式进行测试，需要重新编译`openmldb`。
 了解更多编译信息参见 [compile.md](../deploy/compile.md)。
 
-## 3. UDF函数开发
+## 3. 单行函数开发
 ### 3.1. 注册和配置接口
 
-#### 3.1.1 支持单一数据类型的UDF注册
+#### 3.1.1 支持单一数据类型的单行函数注册
 
-`DefaultUdfLibrary`提供`RegisterExternal` 接口来辅助内置函数的注册，并初始化函数的注册名。
+`DefaultUdfLibrary`提供`RegisterExternal` 接口来辅助内置单行函数的注册，并初始化函数的注册名。
 该方法需要指定数据类型，并且仅支持声明的数据类型。
 
 ```c++
@@ -315,7 +315,7 @@ RegisterExternal("register_func_name")
     - 若返回类型是***non-nullable***，函数结果将通过最后一个参数返回
     - 若返回类型是**nullable**，函数结果值将通过倒数第二个参数返回，而 ***null flag*** 将通过最后一个参数返回。如果***null flag***为***true***, 那么函数结果为***null***，否则函数结果从倒数第二个参数读取
 
-下面代码展示了注册`substring` UDF的注册代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
+下面代码展示了注册`substring` 内置单行函数的注册代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
 ```c++
 // void sub_string(StringRef *str, int32_t from, StringRef *output);
 
@@ -348,8 +348,8 @@ RegisterExternal("substring")
             @since 0.1.0)");
 ```
 
-#### 3.1.2 支持泛型模版的UDF注册
-我们还提供了`RegisterExternalTemplate` 接口来支持泛型的UDF注册，可以同时支持多种数据类型
+#### 3.1.2 支持泛型模版的内置函数注册
+我们还提供了`RegisterExternalTemplate` 接口来支持泛型的内置单行函数注册，可以同时支持多种数据类型
 
 ```c++
 RegisterExternalTemplate<TemplateClass>("register_func_name")
@@ -359,13 +359,13 @@ RegisterExternalTemplate<TemplateClass>("register_func_name")
 
 函数的配置一般包括：函数指针配置、参数类型配置，返回值配置
 
-- 配置UDF模板：`TemplateClass`
+- 配置函数模板：`TemplateClass`
 - 配置支持的参数类型：`args_in<arg_type,...>`
 - 配置返回方式：`return_by_arg()`
   - 当 **return_by_arg(false)** 时，结果直接通过`return`返回。 OpenMLDB 默认配置  `return_by_arg(false) `
   - 当 **return_by_arg(true)** 时，结果通过参数返回
 
-下面代码展示了注册`abs` UDF的代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
+下面代码展示了注册`abs` 内置单行函数的代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
 ```c++
 RegisterExternalTemplate<v1::Abs>("abs")
     .doc(R"(
@@ -385,10 +385,10 @@ RegisterExternalTemplate<v1::Abs>("abs")
         @since 0.1.0)")
     .args_in<int64_t, double>();
 ```
-泛型模版的UDF开发和单一数据类型的UDF开发类似，在本文档中不详细展开讨论，
-本章以下内容主要针对单一数据类型的UDF开发。
+泛型模版的内置单行函数开发和单一数据类型的内置单行函数开发类似，在本文档中不详细展开讨论，
+本章以下内容主要针对单一数据类型的内置单行函数开发。
 
-### 3.2. UDF函数开发分类
+### 3.2. 单行函数开发分类
 
 我们按内置函数的返回类型将函数基本分为三种类型：
 
@@ -881,13 +881,13 @@ select date(timestamp(1590115420000)) as dt;
  ------------
 ```
 
-## 4. 聚合函数UDAF开发
+## 4. 聚合函数开发
 
 ### 4.1. 注册和配置接口
 
-#### 4.1.1 支持单一数据类型的UDAF注册
+#### 4.1.1 支持单一数据类型的聚合函数注册
 
-`DefaultUdfLibrary`提供`RegisterUdaf` 接口来辅助UDAF函数的注册，并初始化函数的注册名。
+`DefaultUdfLibrary`提供`RegisterUdaf` 接口来辅助内置的聚合函数的注册，并初始化函数的注册名。
 该方法需要指定数据类型，并且仅支持声明的数据类型。
 
 ```c++
@@ -898,7 +898,7 @@ RegisterUdaf("register_func_name")
   .output("output_func_name", output_func_ptr, return_by_arg=false)
 ```
 
-和UDF注册函数不同的是，UDAF需要注册三个函数`init`, `update`, `output`，分别代码聚合函数初始化、
+和单行函数注册不同的是，聚合函数需要注册三个函数`init`, `update`, `output`，分别代码聚合函数初始化、
 中间状态更新和最终结果输出。
 函数的配置如下:
 
@@ -908,15 +908,15 @@ RegisterUdaf("register_func_name")
   - `IN, ...`：输入参数类型
 - 配置`init`函数指针: `init_func_ptr`，函数签名为`ST* Init()`
 - 配置`update`函数指针: `update_func_ptr`，
-函数签名为`ST* Update(ST* state, IN val1, ...)`
-  - 如果需要判断输入是否为**Nullable**，可以将这个参数配置为`Nullable`，并且在函数的对应参数后面加一个`bool`参数存放参数值是否为空的信息，
-    即函数格式为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
+  - 如果输入为非空，函数签名为`ST* Update(ST* state, IN val1, ...)`
+  - 如果需要判断输入是否为**Nullable**，可以将这个参数配置为`Nullable`，并且在函数的对应参数后面加一个`bool`参数存放参数值是否为空的信息。
+    函数签名为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
 - 配置`output`函数指针: `output_func_ptr`。
-  当函数的返回值可能为空(**Nullable**)时，额外要有一个`bool*`类型的参数来存放结果是否为空
+  当函数的返回值可能为空时，额外要有一个`bool*`类型的参数来存放结果是否为空
 （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
 
 
-下面代码展示了新增`second` UDAF的代码示例，`second`功能为返回聚合数据中非空的第二个元素，仅支持`int32_t`数据类型：
+下面代码展示了新增`second` 聚合函数的代码示例，`second`功能为返回聚合数据中非空的第二个元素；为了方便展示，示例中`second`仅支持`int32_t`数据类型：
 ```c++
 struct Second {
     static std::vector<int32_t>* Init() {
@@ -968,18 +968,18 @@ RegisterUdaf("second")
     )");
 ```
 
-#### 4.1.2 支持泛型的UDAF注册
-我们还提供`RegisterUdafTemplate` 接口来注册一个支持泛型的UDAF。
+#### 4.1.2 支持泛型的聚合函数注册
+我们还提供`RegisterUdafTemplate` 接口来注册一个支持泛型的聚合函数。
 
 ```c++
 RegisterUdafTemplate<TemplateClass>("register_func_name")
   .args_in<arg_type, ...>()
 ```
 
-- 配置UDAF模板：`TemplateClass`
+- 配置聚合函数模板：`TemplateClass`
 - 配置支持的所有参数类型：`args_in<arg_type, ...>`
 
-下面代码展示了注册`distinct_count` UDAF的代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
+下面代码展示了注册`distinct_count` 聚合函数的代码示例（代码可以在[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc) 查看）：
 ```c++
 RegisterUdafTemplate<DistinctCountDef>("distinct_count")
     .doc(R"(
@@ -1008,10 +1008,10 @@ RegisterUdafTemplate<DistinctCountDef>("distinct_count")
 
 ## 5. 示例代码参考
 
-### 5.1. UDF示例代码参考
-更多UDF示例代码可以参考：
+### 5.1. 单行函数示例代码参考
+更多单行函数示例代码可以参考：
 [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)
 
-### 5.2. UDAF示例代码参考
-更多UDAF示例代码可以参考：
+### 5.2. 聚合函数示例代码参考
+更多聚合函数示例代码可以参考：
 [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)
