@@ -20,6 +20,12 @@ We are using [Sphinx](https://www.sphinx-doc.org/) together with the [sphinx-mul
    sphinx-multiversion en build/en # the English documentations
    sphinx-multiversion zh build/zh # the Chinese documentations
    ```
+### Note
+After activation, you can use `which python` to check. 
+
+If python is not from conda envs 'sphinx', you may activate 'sphinx' from the (base) env.
+
+Deactivate `(base)` env, and then `conda activate sphinx`.
 
 ## Tips
 
