@@ -3,13 +3,13 @@
 * [ns client](#ns-client)
 * [tablet client](#tablet-client)
 
-### NS Client
+## NS Client
 连接到ns client 需要指定zk\_cluster、zk\_root\_path和role。其中zk\_cluster是zk地址，zk\_root\_path是集群在zk的根路径，role是启动的角色需指定为ns_client
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/onebox --role=ns_client
 ```
-#### use
+### use
 
 use命令可以切换到某个database下
 ```
@@ -33,7 +33,7 @@ showtable可以查看所有表，也可以指定看某一个表
 ------------------------------------------------------------------------------------------------------
   auto_VCeOIIKA  25   0    172.24.4.55:9971  leader  yes       8       4           498.000  9.128 K
 ```
-#### showtablet
+### showtablet
 
 查看tablet信息(如果使用的serverName和自动获取本地ip功能，则endpoint为serverName, real_endpoint为“-”)
 
@@ -46,7 +46,7 @@ showtable可以查看所有表，也可以指定看某一个表
   6534708420092481536  172.17.0.14:9533  kTabletHealthy  14h
 ```
 
-#### addreplica
+### addreplica
 
 添加副本
 
@@ -83,7 +83,7 @@ AddReplica ok
 AddReplica ok
 ```
 
-#### delreplica
+### delreplica
 
 删除副本
 
@@ -126,7 +126,7 @@ DelReplica ok
 DelReplica ok  
 ```
 
-#### migrate 
+### migrate 
 
 副本迁移
 
@@ -150,7 +150,7 @@ partition migrate ok
 ```
 
 
-#### confget
+### confget
 
 获取配置信息，目前只支持auto\_failover
 
@@ -169,7 +169,7 @@ partition migrate ok
   auto_failover  false
 ```
 
-#### confset
+### confset
 
 修改配置信息，目前只支持auto\_failover
 
@@ -183,7 +183,7 @@ partition migrate ok
 set auto_failover ok
 ```
 
-#### offlineendpoint
+### offlineendpoint
 
 下线节点。此命令是异步的返回成功后可通过showopstatus查看运行状态
 
@@ -211,7 +211,7 @@ offline endpoint ok
 
 该命令执行成功后所有分片都会有yes状态的leader
 
-#### recoverendpoint
+### recoverendpoint
 
 恢复节点数据。此命令是异步的返回成功后可通过showopstatus查看运行状态
 
@@ -234,7 +234,7 @@ recover endpoint ok
 
 1. **执行此命令前确保节点已经上线\(showtablet命令查看\)**
 
-#### changeleader
+### changeleader
 
 对某个指定的分片执行主从切换。此命令是异步的返回成功后可通过showopstatus查看运行状态
 
@@ -253,7 +253,7 @@ change leader ok
 change leader ok
 ```
 
-#### recovertable
+### recovertable
 
 恢复某个分片数据。此命令是异步的返回成功后可通过showopstatus查看运行状态
 
@@ -268,7 +268,7 @@ change leader ok
 recover table ok
 ```
 
-#### cancelop
+### cancelop
 
 取消一个正在执行或者待执行的操作. 取消后任务就状态变成kCanceled
 
@@ -281,7 +281,7 @@ recover table ok
 Cancel op ok!
 ```
 
-#### showopstatus
+### showopstatus
 
 显示操作执行信息
 
@@ -319,7 +319,7 @@ Cancel op ok!
   53     kRecoverTableOP        flow  1    kDone   20180824195252  1s            20180824195253  -
   56     kOfflineReplicaOP      flow  1    kDone   20180824200135  1s            20180824200136  -
 ```
-#### updatetablealive
+### updatetablealive
 
 修改分片alive状态
 
@@ -338,7 +338,7 @@ update ok
 ```
 **注: 此命令不可当做故障恢复使用. 一般用于切流量，操作方式为将某个节点表的alive状态改为no读请求就不会落在该节点上**
 
-#### showns
+### showns
 
 显示nameserver节点及其角色(如果使用的serverName和自动获取本地ip功能，则endpoint为serverName, real_endpoint为“-”)
 
@@ -351,7 +351,7 @@ update ok
   172.24.4.55:6531  -              leader
 ```
 
-#### exit
+### exit
 
 退出客户端
 
@@ -360,7 +360,7 @@ update ok
 bye
 ```
 
-#### quit 
+### quit 
 
 退出客户端
 
@@ -369,7 +369,7 @@ bye
 bye
 ```
 
-### Tablet Client
+## Tablet Client
 
 连接到tablet client需要指定endpoint和role. 其中endpoint是需要连接tablet的endpoint，role是启动的角色需指定为client
 
@@ -377,7 +377,7 @@ bye
 $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 ```
 
-#### loadtable
+### loadtable
 
 1、加载已有表
 
@@ -393,7 +393,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 > loadtable table1 1 0 144000 8
 ```
 已有表如果在内存中则loadtable会失败
-#### changerole
+### changerole
 
 改变表的leader角色
 
@@ -413,7 +413,7 @@ ChangeRole ok
 ChangeRole ok
 ```
 
-#### gettablestatus
+### gettablestatus
 
 获取表信息
 
@@ -434,7 +434,7 @@ ChangeRole ok
   2    0    4       kTableLeader  kTableNormal  false          0min  0s          689.000  kNoCompress
 ```
 
-#### getfollower
+### getfollower
 
 查看从节点信息
 
@@ -451,7 +451,7 @@ ChangeRole ok
   1  4    1    5923724        172.27.128.32:8541  5921707
 ```
 
-#### exit
+### exit
 
 退出客户端
 
@@ -460,7 +460,7 @@ ChangeRole ok
 bye
 ```
 
-#### quit
+### quit
 
 退出客户端
 

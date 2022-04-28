@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/strip.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -1503,12 +1505,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                                                 openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
                                                 arg_type,
                                                 is_aggregate,
-                                                fun_info.file(),
-                                                fun_info.offline_file()};
+                                                fun_info.file()};
                 lines.push_back(vec);
             }
             return ResultSetSQL::MakeResultSet(
-                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Offline_file"}, lines, status);
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -2812,15 +2813,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     fun->set_file((*option)["FILE"]->GetExprString());
     if (cluster_sdk_->IsClusterMode()) {
-        if (option->find("OFFLINE_FILE") == option->end()) {
-            if (fun->file().find('/') == std::string::npos) {
-                fun->set_offline_file(fun->file());
-            } else {
-                return {::hybridse::common::StatusCode::kCmdError, "missing OFFLINE_FILE option"};
-            }
-        } else {
-            fun->set_offline_file((*option)["OFFLINE_FILE"]->GetExprString());
-        }
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
             auto ret = taskmanager_client->CreateFunction(fun);
@@ -3490,8 +3482,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto tid = tinfo.tid();
         auto table_name = tinfo.name();
         auto db = tinfo.db();
-        // TODO(aceforeverd): support disk type
-        std::string storage_type = "memory";
+        auto& inner_storage_mode = StorageMode_Name(tinfo.storage_mode());
+        std::string storage_type = absl::AsciiStrToLower(absl::StripPrefix(inner_storage_mode, "k"));
+
         auto partition_num = tinfo.partition_num();
         auto replica_num = tinfo.replica_num();
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
