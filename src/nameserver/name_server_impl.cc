@@ -9159,10 +9159,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
             }
         }
     } else {
+        std::shared_ptr<TabletInfo> tablet_ptr = nullptr;
         for (const auto& partition : table_info->table_partition()) {
             uint32_t pid = partition.pid();
             for (const auto& meta : partition.partition_meta()) {
-                auto tablet_ptr = GetTablet(meta.endpoint());
+                tablet_ptr = GetTablet(meta.endpoint());
                 if (!tablet_ptr) {
                     PDLOG(WARNING, "endpoint[%s] can not find client", meta.endpoint().c_str());
                     base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet is not exist", response);
@@ -9173,6 +9174,12 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                     return;
                 }
             }
+        }
+        std::vector<::openmldb::common::ColumnKey> column_keys = {request->column_key()};
+        if (!tablet_ptr->client_->ExtractMultiIndexData(
+                table_info->tid(), 0, (uint32_t)table_info->table_partition_size(), column_keys)) {
+            base::SetResponseStatus(ReturnCode::kAddIndexFailed, "extract multi index failed", response);
+            return;
         }
         AddIndexToTableInfo(name, db, request->column_key(), table_info->column_key_size());
     }

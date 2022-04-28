@@ -18,10 +18,12 @@
 
 #include <unistd.h>
 
+#include <filesystem>
 #include <limits>
 #include <memory>
 #include <string>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/clock.h"
@@ -38,6 +40,10 @@ DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
 DECLARE_uint32(traverse_cnt_limit);
+DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
+DECLARE_string(recycle_bin_ssd_root_path);
+DECLARE_string(recycle_bin_hdd_root_path);
 
 ::openmldb::sdk::StandaloneEnv env;
 
@@ -1262,7 +1268,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     // reset to empty db
     sr->SetDatabase("");
 
-    // sleep for 10s, name server should updated TableInfo in schedule
+    // sleep for 4s, name server should updated TableInfo in schedule
     absl::SleepFor(absl::Seconds(4));
 
     // test
@@ -1283,6 +1289,58 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
             {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
             rs.get());
     }
+    // runs HandleSQL only for the purpose of pretty print result in console
+    HandleSQL("show table status");
+
+    // teardown
+    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                     absl::StrCat("drop database ", db_name)});
+    sr->SetDatabase("");
+}
+
+TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    if (cs->IsClusterMode()) {
+        // cluster mode not asserted because of #1695
+        // since tablets use of the same gflag to store table data, in mini cluster environment,
+        // it lead to dead lock cause tablets runs on same machine
+        return;
+    }
+
+    std::string db_name = absl::StrCat("db_", GenRand());
+    std::string tb_name = absl::StrCat("tb_", GenRand());
+
+    // prepare data
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat(
+                            "create table ", tb_name,
+                            " (id int, c1 string, c7 timestamp, index(key=id, ts=c7)) options (storage_mode = 'HDD');"),
+                        absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
+                    });
+    // reset to empty db
+    sr->SetDatabase("");
+
+    // sleep for 4s, name server should updated TableInfo in schedule
+    absl::SleepFor(absl::Seconds(4));
+
+    // test
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status", &status);
+    ASSERT_EQ(status.code, 0);
+
+    // TODO(ace): Memory_data_size not asserted because not implemented
+    ExpectResultSetStrEq(
+        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
+         {{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        rs.get());
+
+    // runs HandleSQL only for the purpose of pretty print result in console
     HandleSQL("show table status");
 
     // teardown
@@ -1387,7 +1445,7 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
                 nameserver::GLOBAL_VARIABLES,
                 nameserver::INFORMATION_SCHEMA_DB,
                 "memory",
-                {},  // TODO(aceforeverd): assert rows/data size info after GLOBAL_VARIABLES table is ready
+                "4",
                 {},
                 {},
                 "1",
@@ -1453,6 +1511,48 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"job_timeout", "20000"},
                           {"execute_mode", "offline"}},
                          rs.get());
+}
+
+TEST_P(DBSDKTest, SelectWithAddNewIndex) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    std::string db1_name = absl::StrCat("db1_", GenRand());
+    std::string tb1_name = absl::StrCat("tb1_", GenRand());
+
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db1_name, ";"),
+                    absl::StrCat("use ", db1_name, ";"),
+
+                    absl::StrCat("create table ", tb1_name,
+                                 " (id int, c1 string, c2 int, c3 timestamp, c4 timestamp, "
+                                 "index(key=(c1),ts=c4))options(partitionnum=1, replicanum=1);"),
+                    absl::StrCat("insert into ", tb1_name, " values(1,'aa',1,1590738990000,1637056523316);"),
+                    absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
+                    absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
+                    absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
+                    absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
+                });
+    absl::SleepFor(absl::Seconds(4));
+    hybridse::sdk::Status status;
+    auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
+    ASSERT_EQ(res->Size(), 4);
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c1='aa';"), &status);
+    ASSERT_EQ(res->Size(), 3);
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
+    ASSERT_EQ(res->Size(), 3);
+
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db1_name, ";"),
+                        absl::StrCat("drop table ", tb1_name),
+                        absl::StrCat("drop database ", db1_name),
+                    });
+
+    sr->SetDatabase("");
 }
 
 // --------------------------------------------------------------------------------------
@@ -1722,6 +1822,18 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
+    // enable disk table flags
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb";
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+
+    const std::string& tmp_path_str = tmp_path.string();
+    FLAGS_ssd_root_path = absl::StrCat(tmp_path_str, "/ssd_root_random_", ::openmldb::test::GenRand());
+    FLAGS_hdd_root_path = absl::StrCat(tmp_path_str, "/hdd_root_random_", ::openmldb::test::GenRand());
+    FLAGS_recycle_bin_hdd_root_path =
+        absl::StrCat(tmp_path_str, "/recycle_hdd_root_random_", ::openmldb::test::GenRand());
+    FLAGS_recycle_bin_ssd_root_path =
+        absl::StrCat(tmp_path_str, "/recycle_ssd_root_random_", ::openmldb::test::GenRand());
+
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;
     FLAGS_enable_distsql = true;

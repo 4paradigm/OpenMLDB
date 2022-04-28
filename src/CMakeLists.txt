@@ -48,6 +48,10 @@ function(compile_test DIR)
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
     ${BRPC_LIBS})
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+        list(APPEND TEST_LIBS stdc++fs)
+    endif()
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     foreach(SRC_FILE ${SRC_FILES})
         if (SRC_FILE MATCHES ".*_test.cc")
