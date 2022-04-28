@@ -526,6 +526,17 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ(status.code, -1);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
+    {
+        std::string deploy_sql = "deploy test1 options(long_windows='w_error:1d') select col1,"
+                                 " sum(col3) over w1 as w1_sum_col3 from " + base_table +
+                                 " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+                                 " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+        router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+        router->ExecuteSQL(base_db, deploy_sql, &status);
+        ASSERT_EQ(status.code, -1);
+        ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
+    }
+    
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(base_db, &status);
