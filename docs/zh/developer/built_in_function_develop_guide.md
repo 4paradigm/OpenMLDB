@@ -259,7 +259,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   ```
 
 - 在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
-添加单测：
+添加UDAF单测：
   ```c++
   // avg udaf test
   TEST_F(UdafTest, avg_test) {
