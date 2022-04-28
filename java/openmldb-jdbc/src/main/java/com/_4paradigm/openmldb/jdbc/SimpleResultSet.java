@@ -36,21 +36,39 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
+import com._4paradigm.openmldb.sdk.Column;
+
 public class SimpleResultSet implements ResultSet {
-    public SimpleResultSet(List<List<String>> data) {
-        this.data = data;
-    }
-
-    public static ResultSet createResultSet(String[] columnNames, Types[] columnTypes, List<List<String>> data) {
-        return new SimpleResultSet(data);
-    }
-
-    List<List<String>> data;
+    private final List<Column> columnsInfo;
+    private final List<List<String>> data;
     private int currentRowIdx = -1;
+
+    public SimpleResultSet(List<Column> cols, List<List<String>> table) {
+        columnsInfo = cols;
+        data = table;
+    }
+
+    public static ResultSet createResultSet(List<Column> cols, List<List<String>> table) {
+        return new SimpleResultSet(cols, table);
+    }
+
+    public static <T> ResultSet createResultSet(List<String> names, List<Integer> types,
+                                                List<List<String>> table) throws SQLException {
+        if (names.size() != types.size()) {
+            throw new SQLException(String.format("column names size %s != types size %s", names.size(),
+                    types.size()));
+        }
+        List<Column> columns = new ArrayList<>();
+        for (int i = 0; i < names.size(); i++) {
+            columns.add(new Column(names.get(i), types.get(i)));
+        }
+        return createResultSet(columns, table);
+    }
 
     @Override
     public boolean next() throws SQLException {
@@ -244,7 +262,7 @@ public class SimpleResultSet implements ResultSet {
 
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
-        return null;
+        return new SimpleResultSetMetaData(columnsInfo);
     }
 
     @Override
