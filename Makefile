@@ -15,7 +15,7 @@
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR  := $(dir $(MAKEFILE_PATH))
 # Disable parallel build, or system freezing may happen: #882
-NPROC ?= 8
+NPROC ?= 1
 
 CMAKE_PRG ?= $(shell (command -v cmake3 || echo cmake))
 CMAKE_BUILD_TYPE ?= RelWithDebInfo

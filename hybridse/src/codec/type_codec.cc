@@ -82,45 +82,15 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
                           const char** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
 
-    // tobe
-    LOG(WARNING) << "tobe call  GetStrFieldUnsafe";
-
-    LOG(WARNING) << "tobe before get gflag";
-
-    LOG(WARNING) << "gflag value: " << FLAGS_enable_spark_unsaferow_format;
-
-    LOG(WARNING) << "tobe after  get gflag";
-
     // Support Spark UnsafeRow format
     if (FLAGS_enable_spark_unsaferow_format) {
-        LOG(WARNING) << "tobe enable spark unsaferow format";
-
         // Notice that for UnsafeRowOpt field_offset should be the actual offset of string column
-
-        LOG(WARNING) << "print field_offset: " << field_offset;
-
-
-        LOG(WARNING) << "print HEADER_LENGTH: " << HEADER_LENGTH;
-
-
         // For Spark UnsafeRow, the first 32 bits is for length and the last 32 bits is for offset.
         *size = *(reinterpret_cast<const uint32_t*>(row + field_offset));
         uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row + field_offset + 4)) + HEADER_LENGTH;
-
-
-        LOG(WARNING) << "print str_value_offset: " << str_value_offset;
-
-
         *data = reinterpret_cast<const char*>(row + str_value_offset);
-
-        LOG(WARNING) << "print data: " << *data;
-
-        LOG(WARNING) << "tobe end of GetStrFieldUnsafe";
-
         return 0;
     }
-
-    LOG(WARNING) << "tobe use normal implementation";
 
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;

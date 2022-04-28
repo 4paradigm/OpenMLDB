@@ -26,9 +26,6 @@ namespace hybridse {
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size) {
-    //LOG(WARNING) << "tobe call BitMapSize";
-    //LOG(WARNING) << "tobe print FLAGS_enable_spark_unsaferow_format: " << FLAGS_enable_spark_unsaferow_format;
-
     if (FLAGS_enable_spark_unsaferow_format) {
         // For UnsafeRow opt, the nullbit set increases by 8 bytes
         return ((size >> 6) + !!(size&0x7f)) * 8;
