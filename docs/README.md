@@ -15,6 +15,13 @@ We are using [Sphinx](https://www.sphinx-doc.org/) together with the [sphinx-mul
    conda env create -f environment.yml
    conda activate sphinx
    ```
+```{tip}
+You can use `which python` to check. 
+
+If python is not from conda envs 'sphinx', you may activate 'sphinx' from the (base) env.
+
+Deactivate `(base)` env, and then `conda activate sphinx`.
+```
 3. Building the Chinese or English doc
    ```bash
    sphinx-multiversion en build/en # the English documentations
