@@ -1447,6 +1447,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         it->SeekToFirst();
     }
     std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
+    std::vector<std::string> key_seq;
     uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
@@ -1469,6 +1470,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         if (value_map.find(last_pk) == value_map.end()) {
             value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>()));
             value_map[last_pk].reserve(request->limit());
+            key_seq.emplace_back(last_pk);
         }
         openmldb::base::Slice value = it->GetValue();
         value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
@@ -1501,12 +1503,16 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
-    for (const auto& kv : value_map) {
-        for (const auto& pair : kv.second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", kv.first.c_str(), pair.first, pair.second.size());
-            ::openmldb::codec::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer,
+    for (const auto& key : key_seq) {
+        auto iter = value_map.find(key);
+        if (iter == value_map.end()) {
+            continue;
+        }
+        for (const auto& pair : iter->second) {
+            DEBUGLOG("encode pk %s ts %lu size %u", key.c_str(), pair.first, pair.second.size());
+            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer,
                                           offset);
-            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
+            offset += (4 + 4 + 8 + key.length() + pair.second.size());
         }
     }
     delete it;

@@ -200,7 +200,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     auto client_iter = tablet_clients_.find(cur_pid_);
     if (client_iter != tablet_clients_.end()) {
         uint32_t count = 0;
-        kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0,
+        kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, key, 0,
                     FLAGS_traverse_cnt_limit, false, count));
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
