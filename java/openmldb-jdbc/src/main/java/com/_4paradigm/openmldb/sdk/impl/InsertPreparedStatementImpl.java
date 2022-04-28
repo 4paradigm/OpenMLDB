@@ -92,7 +92,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         return row;
     }
 
-    private void clearSQLInsertRowList(){
+    private void clearSQLInsertRowList() {
         for (SQLInsertRow row : currentRows) {
             row.delete();
         }
@@ -113,7 +113,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     private void checkIdx(int i) throws SQLException {
         if (closed) {
-            throw new SQLException("preparedstatement closed");
+            throw new SQLException("prepared statement closed");
         }
         if (i <= 0) {
             throw new SQLException("error sqe number");
@@ -240,7 +240,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         }
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, date);
-
     }
 
     @Override
@@ -430,9 +429,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setDate(int i, Date date, Calendar calendar) throws SQLException {
-        throw new SQLException("current do not support this method");
+        checkIdx(i);
+        checkType(i, DataType.kTypeDate);
+        if (date == null) {
+            setNull(i);
+            return;
+        }
+        hasSet.set(i - 1, true);
+        currentDatas.set(i - 1, date);
     }
 
     @Override
@@ -442,9 +447,16 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setTimestamp(int i, Timestamp timestamp, Calendar calendar) throws SQLException {
-        throw new SQLException("current do not support this method");
+        checkIdx(i);
+        checkType(i, DataType.kTypeTimestamp);
+        if (timestamp == null) {
+            setNull(i);
+            return;
+        }
+        hasSet.set(i - 1, true);
+        long ts = timestamp.getTime();
+        currentDatas.set(i - 1, ts);
     }
 
     @Override
@@ -708,9 +720,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
     }
 
     @Override

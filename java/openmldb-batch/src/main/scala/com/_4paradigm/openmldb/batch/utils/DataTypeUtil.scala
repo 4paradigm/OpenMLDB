@@ -71,6 +71,22 @@ object DataTypeUtil {
     }
   }
 
+  def protoTypeToOpenmldbType(dtype: com._4paradigm.openmldb.proto.Type.DataType): OpenmldbDataType = {
+    dtype match {
+      case com._4paradigm.openmldb.proto.Type.DataType.kSmallInt => OpenmldbDataType.kInt16
+      case com._4paradigm.openmldb.proto.Type.DataType.kInt => OpenmldbDataType.kInt32
+      case com._4paradigm.openmldb.proto.Type.DataType.kBigInt => OpenmldbDataType.kInt64
+      case com._4paradigm.openmldb.proto.Type.DataType.kFloat => OpenmldbDataType.kFloat
+      case com._4paradigm.openmldb.proto.Type.DataType.kDouble => OpenmldbDataType.kDouble
+      case com._4paradigm.openmldb.proto.Type.DataType.kBool => OpenmldbDataType.kBool
+      case com._4paradigm.openmldb.proto.Type.DataType.kString => OpenmldbDataType.kVarchar
+      case com._4paradigm.openmldb.proto.Type.DataType.kVarchar => OpenmldbDataType.kVarchar
+      case com._4paradigm.openmldb.proto.Type.DataType.kDate => OpenmldbDataType.kDate
+      case com._4paradigm.openmldb.proto.Type.DataType.kTimestamp => OpenmldbDataType.kTimestamp
+      case _ => throw new IllegalArgumentException(
+        s"Openmldb proto data type $dtype not supported")
+    }
+  }
 
   def protoTypeToSparkType(dtype: com._4paradigm.openmldb.proto.Type.DataType): DataType = {
     dtype match {
