@@ -286,10 +286,9 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     }
 }
 
-::openmldb::base::Status TaskManagerClient::DropFunction(const std::string& name, bool if_exists) {
+::openmldb::base::Status TaskManagerClient::DropFunction(const std::string& name) {
     ::openmldb::taskmanager::DropFunctionRequest request;
     request.set_name(name);
-    request.set_if_exists(if_exists);
     ::openmldb::taskmanager::DropFunctionResponse response;
     if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::DropFunction, &request,
                                   &response, request_timeout_ms_, 1)) {

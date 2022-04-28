@@ -134,7 +134,6 @@ message CreateFunctionResponse {
 
 message DropFunctionRequest {
     optional string name = 1;
-    optional bool if_exists = 2;
 };
 
 message DropFunctionResponse {

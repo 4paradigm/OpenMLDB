@@ -1562,7 +1562,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 cluster_sdk_->RemoveExternalFun(name);
                 auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
                 if (taskmanager_client) {
-                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    base_status = taskmanager_client->DropFunction(name);
                     if (!base_status.OK()) {
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                         return {};
