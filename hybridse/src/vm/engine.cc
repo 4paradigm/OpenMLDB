@@ -50,30 +50,7 @@ EngineOptions::EngineOptions()
       enable_expr_optimize_(true),
       enable_batch_window_parallelization_(false),
       enable_window_column_pruning_(false),
-      max_sql_cache_size_(50),
-      enable_spark_unsaferow_format_(false) {
-    // TODO(chendihao): Pass the parameter to avoid global gflag
-    FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
-}
-
-EngineOptions* EngineOptions::SetEnableSparkUnsaferowFormat(bool flag) {
-
-
-    // tobe
-
-    LOG(WARNING) << "tobe call SetEnableSparkUnsaferowFormat";
-
-
-
-    enable_spark_unsaferow_format_ = flag;
-    FLAGS_enable_spark_unsaferow_format = flag;
-
-    LOG(WARNING) << "tobe enable_spark_unsaferow_format_: " << enable_spark_unsaferow_format_;
-
-    LOG(WARNING) << "tobe FLAGS_enable_spark_unsaferow_format: " << FLAGS_enable_spark_unsaferow_format;
-
-
-    return this;
+      max_sql_cache_size_(50) {
 }
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog), options_(), mu_(), lru_cache_() {}
@@ -85,6 +62,10 @@ void Engine::InitializeGlobalLLVM() {
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
     LLVM_IS_INITIALIZED = true;
+}
+
+void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
+    FLAGS_enable_spark_unsaferow_format = isUnsafeRowOpt;
 }
 
 bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,

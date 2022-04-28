@@ -120,7 +120,8 @@ object JoinPlan {
           outputSchema = filter.fn_info().fn_schema(),
           moduleTag = ctx.getTag,
           moduleBroadcast = ctx.getSerializableModuleBuffer,
-          hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
+          hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath,
+          ctx.getConf.enableUnsafeRowOptimization
         )
         spark.udf.register(regName, conditionUDF)
 
@@ -206,13 +207,15 @@ object JoinPlan {
                          outputSchema: java.util.List[ColumnDef],
                          moduleTag: String,
                          moduleBroadcast: SerializableByteBuffer,
-                         hybridseJsdkLibraryPath: String
+                         hybridseJsdkLibraryPath: String,
+                         isUnsafeRowOpt: Boolean
                         ) extends Function1[Row, Boolean] with Serializable {
 
     @transient private lazy val tls = new ThreadLocal[UnSafeJoinConditionUDFImpl]() {
       override def initialValue(): UnSafeJoinConditionUDFImpl = {
         new UnSafeJoinConditionUDFImpl(
-          functionName, inputSchemaSlices, outputSchema, moduleTag, moduleBroadcast, hybridseJsdkLibraryPath)
+          functionName, inputSchemaSlices, outputSchema, moduleTag, moduleBroadcast, hybridseJsdkLibraryPath,
+          isUnsafeRowOpt)
       }
     }
 
@@ -226,7 +229,8 @@ object JoinPlan {
                                    outputSchema: java.util.List[ColumnDef],
                                    moduleTag: String,
                                    moduleBroadcast: SerializableByteBuffer,
-                                   openmldbJsdkLibraryPath: String
+                                   openmldbJsdkLibraryPath: String,
+                                   isUnafeRowOpt: Boolean
                                   ) extends Function1[Row, Boolean] with Serializable {
     private val jit = initJIT()
 
@@ -243,7 +247,7 @@ object JoinPlan {
       // ensure worker native
       val buffer = moduleBroadcast.getBuffer
       SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-      JitManager.initJitModule(moduleTag, buffer)
+      JitManager.initJitModule(moduleTag, buffer, isUnafeRowOpt)
 
       JitManager.getJit(moduleTag)
     }

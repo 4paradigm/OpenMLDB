@@ -47,6 +47,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
   // Ensure native initialized
   SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
   Engine.InitializeGlobalLLVM()
+  Engine.InitializeUnsafeRowOptFlag(config.enableUnsafeRowOptimization)
 
   def this(session: SparkSession, sparkAppName: String) = {
     this(session, OpenmldbBatchConfig.fromSparkSession(session), sparkAppName)
@@ -333,13 +334,6 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
     } else {
       logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
     }
-
-    if (config.enableUnsafeRowOptimization) {
-      engineOptions.SetEnableSparkUnsaferowFormat(true)
-    }
-
-    println("--------------------------- tobe call, get IsEnableSparkUnsaferowFormat")
-    println(engineOptions.IsEnableSparkUnsaferowFormat())
 
     try {
       sqlEngine = new SqlEngine(dbs, engineOptions)

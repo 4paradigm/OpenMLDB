@@ -120,13 +120,6 @@ class EngineOptions {
     /// Return the maximum number of entries we can hold for compiling cache.
     inline uint32_t GetMaxSqlCacheSize() const { return max_sql_cache_size_; }
 
-    /// Set `true` to enable spark unsafe row format, default `false`.
-    EngineOptions* SetEnableSparkUnsaferowFormat(bool flag);
-    /// Return if the engine can support can support spark unsafe row format.
-    inline bool IsEnableSparkUnsaferowFormat() const {
-        return enable_spark_unsaferow_format_;
-    }
-
     /// Return JitOptions
     inline hybridse::vm::JitOptions& jit_options() { return jit_options_; }
 
@@ -140,7 +133,6 @@ class EngineOptions {
     bool enable_batch_window_parallelization_;
     bool enable_window_column_pruning_;
     uint32_t max_sql_cache_size_;
-    bool enable_spark_unsaferow_format_;
     JitOptions jit_options_;
 };
 
@@ -366,6 +358,8 @@ class Engine {
 
     /// \brief Initialize LLVM environments
     static void InitializeGlobalLLVM();
+
+    static void InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt);
 
     ~Engine();
 
