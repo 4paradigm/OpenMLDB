@@ -1912,6 +1912,10 @@ TEST_F(PlannerV2ErrorTest, NonSupportSQL) {
 
     expect_converted(R"sql(select 'mike' like 'm%' escape '2c';)sql",
         common::kUnsupportSql, "escape value is not string or string size >= 2");
+
+    expect_converted(R"sql(SELECT lag(COL2, lag(col1, 1)) over w1 from t1
+                                 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);)sql",
+                     common::kUnsupportSql, "INVALID_ARGUMENT: offset can only be constant");
 }
 
 TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {

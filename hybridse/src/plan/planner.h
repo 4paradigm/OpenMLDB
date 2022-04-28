@@ -102,7 +102,7 @@ class Planner {
     //  - frame_start = max(offset, in.frame_start)
     //  - frame_end = current row
     absl::StatusOr<node::WindowDefNode *> ConstructWindowForLag(const node::WindowDefNode *in,
-                                                             const node::CallExprNode *call) const;
+                                                                const node::CallExprNode *call) const;
 
  private:
     const std::unordered_map<std::string, std::string>* extra_options_ = nullptr;

@@ -180,7 +180,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
             auto *call_expr = dynamic_cast<node::CallExprNode *>(project_expr);
             if (call_expr != nullptr && IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
                 auto s = ConstructWindowForLag(w_ptr, call_expr);
-                CHECK_TRUE(s.ok(), common::kPlanError, s.status().ToString());
+                CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
                 w_ptr = s.value();
             }
         }
@@ -1176,41 +1176,27 @@ absl::StatusOr<node::WindowDefNode *> Planner::ConstructWindowForLag(const node:
         return absl::InvalidArgumentError("offset can only be constant");
     }
 
+    if (in->GetFrame()->frame_type() != node::FrameType::kFrameRows &&
+        in->GetFrame()->frame_type() != node::FrameType::kFrameRowsRange) {
+        return absl::InvalidArgumentError("input window is not a ROWS or ROWS_RANGE window");
+    }
+
     auto *const_node = dynamic_cast<node::ConstNode *>(offset_expr);
     int64_t offset = const_node->GetAsInt32();
-    switch (in->GetFrame()->frame_type()) {
-        case node::FrameType::kFrameRows: {
-            int64_t win_frame_start_offset = in->GetFrame()->GetHistoryRowsStartPreceding();
 
-            auto *rows_frame_ext = node_manager_->MakeFrameExtent(
-                node_manager_->MakeFrameBound(node::BoundType::kPreceding, std::max(offset, win_frame_start_offset)),
-                node_manager_->MakeFrameBound(node::BoundType::kCurrent));
+    auto *rows_frame_ext =
+        node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(node::BoundType::kPreceding, offset),
+                                       node_manager_->MakeFrameBound(node::BoundType::kCurrent));
 
-            auto *new_frame = in->GetFrame()->ShadowCopy(node_manager_);
-            new_frame->SetFrameRows(rows_frame_ext);
-            auto *new_win = in->ShadowCopy(node_manager_);
-            new_win->SetFrame(new_frame);
-            return new_win;
-        }
-        case node::FrameType::kFrameRowsRange: {
-            auto *rows_frame_ext =
-                node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(node::BoundType::kPreceding, offset),
-                                               node_manager_->MakeFrameBound(node::BoundType::kCurrent));
-            auto *new_frame = in->GetFrame()->ShadowCopy(node_manager_);
-            new_frame->set_frame_type(node::FrameType::kFrameRows);
-            new_frame->SetFrameRows(rows_frame_ext);
-            new_frame->SetFrameRange(nullptr);
-            new_frame->set_frame_maxsize(0);
-            auto *new_win = in->ShadowCopy(node_manager_);
-            new_win->SetFrame(new_frame);
-            return new_win;
+    node::FrameNode *new_frame = in->GetFrame()->ShadowCopy(node_manager_);
+    new_frame->set_frame_type(node::FrameType::kFrameRows);
+    new_frame->SetFrameRows(rows_frame_ext);
+    new_frame->SetFrameRange(nullptr);
+    new_frame->set_frame_maxsize(0);
 
-            // create the new window based on the newly created frame
-        }
-        default: {
-            return absl::InvalidArgumentError("input window is not a ROWS or ROWS_RANGE window");
-        }
-    }
+    auto *new_win = in->ShadowCopy(node_manager_);
+    new_win->SetFrame(new_frame);
+    return new_win;
 }
 
 }  // namespace plan
