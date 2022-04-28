@@ -2,13 +2,11 @@
 
 ## 概述
 
-OpenMLDB 的监控方案设计详见 [Online Monitoring RPC](https://docs.google.com/document/d/1O-JL-slBneDnpVuR3_FORQ6kPGdfwn7QmdmSTxv2eXo/edit?usp=sharing)
+OpenMLDB 的监控方案概述如下：
 
 - 使用 [prometheus](https://prometheus.io) 收集监控指标，[grafana](https://grafana.com/oss/grafana/) 可视化指标
 - OpenMLDB exporter 暴露数据库级别和组件级别的监控指标
 - 节点内部使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
-
-源代码路径: [OpenMLDB/monitoring](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)
 
 ## 安装运行 OpenMLDB exporter
 

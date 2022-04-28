@@ -1,4 +1,4 @@
-# OpenMLDB SQL上线规范和要求
+# SQL 上线规范和要求
 
 OpenMLDB Online Serving提供实时的特征抽取服务。OpenMLDB的[DEPLOY](../deployment_manage/DEPLOY_STATEMENT.md)命令将一段SQL文本部署到线上去。部署成功后，用户即可通过Restful API或者JDBC API实时地对请求样本作特征抽取计算。并不是所有的SQL都可以部署到线上提供服务的，OpenMLDB对上线的语句和OP是有一套规范的。
 
