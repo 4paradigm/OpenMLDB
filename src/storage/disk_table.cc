@@ -171,6 +171,10 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }
+    auto indexs = table_index_.GetAllIndex();
+    for (uint32_t i = 0; i < indexs.size(); i++) {
+        idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+    }
     return true;
 }
 
@@ -208,6 +212,7 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
     s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
+        idx_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
         DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -258,6 +263,9 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     }
     s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
+        for (Dimensions::const_iterator it = dimensions.begin(); it != dimensions.end(); ++it) {
+            idx_cnt_vec_[it->idx()]->fetch_add(1, std::memory_order_relaxed);
+        }
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
@@ -336,7 +344,9 @@ void DiskTable::GcHead() {
         if (indexs.size() > 1) {
             bool need_ttl = false;
             std::map<uint32_t, uint64_t> ttl_map;
+            std::map<uint32_t, uint32_t> idx_map;
             for (const auto& index : indexs) {
+                idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
                     auto lat_ttl = index->GetTTL()->lat_ttl;
@@ -344,6 +354,7 @@ void DiskTable::GcHead() {
                         ttl_map.emplace(ts_col->GetId(), lat_ttl);
                         need_ttl = true;
                     }
+                    idx_map.emplace(ts_col->GetId(), index->GetId());
                 }
             }
             if (!need_ttl) {
@@ -358,14 +369,14 @@ void DiskTable::GcHead() {
                 uint32_t ts_idx = 0;
                 ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
                 if (!last_pk.empty() && cur_pk == last_pk) {
+                    auto key_cnt_iter = key_cnt.find(ts_idx);
+                    if (key_cnt_iter == key_cnt.end()) {
+                        key_cnt.insert(std::make_pair(ts_idx, 1));
+                    } else {
+                        key_cnt_iter->second++;
+                    }
                     auto ttl_iter = ttl_map.find(ts_idx);
                     if (ttl_iter != ttl_map.end() && ttl_iter->second > 0) {
-                        auto key_cnt_iter = key_cnt.find(ts_idx);
-                        if (key_cnt_iter == key_cnt.end()) {
-                            key_cnt.insert(std::make_pair(ts_idx, 1));
-                        } else {
-                            key_cnt_iter->second++;
-                        }
                         if (key_cnt_iter->second > ttl_iter->second &&
                             delete_key_map.find(ts_idx) == delete_key_map.end()) {
                             delete_key_map.insert(std::make_pair(ts_idx, ts));
@@ -379,6 +390,15 @@ void DiskTable::GcHead() {
                                                              rocksdb::Slice(combine_key2));
                         if (!s.ok()) {
                             PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                        }
+                    }
+                    for (auto ts_idx_iter = key_cnt.begin(); ts_idx_iter != key_cnt.end(); ts_idx_iter++) {
+                        auto index_iterator = idx_map.find(ts_idx_iter->first);
+                        auto ttl_iter = ttl_map.find(ts_idx_iter->first);
+                        if (ttl_iter != ttl_map.end() && ttl_iter->second > 0 && ts_idx_iter->second <= ttl_iter->second) {
+                            idx_cnt_vec_[index_iterator->second]->fetch_add(ts_idx_iter->second, std::memory_order_relaxed);
+                        } else {
+                            idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
                         }
                     }
                     delete_key_map.clear();
@@ -397,8 +417,28 @@ void DiskTable::GcHead() {
                     PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
                 }
             }
+            for (const auto& kv : delete_key_map) {
+                std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
+                std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
+                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
+                                                     rocksdb::Slice(combine_key2));
+                if (!s.ok()) {
+                    PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                }
+            }
+            for (auto ts_idx_iter = key_cnt.begin(); ts_idx_iter != key_cnt.end(); ts_idx_iter++) {
+                auto index_iterator = idx_map.find(ts_idx_iter->first);
+                auto ttl_iter = ttl_map.find(ts_idx_iter->first);
+                if (ttl_iter != ttl_map.end() && ttl_iter->second > 0 && ts_idx_iter->second <= ttl_iter->second) {
+                    idx_cnt_vec_[index_iterator->second]->fetch_add(ts_idx_iter->second, std::memory_order_relaxed);
+                } else {
+                    idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
+                }
+            }
         } else {
             auto index = indexs.front();
+            uint32_t index_id = index->GetId();
+            idx_cnt_vec_[index_id]->store(0, std::memory_order_relaxed);
             auto ttl_num = index->GetTTL()->lat_ttl;
             if (ttl_num < 1) {
                 continue;
@@ -425,11 +465,13 @@ void DiskTable::GcHead() {
                         it->Seek(rocksdb::Slice(combine_key2));
                     }
                 } else {
+                    idx_cnt_vec_[index_id]->fetch_add(count);
                     count = 1;
                     last_pk = cur_pk;
                     it->Next();
                 }
             }
+            idx_cnt_vec_[index_id]->fetch_add(count);
         }
         delete it;
         db_->ReleaseSnapshot(snapshot);
@@ -1123,7 +1165,17 @@ uint64_t DiskTable::GetRecordIdxCnt() {
 }
 
 bool DiskTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
-    // TODO(litongxin)
+    if (stat == NULL) {
+        return false;
+    }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
+        return false;
+    }
+    auto* data_array = new uint64_t[1];
+    data_array[0] = idx_cnt_vec_[idx]->load(std::memory_order_relaxed);
+    *stat = data_array;
+    *size = 1;
     return true;
 }
 

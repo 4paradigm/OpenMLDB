@@ -434,6 +434,8 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string table_path_;
+    std::atomic<uint64_t> pk_cnt_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
 };
 
 }  // namespace storage
