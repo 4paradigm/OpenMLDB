@@ -15,7 +15,7 @@
 
 **[English version](./README.md) | 中文版**
 
-### OpenMLDB 是一个开源机器学习数据库，提供线上线下计算一致的生产级实时特征计算解决方案。
+### OpenMLDB 是一个开源机器学习数据库，提供线上线下计算一致的生产级实时特征计算平台。
 
 ## 1. 设计理念
 
@@ -25,34 +25,33 @@ OpenMLDB 致力于解决 AI 工程化落地的数据治理难题，并且已经�
 
 ## 2. 生产级实时特征计算解决方案
 
-在机器学习应用落地中，很多场景对于实时特征计算有很强的需求，比如实时的个性化推荐、风控、反欺诈等。但是，由数据科学家所构建的特征抽取脚本（比如基于 Python 开发），由于无法满足低延迟、高吞吐、高可用等生产级特性，常常无法直接上线。因此，为了可以让特征脚本在生产环境中上线用于实时特征计算，往往需要工程化团队进行代码重构和优化。此外，由于两个团队、两套系统参与了从开发到部署上线的全流程，那么线上线下计算逻辑一致性校验成为一个必不可上的步骤。计算一致性校验往往需要耗费大量的沟通成本、开发成本、测试成本，才能保障最终的效果一致。因此我们看到，基于此种线上线下割裂的开发流程，往往需要大量的人力和时间成本才能实现从开发到上线的流程，成为企业智能转型的瓶颈。
+在机器学习的很多应用场景中，对于实时特征计算有很强的需求，比如实时的个性化推荐、风控、反欺诈等。但是，由数据科学家所构建的特征计算脚本（一般基于 Python 开发），由于无法满足低延迟、高吞吐、高可用等生产级特性，一般无法直接上线。因此，为了可以在生产环境中上线离线开发的脚本，并且满足实时计算的性能要求，往往需要工程化团队进行代码重构和优化。更重要的是，由于两个团队、两套系统参与了从离线开发到部署上线的全流程，那么线上线下计算逻辑一致性校验成为一个必不可少的步骤，需要耗费大量的沟通成本、开发成本，和测试成本。因此我们看到，基于此种线上线下割裂的开发流程，往往需要大量的人力和时间投入才能实现从开发到上线的完整流程，成为企业智能转型的瓶颈。
 
-<p align="center">
- <img src="docs/zh/about/images/workflow_cn.png" alt="image-20211103103052252" width=800 />
-</p>
-
-OpenMLDB 的整体架构设计遵循 **<u>开发即上线</u>** 的优化目标，使得特征计算从离线开发到生产环境上线的成本大幅降低。 上图显示了 OpenMLDB 的线上线下一致性架构，其包含了四个关键设计：
-
-- 对外统一的 SQL 编程语言
-- 面向低延迟、高吞吐优化的实时特征计算引擎
-- 面向大数据、批处理优化的离线特征计算引擎
-- 串联线上线下计算引擎，保证线上线下计算一致性的一致性执行计划生成器
-
-基于此套线上线下一致性架构，OpenMLDB 可以实现开发即上线的优化目标，其只需要三个步骤：
+OpenMLDB 的整体架构设计是为了达到实时特征计算的 **<u>开发即上线</u>** 的终极优化目标，大幅降低人工智能的落地成本。其完成从特征的离线开发到上线，只需要三个步骤：
 
 - 步骤一：使用 SQL 进行线下特征计算脚本开发
 - 步骤二：SQL 特征计算脚本一键部署上线，由线下模式切换为线上模式
 - 步骤三：接入实时数据，进行线上实时特征计算
 
+<p align="center">
+ <img src="docs/zh/about/images/workflow_cn.png" alt="image-20211103103052252" width=800 />
+</p>
+
+上图显示了 OpenMLDB 的线上线下一致性架构，其包含了四个关键设计来达成开发即上线的优化目标：
+
+- 对外统一的 SQL 编程语言
+- 面向低延迟、高吞吐优化的实时特征计算 SQL 引擎
+- 面向大数据、批处理优化的离线特征计算 SQL 引擎
+- 串联线上线下计算引擎，保证线上线下计算一致性的一致性执行计划生成器
+
+关于 OpenMLDB 的设计核心理念和详细架构，请参考我们的工程师博客 - [实时特征计算平台架构方法论和实践](https://go005qabor.feishu.cn/docs/doccnMxkNQBh49KipaVmYr0xAjf)。
+
 ## 3. 核心特性
 
-**线上线下计算一致性：** 离线和实时特征计算引擎使用统一的执行计划生成器，线上线下计算一致性得到了天然的严格保证。
-
-**面向特征计算的定制化性能优化：** 离线特征计算使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)；线上实时特征计算基于自研的高性能时序数据库，在高吞吐压力下的复杂查询提供几十毫秒量级的延迟，充分满足高并发、低延迟的性能需求。
-
-**以 SQL 为核心的开发和管理体验：** 基于标准 SQL 进行扩展，针对特征计算提供更为强大高效的表达和处理能力，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
-
-**生产级特性：** 为大规模企业应用而设计，不断完善诸多生产级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、异构内存架构支持等。
+- **线上线下计算一致性：** 离线和实时特征计算引擎使用统一的执行计划生成器，线上线下计算一致性得到了天然的严格保证。
+- **面向特征计算的定制化性能优化：** 线上实时特征计算引擎基于自研的高性能时序数据库，可以达到毫秒级别的查询延迟，性能远超出其他商业版的内存数据库（Figures 9 & 10 of [the VLDB 2021 paper ](http://vldb.org/pvldb/vol14/p799-chen.pdf)），充分满足高并发、低延迟的实时计算性能需求；离线特征计算引擎使用[面向特征计算优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html) 。
+- **以 SQL 为核心的开发和管理体验：** 基于标准 SQL 进行扩展，针对特征计算提供更为强大高效的表达和处理能力，全流程基于 SQL 进行特征计算脚本开发以及部署上线。
+- **生产级特性：** 为大规模企业应用而设计，不断完善诸多生产级特性，包括灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、异构内存架构支持等。
 
 ## 4. FAQ
 
@@ -62,15 +61,15 @@ OpenMLDB 的整体架构设计遵循 **<u>开发即上线</u>** 的优化目标�
 
 2. **OpenMLDB 是如何发展起来的？**
    
-   OpenMLDB 起源于领先的人工智能平台提供商[第四范式](https://www.4paradigm.com/)的商业化软件。其核心开发团队在 2021 年将商业产品中作为特征工程的核心组件进行了抽象、增强、以及社区友好化，将它们形成了一个系统的开源产品，以帮助更多的企业低成本实现人工智能转型。在开源之前，OpenMLDB 已经作为第四范式的商业化组件之一在上百个场景中得到了部署和上线。
+   OpenMLDB 起源于领先的人工智能平台提供商[第四范式](https://www.4paradigm.com/)的商业软件。其研发团队在 2021 年将商业产品中作为特征工程的核心组件进行了抽象、增强、以及社区友好化，将它们形成了一个系统的开源产品，以帮助更多的企业低成本实现人工智能转型。在开源之前，OpenMLDB 已经作为第四范式的商业化组件之一在上百个场景中得到了部署和上线。
    
 3. **OpenMLDB 是否是一个 feature store？**
    
-   OpenMLDB 可以认为是目前普遍定义的 feature store 类产品的一个超集。除了可以同时在线下和线上给机器学习供给正确的特征以外，其主要优势在于提供线上线下计算一致性的高性能实时特征计算平台。我们看到，今天在市场上大部分的 feature store 是用于将离线计算好的特征供给到线上应用，但是并不具备毫秒级的实时特征计算能力。而保证线上线下计算一致性的高性能实时特征计算，正是 OpenMLDB 所擅长的场景。
+   OpenMLDB 认为是目前普遍定义的 feature store 类产品的一个超集。除了可以同时在线下和线上给机器学习供给正确的特征以外，其主要优势特性在于提供线上线下计算一致的高性能实时特征计算平台。我们看到，今天在市场上大部分的 feature store 是用于将离线计算好的特征供给到线上应用，但是并不具备毫秒级的实时特征计算能力。而保证线上线下计算一致性的高性能实时特征计算，正是 OpenMLDB 所擅长的场景。
    
 4. **OpenMLDB 为什么选择 SQL 作为开发语言？**
    
-   SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，SQL 在特征计算的表达上功能完备，已经经受了长时间的实践考验。
+   SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，经过优化过的 SQL 在特征计算的表达上功能完备，已经经历了长时间的实践考验。
 
 ## 5. 编译和安装
 
@@ -80,7 +79,7 @@ OpenMLDB 的整体架构设计遵循 **<u>开发即上线</u>** 的优化目标�
 
 **集群版和单机版**
 
-OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)。
+OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)。你可以选择合适的版本开始试用。
 
 **准备开始体验 OpenMLDB**
 
@@ -88,7 +87,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 ## 7. 使用案例
 
-我们正在努力构建一个 OpenMLDB 用于实际案例的列表，为 OpenMLDB 如何在你的业务中发挥价值提供参考，请随时关注我们的列表更新。
+我们正在搜集一个 OpenMLDB 用于实际案例的列表，为 OpenMLDB 如何在你的业务中发挥价值提供参考。
 
 | 应用                                                         | 所用工具                                    | 简介                                                         |
 | ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
@@ -101,25 +100,25 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 英文文档：[https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 
 
-## 9. 开发计划
+## 9. Roadmap
 
-| 版本号 | 预期发布日期 | 主要特性                                                     |
-| ------ | ------------ | ------------------------------------------------------------ |
-| 0.5.0  | 2022 May     | - 在线服务监控模块<br />- 长时间窗口支持 <br />- 支持第三方在线数据流引入，包括 Kafka 和 Pulsar<br />- 实时特征计算的存储引擎支持外存设备<br />- UDF 支持 |
+请参照我们公开的 [Roadmap](https://github.com/4paradigm/OpenMLDB/projects/10) 
 
-此外，OpenMLDB roadmap 上有一些规划中的重要功能演进，但是尚未具体排期，欢迎给我们任何反馈：
+此外，OpenMLDB 有一些规划中的重要功能演进，但是尚未具体排期，欢迎给我们任何反馈：
 
 - Cloud-native 版本
-- 适配机器学习全流程管理平台，比如 Airflow 
 - 整合自动特征生成
+- 基于异构存储和异构计算资源进行优化
 - 轻量级 edge 版本
 
-## 10. 开发贡献者
+## 10. 社区开发者
 
 我们非常感谢来自社区的贡献。
 
-- 如果你对于加入 OpenMLDB 开发者感兴趣，请阅读我们的 [Contribution Guideline](CONTRIBUTING.md)。
-- 如果你是一位新加入的贡献者，你或许可以从我们的这个 [good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
+- 如果你对于加入 OpenMLDB 开发者感兴趣，请在提交代码之前阅读我们的 [Contribution Guideline](CONTRIBUTING.md)。
+- 如果你是一位新加入的贡献者，你可以从我们的这个 [good first issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
+- 如果你是有一定的开发经验，可以查找 [call-for-contributions](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions) 标签的 issues。
+- 也可以阅读我们[这个文档](https://go005qabor.feishu.cn/docs/doccn7oEU0AlCOGtYz09chIebzd)来了解不同层级的开发任务，参与和开发者讨论
 
 为我们已有的社区贡献者鼓掌表示感谢 :clap: 
 
@@ -132,9 +131,9 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 网站：[https://openmldb.ai/](https://openmldb.ai) 
 - **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 - **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)**
-- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) 和 [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 主要用来给开发团队发布并且讨论 RFCs。
+- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) 和 [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 可以讨论任何和 OpenMLDB 相关的内容。
 - [**技术博客**](https://www.zhihu.com/column/c_1417199590352916480)
-- 开发团队的共享空间  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d) | [英文](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
+- 开发团队的共享空间  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d) | [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
 - [开发者邮件群组和邮件列表](https://groups.google.com/g/openmldb-developers)
 - **微信交流群：**
   <img src="images/wechat.png" alt="img" width=120 />  
