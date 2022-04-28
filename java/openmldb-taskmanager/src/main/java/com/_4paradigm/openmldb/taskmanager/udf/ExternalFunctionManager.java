@@ -66,7 +66,13 @@ public class ExternalFunctionManager {
     static public List<String> getAllLibraryFilePaths() {
         List<String> libraryFilePaths = new ArrayList<>();
         for (String libraryFileName: nameFileMap.values()) {
-            libraryFilePaths.add(getLibraryFilePath(libraryFileName));
+            String libraryFilePath = getLibraryFilePath(libraryFileName);
+            if(new File(libraryFilePath).exists()) {
+                libraryFilePaths.add(libraryFilePath);
+            } else {
+                logger.warn("The library file does not exist and do not submit: " + libraryFilePath);
+            }
+
         }
         return libraryFilePaths;
     }
