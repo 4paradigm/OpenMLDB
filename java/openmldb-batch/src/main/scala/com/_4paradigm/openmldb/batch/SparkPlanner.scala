@@ -351,7 +351,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
             argsDataType.add(DataTypeUtil.protoTypeToOpenmldbType(dataType))
           })
 
-          // Get the correct file path
+          // Get the correct file name which is submitted by spark-submit
           val soFilePath = functionProto.getName.split("/").last
           engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
             soFilePath)
