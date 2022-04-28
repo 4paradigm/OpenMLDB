@@ -1468,7 +1468,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 db_ = name;
                 *status = {::hybridse::common::kOk, "Database changed"};
             } else {
-                *status = {::hybridse::common::StatusCode::kCmdError, "Create database failed for " + msg};
+                *status = {::hybridse::common::StatusCode::kCmdError, "Use database failed for " + msg};
             }
             return {};
         }

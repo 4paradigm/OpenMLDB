@@ -670,9 +670,8 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
+        // ResultSet we got is full, this config is unused. But do not throw exception.
     }
 
     @Override
