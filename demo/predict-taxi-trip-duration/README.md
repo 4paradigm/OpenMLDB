@@ -28,11 +28,12 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 **Start docker**
 ```
-docker run -it 4pdosc/openmldb:0.4.1 bash
+docker run -it 4pdosc/openmldb:0.4.4 bash
 ```
 **Initialize environment**
 ```bash
 ./init.sh
+cd taxi-trip
 ```
 **Create table**
 ```bash
