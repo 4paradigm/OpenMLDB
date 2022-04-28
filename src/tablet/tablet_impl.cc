@@ -4389,7 +4389,7 @@ bool TabletImpl::RefreshAggrCatalog() {
         it->Next();
     }
     catalog_->RefreshAggrTables(table_infos);
-    DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
+    LOG(INFO) << "Refresh agg catalog in (size = " << table_infos.size() << ")";
     return true;
 }
 

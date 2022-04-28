@@ -329,6 +329,7 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
         std::string key = "card" + std::to_string(i);
         w_it.Seek(key);
         ASSERT_TRUE(w_it.Valid());
+        ASSERT_EQ(w_it.GetKey().ToString(), key);
         auto it = w_it.GetRawValue();
         it->SeekToFirst();
         int count = 0;
