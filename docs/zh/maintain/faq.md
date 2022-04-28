@@ -53,7 +53,7 @@ rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 ```sql
 > SET @@job_timeout = "600000";
 ```
-来调大rpc的timeout时间。
+来调大rpc的timeout时间，单位为ms。
 #### 普通请求
 如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
 1. CLI: 目前无法更改
