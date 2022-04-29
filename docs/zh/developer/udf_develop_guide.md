@@ -32,7 +32,7 @@
 * 如果输入字段是基本类型，通过值传递
 * 如果输入字段是string, timestamp, date, 通过指针传递
 * 函数的第一个参数必须是UDFContext* ctx，不能更改。[UDFContext](../../../include/udf/openmldb_udf.h)的定义如下:
-    ```
+    ```c++
     struct UDFContext {
         ByteMemoryPool* pool;  // 用来分配内存
         void* ptr;             // 用来存储临时变量。目前单行函数用不到
@@ -46,7 +46,7 @@
 
 - 在自定义函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。
 - 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口。函数执行完OpenMLDB会自动释放内存.
-    ```
+    ```c++
     char *buffer = ctx->pool->Alloc(size);
     ```
 - 一次分配空间的最大长度不能超过2M字节
@@ -78,7 +78,6 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 ### 2.3 拷贝动态库
 - 需要把编译好的动态库拷贝到部署OpenMLDB tablet/taskmanager目录中的udf目录下。如果没有此目录需要创建一个
-- 拷贝后需要重启tablet，或者在启动前提前把动态库拷贝过来
 - 每个tablet的目录都需要拷贝
 - 在DROP FUNCTION之前不能删除此目录里的动态库
 ### 2.4 注册、删除和查看函数
