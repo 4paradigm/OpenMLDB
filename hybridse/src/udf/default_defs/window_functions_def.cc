@@ -70,7 +70,7 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
     if (default_val != nullptr) {
         auto default_type = default_val->GetOutputType();
         if (default_type->base() != node::kNull) {
-            if (node::TypeEquals(default_type, input_type->GetGenericType(0))) {
+            if (!node::TypeEquals(default_type, input_type->GetGenericType(0))) {
                 ctx->SetError(
                     "Default value type must be same with input element "
                     "type: " +
