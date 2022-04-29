@@ -65,7 +65,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 | SQL类型   | C/C++ 类型         |
 | :-------- | :----------------- |
 | BOOL      | `bool`             |
-| SMALLINT  | int16_t            |
+| SMALLINT  | `int16_t`          |
 | INT       | `int32_t`          |
 | BIGINT    | `int64_t`          |
 | FLOAT     | `float`            |
