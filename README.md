@@ -15,7 +15,7 @@
 
 **English version | [中文版](README_cn.md)**
 
-### OpenMLDB is an open-source machine learning database that provides a production-ready feature processing system with online-offline consistency.
+### OpenMLDB is an open-source machine learning database that provides a production-ready real-time feature engineering system with online-offline consistency.
 
 ## 1. Our Philosophy
 
@@ -95,7 +95,7 @@ We are building a list of real-world use cases based on OpenMLDB to demonstrate 
 | Application                                                  | Tools                                       | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
 | [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                          | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
-| Using the Pulsar connector for real-time data streams        | OpenMLDB, Pulsar, Pulsar OpenMLDB Connector | Apache Pulsar is a cloud-native streaming platform. Based on the [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb) , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| [Using the Pulsar connector to import real-time data streams](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, Pulsar OpenMLDB Connector | Apache Pulsar is a cloud-native streaming platform. Based on the [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb) , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
 
 ## 8. Documentation
 
