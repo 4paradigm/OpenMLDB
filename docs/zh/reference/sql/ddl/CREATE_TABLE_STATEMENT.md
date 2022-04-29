@@ -450,6 +450,12 @@ StorageMode
 | `DISTRIBUTION` | 配置分布式的节点endpoint配置。一般包含一个Leader节点和若干follower节点。`(leader, [follower1, follower2, ..])`。不显式配置是，OpenMLDB会自动的根据环境和节点来配置`DISTRIBUTION`。                               | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE` | 表的存储模式，支持的模式为`Memory`、`HDD`或`SSD`。不显式配置时，默认为`Memory`。<br/>如果需要支持非`Memory`模式的存储模式，`tablet`需要额外的配置选项，具体可参考[tablet配置文件 conf/tablet.flags](../../../deploy/conf.md)。 | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
+##### 磁盘表（`STORAGE_MODE` == `HDD`|`SSD`）与内存表（`STORAGE_MODE` == `Memory`）区别
+- 目前磁盘表不支持GC操作
+- 磁盘表插入数据，同一个索引下如果（`key`, `ts`）相同，会覆盖老的数据；内存表则会插入一条新的数据
+- 磁盘表不支持`addindex`和`deleteindex`操作，所以创建磁盘表的时候需要定义好所有需要的索引
+（`deploy`命令会自动添加需要的索引，所以对于磁盘表，如果创建的时候缺失对应的索引，则`deploy`会失败）
+
 ##### Example: 创建一张带表，配置分片数为8，副本数为3，存储模式为HDD
 
 ```sql

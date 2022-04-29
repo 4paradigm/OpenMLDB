@@ -120,6 +120,7 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT col0, sum(col1) OVER w1 
 目前长窗口优化有以下几点限制：
 - 仅支持`SelectStmt`只涉及到一个物理表的情况，即不支持包含`join`或`union`的`SelectStmt`
 - 支持的聚合运算仅限：`sum`, `avg`, `count`, `min`, `max`
+- 执行`deploy`命令的时候不允许表中有数据
 
 ## 相关SQL
 
