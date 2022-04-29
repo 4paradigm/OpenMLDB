@@ -278,15 +278,9 @@ int CreateDefaultTable(const std::string& db, const std::string& name, uint32_t 
 
 TEST_F(TabletImplTest, Init) {
     FLAGS_recycle_bin_enabled = true;
-    FLAGS_db_root_path = "";
-    FLAGS_recycle_bin_root_path = "";
-    FLAGS_hdd_root_path = "";
-    FLAGS_recycle_bin_hdd_root_path = "";
-    FLAGS_ssd_root_path = "";
-    FLAGS_recycle_bin_ssd_root_path = "";
 
     auto create_and_drop_table = [](TabletImpl* tablet, uint32_t id, common::StorageMode storage_mode = common::kMemory,
-                                    bool failed = true) {
+                                    bool succeed = false) {
         ASSERT_EQ(0, CreateDefaultTable("db0", "t0", id, 0, 0, 0, ::openmldb::type::TTLType::kLatestTime,
                                         storage_mode, tablet));
         MockClosure closure;
@@ -307,81 +301,53 @@ TEST_F(TabletImplTest, Init) {
         api::TaskStatusResponse trs;
         tablet->GetTaskStatus(NULL, &tr, &trs, &closure);
         auto task = trs.task(0);
-        if (failed) {
-            ASSERT_EQ(api::TaskStatus::kFailed, task.status());
-        } else {
+        if (succeed) {
             ASSERT_EQ(api::TaskStatus::kDone, task.status());
+        } else {
+            ASSERT_EQ(api::TaskStatus::kFailed, task.status());
         }
     };
 
     {
         TabletImpl tablet;
-        FLAGS_db_root_path = "";
-        ASSERT_FALSE(tablet.Init(""));
-    }
-
-    {
-        TabletImpl tablet;
-        FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_root_path = "";
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
     }
 
     {
         TabletImpl tablet;
-        FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
         ASSERT_TRUE(tablet.Init(""));
-        create_and_drop_table(&tablet, counter++, common::kMemory, false);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
-        base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
+        create_and_drop_table(&tablet, counter++, common::kMemory, true);
     }
 
     {
         TabletImpl tablet;
-        FLAGS_hdd_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_hdd_root_path = "";
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kHDD);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
-        base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        FLAGS_hdd_root_path = "";
     }
 
     {
         TabletImpl tablet;
-        FLAGS_hdd_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_hdd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
         ASSERT_TRUE(tablet.Init(""));
-        create_and_drop_table(&tablet, counter++, common::kHDD, false);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
-        base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
-        FLAGS_hdd_root_path = "";
-        FLAGS_recycle_bin_hdd_root_path = "";
+        create_and_drop_table(&tablet, counter++, common::kHDD, true);
     }
 
     {
         TabletImpl tablet;
-        FLAGS_ssd_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_ssd_root_path = "";
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kSSD);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
-        base::RemoveDirRecursive(FLAGS_ssd_root_path);
     }
 
     {
         TabletImpl tablet;
-        FLAGS_ssd_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
         FLAGS_recycle_bin_ssd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
         ASSERT_TRUE(tablet.Init(""));
-        create_and_drop_table(&tablet, counter++, common::kSSD, false);
-        base::RemoveDirRecursive(FLAGS_db_root_path);
-        base::RemoveDirRecursive(FLAGS_ssd_root_path);
-        base::RemoveDirRecursive(FLAGS_recycle_bin_ssd_root_path);
+        create_and_drop_table(&tablet, counter++, common::kSSD, true);
     }
 }
 
@@ -2269,7 +2235,7 @@ TEST_P(TabletImplTest, DropTable) {
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
+    ASSERT_EQ(0, response.code()) << response.msg();
 
     ::openmldb::api::PutRequest prequest;
     PackDefaultDimension("test1", &prequest);
