@@ -991,7 +991,7 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
 
 ::openmldb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
                                                      const std::string& pk, uint64_t ts, uint32_t limit,
-                                                     uint32_t& count) {
+                                                     bool need_clean, uint32_t& count) {
     ::openmldb::api::TraverseRequest request;
     ::openmldb::api::TraverseResponse* response = new ::openmldb::api::TraverseResponse();
     request.set_tid(tid);
@@ -1009,9 +1009,15 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(response);
+    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(response, need_clean);
     count = response->count();
     return kv_it;
+}
+
+::openmldb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+                                                     const std::string& pk, uint64_t ts, uint32_t limit,
+                                                     uint32_t& count) {
+    return Traverse(tid, pid, idx_name, pk, ts, limit, true, count);
 }
 
 bool TabletClient::SetMode(bool mode) {

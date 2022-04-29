@@ -1428,6 +1428,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
             PDLOG(WARNING, "fail to watch nodes");
             return false;
         }
+        if (zk_client_->IsExistNode(zk_path_.external_function_path_) != 0) {
+            if (!zk_client_->CreateNode(zk_path_.external_function_path_, "")) {
+                LOG(WARNING) << "fail to create function node " << zk_path_.external_function_path_;
+                return false;
+            }
+        }
         session_term_ = zk_client_->GetSessionTerm();
 
         thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
