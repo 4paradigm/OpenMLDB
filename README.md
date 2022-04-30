@@ -19,42 +19,42 @@
 
 ## 1. Our Philosophy
 
-For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this problem, tech giants will spend thousands of hours on building in-house data platforms to address AI engineering challenges such as online-offline consistency, feature backfilling, and processing efficiency. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
+For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this problem, tech giants spend thousands of hours on building in-house data platforms to address AI engineering challenges such as online-offline consistency, feature backfilling, and performance. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
 
-OpenMLDB is an open-source machine learning database that is committed to solving the data governance challenge. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It gives priority to open-source the capability of feature processing using SQL, which provides a production-ready feature processing platform with online-offline consistency.
+OpenMLDB is an open-source machine learning database that is committed to solving the data governance challenge. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It gives priority to open-source the capability of feature engineering using SQL, which offers a production-ready feature engineering platform with online-offline consistency.
 
-## 2. A Production-Ready Real-Time Feature Processing System
+## 2. A Production-Ready Real-Time Feature Engineering System
 
-Real-time feature processing with low latency is essential for many machine learning applications, such as real-time personalized recommendation and real-time risk analytics. However, a feature processing script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the scripts using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved from the offline development to online deployment, the verification for online-offline consistency is essential, which usually costs a lot of time and human power. 
+Efficient real-time feature engineering is essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the entire life cycle, the verification for online-offline processing consistency is essential, which usually costs a lot of time and human power. 
 
-OpenMLDB is particularly designed to achieve the goal of **Development as Deployment** for feature processing, to significantly reduce the cost from the offline development to online deployment into production. There are three steps only for the entire life cycle of feature processing:
+OpenMLDB is particularly designed to achieve the goal of **Development as Deployment** for feature engineering, to significantly reduce the cost from the offline development to online production deployment. There are three steps only for the entire life cycle of feature engineering:
 
-- Step 1: Offline development of feature processing script based on SQL
+- Step 1: Offline development of feature engineering script based on SQL
 - Step 2: SQL online deployment using just one command
 - Step 3: Online data source configuration for real-time data
 
-With those three steps done, the system is ready to serve real-time feature processing with low latency and high throughput for production.
+With those three steps done, the system is ready to serve real-time feature engineering requests with highly optimized low latency and high throughput for production.
 
 <p align="center">
  <img src="docs/en/about/images/workflow.png" alt="image-20211103103052253" width=800 />
 </p>
 
-The figure above shows the OpenMLDB's architecture with the online-offline consistency. There are four key designs to achieve the goal of Development as Deployment:
+The figure above shows the OpenMLDB's architecture designed to achieve the goal of Development as Deployment. There are four key components:
 
-- SQL language as the only programming language for users
-- Online real-time SQL engine for low latency and high throughput
-- Offline batch SQL engine for big data and efficient batch data processing
-- The unified execution plan generator to bridge the online and offline SQL engine to guarantee the processing consistency
+- SQL language as the only programming language for both offline and online
+- Online real-time SQL engine optimized for low latency and high throughput
+- Offline batch SQL engine optimized for big data and efficient batch data processing
+- The unified execution plan generator to bridge the online and offline SQL engines to guarantee the online-offline processing consistency
 
 ## 3. Highlights
 
-**Online-Offline Feature Processing Consistency:** Based on the unified execution plan generator, the online-offline feature processing consistency is inherently guaranteed.
+**Online-Offline Processing Consistency:** Based on the unified execution plan generator, the online-offline feature processing consistency is inherently guaranteed.
 
-**Customized Optimization for Feature Processing**: The online real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds, which significantly outperforms other commercial in-memory database systems (see Figure 9 & 10 of [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)). Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing.
+**Customized Optimization for Feature Engineering**: The online real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds, which significantly outperforms other commercial in-memory database systems (see Figure 9 & 10 of [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)). Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing.
 
-**SQL-Centric Development and Management**: Feature processing script development, deployment, and maintenance are all based on SQL with great ease of use.
+**SQL-Centric Development and Management**: Feature engineering script development, deployment, and maintenance are all based on SQL with great ease of use.
 
-**Production-Ready**: OpenMLDB has been implementing important production features for large-scale applications, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+**Production-Ready**: OpenMLDB has been implementing important production features for enterprise-grade applications, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
 ## 4. FAQ
 
