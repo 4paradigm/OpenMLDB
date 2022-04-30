@@ -15,52 +15,52 @@
 
 **English version | [中文版](README_cn.md)**
 
-### OpenMLDB is an open-source machine learning database that provides a production-ready real-time feature engineering system with online-offline consistency.
+### OpenMLDB is an open-source machine learning database that provides an online-offline consistent feature platform.
 
 ## 1. Our Philosophy
 
-For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this problem, tech giants spend thousands of hours on building in-house data platforms to address AI engineering challenges such as online-offline consistency, feature backfilling, and performance. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
+For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this challenge, tech giants spend thousands of hours on building in-house data and feature platforms to address engineering issues such as online-offline consistency, feature backfilling, and performance. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
 
-OpenMLDB is an open-source machine learning database that is committed to solving the data governance challenge. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It gives priority to open-source the capability of feature engineering using SQL, which offers a production-ready feature engineering platform with online-offline consistency.
+OpenMLDB is an open-source machine learning database that is committed to solving the data and feature challenges. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It gives priority to open-source the capability of feature engineering using SQL, which offers an online-offline consistent feature platform for production.
 
-## 2. A Production-Ready Real-Time Feature Engineering System
+## 2. An Online-Offline Consistent Feature Platform
 
-Efficient real-time feature engineering is essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the entire life cycle, the verification for online-offline processing consistency is essential, which usually costs a lot of time and human power. 
+Real-time features are essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the development and deployment life cycle, the verification for online-offline consistency is essential, which usually costs a lot of time and human power. 
 
-OpenMLDB is particularly designed to achieve the goal of **Development as Deployment** for feature engineering, to significantly reduce the cost from the offline development to online production deployment. There are three steps only for the entire life cycle of feature engineering:
+OpenMLDB is particularly designed to accomplish the mission of **Development as Deployment** for feature engineering, to significantly reduce the cost from the offline development to online production deployment. Based on OpenMLDB, there are three steps only for the entire life cycle:
 
 - Step 1: Offline development of feature engineering script based on SQL
 - Step 2: SQL online deployment using just one command
-- Step 3: Online data source configuration for real-time data
+- Step 3: Online data source configuration to import real-time data
 
-With those three steps done, the system is ready to serve real-time feature engineering requests with highly optimized low latency and high throughput for production.
+With those three steps done, the system is ready to serve real-time features, and highly optimized to achieve low latency and high throughput for production.
 
 <p align="center">
  <img src="docs/en/about/images/workflow.png" alt="image-20211103103052253" width=800 />
 </p>
 
-The figure above shows the OpenMLDB's architecture designed to achieve the goal of Development as Deployment. There are four key components:
+In order to achieve the goal of Development as Deployment, OpenMLDB is implemented based on the online-offline consistent architecture as shown in the figure above. It shows that there are four key designs:
 
-- SQL language as the only programming language for both offline and online
-- Online real-time SQL engine optimized for low latency and high throughput
-- Offline batch SQL engine optimized for big data and efficient batch data processing
-- The unified execution plan generator to bridge the online and offline SQL engines to guarantee the online-offline processing consistency
+- The SQL language (with extension) as the unified programming language for both offline development and online serving
+- The real-time SQL engine for online features, built from scratch and highly optimized for low latency (a few milliseconds) and high throughput
+- The batch SQL engine for offline features, [a tailored Spark distribution](https://github.com/4paradigm/spark) optimized for big data and efficient batch data processing
+- The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the online-offline consistency
 
 ## 3. Highlights
 
-**Online-Offline Processing Consistency:** Based on the unified execution plan generator, the online-offline feature processing consistency is inherently guaranteed.
+**Online-Offline Consistency:** Based on the unified execution plan generator, the online-offline processing consistency is inherently guaranteed.
 
-**Customized Optimization for Feature Engineering**: The online real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds, which significantly outperforms other commercial in-memory database systems (see Figure 9 & 10 of [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)). Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing.
+**Highly Optimized Low-Latency Real-Time Features**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds, which significantly outperforms other commercial in-memory database systems (see Figure 9 & 10 of [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)). 
 
-**SQL-Centric Development and Management**: Feature engineering script development, deployment, and maintenance are all based on SQL with great ease of use.
+**Enhanced SQL for Feature Engineering**: In order to enhance the functionality and performance of standard SQL, specific optimization for feature engineering is fully exploited, such as the SQL syntax extension of `LAST JOIN` and `WINDOW UNION` to support feature backfilling and time travel.
 
-**Production-Ready**: OpenMLDB has been implementing important production features for enterprise-grade applications, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+**Production-Ready**: OpenMLDB has been implementing important production features for enterprise-grade applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
 ## 4. FAQ
 
 1. **What are use cases of OpenMLDB?**
    
-   At present, it is mainly positioned as a real-time feature processing system for machine learning applications. It provides the capability of Development as Deployment to significantly reduce the cost for machine learning applications. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
+   At present, it is mainly positioned as a feature platform for machine learning, with the strength of low-latency real-time feature processing. It provides the capability of Development as Deployment to significantly reduce the cost for machine learning applications. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
    
 2. **How does OpenMLDB evolve?**
    
