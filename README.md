@@ -94,7 +94,7 @@ We are building a list of real-world use cases based on OpenMLDB to demonstrate 
 
 ## 8. Documentation
 
-- Chinese documentations: [https://openmldb.ai/docs/zh](https://openmldb.ai/docs/zh)
+- Chinese documentations: [https://openmldb.ai/docs/zh](https://openmldb.ai/docs/zh/)
 - English documentations: [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 
 ## 9. Roadmap
