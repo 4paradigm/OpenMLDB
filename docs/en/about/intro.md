@@ -1,18 +1,6 @@
-![openmldb_logo](docs/en/about/images/openmldb_logo.png)
+![openmldb_logo](images/openmldb_logo.png)
 
-[![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
-[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
-[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/hybridsql-ws/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
-[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/OpenMLDB/discussions)
-[![codecov](https://codecov.io/gh/4paradigm/OpenMLDB/branch/main/graph/badge.svg?token=OMPII8NGN2)](https://codecov.io/gh/4paradigm/OpenMLDB)
-[![release](https://img.shields.io/github/v/release/4paradigm/OpenMLDB?color=lime)](https://github.com/4paradigm/OpenMLDB/releases)
-[![license](https://img.shields.io/github/license/4paradigm/OpenMLDB?color=orange)](https://github.com/4paradigm/OpenMLDB/blob/main/LICENSE)
-[![gitee](https://img.shields.io/badge/Gitee-mirror-lightyellow)](https://gitee.com/paradigm4/OpenMLDB)
-[![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-batch)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-batch)
-[![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
-[![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
-
-**English | [中文](README_cn.md)**
+# Introduction
 
 ### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
@@ -34,7 +22,7 @@ OpenMLDB is particularly designed as a feature platform for ML applications to a
 
 With those three steps done, the system is ready to serve real-time features, and highly optimized to achieve low latency and high throughput for production.
 
-![workflow](docs/en/about/images/workflow.png)
+![workflow](images/workflow.png)
 
 
 In order to achieve the goal of Development as Deployment, OpenMLDB is designed to provide consistent features for training and inference. The figure above shows the high-level architecture of OpenMLDB, which consists of four key components: (1) SQL as the unified programming language; (2) The real-time SQL engine for for extra-low latency services; (3) The batch SQL engine based on [a tailored Spark distribution](https://github.com/4paradigm/spark); (4) The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the consistency.
@@ -69,17 +57,17 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 ## 5. Build & Install
 
-:point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
+[Read more](../deploy/index.rst)
 
 ## 6. QuickStart
 
 **Cluster and Standalone Versions**
 
-OpenMLDB has two versions with different deployment options, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications and ready for production. On the other hand, the lightweight standalone version running on a single node is ideal for evaluation and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/en/main/tutorial/standalone_vs_cluster.html)  for details. 
+OpenMLDB has two versions with different deployment options, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications and ready for production. On the other hand, the lightweight standalone version running on a single node is ideal for evaluation and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/en/main/tutorial/standalone_vs_cluster.html)  for the comparison. 
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/en/main/quickstart/openmldb_quickstart.html)
+[OpenMLDB QuickStart](../quickstart/openmldb_quickstart.md)
 
 ## 7. Use Cases
 
@@ -87,8 +75,8 @@ We are building a list of real-world use cases based on OpenMLDB to demonstrate 
 
 | Application                                                  | Tools                                       | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                          | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
-| [Using the Pulsar connector to import real-time data streams](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, Pulsar OpenMLDB Connector | Apache Pulsar is a cloud-native streaming platform. Based on the [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb) , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| [New York City Taxi Trip Duration](../use_case/taxi_tour_duration_prediction.md) | OpenMLDB, LightGBM                          | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [Using the Pulsar connector to import real-time data streams](../use_case/pulsar_openmldb_connector_demo.md) | OpenMLDB, Pulsar, Pulsar OpenMLDB Connector | Apache Pulsar is a cloud-native streaming platform. Based on the [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb) , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
 
 ## 8. Documentation
 
@@ -110,7 +98,7 @@ Furthermore, there are a few important features on the development roadmap but h
 
 We really appreciate the contribution from our community.
 
-- If you are interested to contribute, please read our [Contribution Guideline](CONTRIBUTING.md) for more details. 
+- If you are interested to contribute, please read our [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/blob/main/CONTRIBUTING.md) for more details. 
 - If you are a new contributor, you may get start with [the list of issues labeled with `good first issue`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 - If you have experience of OpenMLDB development, or want to tackle a challenge that may take 1-2 weeks, you may find [the list of issues labeled with `call-for-contributions`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions).
 
@@ -140,7 +128,7 @@ Let's clap hands for our community contributors :clap:
 
 - WeChat Groups (Chinese):
 
-  ![wechat](docs/en/about/images/wechat.png)  
+  ![wechat](images/wechat.png)  
 
 ## 12. Publications
 

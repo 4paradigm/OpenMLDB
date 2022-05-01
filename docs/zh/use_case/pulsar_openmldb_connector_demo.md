@@ -5,6 +5,10 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 
 注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。该connector是完全可以在Pulsar Cluster中正常使用的。
 
+```{seealso}
+关于 Pulsar OpenMLDB Connector 的详细信息，也可以参考 Pulsar [官网相关介绍](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb)。
+```
+
 ## 概览
 
 ### 下载
