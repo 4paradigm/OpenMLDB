@@ -45,13 +45,11 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 **Consistent Features for Training and Inference:** Based on the unified execution plan generator, correct and consistent features are produced for offline training and online inference, providing hassle-free time travel without data leakage.
 
-**Real-Time Features with Ultra-Low Latency**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds only to produce real-time features, which significantly outperforms other commercial in-memory database systems [^1].
+**Real-Time Features with Ultra-Low Latency**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds only to produce real-time features, which significantly outperforms other commercial in-memory database systems (Figures 9 & 10, [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)).
 
 **Define Features as SQL**: SQL is used as the unified programming language to define and manage features. SQL syntax is particularly enhanced for feature engineering, such as `LAST JOIN` and `WINDOW UNION`.
 
 **Production-Ready for ML Applications**: Production features are fully integrated to support enterprise-grade ML applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
-
-[^1]: Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.  (Figures 9 & 10). 
 
 ## 4. FAQ
 
