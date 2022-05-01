@@ -13,7 +13,7 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-**English version | [中文版](README_cn.md)**
+**English | [中文](README_cn.md)**
 
 ### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
@@ -47,9 +47,9 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 **Real-Time Features with Ultra-Low Latency**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds only to produce real-time features, which significantly outperforms other commercial in-memory database systems (Figures 9 & 10, [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)).
 
-**Define Features as SQL**: SQL is used as the unified programming language to define and manage features. SQL syntax is particularly enhanced for feature engineering, such as `LAST JOIN` and `WINDOW UNION`.
+**Define Features as SQL**: SQL is used as the unified programming language to define and manage features. SQL is further enhanced for feature engineering, such as the extended syntax `LAST JOIN` and `WINDOW UNION`.
 
-**Production-Ready for ML Applications**: Production features are fully integrated to support enterprise-grade ML applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+**Production-Ready for ML Applications**: Production features are seamlessly integrated to support enterprise-grade ML applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
 ## 4. FAQ
 
@@ -63,7 +63,7 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
    
 3. **Is OpenMLDB a feature store?**
    
-   OpenMLDB is more than a feature store to provide features for ML applications. OpenMLDB is capable of producing real-time features efficiently in a few milliseconds. Nowadays, most feature stores in the market serve online features by syncing features pre-computed at offline. But they are unable to produce low latency real-time feature. By comparison, OpenMLDB is taking advantage of its online SQL engine, to efficiently produce real-time features.
+   OpenMLDB is more than a feature store to provide features for ML applications. OpenMLDB is capable of producing real-time features in a few milliseconds. Nowadays, most feature stores in the market serve online features by syncing features pre-computed at offline. But they are unable to produce low latency real-time features. By comparison, OpenMLDB is taking advantage of its optimized online SQL engine, to efficiently produce real-time features in a few milliseconds.
    
 4. **Why does OpenMLDB choose SQL to define and manage features?**
    
@@ -124,23 +124,23 @@ Let's clap hands for our community contributors :clap:
 
 ## 11. Community
 
-- **Website**: [https://openmldb.ai/en](https://openmldb.ai/en)
+- Website: [https://openmldb.ai/en](https://openmldb.ai/en)
 
-- **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
+- Email: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 
-- **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)** 
+- [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg) 
 
-- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: The GitHub Issues is used to report bugs and collect new feature requirements. The GitHub Discussions is open to any discussions related to OpenMLDB.
+- [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) and [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions): The GitHub Issues is used to report bugs and collect new feature requirements. The GitHub Discussions is open to any discussions related to OpenMLDB.
 
-- **[Blogs (English)](https://openmldb.medium.com/)**
+- [Blogs (English)](https://openmldb.medium.com/)
 
-- [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
+- [Blogs (Chinese)](https://www.zhihu.com/column/c_1417199590352916480)
 
-- Public drives maintained by the PMC: **[English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d)**
+- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d)
 
-- [**Mailing list for developers**](https://groups.google.com/g/openmldb-developers)
+- [Mailing list for developers](https://groups.google.com/g/openmldb-developers)
 
-- **WeChat Groups (Chinese)**:
+- WeChat Groups (Chinese):
 
   <img src="images/wechat.png" alt="img" width=120 />  
 
