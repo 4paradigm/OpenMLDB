@@ -15,19 +15,19 @@
 
 **English version | [中文版](README_cn.md)**
 
-### OpenMLDB is an open-source machine learning database that provides an online-offline consistent feature platform.
+### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
 ## 1. Our Philosophy
 
-For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this challenge, tech giants spend thousands of hours on building in-house data and feature platforms to address engineering issues such as online-offline consistency, feature backfilling, and performance. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
+For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this challenge, tech giants spend thousands of hours on building in-house data and feature platforms to address engineering issues such as data leakage, feature backfilling, and efficiency. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
 
-OpenMLDB is an open-source machine learning database that is committed to solving the data and feature challenges. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It gives priority to open-source the capability of feature engineering using SQL, which offers an online-offline consistent feature platform for production.
+OpenMLDB is an open-source machine learning database that is committed to solving the data and feature challenges. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It prioritizes the capability of feature engineering using SQL for open-source, which offers a feature platform enabling consistent features for training and inference.
 
-## 2. An Online-Offline Consistent Feature Platform
+## 2. A Feature Platform for ML Applications
 
-Real-time features are essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the development and deployment life cycle, the verification for online-offline consistency is essential, which usually costs a lot of time and human power. 
+Real-time features are essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the development and deployment life cycle, the verification for consistency is essential, which usually costs a lot of time and human power. 
 
-OpenMLDB is particularly designed to accomplish the mission of **Development as Deployment** for feature engineering, to significantly reduce the cost from the offline development to online production deployment. Based on OpenMLDB, there are three steps only for the entire life cycle:
+OpenMLDB is particularly designed as a feature platform for ML applications to accomplish the mission of **Development as Deployment**, to significantly reduce the cost from the offline training to online inference. Based on OpenMLDB, there are three steps only for the entire life cycle:
 
 - Step 1: Offline development of feature engineering script based on SQL
 - Step 2: SQL online deployment using just one command
@@ -39,40 +39,37 @@ With those three steps done, the system is ready to serve real-time features, an
  <img src="docs/en/about/images/workflow.png" alt="image-20211103103052253" width=800 />
 </p>
 
-In order to achieve the goal of Development as Deployment, OpenMLDB is implemented based on the online-offline consistent architecture as shown in the figure above. It shows that there are four key designs:
-
-- The SQL language (with extension) as the unified programming language for both offline development and online serving
-- The real-time SQL engine for online features, built from scratch and highly optimized for low latency (a few milliseconds) and high throughput
-- The batch SQL engine for offline features, [a tailored Spark distribution](https://github.com/4paradigm/spark) optimized for big data and efficient batch data processing
-- The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the online-offline consistency
+In order to achieve the goal of Development as Deployment, OpenMLDB is designed to provide consistent features for training and inference. The figure above shows the high-level architecture of OpenMLDB, which consists of four key components: (1) SQL as the unified programming language; (2) The real-time SQL engine for for extra-low latency services; (3) The batch SQL engine based on [a tailored Spark distribution](https://github.com/4paradigm/spark); (4) The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the consistency.
 
 ## 3. Highlights
 
-**Online-Offline Consistency:** Based on the unified execution plan generator, the online-offline processing consistency is inherently guaranteed.
+**Consistent Features for Training and Inference:** Based on the unified execution plan generator, correct and consistent features are produced for offline training and online inference, providing hassle-free time travel without data leakage.
 
-**Highly Optimized Low-Latency Real-Time Features**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds, which significantly outperforms other commercial in-memory database systems (see Figure 9 & 10 of [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)). 
+**Real-Time Features with Ultra-Low Latency**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds only to produce real-time features, which significantly outperforms other commercial in-memory database systems [^1].
 
-**Enhanced SQL for Feature Engineering**: In order to enhance the functionality and performance of standard SQL, specific optimization for feature engineering is fully exploited, such as the SQL syntax extension of `LAST JOIN` and `WINDOW UNION` to support feature backfilling and time travel.
+**Define Features as SQL**: SQL is used as the unified programming language to define and manage features. SQL syntax is particularly enhanced for feature engineering, such as `LAST JOIN` and `WINDOW UNION`.
 
-**Production-Ready**: OpenMLDB has been implementing important production features for enterprise-grade applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+**Production-Ready for ML Applications**: Production features are fully integrated to support enterprise-grade ML applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+
+[^1]: Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.  (Figures 9 & 10). 
 
 ## 4. FAQ
 
 1. **What are use cases of OpenMLDB?**
    
-   At present, it is mainly positioned as a feature platform for machine learning, with the strength of low-latency real-time feature processing. It provides the capability of Development as Deployment to significantly reduce the cost for machine learning applications. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
+   At present, it is mainly positioned as a feature platform for ML applications, with the strength of low-latency real-time features. It provides the capability of Development as Deployment to significantly reduce the cost for machine learning applications. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
    
 2. **How does OpenMLDB evolve?**
    
-   OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). In 2021, the core team has abstracted, enhanced and developed community-friendly features based on the commercial product; and then makes it publicly available as an open-source project to benefit more enterprises to achieve successful digital transformations at low cost. Before OpenMLDB was open-source, it had been successfully deployed in hundreds of real-world applications together with 4Paradigm's other commercial products.
+   OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). In 2021, the core team has abstracted, enhanced and developed community-friendly features based on the commercial product; and then makes it publicly available as an open-source project to benefit more enterprises to achieve successful digital transformations at low cost. Before the open-source, it had been successfully deployed in hundreds of real-world ML applications together with 4Paradigm's other commercial products.
    
 3. **Is OpenMLDB a feature store?**
    
-   OpenMLDB is considered as a superset of feature store, which is defined as offline and online features providers in general. Furthermore, OpenMLDB is able to provide the capability of efficient real-time feature processing with the online-offline processing consistency. Nowadays, most feature stores in the market serve online features by syncing features pre-computed at offline. But they are incapable of real-time online feature processing in a few milliseconds. By comparison, OpenMLDB is taking advantage of its online SQL engine, to efficiently support real-time feature processing.
+   OpenMLDB is more than a feature store to provide features for ML applications. OpenMLDB is capable of producing real-time features efficiently in a few milliseconds. Nowadays, most feature stores in the market serve online features by syncing features pre-computed at offline. But they are unable to produce low latency real-time feature. By comparison, OpenMLDB is taking advantage of its online SQL engine, to efficiently produce real-time features.
    
-4. **Why does OpenMLDB choose SQL as the programming language for users?**
+4. **Why does OpenMLDB choose SQL to define and manage features?**
    
-   SQL has the elegant syntax but yet powerful expression ability. SQL based programming experience flattens the learning curve of using OpenMLDB, and further makes it easier for collaboration and sharing. In addition, based on the experience of developing and deploying hundreds of real-world applications using OpenMLDB, it shows that SQL has complete functions in the expression of feature extraction and has withstood the test of practice for a long time.
+   SQL (with extension) has the elegant syntax but yet powerful expression ability. SQL based programming experience flattens the learning curve of using OpenMLDB, and further makes it easier for collaboration and sharing.
 
 ## 5. Build & Install
 
