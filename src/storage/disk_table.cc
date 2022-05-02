@@ -166,7 +166,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         auto index_def = indexs.front();
         if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
             index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
-            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
+            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index, &idx_cnt_vec_);
         }
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
