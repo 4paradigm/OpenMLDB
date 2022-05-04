@@ -1,8 +1,6 @@
 # Python SDK Quickstart
 
-Notice, The Python SDK currently only supports the cluster version, and the stand-alone version will be planned to be supported in the next version v0.5.0.
-
-## 1. Install the OpenMLDB Python Package
+## 1. Install the Python SDK Package
 
 Install using `pip`.
 
@@ -10,11 +8,11 @@ Install using `pip`.
 pip install openmldb
 ````
 
-## 2. Using OpenMLDB DBAPI
+## 2. OpenMLDB DBAPI
 
 ### 2.1 Create Connection
 
-Here, the database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
 
 ````python
 import openmldb.dbapi
@@ -69,24 +67,23 @@ cursor.execute("DROP DATABASE db1")
 cursor.close()
 ````
 
-## 3. Using OpenMLDB SQLAlchemy
+## 3. OpenMLDB SQLAlchemy
 
 ### 3.1 Create Connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-Here, the db_name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database is not required to exist. If it does not exist, you need to create the database after the connection is created.
 
 ````python
 import sqlalchemy as db
 
 engine = db.create_engine('openmldb:///db1?zk=127.0.0.1:2181&zkPath=/openmldb')
-
 connection = engine.connect()
 ````
 
 ### 3.2 Create Database
 
-Create a database using the `connection.execute()` interface:
+Create a database using the `connection.execute()`:
 
 ````python
 try:
@@ -97,7 +94,7 @@ except Exception as e:
 
 ### 3.3 Create Table
 
-Create a table using the `connection.execute()` interface:
+Create a table using the `connection.execute()`:
 
 ````python
 try:
@@ -108,7 +105,7 @@ except Exception as e:
 
 ### 3.4 Insert Data into the Table
 
-Use the `connection.execute(ddl)` interface to execute the SQL insert statement to insert data to the table:
+Using the `connection.execute(ddl)` to execute the SQL insert statement to insert data to the table:
 
 ````python
 try:
@@ -117,7 +114,7 @@ except Exception as e:
     print(e)
 ````
 
-Use the `connection.execute(ddl, data)` interface to execute the insert statement of SQL with the planceholder, and the inserted data can be dynamically specified:
+Using the `connection.execute(ddl, data)` to execute the insert statement of SQL with the placeholder, and the inserted data can be dynamically specified:
 
 ````python
 try:
@@ -129,7 +126,7 @@ except Exception as e:
 
 ### 3.5 Execute SQL Batch Query
 
-Use the `connection.execute(sql)` interface to execute SQL batch query statements:
+Using the `connection.execute(sql)` to execute SQL batch query statements:
 
 ````python
 try:
@@ -143,7 +140,7 @@ except Exception as e:
 
 ### 3.6 Execute SQL Queries in the Request Mode
 
-Use the `connection.execute(sql, request)` interface to execute SQLs in the request mode. You can put the input data in the second parameter.
+Using the `connection.execute(sql, request)` to execute SQLs in the request mode. You can put the input request row in the second parameter.
 
 ````python
 try:
@@ -154,7 +151,7 @@ except Exception as e:
 
 ### 3.7 Delete Table
 
-Use the `connection.execute(ddl)` interface to delete a table:
+Using the `connection.execute(ddl)` interface to delete a table:
 
 ````python
 try:
@@ -165,7 +162,7 @@ except Exception as e:
 
 ### 3.8 Delete Database
 
-Use the `connection.execute(ddl)` interface to delete a database:
+Using the `connection.execute(ddl)` interface to delete a database:
 
 ````python
 try:
@@ -174,18 +171,17 @@ except Exception as e:
     print(e)
 ````
 
-## 4. Using Notebook Magic Function
+## 4. Notebook Magic Function
 
-OpenMLDB Python SDK supports Notebook magic function extension, use the following statement to register the function.
+OpenMLDB Python SDK supports Notebook magic function extension, you can use the following statement to register the function.
 
-````
+````python
 import openmldb
 
 db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
-
 openmldb.sql_magic.register(db)
 ````
 
 The line magic function `%sql` and block magic function `%%sql` can then be used in Notebook.
 
-![](https://github.com/4paradigm/openmldb-docs-zh/blob/bbe11c98d0f0b1ae7f9723a6b32c30f8e42e1903/quickstart/images/openmldb_magic_function.png)
+![img](images/openmldb_magic_function.png)

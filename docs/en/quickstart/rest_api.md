@@ -2,12 +2,12 @@
 
 ## Data Insertion
 
-reqeust url: http://ip:port/dbs/{db_name}/tables/{table_name}
+The request URL: http://ip:port/dbs/{db_name}/tables/{table_name}
 
-http method: PUT 
+HTTP method: PUT 
 
-request body: 
-```
+The request body: 
+```json
 {
     "value": [
     	[v1, v2, v3]
@@ -16,19 +16,19 @@ request body:
 ```
 
 + Only one record can be inserted at a time.
-+ The data should be arranged according to the schema strictly.
++ The data layout should be arranged according to the schema strictly.
 
-### Examples
+**Example**
 
-```
+```batch
 curl http://127.0.0.1:8080/dbs/db/tables/trans -X PUT -d '{
 "value": [
     ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
 ]}'
 ```
-response:
+The response:
 
-```
+```json
 {
     "code":0,
     "msg":"ok"
@@ -37,11 +37,11 @@ response:
 
 ## Real-Time Feature Extraction
 
-reqeust url: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
+The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
 
-http method: POST
+HTTP method: POST
 
-request body: 
+The request body: 
 
 ```
 {
@@ -51,9 +51,9 @@ request body:
 ```
 
 + Multiple rows of input are supported, whose returned values correspond to the fields in the `data.data` array.
-+ A schema will be returned if `need_schema`  is `true`. Default: false.
++ A schema will be returned if `need_schema`  is `true`. Default: `false`.
 
-### Examples
+**Example**
 
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
@@ -61,7 +61,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
     }'
 ```
 
-response:
+The response:
 
 ```
 {
