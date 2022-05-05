@@ -81,6 +81,7 @@ object GroupByAggregationPlan {
     val groupKeyComparator = HybridseUtil.createGroupKeyComparator(groupIdxs.toArray)
 
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
+    val isUnafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
 
     // Map partition
     val resultRDD = sortedInputDf.rdd.mapPartitions(iter => {
@@ -93,7 +94,7 @@ object GroupByAggregationPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer)
+        JitManager.initJitModule(tag, buffer, isUnafeRowOpt)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

@@ -221,10 +221,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<SQLCache> GetSQLCache(
         const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& parameter_row, hybridse::sdk::Status& status); // NOLINT
-    bool GetTabletClientsForClusterOnlineBatchQuery(
+
+    std::shared_ptr<::openmldb::client::TabletClient> GetTabletClientForBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients, //NOLINT
-        hybridse::sdk::Status& status); //NOLINT
+        hybridse::sdk::Status* status);
 
     std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                           const std::string& table_name) override;
@@ -293,8 +293,6 @@ class SQLClusterRouter : public SQLRouter {
     std::string GetDatabase();
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
-
-    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables() override;
 
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 

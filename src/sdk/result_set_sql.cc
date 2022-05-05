@@ -82,7 +82,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     ok = rs->Init();
     if (!ok) {
         status->code = -1;
-        status->msg = "request error, resuletSetSQL init failed";
+        status->msg = "request error, ResultSetSQL init failed";
         return std::shared_ptr<ResultSet>();
     }
     return rs;
@@ -109,7 +109,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         ok = rs->Init();
         if (!ok) {
             status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
+            status->msg = "request error, ResultSetSQL init failed";
             return std::shared_ptr<ResultSet>();
         }
         return rs;
@@ -119,7 +119,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         bool ok = rs->Init();
         if (!ok) {
             status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
+            status->msg = "request error, ResultSetSQL init failed";
             return std::shared_ptr<ResultSet>();
         }
         return rs;

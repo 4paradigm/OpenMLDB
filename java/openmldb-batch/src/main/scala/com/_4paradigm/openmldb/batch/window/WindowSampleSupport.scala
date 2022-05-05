@@ -205,7 +205,7 @@ object WindowSampleSupport {
     private val jit = {
       val buffer = config.moduleNoneBroadcast.getBuffer
       SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
-      JitManager.initJitModule(config.moduleTag, buffer)
+      JitManager.initJitModule(config.moduleTag, buffer, sqlConfig.enableUnsafeRowOptimization)
       JitManager.getJit(config.moduleTag)
     }
 

@@ -65,6 +65,7 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     meta.set_tid(0);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
+    meta.add_table_partition();
     meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::openmldb::type::kBigInt);
@@ -159,6 +160,7 @@ TestArgs PrepareAggTable(const std::string &tname, int num_pk, uint64_t num_ts, 
     meta.set_tid(2);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
+    meta.add_table_partition();
     meta.set_mode(::openmldb::api::TableMode::kTableLeader);
 
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", openmldb::type::DataType::kString);

@@ -749,7 +749,7 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
 
             auto options = std::make_shared<node::OptionsMap>();
             if (ast_deploy_stmt->options_list() != nullptr) {
-                CHECK_STATUS(ConvertAstOptionsListToMap(ast_deploy_stmt->options_list(), node_manager, options));
+                CHECK_STATUS(ConvertAstOptionsListToMap(ast_deploy_stmt->options_list(), node_manager, options, true));
             }
             *output = node_manager->MakeDeployStmt(ast_deploy_stmt->name()->GetAsString(), deploy_stmt,
                                                    ast_deploy_stmt->UnparseStmt(), options,
@@ -2008,9 +2008,12 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
 }
 
 base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, node::NodeManager* node_manager,
-                                        std::shared_ptr<node::OptionsMap> options_map) {
+                                        std::shared_ptr<node::OptionsMap> options_map, bool to_lower) {
     for (auto entry : options->options_entries()) {
         std::string key = entry->name()->GetAsString();
+        if (to_lower) {
+            boost::to_lower(key);
+        }
         auto entry_value = entry->value();
         node::ExprNode* value = nullptr;
         CHECK_STATUS(ConvertExprNode(entry_value, node_manager, &value));

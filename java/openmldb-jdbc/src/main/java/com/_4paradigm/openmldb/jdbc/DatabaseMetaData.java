@@ -21,8 +21,12 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -30,6 +34,45 @@ import com._4paradigm.openmldb.sdk.Schema;
 public class DatabaseMetaData implements java.sql.DatabaseMetaData {
     public static final String DRIVER_NAME = "OpenMLDB Connector/J";
     private final SQLConnection connection;
+
+    public static List<Column> tableRsCols = Arrays.asList(
+            new Column("TABLE_CAT", Types.VARCHAR),
+            new Column("TABLE_SCHEM", Types.VARCHAR),
+            new Column("TABLE_NAME", Types.VARCHAR),
+            new Column("TABLE_TYPE", Types.VARCHAR),
+            new Column("REMARKS", Types.VARCHAR),
+            new Column("TYPE_CAT", Types.VARCHAR),
+            new Column("TYPE_SCHEM", Types.VARCHAR),
+            new Column("TYPE_NAME", Types.VARCHAR),
+            new Column("SELF_REFERENCING_COL_NAME", Types.VARCHAR),
+            new Column("REF_GENERATION", Types.VARCHAR)
+    );
+    public static List<Column> columnRsCols = Arrays.asList(
+            new Column("TABLE_CAT", Types.VARCHAR),
+            new Column("TABLE_SCHEM", Types.VARCHAR),
+            new Column("TABLE_NAME", Types.VARCHAR),
+            new Column("COLUMN_NAME", Types.VARCHAR),
+            new Column("DATA_TYPE", Types.INTEGER),
+            new Column("TYPE_NAME", Types.VARCHAR),
+            new Column("COLUMN_SIZE", Types.INTEGER),
+            new Column("BUFFER_LENGTH", Types.INTEGER),
+            new Column("DECIMAL_DIGITS", Types.INTEGER),
+            new Column("NUM_PREC_RADIX", Types.INTEGER),
+            new Column("NULLABLE", Types.INTEGER),
+            new Column("REMARKS", Types.VARCHAR),
+            new Column("COLUMN_DEF", Types.VARCHAR),
+            new Column("SQL_DATA_TYPE", Types.INTEGER),
+            new Column("SQL_DATETIME_SUB", Types.INTEGER),
+            new Column("CHAR_OCTET_LENGTH", Types.INTEGER),
+            new Column("ORDINAL_POSITION", Types.INTEGER),
+            new Column("IS_NULLABLE", Types.VARCHAR),
+            new Column("SCOPE_CATALOG", Types.VARCHAR),
+            new Column("SCOPE_SCHEMA", Types.VARCHAR),
+            new Column("SCOPE_TABLE", Types.VARCHAR),
+            new Column("SOURCE_DATA_TYPE", Types.SMALLINT),
+            new Column("IS_AUTOINCREMENT", Types.VARCHAR),
+            new Column("IS_GENERATEDCOLUMN", Types.VARCHAR)
+    );
 
     public DatabaseMetaData(SQLConnection connection) {
         this.connection = connection;
@@ -82,12 +125,12 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getDatabaseProductName() throws SQLException {
-        return null;
+        return "OpenMLDB";
     }
 
     @Override
     public String getDatabaseProductVersion() throws SQLException {
-        return null;
+        return "unknown";
     }
 
     @Override
@@ -97,7 +140,10 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getDriverVersion() throws SQLException {
-        return null;
+        int n = getDriverMinorVersion();
+        String s = getDriverMajorVersion() + ".";
+        s += "" + n;
+        return s;
     }
 
     @Override
@@ -107,7 +153,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getDriverMinorVersion() {
-        return 0;
+        return 4;
     }
 
     @Override
@@ -162,7 +208,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getIdentifierQuoteString() throws SQLException {
-        return null;
+        return "`";
     }
 
     @Override
@@ -357,7 +403,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getCatalogSeparator() throws SQLException {
-        return null;
+        return ".";
     }
 
     @Override
@@ -635,88 +681,46 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
         return null;
     }
 
-    /**
-     * Retrieves a description of the tables available in the given catalog.
-     * Only table descriptions matching the catalog, schema, table
-     * name and type criteria are returned.  They are ordered by
-     * <code>TABLE_TYPE</code>, <code>TABLE_CAT</code>,
-     * <code>TABLE_SCHEM</code> and <code>TABLE_NAME</code>.
-     * <p>
-     * Each table description has the following columns:
-     * <OL>
-     * <LI><B>TABLE_CAT</B> String {@code =>} table catalog (may be <code>null</code>)
-     * <LI><B>TABLE_SCHEM</B> String {@code =>} table schema (may be <code>null</code>)
-     * <LI><B>TABLE_NAME</B> String {@code =>} table name
-     * <LI><B>TABLE_TYPE</B> String {@code =>} table type.  Typical types are "TABLE",
-     * "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY",
-     * "LOCAL TEMPORARY", "ALIAS", "SYNONYM".
-     * <LI><B>REMARKS</B> String {@code =>} explanatory comment on the table
-     * <LI><B>TYPE_CAT</B> String {@code =>} the types catalog (may be <code>null</code>)
-     * <LI><B>TYPE_SCHEM</B> String {@code =>} the types schema (may be <code>null</code>)
-     * <LI><B>TYPE_NAME</B> String {@code =>} type name (may be <code>null</code>)
-     * <LI><B>SELF_REFERENCING_COL_NAME</B> String {@code =>} name of the designated
-     * "identifier" column of a typed table (may be <code>null</code>)
-     * <LI><B>REF_GENERATION</B> String {@code =>} specifies how values in
-     * SELF_REFERENCING_COL_NAME are created. Values are
-     * "SYSTEM", "USER", "DERIVED". (may be <code>null</code>)
-     * </OL>
-     *
-     * <P><B>Note:</B> OpenMLDB only has columns:
-     * TABLE_CAT='null'
-     * TABLE_SCHEM='null'
-     * TABLE_NAME
-     * TABLE_TYPE='TABLE'
-     *
-     * @param catalog          a catalog name; must match the catalog name as it
-     *                         is stored in the database; "" retrieves those without a catalog;
-     *                         <code>null</code> means that the catalog name should not be used to narrow
-     *                         the search
-     * @param schemaPattern    a schema name pattern; must match the schema name
-     *                         as it is stored in the database; "" retrieves those without a schema;
-     *                         <code>null</code> means that the schema name should not be used to narrow
-     *                         the search
-     * @param tableNamePattern a table name pattern; must match the
-     *                         table name as it is stored in the database
-     * @param types            a list of table types, which must be from the list of table types
-     *                         returned from {@link #getTableTypes},to include; <code>null</code> returns
-     *                         all types
-     * @return <code>ResultSet</code> - each row is a table description
-     * @throws SQLException if a database access error occurs
-     * @see #getSearchStringEscape
-     */
+    // only has: TABLE_CAT=null, TABLE_SCHEM=null, TABLE_NAME, TABLE_TYPE='TABLE'
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
-        // TODO(hw): catalog == openmldb db?
+        // TODO(hw): catalog unsupported, schema == openmldb db? Ref https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema
         // hard to impl when 'SHOW xxx WHERE'
         if (catalog != null || schemaPattern != null) {
             throw new SQLException("unsupported");
         }
 
+        // we'll use regex to match, tableNamePattern needs fix
+        String regexPattern = tableNamePattern;
+        if (regexPattern != null) {
+            regexPattern = regexPattern.replace("_", ".");
+            regexPattern = regexPattern.replace("%", ".+");
+        }
         List<String> allTables = connection.getClient().getTableNames(connection.getDefaultDatabase());
 
         List<List<String>> table = new ArrayList<>();
         for (String tableName : allTables) {
-            if (tableNamePattern != null && !tableName.equals(tableNamePattern)) {
+            if (regexPattern != null && !Pattern.matches(regexPattern, tableName)) {
                 continue;
             }
 
             List<String> row = new ArrayList<>();
             // TABLE_CAT
-            row.add("null");
+            row.add(null);
             // TABLE_SCHEM schema name
-            row.add("null");
+            row.add(null);
             // TABLE_NAME table name
             row.add(tableName);
             // table type
             row.add("TABLE");
             // extra 6 columns
             for (int i = 0; i < 6; i++) {
-                row.add("null");
+                row.add(null);
             }
             table.add(row);
         }
 
-        return new SimpleResultSet(table);
+        return SimpleResultSet.createResultSet(tableRsCols, table);
     }
 
     @Override
@@ -731,13 +735,18 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
-        return null;
+        List<List<String>> table = new ArrayList<>();
+        table.add(Collections.singletonList("TABLE"));
+        return SimpleResultSet.createResultSet(Collections.singletonList("TABLE_TYPE"),
+                Collections.singletonList(Types.VARCHAR), table);
     }
 
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
         // hard to impl when 'SHOW xxx WHERE'
-        if (!catalog.equals("null") || !schemaPattern.equals("null") || columnNamePattern != null) {
+        // Note: If catalog, schemaPattern, tableNamePattern, columnNamePattern are null, they should be null, not a
+        // string "null"
+        if (catalog != null || schemaPattern != null || columnNamePattern != null) {
             throw new SQLException("unsupported");
         }
 
@@ -752,9 +761,9 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
             List<String> rowFirstPart = new ArrayList<>();
 
             // TABLE_CAT
-            rowFirstPart.add("null");
+            rowFirstPart.add(null);
             // TABLE_SCHEM schema name
-            rowFirstPart.add("null");
+            rowFirstPart.add(null);
 
             String dbName = connection.getDefaultDatabase();
             // TABLE_NAME table name
@@ -774,14 +783,15 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 colParts.add("0");
                 // BUFFER_LENGTH
                 colParts.add("0");
-                // TODO(hw): DECIMAL_DIGITS, NUM_PREC_RADIX
+                // TODO(hw): DECIMAL_DIGITS
                 colParts.add("0");
-                colParts.add("0");
+                // NUM_PREC_RADIX
+                colParts.add("10");
                 // NULLABLE
                 colParts.add(col.isNotNull() ? "0" : "1");
                 // REMARKS, COLUMN_DEF string
-                colParts.add("");
-                colParts.add("");
+                colParts.add(null);
+                colParts.add(null);
                 // SQL_DATA_TYPE, SQL_DATETIME_SUB unused
                 colParts.add("0");
                 colParts.add("0");
@@ -791,11 +801,14 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
                 colParts.add(Integer.toString(i + 1));
                 // IS_NULLABLE
                 colParts.add(col.isNotNull() ? "NO" : "YES");
-                // extra 6 columns
-                for (int k = 0; k < 6; k++) {
-                    colParts.add("null");
+                // extra 4 columns
+                for (int k = 0; k < 4; k++) {
+                    colParts.add(null);
                 }
-
+                // IS_AUTOINCREMENT
+                colParts.add("NO");
+                // IS_GENERATEDCOLUMN
+                colParts.add("NO");
                 // append this column info
                 colParts.addAll(0, rowFirstPart);
                 table.add(colParts);
@@ -803,7 +816,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
         }
 
-        return new SimpleResultSet(table);
+        return new SimpleResultSet(columnRsCols, table);
     }
 
     @Override
@@ -828,7 +841,13 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-        return null;
+        // no primary keys
+        List<String> columns = Arrays.asList("TABLE_CAT", "TABLE_SCHEM", "TABLE_NAME", "COLUMN_NAME", "KEY_SEQ", "PK_NAME");
+        List<Integer> types = Arrays.asList(Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT,
+                Types.VARCHAR);
+        List<List<String>> rsTable = new ArrayList<>();
+        // TODO(hw):
+        return SimpleResultSet.createResultSet(columns, types, rsTable);
     }
 
     @Override
@@ -983,12 +1002,12 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getJDBCMajorVersion() throws SQLException {
-        return 0;
+        return 1;
     }
 
     @Override
     public int getJDBCMinorVersion() throws SQLException {
-        return 0;
+        return 4;
     }
 
     @Override

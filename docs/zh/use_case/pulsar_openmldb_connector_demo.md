@@ -1,9 +1,13 @@
-# Pulsar OpenMLDB Connector 使用
+# Pulsar Connector：接入实时数据流
 
 ## 简介
 Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
 
 注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。该connector是完全可以在Pulsar Cluster中正常使用的。
+
+```{seealso}
+关于 Pulsar OpenMLDB Connector 的详细信息，也可以参考 Pulsar [官网相关介绍](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb)。
+```
 
 ## 概览
 

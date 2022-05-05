@@ -116,7 +116,8 @@ object WindowAggPlanUtil {
                              excludeCurrentTime: Boolean,
                              needAppendInput: Boolean,
                              limitCnt: Int,
-                             keepIndexColumn: Boolean)
+                             keepIndexColumn: Boolean,
+                             isUnsafeRowOpt: Boolean)
 
 
   /** Get the data from context and physical node and create the WindowAggConfig object.
@@ -198,7 +199,8 @@ object WindowAggPlanUtil {
       excludeCurrentTime = node.exclude_current_time(),
       needAppendInput = node.need_append_input(),
       limitCnt = node.GetLimitCnt(),
-      keepIndexColumn = keepIndexColumn
+      keepIndexColumn = keepIndexColumn,
+      isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
     )
   }
 
@@ -211,7 +213,7 @@ object WindowAggPlanUtil {
     val tag = config.moduleTag
     val buffer = config.moduleNoneBroadcast.getBuffer
     SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
-    JitManager.initJitModule(tag, buffer)
+    JitManager.initJitModule(tag, buffer, config.isUnsafeRowOpt)
 
     val jit = JitManager.getJit(tag)
 

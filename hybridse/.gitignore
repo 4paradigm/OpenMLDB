@@ -15,24 +15,12 @@ thirdsrc
 src/fe_version.h
 src/hyhridse_version.h
 
-# java ignore
-*.iml
-*.idea*
-java/*/target
-
-# ignore codegen files
-java/fesql-proto/src/main/java/com/*
-java/fesql-native/src/main/java/com/*
-java/hybridse-proto/src/main/java/com/*
-java/hybridse-native/src/main/java/com/*
-
 # ignore docgen
 tools/documentation/udf_doxygen/html
 tools/documentation/udf_doxygen/udfs
 style.xml
 hybridse_version.h
 intermediate_cicd_artifact_.tar.gz
-java/hybridse-spark/src/test/resources/fesql_windows
 .husky
 tools/documentation/api_doxygen/html
 tools/documentation/api_doxygen/xml

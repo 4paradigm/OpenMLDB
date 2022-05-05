@@ -1,4 +1,4 @@
-# SELECT语句概况
+# SELECT 概况
 
 ## Syntax
 

@@ -1,4 +1,4 @@
-# 面向特征工程优化的OpenMLDB Spark发行版
+# OpenMLDB Spark 发行版
 
 ## 简介
 
