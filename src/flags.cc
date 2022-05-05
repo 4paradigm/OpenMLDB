@@ -58,7 +58,7 @@ DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
 DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
 DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when distribute sql circumstance");
-DEFINE_string(mini_window_size, "1d", "the default mini window size in pre-aggr table");
+DEFINE_string(bucket_size, "1d", "the default bucket size in pre-aggr table");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
@@ -95,6 +95,7 @@ DEFINE_int32(request_timeout_ms, 20000, "request timeout");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
+DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
 DEFINE_string(hdd_root_path, "", "the root hdd path of db");
 

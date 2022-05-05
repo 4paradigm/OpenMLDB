@@ -34,6 +34,7 @@ class KvIterator {
     explicit KvIterator(::openmldb::api::ScanResponse* response)
         : response_(response),
           buffer_(NULL),
+          is_finish_(true),
           tsize_(0),
           offset_(0),
           c_size_(0),
@@ -49,10 +50,13 @@ class KvIterator {
     explicit KvIterator(::openmldb::api::TraverseResponse* response)
         : response_(response),
           buffer_(NULL),
+          is_finish_(response->is_finish()),
           tsize_(0),
           offset_(0),
           c_size_(0),
           tmp_(NULL),
+          last_pk_(response->pk()),
+          last_ts_(response->ts()),
           has_pk_(true),
           auto_clean_(true) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
@@ -64,6 +68,7 @@ class KvIterator {
     KvIterator(::openmldb::api::ScanResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
+          is_finish_(true),
           tsize_(0),
           offset_(0),
           c_size_(0),
@@ -79,10 +84,13 @@ class KvIterator {
     KvIterator(::openmldb::api::TraverseResponse* response, bool clean)
         : response_(response),
           buffer_(NULL),
+          is_finish_(response->is_finish()),
           tsize_(0),
           offset_(0),
           c_size_(0),
           tmp_(NULL),
+          last_pk_(response->pk()),
+          last_ts_(response->ts()),
           has_pk_(true),
           auto_clean_(clean) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
@@ -151,19 +159,30 @@ class KvIterator {
 
     uint64_t GetKey() const { return time_; }
 
-    std::string GetPK() const { return pk_; }
+    const std::string& GetPK() const { return pk_; }
 
     Slice GetValue() const { return *tmp_; }
+
+    bool IsFinish() const { return is_finish_; }
+
+    const std::string& GetLastPK() const { return last_pk_; }
+
+    uint64_t GetLastTS() const { return last_ts_; }
+
+    ::google::protobuf::Message* GetResponse() const { return response_; }
 
  private:
     ::google::protobuf::Message* response_;
     char* buffer_;
+    bool is_finish_;
     uint32_t tsize_;
     uint32_t offset_;
     uint32_t c_size_;
     uint64_t time_;
     Slice* tmp_;
     std::string pk_;
+    std::string last_pk_;
+    uint64_t last_ts_;
     bool has_pk_;
     bool auto_clean_;
 };

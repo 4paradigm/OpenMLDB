@@ -215,6 +215,10 @@ class TabletClient : public Client {
 
     ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
                                            const std::string& pk, uint64_t ts, uint32_t limit,
+                                           bool need_clean, uint32_t& count);  // NOLINT
+
+    ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+                                           const std::string& pk, uint64_t ts, uint32_t limit,
                                            uint32_t& count);  // NOLINT
 
     void ShowTp();

@@ -46,31 +46,32 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
 
     ~MemTableWindowIterator() { delete it_; }
 
-    inline bool Valid() const {
+    bool Valid() const override {
         if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
             return false;
         }
         return true;
     }
 
-    inline void Next() {
+    void Next() override {
         it_->Next();
         record_idx_++;
     }
 
-    inline const uint64_t& GetKey() const { return it_->GetKey(); }
+    const uint64_t& GetKey() const override { return it_->GetKey(); }
 
     // TODO(wangtaize) unify the row object
-    inline const ::hybridse::codec::Row& GetValue() {
+    const ::hybridse::codec::Row& GetValue() override {
         row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
         return row_;
     }
-    inline void Seek(const uint64_t& key) { it_->Seek(key); }
-    inline void SeekToFirst() {
+
+    void Seek(const uint64_t& key) override { it_->Seek(key); }
+    void SeekToFirst() override {
         record_idx_ = 1;
         it_->SeekToFirst();
     }
-    inline bool IsSeekable() const { return true; }
+    bool IsSeekable() const override { return true; }
 
  private:
     TimeEntries::Iterator* it_;

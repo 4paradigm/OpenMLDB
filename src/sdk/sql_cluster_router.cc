@@ -49,7 +49,7 @@
 #include "sdk/split.h"
 
 DECLARE_int32(request_timeout_ms);
-DECLARE_string(mini_window_size);
+DECLARE_string(bucket_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
 DECLARE_uint32(replica_num);
 
@@ -916,12 +916,14 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
 }
 
 // Get clients when online batch query in Cluster OpenMLDB
-bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
+std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClientForBatchQuery(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter,
-    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>>& clients,
-    hybridse::sdk::Status& status) {  // NOLINT
-    auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, status);
-    if (0 != status.code) {
+    hybridse::sdk::Status* status) {
+    if (status == nullptr) {
+        return {};
+    }
+    auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, *status);
+    if (0 != status->code) {
         return {};
     }
     if (cache) {
@@ -929,37 +931,25 @@ bool SQLClusterRouter::GetTabletClientsForClusterOnlineBatchQuery(
         const std::string main_db = cache->router.GetMainDb().empty() ? db : cache->router.GetMainDb();
         if (!main_table.empty()) {
             DLOG(INFO) << "get main table " << main_table;
-            std::string val;
-            std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
-
-            if (!cluster_sdk_->GetTablet(main_db, main_table, &tablets)) {
-                LOG(WARNING) << "ERROR: Fail to get tablet clients for " << main_db << "." << main_table;
-                status.msg = "fail to get tablet";
-                status.code = hybridse::common::kRunError;
-                return false;
+            auto tablet_accessor = cluster_sdk_->GetTablet(main_db, main_table);
+            if (tablet_accessor) {
+                *status = {};
+                return tablet_accessor->GetClient();
             }
-
-            for (auto tablet : tablets) {
-                clients.insert(tablet->GetClient());
-            }
-            return true;
         } else {
-            auto tablet = cluster_sdk_->GetTablet();
-            if (!tablet) {
-                return false;
+            auto tablet_accessor = cluster_sdk_->GetTablet();
+            if (tablet_accessor) {
+                *status = {};
+                return tablet_accessor->GetClient();
             }
-            clients.insert(tablet->GetClient());
-            return true;
         }
-    } else {
-        status.msg = "fail to get tablet";
-        status.code = hybridse::common::kRunError;
-        return false;
     }
+    *status = {::hybridse::common::StatusCode::kCmdError, "fail to get tablet"};
+    return {};
 }
+
 std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
-    std::shared_ptr<TableReaderImpl> reader(new TableReaderImpl(cluster_sdk_));
-    return reader;
+    return std::make_shared<TableReaderImpl>(cluster_sdk_);
 }
 
 std::shared_ptr<openmldb::client::TabletClient> SQLClusterRouter::GetTablet(const std::string& db,
@@ -1062,58 +1052,24 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         status->code = -1;
         return {};
     }
-
-    std::unordered_set<std::shared_ptr<::openmldb::client::TabletClient>> clients;
-    if (!GetTabletClientsForClusterOnlineBatchQuery(db, sql, parameter, clients, *status)) {
+    auto client = GetTabletClientForBatchQuery(db, sql, parameter, status);
+    if (!status->IsOK() || !client) {
         DLOG(INFO) << "no tablet available for sql " << sql;
         status->msg = "no tablet available for sql";
         status->code = -1;
         return {};
     }
-    if (clients.size() == 1) {
-        // Batch query from single tablet
-        auto cntl = std::make_shared<::brpc::Controller>();
-        cntl->set_timeout_ms(options_.request_timeout);
-        auto client = *(clients.begin());
-        DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
-        auto response = std::make_shared<::openmldb::api::QueryResponse>();
-        if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                           options_.enable_debug)) {
-            status->msg = response->msg();
-            status->code = -1;
-            return {};
-        }
-        return ResultSetSQL::MakeResultSet(response, cntl, status);
-    } else {
-        // Batch query from multiple tablets and merge the result set
-        std::vector<std::shared_ptr<ResultSetSQL>> result_set_list;
-        for (auto client : clients) {
-            DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
-            auto cntl = std::make_shared<::brpc::Controller>();
-            cntl->set_timeout_ms(options_.request_timeout);
-            auto response = std::make_shared<::openmldb::api::QueryResponse>();
-            if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(),
-                               response.get(), options_.enable_debug)) {
-                status->msg = response->msg();
-                status->code = -1;
-                return {};
-            }
-            result_set_list.emplace_back(
-                std::dynamic_pointer_cast<ResultSetSQL>(ResultSetSQL::MakeResultSet(response, cntl, status)));
-            if (status->code != 0) {
-                return {};
-            }
-        }
-        auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, *status);
-        if (!cache) {
-            return {};
-        }
-        auto rs = MultipleResultSetSQL::MakeResultSet(result_set_list, cache->limit_cnt, status);
-        if (status->code != 0) {
-            return {};
-        }
-        return rs;
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(options_.request_timeout);
+    DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+    auto response = std::make_shared<::openmldb::api::QueryResponse>();
+    if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
+                       options_.enable_debug)) {
+        status->msg = response->msg();
+        status->code = -1;
+        return {};
     }
+    return ResultSetSQL::MakeResultSet(response, cntl, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
@@ -1512,7 +1468,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 db_ = name;
                 *status = {::hybridse::common::kOk, "Database changed"};
             } else {
-                *status = {::hybridse::common::StatusCode::kCmdError, "Create database failed for " + msg};
+                *status = {::hybridse::common::StatusCode::kCmdError, "Use database failed for " + msg};
             }
             return {};
         }
@@ -3112,7 +3068,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             if (window_info.size() == 2) {
                 long_window_map[window_info[0]] = window_info[1];
             } else if (window_info.size() == 1) {
-                long_window_map[window_info[0]] = FLAGS_mini_window_size;
+                long_window_map[window_info[0]] = FLAGS_bucket_size;
             } else {
                 return {base::ReturnCode::kError, "illegal long window format"};
             }
@@ -3470,39 +3426,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServers(hybridse::sdk::Status* status) {
     // TODO(#1416): support show api servers
     return {};
-}
-
-std::vector<::hybridse::vm::AggrTableInfo> SQLClusterRouter::GetAggrTables() {
-    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
-    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-    std::string select_sql = absl::StrCat("select * from ", meta_table);
-
-    hybridse::sdk::Status status;
-    std::vector<::hybridse::vm::AggrTableInfo> table_infos;
-    auto rs = ExecuteSQL(meta_db, select_sql, &status);
-    if (!status.IsOK()) {
-        LOG(WARNING) << "Get pre-aggr table info failed: " << status.msg << " (code = " << status.code << ")";
-        return table_infos;
-    } else {
-        DLOG(INFO) << "Get pre-aggr table info succeed, size: " << rs->Size();
-    }
-
-    while (rs->Next()) {
-        ::hybridse::vm::AggrTableInfo table_info;
-        rs->GetString(0, &table_info.aggr_table);
-        rs->GetString(1, &table_info.aggr_db);
-        rs->GetString(2, &table_info.base_db);
-        rs->GetString(3, &table_info.base_table);
-        rs->GetString(4, &table_info.aggr_func);
-        rs->GetString(5, &table_info.aggr_col);
-        rs->GetString(6, &table_info.partition_cols);
-        rs->GetString(7, &table_info.order_by_col);
-        rs->GetString(8, &table_info.bucket_size);
-
-        table_infos.push_back(std::move(table_info));
-    }
-
-    return table_infos;
 }
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
