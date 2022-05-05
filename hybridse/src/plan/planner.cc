@@ -1182,7 +1182,7 @@ absl::StatusOr<node::WindowDefNode *> Planner::ConstructWindowForLag(const node:
     }
 
     auto *const_node = dynamic_cast<node::ConstNode *>(offset_expr);
-    int64_t offset = const_node->GetAsInt32();
+    int64_t offset = const_node->GetAsInt64();
 
     auto *rows_frame_ext =
         node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(node::BoundType::kPreceding, offset),

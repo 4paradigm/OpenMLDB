@@ -2395,8 +2395,6 @@ cases:
     desc: |
       correctness for at/lag when offset out-of-range rows_range window frame bound, together with other window function.
       refer https://github.com/4paradigm/OpenMLDB/issues/1554
-    # FIXME(ace): request/cluster run do not meet the expects
-    mode: request-unsupport,cluster-unsupport
     inputs:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
