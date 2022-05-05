@@ -482,7 +482,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL("use test2;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
         HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");

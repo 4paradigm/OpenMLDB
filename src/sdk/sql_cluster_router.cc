@@ -3010,25 +3010,36 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
                 } else {
                     // type match
                     ::openmldb::type::TTLType type = column_key.ttl().ttl_type();
-                    uint64_t old_ttl = 0;
-                    uint64_t new_ttl = 0;
+                    uint64_t old_abs_ttl = 0;
+                    uint64_t old_lat_ttl = 0;
+                    uint64_t new_abs_ttl = 0;
+                    uint64_t new_lat_ttl = 0;
                     if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-                        old_ttl = old_column_key.ttl().abs_ttl();
-                        new_ttl = column_key.ttl().abs_ttl();
+                        old_abs_ttl = old_column_key.ttl().abs_ttl();
+                        new_abs_ttl = column_key.ttl().abs_ttl();
+                    } else if (type == ::openmldb::type::TTLType::kLatestTime) {
+                        old_lat_ttl = old_column_key.ttl().lat_ttl();
+                        new_lat_ttl = column_key.ttl().lat_ttl();
                     } else {
-                        old_ttl = old_column_key.ttl().abs_ttl();
-                        new_ttl = column_key.ttl().lat_ttl();
+                        // absandlat && absorlat should check abs_ttl and lat_ttl
+                        old_abs_ttl = old_column_key.ttl().abs_ttl();
+                        old_lat_ttl = old_column_key.ttl().lat_ttl();
+                        new_abs_ttl = column_key.ttl().abs_ttl();
+                        new_lat_ttl = column_key.ttl().lat_ttl();
                     }
-                    if (new_ttl > old_ttl) {
+                    if (new_abs_ttl > old_abs_ttl || new_lat_ttl > old_lat_ttl) {
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
                         uint64_t abs_ttl = 0;
                         uint64_t lat_ttl = 0;
                         if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-                            abs_ttl = new_ttl;
+                            abs_ttl = new_abs_ttl;
+                        } else if (type == ::openmldb::type::TTLType::kLatestTime) {
+                            lat_ttl = new_lat_ttl;
                         } else {
-                            lat_ttl = new_ttl;
+                            abs_ttl = new_abs_ttl;
+                            lat_ttl = new_lat_ttl;
                         }
                         bool ok = ns_ptr->UpdateTTL(kv.first, type, abs_ttl, lat_ttl, column_key.index_name(), err);
                         if (!ok) {
