@@ -23,7 +23,7 @@ if [ $# -gt 0 ]; then
 fi
 # predict server may be running
 set +e
-pkill python
+pkill python3
 set -e
 
 rm -rf /tmp/*

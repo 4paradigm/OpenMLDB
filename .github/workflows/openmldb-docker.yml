@@ -12,8 +12,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/openmldb-docker.yml
-      - demo/predict-taxi-trip-duration/**/*
-      - demo/talkingdata-adtracking-fraud-detection/**/*
+      - demo/*
   workflow_dispatch:
     inputs:
       OPENMLDB_VERSION:
