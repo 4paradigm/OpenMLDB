@@ -633,3 +633,82 @@ cases:
       columns: ["col2:bool"]
       rows:
         - [true]
+
+  - id: combined_index_query_1
+    # #1356
+    desc: combined index query order
+    mode: request-unsupport, batch-request-unsupport
+    inputs:
+      - columns: ["a string", "b string", "c string"]
+        name: t1
+        indexs: ["idx:b|a"]
+        data: |
+          aaa, bbb, ccc
+    sql: |
+      select * from t1 where a = 'aaa' and b = 'bbb'
+    expect:
+      columns: ["a string", "b string", "c string"]
+      data: |
+        aaa, bbb, ccc
+  - id: combined_index_query_2
+    desc: combined index query order, filter with same order
+    mode: request-unsupport, batch-request-unsupport
+    inputs:
+      - columns: ["a string", "b string", "c string"]
+        name: t1
+        indexs: ["idx:b|a"]
+        data: |
+          aaa, bbb, ccc
+    sql: |
+      select * from t1 where b = 'bbb' and a = 'aaa';
+    expect:
+      columns: ["a string", "b string", "c string"]
+      data: |
+        aaa, bbb, ccc
+  - id: combined_index_query_3
+    desc: combined index query order, fail to optimize because only one of index key matches
+    mode: request-unsupport, batch-request-unsupport
+    inputs:
+      - columns: ["a string", "b string", "c string"]
+        name: t1
+        indexs: ["idx:b|a"]
+        data: |
+          aaa, bbb, ccc
+    sql: |
+      select * from t1 where a = 'aaa' and c = 'ccc'
+    expect:
+      columns: ["a string", "b string", "c string"]
+      data: |
+        aaa, bbb, ccc
+  - id: combined_index_query_4
+    desc: combined index query order, fail to optimize because only one of index key matches
+    mode: request-unsupport, batch-request-unsupport
+    inputs:
+      - columns: ["a string", "b string", "c string"]
+        name: t1
+        indexs: ["idx:b|a"]
+        data: |
+          aaa, bbb, ccc
+    sql: |
+      select * from t1 where a = 'aaa'
+    expect:
+      columns: ["a string", "b string", "c string"]
+      data: |
+        aaa, bbb, ccc
+
+  - id: combined_index_query_5
+    desc: |
+      combined index query order, optimized three key index
+    mode: request-unsupport, batch-request-unsupport
+    inputs:
+      - columns: ["a string", "b string", "c string"]
+        name: t1
+        indexs: ["idx:b|a|c"]
+        data: |
+          aaa, bbb, ccc
+    sql: |
+      select * from t1 where a = 'aaa' and c = 'ccc' and b = 'bbb';
+    expect:
+      columns: ["a string", "b string", "c string"]
+      data: |
+        aaa, bbb, ccc
