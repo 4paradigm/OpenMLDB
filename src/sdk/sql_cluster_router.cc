@@ -49,7 +49,7 @@
 #include "sdk/split.h"
 
 DECLARE_int32(request_timeout_ms);
-DECLARE_string(mini_window_size);
+DECLARE_string(bucket_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
 DECLARE_uint32(replica_num);
 
@@ -3068,7 +3068,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             if (window_info.size() == 2) {
                 long_window_map[window_info[0]] = window_info[1];
             } else if (window_info.size() == 1) {
-                long_window_map[window_info[0]] = FLAGS_mini_window_size;
+                long_window_map[window_info[0]] = FLAGS_bucket_size;
             } else {
                 return {base::ReturnCode::kError, "illegal long window format"};
             }
