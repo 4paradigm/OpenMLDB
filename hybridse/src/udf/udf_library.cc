@@ -201,7 +201,14 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
         const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
     CHECK_TRUE(!is_aggregate, kCodegenError, "unsupport register udaf")
     std::string canon_name = GetCanonicalName(name);
-    CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
+
+    // TODO(tobe): openmldb-batch will register function twice, remove warning if it is fixed
+    // CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
+    if (HasFunction(canon_name)) {
+        LOG(WARNING) << "Function " + name + " has been registered, remove before overwrite";
+        RemoveDynamicUdf(name, arg_types, "");
+    }
+
     std::vector<void*> funs;
     if (file.empty()) {
         // use trivial_fun for compile only
