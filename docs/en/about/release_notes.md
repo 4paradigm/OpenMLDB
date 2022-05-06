@@ -4,7 +4,7 @@
 
 ### Features
 - Support long window (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
-- Register udf from external dynamic library (#1509 @dl239)
+- Register udf from external dynamic library (#1509 #1733 #1700 @dl239 @tobegit3hub)
 - Support persistent storage engine enabled by rocksdb (#1483 @Leowner)
 - Add new SQL commands like `SHOW COMPONENTS`, `SHOW TABLE STATUS` (#1380 #1431 #1704 @aceforeverd)
 - Support set global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
