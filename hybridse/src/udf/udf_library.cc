@@ -205,6 +205,10 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     // TODO(tobe): openmldb-batch will register function twice, remove warning if it is fixed
     // CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
     if (HasFunction(canon_name)) {
+        if (file.empty()) {
+            return {kCodegenError, name + " has exist"}
+        }
+
         LOG(WARNING) << "Function " + name + " has been registered, remove before overwrite";
         RemoveDynamicUdf(name, arg_types, "");
     }
