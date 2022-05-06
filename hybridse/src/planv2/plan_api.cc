@@ -43,7 +43,7 @@ bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &pla
         status.code = common::kSyntaxError;
         return false;
     }
-    DLOG(INFO) << "\n" << parser_output->script()->DebugString();
+    DLOG(INFO) << "AST Node:\n" << parser_output->script()->DebugString();
     const zetasql::ASTScript *script = parser_output->script();
     auto planner_ptr = std::make_unique<SimplePlannerV2>(node_manager, is_batch_mode, is_cluster,
                                                          enable_batch_window_parallelization, extra_options);

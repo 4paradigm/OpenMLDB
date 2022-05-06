@@ -258,8 +258,9 @@ int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& in
     }
     return -1;
 }
-int CreateDefaultTable(const std::string& db, const std::string& name, uint32_t tid, uint32_t pid,
-        uint32_t abs_ttl, uint32_t lat_ttl, ::openmldb::type::TTLType ttl_type, TabletImpl* tablet) {
+int CreateDefaultTable(const std::string& db, const std::string& name, uint32_t tid, uint32_t pid, uint32_t abs_ttl,
+                       uint32_t lat_ttl, ::openmldb::type::TTLType ttl_type, common::StorageMode storage_mode,
+                       TabletImpl* tablet) {
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_db(db);
@@ -267,11 +268,87 @@ int CreateDefaultTable(const std::string& db, const std::string& name, uint32_t 
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta->set_storage_mode(storage_mode);
     AddDefaultSchema(abs_ttl, lat_ttl, ttl_type, table_meta);
     ::openmldb::api::CreateTableResponse response;
     MockClosure closure;
     tablet->CreateTable(NULL, &request, &response, &closure);
     return response.code();
+}
+
+TEST_F(TabletImplTest, Init) {
+    FLAGS_recycle_bin_enabled = true;
+
+    auto create_and_drop_table = [](TabletImpl* tablet, uint32_t id, common::StorageMode storage_mode = common::kMemory,
+                                    bool succeed = false) {
+        ASSERT_EQ(0, CreateDefaultTable("db0", "t0", id, 0, 0, 0, ::openmldb::type::TTLType::kLatestTime,
+                                        storage_mode, tablet));
+        MockClosure closure;
+        ::openmldb::api::DropTableRequest dr;
+        dr.set_tid(id);
+        dr.set_pid(0);
+        auto task_info = dr.mutable_task_info();
+        task_info->set_op_id(0);
+        task_info->set_op_type(api::kDropTableRemoteOP);
+        task_info->set_task_type(api::kDropTable);
+        task_info->set_status(api::kInited);
+        ::openmldb::api::DropTableResponse drs;
+        tablet->DropTable(NULL, &dr, &drs, &closure);
+        ASSERT_EQ(0, drs.code());
+        sleep(1);
+
+        api::TaskStatusRequest tr;
+        api::TaskStatusResponse trs;
+        tablet->GetTaskStatus(NULL, &tr, &trs, &closure);
+        auto task = trs.task(0);
+        if (succeed) {
+            ASSERT_EQ(api::TaskStatus::kDone, task.status());
+        } else {
+            ASSERT_EQ(api::TaskStatus::kFailed, task.status());
+        }
+    };
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_root_path = "";
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++);
+    }
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++, common::kMemory, true);
+    }
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_hdd_root_path = "";
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++, common::kHDD);
+    }
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_hdd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++, common::kHDD, true);
+    }
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_ssd_root_path = "";
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++, common::kSSD);
+    }
+
+    {
+        TabletImpl tablet;
+        FLAGS_recycle_bin_ssd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        ASSERT_TRUE(tablet.Init(""));
+        create_and_drop_table(&tablet, counter++, common::kSSD, true);
+    }
 }
 
 TEST_F(TabletImplTest, ChangeRole) {
@@ -280,7 +357,8 @@ TEST_F(TabletImplTest, ChangeRole) {
     // create table
     MockClosure closure;
     uint32_t id = counter++;
-    ASSERT_EQ(CreateDefaultTable("db0", "t0", id, 0, 0, 0, ::openmldb::type::TTLType::kLatestTime, &tablet), 0);
+    ASSERT_EQ(0, CreateDefaultTable("db0", "t0", id, 0, 0, 0, ::openmldb::type::TTLType::kLatestTime, common::kMemory,
+                                    &tablet));
     PutKVData(id, 0, "key", "value1", 1, &tablet);
     {
         ::openmldb::api::QueryRequest request;
@@ -2157,7 +2235,7 @@ TEST_P(TabletImplTest, DropTable) {
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
+    ASSERT_EQ(0, response.code()) << response.msg();
 
     ::openmldb::api::PutRequest prequest;
     PackDefaultDimension("test1", &prequest);

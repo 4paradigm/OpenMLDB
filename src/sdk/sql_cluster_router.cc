@@ -3079,6 +3079,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         if (!extract_status.IsOK()) {
             return extract_status;
         }
+        std::set<std::string> distinct_long_window;
+        for (const auto& info : long_window_infos) {
+            distinct_long_window.insert(info.window_name_);
+        }
+        if (distinct_long_window.size() != long_window_map.size()) {
+            return {base::ReturnCode::kError, "long_windows option doesn't match window in sql"};
+        }
         auto ns_client = cluster_sdk_->GetNsClient();
         std::vector<::openmldb::nameserver::TableInfo> tables;
         std::string msg;

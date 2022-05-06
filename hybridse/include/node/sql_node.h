@@ -454,7 +454,7 @@ class SqlNodeList : public SqlNode {
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
     const std::vector<SqlNode *> &GetList() const { return list_; }
-    void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     virtual bool Equals(const SqlNodeList *that) const;
 
  private:
@@ -1179,12 +1179,16 @@ class FrameExtent : public SqlNode {
 
     FrameExtent(FrameBound *start, FrameBound *end) : SqlNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
 
-    ~FrameExtent() {}
+    ~FrameExtent() override {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
+
     FrameBound *start() const { return start_; }
     FrameBound *end() const { return end_; }
+    void SetStart(FrameBound* start) { start_ = start; }
+    void SetEnd(FrameBound* end) { end_ = end; }
+
     const std::string GetExprString() const {
         std::string str = "[";
         if (nullptr == start_) {
@@ -1203,6 +1207,8 @@ class FrameExtent : public SqlNode {
         return str;
     }
 
+    FrameExtent* ShadowCopy(NodeManager* nm) const override;
+
  private:
     FrameBound *start_;
     FrameBound *end_;
@@ -1220,7 +1226,11 @@ class FrameNode : public SqlNode {
     void set_frame_type(FrameType frame_type) { frame_type_ = frame_type; }
     FrameExtent *frame_range() const { return frame_range_; }
     FrameExtent *frame_rows() const { return frame_rows_; }
+    void SetFrameRange(FrameExtent* ext) { frame_range_ = ext; }
+    void SetFrameRows(FrameExtent* ext) { frame_rows_ = ext; }
+
     int64_t frame_maxsize() const { return frame_maxsize_; }
+    void set_frame_maxsize(int64_t s) { frame_maxsize_ = s; }
     int64_t GetHistoryRangeStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
             return INT64_MIN;
@@ -1311,6 +1321,8 @@ class FrameNode : public SqlNode {
         return false;
     }
 
+    FrameNode* ShadowCopy(node::NodeManager* nm) const override;
+
  private:
     FrameType frame_type_;
     FrameExtent *frame_range_;
@@ -1353,8 +1365,11 @@ class WindowDefNode : public SqlNode {
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SqlNode *that) const;
+    bool Equals(const SqlNode *that) const override;
     bool CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged = true) const;
+
+    // shadow copy all fields except window_name_
+    WindowDefNode* ShadowCopy(NodeManager* nm) const override;
 
  private:
     bool exclude_current_time_;
@@ -2752,8 +2767,13 @@ bool SqlListEquals(const SqlNodeList *left, const SqlNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
+
+// retrieve the `WindowDefNode` for the `ExprNode`, which is either from
+//  `ExprNode` itself inside if it is an anonymous window e.g `fn() over (window)`
+//  or find in `windows` map by window name
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
+
 bool IsAggregationExpression(const udf::UdfLibrary* lib, const node::ExprNode* node_ptr);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT
