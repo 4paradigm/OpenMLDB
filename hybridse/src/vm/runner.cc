@@ -2695,6 +2695,9 @@ bool RequestAggUnionRunner::InitAggregator() {
         agg_col_type = producers_[1]->row_parser()->GetType(agg_col_name_);
     } else if (agg_col_->GetExprType() == node::kExprAll) {
         agg_col_type = type::Type::kInt64;
+    } else {
+        LOG(ERROR) << "non-support aggr expr type " << ExprTypeName(agg_col_->GetExprType());
+        return false;
     }
     switch (agg_type_) {
         case kSum:
