@@ -1474,6 +1474,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    sr->Init();
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
@@ -1506,7 +1507,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"job_timeout", "30000"},
                           {"execute_mode", "online"}},
                          rs.get());
-   // update session variables if set global variables
+    // update session variables if set global variables
     rs = sr->ExecuteSQL("show session variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Value"},
                           {"enable_trace", "true"},
