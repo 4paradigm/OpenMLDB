@@ -10,9 +10,11 @@ variableName ::=
 		|	sessionVariableName
 	
 sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Identifier
-
 ```
-
+或者用下面的方式
+```sql
+'SET' [ GLOBAL | SESSION ] <variableName> '=' <value>
+```
 **Description**
 
 `SET` 语句用于在 OpenMLDB 上设置系统变量。目前OpenMLDB的系统变量包括会话系统变量和全局系统变量。对会话变量的修改，只会影响到当前的会话（也就是当前的数据库连接）。对全局变量的修改会对所有会话生效。
