@@ -104,7 +104,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
-    if (aggr_op->GetChildNum() != 1 || aggr_op->GetChild(0)->GetExprType() != node::kExprColumnRef) {
+    auto expr_type = aggr_op->GetChild(0)->GetExprType();
+    if (aggr_op->GetChildNum() != 1 || (expr_type != node::kExprColumnRef && expr_type != node::kExprAll)) {
         LOG(ERROR) << "Not support aggregation over multiple cols: " << ConcatExprList(aggr_op->children_);
         return false;
     }
@@ -210,7 +211,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
         req_union_op->output_request_row(), aggr_op->GetFnDef(),
-        dynamic_cast<node::ColumnRefNode*>(aggr_op->GetChild(0)));
+        aggr_op->GetChild(0));
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;
@@ -247,15 +248,19 @@ bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
 std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
     std::string str = "";
     for (const auto expr : exprs) {
-        auto col_ref = dynamic_cast<node::ColumnRefNode*>(expr);
-        if (!col_ref) {
-            LOG(ERROR) << "ConcatExprList only support ColumnRefNode";
+        std::string expr_val;
+        if (expr->GetExprType() == node::kExprAll) {
+            expr_val = expr->GetExprString();
+        } else if (expr->GetExprType() == node::kExprColumnRef) {
+            expr_val = dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName();
+        } else {
+            LOG(ERROR) << "non support expr type in ConcatExprList";
             return "";
         }
         if (str.empty()) {
-            str = absl::StrCat(str, col_ref->GetColumnName());
+            str = absl::StrCat(str, expr_val);
         } else {
-            str = absl::StrCat(str, delimiter, col_ref->GetColumnName());
+            str = absl::StrCat(str, delimiter, expr_val);
         }
     }
     return str;

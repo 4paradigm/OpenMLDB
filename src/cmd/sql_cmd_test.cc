@@ -1039,6 +1039,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     CreateDBTableForLongWindow(base_db, base_table);
 
     std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " count(*) over w1 as w1_count_all,"
         " count(i64_col) over w1 as w1_count_i64_col,"
         " count(i16_col) over w1 as w1_count_i16_col,"
         " count(i32_col) over w1 as w1_count_i32_col,"
@@ -1103,6 +1104,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     result_sql = "select * from pre_test_aggr_w1_count_date_col;";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
+    result_sql = "select * from pre_test_aggr_w1_count_;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
 
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
@@ -1126,6 +1130,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
         ASSERT_EQ(exp, res->GetInt64Unsafe(8));
         ASSERT_EQ(exp, res->GetInt64Unsafe(9));
         ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(11));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -1151,6 +1156,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     pre_aggr_table = "pre_test_aggr_w1_count_date_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);

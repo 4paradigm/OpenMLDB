@@ -2690,7 +2690,19 @@ bool RequestAggUnionRunner::InitAggregator() {
     }
 
     agg_type_ = type_it->second;
-    auto agg_col_type = producers_[1]->row_parser()->GetType(*agg_col_);
+    type::Type agg_col_type;
+    if (agg_col_->GetExprType() == node::kExprColumnRef) {
+        agg_col_type = producers_[1]->row_parser()->GetType(agg_col_name_);
+    } else if (agg_col_->GetExprType() == node::kExprAll) {
+        if (agg_type_ != kCount) {
+            LOG(ERROR) << "only support " << ExprTypeName(agg_col_->GetExprType()) << "on count op";
+            return false;
+        }
+        agg_col_type = type::Type::kInt64;
+    } else {
+        LOG(ERROR) << "non-support aggr expr type " << ExprTypeName(agg_col_->GetExprType());
+        return false;
+    }
     switch (agg_type_) {
         case kSum:
             aggregator_ = MakeOverflowAggregator<SumAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
@@ -2833,7 +2845,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     int64_t request_key = ts_gen > 0 ? ts_gen : 0;
 
     auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
-        if (row_parser->IsNull(row, *agg_col_)) {
+        if (!agg_col_name_.empty() && row_parser->IsNull(row, agg_col_name_)) {
             return;
         }
 
@@ -2843,42 +2855,45 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
             return;
         }
+        if (agg_col_name_.empty()) {
+            return;
+        }
         switch (type) {
             case type::Type::kInt16: {
                 int16_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
+                row_parser->GetValue(row, agg_col_name_, type, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kDate:
             case type::Type::kInt32: {
                 int32_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
+                row_parser->GetValue(row, agg_col_name_, type, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kTimestamp:
             case type::Type::kInt64: {
                 int64_t val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
+                row_parser->GetValue(row, agg_col_name_, type, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kFloat: {
                 float val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
+                row_parser->GetValue(row, agg_col_name_, type, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kDouble: {
                 double val = 0;
-                row_parser->GetValue(row, *agg_col_, type, &val);
+                row_parser->GetValue(row, agg_col_name_, type, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }
             case type::Type::kVarchar: {
                 std::string val;
-                row_parser->GetString(row, *agg_col_, &val);
+                row_parser->GetString(row, agg_col_name_, &val);
                 AggregatorUpdate(aggregator, val);
                 break;
             }

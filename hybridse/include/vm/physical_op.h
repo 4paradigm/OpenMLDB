@@ -1496,7 +1496,7 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
                                 const RequestWindowOp &window, const RequestWindowOp &aggr_window,
                                 bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
-                                const node::FnDefNode *func, const node::ColumnRefNode* agg_col)
+                                const node::FnDefNode *func, const node::ExprNode* agg_col)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
           agg_window_(aggr_window),
@@ -1545,7 +1545,7 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     RequestWindowOp window_;
     RequestWindowOp agg_window_;
     const node::FnDefNode* func_ = nullptr;
-    const node::ColumnRefNode* agg_col_;
+    const node::ExprNode* agg_col_;
     const SchemasContext* parent_schema_context_ = nullptr;
 
  private:

@@ -64,6 +64,8 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
       aggr_col_(aggr_col),
       aggr_type_(aggr_type),
       ts_col_(ts_col),
+      aggr_col_idx_(-1),
+      ts_col_idx_(-1),
       window_type_(window_tpye),
       window_size_(window_size),
       base_row_view_(base_table_schema_),
@@ -72,13 +74,20 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
     for (int i = 0; i < base_meta.column_desc().size(); i++) {
         if (base_meta.column_desc(i).name() == aggr_col_) {
             aggr_col_idx_ = i;
+            aggr_col_type_ = base_meta.column_desc(aggr_col_idx_).data_type();
         }
         if (base_meta.column_desc(i).name() == ts_col_) {
             ts_col_idx_ = i;
+            ts_col_type_ = base_meta.column_desc(ts_col_idx_).data_type();
         }
     }
-    aggr_col_type_ = base_meta.column_desc(aggr_col_idx_).data_type();
-    ts_col_type_ = base_meta.column_desc(ts_col_idx_).data_type();
+    // column name's existence will check in sql parse phase. it shouldn't occur here.
+    if (aggr_col_idx_ == -1 && aggr_type_ != AggrType::kCount) {
+        PDLOG(ERROR, "aggr_col not found in base table");
+    }
+    if (ts_col_idx_ == -1) {
+        PDLOG(ERROR, "ts_col not found in base table");
+    }
     auto dimension = dimensions_.Add();
     dimension->set_idx(0);
 }
@@ -823,7 +832,11 @@ CountAggregator::CountAggregator(const ::openmldb::api::TableMeta& base_meta,
                                  const std::string& aggr_col, const AggrType& aggr_type, const std::string& ts_col,
                                  WindowType window_tpye, uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
-                 window_size) {}
+                 window_size) {
+    if (aggr_col == "*") {
+        count_all = true;
+    }
+}
 
 bool CountAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) {
     int64_t tmp_val = buffer.non_null_cnt;
@@ -842,7 +855,7 @@ bool CountAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
 }
 
 bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
-    if (!row_view.IsNULL(row_ptr, aggr_col_idx_)) {
+    if (count_all || !row_view.IsNULL(row_ptr, aggr_col_idx_)) {
         aggr_buffer->non_null_cnt++;
     }
     return true;
