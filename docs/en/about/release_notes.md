@@ -1,3 +1,29 @@
+# v0.5.x Release Notes
+
+## v0.5.0 Release Notes
+
+### Features
+- Support long window (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
+- Register udf from external dynamic library (#1509 @dl239)
+- Support persistent storage engine enabled by rocksdb (#1483 @Leowner)
+- Add new SQL commands like `SHOW COMPONENTS`, `SHOW TABLE STATUS` (#1380 #1431 #1704 @aceforeverd)
+- Support set global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
+- Support spark local mode with multiple threads (#1675 @tobegit3hub)
+- Support reading spark conf file from cli (#1600 @tobegit3hub)
+- Other minor features (#1601 @dl239; #1574 @vagetablechicken; #1546 @keyu813; #1729 @vagetablechicken)
+
+### Bug Fixes
+- Wrong result when query on index (#1709 @aceforeverd)
+- `lag`/`at`/`lead` results is wrong (#1605 @aceforeverd)
+- Memory leak in zk_client (#1660 @wuxiaobai24)
+- Update catalog if leade role changed (#1655 @dl239)
+- Fix unsaferow for window append slice (#1637 @tobegit3hub)
+- Query result is incorrect after adding a new index in standalone mode (#1721 @keyu813) 
+- Other minor bug fix (#1698 @kfiring; #1651 @kutlayacar; #1621 @KaidoWang)
+
+### Code Refactoring
+#1616 @dl239; #1743 @zjx1319
+
 # v0.4.x Release Notes
 
 ## v0.4.4 Release Notes
