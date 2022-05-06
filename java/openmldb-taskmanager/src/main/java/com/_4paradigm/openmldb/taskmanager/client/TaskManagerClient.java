@@ -467,10 +467,9 @@ public class TaskManagerClient {
      *
      * @throws Exception
      */
-    public void dropFunction(String name, boolean if_exists) throws Exception {
+    public void dropFunction(String name) throws Exception {
         TaskManager.DropFunctionRequest request = TaskManager.DropFunctionRequest.newBuilder()
                 .setName(name)
-                .setIfExists(if_exists)
                 .build();
         TaskManager.DropFunctionResponse response = taskManagerInterface.DropFunction(request);
         if (response.getCode() != 0) {

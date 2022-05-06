@@ -125,6 +125,7 @@ object SparkJobManager {
     }
 
     // Add the external function library files
+    // TODO(tobe): Handle the same file names
     ExternalFunctionManager.getAllLibraryFilePaths().forEach(filePath => launcher.addFile(filePath))
 
     // Submit Spark application and watch state with custom listener

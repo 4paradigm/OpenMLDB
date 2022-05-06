@@ -74,7 +74,7 @@ class TaskManagerClient : public Client {
 
     ::openmldb::base::Status CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun);
 
-    ::openmldb::base::Status DropFunction(const std::string& name, bool if_exists);
+    ::openmldb::base::Status DropFunction(const std::string& name);
 
     std::string GetJobLog(const int id, ::openmldb::base::Status* status);
 

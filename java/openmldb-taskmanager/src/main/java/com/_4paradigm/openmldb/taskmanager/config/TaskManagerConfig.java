@@ -156,7 +156,20 @@ public class TaskManagerConfig {
             }
         }
 
-        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./external_function/");
+        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./udf/");
+        if (EXTERNAL_FUNCTION_DIR.isEmpty()) {
+            throw new ConfigException("external.function.dir", "should not be null");
+        } else {
+            File directory = new File(EXTERNAL_FUNCTION_DIR);
+            if (!directory.exists()) {
+                logger.info("The external function dir does not exist, try to create directory: "
+                        + EXTERNAL_FUNCTION_DIR);
+                boolean created = directory.mkdirs();
+                if (created) {
+                    logger.warn("Fail to create external function directory: " + EXTERNAL_FUNCTION_DIR);
+                }
+            }
+        }
 
         TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
 
