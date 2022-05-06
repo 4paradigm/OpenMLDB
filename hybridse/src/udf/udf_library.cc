@@ -206,7 +206,7 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     // CHECK_TRUE(!HasFunction(canon_name), kCodegenError, name + " has exist")
     if (HasFunction(canon_name)) {
         if (file.empty()) {
-            return {kCodegenError, name + " has exist"}
+            return {kCodegenError, name + " has exist"};
         }
 
         LOG(WARNING) << "Function " + name + " has been registered, remove before overwrite";
