@@ -454,9 +454,26 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
     ASSERT_EQ(column_key.ttl().lat_ttl(), 2);
 
+    // type mismatch case
+    create_sql =
+        "create table trans1 (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c1, ts=c7, ttl=1m, ttl_type=absolute));";
+    HandleSQL(create_sql);
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans1 values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
+    deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
+        " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime");
+
+
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
 }
 
@@ -576,8 +593,8 @@ void PrepareDataForLongWindow(const std::string& base_db, const std::string& bas
             date = absl::StrCat("1900-01-", std::to_string(i));
         }
         std::string insert =
-            absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", ts_str, ", ", val, ", ", val, ", ", val,
-                         ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
+            absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", ts_str, ", ", val, ", ", val, ", ",
+                         val, ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
         bool ok = sr->ExecuteInsert(base_db, insert, &status);
         ASSERT_TRUE(ok) << status.msg;
     }

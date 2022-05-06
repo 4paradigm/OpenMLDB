@@ -2989,17 +2989,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        uint64_t abs_ttl = 0;
-                        uint64_t lat_ttl = 0;
-                        if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-                            abs_ttl = new_abs_ttl;
-                        } else if (type == ::openmldb::type::TTLType::kLatestTime) {
-                            lat_ttl = new_lat_ttl;
-                        } else {
-                            abs_ttl = new_abs_ttl;
-                            lat_ttl = new_lat_ttl;
-                        }
-                        bool ok = ns_ptr->UpdateTTL(kv.first, type, abs_ttl, lat_ttl, column_key.index_name(), err);
+                        bool ok = ns_ptr->UpdateTTL(kv.first, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
                         if (!ok) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
