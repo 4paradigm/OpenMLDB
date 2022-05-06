@@ -263,12 +263,20 @@ bool SQLClusterRouter::Init() {
     std::string sql = "select * from " + table;
     hybridse::sdk::Status status;
     auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-    std::string key;
-    std::string value;
-    while (rs->Next()) {
-        key = rs->GetStringUnsafe(0);
-        value = rs->GetStringUnsafe(1);
-        session_variables_[key] = value;
+    if (rs != nullptr) {
+        std::string key;
+        std::string value;
+        while (rs->Next()) {
+            key = rs->GetStringUnsafe(0);
+            value = rs->GetStringUnsafe(1);
+            session_variables_[key] = value;
+        }
+    } else {
+        // if not allowed to create system table, init session here
+        session_variables_.emplace("execute_mode", "offline");
+        session_variables_.emplace("enable_trace", "false");
+        session_variables_.emplace("sync_job", "false");
+        session_variables_.emplace("job_timeout", "20000");  // ref TaskManagerClient::request_timeout_ms_
     }
     return true;
 }
@@ -2492,6 +2500,7 @@ bool SQLClusterRouter::IsSyncJob() {
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    // update session if set global
     if (node->Scope() == hybridse::node::VariableScope::kGlobalSystemVariable) {
         std::string value = node->Value()->GetExprString();
         std::transform(value.begin(), value.end(), value.begin(), ::tolower);
@@ -2503,14 +2512,8 @@ bool SQLClusterRouter::IsSyncJob() {
         if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
             return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
-        session_variables_[key] = value;
-        return {};
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
-    auto it = session_variables_.find(node->Key());
-    if (it == session_variables_.end()) {
-        return {::hybridse::common::StatusCode::kCmdError, "no session variable " + key};
-    }
     std::string value = node->Value()->GetExprString();
     std::transform(value.begin(), value.end(), value.begin(), ::tolower);
     // TODO(hw): validation can be simpler
@@ -2534,6 +2537,8 @@ bool SQLClusterRouter::IsSyncJob() {
         }
         // TODO(hw): is it better to set request timeout before every offline call?
         taskmanager_client_ptr->SetRequestTimeout(new_timeout);
+    } else {
+        return {};
     }
     session_variables_[key] = value;
     return {};
