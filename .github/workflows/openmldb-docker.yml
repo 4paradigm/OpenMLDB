@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - .github/workflows/openmldb-docker.yml
-      - demo/*
+      - demo/**/*
     tags:
       - v*
   pull_request:
     paths:
       - .github/workflows/openmldb-docker.yml
-      - demo/*
+      - demo/**/*
   workflow_dispatch:
     inputs:
       OPENMLDB_VERSION:

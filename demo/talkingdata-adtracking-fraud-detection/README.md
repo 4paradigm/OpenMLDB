@@ -13,10 +13,6 @@ We recommend you to use docker to run the demo. OpenMLDB and dependencies have b
 ```
 docker run -it 4pdosc/openmldb:0.5.0 bash
 ```
-In the container, 
-```
-cd /work/talkingdata
-```
 
 #### Run locally
 
@@ -46,9 +42,10 @@ And unzip the data to `demo/talkingdata-adtracking-fraud-detection/data`. Then, 
 
 ### Train and Serve
 ```
+cd /work/talkingdata
 python3 train_and_serve.py
 ```
-We use OpenMLDB to do feature extraction, and train by xgboost, see `train_and_serve.py`.
+We use OpenMLDB to do feature extraction, and train by xgboost, see [train_and_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py).
 1. load data to offline storage
 2. offline feature extraction: 
     * clicks for each ip-day-hour combination -> window 1h
@@ -72,6 +69,7 @@ python3 predict.py
 You can run `pkill python3` to kill the predict server in the background.
 
 ## Q&A
+
 Q: train_and_serve.py core dump at SetGPUAttribute...
 A: The pre-built xgboost python wheel may be imcompatible with openmldb python sdk in your machine. You should xgboost from source.
 
