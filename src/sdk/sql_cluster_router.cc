@@ -3097,8 +3097,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 continue;
             }
             // insert pre-aggr meta info to meta table
+            std::string aggr_col = lw.aggr_col_ == "*" ? "" : lw.aggr_col_;
             auto aggr_table =
-                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", lw.aggr_col_);
+                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col);
             ::hybridse::sdk::Status status;
             std::string insert_sql =
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,

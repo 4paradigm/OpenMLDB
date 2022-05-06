@@ -977,13 +977,17 @@ class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
                           bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ColumnRefNode* agg_col)
+                          const node::ExprNode* agg_col)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
           func_(func),
-          agg_col_(agg_col) {}
+          agg_col_(agg_col) {
+    if (agg_col_->GetExprType() == node::kExprColumnRef) {
+        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+    }
+}
 
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
@@ -1016,7 +1020,8 @@ class RequestAggUnionRunner : public Runner {
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
     AggType agg_type_;
-    const node::ColumnRefNode* agg_col_ = nullptr;
+    const node::ExprNode* agg_col_ = nullptr;
+    std::string agg_col_name_;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
 

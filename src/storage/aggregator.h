@@ -258,6 +258,8 @@ class CountAggregator : public Aggregator {
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool count_all = false;
 };
 
 class AvgAggregator : public Aggregator {
