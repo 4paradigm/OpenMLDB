@@ -22,6 +22,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "absl/status/statusor.h"
 #include "base/fe_status.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -54,10 +56,8 @@ class Planner {
     static int GetPlanTreeLimitCount(node::PlanNode *node);
 
  protected:
-    const bool is_batch_mode_;
-    const bool is_cluster_optimized_;
-    const bool enable_window_maxsize_merged_;
-    const bool enable_batch_window_parallelization_;
+    // expand pure history window to current history window.
+    // currently only apply to rows window
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
     bool IsTable(node::PlanNode *node, node::PlanNode **output);
     base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
@@ -74,7 +74,10 @@ class Planner {
     base::Status CreateExplainPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateCreateIndexPlan(const SqlNode *root, node::PlanNode **output);
     base::Status CreateFuncDefPlan(const SqlNode *root, node::PlanNode **output);
-    base::Status CreateWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *plan_node);
+
+    // fill-in the `WindowPlanNode` from the `WindowDefNode`
+    base::Status FillInWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *plan_node);
+
     base::Status CreateDeployPlanNode(const node::DeployNode *root, node::PlanNode **output);
     base::Status CreateLoadDataPlanNode(const node::LoadDataNode *root, node::PlanNode **output);
     base::Status CreateSelectIntoPlanNode(const node::SelectIntoNode *root, node::PlanNode **output);
@@ -82,11 +85,24 @@ class Planner {
     base::Status CreateCreateFunctionPlanNode(const node::CreateFunctionNode *root, node::PlanNode **output);
     base::Status CreateCreateProcedurePlan(const node::SqlNode *root, const PlanNodeList &inner_plan_node_list,
                                            node::PlanNode **output);
-    node::NodeManager *node_manager_;
-
     std::string MakeTableName(const PlanNode *node) const;
     base::Status MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                                  std::map<const node::WindowDefNode *, node::ProjectListNode *> *output);
+
+ protected:
+    const bool is_batch_mode_;
+    const bool is_cluster_optimized_;
+    const bool enable_window_maxsize_merged_;
+    const bool enable_batch_window_parallelization_;
+    node::NodeManager *node_manager_;
+
+ private:
+    // get the `WindowDefNode` for `lag(col, offset)` function
+    //  output a rows window, where
+    //  - frame_start = max(offset, in.frame_start)
+    //  - frame_end = current row
+    absl::StatusOr<node::WindowDefNode *> ConstructWindowForLag(const node::WindowDefNode *in,
+                                                                const node::CallExprNode *call) const;
 
  private:
     const std::unordered_map<std::string, std::string>* extra_options_ = nullptr;

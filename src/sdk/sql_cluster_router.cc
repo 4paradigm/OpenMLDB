@@ -49,7 +49,7 @@
 #include "sdk/split.h"
 
 DECLARE_int32(request_timeout_ms);
-DECLARE_string(mini_window_size);
+DECLARE_string(bucket_size);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
 DECLARE_uint32(replica_num);
 
@@ -1518,7 +1518,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 cluster_sdk_->RemoveExternalFun(name);
                 auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
                 if (taskmanager_client) {
-                    base_status = taskmanager_client->DropFunction(name, cmd_node->IsIfExists());
+                    base_status = taskmanager_client->DropFunction(name);
                     if (!base_status.OK()) {
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                         return {};
@@ -3068,7 +3068,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             if (window_info.size() == 2) {
                 long_window_map[window_info[0]] = window_info[1];
             } else if (window_info.size() == 1) {
-                long_window_map[window_info[0]] = FLAGS_mini_window_size;
+                long_window_map[window_info[0]] = FLAGS_bucket_size;
             } else {
                 return {base::ReturnCode::kError, "illegal long window format"};
             }
@@ -3078,6 +3078,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         auto extract_status = base::DDLParser::ExtractLongWindowInfos(select_sql, long_window_map, &long_window_infos);
         if (!extract_status.IsOK()) {
             return extract_status;
+        }
+        std::set<std::string> distinct_long_window;
+        for (const auto& info : long_window_infos) {
+            distinct_long_window.insert(info.window_name_);
+        }
+        if (distinct_long_window.size() != long_window_map.size()) {
+            return {base::ReturnCode::kError, "long_windows option doesn't match window in sql"};
         }
         auto ns_client = cluster_sdk_->GetNsClient();
         std::vector<::openmldb::nameserver::TableInfo> tables;

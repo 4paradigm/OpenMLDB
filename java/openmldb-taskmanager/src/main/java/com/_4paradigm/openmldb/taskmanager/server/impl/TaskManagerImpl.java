@@ -29,11 +29,14 @@ import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import scala.Option;
 import java.util.List;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
+    private static final Log logger = LogFactory.getLog(TaskManagerImpl.class);
 
     private volatile static ZKClient zkClient;
 
@@ -68,19 +71,16 @@ public class TaskManagerImpl implements TaskManagerInterface {
                     String value = zkClient.getNodeValue(funPath + "/" + name);
                     Common.ExternalFun fun = Common.ExternalFun.parseFrom(value.getBytes());
 
-                    // TODO(tobe): get the library for preset path
-                    String libraryFilePath = TaskManagerConfig.EXTERNAL_FUNCTION_DIR + fun.getFile();
-                    if (fun.hasFile()) {
-                        libraryFilePath = fun.getFile();
-                    }
-                    ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
-
+                    String libraryFileName = fun.getFile().substring(fun.getFile().lastIndexOf("/") + 1);
+                    ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    logger.error("Fail to parse protobuf of function: " + name);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+            logger.error("Fail to init external function from ZooKeeper");
         }
     }
 
@@ -320,12 +320,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
         if (fun.getFile().isEmpty()) {
             return TaskManager.CreateFunctionResponse.newBuilder()
                     .setCode(StatusCode.FAILED)
-                    .setMsg("has not offline path")
+                    .setMsg("ExternalFun does not have the file path")
+                    .build();
+        }
+        String libraryFileName = fun.getFile().substring(fun.getFile().lastIndexOf("/") + 1);
+        try {
+            ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
+        } catch (Exception e) {
+            return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage())
                     .build();
         }
 
-        String libraryFilePath = fun.getFile();
-        ExternalFunctionManager.addFunction(fun.getName(), libraryFilePath);
         return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 

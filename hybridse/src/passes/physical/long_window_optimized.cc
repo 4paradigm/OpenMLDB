@@ -132,10 +132,15 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
                 LOG(ERROR) << "OrderBy col is empty";
                 return false;
             }
+            auto col_ref = dynamic_cast<const node::ColumnRefNode*>(order->expr());
+            if (!col_ref) {
+                LOG(ERROR) << "OrderBy Col is not ColumnRefNode";
+                return false;
+            }
             if (order_col.empty()) {
-                order_col = order->expr()->GetExprString();
+                order_col = col_ref->GetColumnName();
             } else {
-                order_col = absl::StrCat(order_col, ",", order->expr()->GetExprString());
+                order_col = absl::StrCat(order_col, ",", col_ref->GetColumnName());
             }
         }
     }
@@ -243,10 +248,15 @@ bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
 std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
     std::string str = "";
     for (const auto expr : exprs) {
+        auto col_ref = dynamic_cast<node::ColumnRefNode*>(expr);
+        if (!col_ref) {
+            LOG(ERROR) << "ConcatExprList only support ColumnRefNode";
+            return "";
+        }
         if (str.empty()) {
-            str = absl::StrCat(str, expr->GetExprString());
+            str = absl::StrCat(str, col_ref->GetColumnName());
         } else {
-            str = absl::StrCat(str, delimiter, expr->GetExprString());
+            str = absl::StrCat(str, delimiter, col_ref->GetColumnName());
         }
     }
     return str;

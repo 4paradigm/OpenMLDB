@@ -556,7 +556,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
 
-    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
         " sum(i64_col) over w1 as w1_sum_i64_col,"
         " sum(i16_col) over w1 as w1_sum_i16_col,"
         " sum(i32_col) over w1 as w1_sum_i32_col,"
@@ -565,7 +565,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
         " sum(t_col) over w1 as w1_sum_t_col,"
         " sum(col3) over w2 as w2_sum_col3"
         " from " + base_table +
-        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
         " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
         " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
