@@ -72,7 +72,7 @@ std::shared_ptr<::openmldb::client::TaskManagerClient> DBSDK::GetTaskManagerClie
         LOG(DFATAL) << "fail to init TaskManager client with endpoint " << endpoint;
         return {};
     }
-    LOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
+    DLOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
     std::atomic_store_explicit(&taskmanager_client_, taskmanager_client, std::memory_order_relaxed);
     return taskmanager_client;
 }

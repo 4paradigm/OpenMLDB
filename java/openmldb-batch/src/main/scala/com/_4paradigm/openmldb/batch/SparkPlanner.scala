@@ -352,9 +352,15 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
           })
 
           // Get the correct file name which is submitted by spark-submit
-          val soFilePath = functionProto.getName.split("/").last
-          engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
-            soFilePath)
+          // TODO(tobe): Only work for spark-submit jobs and can not load local library file when running in IDE
+          val soFilePath = functionProto.getFile.split("/").last
+          if (File(soFilePath).exists) {
+            engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+              soFilePath)
+          } else {
+            logger.warn("The dynamic library file does not exit in " + soFilePath)
+          }
+
         }
       }
 

@@ -324,7 +324,13 @@ public class TaskManagerImpl implements TaskManagerInterface {
                     .build();
         }
         String libraryFileName = fun.getFile().substring(fun.getFile().lastIndexOf("/") + 1);
-        ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
+        try {
+            ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
+        } catch (Exception e) {
+            return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage())
+                    .build();
+        }
+
         return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 

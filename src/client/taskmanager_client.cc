@@ -280,7 +280,11 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     request.mutable_fun()->CopyFrom(*fun);
     if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::CreateFunction, &request,
                                   &response, request_timeout_ms_, 1)) {
-        return {};
+        if (response.code() == 0) {
+            return {};
+        } else {
+            return {response.code(), response.msg()};
+        }
     } else {
         return {-1, response.msg()};
     }
@@ -292,7 +296,11 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
     ::openmldb::taskmanager::DropFunctionResponse response;
     if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::DropFunction, &request,
                                   &response, request_timeout_ms_, 1)) {
-        return {};
+        if (response.code() == 0) {
+            return {};
+        } else {
+            return {response.code(), response.msg()};
+        }
     } else {
         return {-1, response.msg()};
     }

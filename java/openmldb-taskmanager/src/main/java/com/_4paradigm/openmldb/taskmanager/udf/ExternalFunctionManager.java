@@ -35,13 +35,13 @@ public class ExternalFunctionManager {
         return Paths.get(TaskManagerConfig.EXTERNAL_FUNCTION_DIR, libraryFileName).toString();
     }
 
-    static public void addFunction(String fnName, String libraryFileName) {
+    static public void addFunction(String fnName, String libraryFileName) throws Exception {
         if (hasFunction(fnName)) {
             logger.warn(String.format("The function %s exists, ignore adding function", fnName));
         } else {
             String libraryFilePath = getLibraryFilePath(libraryFileName);
             if(!(new File(libraryFilePath).exists())) {
-                logger.warn("The library file does not exist in path: " + libraryFilePath);
+                throw new Exception("The library file does not exist in path: " + libraryFilePath);
             }
             nameFileMap.put(fnName, libraryFileName);
         }
