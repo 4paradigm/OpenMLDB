@@ -2693,7 +2693,11 @@ bool RequestAggUnionRunner::InitAggregator() {
     type::Type agg_col_type;
     if (agg_col_->GetExprType() == node::kExprColumnRef) {
         agg_col_type = producers_[1]->row_parser()->GetType(agg_col_name_);
-    } else if (agg_col_->GetExprType() == node::kExprAll && agg_type_ == kCount) {
+    } else if (agg_col_->GetExprType() == node::kExprAll) {
+        if (agg_type_ != kCount) {
+            LOG(ERROR) << "only support " << ExprTypeName(agg_col_->GetExprType()) << "on count op";
+            return false;
+        }
         agg_col_type = type::Type::kInt64;
     } else {
         LOG(ERROR) << "non-support aggr expr type " << ExprTypeName(agg_col_->GetExprType());
