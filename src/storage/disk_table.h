@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <bitset>
 #include "base/endianconv.h"
 #include "base/slice.h"
 #include "boost/lexical_cast.hpp"
@@ -39,6 +40,8 @@
 #include "rocksdb/utilities/checkpoint.h"
 #include "storage/iterator.h"
 #include "storage/table.h"
+#include "base/glog_wapper.h"  // NOLINT
+
 
 namespace openmldb {
 namespace storage {
@@ -126,6 +129,22 @@ class KeyTSComparator : public rocksdb::Comparator {
     void FindShortSuccessor(std::string* /*key*/) const override {}
 };
 
+class BloomFilter {
+ public:
+    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : bitset_size_(bitset_size), string_cnt_(string_cnt) { k_ = ceil((bitset_size / string_cnt) * std::log(2)); }
+    virtual ~BloomFilter() {}
+
+    uint32_t Hash(const char* str, uint32_t seed);
+    void Set(const char* str);
+    bool Valid(const char* str);
+
+ private:
+    uint32_t k_, bitset_size_,
+        string_cnt_;  // k:number of the hash functions //bitset_size:the size of bitset //string_cnt:number of strings to hash (k = [bitset_size/string_cnt]*ln2)
+    std::bitset<1<<20> bit_;
+    uint32_t base_[100] = {5, 7, 11, 13, 31, 37, 61};
+};
+
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {
  public:
     const char* Name() const override { return "KeyTsPrefixTransform"; }
@@ -152,6 +171,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
 
     bool Filter(int /*level*/, const rocksdb::Slice& key, const rocksdb::Slice& /*existing_value*/,
                 std::string* /*new_value*/, bool* /*value_changed*/) const override {
+        PDLOG(ERROR, "using compaction filter");
         if (key.size() < TS_LEN) {
             return false;
         }
@@ -209,6 +229,8 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
 
     bool Filter(int /*level*/, const rocksdb::Slice& key, const rocksdb::Slice& /*existing_value*/,
                 std::string* /*new_value*/, bool* /*value_changed*/) const override {
+        PDLOG(ERROR, "using compaction filter");
+        idx_cnt_vec_->at(1)->fetch_add(1, std::memory_order_relaxed);
         if (key.size() < TS_LEN) {
             return false;
         }
@@ -267,10 +289,11 @@ class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
         : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec) {}
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
-        if (context.is_manual_compaction) {
-            return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
-        }
-        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
+        // if (context.is_manual_compaction) {
+        //     return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
+        // }
+        // return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
+        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
     }
     const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
 
@@ -471,6 +494,7 @@ class DiskTable : public Table {
     void SchedGc() override;
 
     void GcHead();
+    void GcTTL();
     void GcTTLAndHead();
     void GcTTLOrHead();
 
@@ -504,6 +528,8 @@ class DiskTable : public Table {
     std::string table_path_;
     std::atomic<uint64_t> pk_cnt_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> pk_cnt_vec_;
+    std::vector<BloomFilter> bloom_filter_vec_;
 };
 
 }  // namespace storage

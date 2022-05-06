@@ -152,6 +152,8 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
+        pk_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+        bloom_filter_vec_.push_back(BloomFilter(1000, 100));
         rocksdb::ColumnFamilyOptions cfo;
         if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
             cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
@@ -167,6 +169,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
             index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index, &idx_cnt_vec_);
+            PDLOG(ERROR, "init compaction filter factory");
         }
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
@@ -213,6 +216,10 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         idx_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
+        if (!bloom_filter_vec_[0].Valid(pk.c_str())) {
+            bloom_filter_vec_[0].Set(pk.c_str());
+            pk_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
+        } 
         return true;
     } else {
         DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -265,6 +272,11 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     if (s.ok()) {
         for (Dimensions::const_iterator it = dimensions.begin(); it != dimensions.end(); ++it) {
             idx_cnt_vec_[it->idx()]->fetch_add(1, std::memory_order_relaxed);
+            int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
+            if (!bloom_filter_vec_[inner_pos].Valid(it->key().c_str())) {
+                bloom_filter_vec_[inner_pos].Set(it->key().c_str());
+                pk_cnt_vec_[inner_pos]->fetch_add(1, std::memory_order_relaxed);
+            }
         }
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -324,6 +336,7 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
 
 void DiskTable::SchedGc() {
+    // GcTTL();
     GcHead();
     UpdateTTL();
 }
@@ -346,7 +359,6 @@ void DiskTable::GcHead() {
             std::map<uint32_t, uint64_t> ttl_map;
             std::map<uint32_t, uint32_t> idx_map;
             for (const auto& index : indexs) {
-                idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
                     auto lat_ttl = index->GetTTL()->lat_ttl;
@@ -478,6 +490,18 @@ void DiskTable::GcHead() {
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
+}
+
+void DiskTable::GcTTL() {
+    auto indexs = table_index_.GetAllIndex();
+    for (const auto& index : indexs) {
+        idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
+    }
+    auto s = db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
+    if (!s.ok()) {
+        PDLOG(WARNING, "Manual Compaction failed");
+    }
+    PDLOG(ERROR, "Manual Compaction Finished");
 }
 
 void DiskTable::GcTTLOrHead() {}
@@ -1180,8 +1204,12 @@ bool DiskTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 uint64_t DiskTable::GetRecordPkCnt() {
-    // TODO(litongxin)
-    return 0;
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    uint64_t count = 0;
+    for (uint32_t i = 0; i < inner_indexs->size(); i++) {
+        count += pk_cnt_vec_[i]->load(std::memory_order_relaxed);
+    }
+    return count;
 }
 
 uint64_t DiskTable::GetRecordIdxByteSize() {
@@ -1239,6 +1267,43 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     }
 
     return 0;
+}
+
+uint32_t BloomFilter::Hash(const char *str, uint32_t seed)
+{
+    // unsigned int b = 378551;
+    uint a = 63689;
+    uint hash = 0;
+
+    while (*str)
+    {
+        hash = hash * a + (*str++);
+        a *= seed;
+    }
+
+    return (hash & 0x7FFFFFFF);
+}
+
+void BloomFilter::Set(const char *str)
+{
+    for (int i = 0; i < k_; ++i)
+    {
+        uint32_t p = Hash(str, base_[i]) % 1000000;
+        bit_[p] = 1;
+    }
+
+}
+
+bool BloomFilter::Valid(const char *str)
+{
+    for (int i = 0; i < k_; ++i)
+    {
+        uint32_t p = Hash(str, base_[i]) % 1000000;
+        if (!bit_[p]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace storage
