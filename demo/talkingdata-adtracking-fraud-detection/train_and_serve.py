@@ -90,18 +90,9 @@ def cut_data():
     del train_df
     gc.collect()
 
-# cut_data()
-
-
-print("Prepare openmldb, db {} table {}".format(db_name, table_name))
-
-engine = db.create_engine(
-    'openmldb:///{}?zk={}&zkPath={}'.format(db_name, zk, zk_path))
-connection = engine.connect()
-
 
 def nothrow_execute(sql):
-    # only used for create table, cuz 'create table if not exist' is not supported now
+    # only used for drop deployment, cuz 'if not exist' is not supported now
     try:
         print("execute " + sql)
         ok, rs = connection.execute(sql)
@@ -110,9 +101,15 @@ def nothrow_execute(sql):
         print(e)
 
 
+print("Prepare openmldb, db {} table {}".format(db_name, table_name))
+# cut_data()
+engine = db.create_engine(
+    'openmldb:///{}?zk={}&zkPath={}'.format(db_name, zk, zk_path))
+connection = engine.connect()
+
 connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
 schema_string = ','.join(list(map(column_string, train_schema)))
-nothrow_execute("CREATE TABLE {}({});".format(table_name, schema_string))
+connection.execute("CREATE TABLE {}({});".format(table_name, schema_string))
 
 print("Load train_sample data to offline storage for training(hard copy)")
 connection.execute("USE {}".format(db_name))
