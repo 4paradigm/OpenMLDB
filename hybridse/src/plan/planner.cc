@@ -24,12 +24,20 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
 #include "vm/engine.h"
 namespace hybridse {
 namespace plan {
+
+// whether the window function is relative to current row instead of window frame bound
+inline bool IsCurRowRelativeWinFun(absl::string_view fn_name) {
+    return absl::EqualsIgnoreCase("lag", fn_name) || absl::EqualsIgnoreCase("at", fn_name) ||
+           absl::EqualsIgnoreCase("lead", fn_name);
+}
 
 Planner::Planner(node::NodeManager *manager, const bool is_batch_mode, const bool is_cluster_optimized,
         const bool enable_batch_window_parallelization,
@@ -123,10 +131,6 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     CHECK_TRUE(nullptr != root->GetSelectList() && !root->GetSelectList()->GetList().empty(), common::kPlanError,
                "fail to create select query plan: select expr list is null or empty")
 
-    const udf::UdfLibrary *lib = udf::DefaultUdfLibrary::get();
-    // prepare window list
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> window_project_list_map;
-    node::ProjectListNode *table_project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
     // prepare window def
     int w_id = 1;
     std::map<std::string, const node::WindowDefNode *> windows;
@@ -140,9 +144,15 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         }
     }
 
+    // mapping for window projects
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> window_project_list_map;
+    // standalone `ProjectList` holds non-window projects
+    node::ProjectListNode *table_project_list = node_manager_->MakeProjectListPlanNode(nullptr, false);
+    const udf::UdfLibrary *lib = udf::DefaultUdfLibrary::get();
+
     const node::NodePointVector &select_expr_list = root->GetSelectList()->GetList();
     for (uint32_t pos = 0u; pos < select_expr_list.size(); pos++) {
-        auto expr = select_expr_list[pos];
+        auto& expr = select_expr_list[pos];
         std::string project_name;
         node::ExprNode *project_expr;
         switch (expr->GetType()) {
@@ -161,27 +171,44 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
             }
         }
 
+        // get the window for the expr
         const node::WindowDefNode *w_ptr = nullptr;
         CHECK_TRUE(node::WindowOfExpression(windows, project_expr, &w_ptr), common::kPlanError,
                    "fail to resolved window")
+        // expand window frame for lag funtions early
+        if (project_expr->GetExprType() == node::kExprCall) {
+            auto *call_expr = dynamic_cast<node::CallExprNode *>(project_expr);
+            if (call_expr != nullptr && IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+                auto s = ConstructWindowForLag(w_ptr, call_expr);
+                CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
+                w_ptr = s.value();
+            }
+        }
 
         // deal with row project / table aggregation project
         if (w_ptr == nullptr) {
             if (node::IsAggregationExpression(lib, project_expr)) {
+                // table aggregation project
                 table_project_list->AddProject(
                     node_manager_->MakeAggProjectNode(pos, project_name, project_expr, nullptr));
             } else {
+                // row project
                 table_project_list->AddProject(node_manager_->MakeRowProjectNode(pos, project_name, project_expr));
             }
             continue;
         }
+
         // deal with window project
-        if (window_project_list_map.find(w_ptr) == window_project_list_map.end()) {
+        auto it = window_project_list_map.find(w_ptr);
+        if (it == window_project_list_map.end()) {
+            // save the newly found window to (window -> project list) map
             node::WindowPlanNode *w_node_ptr = node_manager_->MakeWindowPlanNode(w_id++);
-            CHECK_STATUS(CreateWindowPlanNode(w_ptr, w_node_ptr))
-            window_project_list_map[w_ptr] = node_manager_->MakeProjectListPlanNode(w_node_ptr, true);
+            CHECK_STATUS(FillInWindowPlanNode(w_ptr, w_node_ptr))
+            // and create initial project list node for that new window
+            auto res = window_project_list_map.emplace(w_ptr, node_manager_->MakeProjectListPlanNode(w_node_ptr, true));
+            it = res.first;
         }
-        window_project_list_map[w_ptr]->AddProject(
+        it->second->AddProject(
             node_manager_->MakeAggProjectNode(pos, project_name, project_expr, w_ptr->GetFrame()));
     }
 
@@ -198,11 +225,11 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
     // Add table projects into project map beforehand
     // Thus we can merge project list based on window frame when it is necessary.
     if (!table_project_list->GetProjects().empty()) {
+        // (nullptr, project list) pair contains all projects that is not window related
         table_project_list->SetHavingCondition(root->having_clause_ptr_);
         window_project_list_map[nullptr] = table_project_list;
     }
     // merge window map
-    std::map<const node::WindowDefNode *, node::ProjectListNode *> merged_project_list_map;
     bool long_window_exist = false;
     // only support long-window optimization for request-mode
     if (!is_batch_mode_ && !long_windows_.empty()) {
@@ -217,6 +244,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         }
     }
 
+    std::map<const node::WindowDefNode *, node::ProjectListNode *> merged_project_list_map;
     if (long_window_exist) {
         merged_project_list_map = window_project_list_map;
     } else {
@@ -322,7 +350,7 @@ base::Status Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr) {
     }
     return base::Status::OK();
 }
-base::Status Planner::CreateWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr) {
+base::Status Planner::FillInWindowPlanNode(const node::WindowDefNode *w_ptr, node::WindowPlanNode *w_node_ptr) {
     if (nullptr != w_ptr) {
         // Prepare Window Frame
         CHECK_STATUS(CheckWindowFrame(w_ptr))
@@ -884,12 +912,11 @@ bool Planner::MergeWindows(const std::map<const node::WindowDefNode *, node::Pro
         return false;
     }
     bool has_window_merged = false;
-    auto &windows = *windows_ptr;
 
+    // [ (window definition, window id or 0) ]
     std::vector<std::pair<const node::WindowDefNode *, int32_t>> window_id_pairs;
     for (auto it = map.begin(); it != map.end(); it++) {
-        window_id_pairs.push_back(
-            std::make_pair(it->first, nullptr == it->second->GetW() ? 0 : it->second->GetW()->GetId()));
+        window_id_pairs.emplace_back(it->first, nullptr == it->second->GetW() ? 0 : it->second->GetW()->GetId());
     }
     std::sort(window_id_pairs.begin(), window_id_pairs.end(),
               [](const std::pair<const node::WindowDefNode *, int32_t> &p1,
@@ -901,12 +928,12 @@ bool Planner::MergeWindows(const std::map<const node::WindowDefNode *, node::Pro
             // skip handling range like frames
             continue;
         }
-        if (windows.empty()) {
-            windows.push_back(iter->first);
+        if (windows_ptr->empty()) {
+            windows_ptr->push_back(iter->first);
             continue;
         }
         bool can_be_merged = false;
-        for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
+        for (auto iter_w = windows_ptr->begin(); iter_w != windows_ptr->end(); iter_w++) {
             if (node::SqlEquals(iter->first, *iter_w)) {
                 can_be_merged = true;
                 has_window_merged = true;
@@ -924,7 +951,7 @@ bool Planner::MergeWindows(const std::map<const node::WindowDefNode *, node::Pro
         }
 
         if (!can_be_merged) {
-            windows.push_back(iter->first);
+            windows_ptr->push_back(iter->first);
         }
     }
 
@@ -933,12 +960,12 @@ bool Planner::MergeWindows(const std::map<const node::WindowDefNode *, node::Pro
             // skip handling rows frames
             continue;
         }
-        if (windows.empty()) {
-            windows.push_back(iter->first);
+        if (windows_ptr->empty()) {
+            windows_ptr->push_back(iter->first);
             continue;
         }
         bool can_be_merged = false;
-        for (auto iter_w = windows.begin(); iter_w != windows.end(); iter_w++) {
+        for (auto iter_w = windows_ptr->begin(); iter_w != windows_ptr->end(); iter_w++) {
             if (node::SqlEquals(iter->first, *iter_w)) {
                 can_be_merged = true;
                 has_window_merged = true;
@@ -956,13 +983,14 @@ bool Planner::MergeWindows(const std::map<const node::WindowDefNode *, node::Pro
         }
 
         if (!can_be_merged) {
-            windows.push_back(iter->first);
+            windows_ptr->push_back(iter->first);
         }
     }
 
     return has_window_merged;
 }
 
+// win_id passed in for the purpose of creating possible new WindowPlanNode
 base::Status Planner::MergeProjectMap(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
                                       std::map<const node::WindowDefNode *, node::ProjectListNode *> *output) {
     if (map.empty()) {
@@ -970,9 +998,9 @@ base::Status Planner::MergeProjectMap(const std::map<const node::WindowDefNode *
         *output = map;
         return base::Status::OK();
     }
-    std::vector<const node::WindowDefNode *> windows;
-    bool flag_merge = MergeWindows(map, &windows);
-    bool flag_expand = ExpandCurrentHistoryWindow(&windows);
+    std::vector<const node::WindowDefNode *> merged_windows;
+    bool flag_merge = MergeWindows(map, &merged_windows);
+    bool flag_expand = ExpandCurrentHistoryWindow(&merged_windows);
     if (!flag_merge && !flag_expand) {
         DLOG(INFO) << "No window can be merged or expand";
         *output = map;
@@ -980,23 +1008,28 @@ base::Status Planner::MergeProjectMap(const std::map<const node::WindowDefNode *
     }
 
     int32_t w_id = 1;
-    for (auto iter = windows.cbegin(); iter != windows.cend(); iter++) {
+    // create the after-window-merge (window->project list) map, with empty project list
+    std::map<const node::WindowDefNode*, node::ProjectListNode*> merged_out;
+    for (auto iter = merged_windows.cbegin(); iter != merged_windows.cend(); iter++) {
         if (nullptr == *iter) {
-            output->insert(std::make_pair(nullptr, node_manager_->MakeProjectListPlanNode(nullptr, false)));
-            continue;
+            // table project list or row project list
+            merged_out.emplace(nullptr, node_manager_->MakeProjectListPlanNode(nullptr, false));
+        } else {
+            node::WindowPlanNode *w_node_ptr = node_manager_->MakeWindowPlanNode(w_id++);
+            CHECK_STATUS(FillInWindowPlanNode(*iter, w_node_ptr))
+            merged_out.emplace(*iter, node_manager_->MakeProjectListPlanNode(w_node_ptr, true));
         }
-        node::WindowPlanNode *w_node_ptr = node_manager_->MakeWindowPlanNode(w_id++);
-        CHECK_STATUS(CreateWindowPlanNode(*iter, w_node_ptr))
-        output->insert(std::make_pair(*iter, node_manager_->MakeProjectListPlanNode(w_node_ptr, true)));
     }
 
+    // add project nodes from map to merged_out, based on whether two window can merged
     for (auto map_iter = map.cbegin(); map_iter != map.cend(); map_iter++) {
         bool merge_ok = false;
-        for (auto iter = output->begin(); iter != output->end(); iter++) {
+        for (auto iter = merged_out.begin(); iter != merged_out.end(); iter++) {
             if (node::SqlEquals(map_iter->first, iter->first) ||
                 (nullptr != map_iter->first && map_iter->first->CanMergeWith(iter->first))) {
-                auto frame = iter->second->GetW();
-                node::ProjectListNode *merged_project = node_manager_->MakeProjectListPlanNode(frame, frame != nullptr);
+                auto window_plan_node = iter->second->GetW();
+                node::ProjectListNode *merged_project =
+                    node_manager_->MakeProjectListPlanNode(window_plan_node, window_plan_node != nullptr);
                 node::ProjectListNode::MergeProjectList(iter->second, map_iter->second, merged_project);
                 iter->second = merged_project;
                 merge_ok = true;
@@ -1006,16 +1039,17 @@ base::Status Planner::MergeProjectMap(const std::map<const node::WindowDefNode *
         CHECK_TRUE(merge_ok, common::kPlanError, "Fail to merge project list")
     }
 
+    *output = merged_out;
     return base::Status::OK();
 }
+
 bool Planner::ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows_ptr) {
     if (nullptr == windows_ptr) {
         return false;
     }
-    auto &windows = *windows_ptr;
     bool has_window_expand = false;
     // merge big history window with current history window
-    for (auto iter = windows.begin(); iter != windows.end(); iter++) {
+    for (auto iter = windows_ptr->begin(); iter != windows_ptr->end(); iter++) {
         const node::WindowDefNode *w_ptr = *iter;
         if (nullptr != w_ptr && nullptr != w_ptr->GetFrame() && !w_ptr->GetFrame()->IsRowsRangeLikeFrame() &&
             w_ptr->GetFrame()->IsPureHistoryFrame()) {
@@ -1128,6 +1162,42 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
     return base::Status::OK();
 }
 
+// restriction rules:
+// 1. offset in lag function must be constant
+absl::StatusOr<node::WindowDefNode *> Planner::ConstructWindowForLag(const node::WindowDefNode *in,
+                                                                     const node::CallExprNode *call) const {
+    if (call->GetChildNum() <= 1) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("expect offset as second parameter for function ", call->GetFnDef()->GetName()));
+    }
+
+    auto *offset_expr = call->GetChild(1);
+    if (offset_expr->GetExprType() != node::ExprType::kExprPrimary) {
+        return absl::InvalidArgumentError("offset can only be constant");
+    }
+
+    if (in->GetFrame()->frame_type() != node::FrameType::kFrameRows &&
+        in->GetFrame()->frame_type() != node::FrameType::kFrameRowsRange) {
+        return absl::InvalidArgumentError("input window is not a ROWS or ROWS_RANGE window");
+    }
+
+    auto *const_node = dynamic_cast<node::ConstNode *>(offset_expr);
+    int64_t offset = const_node->GetAsInt64();
+
+    auto *rows_frame_ext =
+        node_manager_->MakeFrameExtent(node_manager_->MakeFrameBound(node::BoundType::kPreceding, offset),
+                                       node_manager_->MakeFrameBound(node::BoundType::kCurrent));
+
+    node::FrameNode *new_frame = in->GetFrame()->ShadowCopy(node_manager_);
+    new_frame->set_frame_type(node::FrameType::kFrameRows);
+    new_frame->SetFrameRows(rows_frame_ext);
+    new_frame->SetFrameRange(nullptr);
+    new_frame->set_frame_maxsize(0);
+
+    auto *new_win = in->ShadowCopy(node_manager_);
+    new_win->SetFrame(new_frame);
+    return new_win;
+}
 
 }  // namespace plan
 }  // namespace hybridse

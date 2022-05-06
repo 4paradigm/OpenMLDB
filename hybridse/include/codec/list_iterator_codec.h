@@ -49,7 +49,7 @@ template <class V, class R>
 class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
-    ~WrapListImpl() {}
+    ~WrapListImpl() override {}
     virtual const V GetFieldUnsafe(const R &row) const = 0;
     virtual void GetField(const R &row, V *, bool *) const = 0;
     virtual const bool IsNull(const R &row) const = 0;
@@ -67,7 +67,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
           col_idx_(col_idx),
           offset_(offset) {}
 
-    ~ColumnImpl() {}
+    ~ColumnImpl() override {}
 
     const V GetFieldUnsafe(const Row &row) const override {
         V value;

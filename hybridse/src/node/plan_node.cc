@@ -279,18 +279,15 @@ void ProjectListNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     if (nullptr == w_ptr_) {
         output << "\n";
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on table ", nullptr == this->having_condition_);
+        PrintPlanVector(output, org_tab + INDENT, projects_, "projects on table ", nullptr == this->having_condition_);
         if (nullptr != this->having_condition_) {
-            PrintSqlNode(output, org_tab + INDENT, having_condition_,
-                            "having condition: ", true);
+            PrintSqlNode(output, org_tab + INDENT, having_condition_, "having condition: ", true);
         }
     } else {
         output << "\n";
         PrintPlanNode(output, org_tab + INDENT, (w_ptr_), "", false);
         output << "\n";
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window ", true);
+        PrintPlanVector(output, org_tab + INDENT, projects_, "projects on window ", true);
     }
 }
 
@@ -347,7 +344,7 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
         return false;
     }
     const ProjectListNode *that = dynamic_cast<const ProjectListNode *>(node);
-    if (this->projects.size() != that->projects.size()) {
+    if (this->projects_.size() != that->projects_.size()) {
         return false;
     }
 
@@ -355,17 +352,17 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
            this->has_agg_project_ == that->has_agg_project_ &&
            node::ExprEquals(this->having_condition_, that->having_condition_) &&
            node::PlanEquals(this->w_ptr_, that->w_ptr_) &&
-           PlanListEquals(this->projects, that->projects) &&
+           PlanListEquals(this->projects_, that->projects_) &&
            LeafPlanNode::Equals(node);
 }
 bool ProjectListNode::IsSimpleProjectList() {
     if (has_agg_project_) {
         return false;
     }
-    if (projects.empty()) {
+    if (projects_.empty()) {
         return false;
     }
-    for (auto item : projects) {
+    for (auto item : projects_) {
         auto expr = dynamic_cast<ProjectNode *>(item)->GetExpression();
         if (!node::ExprIsSimple(expr)) {
             return false;
@@ -530,7 +527,7 @@ void WindowPlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab, name, "window_name", true);
+    PrintValue(output, org_tab, name_, "window_name", true);
 }
 bool WindowPlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -545,7 +542,7 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
-    return this->name == that->name &&
+    return this->name_ == that->name_ &&
            this->instance_not_in_window() == that->instance_not_in_window() &&
            this->exclude_current_time() == that->exclude_current_time() &&
            SqlEquals(this->frame_node_, that->frame_node_) &&
