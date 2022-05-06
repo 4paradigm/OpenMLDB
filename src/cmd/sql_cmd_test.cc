@@ -1474,7 +1474,9 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
-    sr->Init();
+    ProcessSQLs(sr, {
+                        "set @@execute_mode='offline';",
+                    });
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
