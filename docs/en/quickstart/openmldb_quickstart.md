@@ -15,7 +15,7 @@ This tutorial is developed and deployed based on the OpenMLDB CLI, so first you 
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.2 bash
+docker run -it 4pdosc/openmldb:0.5.0 bash
 ```
 
 :bulb: **After the container is successfully started, the subsequent commands in this tutorial are executed within the container by default. **
