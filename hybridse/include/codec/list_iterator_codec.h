@@ -398,7 +398,7 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
           start_(start),
           end_(end) {
         if (nullptr != root_) {
-            root_->SeekToFirst();
+            SeekToFirst();
             start_key_ = root_->Valid() ? root_->GetKey() : 0;
         }
     }
@@ -416,9 +416,13 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
         root_->Seek(start_);
     }
     virtual bool IsSeekable() const { return root_->IsSeekable(); }
+
     std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    // the row key corresponding to the window
     uint64_t start_key_;
+    // range start, key decrease start to end
     const uint64_t start_;
+    // range end, key decrease start to end
     const uint64_t end_;
 };
 

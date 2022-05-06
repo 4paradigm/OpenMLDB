@@ -317,7 +317,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
                                    "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
-                                   "range=(col5, -3, 0), index_keys=(col2,col1))\n"
+                                   "range=(col5, -3, 0), index_keys=(col1,col2))\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
