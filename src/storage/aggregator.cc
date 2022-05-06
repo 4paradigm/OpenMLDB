@@ -64,6 +64,8 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
       aggr_col_(aggr_col),
       aggr_type_(aggr_type),
       ts_col_(ts_col),
+      aggr_col_idx_(-1),
+      ts_col_idx_(-1),
       window_type_(window_tpye),
       window_size_(window_size),
       base_row_view_(base_table_schema_),
@@ -79,7 +81,13 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
             ts_col_type_ = base_meta.column_desc(ts_col_idx_).data_type();
         }
     }
-    ts_col_type_ = base_meta.column_desc(ts_col_idx_).data_type();
+    // column name's existence will check in sql parse phase. it shouldn't occur here.
+    if (aggr_col_idx_ == -1 && aggr_type_ != AggrType::kCount) {
+        PDLOG(ERROR, "aggr_col not found in base table");
+    }
+    if (ts_col_idx_ == -1) {
+        PDLOG(ERROR, "ts_col not found in base table");
+    }
     auto dimension = dimensions_.Add();
     dimension->set_idx(0);
 }

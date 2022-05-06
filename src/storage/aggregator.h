@@ -146,8 +146,6 @@ class Aggregator {
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
-    int aggr_col_idx_;
-    int ts_col_idx_;
 
     std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
     std::mutex mu_;
@@ -175,6 +173,8 @@ class Aggregator {
     std::string ts_col_;
 
  protected:
+    int aggr_col_idx_;
+    int ts_col_idx_;
     WindowType window_type_;
 
     // for kRowsNum, window_size_ is the rows num in mini window
