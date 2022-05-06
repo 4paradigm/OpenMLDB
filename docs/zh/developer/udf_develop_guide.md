@@ -8,7 +8,7 @@
 #### 2.1.1 C++函数名规范
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
 - 要求函数名能清晰表达函数功能
-- 函数不能重名。函数名不能和内置函数及其他自定义函数重名. 所有内置函数的列表参考[这里](../reference/sql/functions_and_operators/Files/udfs_8h.md)
+- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../reference/sql/functions_and_operators/Files/udfs_8h.md)
 #### 2.1.2 C++类型与SQL类型对应关系
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
 
@@ -40,7 +40,7 @@
     ```
 
 函数声明:  
-函数必须用extern "C"来声明
+* 函数必须用extern "C"来声明
 
 #### 2.1.4 内存管理
 
@@ -70,6 +70,7 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
     output->data_ = buffer;
 }
 ```
+更多udf实现参考[这里](../../../src/examples/test_udf.cc)
 ### 2.2 编译动态库
 - 拷贝include目录 https://github.com/4paradigm/OpenMLDB/tree/main/include到某个路径下
 - 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
