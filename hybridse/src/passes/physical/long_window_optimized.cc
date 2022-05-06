@@ -248,15 +248,19 @@ bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
 std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
     std::string str = "";
     for (const auto expr : exprs) {
-        auto col_ref = dynamic_cast<node::ColumnRefNode*>(expr);
-        if (!col_ref) {
-            LOG(ERROR) << "ConcatExprList only support ColumnRefNode";
+        std::string expr_val;
+        if (expr->GetExprType() == node::kExprAll) {
+            expr_val = expr->GetExprString();
+        } else if (expr->GetExprType() == node::kExprColumnRef) {
+            expr_val = dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName();
+        } else {
+            LOG(ERROR) << "non support expr type in ConcatExprList";
             return "";
         }
         if (str.empty()) {
-            str = absl::StrCat(str, col_ref->GetColumnName());
+            str = absl::StrCat(str, expr_val);
         } else {
-            str = absl::StrCat(str, delimiter, col_ref->GetColumnName());
+            str = absl::StrCat(str, delimiter, expr_val);
         }
     }
     return str;
