@@ -258,11 +258,18 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
-    // todo: init session variables from systemtable
-    session_variables_.emplace("execute_mode", "offline");
-    session_variables_.emplace("enable_trace", "false");
-    session_variables_.emplace("sync_job", "false");
-    session_variables_.emplace("job_timeout", "20000");  // ref TaskManagerClient::request_timeout_ms_
+    std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
+    std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
+    std::string sql = "select * from " + table;
+    hybridse::sdk::Status status;
+    auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    std::string key;
+    std::string value;
+    while (rs->Next()) {
+        key = rs->GetStringUnsafe(0);
+        value = rs->GetStringUnsafe(1);
+        session_variables_[key] = value;
+    }
     return true;
 }
 
@@ -2496,6 +2503,7 @@ bool SQLClusterRouter::IsSyncJob() {
         if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
             return {::hybridse::common::StatusCode::kRunError, "zk globlvar node not update"};
         }
+        session_variables_[key] = value;
         return {};
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
