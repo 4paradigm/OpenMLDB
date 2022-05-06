@@ -31,6 +31,7 @@ import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, GraphvizUtil, Hybridse
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.std.VectorDataType
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.SparkFiles
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -353,7 +354,10 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
           // Get the correct file name which is submitted by spark-submit
           // TODO(tobe): Only work for spark-submit jobs and can not load local library file when running in IDE
-          val soFilePath = functionProto.getFile.split("/").last
+          val soFileName = functionProto.getFile.split("/").last
+          // For local mode, spark does not copy the fail in driver, refer to
+          // https://stackoverflow.com/questions/34900023/read-files-sent-with-spark-submit-by-the-driver
+          val soFilePath = SparkFiles.get(soFileName)
           if (File(soFilePath).exists) {
             engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
               soFilePath)
