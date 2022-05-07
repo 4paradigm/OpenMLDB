@@ -1,5 +1,5 @@
-#!/bin/bash
-#
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# init.sh
+import requests
 
-MODE="cluster"
-if [ $# -gt 0 ]; then
-    MODE=$1
-fi
-pkill python3
-rm -rf /tmp/*
-rm -rf /work/openmldb/logs*
-rm -rf /work/openmldb/db*
-sleep 2
-if [[ "$MODE" = "standalone" ]]; then
-    python3 convert_data.py < data/taxi_tour_table_train_simple.csv  > ./data/taxi_tour.csv
-    cd /work/openmldb && ./bin/stop-standalone.sh && ./bin/start-standalone.sh
-    sleep 1
-else
-    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh restart
-    sleep 1
-    cd /work/openmldb && ./bin/stop-all.sh && ./bin/start-all.sh
-fi
+url = "http://127.0.0.1:8881/predict"
+req = {"ip": 114904,
+       "app": 11,
+       "device": 1,
+       "os": 15,
+       "channel": 319,
+       "click_time": 1509960088000,
+       "is_attributed": 0}
+r = requests.post(url, json=req)
+print(r.text)

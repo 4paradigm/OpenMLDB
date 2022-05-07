@@ -67,5 +67,3 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 这是因为`addr`端主动断开了连接，`addr`的地址大概率是taskmanager。这不代表taskmanager不正常，而是taskmanager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
 在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
 在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
-
-
