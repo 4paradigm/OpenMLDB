@@ -818,7 +818,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
                       "("
                       "col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=absolute, TTL=1m));";
+                      " TTL_TYPE=latest, TTL=1));";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -826,7 +826,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
                              " sum(col3) over w1 as w1_sum_col3 from " + base_table +
                              " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                             " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+                             " ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
 
