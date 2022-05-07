@@ -354,6 +354,18 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
+    hybridse::sdk::Status HandleIndex(const std::set<std::pair<std::string, std::string>>& table_pair,
+                                      const std::string& select_sql);
+
+    hybridse::sdk::Status GetNewIndex(
+        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
+        std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
+
+    hybridse::sdk::Status AddNewIndex(
+        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
+
     hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
 
     hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
