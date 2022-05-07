@@ -31,7 +31,7 @@ make SQL_PYSDK_ENABLE=ON
 Note: build is only required when tesing over latest commit is needed, otherwise, it can installed directly from pip (when 0.5.0 released):
 
 ```bash
-pip install openmldb_exporter==0.5.0
+pip install openmldb-exporter==0.5.0
 ```
 
 ### Run
@@ -51,13 +51,13 @@ pip install openmldb_exporter==0.5.0
 3. start openmldb exporter
 
    ```bash
-   poetry run openmldb_exporter
+   poetry run openmldb-exporter
    ```
 
-   you need pass necessary flags after `openmldb_exporter`. run `poetry run openmldb_exporter --help` to get the help info
+   you need pass necessary flags after `openmldb-exporter`. run `poetry run openmldb-exporter --help` to get the help info
 
    ```bash
-   usage: openmldb_exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
+   usage: openmldb-exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
                             [--web.telemetry-path WEB.TELEMETRY_PATH] [--config.zk_root CONFIG.ZK_ROOT]
                             [--config.zk_path CONFIG.ZK_PATH] [--config.interval CONFIG.INTERVAL]
    

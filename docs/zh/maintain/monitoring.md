@@ -12,7 +12,7 @@ OpenMLDB 的监控方案概述如下：
 
 ### 简介
 
-OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会跟随 OpenMLDB 版本更新发布到 PyPI，生产使用可以直接通过 pip 安装最新发布的 `openmldb_exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)。
+OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会跟随 OpenMLDB 版本更新发布到 PyPI，生产使用可以直接通过 pip 安装最新发布的 `openmldb-exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)。
 
 ### 环境要求
 
@@ -44,22 +44,22 @@ OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过�
    默认启动脚本 `bin/start.sh` 开启了 server status, 不需要额外配置。
 ### 部署 OpenMLDB exporter
 
-1. 从 PyPi 安装 openmldb_exporter
+1. 从 PyPi 安装 openmldb-exporter
 
    ```bash
-   pip install openmldb_exporter==0.5.0
+   pip install openmldb-exporter==0.5.0
    ```
 
 2. 运行
 
    ```bash
-   ./openmldb_exporter
+   openmldb-exporter
    ```
 
-   注意传入合适的参数，`./openmldb_exporter -h` 查看 help:
+   注意传入合适的参数，`openmldb-exporter -h` 查看 help:
 
    ```bash
-      usage: openmldb_exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
+      usage: openmldb-exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
                                [--web.telemetry-path WEB.TELEMETRY_PATH] [--config.zk_root CONFIG.ZK_ROOT]
                                [--config.zk_path CONFIG.ZK_PATH] [--config.interval CONFIG.INTERVAL]
       
