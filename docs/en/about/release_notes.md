@@ -20,9 +20,11 @@
 - `lag`/`at`/`lead` results is wrong (#1605 @aceforeverd)
 - Memory leak in zk_client (#1660 @wuxiaobai24)
 - Update catalog if leade role changed (#1655 @dl239)
-- Fix unsaferow for window append slice (#1637 @tobegit3hub)
-- Query result is incorrect after adding a new index in standalone mode (#1721 @keyu813) 
-- Other minor bug fix (#1698 @kfiring; #1651 @kutlayacar; #1621 @KaidoWang)
+- Fix unsaferow relavent problems(#1298, #1312, #1326, #1362, #1637, #1381, #1731 @tobegit3hub)
+- Query result is incorrect after adding a new index in standalone mode (#1721 @keyu813)
+- Fail to get correct result for `SHOW JOBS` command(#1453 @tobegit3hub)
+- Result is incorrect for date columns with `UnsafeRowOpt`(#1469 @tobegit3hub)
+- Other minor bug fix (#1698 @kfiring; #1651 @kutlayacar; #1621 @KaidoWang; #1150, #1243 @tobegit3hub; )
 
 ### Code Refactoring
 #1616 @dl239; #1743 @zjx1319
