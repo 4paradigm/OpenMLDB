@@ -670,7 +670,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
 
-TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
+TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
@@ -853,19 +853,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
 }
 
 std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
-    TimeEntries::Iterator* it = NULL;
-    if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-        it = entry->entries.NewIterator();
-        ticket_.Push(entry);
-    } else {
-        it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                 ->entries.NewIterator();
-        ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-    }
-    it->SeekToFirst();
-    std::unique_ptr<MemTableWindowIterator> wit(new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_));
-    return std::move(wit);
+    return std::unique_ptr<::hybridse::vm::RowIterator>(GetRawValue());
 }
 
 const hybridse::codec::Row MemTableKeyIterator::GetKey() {
@@ -1006,7 +994,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;

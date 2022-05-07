@@ -1,4 +1,4 @@
-# 配置文件说明
+# 配置文件
 
 ## nameserver配置文件 conf/nameserver.flags
 
@@ -113,14 +113,28 @@
 #--io_pool_size=2
 # 执行删除表，发送snapshot, load snapshot等任务的线程池大小
 #--task_pool_size=8
-# 配置数据目录，多个磁盘使用英文符号, 隔开
---db_root_path=./db
-# 配置数据回收站目录，drop表的数据就会放在这里
---recycle_bin_root_path=./recycle
 # 配置是否要把表drop后数据放在recycle目录，默认是true
 #--recycle_bin_enabled=true
 # 配置recycle目录里数据的保存时间，如果超过这个时间就会删除对应的目录和数据。默认为0表示永远不删除, 单位是分钟
 #--recycle_ttl=0
+
+# 内存表数据文件路径
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--db_root_path=./db
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_root_path=./recycle
+#
+# HDD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--hdd_root_path=./db_hdd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_hdd_root_path=./recycle_hdd
+#
+# SSD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--ssd_root_path=./db_ssd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_ssd_root_path=./recycle_ssd
 
 # snapshot conf
 # 配置做snapshot的时间，配置为一天中的几点。如23就表示每天23点做snapshot
@@ -135,8 +149,10 @@
 #--snapshot_compression=off
 
 # garbage collection conf
-# 执行过期删除的时间间隔，单位是分钟
+# 执行内存表（即storage_mode=Memory）过期删除的时间间隔，单位是分钟
 --gc_interval=60
+# 执行磁盘表（即storage_mode=HDD/SSD）过期删除的时间间隔，单位是分钟
+--disk_gc_interval=60
 # 执行过期删除的线程池大小
 --gc_pool_size=2
 
@@ -156,7 +172,7 @@
 # 文件发送失败的重试等待时间，单位是毫秒
 #--retry_send_file_wait_time_ms=3000
 #
-# table conf
+# 内存表配置
 # 第一层跳表的最大高度
 #--skiplist_max_height=12
 # 第二层跳表的最大高度

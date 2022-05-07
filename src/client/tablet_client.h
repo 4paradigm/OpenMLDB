@@ -178,18 +178,19 @@ class TabletClient : public Client {
     bool UpdateTTL(uint32_t tid, uint32_t pid, const ::openmldb::type::TTLType& type, uint64_t abs_ttl,
                    uint64_t lat_ttl, const std::string& index_name);
 
-    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+    bool DeleteBinlog(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode);
 
     bool GetTaskStatus(::openmldb::api::TaskStatusResponse& response);  // NOLINT
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTermPair(uint32_t tid, uint32_t pid,
+                     ::openmldb::common::StorageMode storage_mode,  // NOLINT
                      uint64_t& term,                     // NOLINT
                      uint64_t& offset, bool& has_table,  // NOLINT
                      bool& is_leader);                   // NOLINT
 
-    bool GetManifest(uint32_t tid, uint32_t pid,
+    bool GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
                      ::openmldb::api::Manifest& manifest);  // NOLINT
 
     bool GetTableStatus(::openmldb::api::GetTableStatusResponse& response);  // NOLINT
@@ -211,6 +212,10 @@ class TabletClient : public Client {
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool ConnectZK();
     bool DisConnectZK();
+
+    ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+                                           const std::string& pk, uint64_t ts, uint32_t limit,
+                                           bool need_clean, uint32_t& count);  // NOLINT
 
     ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
                                            const std::string& pk, uint64_t ts, uint32_t limit,
@@ -272,6 +277,11 @@ class TabletClient : public Client {
 
     bool SubBatchRequestQuery(const ::openmldb::api::SQLBatchRequestQueryRequest& request,
                               openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    bool CreateFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
+
+    bool DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
+
     bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 

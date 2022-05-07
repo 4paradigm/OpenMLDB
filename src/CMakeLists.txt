@@ -43,11 +43,15 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog schema client zk_client replica base storage openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
+    set(TEST_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog schema client zk_client storage replica base openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${ZETASQL_LIBS}
     ${BRPC_LIBS})
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+        list(APPEND TEST_LIBS stdc++fs)
+    endif()
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     foreach(SRC_FILE ${SRC_FILES})
         if (SRC_FILE MATCHES ".*_test.cc")
@@ -55,6 +59,9 @@ function(compile_test DIR)
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
             add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
+            if (${TEST_TARGET_NAME} STREQUAL "single_tablet_test")
+                add_dependencies(${TEST_TARGET_NAME} test_udf)
+            endif()
             list(APPEND test_list ${TEST_TARGET_NAME})
             if (${TEST_TARGET_NAME} STREQUAL "tablet_impl_mem_test")
                 target_link_libraries(${TEST_TARGET_NAME} tcmalloc ${TEST_LIBS} ${GTEST_LIBRARIES})
@@ -118,6 +125,7 @@ if(TESTING_ENABLE)
     compile_test(schema)
     compile_test(log)
     compile_test(apiserver)
+    add_library(test_udf SHARED examples/test_udf.cc)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)

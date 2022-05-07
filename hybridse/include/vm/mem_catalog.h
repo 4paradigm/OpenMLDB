@@ -411,7 +411,7 @@ class HistoryWindow : public Window {
  protected:
     bool BufferCurrentHistoryBuffer(uint64_t key, const Row& row,
                                     uint64_t end_ts) {
-        current_history_buffer_.emplace_front(std::make_pair(key, row));
+        current_history_buffer_.emplace_front(key, row);
         int64_t sub = (key + window_range_.start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
         while (!current_history_buffer_.empty()) {

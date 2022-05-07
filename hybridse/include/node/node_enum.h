@@ -91,6 +91,9 @@ enum SqlNodeType {
     kDeployStmt,
     kSetStmt,
     kDeleteStmt,
+    kCreateFunctionStmt,
+    kDynamicUdfFnDef,
+    kDynamicUdafFnDef,
     kUnknow = -1
 };
 
@@ -257,6 +260,8 @@ enum CmdType {
     kCmdShowSessionVariables,
     kCmdShowComponents,
     kCmdShowTableStatus,
+    kCmdShowFunctions,
+    kCmdDropFunction,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -291,6 +296,7 @@ enum PlanType {
     kPlanTypeDeploy,
     kPlanTypeSet,
     kPlanTypeDelete,
+    kPlanTypeCreateFunction,
     kUnknowPlan = -1,
 };
 

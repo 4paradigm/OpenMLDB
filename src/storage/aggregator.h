@@ -26,13 +26,17 @@
 #include "codec/codec.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
+#include "replica/log_replicator.h"
 #include "storage/table.h"
 
 namespace openmldb {
 namespace storage {
 
 using Dimensions = google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>;
+using ::openmldb::log::LogParts;
+using ::openmldb::replica::LogReplicator;
 using ::openmldb::type::DataType;
+
 enum class AggrType {
     kSum = 1,
     kMin = 2,
@@ -46,28 +50,63 @@ enum class WindowType {
     kRowsRange = 2,
 };
 
-union AggrVal {
-    int16_t vsmallint;
-    int32_t vint;
-    int64_t vlong;
-    float vfloat;
-    double vdouble;
+enum class AggrStat {
+    kUnInit = 1,
+    kRecovering = 2,
+    kInited = 3,
 };
 
-struct AggrBuffer {
-    AggrVal aggr_val_;
+class AggrBuffer {
+ public:
+    union AggrVal {
+        int16_t vsmallint;
+        int32_t vint;
+        int64_t vlong;
+        float vfloat;
+        double vdouble;
+        struct {
+            uint32_t len;
+            char* data;
+        } vstring;
+    } aggr_val_;
     int64_t ts_begin_;
     int64_t ts_end_;
     int32_t aggr_cnt_;
     uint64_t binlog_offset_;
-    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0) {}
+    int64_t non_null_cnt;
+    DataType data_type_;
+    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0), non_null_cnt(0) {}
+    AggrBuffer(const AggrBuffer& buffer) {
+        memcpy(&aggr_val_, &buffer.aggr_val_, sizeof(aggr_val_));
+        ts_begin_ = buffer.ts_begin_;
+        ts_end_ = buffer.ts_end_;
+        aggr_cnt_ = buffer.aggr_cnt_;
+        binlog_offset_ = buffer.binlog_offset_;
+        non_null_cnt = buffer.non_null_cnt;
+        data_type_ = buffer.data_type_;
+        if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
+            if (buffer.aggr_val_.vstring.data != NULL) {
+                aggr_val_.vstring.data = new char[buffer.aggr_val_.vstring.len];
+                memcpy(aggr_val_.vstring.data, buffer.aggr_val_.vstring.data, buffer.aggr_val_.vstring.len);
+            }
+        }
+    }
+    AggrBuffer& operator=(const AggrBuffer& buffer) = delete;
+    ~AggrBuffer() { clear(); }
     void clear() {
+        if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
+            if (aggr_val_.vstring.data != NULL) {
+                delete[] aggr_val_.vstring.data;
+            }
+        }
         memset(&aggr_val_, 0, sizeof(aggr_val_));
         ts_begin_ = -1;
         ts_end_ = 0;
         aggr_cnt_ = 0;
         binlog_offset_ = 0;
+        non_null_cnt = 0;
     }
+    bool AggrValEmpty() const { return non_null_cnt == 0; }
 };
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
@@ -78,12 +117,17 @@ struct AggrBufferLocked {
 class Aggregator {
  public:
     Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-               std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
-               const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+               std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+               const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+               const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
-    ~Aggregator() = default;
+    ~Aggregator();
 
-    bool Update(const std::string& key, const std::string& row, const uint64_t& offset);
+    bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
+
+    bool FlushAll();
+
+    bool Init(std::shared_ptr<LogReplicator> base_replicator);
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -95,19 +139,22 @@ class Aggregator {
 
     uint32_t GetWindowSize() const { return window_size_; }
 
-    bool GetAggrBuffer(const std::string& key, AggrBuffer* buffer);
+    AggrStat GetStat() const { return status_.load(std::memory_order_relaxed); }
+
+    bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
-    int aggr_col_idx_;
-    int ts_col_idx_;
 
     std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
+    std::shared_ptr<LogReplicator> base_replicator_;
     std::shared_ptr<Table> aggr_table_;
+    std::shared_ptr<LogReplicator> aggr_replicator_;
+    std::atomic<AggrStat> status_;
     Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
@@ -116,9 +163,9 @@ class Aggregator {
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
-    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
-        return false;
-    }
+    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
+    virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
+    virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -126,6 +173,8 @@ class Aggregator {
     std::string ts_col_;
 
  protected:
+    int aggr_col_idx_;
+    int ts_col_idx_;
     WindowType window_type_;
 
     // for kRowsNum, window_size_ is the rows num in mini window
@@ -135,24 +184,105 @@ class Aggregator {
     codec::RowView base_row_view_;
     codec::RowView aggr_row_view_;
     codec::RowBuilder row_builder_;
-    std::mutex rb_mu_;
 };
 
 class SumAggregator : public Aggregator {
  public:
     SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-                  std::shared_ptr<Table> aggr_table, const uint32_t& index_pos, const std::string& aggr_col,
-                  const AggrType& aggr_type, const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+                  std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~SumAggregator() = default;
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+
+    bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+};
+
+class MinMaxBaseAggregator : public Aggregator {
+ public:
+    MinMaxBaseAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                         std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                         const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                         const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+
+    ~MinMaxBaseAggregator() = default;
+
+ private:
+    bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+};
+class MinAggregator : public MinMaxBaseAggregator {
+ public:
+    MinAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                  std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+
+    ~MinAggregator() = default;
+
+ private:
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+};
+
+class MaxAggregator : public MinMaxBaseAggregator {
+ public:
+    MaxAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                  std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+
+    ~MaxAggregator() = default;
+
+ private:
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+};
+
+class CountAggregator : public Aggregator {
+ public:
+    CountAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                    std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                    const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                    const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+
+    ~CountAggregator() = default;
+
+ private:
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+
+    bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool count_all = false;
+};
+
+class AvgAggregator : public Aggregator {
+ public:
+    AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                  std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
+
+    ~AvgAggregator() = default;
+
+ private:
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+
+    bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
+
+    bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
                                              const ::openmldb::api::TableMeta& aggr_meta,
-                                             std::shared_ptr<Table> aggr_table, const uint32_t& index_pos,
+                                             std::shared_ptr<Table> aggr_table,
+                                             std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
                                              const std::string& ts_col, const std::string& bucket_size);
 

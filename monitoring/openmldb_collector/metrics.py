@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 metric definatitons of OpenMLDB
 """
@@ -21,22 +20,28 @@ from prometheus_client.metrics import Enum
 from prometheus_client.utils import INF
 
 NAMESPACE = "openmldb"
-TABLE_ID = "tid"
-TABLE_PATH = "table_path"
-DEPLOY_PATH = "deploy_path"
 
 # labels
 ENDPOINT = "endpoint"
+ROLE = "role"
+TABLE_ID = "tid"
+TABLE_PATH = "table_path"
+DEPLOY_PATH = "deploy_path"
+STORAGE_MODE = "storage_mode"
+
+component_lables = [ENDPOINT, ROLE]
+table_lables = [TABLE_PATH, TABLE_ID, STORAGE_MODE]
 
 connected_seconds = Counter("connected",
-                            "component conncted time in seconds", [ENDPOINT],
+                            "duration for a component conncted time in seconds",
+                            component_lables,
                             namespace=NAMESPACE,
                             unit="seconds")
 
 component_status = Enum(
     "status",
     "component status",
-    [ENDPOINT],
+    component_lables,
     states=["online", "offline"],
     namespace=NAMESPACE,
 )
@@ -60,35 +65,35 @@ tablet_memory_actual = Gauge(
 table_rows = Gauge(
     "table_rows",
     "table row count",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
 )
 
 table_partitions = Gauge(
     "table_partitions",
     "table partition count",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
 )
 
 table_partitions_unalive = Gauge(
     "table_partitions_unalive",
     "table partition count that is unalive",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
 )
 
 table_replica = Gauge(
     "table_replica",
     "table replica count",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
 )
 
 table_disk = Gauge(
     "table_disk",
     "table disk usage in bytes",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
     unit="bytes",
 )
@@ -96,7 +101,7 @@ table_disk = Gauge(
 table_memory = Gauge(
     "table_memory",
     "table memory usage in bytes",
-    [TABLE_PATH, TABLE_ID],
+    table_lables,
     namespace=NAMESPACE,
     unit="bytes",
 )

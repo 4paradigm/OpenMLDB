@@ -78,8 +78,7 @@ void HandleSQL(const std::string& sql) {
             } else {
                 ::hybridse::base::TextTable t('-', ' ', ' ');
                 for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-                    std::string name = schema->GetColumnName(idx);
-                    t.add(name);
+                    t.add(schema->GetColumnName(idx));
                 }
                 t.end_of_row();
                 while (result_set->Next()) {
@@ -157,7 +156,8 @@ void Shell() {
         // trim space after last semicolon in sql
         auto last_semicolon_pos = buffer.find_last_of(';');
         if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
-            absl::string_view input(buffer.substr(last_semicolon_pos + 1, buffer.size() - last_semicolon_pos));
+            absl::string_view input = buffer;
+            input.remove_prefix(last_semicolon_pos);
             std::string prefix(" ");
             while (true) {
                 if (!absl::ConsumePrefix(&input, prefix)) {
@@ -192,26 +192,32 @@ void Shell() {
     }
 }
 
-void ClusterSQLClient() {
+bool InitClusterSDK() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
     cs = new ::openmldb::sdk::ClusterSDK(copt);
-    bool ok = cs->Init();
-    if (!ok) {
+    if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
-        return;
+        return false;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
-        return;
+        return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+    return true;
+}
+
+void ClusterSQLClient() {
+    if (!InitClusterSDK()) {
+        return;
+    }
     Shell();
 }
 
-bool StandAloneInit() {
+bool InitStandAloneSDK() {
     // connect to nameserver
     if (FLAGS_host.empty() || FLAGS_port == 0) {
         std::cout << "ERROR: Host or port is missing" << std::endl;
@@ -233,7 +239,7 @@ bool StandAloneInit() {
 }
 
 void StandAloneSQLClient() {
-    if (!StandAloneInit()) {
+    if (!InitStandAloneSDK()) {
         return;
     }
     Shell();

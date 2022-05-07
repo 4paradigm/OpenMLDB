@@ -1,4 +1,4 @@
-# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 2)
+# Guidelines for Feature Engineering Development (Part 2)
 
 ## 1. Preliminary Knowledge
 
@@ -152,7 +152,7 @@ PARTITION BY mid ORDER BY purchase_time
 ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ```
 
-## 3.2 Step 2: Build Multi-row Aggregation Feature of Sub Table
+## 3.2 Step 2: Build Multi-Row Aggregation Feature of Sub Table
 
 For the sub table splicing window, the multi-row aggregation function is processed to construct the multi-row sub table aggregation feature, so that the number of rows finally generated is the same as that of the main table. Taking the simple aggregation function as an example, we can construct the sub table splicing feature of the sample: The total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. The following SQL constructs the multi-row aggregation feature based on the sub table splicing window defined in 3.1 above.
 

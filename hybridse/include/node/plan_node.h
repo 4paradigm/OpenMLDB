@@ -17,14 +17,15 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_PLAN_NODE_H_
 #define HYBRIDSE_INCLUDE_NODE_PLAN_NODE_H_
 
-#include <glog/logging.h>
 #include <list>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "node/node_enum.h"
 #include "node/sql_node.h"
+
 namespace hybridse {
 namespace node {
 
@@ -232,7 +233,7 @@ class ProjectNode : public LeafPlanNode {
     node::ExprNode *GetExpression() const { return expression_; }
     void SetExpression(node::ExprNode *expr) { expression_ = expr; }
     node::FrameNode *frame() const { return frame_; }
-    void set_frame(node::FrameNode *frame) { frame_ = frame; }
+    void set_frame(FrameNode* frame) { frame_ = frame; }
     virtual bool Equals(const PlanNode *node) const;
     const bool IsAgg() const { return is_aggregation_; }
 
@@ -248,10 +249,10 @@ class WindowPlanNode : public LeafPlanNode {
  public:
     explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
-          id(id),
+          id_(id),
           exclude_current_time_(false),
           instance_not_in_window_(false),
-          name(""),
+          name_(""),
           keys_(nullptr),
           orders_(nullptr) {}
     ~WindowPlanNode() {}
@@ -264,9 +265,10 @@ class WindowPlanNode : public LeafPlanNode {
     const OrderByNode *GetOrders() const { return orders_; }
     void SetKeys(ExprListNode *keys) { keys_ = keys; }
     void SetOrders(OrderByNode *orders) { orders_ = orders; }
-    const std::string &GetName() const { return name; }
-    void SetName(const std::string &name) { WindowPlanNode::name = name; }
-    const int GetId() const { return id; }
+    const std::string &GetName() const { return name_; }
+    void SetName(const std::string &name) { name_ = name; }
+    int GetId() const { return id_; }
+    void SetId(int id) { id_ = id; }
     void AddUnionTable(PlanNode *node) { return union_tables_.push_back(node); }
     const PlanNodeList &union_tables() const { return union_tables_; }
     const bool instance_not_in_window() const { return instance_not_in_window_; }
@@ -276,10 +278,10 @@ class WindowPlanNode : public LeafPlanNode {
     virtual bool Equals(const PlanNode *node) const;
 
  private:
-    int id;
+    int id_;
     bool exclude_current_time_;
     bool instance_not_in_window_;
-    std::string name;
+    std::string name_;
     FrameNode *frame_node_;
     ExprListNode *keys_;
     OrderByNode *orders_;
@@ -294,47 +296,50 @@ class ProjectListNode : public LeafPlanNode {
           has_agg_project_(false),
           w_ptr_(nullptr),
           having_condition_(nullptr),
-          projects({}) {}
+          projects_({}) {}
     ProjectListNode(const WindowPlanNode *w_ptr, const bool has_agg)
         : LeafPlanNode(kProjectList),
           has_row_project_(false),
           has_agg_project_(has_agg),
           w_ptr_(w_ptr),
           having_condition_(nullptr),
-          projects({}) {}
+          projects_({}) {}
     ~ProjectListNode() {}
+
     void Print(std::ostream &output, const std::string &org_tab) const;
 
-    const PlanNodeList &GetProjects() const { return projects; }
+    const PlanNodeList &GetProjects() const { return projects_; }
+
     void AddProject(ProjectNode *project) {
-        projects.push_back(project);
+        projects_.push_back(project);
         if (project->IsAgg()) {
             has_agg_project_ = true;
         } else {
             has_row_project_ = true;
         }
     }
+
     const WindowPlanNode *GetW() const { return w_ptr_; }
     const ExprNode* GetHavingCondition() const { return having_condition_;}
     void SetHavingCondition(const node::ExprNode* having_condition) {
         this->having_condition_ = having_condition;
     }
-    const bool HasRowProject() const { return has_row_project_; }
-    const bool HasAggProject() const { return has_agg_project_; }
-    const bool IsWindowProject() const { return nullptr != w_ptr_; }
+    bool HasRowProject() const { return has_row_project_; }
+    bool HasAggProject() const { return has_agg_project_; }
+    bool IsWindowProject() const { return nullptr != w_ptr_; }
     virtual bool Equals(const PlanNode *node) const;
 
     static bool MergeProjectList(node::ProjectListNode *project_list1, node::ProjectListNode *project_list2,
                                  node::ProjectListNode *merged_project);
-    bool has_row_project_;
-    bool has_agg_project_;
-    const WindowPlanNode *w_ptr_;
 
     bool IsSimpleProjectList();
 
  private:
+    bool has_row_project_;
+    bool has_agg_project_;
+    const WindowPlanNode *w_ptr_;
     const ExprNode* having_condition_;
-    PlanNodeList projects;
+    PlanNodeList projects_;
 };
 
 class ProjectPlanNode : public UnaryPlanNode {
@@ -356,22 +361,14 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class CreatePlanNode : public LeafPlanNode {
  public:
-    CreatePlanNode(const std::string& db_name,
-                   const std::string& table_name, int replica_num, int partition_num,
-                   StorageMode storage_mode,
-                   NodePointVector column_list,
-                   NodePointVector distribution_list,
-                   const bool if_not_exist)
+    CreatePlanNode(const std::string &db_name, const std::string &table_name, NodePointVector column_list,
+                   const bool if_not_exist, NodePointVector table_option_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(db_name),
           table_name_(table_name),
-          replica_num_(replica_num),
-          partition_num_(partition_num),
-          storage_mode_(storage_mode),
           column_desc_list_(column_list),
-          distribution_list_(distribution_list),
+          table_option_list_(table_option_list),
           if_not_exist_(if_not_exist) {}
-
     ~CreatePlanNode() {}
 
     std::string GetDatabase() const { return database_; }
@@ -379,8 +376,6 @@ class CreatePlanNode : public LeafPlanNode {
     void setDatabase(const std::string &database) { database_ = database; }
 
     std::string GetTableName() const { return table_name_; }
-
-    StorageMode GetStorageMode() const { return storage_mode_; }
 
     void setTableName(const std::string &table_name) { table_name_ = table_name; }
 
@@ -426,21 +421,9 @@ class CreatePlanNode : public LeafPlanNode {
         return true;
     }
 
-    NodePointVector &GetColumnDescList() { return column_desc_list_; }
+    const NodePointVector &GetColumnDescList() const { return column_desc_list_; }
 
-    void SetColumnDescList(const NodePointVector &column_desc_list) { column_desc_list_ = column_desc_list; }
-
-    int GetReplicaNum() const { return replica_num_; }
-
-    void setReplicaNum(int replica_num) { replica_num_ = replica_num; }
-
-    int GetPartitionNum() const { return partition_num_; }
-
-    void setPartitionNum(int partition_num) { partition_num_ = partition_num; }
-
-    NodePointVector &GetDistributionList() { return distribution_list_; }
-
-    void SetDistributionList(const NodePointVector &distribution_list) { distribution_list_ = distribution_list; }
+    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 
     bool GetIfNotExist() const { return if_not_exist_; }
 
@@ -451,11 +434,8 @@ class CreatePlanNode : public LeafPlanNode {
  private:
     std::string database_;
     std::string table_name_;
-    int replica_num_;
-    int partition_num_;
-    StorageMode storage_mode_;
     NodePointVector column_desc_list_;
-    NodePointVector distribution_list_;
+    NodePointVector table_option_list_;
     bool if_not_exist_;
 };
 
@@ -477,10 +457,19 @@ class CmdPlanNode : public LeafPlanNode {
         if_not_exist_ = b;
     }
 
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
+
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 class DeletePlanNode : public LeafPlanNode {
@@ -502,7 +491,7 @@ class DeletePlanNode : public LeafPlanNode {
 
 class DeployPlanNode : public LeafPlanNode {
  public:
-    explicit DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
+    DeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                             const std::shared_ptr<OptionsMap> options, bool if_not_exist)
         : LeafPlanNode(kPlanTypeDeploy), name_(name), stmt_(stmt), stmt_str_(stmt_str),
         options_(options), if_not_exist_(if_not_exist) {}
@@ -525,9 +514,29 @@ class DeployPlanNode : public LeafPlanNode {
     const bool if_not_exist_ = false;
 };
 
+class CreateFunctionPlanNode : public LeafPlanNode {
+ public:
+    CreateFunctionPlanNode(const std::string& name, const SqlNode* return_type,
+            const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeCreateFunction), function_name_(name), return_type_(return_type),
+        args_type_(args_type), is_aggregate_(is_aggregate), options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const SqlNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
+    void Print(std::ostream& output, const std::string& tab) const override;
+ private:
+    const std::string function_name_;
+    const SqlNode* return_type_;
+    NodePointVector args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class SelectIntoPlanNode : public LeafPlanNode {
  public:
-    explicit SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
+    SelectIntoPlanNode(PlanNode *query, const std::string &query_str, const std::string &out,
                                 const std::shared_ptr<OptionsMap> options,
                                 const std::shared_ptr<OptionsMap> config_options)
         : LeafPlanNode(kPlanTypeSelectInto),

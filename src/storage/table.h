@@ -65,7 +65,7 @@ class Table {
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
 
-    virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
+    virtual TraverseIterator* NewTraverseIterator(uint32_t index) = 0;
 
     virtual ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
 
@@ -85,7 +85,9 @@ class Table {
         }
         return "";
     }
-
+    inline ::openmldb::common::StorageMode GetStorageMode() const {
+        return storage_mode_;
+    }
     inline uint32_t GetId() const { return id_; }
 
     inline uint32_t GetIdxCnt() const { return table_index_.Size(); }
@@ -173,6 +175,8 @@ class Table {
     virtual uint64_t GetRecordPkCnt() = 0;
     virtual inline uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
+
+    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0; // NOLINT
 
  protected:
     void UpdateTTL();

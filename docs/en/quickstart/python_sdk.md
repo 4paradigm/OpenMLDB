@@ -1,8 +1,8 @@
-# Python SDK to get started quickly
+# Python SDK Quickstart
 
 Notice, The Python SDK currently only supports the cluster version, and the stand-alone version will be planned to be supported in the next version v0.5.0.
 
-## 1. Install the OpenMLDB Python package
+## 1. Install the OpenMLDB Python Package
 
 Install using `pip`.
 
@@ -12,9 +12,9 @@ pip install openmldb
 
 ## 2. Using OpenMLDB DBAPI
 
-### 2.1 Create connection
+### 2.1 Create Connection
 
-Here database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+Here, the database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
 
 ````python
 import openmldb.dbapi
@@ -24,25 +24,25 @@ db = openmldb.dbapi.connect("db1", "$zkcluster", "$zkpath")
 cursor = db.cursor()
 ````
 
-### 2.2 Create database
+### 2.2 Create Database
 
 ````python
 cursor.execute("CREATE DATABASE db1")
 ````
 
-### 2.3 Create table
+### 2.3 Create Table
 
 ````python
 cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 ````
 
-### 2.4 Insert data to table
+### 2.4 Insert Data to Table
 
 ````python
 cursor.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1)")
 ````
 
-### 2.5 Execute SQL query
+### 2.5 Execute SQL Query
 
 ````python
 result = cursor.execute("SELECT * FROM t1")
@@ -51,19 +51,19 @@ print(result.fetchmany(10))
 print(result.fetchall())
 ````
 
-### 2.6 Delete table
+### 2.6 Delete Table
 
 ````python
 cursor.execute("DROP TABLE t1")
 ````
 
-### 2.7 Delete database
+### 2.7 Delete Database
 
 ````python
 cursor.execute("DROP DATABASE db1")
 ````
 
-### 2.8 Close the connection
+### 2.8 Close the Connection
 
 ````python
 cursor.close()
@@ -71,10 +71,10 @@ cursor.close()
 
 ## 3. Using OpenMLDB SQLAlchemy
 
-### 3.1 Create connection
+### 3.1 Create Connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-Here db_name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+Here, the db_name is not required to exist. If it does not exist, you need to create the database after the connection is created.
 
 ````python
 import sqlalchemy as db
@@ -84,7 +84,7 @@ engine = db.create_engine('openmldb:///db1?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 ````
 
-### 3.2 Create database
+### 3.2 Create Database
 
 Create a database using the `connection.execute()` interface:
 
@@ -95,7 +95,7 @@ except Exception as e:
     print(e)
 ````
 
-### 3.3 Create table
+### 3.3 Create Table
 
 Create a table using the `connection.execute()` interface:
 
@@ -106,7 +106,7 @@ except Exception as e:
     print(e)
 ````
 
-### 3.4 Insert data into the table
+### 3.4 Insert Data into the Table
 
 Use the `connection.execute(ddl)` interface to execute the SQL insert statement to insert data to the table:
 
@@ -127,7 +127,7 @@ except Exception as e:
     print(e)
 ````
 
-### 3.5 Execute SQL batch query
+### 3.5 Execute SQL Batch Query
 
 Use the `connection.execute(sql)` interface to execute SQL batch query statements:
 
@@ -141,9 +141,9 @@ except Exception as e:
     print(e)
 ````
 
-### 3.6 Execute SQL on-demand queries
+### 3.6 Execute SQL Queries in the Request Mode
 
-Use `connection.execute(sql, request)` interface to execute SQL batch query statement: request query, you can put the input data in the second parameter of execute
+Use the `connection.execute(sql, request)` interface to execute SQLs in the request mode. You can put the input data in the second parameter.
 
 ````python
 try:
@@ -152,7 +152,7 @@ except Exception as e:
     print(e)
 ````
 
-### 3.7 Delete table
+### 3.7 Delete Table
 
 Use the `connection.execute(ddl)` interface to delete a table:
 
@@ -163,7 +163,7 @@ except Exception as e:
     print(e)
 ````
 
-### 3.8 Delete database
+### 3.8 Delete Database
 
 Use the `connection.execute(ddl)` interface to delete a database:
 

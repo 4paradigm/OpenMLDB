@@ -1,4 +1,4 @@
-# SQL对象名
+# SQL 对象名
 
 本文介绍 OpenMLDB SQL 语句中的对象名。
 

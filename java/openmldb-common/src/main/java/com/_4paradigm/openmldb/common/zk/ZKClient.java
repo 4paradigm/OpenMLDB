@@ -24,6 +24,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 @Slf4j
 public class ZKClient {
@@ -94,5 +95,12 @@ public class ZKClient {
         } else {
             return new String(client.getData().forPath(path));
         }
+    }
+
+    public List<String> getChildren(String path) throws Exception {
+        if (client.checkExists().forPath(path) == null) {
+            throw new RuntimeException("Zookeeper node is null!");
+        }
+        return client.getChildren().forPath(path);
     }
 }

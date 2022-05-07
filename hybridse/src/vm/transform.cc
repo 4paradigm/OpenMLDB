@@ -454,7 +454,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         dynamic_cast<hybridse::node::ProjectListNode*>(
             node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
-        first_project_list->w_ptr_, first_project_list->has_agg_project_);
+        first_project_list->GetW(), first_project_list->HasAggProject());
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -1205,14 +1205,12 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             CHECK_TRUE(nullptr == having_condition, kPlanError,
                        "Can't support having clause and window clause simultaneously")
             CHECK_STATUS(CreateOp<PhysicalWindowAggrerationNode>(
-                &window_agg_op, depend, column_projects,
-                WindowOp(project_list->w_ptr_),
-                project_list->w_ptr_->instance_not_in_window(), append_input,
-                project_list->w_ptr_->exclude_current_time()));
-            if (!project_list->w_ptr_->union_tables().empty()) {
-                for (auto iter = project_list->w_ptr_->union_tables().cbegin();
-                     iter != project_list->w_ptr_->union_tables().cend();
-                     iter++) {
+                &window_agg_op, depend, column_projects, WindowOp(project_list->GetW()),
+                project_list->GetW()->instance_not_in_window(), append_input,
+                project_list->GetW()->exclude_current_time()));
+            if (!project_list->GetW()->union_tables().empty()) {
+                for (auto iter = project_list->GetW()->union_tables().cbegin();
+                     iter != project_list->GetW()->union_tables().cend(); iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
                     PhysicalRenameNode* rename_union_op = nullptr;
@@ -1261,7 +1259,7 @@ Status BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_l
             if (project_list->HasAggProject()) {
                 if (project_list->IsWindowProject()) {
                     CHECK_STATUS(
-                        CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
+                        CheckWindow(project_list->GetW(), depend->schemas_ctx()));
                     return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                      project_list, append_input,
                                                      output);
@@ -2253,13 +2251,13 @@ Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {
     PhysicalOpNode* new_depend = depend;
-    if (nullptr != project_list->w_ptr_) {
+    if (nullptr != project_list->GetW()) {
         CHECK_STATUS(
-            TransformWindowOp(depend, project_list->w_ptr_, &new_depend));
+            TransformWindowOp(depend, project_list->GetW(), &new_depend));
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:
-            CHECK_TRUE(!project_list->has_agg_project_, kPlanError, "Non-support aggregation project on request row")
+            CHECK_TRUE(!project_list->HasAggProject(), kPlanError, "Non-support aggregation project on request row")
             return CreatePhysicalProjectNode(
                 kRowProject, new_depend, project_list, append_input, output);
         case kSchemaTypeGroup:
@@ -2267,7 +2265,7 @@ Status RequestModeTransformer::TransformProjectOp(
                                              project_list, append_input,
                                              output);
         case kSchemaTypeTable:
-            if (project_list->has_agg_project_) {
+            if (project_list->HasAggProject()) {
                 return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, append_input,
                                                  output);

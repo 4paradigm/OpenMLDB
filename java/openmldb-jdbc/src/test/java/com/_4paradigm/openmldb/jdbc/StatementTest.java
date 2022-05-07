@@ -5,6 +5,8 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import java.util.Map;
+import java.util.HashMap;
 
 public class StatementTest {
     static SqlExecutor router;
@@ -24,11 +26,12 @@ public class StatementTest {
     @Test
     public void testExecute() {
         java.sql.Statement state = router.getStatement();
+
         try {
             boolean ret = state.execute("SET @@execute_mode='online';");
-            ret = state.execute("create database testxx");
+            ret = state.execute("create database test");
             Assert.assertFalse(ret);
-            ret = state.execute("use testxx");
+            ret = state.execute("use test");
             Assert.assertFalse(ret);
             ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1));");
             Assert.assertFalse(ret);
@@ -38,15 +41,17 @@ public class StatementTest {
             Assert.assertTrue(ret);
             java.sql.ResultSet rs = state.getResultSet();
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getLong(1), 1000);
-            Assert.assertEquals(rs.getString(2), "hello");
+            Map<Long, String> result = new HashMap<>();
+            result.put(rs.getLong(1), rs.getString(2));
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getLong(1), 1001);
-            Assert.assertFalse(rs.next());
+            result.put(rs.getLong(1), rs.getString(2));
+            Assert.assertEquals(2, result.size());
+            Assert.assertEquals("hello", result.get(1000L));
+            Assert.assertEquals("xxxx", result.get(1001L));
 
             ret = state.execute("drop table testtable111");
             Assert.assertFalse(ret);
-            ret = state.execute("drop database testxx");
+            ret = state.execute("drop database test");
             Assert.assertFalse(ret);
         } catch (Exception e) {
             e.printStackTrace();

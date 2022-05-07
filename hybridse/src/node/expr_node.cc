@@ -984,6 +984,22 @@ ExternalFnDefNode* ExternalFnDefNode::DeepCopy(NodeManager* nm) const {
     }
 }
 
+DynamicUdfFnDefNode* DynamicUdfFnDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+DynamicUdfFnDefNode* DynamicUdfFnDefNode::DeepCopy(NodeManager* nm) const {
+    if (IsResolved()) {
+        return nm->MakeDynamicUdfFnDefNode(GetName(), function_ptr(),
+                                         GetReturnType(), IsReturnNullable(),
+                                         arg_types_, arg_nullable_,
+                                         return_by_arg(),
+                                         init_context_node_ == nullptr ? nullptr : init_context_node_->DeepCopy(nm));
+    } else {
+        return nm->MakeDynamicUdfFnDefNode(GetName(), nullptr, nullptr, true, {}, {}, false, nullptr);
+    }
+}
+
 UdfDefNode* UdfDefNode::ShadowCopy(NodeManager* nm) const {
     return DeepCopy(nm);
 }

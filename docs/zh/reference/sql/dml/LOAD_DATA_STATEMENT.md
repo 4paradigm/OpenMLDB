@@ -1,4 +1,4 @@
-# LOAD DATA INFILE 语句
+# LOAD DATA INFILE
 
 ## Syntax
 

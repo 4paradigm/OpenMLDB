@@ -65,6 +65,7 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     meta.set_tid(0);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
+    meta.add_table_partition();
     meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col1", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "col2", ::openmldb::type::kBigInt);
@@ -74,6 +75,8 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "i64_col", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "f_col", ::openmldb::type::kFloat);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "d_col", ::openmldb::type::kDouble);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "t_col", ::openmldb::type::kTimestamp);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "s_col", ::openmldb::type::kString);
 
     SchemaCodec::SetIndex(meta.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0, 0);
     args.idx_name = "index0";
@@ -88,7 +91,8 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
     for (int i = 0; i < num_pk; i++) {
         for (uint64_t ts = 1; ts <= num_ts; ts++) {
             pk = "pk" + std::to_string(i);
-            uint32_t size = rb.CalTotalLength(pk.size());
+            auto ts_str = std::to_string(ts);
+            uint32_t size = rb.CalTotalLength(pk.size() + ts_str.size());
             value.resize(size);
             rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
             rb.AppendString(pk.c_str(), pk.size());
@@ -101,17 +105,41 @@ TestArgs PrepareTable(const std::string &tname, int num_pk = 1, uint64_t num_ts 
                 rb.AppendNULL();
                 rb.AppendNULL();
                 rb.AppendNULL();
+                rb.AppendNULL();
+                rb.AppendNULL();
             } else {
                 rb.AppendInt16(ts);
                 rb.AppendInt32(ts);
                 rb.AppendInt64(ts);
                 rb.AppendFloat(ts);
                 rb.AppendDouble(ts);
+                rb.AppendTimestamp(ts);
+                rb.AppendString(ts_str.c_str(), ts_str.size());
             }
             table->Put(pk, ts, value.c_str(), value.size());
 
             args.ts = ts;
         }
+    }
+
+    // if empty table, also have to construct a request row
+    if (value.empty()) {
+        uint64_t ts = 100;
+        pk = "pk";
+        auto ts_str = std::to_string(ts);
+        uint32_t size = rb.CalTotalLength(pk.size() + ts_str.size());
+        value.resize(size);
+        rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
+        rb.AppendString(pk.c_str(), pk.size());
+        rb.AppendInt64(ts);
+        rb.AppendInt16(ts);
+        rb.AppendInt32(ts);
+        rb.AppendInt64(ts);
+        rb.AppendFloat(ts);
+        rb.AppendDouble(ts);
+        rb.AppendTimestamp(ts);
+        rb.AppendString(ts_str.c_str(), ts_str.size());
+        args.ts = ts;
     }
 
     args.pk = pk;
@@ -132,6 +160,7 @@ TestArgs PrepareAggTable(const std::string &tname, int num_pk, uint64_t num_ts, 
     meta.set_tid(2);
     meta.set_pid(0);
     meta.set_seg_cnt(8);
+    meta.add_table_partition();
     meta.set_mode(::openmldb::api::TableMode::kTableLeader);
 
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", openmldb::type::DataType::kString);
@@ -147,7 +176,7 @@ TestArgs PrepareAggTable(const std::string &tname, int num_pk, uint64_t num_ts, 
     ::hybridse::vm::Schema fe_schema;
     schema::SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
     ::hybridse::codec::RowBuilder rb(fe_schema);
-    const int val_len = sizeof(uint64_t);
+    const int val_len = sizeof(T);
     for (int i = 0; i < num_pk; i++) {
         int count = 0;
         uint64_t ts_start = 0;
@@ -909,10 +938,10 @@ void CheckAggResult(::hybridse::vm::Engine* engine, ::hybridse::vm::RequestRunSe
     ::hybridse::base::Status status;
     hybridse::codec::Row output;
     engine->Get(sql, "db1", session, status);
-    ::hybridse::codec::RowView rv(session.GetSchema());
     if (status.code != ::hybridse::common::kOk) {
-        std::cout << status.msg << std::endl;
+        LOG(ERROR) << "status = " << status.msg;
     }
+    ::hybridse::codec::RowView rv(session.GetSchema());
     ASSERT_EQ(::hybridse::common::kOk, status.code);
     ASSERT_EQ(0, session.Run(request_row, &output));
     ASSERT_EQ(2, session.GetSchema().size());
@@ -924,11 +953,11 @@ void CheckAggResult(::hybridse::vm::Engine* engine, ::hybridse::vm::RequestRunSe
 
 TestArgs PrepareMultipleAggCatalog(TabletCatalog* catalog, int num_pk, int num_ts, int bucket_size, bool add_null) {
     TestArgs args;
-    std::vector<std::string> agg_cols = {"i16_col", "i32_col", "i64_col", "f_col", "d_col"};
+    std::vector<std::string> agg_cols = {"i16_col", "i32_col", "i64_col", "f_col", "d_col", "t_col"};
     std::vector<::hybridse::vm::AggrTableInfo> infos;
     for (int i = 0; i < static_cast<int>(agg_cols.size()); i++) {
         const auto& agg_col = agg_cols[i];
-        if (agg_col == "i16_col" || agg_col == "i32_col" || agg_col == "i64_col") {
+        if (agg_col == "i16_col" || agg_col == "i32_col" || agg_col == "i64_col" || agg_col == "t_col") {
             args = PrepareAggTable(absl::StrCat("aggr_t1_", agg_col), num_pk, num_ts, bucket_size, i + 2, add_null);
         } else if (agg_col == "f_col") {
             args =
@@ -977,6 +1006,7 @@ TEST_F(TabletCatalogTest, long_window_nullvalue_test) {
     CheckAggResult<int64_t>(&engine, session, request_row, "i64_col", exp);
     CheckAggResult<float>(&engine, session, request_row, "f_col", exp);
     CheckAggResult<double>(&engine, session, request_row, "d_col", exp);
+    CheckAggResult<int64_t>(&engine, session, request_row, "t_col", exp);
 }
 
 TEST_F(TabletCatalogTest, long_window_multi_windows_test) {
@@ -1029,6 +1059,105 @@ TEST_F(TabletCatalogTest, long_window_multi_windows_test) {
         ASSERT_EQ(0, rv.GetFloat(2, &f_val));
         float exp2 = args.ts * 2 + (args.ts - 1) + (args.ts - 2);
         ASSERT_EQ(f_val, exp2);
+    }
+}
+
+TEST_F(TabletCatalogTest, long_window_empty_agg) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    int num_pk = 2, num_ts = 9, bucket_size = 2;
+
+    TestArgs args = PrepareTable("t1", num_pk, num_ts);
+    ASSERT_TRUE(catalog->AddTable(args.meta[0], args.tables[0]));
+
+    TestArgs args2 = PrepareAggTable("aggr_t1", 0, 0, bucket_size, 1);
+    ASSERT_TRUE(catalog->AddTable(args2.meta[0], args2.tables[0]));
+
+    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "db1", "t1",
+                                           "sum", "col2", "col1", "col2", "2"};
+    catalog->RefreshAggrTables({info1});
+
+    ::hybridse::vm::Engine engine(catalog);
+    auto options = std::make_shared<std::unordered_map<std::string, std::string>>();
+    (*options)[::hybridse::vm::LONG_WINDOWS] = "w1";
+    ::hybridse::vm::RequestRunSession session;
+    session.EnableDebug();
+    session.SetOptions(options);
+    ::hybridse::base::Status status;
+    hybridse::codec::Row output;
+    const char *data = NULL;
+    uint32_t data_size = 0;
+    int64_t val = 0;
+    ::hybridse::codec::Row request_row(::hybridse::base::RefCountedSlice::Create(args.row.c_str(), args.row.size()));
+
+    {
+        std::string sql =
+            "SELECT col1, sum(col2) OVER w1 FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col1 ORDER BY col2 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        engine.Get(sql, "db1", session, status);
+        ::hybridse::codec::RowView rv(session.GetSchema());
+        if (status.code != ::hybridse::common::kOk) {
+            std::cout << status.msg << std::endl;
+        }
+        ASSERT_EQ(::hybridse::common::kOk, status.code);
+        ASSERT_EQ(0, session.Run(request_row, &output));
+        ASSERT_EQ(2, session.GetSchema().size());
+        rv.Reset(output.buf(), output.size());
+        ASSERT_EQ(0, rv.GetInt64(1, &val));
+        int64_t exp = args.ts * 2 + (args.ts - 1) + (args.ts - 2);
+        ASSERT_EQ(val, exp);
+        ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
+        std::string pk(data, data_size);
+        ASSERT_EQ(args.pk, pk);
+    }
+}
+
+TEST_F(TabletCatalogTest, long_window_empty) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    int num_pk = 0, num_ts = 0, bucket_size = 2;
+
+    TestArgs args = PrepareTable("t1", num_pk, num_ts);
+    ASSERT_TRUE(catalog->AddTable(args.meta[0], args.tables[0]));
+
+    TestArgs args2 = PrepareAggTable("aggr_t1", 0, 0, bucket_size, 1);
+    ASSERT_TRUE(catalog->AddTable(args2.meta[0], args2.tables[0]));
+
+    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "db1", "t1",
+                                           "sum", "col2", "col1", "col2", "2"};
+    catalog->RefreshAggrTables({info1});
+
+    ::hybridse::vm::Engine engine(catalog);
+    auto options = std::make_shared<std::unordered_map<std::string, std::string>>();
+    (*options)[::hybridse::vm::LONG_WINDOWS] = "w1";
+    ::hybridse::vm::RequestRunSession session;
+    session.EnableDebug();
+    session.SetOptions(options);
+    ::hybridse::base::Status status;
+    hybridse::codec::Row output;
+    const char *data = NULL;
+    uint32_t data_size = 0;
+    int64_t val;
+    ::hybridse::codec::Row request_row(::hybridse::base::RefCountedSlice::Create(args.row.c_str(), args.row.size()));
+
+    {
+        std::string sql =
+            "SELECT col1, sum(col2) OVER w1 FROM t1 "
+            "WINDOW w1 AS (PARTITION BY col1 ORDER BY col2 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        engine.Get(sql, "db1", session, status);
+        ::hybridse::codec::RowView rv(session.GetSchema());
+        if (status.code != ::hybridse::common::kOk) {
+            std::cout << status.msg << std::endl;
+        }
+        ASSERT_EQ(::hybridse::common::kOk, status.code);
+        ASSERT_EQ(0, session.Run(request_row, &output));
+        ASSERT_EQ(2, session.GetSchema().size());
+        rv.Reset(output.buf(), output.size());
+        ASSERT_EQ(0, rv.GetInt64(1, &val));
+        ASSERT_EQ(args.ts, val);
+        ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
+        std::string pk(data, data_size);
+        ASSERT_EQ(args.pk, pk);
     }
 }
 

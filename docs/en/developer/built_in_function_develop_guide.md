@@ -1,4 +1,4 @@
-# OpenMLDB Built-In Function Development Guide
+# Built-In Function Development
 
 ## 1. Background
 
@@ -65,7 +65,7 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
 
 - SQL function return type:
 
-  - If SQL function return BOOL or Numeric type(e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++  type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
+  - If SQL function return BOOL or Numeric type (e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), the C++ function should be designed to return corresponding C++  type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
 
     - ```c++
       // SQL: DOUBLE FUNC_DOUBLE(INT)
@@ -161,16 +161,16 @@ RegisterExternal("register_func_name")
   .doc(documentation)
 ```
 
-- `args<arg_type,...>`: configure argument types.
-- `built_in_fn_pointer`: built-in function pointer.
-- `returns<return_type>`: configure return type. Notice that when function result is Nullable, we should configure ***return type*** as ***returns<Nullable<return_type>>*** explicitly.
-- `return_by_arg()`  : configure whether return value will be store in parameters or not.
+- `args<arg_type,...>`: Configure argument types.
+- `built_in_fn_pointer`: Built-in function pointer.
+- `returns<return_type>`: Configure return type. Notice that when function result is Nullable, we should configure ***return type*** as ***returns<Nullable<return_type>>*** explicitly.
+- `return_by_arg()`  : Configure whether return value will be store in parameters or not.
   - When **return_by_arg(false)** , result will be return directly. OpenMLDB configure  `return_by_arg(false) ` by default.
   - When **return_by_arg(true)**, the result will be stored and returned by parameters.
     - if the return type is ***non-nullable***, the result will be stored and returned via the last parameter.
     - if the return type is **nullable**, the ***result value*** will be stored in the second-to-last parameter and the ***null flag*** will be stored in the last parameter. if ***null flag*** is true, function result is **null**, otherwise, function result is obtained from second-to-last parameter.
 
-#### 2.2.4 Documenting function
+#### 2.2.4 Documenting Function
 
 `ExternalFuncRegistryHelper` provides API `doc(doc_string)`  to document a function. Documenting function is describing its use and functionality to the users. While it may be helpful in the development process, the main intended audience is the users.  So we expect the docstring to be **clear** and **legible**. 
 
@@ -274,7 +274,7 @@ TEST_F(UdfIRBuilderTest, timestamp_to_date_test_null_0) {
 }
 ```
 
-#### 2.3.2 Compile and test
+#### 2.3.2 Compile and Test
 
 ```bash
 cd ./hybridse
@@ -304,7 +304,7 @@ We classified built-in function into 3 types based on its return type:
 
 Return types have a greater impact on the built-in function's behaviour. We will cover the details of the three types of SQL functions in the following sections.
 
-### 3.1 SQL functions return **BOOL** or Numeric types
+### 3.1 SQL Functions Return **BOOL** or Numeric Types
 
 If an SQL function returns a BOOL or Numeric type (e.g., **BOOL**, **SMALLINT**, **INT**, **BIGINT**, **FLOAT**, **DOUBLE**), then the C++ function should be designed to return the corresponding C++ type（`bool`, `int16_t`, `int32_t`, `int64_t`, `float`, `double`).
 
@@ -346,7 +346,7 @@ RegisterExternal("my_func")
         )");
 ```
 
-### 3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**
+### 3.2 SQL Functions Return **STRING**, **TIMESTAMP** or **DATE**
 
 If an SQL function returns **STRING**, **TIMESTAMP** or **DATE**, then the C++ function result should be returned in the parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
 
@@ -385,7 +385,7 @@ RegisterExternal("my_func")
         )");
 ```
 
-### 3.3 SQL functions return ***Nullable*** type
+### 3.3 SQL Functions Return ***Nullable*** type
 
 If an SQL function return type is ***Nullable***, then we need one more `bool*` parameter to return a `is_null` flag.
 
@@ -434,7 +434,7 @@ RegisterExternal("my_func")
         )");
 ```
 
-### 3.4 SQL functions handle Nullable argument
+### 3.4 SQL Functions Handle Nullable Argument
 
 Generally, OpenMLDB will return a ***NULL*** for a function when any one of its argurements  is ***NULL***. 
 
@@ -485,11 +485,11 @@ RegisterExternal("my_func")
 
 ## 4. SQL Functions Development Examples
 
-### 4.1 SQL functions return **BOOL** or Numeric types: `INT Month(TIMESTAMP)` function
+### 4.1 SQL Functions Return **BOOL** or Numeric Types: `INT Month(TIMESTAMP)` Function
 
 `INT Month(TIMESTAMP)` function returns the month for a given `timestamp`. Check [3.1 SQL functions return **BOOL** or Numeric types](#3.1-SQL functions return **BOOL** or Numeric types) for more details. 
 
-#### Step 1: declare and implement C++ functions
+#### Step 1: Declare and Implement C++ Functions
 
 Declare `month()` function in [hybridse/src/udf/udf.h](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.h)：
 
@@ -524,7 +524,7 @@ namespace hybridse {
 } // namepsace hybridse
 ```
 
-#### Step 2: register C++ function to default library
+#### Step 2: Register C++ Function to Default Library
 
 Configure and register `month()` into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
@@ -573,11 +573,11 @@ select MONTH(TIMESTAMP(1590115420000)) as m1, month(timestamp(1590115420000)) as
  ---- ---- 
 ```
 
-### 4.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE** -  `STRING String(BOOL)`
+### 4.2 SQL Functions Return **STRING**, **TIMESTAMP** or **DATE** -  `STRING String(BOOL)`
 
 The `STRING String(BOOL)` function accepts a BOOL type input and converts it to an output of type STRING. Check [3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**](#3.2-SQL functions return **STRING**, **TIMESTAMP** or **DATE**) for more details.
 
-#### Step 1: declare and implement C++ functions
+#### Step 1: Declare and Implement C++ Functions
 
 Since the SQL function returns **STRING**, the C++ function result should be returned by parameter `codec::StringRef * output`. 
 
@@ -621,7 +621,7 @@ namespace hybridse {
 
 Notice that we used `AllocManagedStringBuf` to allocate memory from OpenMLDB Memory pool instead of using the `new` operator or the `malloc` api.
 
-#### Step 2: register C++ function into default library
+#### Step 2: Register C++ Function into Default Library
 
 `STRING String(BOOL)` is a type conversion function, which the developer should configure and register within `DefaultUdfLibrary::InitTypeUdf()` in [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc).
 
@@ -678,11 +678,11 @@ select STRING(true) as str_true, string(false) as str_false;
 
 
 
-### 4.3 SQL functions return ***Nullable*** type - `DATE Date(TIMESTAMP)`
+### 4.3 SQL Functions Return ***Nullable*** Type - `DATE Date(TIMESTAMP)`
 
 `DATE Date(TIMESTAMP)()` function converts **TIMESTAMP** type to **DATE** type. Check [3.3 SQL functions return ***Nullable*** type](#3.3-SQL functions return ***Nullable*** type) and  [3.2 SQL functions return **STRING**, **TIMESTAMP** or **DATE**](#3.2-SQL functions return **STRING**, **TIMESTAMP** or **DATE**) for more details.
 
-#### Step 1: declare and implement built-in functions
+#### Step 1: Declare and Implement Built-In Functions
 
 We implement a function `timestamp_to_date`to convert `timestamp` to the date type. The input is `timestamp` and the output is nullable `date` which is returned by arguments `codec::Date *output` and `bool *is_null`. 
 
@@ -724,7 +724,7 @@ namespace hybridse {
 } // namespace hybridse
 ```
 
-#### Step 2: register built-in function into default library
+#### Step 2: Register Built-In Function into Default Library
 
 The following example registers the built-in function ` v1::timestamp_to_date` into the default library with the name `"date"`. 
 

@@ -55,11 +55,11 @@ public class SQLConnection implements Connection {
         }
     }
 
-    public SqlExecutor getClient(){
+    public SqlExecutor getClient() {
         return client;
     }
 
-    public String getDefaultDatabase(){
+    public String getDefaultDatabase() {
         return defaultDatabase;
     }
 
@@ -71,7 +71,7 @@ public class SQLConnection implements Connection {
 
     /**
      * WARNING: insert prepared statement only can insert into <B>online storage</B><P>
-     * database will use the db config set by jdbcUrl 
+     * database will use the db config set by jdbcUrl
      * <p>
      * select can visit both offline and online
      *
@@ -162,7 +162,7 @@ public class SQLConnection implements Connection {
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
-
+        throw new SQLException("isolation is unsupported");
     }
 
     @Override

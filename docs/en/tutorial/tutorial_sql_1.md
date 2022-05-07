@@ -1,7 +1,7 @@
-# Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)
+# Guidelines for Feature Engineering Development (Part 1)
 
 
-## 1. What is the feature engineering of machine learning
+## 1. What is the Feature Engineering of Machine Learning
 
 A machine learning application in a real scene generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model and have the most contact at ordinary times. For example, from the classic logical regression and decision tree model to the deep learning model of the fire in recent years, we all focus on how to develop high-quality models. We may pay less attention to engineering features. However, you must have heard a famous saying that data and features determine the upper limit of machine learning, while models and algorithms only approach this upper limit. It can be seen that we have long agreed on the importance of Feature Engineering.
 
@@ -20,13 +20,13 @@ Before introducing the Feature Engineering algorithm, it is necessary to underst
 | Development Tool                                             | Entry Threshold                                              | Functional Support                                           | Engineering Landing                                          |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | Python                                                       | Low; Data is widely used by scientists                       | The function realization is relatively free. Through python programming, you can basically realize any operation script | More difficult. Python programs are generally inefficient and can be developed offline, but their performance generally can not meet the requirements of online real-time computing. In addition, users need to solve production-level features such as high availability. |
-| General Database                                             | Medium, Development based on SQL                             | There is no optimization for Feature Engineering, the implementation of some features is awkward, or the operation efficiency is low after implementation. | Acceptable. However, the function or performance of feature calculation functions that support less friendly features may not meet the needs of production environment. |
+| General Database                                             | Medium; Development based on SQL                             | There is no optimization for Feature Engineering, the implementation of some features is awkward, or the operation efficiency is low after implementation. | Acceptable. However, the function or performance of feature calculation functions that support less friendly features may not meet the needs of production environment. |
 | Hybrid Development, such as Offline Python, Online Database or C++ | It is very high and requires two skill stack teams to develop and maintain | Through development and customization, the functional requirements can be met. | Acceptable but costly. In addition to the development and operation cost, it is also necessary to solve the problem of online and offline consistency to ensure the consistency of offline and online effects. |
-| OpenMLDB                                                     | Medium, Development based on SQL                             | For Feature Engineering optimization, it is extended based on standard SQL to efficiently support the common calculation methods of Feature Engineering | Low cost and efficient landing. Based on SQL development, the online development is realized, which naturally solves the problems of performance and online and offline consistency. |
+| OpenMLDB                                                     | Medium; Development based on SQL                             | For Feature Engineering optimization, it is extended based on standard SQL to efficiently support the common calculation methods of Feature Engineering | Low cost and efficient landing. Based on SQL development, the online development is realized, which naturally solves the problems of performance and online and offline consistency. |
 
-From the above table, we can see that openmldb has unique advantages in function and engineering landing. Especially for the calculation of timing characteristics with high real-time performance, openmldb has a lot of targeted optimization. If you want to learn more about openmldb, you can read the relevant [introduction document]( https://zhuanlan.zhihu.com/p/462559609 ), and [GitHub repo of OpenMLDB]( https://github.com/4paradigm/OpenMLDB).
+From the above table, we can see that OpenMLDB has unique advantages for feature engineering in production. Especially for real-time feature extraction based on time-series data, OpenMLDB has a lot of targeted optimization. If you want to learn more about OpenMLDB, you can read the relevant [introduction document]( https://zhuanlan.zhihu.com/p/462559609 ), and [GitHub repo of OpenMLDB]( https://github.com/4paradigm/OpenMLDB).
 
-In this series of tutorials, we will demonstrate how to develop Feature Engineering scripts based on SQL syntax of openmldb. You can get started quickly by reading our document - [OpenMLDB]( http://docs-cn.openmldb.ai/2620852), to learn how to try out openmldb (based on docker image, it is recommended to try it quickly through stand-alone version); You can also find our [complete product description document](http://docs-cn.openmldb.ai/ ) here.
+In this series of tutorials, we will demonstrate how to develop Feature Engineering scripts based on SQL syntax of OpenMLDB. You can get started quickly by reading our document - [OpenMLDB]( http://docs-cn.openmldb.ai/2620852), to learn how to try out OpenMLDB (based on docker image, it is recommended to try it quickly through stand-alone version); You can also find our [complete product description document](http://docs-cn.openmldb.ai/ ) here.
 
 ## 3. From 0 to 1, Feature Engineering Practice
 
@@ -81,7 +81,7 @@ Some columns of the main table can be directly used as features to participate i
 SELECT uid, trans_type FROM t1;
 ```
 
-**Multi-row Machining**
+**Multi-Row Machining**
 
 Several columns of the main table can be processed into a feature through expressions or functions. For example, the following example splices province and city into a string as a feature.
 

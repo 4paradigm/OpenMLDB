@@ -628,9 +628,9 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
         const Row& row, const Row& parameter,
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
+        std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
         if (!windows_gen_.empty()) {
-            for (size_t i = 0; i < inputs_cnt_; i++) {
+            for (size_t i = 0; i < union_inputs.size(); i++) {
                 union_segments[i] =
                     windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
             }
@@ -891,7 +891,7 @@ class ReduceRunner : public Runner {
  public:
     ReduceRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt,
                  const ConditionFilter& having_condition, const FnInfo& fn_info)
-        : Runner(id, kRunnerAgg, schema, limit_cnt),
+        : Runner(id, kRunnerReduce, schema, limit_cnt),
           having_condition_(having_condition.fn_info()),
           agg_gen_(fn_info) {}
     ~ReduceRunner() {}
@@ -977,15 +977,19 @@ class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
                           bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ColumnRefNode* agg_col)
+                          const node::ExprNode* agg_col)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
           func_(func),
-          agg_col_(agg_col) {}
+          agg_col_(agg_col) {
+    if (agg_col_->GetExprType() == node::kExprColumnRef) {
+        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+    }
+}
 
-    void InitAggregator();
+    bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     std::shared_ptr<TableHandler> RequestUnionWindow(
@@ -997,12 +1001,27 @@ class RequestAggUnionRunner : public Runner {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
 
+ private:
+    enum AggType {
+        kSum,
+        kCount,
+        kAvg,
+        kMin,
+        kMax
+    };
+
+    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
+        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
+    };
+
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
-    const node::ColumnRefNode* agg_col_ = nullptr;
+    AggType agg_type_;
+    const node::ExprNode* agg_col_ = nullptr;
+    std::string agg_col_name_;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
 
@@ -1478,7 +1497,8 @@ class RunnerBuilder {
     std::unordered_map<hybridse::vm::Runner*, ::hybridse::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BuildLocalTaskForMultipleRunner(const std::vector<const ClusterTask*>& chidlren, Runner* runner);
+    ClusterTask MultipleInherit(const std::vector<const ClusterTask*>& children, Runner* runner,
+                                                const Key& index_key, const TaskBiasType bias);
     ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
                               Runner* runner, const Key& index_key,
                               const TaskBiasType bias = kNoBias);
@@ -1498,6 +1518,7 @@ class RunnerBuilder {
         std::string index);
     ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
+    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);  // NOLINT
 };
 
 class RunnerContext {

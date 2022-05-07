@@ -9,3 +9,4 @@
     backup
     scale
     monitoring
+    faq

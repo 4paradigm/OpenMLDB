@@ -227,6 +227,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     }
 
  private:
+    uint32_t partition_num_;
     ::hybridse::vm::Schema schema_;
     ::openmldb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;

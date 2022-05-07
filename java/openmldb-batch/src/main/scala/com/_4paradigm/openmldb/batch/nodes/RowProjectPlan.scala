@@ -84,7 +84,7 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer)
+        JitManager.initJitModule(tag, buffer, isUnsafeRowOpt)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
@@ -171,7 +171,7 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer.getBuffer)
+        JitManager.initJitModule(tag, buffer.getBuffer, isUnsafeRowOpt)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

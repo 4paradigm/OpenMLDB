@@ -19,10 +19,14 @@ package com._4paradigm.openmldb.taskmanager.spark
 import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
+import org.slf4j.LoggerFactory
 
 object SparkJobManager {
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * Create the SparkLauncher object with pre-set parameters like yarn-cluster.
@@ -40,14 +44,16 @@ object SparkJobManager {
       launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
     }
 
-    TaskManagerConfig.SPARK_MASTER.toLowerCase match {
-      case "local" =>
-        launcher.setMaster("local")
-      case "yarn" | "yarn-cluster" =>
-        launcher.setMaster("yarn").setDeployMode("cluster")
-      case "yarn-client" =>
-        launcher.setMaster("yarn").setDeployMode("client")
-      case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+    if (TaskManagerConfig.SPARK_MASTER.toLowerCase.startsWith("local")) {
+      launcher.setMaster(TaskManagerConfig.SPARK_MASTER)
+    } else {
+      TaskManagerConfig.SPARK_MASTER.toLowerCase match {
+        case "yarn" | "yarn-cluster" =>
+          launcher.setMaster("yarn").setDeployMode("cluster")
+        case "yarn-client" =>
+          launcher.setMaster("yarn").setDeployMode("client")
+        case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.SPARK_MASTER}")
+      }
     }
 
     if (TaskManagerConfig.SPARK_YARN_JARS != null && TaskManagerConfig.SPARK_YARN_JARS.nonEmpty) {
@@ -106,7 +112,9 @@ object SparkJobManager {
     if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
       launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
     }
+
     for ((k, v) <- sparkConf) {
+      logger.info("Get Spark config key: " + k + ", value: " + v)
       launcher.setConf(k, v)
     }
 
@@ -115,6 +123,10 @@ object SparkJobManager {
       launcher.redirectOutput(LogManager.getJobLogFile(jobInfo.getId))
       launcher.redirectError(LogManager.getJobErrorLogFile(jobInfo.getId))
     }
+
+    // Add the external function library files
+    // TODO(tobe): Handle the same file names
+    ExternalFunctionManager.getAllLibraryFilePaths().forEach(filePath => launcher.addFile(filePath))
 
     // Submit Spark application and watch state with custom listener
     val sparkAppHandler = launcher.startApplication(new SparkJobListener(jobInfo))

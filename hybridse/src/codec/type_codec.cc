@@ -85,12 +85,10 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t col_idx,
     // Support Spark UnsafeRow format
     if (FLAGS_enable_spark_unsaferow_format) {
         // Notice that for UnsafeRowOpt field_offset should be the actual offset of string column
-
         // For Spark UnsafeRow, the first 32 bits is for length and the last 32 bits is for offset.
         *size = *(reinterpret_cast<const uint32_t*>(row + field_offset));
         uint32_t str_value_offset = *(reinterpret_cast<const uint32_t*>(row + field_offset + 4)) + HEADER_LENGTH;
         *data = reinterpret_cast<const char*>(row + str_value_offset);
-
         return 0;
     }
 

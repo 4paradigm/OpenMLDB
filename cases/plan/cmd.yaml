@@ -39,10 +39,7 @@ cases:
           +-table: schema.sql
           +-IF NOT EXIST: 0
           +-column_desc_list: []
-          +-replica_num: 1
-          +-partition_num: 1
-          +-storage_mode: memory
-          +-distribution_list: []
+          +-table_option_list: []
   - id: 3
     desc: CREATE GROUP
     mode: zetasql-unsupport
@@ -190,6 +187,14 @@ cases:
         +-node[CMD]
           +-cmd_type: show deployment
           +-args: [foo]
+  - id: show_functions
+    desc: show functions
+    sql: SHOW FUNCTIONS;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show functions
+          +-args: []
   - id: drop_deployment
     desc: drop deployment foo
     sql: DROP DEPLOYMENT foo;
@@ -547,3 +552,20 @@ cases:
         +-node[CMD]
           +-cmd_type: show table status
           +-args: []
+  - id: drop_function_stmt
+    desc: drop_function
+    sql: DROP FUNCTION func1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop function
+          +-args: [func1]
+  - id: drop_function_if_exists_stmt
+    desc: drop_function
+    sql: DROP FUNCTION IF EXISTS func1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop function
+          +-if_exists: true
+          +-args: [func1]

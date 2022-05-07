@@ -482,6 +482,68 @@ TEST_F(CodecTest, NotAppendString) {
     ASSERT_EQ(view.GetInt16(10, &val), -1);
 }
 
+TEST_F(CodecTest, RowBuilderSet) {
+    Schema schema;
+    ::openmldb::common::ColumnDesc* col = schema.Add();
+    col->set_name("col1");
+    col->set_data_type(::openmldb::type::kInt);
+    col = schema.Add();
+    col->set_name("col2");
+    col->set_data_type(::openmldb::type::kSmallInt);
+    col = schema.Add();
+    col->set_name("col3");
+    col->set_data_type(::openmldb::type::kFloat);
+    col = schema.Add();
+    col->set_name("col4");
+    col->set_data_type(::openmldb::type::kDouble);
+    col = schema.Add();
+    col->set_name("col5");
+    col->set_data_type(::openmldb::type::kBigInt);
+    col = schema.Add();
+    col->set_name("col6");
+    col->set_data_type(::openmldb::type::kString);
+    col = schema.Add();
+    col->set_name("col7");
+    col->set_data_type(::openmldb::type::kString);
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(6);
+    std::string row;
+    row.resize(size);
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&(row[0]));
+    std::string st("string");
+    builder.InitBuffer(row_ptr, size, true);
+    ASSERT_TRUE(builder.SetInt32(row_ptr, 0, 1));
+    ASSERT_TRUE(builder.SetInt16(row_ptr, 1, 2));
+    ASSERT_TRUE(builder.SetFloat(row_ptr, 2, 1.3));
+    ASSERT_TRUE(builder.SetDouble(row_ptr, 3, 2.3));
+    ASSERT_TRUE(builder.SetInt64(row_ptr, 4, 5));
+    ASSERT_TRUE(builder.SetNULL(row_ptr, size, 5));
+    ASSERT_TRUE(builder.SetString(row_ptr, size, 6, "string", 6));
+    RowView view(schema, row_ptr, size);
+    int32_t val = 0;
+    ASSERT_EQ(view.GetInt32(0, &val), 0);
+    ASSERT_EQ(val, 1);
+    int16_t val1 = 0;
+    ASSERT_EQ(view.GetInt16(1, &val1), 0);
+    ASSERT_EQ(val1, 2);
+    float val2 = 0;
+    ASSERT_EQ(view.GetFloat(2, &val2), 0);
+    ASSERT_TRUE(abs(val2 - 1.3) < 0.00001);
+    double val3 = 0;
+    ASSERT_EQ(view.GetDouble(3, &val3), 0);
+    ASSERT_TRUE(abs(val3 - 2.3) < 0.00001);
+    int64_t val4 = 0;
+    ASSERT_EQ(view.GetInt64(4, &val4), 0);
+    ASSERT_EQ(val4, 5);
+    char* ch = NULL;
+    uint32_t ch_length = 0;
+    ASSERT_EQ(view.GetString(5, &ch, &ch_length), 1);
+    ASSERT_EQ(view.GetString(6, &ch, &ch_length), 0);
+    ASSERT_EQ(ch_length, 6);
+    std::string ret(ch, ch_length);
+    ASSERT_EQ(ret, st);
+}
+
 }  // namespace codec
 }  // namespace openmldb
 
