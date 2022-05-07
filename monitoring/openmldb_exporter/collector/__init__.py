@@ -1,7 +1,7 @@
 """
-module openmldb_collector
+module collector
 """
-from openmldb_collector.metrics import (
+from openmldb_exporter.collector.metrics import (
     connected_seconds,
     component_status,
     table_rows,
@@ -14,11 +14,11 @@ from openmldb_collector.metrics import (
     tablet_memory_application,
     tablet_memory_actual,
 )
-from openmldb_collector.configstore import (
+from openmldb_exporter.collector.configstore import (
     ConfigStore
 )
 
-from openmldb_collector.collectors import (
+from openmldb_exporter.collector.collectors import (
     TableStatusCollector,
     DeployQueryStatCollector,
     ComponentStatusCollector,
