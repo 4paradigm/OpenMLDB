@@ -22,14 +22,14 @@ The below figure summarizes the workflow of using this connector. We will furthe
 
 ## Step 1
 ### Create OpenMLDB Cluster
-Use docker to start it simply, and we need to create a test table, you can check on [Get started with cluster version of OpenMLDB](https://openmldb.ai/docs/en/v0.4/quickstart/openmldb_quickstart.html#get-started-with-cluster-version-of-openmldb) . 
+Use docker to start it simply, and we need to create a test table, you can check on [Get started with cluster version of OpenMLDB](https://openmldb.ai/docs/en/v0.5/quickstart/openmldb_quickstart.html#get-started-with-cluster-version-of-openmldb) . 
 ```{caution}
 Only OpenMLDB cluster mode can be the sink dist, and only write to online storage.
 ```
 
 We recommend that you use ‘host network’ to run docker. And bind volume ‘files’ too. The sql scripts are in it.
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.4.4 bash
+docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.0 bash
 docker exec -it openmldb bash
 ```
 ```{note}

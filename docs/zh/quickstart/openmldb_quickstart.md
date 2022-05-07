@@ -34,8 +34,8 @@ docker run -it 4pdosc/openmldb:0.5.0 bash
 下载样例数据
 
 ```bash
-curl https://openmldb.ai/demo/data.csv --output ./data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
+curl https://openmldb.ai/demo/data.csv --output ./taxi-trip/data/data.csv
+curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
 ```
 
 ## 2. 单机版OpenMLDB 快速上手
