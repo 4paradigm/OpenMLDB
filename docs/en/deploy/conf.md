@@ -224,3 +224,6 @@ namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
 ```
+
+* If configuration of `spark.home` is not set，please set the environment variable of `SPARK_HOME` in TaskManager server.
+* The default value of configruation `spark.master` is `local`. We can set `local[*]`, `yarn`, `yarn-cluster` or `yarn-client` as well. If we are using Yarn mode, please set configuration `offline.data.prefix` as the HDFS path to avoid saving offline data in local filesystem of Yarn containers. Meanwhile we need to set environment variable of `HADOOP_CONF_DIR` as the directory of Hadoop configuration files.
