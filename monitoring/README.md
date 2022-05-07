@@ -1,5 +1,8 @@
 # OpenMLDB Prometheus Exporter
 
+[![PyPI](https://img.shields.io/pypi/v/openmldb-exporter?label=openmldb-exporter)](https://pypi.org/project/openmldb-exporter/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter)
+
 ## Intro
 
 This directory contains
