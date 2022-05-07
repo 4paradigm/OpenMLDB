@@ -1482,6 +1482,9 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    ProcessSQLs(sr, {
+                        "set @@execute_mode='offline';",
+                    });
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
@@ -1492,27 +1495,42 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"job_timeout", "20000"},
                           {"execute_mode", "offline"}},
                          rs.get());
+    // init session variables from systemtable
+    rs = sr->ExecuteSQL("show session variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Value"},
+                          {"enable_trace", "false"},
+                          {"execute_mode", "offline"},
+                          {"job_timeout", "20000"},
+                          {"sync_job", "false"}},
+                         rs.get());
+    // set global variables
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='true';",
                         "set @@global.sync_job='true';",
-                        "set @@global.job_timeout='30000';",
                         "set @@global.execute_mode='online';",
                     });
     rs = sr->ExecuteSQL("show global variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
                           {"enable_trace", "true"},
                           {"sync_job", "true"},
-                          {"job_timeout", "30000"},
+                          {"job_timeout", "20000"},
                           {"execute_mode", "online"}},
+                         rs.get());
+    // update session variables if set global variables
+    rs = sr->ExecuteSQL("show session variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Value"},
+                          {"enable_trace", "true"},
+                          {"execute_mode", "online"},
+                          {"job_timeout", "20000"},
+                          {"sync_job", "true"}},
                          rs.get());
 
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='false';",
                         "set @@global.sync_job='false';",
-                        "set @@global.job_timeout='20000';",
                         "set @@global.execute_mode='offline';",
                     });
-
+    rs = sr->ExecuteSQL("show global variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
                           {"enable_trace", "false"},
                           {"sync_job", "false"},
