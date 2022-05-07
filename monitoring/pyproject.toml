@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openmldb-exporter"
-version = "0.5.0a0"
+version = "0.5.0"
 description = "prometheus exporter for OpenMLDB"
 authors = ["aceforeverd <teapot@aceforeverd.com>"]
 license = "Apache-2.0"
