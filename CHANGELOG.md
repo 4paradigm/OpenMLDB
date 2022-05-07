@@ -7,7 +7,7 @@
 - Register udf from external dynamic library (#1509 #1733 #1700 @dl239 @tobegit3hub)
 - Support persistent storage engine enabled by Rocksdb (#1483 @Leowner)
 - Re-designed OpenMLDB prometheus exporter ( #1584, #1645, #1754 @aceforeverd )
-- Support collect deployment query response statistics ( #1497, #1521 @aceforeverd )
+- Support collect deployment query response time statistics ( #1497, #1521 @aceforeverd )
 - Add new SQL commands like `SHOW COMPONENTS`, `SHOW TABLE STATUS` (#1380 #1431 #1704 @aceforeverd)
 - Support set global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
 - Support reading Spark conf file from cli (#1600 @tobegit3hub)
