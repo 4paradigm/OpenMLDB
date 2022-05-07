@@ -1,8 +1,9 @@
 # 在线数据导入工具使用
-数据导入工具位于[java/openmldb-import](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-import)。支持两种导入方式，insert和bulk load。
 
-- insert方式：适用于所有场景的数据导入，目前还在优化中。
-- bulk load方式：适用于空表并且导入期间没有读写的场景。有更高的导入效率，但目前只支持本地多csv文件的导入。
+在线数据导入工具位于[java/openmldb-import](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-import)。支持两种导入方式，insert和bulk load。
+
+- insert方式：适用于所有场景的数据导入，目前还在优化中，暂不能使用。
+- bulk load方式：适用于空表并且导入期间没有读写的场景。有更高的导入效率，但目前只支持本地多csv文件的导入。暂不支持Map-Reduce模式。
 
 ## 1. 导数工具安装
 
