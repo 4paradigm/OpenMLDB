@@ -24,8 +24,15 @@ OpenMLDB Spark兼容标准的[Spark配置](https://spark.apache.org/docs/latest/
 | spark.openmldb.addIndexColumn.method         | 添加索引列方法             | monotonicallyIncreasingId | 可选方法为zipWithUniqueId, zipWithIndex, monotonicallyIncreasingId |
 | spark.openmldb.concatjoin.jointype           | 拼接拼表方法               | inner                     | 可选方法为inner, left, last                                  |
 | spark.openmldb.enable.native.last.join       | 是否开启NativeLastJoin优化 | true                      | 相比基于LeftJoin实现性能更高                                 |
-| spark.openmldb.enable.unsaferow.optimization | 是否开启UnsafeRow内存优化  | false                     | 开启后降低编解码开销，目前部分复杂类型不支持                 |
+| spark.openmldb.enable.unsaferow.optimization | 是否开启UnsafeRow内存优化  | false                     | 开启后使用UnsafeRow编码格式，目前部分复杂类型不支持                 |
+| spark.openmldb.opt.unsaferow.project | Project节点是否开启UnsafeRow内存优化  | false                     | 开启后降低Project节点编解码开销，目前部分复杂类型不支持                 |
+| spark.openmldb.opt.unsaferow.window | Window节点是否开启UnsafeRow内存优化  | false                     | 开启后降低Window节点编解码开销，目前部分复杂类型不支持                 |
+| spark.openmldb.opt.join.spark_expr | Join条件是否开启Spark表达式优化  | true                     | 开启后Join条件计算使用Spark表达式，减少编解码开销，目前部分复杂表达式不支持                 |
 | spark.openmldb.physical.plan.graphviz.path   | 导出物理计划图片路径       | ""                        | 默认不导出图片文件                                           |
+
+* 如果SQL任务有多个窗口计算并且计算资源足够，推荐开启窗口并行计算优化，提高资源利用率和降低任务运行时间。
+* 如果SQL任务中Join条件表达式比较复杂，默认运行失败，推荐关闭Join条件Spark表达式优化，提高任务运行成功率。
+* 如果SQL任务中输入表或中间表列数较大，推荐同时开启三个UnsafeRow优化开关，减少编解码开销和降低任务运行时间。
 
 ### 使用Example Jars
 
