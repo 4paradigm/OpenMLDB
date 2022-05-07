@@ -252,22 +252,17 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "openmldb"
-version = "0.5.0a0"
+version = "0.5.0"
 description = "OpenMLDB Python SDK"
 category = "main"
 optional = false
 python-versions = "*"
-develop = true
 
 [package.dependencies]
 IPython = "*"
 prettytable = "*"
 pytest = "*"
 sqlalchemy = "<1.4.0"
-
-[package.source]
-type = "directory"
-url = "../python"
 
 [[package]]
 name = "packaging"
@@ -604,7 +599,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3475b4cb18c7608bb824eddfc421d0c0d3ec4506333bdc5a714fb770ad73f0e1"
+content-hash = "90f5059a56639ccaa0b049202e69abc512061625a8ae5ce85f43788ff0c9890a"
 
 [metadata.files]
 appnope = [
@@ -730,7 +725,10 @@ mccabe = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {file = "mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
 ]
-openmldb = []
+openmldb = [
+    {file = "openmldb-0.5.0-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:d79356cdae5e54680d036ed692c2c106354562ed6044e73ba20eadcf59d6beee"},
+    {file = "openmldb-0.5.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:dead1235e6a3e5985e8404bf20464a5ed291272104c3c54d7103130c6197184e"},
+]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
