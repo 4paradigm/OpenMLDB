@@ -43,6 +43,16 @@ jobs:
         with:
           submodules: true
 
+      - name: download lcov
+        uses: actions/checkout@v3
+        with:
+          path: lcov
+
+      - name: install lcov
+        working-directory: lcov
+        run: |
+          sudo make install
+
       - name: coverage configure
         run: |
           make coverage-configure
