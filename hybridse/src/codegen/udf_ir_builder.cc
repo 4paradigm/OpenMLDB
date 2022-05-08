@@ -489,7 +489,6 @@ Status UdfIRBuilder::BuildDynamicUdfCall(
     const std::vector<NativeValue>& args, NativeValue* output) {
     auto init_context_fn = fn->GetInitContextNode();
     auto opaque_type_node = dynamic_cast<const node::OpaqueTypeNode*>(init_context_fn->ret_type());
-    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     NativeValue udfcontext_output;
     UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
     CHECK_STATUS(
