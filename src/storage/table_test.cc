@@ -2617,8 +2617,8 @@ TEST_P(TableTest, TsIdxCntPut6) {
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
 
-        std::vector<std::string> row = {"test"+ std::to_string(i),
-                                        "testnew"+ std::to_string(i),
+        std::vector<std::string> row = {"test"+ std::to_string(i / 10),
+                                        "testnew"+ std::to_string(i / 10),
                                         ts_str,
                                         ts_str,
                                         ts_str};
@@ -2657,6 +2657,7 @@ TEST_P(TableTest, TsIdxCntPut6) {
 
 
     EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
 
     uint64_t* stats = NULL;
     uint32_t size = 0;
@@ -2679,6 +2680,7 @@ TEST_P(TableTest, TsIdxCntPut6) {
     table->SchedGc();
 
     EXPECT_EQ(142, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
 
     stats = NULL;
     size = 0;

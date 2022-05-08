@@ -131,7 +131,7 @@ class KeyTSComparator : public rocksdb::Comparator {
 
 class BloomFilter {
  public:
-    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : bitset_size_(bitset_size), string_cnt_(string_cnt) { k_ = ceil((bitset_size / string_cnt) * std::log(2)); }
+    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : k_(5), bitset_size_(bitset_size), string_cnt_(string_cnt) {}
     virtual ~BloomFilter() {}
 
     uint32_t Hash(const char* str, uint32_t seed);
@@ -278,9 +278,15 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
         }
         idx_cnt_vec_->at(idx)->fetch_add(1, std::memory_order_relaxed);
         uint32_t inner_pos = inner_index_->GetId();
-        if (!bloom_filter_vec_[inner_pos].Valid(it->key().c_str())) {
-                bloom_filter_vec_[inner_pos].Set(it->key().c_str());
-                pk_cnt_vec_[inner_pos]->fetch_add(1, std::memory_order_relaxed);
+        std::string pk;
+        if (indexs.size() > 1) {
+            pk.assign(key.data(), key.size() - TS_LEN - TS_POS_LEN);
+        } else {
+            pk.assign(key.data(), key.size() - TS_LEN);
+        }
+        if (!bloom_filter_->Valid(pk.c_str())) {
+                bloom_filter_->Set(pk.c_str());
+                pk_cnt_->fetch_add(1, std::memory_order_relaxed);
             }
         return false;
     }
@@ -295,15 +301,16 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
 class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
  public:
     explicit AbsoluteTTLFilterFactory(const std::shared_ptr<InnerIndexSt>& inner_index,
-                                      std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec)
-        : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec) {}
+                                      std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec,
+                                      std::shared_ptr<std::atomic<uint64_t>> pk_cnt, BloomFilter* bloom_filter)
+        : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec), pk_cnt_(pk_cnt), bloom_filter_(bloom_filter) {}
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
         if (context.is_manual_compaction) {
-            return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_, pk_cnt_, bloom_filter_));
+            return std::unique_ptr<rocksdb::CompactionFilter>(
+                new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_, pk_cnt_, bloom_filter_));
         }
         return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
-        // return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
     }
     const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
 
@@ -312,7 +319,6 @@ class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
     std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec_;
     std::shared_ptr<std::atomic<uint64_t>> pk_cnt_;
     BloomFilter* bloom_filter_;
-
 };
 
 class DiskTableIterator : public TableIterator {

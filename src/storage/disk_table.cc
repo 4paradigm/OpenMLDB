@@ -151,9 +151,15 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     cf_ds_.push_back(
         rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (const auto& inner_index : *inner_indexs) {
+    for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         pk_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
         bloom_filter_vec_.push_back(BloomFilter(1000, 100));
+    }
+    auto indexs = table_index_.GetAllIndex();
+    for (uint32_t i = 0; i < indexs.size(); i++) {
+        idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+    }
+    for (const auto& inner_index : *inner_indexs) {
         rocksdb::ColumnFamilyOptions cfo;
         if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
             cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
@@ -177,10 +183,6 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         auto index_def = indexs.front();
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
-    }
-    auto indexs = table_index_.GetAllIndex();
-    for (uint32_t i = 0; i < indexs.size(); i++) {
-        idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
     }
     return true;
 }
