@@ -70,9 +70,9 @@ jobs:
           ./start_onebox.sh
           ./start_onebox.sh standalone
 
-      - name: Build and Coverage
+      - name: Coverage CPP
         run: |
-          make coverage
+          make coverage-cpp
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
