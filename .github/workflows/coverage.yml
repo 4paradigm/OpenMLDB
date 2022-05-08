@@ -46,6 +46,8 @@ jobs:
       - name: download lcov
         uses: actions/checkout@v3
         with:
+          repository: linux-test-project/lcov
+          ref: master
           path: lcov
 
       - name: install lcov
@@ -73,7 +75,7 @@ jobs:
           make coverage
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: build/coverage.info
           name: coverage
