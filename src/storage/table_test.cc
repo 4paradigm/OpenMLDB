@@ -2677,8 +2677,6 @@ TEST_P(TableTest, TsIdxCntPut6) {
     EXPECT_EQ(100, ts_count);
     
     table->SchedGc();
-    table->SchedGc();
-    table->SchedGc();
 
     EXPECT_EQ(142, (int64_t)table->GetRecordIdxCnt());
 

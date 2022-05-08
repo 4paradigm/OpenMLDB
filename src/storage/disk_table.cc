@@ -165,12 +165,16 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         const auto& indexs = inner_index->GetIndex();
-        auto index_def = indexs.front();
-        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
-            index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
-            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index, &idx_cnt_vec_);
-            PDLOG(ERROR, "init compaction filter factory");
+        for (const auto& index_def : indexs) {
+            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
+                index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(
+                    inner_index, &idx_cnt_vec_, pk_cnt_vec_[inner_index->GetId()],
+                    &bloom_filter_vec_[inner_index->GetId()]);
+                break;
+            }
         }
+        auto index_def = indexs.front();
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }
@@ -336,9 +340,17 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
 
 void DiskTable::SchedGc() {
-    // GcTTL();
+    ClearRecord();
     GcHead();
+    GcTTL();
     UpdateTTL();
+}
+
+void DiskTable::ClearRecord() {
+    auto indexs = table_index_.GetAllIndex();
+    for (const auto& index : indexs) {
+        idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
+    }
 }
 
 void DiskTable::GcHead() {
@@ -493,13 +505,12 @@ void DiskTable::GcHead() {
 }
 
 void DiskTable::GcTTL() {
-    auto indexs = table_index_.GetAllIndex();
-    for (const auto& index : indexs) {
-        idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
-    }
-    auto s = db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
-    if (!s.ok()) {
-        PDLOG(WARNING, "Manual Compaction failed");
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    for (int i = 0; i < inner_indexs->size(); i++) {
+        auto s = db_->CompactRange(rocksdb::CompactRangeOptions(), cf_hs_[i + 1], nullptr, nullptr);
+        if (!s.ok()) {
+            PDLOG(WARNING, "Manual Compaction failed");
+        }
     }
     PDLOG(ERROR, "Manual Compaction Finished");
 }

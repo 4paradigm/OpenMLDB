@@ -221,16 +221,19 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
 class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
  public:
     explicit AbsoluteTTLAndCountCompactionFilter(std::shared_ptr<InnerIndexSt> inner_index,
-                                                 std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec)
-        : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec) {}
+                                                 std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec,
+                                                 std::shared_ptr<std::atomic<uint64_t>> pk_cnt,
+                                                 BloomFilter* bloom_filter)
+        : inner_index_(inner_index),
+          idx_cnt_vec_(idx_cnt_vec),
+          pk_cnt_(pk_cnt),
+          bloom_filter_(bloom_filter) {}
     virtual ~AbsoluteTTLAndCountCompactionFilter() {}
 
     const char* Name() const override { return "AbsoluteTTLAndCountCompactionFilter"; }
 
     bool Filter(int /*level*/, const rocksdb::Slice& key, const rocksdb::Slice& /*existing_value*/,
                 std::string* /*new_value*/, bool* /*value_changed*/) const override {
-        PDLOG(ERROR, "using compaction filter");
-        idx_cnt_vec_->at(1)->fetch_add(1, std::memory_order_relaxed);
         if (key.size() < TS_LEN) {
             return false;
         }
@@ -271,15 +274,22 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
         memrev64ifbe(static_cast<void*>(&ts));
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         if (ts < cur_time - real_ttl) {
-            idx_cnt_vec_->at(idx)->fetch_add(1, std::memory_order_relaxed);
             return true;
         }
+        idx_cnt_vec_->at(idx)->fetch_add(1, std::memory_order_relaxed);
+        uint32_t inner_pos = inner_index_->GetId();
+        if (!bloom_filter_vec_[inner_pos].Valid(it->key().c_str())) {
+                bloom_filter_vec_[inner_pos].Set(it->key().c_str());
+                pk_cnt_vec_[inner_pos]->fetch_add(1, std::memory_order_relaxed);
+            }
         return false;
     }
 
  private:
     std::shared_ptr<InnerIndexSt> inner_index_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec_;
+    std::shared_ptr<std::atomic<uint64_t>> pk_cnt_;
+    BloomFilter* bloom_filter_;
 };
 
 class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
@@ -289,17 +299,20 @@ class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
         : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec) {}
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
-        // if (context.is_manual_compaction) {
-        //     return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
-        // }
-        // return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
-        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
+        if (context.is_manual_compaction) {
+            return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_, pk_cnt_, bloom_filter_));
+        }
+        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
+        // return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_));
     }
     const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
 
  private:
     std::shared_ptr<InnerIndexSt> inner_index_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec_;
+    std::shared_ptr<std::atomic<uint64_t>> pk_cnt_;
+    BloomFilter* bloom_filter_;
+
 };
 
 class DiskTableIterator : public TableIterator {
@@ -493,6 +506,7 @@ class DiskTable : public Table {
 
     void SchedGc() override;
 
+    void ClearRecord();
     void GcHead();
     void GcTTL();
     void GcTTLAndHead();
