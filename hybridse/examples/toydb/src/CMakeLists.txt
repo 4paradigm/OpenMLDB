@@ -45,7 +45,7 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
-set(TOYDB_DEPS_LIBS hybridse_core hybridse_sdk hybridse_flags toydb_flags sqlite3
+set(TOYDB_DEPS_LIBS ${HYBRIDSE_CORE_LIBS} hybridse_sdk hybridse_flags toydb_flags sqlite3
     ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
 add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST})
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
@@ -85,7 +85,7 @@ endif()
 
 # toydb bin
 add_executable(toydb cmd/toydb.cc)
-target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybridse_flags )
+target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk ${HYBRIDSE_CORE_LIBS} hybridse_flags )
 # engine execution
 add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
 target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_test_base ${GTEST_LIBRARIES} sqlite3)
