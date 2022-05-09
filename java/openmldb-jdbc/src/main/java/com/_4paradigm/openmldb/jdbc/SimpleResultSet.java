@@ -367,7 +367,7 @@ public class SimpleResultSet implements ResultSet {
 
     @Override
     public int getFetchDirection() throws SQLException {
-        return 0;
+        return FETCH_UNKNOWN;
     }
 
     @Override
@@ -382,12 +382,12 @@ public class SimpleResultSet implements ResultSet {
 
     @Override
     public int getType() throws SQLException {
-        return 0;
+        return TYPE_FORWARD_ONLY;
     }
 
     @Override
     public int getConcurrency() throws SQLException {
-        return 0;
+        return CONCUR_READ_ONLY;
     }
 
     @Override
