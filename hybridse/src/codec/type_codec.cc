@@ -260,9 +260,16 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
     hybridse::type::Type type = static_cast<hybridse::type::Type>(type_id);
     switch (type) {
         case hybridse::type::kVarchar: {
-            new (data)
-                StringColumnImpl(w, row_idx, col_idx, str_field_offset,
-                                 next_str_field_offset, str_start_offset);
+            // TODO(tobe): Update the row_idx as 0 for UnsafeRowOpt
+            if (FLAGS_enable_spark_unsaferow_format) {
+                new (data)
+                        StringColumnImpl(w, 0, col_idx, str_field_offset,
+                                         next_str_field_offset, str_start_offset);
+            } else {
+                new (data)
+                        StringColumnImpl(w, row_idx, col_idx, str_field_offset,
+                                         next_str_field_offset, str_start_offset);
+            }
             break;
         }
         default: {
