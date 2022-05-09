@@ -78,7 +78,7 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
 ### 2.3 拷贝动态库
-- 需要把编译好的动态库拷贝到部署OpenMLDB tablet/taskmanager目录中的udf目录下。如果没有此目录需要创建一个。 需要注意的是tablet的udf目录和bin/conf目录平级，taskmanager是放到taskmanager/bin/udf目录里。如tablet和taskmanager的部署目录都是/work/openmldb, 目录结构如下：
+- 需要把编译好的动态库拷贝到部署OpenMLDB tablet/taskmanager目录中的udf目录下。如果没有此目录需要创建一个。 需要注意的是tablet的udf目录和bin/conf目录平级，taskmanager是放到taskmanager/bin/udf目录里。如tablet和taskmanager的部署目录都是/work/openmldb，目录结构如下：
     ```
     /work/openmldb/
     ├── bin
