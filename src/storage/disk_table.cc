@@ -353,6 +353,11 @@ void DiskTable::ClearRecord() {
     for (const auto& index : indexs) {
         idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
     }
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    for (const auto& inner_index : *inner_indexs) {
+        pk_cnt_vec_[inner_index->GetId()]->store(0, std::memory_order_relaxed);
+        bloom_filter_vec_[inner_index->GetId()].Reset();
+    }
 }
 
 void DiskTable::GcHead() {
@@ -427,6 +432,10 @@ void DiskTable::GcHead() {
                             idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
                         }
                     }
+                    if (!bloom_filter_vec_[idx].Valid(cur_pk.c_str())) {
+                        bloom_filter_vec_[idx].Set(cur_pk.c_str());
+                        pk_cnt_vec_[idx]->fetch_add(1, std::memory_order_relaxed);
+                    }
                     delete_key_map.clear();
                     key_cnt.clear();
                     key_cnt.insert(std::make_pair(ts_idx, 1));
@@ -495,6 +504,10 @@ void DiskTable::GcHead() {
                     count = 1;
                     last_pk = cur_pk;
                     it->Next();
+                    if (!bloom_filter_vec_[idx].Valid(cur_pk.c_str())) {
+                        bloom_filter_vec_[idx].Set(cur_pk.c_str());
+                        pk_cnt_vec_[idx]->fetch_add(1, std::memory_order_relaxed);
+                    }
                 }
             }
             idx_cnt_vec_[index_id]->fetch_add(count);
@@ -1317,6 +1330,10 @@ bool BloomFilter::Valid(const char *str)
         }
     }
     return true;
+}
+
+void BloomFilter::Reset() {
+    bit_.reset();
 }
 
 }  // namespace storage

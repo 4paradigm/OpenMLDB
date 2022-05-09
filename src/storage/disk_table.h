@@ -137,6 +137,7 @@ class BloomFilter {
     uint32_t Hash(const char* str, uint32_t seed);
     void Set(const char* str);
     bool Valid(const char* str);
+    void Reset();
 
  private:
     uint32_t k_, bitset_size_,
@@ -285,9 +286,10 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
             pk.assign(key.data(), key.size() - TS_LEN);
         }
         if (!bloom_filter_->Valid(pk.c_str())) {
-                bloom_filter_->Set(pk.c_str());
-                pk_cnt_->fetch_add(1, std::memory_order_relaxed);
-            }
+            bloom_filter_->Set(pk.c_str());
+            pk_cnt_->fetch_add(1, std::memory_order_relaxed);
+            PDLOG(ERROR, "adding %s now pk_cnt is %d", pk.c_str(), pk_cnt_->load(std::memory_order_relaxed));
+        }
         return false;
     }
 
