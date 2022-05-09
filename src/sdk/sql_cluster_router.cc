@@ -2945,7 +2945,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::set<std::pair<std
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    auto get_index_status = GetNewIndex(table_map, index_map, new_index_map);
+    auto get_index_status = GetNewIndex(table_map, index_map, &new_index_map);
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
@@ -2960,7 +2960,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::set<std::pair<std
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
-    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
+    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : index_map) {
         std::string table_name = kv.first;
@@ -3054,7 +3054,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                                 " has online data, cannot deploy. please drop this table and create a new one"};
                 }
             }
-            new_index_map.emplace(table_name, std::move(new_indexs));
+            new_index_map->emplace(table_name, std::move(new_indexs));
         }
     }
     return {};

@@ -1615,7 +1615,6 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
                     absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
                     absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
                     absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
-                    // todo: add ts column will have wrong result (#issue1722)
                     absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
                 });
     absl::SleepFor(absl::Seconds(4));
