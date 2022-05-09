@@ -2969,13 +2969,17 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
         if (it == table_map.end()) {
             return {::hybridse::common::StatusCode::kCmdError, "table " + table_name + "is not exist"};
         }
-        ::openmldb::nameserver::TableInfo table = it->second;
+        auto& table = it->second;
         std::set<std::string> col_set;
         for (const auto& column_desc : table.column_desc()) {
             col_set.insert(column_desc.name());
         }
         std::map<std::string, ::openmldb::common::ColumnKey> id_columnkey_map;
         for (const auto& column_key : table.column_key()) {
+            if (id_columnkey_map.find(openmldb::schema::IndexUtil::GetIDStr(column_key)) != id_columnkey_map.end()) {
+                LOG(WARNING) << "exist two indexes which are the same id "
+                             << openmldb::schema::IndexUtil::GetIDStr(column_key) << " in table " << table_name;
+            }
             id_columnkey_map.emplace(openmldb::schema::IndexUtil::GetIDStr(column_key), column_key);
         }
         int cur_index_num = table.column_key_size();
@@ -2997,8 +3001,9 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
             }
             std::string index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
             // index exist, if type match && new ttl greater than old ttl, update ttl, else skip
-            if (id_columnkey_map.find(index_id) != id_columnkey_map.end()) {
-                ::openmldb::common::ColumnKey old_column_key = id_columnkey_map[index_id];
+            auto it = id_columnkey_map.find(index_id);
+            if (it != id_columnkey_map.end()) {
+                auto& old_column_key = it->second;
                 // type mismatch, return here and deploy failed
                 if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {
                     return {::hybridse::common::StatusCode::kCmdError,
@@ -3035,12 +3040,12 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         }
                     }
                 }
-                continue;
+            } else {
+                column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
+                                        std::to_string(::baidu::common::timer::now_time()));
+                add_index_num++;
+                new_indexs.emplace_back(column_key);
             }
-            column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
-                                      std::to_string(::baidu::common::timer::now_time()));
-            add_index_num++;
-            new_indexs.emplace_back(column_key);
         }
         if (!new_indexs.empty()) {
             if (cluster_sdk_->IsClusterMode()) {
