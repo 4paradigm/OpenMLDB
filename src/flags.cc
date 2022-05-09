@@ -39,7 +39,6 @@ DEFINE_uint32(name_server_task_max_concurrency, 8, "config the max concurrency o
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_uint32(name_server_op_execute_timeout, 2 * 60 * 60 * 1000, "config the timeout of nameserver op");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
-DEFINE_bool(enable_timeseries_table, true, "enable or disable timeseries table");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
 DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3,
