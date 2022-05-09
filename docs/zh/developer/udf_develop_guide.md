@@ -87,12 +87,12 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
     │   ├── bin
     │   │   ├── taskmanager.sh
     │   │   └── udf
-    │   │      └── libtest_udf.so
+    │   │       └── libtest_udf.so
     │   ├── conf
     │   └── lib
     ├── tools
     └── udf
-       └── libtest_udf.so
+        └── libtest_udf.so
     ```
 - 每个tablet的目录都需要拷贝
 - 在DROP FUNCTION之前不能删除此目录里的动态库
