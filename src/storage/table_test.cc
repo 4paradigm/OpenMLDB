@@ -2680,7 +2680,7 @@ TEST_P(TableTest, TsIdxCntPut6) {
     table->SchedGc();
 
     EXPECT_EQ(142, (int64_t)table->GetRecordIdxCnt());
-    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(14, (int64_t)table->GetRecordPkCnt());
 
     stats = NULL;
     size = 0;
@@ -2863,6 +2863,119 @@ TEST_P(TableTest, TsIdxCntPut7) {
     //     ts_count += stats[i];
     // }
     // EXPECT_EQ(170, ts_count);
+
+    delete table;
+}
+
+TEST_P(TableTest, TsIdxCntPut8) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kLatestTime, 0, 7);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kLatestTime, 0, 4);
+
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test"+ std::to_string(i / 10),
+                                        "testnew"+ std::to_string(i / 10),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        ::openmldb::api::Dimension* dim2 = request.add_dimensions();
+        dim2->set_idx(2);
+        dim2->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 0) {
+            EXPECT_EQ(70, count);
+        } else if (i == 1) {
+            EXPECT_EQ(50, count);
+        } else if (i == 2) {
+            EXPECT_EQ(40, count);
+        }
+    }
+
+
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    
+    table->SchedGc();
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(140, (int64_t)table->GetRecordIdxCnt());
+
+    uint64_t* stats = NULL;
+    uint32_t size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
+    int ts_count = 0;
+    for (int i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(50, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
+    ts_count = 0;
+    for (int i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(40, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(0, &stats, &size));
+    ts_count = 0;
+    for (int i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(70, ts_count);
 
     delete table;
 }

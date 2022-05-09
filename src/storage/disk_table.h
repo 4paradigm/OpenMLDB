@@ -288,7 +288,6 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
         if (!bloom_filter_->Valid(pk.c_str())) {
             bloom_filter_->Set(pk.c_str());
             pk_cnt_->fetch_add(1, std::memory_order_relaxed);
-            PDLOG(ERROR, "adding %s now pk_cnt is %d", pk.c_str(), pk_cnt_->load(std::memory_order_relaxed));
         }
         return false;
     }

@@ -374,22 +374,22 @@ void DiskTable::GcHead() {
         it->SeekToFirst();
         const auto& indexs = inner_index->GetIndex();
         if (indexs.size() > 1) {
-            bool need_ttl = false;
             std::map<uint32_t, uint64_t> ttl_map;
             std::map<uint32_t, uint32_t> idx_map;
+            std::set<uint32_t> abs_set;
             for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
                     auto lat_ttl = index->GetTTL()->lat_ttl;
                     if (lat_ttl > 0) {
                         ttl_map.emplace(ts_col->GetId(), lat_ttl);
-                        need_ttl = true;
+                    }
+                    auto abs_ttl = index->GetTTL()->abs_ttl;
+                    if (abs_ttl > 0) {
+                        abs_set.insert(ts_col->GetId());
                     }
                     idx_map.emplace(ts_col->GetId(), index->GetId());
                 }
-            }
-            if (!need_ttl) {
-                continue;
             }
             std::map<uint32_t, uint32_t> key_cnt;
             std::map<uint32_t, uint64_t> delete_key_map;
@@ -399,6 +399,10 @@ void DiskTable::GcHead() {
                 uint64_t ts = 0;
                 uint32_t ts_idx = 0;
                 ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
+                if (abs_set.find(ts_idx) != abs_set.end()) {
+                    it->Next();
+                    continue;
+                }
                 if (!last_pk.empty() && cur_pk == last_pk) {
                     auto key_cnt_iter = key_cnt.find(ts_idx);
                     if (key_cnt_iter == key_cnt.end()) {
@@ -432,9 +436,11 @@ void DiskTable::GcHead() {
                             idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
                         }
                     }
-                    if (!bloom_filter_vec_[idx].Valid(cur_pk.c_str())) {
-                        bloom_filter_vec_[idx].Set(cur_pk.c_str());
-                        pk_cnt_vec_[idx]->fetch_add(1, std::memory_order_relaxed);
+                    if (key_cnt.size() > 0) {
+                        if (!bloom_filter_vec_[idx].Valid(last_pk.c_str())) {
+                            bloom_filter_vec_[idx].Set(last_pk.c_str());
+                            pk_cnt_vec_[idx]->fetch_add(1, std::memory_order_relaxed);
+                        }
                     }
                     delete_key_map.clear();
                     key_cnt.clear();
@@ -442,15 +448,6 @@ void DiskTable::GcHead() {
                     last_pk = cur_pk;
                 }
                 it->Next();
-            }
-            for (const auto& kv : delete_key_map) {
-                std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
-                std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
-                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
-                                                     rocksdb::Slice(combine_key2));
-                if (!s.ok()) {
-                    PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-                }
             }
             for (const auto& kv : delete_key_map) {
                 std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
@@ -470,12 +467,21 @@ void DiskTable::GcHead() {
                     idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
                 }
             }
+            if (key_cnt.size() > 0) {
+                if (!bloom_filter_vec_[idx].Valid(last_pk.c_str())) {
+                    bloom_filter_vec_[idx].Set(last_pk.c_str());
+                    pk_cnt_vec_[idx]->fetch_add(1, std::memory_order_relaxed);
+                }
+            }
         } else {
             auto index = indexs.front();
             uint32_t index_id = index->GetId();
-            idx_cnt_vec_[index_id]->store(0, std::memory_order_relaxed);
             auto ttl_num = index->GetTTL()->lat_ttl;
             if (ttl_num < 1) {
+                continue;
+            }
+            auto abs_ttl_num = index->GetTTL()->abs_ttl;
+            if (abs_ttl_num > 0) {
                 continue;
             }
             std::string last_pk;
