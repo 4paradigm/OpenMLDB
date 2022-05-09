@@ -104,6 +104,7 @@ CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 **注**:
 - 参数类型和返回值类型必须和代码的实现保持一致
 - 一个udf函数只能对一种类型起作用。如果想用于多种类型，需要创建多个函数
+- `FILE` 指定动态库的文件名，不需要包含路径
 
 成功注册后就可以使用函数了
 ```sql
