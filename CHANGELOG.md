@@ -3,9 +3,9 @@
 ## [0.5.0] - 2022-05-07
 
 ### Features
-- Support long window (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
-- Register udf from external dynamic library (#1509 #1733 #1700 @dl239 @tobegit3hub)
-- Support persistent storage engine enabled by Rocksdb (#1483 @Leowner)
+- Support the new optimization technique of pre-aggregation to enhance the performance of a query with time windows containing large amount of rows (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
+- Support C/C++ based User-Defined Functions (UDFs) with dynamic registration  (#1509 #1733 #1700 @dl239 @tobegit3hub)
+- Support persistent storage engine as an option for the storage engine (#1483 @Leowner)
 - Re-designed OpenMLDB prometheus exporter ( #1584, #1645, #1754 @aceforeverd )
 - Support collect deployment query response time statistics ( #1497, #1521 @aceforeverd )
 - Add new SQL commands like `SHOW COMPONENTS`, `SHOW TABLE STATUS` (#1380 #1431 #1704 @aceforeverd)
