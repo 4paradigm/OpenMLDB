@@ -826,7 +826,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
                              " sum(col3) over w1 as w1_sum_col3 from " + base_table +
                              " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                             " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+                             " ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
 

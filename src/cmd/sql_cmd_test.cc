@@ -402,6 +402,81 @@ TEST_P(DBSDKTest, Deploy) {
     ASSERT_FALSE(status.IsOK());
 }
 
+TEST_P(DBSDKTest, DeployWithSameIndex) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c1, ts=c7, ttl=1, ttl_type=latest));";
+
+    HandleSQL(create_sql);
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
+
+    // origin index
+    std::string msg;
+    auto ns_client = cs->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    ::openmldb::nameserver::TableInfo table = tables[0];
+
+    ASSERT_EQ(table.column_key_size(), 1);
+    ::openmldb::common::ColumnKey column_key = table.column_key(0);
+    ASSERT_EQ(column_key.col_name_size(), 1);
+    ASSERT_EQ(column_key.col_name(0), "c1");
+    ASSERT_EQ(column_key.ts_name(), "c7");
+    ASSERT_TRUE(column_key.has_ttl());
+    ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(column_key.ttl().lat_ttl(), 1);
+
+    std::string deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    // new index, update ttl
+    tables.clear();
+    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    table = tables[0];
+
+    ASSERT_EQ(table.column_key_size(), 1);
+    column_key = table.column_key(0);
+    ASSERT_EQ(column_key.col_name_size(), 1);
+    ASSERT_EQ(column_key.col_name(0), "c1");
+    ASSERT_EQ(column_key.ts_name(), "c7");
+    ASSERT_TRUE(column_key.has_ttl());
+    ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(column_key.ttl().lat_ttl(), 2);
+
+    // type mismatch case
+    create_sql =
+        "create table trans1 (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c1, ts=c7, ttl=1m, ttl_type=absolute));";
+    HandleSQL(create_sql);
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans1 values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
+    deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
+        " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime");
+
+
+    ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
+}
+
 TEST_P(DBSDKTest, DeployCol) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -464,7 +539,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL("use test2;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
         HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
