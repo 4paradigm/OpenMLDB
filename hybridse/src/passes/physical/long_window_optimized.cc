@@ -54,11 +54,11 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
         return false;
     }
 
-    auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
-    // TODO(zhanghao): we only support transform PhysicalAggrerationNode with one and only one window aggregation op
+    auto project_aggr_op = dynamic_cast<vm::PhysicalAggregationNode*>(project_op);
+    // TODO(zhanghao): we only support transform PhysicalAggregationNode with one and only one window aggregation op
     // we may remove this constraint in a later optimization
     if (!VerifySingleAggregation(project_op)) {
-        LOG(WARNING) << "we only support transform PhysicalAggrerationNode with one and only one window aggregation op";
+        LOG(WARNING) << "we only support transform PhysicalAggregationNode with one and only one window aggregation op";
         return false;
     }
 
@@ -88,7 +88,7 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
     return true;
 }
 
-bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, int idx, PhysicalOpNode** output) {
+bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, int idx, PhysicalOpNode** output) {
     *output = in;
 
     if (in->producers()[0]->GetOpType() != vm::kPhysicalOpRequestUnion) {
