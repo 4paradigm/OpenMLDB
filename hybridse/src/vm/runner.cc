@@ -201,7 +201,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kAggregation: {
                     AggRunner* runner = nullptr;
                     CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                                            dynamic_cast<const PhysicalAggrerationNode*>(node)->having_condition_,
+                                            dynamic_cast<const PhysicalAggregationNode*>(node)->having_condition_,
                                             op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
