@@ -67,7 +67,6 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
-DECLARE_bool(enable_timeseries_table);
 DECLARE_uint32(sync_deploy_stats_timeout);
 
 using ::openmldb::api::OPType::kAddIndexOP;
