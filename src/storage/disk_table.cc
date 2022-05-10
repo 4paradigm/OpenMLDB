@@ -984,7 +984,7 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
                                            uint32_t ts_idx)
     : db_(db),
       it_(it),
-      snapshot_(snapshot),
+      const snapshot_(snapshot),
       record_idx_(1),
       expire_value_(expire_time, expire_cnt, ttl_type),
       row_(),
