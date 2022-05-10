@@ -131,18 +131,26 @@ class KeyTSComparator : public rocksdb::Comparator {
 
 class BloomFilter {
  public:
-    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : k_(5), bitset_size_(bitset_size), string_cnt_(string_cnt) {}
+    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : k_(5), bitset_size_(bitset_size), string_cnt_(string_cnt) {
+        bits_.reserve(10000);
+        for (uint32_t i = 0; i < 10000; i++) {
+            bits_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+        }
+    }
     virtual ~BloomFilter() {}
 
-    uint32_t Hash(const char* str, uint32_t seed);
     void Set(const char* str);
     bool Valid(const char* str);
     void Reset();
 
  private:
+    uint32_t hash(const char* str, uint32_t seed);
+    void setBit(uint32_t bit);
+    bool getBit(uint32_t bit);
+
     uint32_t k_, bitset_size_,
-        string_cnt_;  // k:number of the hash functions //bitset_size:the size of bitset //string_cnt:number of strings to hash (k = [bitset_size/string_cnt]*ln2)
-    std::bitset<1<<20> bit_;
+        string_cnt_;  
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> bits_;
     uint32_t base_[100] = {5, 7, 11, 13, 31, 37, 61};
 };
 

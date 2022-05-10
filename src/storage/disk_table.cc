@@ -1301,9 +1301,8 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     return 0;
 }
 
-uint32_t BloomFilter::Hash(const char *str, uint32_t seed)
+uint32_t BloomFilter::hash(const char *str, uint32_t seed)
 {
-    // unsigned int b = 378551;
     uint a = 63689;
     uint hash = 0;
 
@@ -1316,12 +1315,26 @@ uint32_t BloomFilter::Hash(const char *str, uint32_t seed)
     return (hash & 0x7FFFFFFF);
 }
 
+void BloomFilter::setBit(uint32_t bit) {
+    uint32_t bits_num = bit / 64;
+    uint32_t bits_left = bit % 64;
+
+    bits_[bits_num]->fetch_or((uint64_t)1 << bits_left, std::memory_order_relaxed);
+}
+
+bool BloomFilter::getBit(uint32_t bit) {
+    uint32_t bits_num = bit / 64;
+    uint32_t bits_left = bit % 64;
+
+    return (bits_[bits_num]->load(std::memory_order_relaxed) >> bits_left) & 1;
+}
+
 void BloomFilter::Set(const char *str)
 {
     for (int i = 0; i < k_; ++i)
     {
-        uint32_t p = Hash(str, base_[i]) % 1000000;
-        bit_[p] = 1;
+        uint32_t p = hash(str, base_[i]) % bitset_size_;
+        setBit(p);
     }
 
 }
@@ -1330,8 +1343,8 @@ bool BloomFilter::Valid(const char *str)
 {
     for (int i = 0; i < k_; ++i)
     {
-        uint32_t p = Hash(str, base_[i]) % 1000000;
-        if (!bit_[p]) {
+        uint32_t p = hash(str, base_[i]) % bitset_size_;
+        if (!getBit(p)) {
             return false;
         }
     }
@@ -1339,7 +1352,9 @@ bool BloomFilter::Valid(const char *str)
 }
 
 void BloomFilter::Reset() {
-    bit_.reset();
+    for (uint32_t i = 0; i < bits_.size(); i++) {
+        bits_[i]->store(0, std::memory_order_relaxed);
+    }
 }
 
 }  // namespace storage
