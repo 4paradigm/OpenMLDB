@@ -1441,14 +1441,13 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(
     instance_partition_iter->SeekToFirst();
 
     // Partition Union Table
-    auto union_inpus = windows_union_gen_.RunInputs(ctx);
-    auto union_partitions = windows_union_gen_.PartitionEach(union_inpus, parameter);
+    auto union_inputs = windows_union_gen_.RunInputs(ctx);
+    auto union_partitions = windows_union_gen_.PartitionEach(union_inputs, parameter);
     // Prepare Join Tables
     auto join_right_tables = windows_join_gen_.RunInputs(ctx);
 
     // Compute output
-    std::shared_ptr<MemTableHandler> output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    std::shared_ptr<MemTableHandler> output_table = std::make_shared<MemTableHandler>();
     while (instance_partition_iter->Valid()) {
         auto key = instance_partition_iter->GetKey().ToString();
         RunWindowAggOnKey(parameter, instance_partition, union_partitions,
@@ -1847,8 +1846,7 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
         is_asc == (table->GetOrderType() == kAscOrder)) {
         return table;
     }
-    auto output_table = std::shared_ptr<MemTimeTableHandler>(
-        new MemTimeTableHandler(table->GetSchema()));
+    auto output_table = std::make_shared<MemTimeTableHandler>(table->GetSchema());
     output_table->SetOrderType(table->GetOrderType());
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     if (!iter) {
