@@ -17,7 +17,7 @@ Collector definations
 
 from abc import ABC, abstractmethod
 from sqlalchemy import (engine, Table, Column, MetaData, String, Integer)
-from openmldb_collector import (connected_seconds, component_status, table_rows, table_partitions,
+from openmldb_exporter.collector import (connected_seconds, component_status, table_rows, table_partitions,
                                 table_partitions_unalive, table_memory, table_disk, table_replica, deploy_response_time,
                                 tablet_memory_application, tablet_memory_actual)
 from urllib import request
