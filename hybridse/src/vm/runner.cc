@@ -1527,7 +1527,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         const Row& instance_row = instance_segment_iter->GetValue();
         uint64_t instance_order = instance_segment_iter->GetKey();
         while (min_union_pos >= 0 &&
-               union_segment_status[min_union_pos].key_ < instance_order) {
+               union_segment_status[min_union_pos].key_ <= instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
             if (windows_join_gen_.Valid()) {
                 row = windows_join_gen_.Join(row, join_right_tables, parameter);

@@ -574,3 +574,245 @@ cases:
         - [1,"aa",20,30]
         - [4,"dd",20,96]
         - [5,"ee",21,34]
+
+  # test correctness for window union when there are rows in union rows and original rows whose key is the same
+  # - 18-1 & 18-2 test simple case for UNION ROWS_RANGE and UNION ROWS
+  # - 18-3 test test UNION ROWS_RANGE with MAXSIZE
+  # - 18-4 & 18-5 test EXCLUDE CURRENT_TIME for UNION ROWS_RANGE/ROWS
+  - id: 18-1
+    desc: |
+      when UNION ROWS_RANGE has the same key with original rows, original rows first then union rows
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from (select * from t1) window w as(
+          union (select * from t2)
+          partition by `g` order by `ts`
+          rows_range between 1s preceding and 0s preceding);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: mv
+      data: |
+        1, 3, 233, 21, 200
+  - id: 18-2
+    desc: |
+      when UNION ROWS has the same key with original rows, original rows first then union rows,
+      union rows filtered out first for max window size limitation
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  88, 111, 999
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from (select * from t1) window w as(
+          union (select * from t2)
+          partition by `g` order by `ts`
+          ROWS BETWEEN 2 preceding and 0 preceding);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: mv
+      data: |
+        1, 3, 233, 21, 200
+  - id: 18-3
+    desc: |
+      when UNION ROWS_RANGE MAXSIZE has the same key with original rows, original rows first then union rows
+      union rows filtered out for max window size first
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from (select * from t1) window w as(
+          union (select * from t2)
+          partition by `g` order by `ts`
+          rows_range between 1s preceding and 0s preceding MAXSIZE 2);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: mv
+      data: |
+        1, 2, 200, 21, 200
+  - id: 18-4
+    desc: |
+      when UNION ROWS_RANGE EXCLUDE CURRENT_TIME has the same key with original rows, original rows first then union rows
+      other rows except current row filtered out by EXCLUDE CURRENT_TIME
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from (select * from t1) window w as(
+          union (select * from t2)
+          partition by `g` order by `ts`
+          rows_range between 1s preceding and 0s preceding EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: mv
+      data: |
+        1, 2, 233, 21, 233
+
+  - id: 18-5
+    desc: |
+      UNION ROWS current time rows filtered out
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  87, 111, 300
+          1,  88, 111, 999
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from (select * from t1) window w as(
+          union (select * from t2)
+          partition by `g` order by `ts`
+          ROWS BETWEEN 2 preceding and 0 preceding EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: mv
+      data: |
+        1, 3, 999, 21, 233
