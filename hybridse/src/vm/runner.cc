@@ -3051,8 +3051,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     window_table->AddRow(start, aggregator_->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
-    // reset the aggregator
-    aggregator_->Reset();
     return window_table;
 }
 
