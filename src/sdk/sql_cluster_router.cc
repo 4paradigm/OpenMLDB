@@ -3029,10 +3029,12 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         }
                     } else {
                         // absandlat && absorlat should check abs_ttl and lat_ttl
-                        if (old_column_key.ttl().abs_ttl() != 0 && old_column_key.ttl().lat_ttl() != 0) {
+                        if (old_column_key.ttl().abs_ttl() != 0) {
                             old_abs_ttl = old_column_key.ttl().abs_ttl();
-                            old_lat_ttl = old_column_key.ttl().lat_ttl();
                             new_abs_ttl = column_key.ttl().abs_ttl();
+                        }
+                        if (old_column_key.ttl().lat_ttl() != 0) {
+                            old_lat_ttl = old_column_key.ttl().lat_ttl();
                             new_lat_ttl = column_key.ttl().lat_ttl();
                         }
                     }
