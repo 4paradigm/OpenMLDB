@@ -27,7 +27,7 @@ DEFINE_bool(
 DEFINE_bool(enable_expr_opt, true,
             "Specify whether do expression optimization");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
-DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
+DEFINE_string(case_id, "", "Specify the case id to run and skip others");
 
 // jit options
 DEFINE_bool(enable_mcjit, false, "Use llvm legacy mcjit engine");
@@ -76,8 +76,7 @@ int RunSingle(const std::string& yaml_path) {
     jit_options.SetEnablePerf(FLAGS_enable_perf);
 
     for (auto& sql_case : cases) {
-        if (FLAGS_case_id >= 0 &&
-            std::to_string(FLAGS_case_id) != sql_case.id()) {
+        if (!FLAGS_case_id.empty() && FLAGS_case_id != sql_case.id()) {
             continue;
         }
         EngineMode mode;
