@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.batch.end2end.unsafe
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType, TimestampType}
-import org.apache.spark.sql.Row}
+import org.apache.spark.sql.Row
 
 class TestMultiSliceGetString extends SparkTestSuite {
 
