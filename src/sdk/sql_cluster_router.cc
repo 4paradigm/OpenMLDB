@@ -3000,7 +3000,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                 }
             }
             std::string index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
-            // index exist, if type match && new ttl greater than old ttl, update ttl, else skip
+            // index exist, if type match && new ttl greater than old ttl && old ttl != 0, update ttl, else skip
             auto it = id_columnkey_map.find(index_id);
             if (it != id_columnkey_map.end()) {
                 auto& old_column_key = it->second;
@@ -3011,24 +3011,30 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                                 " doesn't match the old ttl type " +
                                 ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type())};
                 } else {
-                    // type match
+                    // type match, if old ttl == 0, won't update
                     ::openmldb::type::TTLType type = column_key.ttl().ttl_type();
                     uint64_t old_abs_ttl = 0;
                     uint64_t old_lat_ttl = 0;
                     uint64_t new_abs_ttl = 0;
                     uint64_t new_lat_ttl = 0;
                     if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-                        old_abs_ttl = old_column_key.ttl().abs_ttl();
-                        new_abs_ttl = column_key.ttl().abs_ttl();
+                        if (old_column_key.ttl().abs_ttl() != 0) {
+                            old_abs_ttl = old_column_key.ttl().abs_ttl();
+                            new_abs_ttl = column_key.ttl().abs_ttl();
+                        }
                     } else if (type == ::openmldb::type::TTLType::kLatestTime) {
-                        old_lat_ttl = old_column_key.ttl().lat_ttl();
-                        new_lat_ttl = column_key.ttl().lat_ttl();
+                        if (old_column_key.ttl().lat_ttl() != 0) {
+                            old_lat_ttl = old_column_key.ttl().lat_ttl();
+                            new_lat_ttl = column_key.ttl().lat_ttl();
+                        }
                     } else {
                         // absandlat && absorlat should check abs_ttl and lat_ttl
-                        old_abs_ttl = old_column_key.ttl().abs_ttl();
-                        old_lat_ttl = old_column_key.ttl().lat_ttl();
-                        new_abs_ttl = column_key.ttl().abs_ttl();
-                        new_lat_ttl = column_key.ttl().lat_ttl();
+                        if (old_column_key.ttl().abs_ttl() != 0 && old_column_key.ttl().lat_ttl() != 0) {
+                            old_abs_ttl = old_column_key.ttl().abs_ttl();
+                            old_lat_ttl = old_column_key.ttl().lat_ttl();
+                            new_abs_ttl = column_key.ttl().abs_ttl();
+                            new_lat_ttl = column_key.ttl().lat_ttl();
+                        }
                     }
                     if (new_abs_ttl > old_abs_ttl || new_lat_ttl > old_lat_ttl) {
                         // update ttl

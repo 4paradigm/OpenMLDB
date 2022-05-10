@@ -581,34 +581,33 @@ void CreateDBTableForLongWindow(const std::string& base_db, const std::string& b
     ASSERT_EQ(tables.size(), 1) << msg;
 }
 
-void PrepareDataForLongWindow(const std::string& base_db, const std::string& base_table, uint64_t ts) {
+void PrepareDataForLongWindow(const std::string& base_db, const std::string& base_table) {
     ::hybridse::sdk::Status status;
     for (int i = 1; i <= 11; i++) {
         std::string val = std::to_string(i);
         std::string date;
-        std::string ts_str = std::to_string(ts + i);
         if (i < 10) {
             date = absl::StrCat("1900-01-0", std::to_string(i));
         } else {
             date = absl::StrCat("1900-01-", std::to_string(i));
         }
         std::string insert =
-            absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", ts_str, ", ", val, ", ", val, ", ",
-                         val, ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
+            absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", val, ", ", val, ", ", val, ", ", val,
+                         ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
         bool ok = sr->ExecuteInsert(base_db, insert, &status);
         ASSERT_TRUE(ok) << status.msg;
     }
 }
 
 void PrepareRequestRowForLongWindow(const std::string& base_db, const std::string& sp_name,
-                                    std::shared_ptr<sdk::SQLRequestRow>& req, uint64_t ts) {  // NOLINT
+                                    std::shared_ptr<sdk::SQLRequestRow>& req) {  // NOLINT
     ::hybridse::sdk::Status status;
     req = sr->GetRequestRowByProcedure(base_db, sp_name, &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_TRUE(req->Init(strlen("str1") + strlen("str2") + strlen("11")));
     ASSERT_TRUE(req->AppendString("str1"));
     ASSERT_TRUE(req->AppendString("str2"));
-    ASSERT_TRUE(req->AppendTimestamp(ts + 11));
+    ASSERT_TRUE(req->AppendTimestamp(11));
     ASSERT_TRUE(req->AppendInt64(11));
     ASSERT_TRUE(req->AppendInt16(11));
     ASSERT_TRUE(req->AppendInt32(11));
@@ -650,8 +649,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
-    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-    PrepareDataForLongWindow(base_db, base_table, ts);
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string result_sql = "select * from pre_test_aggr_w1_sum_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
@@ -660,8 +658,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
-        ASSERT_EQ(ts + i * 2 - 1, rs->GetInt64Unsafe(1));
-        ASSERT_EQ(ts + i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
@@ -692,7 +690,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req, ts);
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         ASSERT_TRUE(status.IsOK());
         ASSERT_EQ(1, res->Size());
@@ -706,7 +704,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
         ASSERT_EQ(exp, res->GetFloatUnsafe(5));
         ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
         ASSERT_EQ(exp, res->GetTimeUnsafe(7));
-        ASSERT_EQ(exp + 7 * ts, res->GetInt64Unsafe(8));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(8));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -763,8 +761,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
-    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-    PrepareDataForLongWindow(base_db, base_table, ts);
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string result_sql = "select * from pre_test_aggr_w1_avg_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
@@ -773,8 +770,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
-        ASSERT_EQ(ts + i * 2 - 1, rs->GetInt64Unsafe(1));
-        ASSERT_EQ(ts + i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         ASSERT_EQ(16, aggr_val_str.size());
@@ -804,7 +801,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req, ts);
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         ASSERT_TRUE(status.IsOK());
         ASSERT_EQ(1, res->Size());
@@ -874,8 +871,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
-    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-    PrepareDataForLongWindow(base_db, base_table, ts);
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string result_sql = "select * from pre_test_aggr_w1_min_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
@@ -884,8 +880,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
-        ASSERT_EQ(ts + i * 2 - 1, rs->GetInt64Unsafe(1));
-        ASSERT_EQ(ts + i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
@@ -924,7 +920,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req, ts);
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         ASSERT_TRUE(status.IsOK());
         ASSERT_EQ(1, res->Size());
@@ -940,7 +936,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
         ASSERT_EQ(exp, res->GetTimeUnsafe(7));
         ASSERT_EQ("10", res->GetStringUnsafe(8));
         ASSERT_EQ(exp, res->GetDateUnsafe(9));
-        ASSERT_EQ(exp + ts, res->GetInt64Unsafe(10));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -1006,8 +1002,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
-    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-    PrepareDataForLongWindow(base_db, base_table, ts);
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string result_sql = "select * from pre_test_aggr_w1_max_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
@@ -1016,8 +1011,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
-        ASSERT_EQ(ts + i * 2 - 1, rs->GetInt64Unsafe(1));
-        ASSERT_EQ(ts + i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
@@ -1056,7 +1051,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req, ts);
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         ASSERT_TRUE(status.IsOK());
         ASSERT_EQ(1, res->Size());
@@ -1072,7 +1067,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
         ASSERT_EQ(exp, res->GetTimeUnsafe(7));
         ASSERT_EQ("9", res->GetStringUnsafe(8));
         ASSERT_EQ(exp, res->GetDateUnsafe(9));
-        ASSERT_EQ(exp + ts, res->GetInt64Unsafe(10));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -1138,8 +1133,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
-    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
-    PrepareDataForLongWindow(base_db, base_table, ts);
+    PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
     std::string result_sql = "select * from pre_test_aggr_w1_count_i64_col;";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
@@ -1148,8 +1142,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     for (int i = 5; i >= 1; i--) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
-        ASSERT_EQ(ts + i * 2 - 1, rs->GetInt64Unsafe(1));
-        ASSERT_EQ(ts + i * 2, rs->GetInt64Unsafe(2));
+        ASSERT_EQ(i * 2 - 1, rs->GetInt64Unsafe(1));
+        ASSERT_EQ(i * 2, rs->GetInt64Unsafe(2));
         ASSERT_EQ(2, rs->GetInt32Unsafe(3));
         std::string aggr_val_str = rs->GetStringUnsafe(4);
         int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
@@ -1188,7 +1182,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req, ts);
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
         LOG(WARNING) << "Before CallProcedure";
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         LOG(WARNING) << "After CallProcedure";
