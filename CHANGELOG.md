@@ -25,7 +25,7 @@
 - Incorrect results when the order of conditions specified in `where` is different from that of the index (#1709 @aceforeverd)
 - Incorrect results of `lag`/`at`/`lead` under certain circumstances (#1605 #1739 @aceforeverd)
 - Memory leakage in `zk_client` (#1660 @wuxiaobai24)
-- Catalog update failed if the role of a tablet is changed (#1655 @dl239)
+- No catalog update if the role of a tablet is changed (#1655 @dl239)
 - Related bugs about `UnsafeRow` for the offline engine (#1298, #1312, #1326, #1362, #1637, #1381, #1731 @tobegit3hub)
 - Incorrect results after adding a new index in the standalone mode (#1721 @keyu813)
 - Incorrect results of `SHOW JOBS` under certain circumstances (#1453 @tobegit3hub)
