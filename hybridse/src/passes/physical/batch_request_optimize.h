@@ -32,7 +32,7 @@ namespace hybridse {
 namespace passes {
 
 using hybridse::base::Status;
-using hybridse::vm::PhysicalAggrerationNode;
+using hybridse::vm::PhysicalAggregationNode;
 using hybridse::vm::PhysicalDataProviderNode;
 using hybridse::vm::PhysicalProjectNode;
 using hybridse::vm::PhysicalRenameNode;
@@ -119,7 +119,7 @@ class CommonColumnOptimize : public PhysicalPass {
                                 PhysicalSimpleProjectNode*, BuildOpState*);
     Status ProcessProject(PhysicalPlanContext*, PhysicalProjectNode*,
                           BuildOpState*);
-    Status ProcessWindow(PhysicalPlanContext*, PhysicalAggrerationNode*,
+    Status ProcessWindow(PhysicalPlanContext*, PhysicalAggregationNode*,
                          BuildOpState*);
     Status ProcessJoin(PhysicalPlanContext*, PhysicalRequestJoinNode*,
                        BuildOpState*);
