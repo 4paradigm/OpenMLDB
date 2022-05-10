@@ -27,7 +27,7 @@ class PhysicalOpTest : public ::testing::Test {
     PhysicalOpTest() {}
     ~PhysicalOpTest() {}
 };
-TEST_F(PhysicalOpTest, PhysicalAggrerationNodeWithNewChildrenTest) {
+TEST_F(PhysicalOpTest, PhysicalAggregationNodeWithNewChildrenTest) {
     node::NodeManager nm;
     hybridse::type::Database db;
     db.set_name("db");
@@ -38,7 +38,7 @@ TEST_F(PhysicalOpTest, PhysicalAggrerationNodeWithNewChildrenTest) {
     auto catalog = BuildSimpleCatalog(db);
 
     vm::PhysicalPlanContext plan_ctx(&nm, udf::DefaultUdfLibrary::get(), "db", catalog, nullptr, false);
-    vm::PhysicalAggrerationNode* aggreration_node;
+    vm::PhysicalAggregationNode* aggreration_node;
     vm::PhysicalTableProviderNode* table_node;
     plan_ctx.CreateOp(&table_node, catalog->GetTable("db", "t1"));
     ColumnProjects projects;
