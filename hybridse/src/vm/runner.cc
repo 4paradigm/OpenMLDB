@@ -1544,8 +1544,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
         }
         if (windows_join_gen_.Valid()) {
-            Row row = instance_row;
-            row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
+            Row row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
             output_table->AddRow(window_project_gen_.Gen(instance_segment_iter->GetKey(), row, parameter, true,
                                                          append_slices_, &window));
         } else {
