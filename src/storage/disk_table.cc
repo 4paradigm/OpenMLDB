@@ -533,7 +533,6 @@ void DiskTable::GcTTL() {
             PDLOG(WARNING, "Manual Compaction failed");
         }
     }
-    PDLOG(ERROR, "Manual Compaction Finished");
 }
 
 void DiskTable::GcTTLOrHead() {}
@@ -1196,28 +1195,11 @@ bool DiskTable::DeleteIndex(const std::string& idx_name) {
 
 uint64_t DiskTable::GetRecordIdxCnt() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-
-    // for (size_t i = 0; i < inner_indexs->size(); i++) {
-    //     bool is_valid = false;
-    //     for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-    //         if (index_def && index_def->IsReady()) {
-    //             rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[i + 1]);
-
-    //             for (; it->Valid(); it->Next()) {
-    //                 uint32_t cur_ts_idx = UINT32_MAX;
-    //                 std::string cur_pk;
-    //                 uint64_t cur_ts;
-
-    //                 ParseKeyAndTs(has_ts_idx, it->key(), cur_pk, cur_ts, cur_ts_idx);
-    //             }
-    //         }
-    //     }
-        
-    // }
-    // TODO(litongxin)
-    return 0;
+    uint64_t count = 0;
+    for (const auto& inner_index : *inner_indexs) {
+        count += idx_cnt_vec_[inner_index->GetIndex().front()->GetId()]->load(std::memory_order_relaxed);
+    }
+    return count;
 }
 
 bool DiskTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
