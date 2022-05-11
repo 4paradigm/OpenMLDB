@@ -17,8 +17,6 @@
 package com._4paradigm.sql.tools;
 
 import com._4paradigm.sql.BenchmarkConfig;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.*;
 
@@ -57,26 +55,6 @@ public class TableInfo {
             String fieldName = tmp[0].replaceAll("`", "");
             schemaPos.put(fieldName, i);
             schemaPosName.put(i, fieldName);
-        }
-        parseRelation(relation);
-    }
-
-    public TableInfo(String name, JSONArray jsonSchema, Relation relation) {
-        this.name = name;
-        schema = new ArrayList<>();
-        schemaPos = new HashMap<>();
-        schemaPosName = new HashMap<>();
-        try {
-            for (int i = 0; i < jsonSchema.length(); i++) {
-                JSONObject val = jsonSchema.getJSONObject(i);
-                String field = val.getString("name");
-                String type = val.getString("type");
-                schema.add(type);
-                schemaPos.put(field, i);
-                schemaPosName.put(i, field);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         parseRelation(relation);
     }
