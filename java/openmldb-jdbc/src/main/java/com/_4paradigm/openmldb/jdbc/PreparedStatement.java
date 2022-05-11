@@ -273,7 +273,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
             }
             this.currentRow = SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes);
             if (this.currentRow == null) {
-        	throw new SQLException("failed to build data with row");
+        	throw new SQLException("fail to create sql request row from column types");
             }
             this.currentSchema = this.currentRow.GetSchema();
             this.orgTypes = this.types;
