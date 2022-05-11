@@ -75,7 +75,7 @@ public class DataImporter {
                 continue;
             }
             Type.DataType type = schema.get(pos);
-            if (type.equals(Type.DataType.kString)) {
+            if (type.equals(Type.DataType.kString) || type.equals(Type.DataType.kVarchar)) {
                 builder.append("'col").append(pos).append("'");
             } else if (type.equals(Type.DataType.kFloat)) {
                 builder.append(1.3);
