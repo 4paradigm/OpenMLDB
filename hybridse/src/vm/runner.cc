@@ -1510,10 +1510,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segment_status[i] = IteratorStatus(ts);
     }
 
-    int32_t min_union_pos =
-        0 == unions_cnt
-            ? -1
-            : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
+    int32_t min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
     int32_t cnt = output_table->GetCount();
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
@@ -1544,8 +1541,7 @@ void WindowAggRunner::RunWindowAggOnKey(
                     union_segment_iters[min_union_pos]->GetKey());
             }
             // Pick new mininum union pos
-            min_union_pos = IteratorStatus::PickIteratorWithMininumKey(
-                &union_segment_status);
+            min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
         }
         if (windows_join_gen_.Valid()) {
             Row row = instance_row;
@@ -3179,10 +3175,8 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
     }
-    int32_t max_union_pos = 0 == unions_cnt
-                                ? -1
-                                : IteratorStatus::FindFirstIteratorWithMaximizeKey(
-                                      &union_segment_status);
+    int32_t max_union_pos = IteratorStatus::FindFirstIteratorWithMaximizeKey(union_segment_status);
+
     uint64_t cnt = 0;
     auto range_status = window_range.GetWindowPositionStatus(
         cnt > rows_start_preceding, window_range.end_offset_ < 0,
@@ -3220,8 +3214,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
                 union_segment_iters[max_union_pos]->GetKey());
         }
         // Pick new mininum union pos
-        max_union_pos =
-            IteratorStatus::FindFirstIteratorWithMaximizeKey(&union_segment_status);
+        max_union_pos = IteratorStatus::FindFirstIteratorWithMaximizeKey(union_segment_status);
     }
     DLOG(INFO) << "REQUEST UNION cnt = " << window_table->GetCount();
     return window_table;
@@ -3858,30 +3851,29 @@ WindowUnionGenerator::PartitionEach(
     }
     return union_partitions;
 }
-int32_t IteratorStatus::PickIteratorWithMininumKey(
-    std::vector<IteratorStatus>* status_list_ptr) {
-    const auto& status_list = *status_list_ptr;
+
+int32_t IteratorStatus::FindLastIteratorWithMininumKey(const std::vector<IteratorStatus>& status_list) {
     int32_t min_union_pos = -1;
-    uint64_t min_union_order = UINT64_MAX;
+    std::optional<uint64_t> min_union_order;
     for (size_t i = 0; i < status_list.size(); i++) {
-        if (status_list[i].is_valid_ && status_list[i].key_ < min_union_order) {
-            min_union_order = status_list[i].key_;
-            min_union_pos = static_cast<int32_t>(i);
+        if (status_list[i].is_valid_) {
+            auto key = status_list[i].key_;
+            if (!min_union_order.has_value() || key <= min_union_order.value()) {
+                min_union_order.emplace(key);
+                min_union_pos = static_cast<int32_t>(i);
+            }
         }
     }
     return min_union_pos;
 }
 
-int32_t IteratorStatus::FindFirstIteratorWithMaximizeKey(std::vector<IteratorStatus>* status_list_ptr) {
+int32_t IteratorStatus::FindFirstIteratorWithMaximizeKey(const std::vector<IteratorStatus>& status_list) {
     int32_t min_union_pos = -1;
-    uint64_t min_union_order = 0;
-    for (size_t i = 0; i < status_list_ptr->size(); i++) {
-        if (status_list_ptr->at(i).is_valid_) {
-            auto key = status_list_ptr->at(i).key_;
-            if (key > min_union_order) {
-                min_union_order = key;
-                min_union_pos = static_cast<int32_t>(i);
-            } else if (key == min_union_order && min_union_pos == -1) {
+    std::optional<uint64_t> min_union_order;
+    for (size_t i = 0; i < status_list.size(); i++) {
+        if (status_list.at(i).is_valid_) {
+            auto key = status_list.at(i).key_;
+            if (!min_union_order.has_value() || key > min_union_order.value()) {
                 min_union_order = key;
                 min_union_pos = static_cast<int32_t>(i);
             }
