@@ -45,7 +45,7 @@ class TestWindowWithoutSelect extends SparkTestSuite {
     val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
 
     sess.registerTable("t1", t1)
-    t1.registerTempTable("t1")
+    t1.createOrReplaceTempView("t1")
 
     val sqlText =
       """      select
