@@ -572,10 +572,16 @@ class IteratorStatus {
     IteratorStatus() : is_valid_(false), key_(0) {}
     explicit IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
+
     static int32_t PickIteratorWithMininumKey(
         std::vector<IteratorStatus>* status_list_ptr);
-    static int32_t PickIteratorWithMaximizeKey(
-        std::vector<IteratorStatus>* status_list_ptr);
+
+    /// \brief find the iterators whose iterator key are the maximum of all iterators given
+    ///
+    /// \param status_list_ptr: a list of iterators
+    /// \return index of first found iterators, -1 if not found
+    static int32_t FindFirstIteratorWithMaximizeKey(std::vector<IteratorStatus>* status_list_ptr);
+
     void MarkInValid() {
         is_valid_ = false;
         key_ = 0;
