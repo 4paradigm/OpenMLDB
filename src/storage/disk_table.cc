@@ -299,6 +299,13 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
         return false;
     }
     auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index_def->GetInnerPos() + 1]);
+    std::map<uint32_t, uint64_t> delete_idx_cnt;
+
     if (inner_index && inner_index->GetIndex().size() > 1) {
         const auto& indexs = inner_index->GetIndex();
         for (const auto& index : indexs) {
@@ -308,16 +315,41 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
             }
             std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX, ts_col->GetId());
             std::string combine_key2 = CombineKeyTs(pk, 0, ts_col->GetId());
+            it->Seek(rocksdb::Slice(combine_key1));
+            while (it->Valid() && it->key().compare(rocksdb::Slice(combine_key2)) != 0) {
+                if (delete_idx_cnt.find(index->GetId()) != delete_idx_cnt.end()) {
+                    delete_idx_cnt[index->GetId()]++;
+                } else {
+                    delete_idx_cnt.emplace(index->GetId(), 1);
+                }
+                it->Next();
+            }
             batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
         }
     } else {
         std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
         std::string combine_key2 = CombineKeyTs(pk, 0);
+        it->Seek(rocksdb::Slice(combine_key1));
+        const auto& index = inner_index->GetIndex().front();
+        while (it->Valid() && it->key().compare(rocksdb::Slice(combine_key2)) != 0) {
+            if (delete_idx_cnt.find(index->GetId()) != delete_idx_cnt.end()) {
+                delete_idx_cnt[index->GetId()]++;
+            } else {
+                delete_idx_cnt.emplace(index->GetId(), 1);
+            }
+            it->Next();
+        }
         batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
+        for (auto ts_idx_iter = delete_idx_cnt.begin(); ts_idx_iter != delete_idx_cnt.end(); ts_idx_iter++) {
+            idx_cnt_vec_[ts_idx_iter->first]->fetch_sub(ts_idx_iter->second, std::memory_order_relaxed);
+        }
+        if (delete_idx_cnt.size() > 0) {
+            pk_cnt_vec_[index_def->GetInnerPos()]->fetch_sub(1);
+        }
         return true;
     } else {
         DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());

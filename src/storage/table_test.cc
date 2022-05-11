@@ -2160,6 +2160,12 @@ TEST_F(TableTest, GetRecordLatTTL) {
     }
     EXPECT_EQ(70, ts_count);
 
+    table->Delete("test0", 0);
+    table->Delete("testnew0", 1);
+    EXPECT_EQ(18, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(114, (int64_t)table->GetRecordIdxCnt());
+
+
     delete table;
 }
 
