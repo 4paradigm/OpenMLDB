@@ -33,6 +33,8 @@ class TestOpenmldbCatalogService extends FunSuite {
       println(s"Database $i: ${databases(i)}")
     }
 
+    val internalTableNames = List("JOB_INFO", "PRE_AGG_META_INFO")
+    assert(internalTableNames.contains(tables(i)))
     val tables = openmldbCatalogService.getTableNames("__INTERNAL_DB")
     for (i <- tables.indices) {
       println(s"Table $i: ${tables(i)}")
