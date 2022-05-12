@@ -2,25 +2,22 @@
 
 ## 1. Installation and Deployment
 
-The cluster version and the standalone version have their own deployment methods. For details, see [Installation and Deployment Details](../deploy/install_deploy.md). In summary, the main differences are:
-
-- The cluster version needs to install and deploy zookeeper
-- The cluster version needs to install task-manager
+Please refer to this document for detail: [Install and Deploy](../deploy/install_deploy.md). 
 
 ## 2. Usage
 
-### 2.1 Workflows
+### 2.1. Workflows
 
-| Workflow of Cluster Version         | Workflow of Standalone Version      | Difference                                                   |
-| ----------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
-| Database and table creation         | Database and table creation         | None                                                         |
-| Offline data preparation            | Data preparation                    | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
-| Offline feature extraction          | Offline feature extraction          | None                                                         |
-| SQL deployment                      | SQL deployment                      | None                                                         |
-| Online data preparation             | Data preparation (optional)         | The cluster version of OpenMLDB needs to prepare offline data and online data separately. <br />The standalone version can use the same data or prepare different data for offline and online feature extraction. |
-| Online real-time feature extraction | Online real-time feature extraction | None                                                         |
+| Steps                               | Difference                                                   |
+| ----------------------------------- | ------------------------------------------------------------ |
+| Database and table creation         | None                                                         |
+| Offline data preparation            | None                                                         |
+| Offline feature extraction          | None                                                         |
+| SQL deployment                      | None                                                         |
+| Online data preparation             | - For the cluster version, because the offline and online storage engines are separated, the online data has to be imported explicitly. <br />- For the standalone version, the same storage engine is used for both offline and online, the same data set can be shared between the offline and online feature extraction. |
+| Online real-time feature extraction | None                                                         |
 
-### 2.2 Execution Modes
+### 2.2. Execution Modes
 
 The cluster version supports the system variable `execute_mode`, which supports configuring the execution mode. In the cluster version, the `offline` and `online` execution modes correspond to the offline and online databases, respectively. For the standalone version, there is no such concept of "execution mode".
 
@@ -31,13 +28,13 @@ For the cluster version, you can execute the below command in CLI to set the exe
 ````
 
 
-### 2.3 Offline Task Management
+### 2.3. Offline Task Management
 
 Offline task management is a unique feature of the cluster version.
 
 The `LOAD DATA` and `SELECT INTO` command are blocking in the standalone version. However, the cluster version submits a task for those commands, and provides the commands ``SHOW JOBS`` and `SHOW JOB` to investigate the status of offline tasks. For details, see [Offline Task Management](../reference/sql/task_manage/reference.md).
 
-### 2.4 SQL Functionalities
+### 2.4. SQL
 
 The differences in SQL query capabilities supported by the cluster version and the standalone version include:
 
@@ -47,17 +44,12 @@ The differences in SQL query capabilities supported by the cluster version and t
 - Execution mode
   - The Standalone version of OpenMLDB does not support setting execution mode.
   - Clustered OpenMLDB can configure the execution mode: `SET @@execute_mode = ...`
-- Use of `CREATE TABLE`[create table statement](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)
-  - The standalone version of OpenMLDB does not support configuring distributed properties
-  - Cluster version of OpenMLDB supports configuring distributed properties: Including `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
-- Use of the `SELECT INTO` statement
-  - The output of `SELECT INTO` in the standalone version is a file.
-  - The output of `SELECT INTO` in the cluster version is a directory.
-- In the online execution mode of the cluster version, only simple single-table query statements are supported:
-  - Only supports column, expression, and single-row processing functions (Scalar Function) and their combined expression operations
-  - A single table query does not contain [GROUP BY clause](../reference/sql/dql/JOIN_CLAUSE.md), [HAVING clause](../reference/sql/dql/HAVING_CLAUSE.md) and [WINDOW subclause] sentence](../reference/sql/dql/WINDOW_CLAUSE.md).
-  - A single table query only involves the computation on a single table, but no [JOIN](../reference/sql/dql/JOIN_CLAUSE.md) based multiple table computation.
-
-### 2.5 SDK Support
-
-Currently, the Python and Java SDKs of OpenMLDB only support the cluster version, and the next version v0.5.0 will plan to support both the cluster and standalone versions.
+- Use of `CREATE TABLE`
+  - The cluster version supports the properties related to distributed computing and storage, including `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`; the standalone version does not support such properties.
+- Use of `SELECT INTO`
+  - The output of `SELECT INTO` for the standalone version is a file.
+  - The output of `SELECT INTO` for the cluster version is a directory.
+- In the online execution mode of the cluster version, only simple single-table based query statements are supported:
+  - It only supports column, expression, and single-row processing functions (scalar functions) and their combined expression operations
+  - A single table query does not contain [GROUP BY clause](../reference/sql/dql/JOIN_CLAUSE.md), [HAVING clause](../reference/sql/dql/HAVING_CLAUSE.md) and [WINDOW sub-clause](../reference/sql/dql/WINDOW_CLAUSE.md).
+  - A single table query only involves the query on a single table, but no [JOIN](../reference/sql/dql/JOIN_CLAUSE.md) based multiple table computation.
