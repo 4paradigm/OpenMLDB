@@ -628,9 +628,9 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
         const Row& row, const Row& parameter,
         std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<TableHandler>> union_segments(inputs_cnt_);
+        std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
         if (!windows_gen_.empty()) {
-            for (size_t i = 0; i < inputs_cnt_; i++) {
+            for (size_t i = 0; i < union_inputs.size(); i++) {
                 union_segments[i] =
                     windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
             }
@@ -977,13 +977,17 @@ class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
                           bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ColumnRefNode* agg_col)
+                          const node::ExprNode* agg_col)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
           func_(func),
-          agg_col_(agg_col) {}
+          agg_col_(agg_col) {
+    if (agg_col_->GetExprType() == node::kExprColumnRef) {
+        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+    }
+}
 
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
@@ -1016,7 +1020,8 @@ class RequestAggUnionRunner : public Runner {
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
     AggType agg_type_;
-    const node::ColumnRefNode* agg_col_ = nullptr;
+    const node::ExprNode* agg_col_ = nullptr;
+    std::string agg_col_name_;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
 
@@ -1513,7 +1518,7 @@ class RunnerBuilder {
         std::string index);
     ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
-    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);
+    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);  // NOLINT
 };
 
 class RunnerContext {

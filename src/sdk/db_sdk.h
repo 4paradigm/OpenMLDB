@@ -86,11 +86,11 @@ class DBSDK {
     std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db, const std::string& sp_name,
                                                                    std::string* msg);
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
-    virtual bool TriggerNotify() const = 0;
-    virtual bool GlobalVarNotify() const = 0;
+    virtual bool TriggerNotify(::openmldb::type::NotifyType type) const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
-    bool RegisterExternalFun(const ::openmldb::common::ExternalFun& fun);
+
+    bool RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun);
     bool RemoveExternalFun(const std::string& name);
 
  protected:
@@ -100,6 +100,7 @@ class DBSDK {
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
 
+    std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
 
  protected:
@@ -112,7 +113,7 @@ class DBSDK {
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> table_to_tablets_;
 
     ::hybridse::vm::Engine* engine_ = nullptr;
-    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
+    std::map<std::string, std::shared_ptr<openmldb::common::ExternalFun>> external_fun_;
 
  private:
     // get/set op should be atomic(actually no reset now)
@@ -127,13 +128,14 @@ class ClusterSDK : public DBSDK {
     ~ClusterSDK() override;
     bool Init() override;
     bool IsClusterMode() const override { return true; }
-    bool TriggerNotify() const override;
-    bool GlobalVarNotify() const override;
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
     const ClusterOptions& GetClusterOptions() const { return options_; }
 
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
+
+    void RefreshExternalFun(const std::vector<std::string>& funs);
 
  protected:
     bool BuildCatalog() override;
@@ -167,14 +169,20 @@ class StandAloneSDK : public DBSDK {
     zk::ZkClient* GetZkClient() override { return nullptr; }
 
     bool IsClusterMode() const override { return false; }
-
-    bool TriggerNotify() const override { return false; }
+    // kTable for normal table and kGlobalVar for global var table, return true directly in standalone
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override {
+        if (type == ::openmldb::type::kTable) {
+            return true;
+        } else if (type == ::openmldb::type::kGlobalVar) {
+            return true;
+        }
+        DLOG(ERROR) << "unsupport notify type";
+        return false;
+    }
 
     const std::string& GetHost() const { return host_; }
 
     int GetPort() const { return port_; }
-
-    bool GlobalVarNotify() const override { return true; }
 
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.

@@ -123,11 +123,11 @@ std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
 }
 
 void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
-    table_.emplace_back(std::make_pair(key, row));
+    table_.emplace_back(key, row);
 }
 
 void MemTimeTableHandler::AddFrontRow(const uint64_t key, const Row& row) {
-    table_.emplace_front(std::make_pair(key, row));
+    table_.emplace_front(key, row);
 }
 void MemTimeTableHandler::PopBackRow() { table_.pop_back(); }
 

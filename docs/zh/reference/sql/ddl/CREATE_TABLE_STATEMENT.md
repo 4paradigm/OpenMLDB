@@ -406,8 +406,9 @@ TableOptions
 
 TableOptionItem
 						::= PartitionNumOption
-								|ReplicaNumOption
-								|DistributeOption
+						    | ReplicaNumOption
+						    | DistributeOption
+						    | StorageModeOption
 								
 -- PartitionNum
 PartitionNumOption
@@ -428,24 +429,59 @@ LeaderEndpoint
 FollowerEndpointList
 						::= '[' Endpoint (',' Endpoint)* ']'
 Endpoint
-				::= string_literals		
+				::= string_literals
+
+-- StorageModeOption
+StorageModeOption
+						::= 'STORAGE_MODE' '=' StorageMode
+
+StorageMode
+						::= 'Memory'
+						    | 'HDD'
+						    | 'SSD'
 ```
 
 
 
-| 配置项         | 描述                                                         | 用法示例                                                     |
-| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `PARTITIONNUM` | 配置表的分区数。OpenMLDB将表分为不同的分区块来存储。分区是OpenMLDB的存储、副本、以及故障恢复相关操作的基本单元。不显式配置时，`PARTITIONNUM`默认值为8。 | `OPTIONS (PARTITIONNUM=8)`                                   |
-| `REPLICANUM`   | 配置表的副本数。请注意，副本数只有在Cluster OpenMLDB中才可以配置。 | `OPTIONS (REPLICANUM=3)`                                     |
-| `DISTRIBUTION` | 配置分布式的节点endpoint配置。一般包含一个Leader节点和若干follower节点。`(leader, [follower1, follower2, ..])`。不显式配置是，OpenMLDB会自动的根据环境和节点来配置`DISTRIBUTION`。 | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
+| 配置项            | 描述                                                                                                                                                               | 用法示例                                                                          |
+|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `PARTITIONNUM` | 配置表的分区数。OpenMLDB将表分为不同的分区块来存储。分区是OpenMLDB的存储、副本、以及故障恢复相关操作的基本单元。不显式配置时，`PARTITIONNUM`默认值为8。                                                                      | `OPTIONS (PARTITIONNUM=8)`                                                    |
+| `REPLICANUM`   | 配置表的副本数。请注意，副本数只有在Cluster OpenMLDB中才可以配置。                                                                                                                        | `OPTIONS (REPLICANUM=3)`                                                      |
+| `DISTRIBUTION` | 配置分布式的节点endpoint配置。一般包含一个Leader节点和若干follower节点。`(leader, [follower1, follower2, ..])`。不显式配置是，OpenMLDB会自动的根据环境和节点来配置`DISTRIBUTION`。                               | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
+| `STORAGE_MODE` | 表的存储模式，支持的模式为`Memory`、`HDD`或`SSD`。不显式配置时，默认为`Memory`。<br/>如果需要支持非`Memory`模式的存储模式，`tablet`需要额外的配置选项，具体可参考[tablet配置文件 conf/tablet.flags](../../../deploy/conf.md)。 | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
-##### Example: 创建一张带表，配置分片数为8，副本数为3（例子需要补充完整）@denglong需要提供一个带例子以及desc table的结果
+##### 磁盘表（`STORAGE_MODE` == `HDD`|`SSD`）与内存表（`STORAGE_MODE` == `Memory`）区别
+- 目前磁盘表不支持GC操作
+- 磁盘表插入数据，同一个索引下如果（`key`, `ts`）相同，会覆盖老的数据；内存表则会插入一条新的数据
+- 磁盘表不支持`addindex`和`deleteindex`操作，所以创建磁盘表的时候需要定义好所有需要的索引
+（`deploy`命令会自动添加需要的索引，所以对于磁盘表，如果创建的时候缺失对应的索引，则`deploy`会失败）
+
+##### Example: 创建一张带表，配置分片数为8，副本数为3，存储模式为HDD
 
 ```sql
 USE db1;
 
-CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time)) OPTIONS(partitionnum=8, replicanum=3);
+CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time)) OPTIONS(partitionnum=8, replicanum=3, storage_mode='HDD');
 --SUCCEED: Create successfully
+
+DESC t1;
+--- ---------- ----------- ------ ----------
+#   Field      Type        Null   Default
+ --- ---------- ----------- ------ ---------
+  1   col0       Varchar     YES
+  2   col1       Int         YES
+  3   std_time   Timestamp   YES
+ --- ---------- ----------- ------ ---------
+ --- -------------------- ------ ---------- ------ ---------------
+  #   name                 keys   ts         ttl    ttl_type
+ --- -------------------- ------ ---------- ------ ---------------
+  1   INDEX_0_1651143735   col1   std_time   0min   kAbsoluteTime
+ --- -------------------- ------ ---------- ------ ---------------
+ --------------
+  storage_mode
+ --------------
+  HDD
+ --------------
 ```
 
 ## 相关SQL

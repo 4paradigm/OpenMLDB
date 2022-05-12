@@ -1,4 +1,4 @@
-# SELECT INTO语句
+# SELECT INTO
 
 ## Syntax
 

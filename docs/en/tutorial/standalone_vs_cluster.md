@@ -22,14 +22,19 @@ The cluster version and the standalone version have their own deployment methods
 
 ### 2.2 Execution Modes
 
-The cluster version supports the system variable `execute_mode`, which supports configuring the execution mode. In the cluster version, the `offline` and `online` execution modes correspond to the offline and online databases, respectively. For the standalone version, there is no such a concept of "execution mode".
+The cluster version supports the system variable `execute_mode`, which supports configuring the execution mode. In the cluster version, the `offline` and `online` execution modes correspond to the offline and online databases, respectively. For the standalone version, there is no such concept of "execution mode".
 
-For the cluster verion, you can execute the below command in CLI to set the execution mode:
+For the cluster version, you can execute the below command in CLI to set the execution mode:
 
 ```sql
 > SET @@execute_mode = "offline" | "online"
-````
+```
 
+In offline execution mode, it is asynchronous by default. We can set as synchronous so that the command will be blocked util the job has been finished.
+
+```sql
+set @@sync_job = true;
+```
 
 ### 2.3 Offline Task Management
 
@@ -42,14 +47,14 @@ The `LOAD DATA` and `SELECT INTO` command are blocking in the standalone version
 The differences in SQL query capabilities supported by the cluster version and the standalone version include:
 
 - [Offline task management statement](../reference/sql/task_manage/reference.md)
-  - Standalone version of OpenMLDB does not support
+  - Standalone version of OpenMLDB is not supported
   - The cluster version of OpenMLDB supports offline task management statements, including: `SHOW JOBS`, `SHOW JOB`, etc.
 - Execution mode
   - The Standalone version of OpenMLDB does not support setting execution mode.
   - Clustered OpenMLDB can configure the execution mode: `SET @@execute_mode = ...`
-- Use of `CREAT TABLE`[create table statement](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)
+- Use of `CREATE TABLE`[create table statement](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)
   - The standalone version of OpenMLDB does not support configuring distributed properties
-  - Cluster version of OpenMLDB supports configuring distributed properties: including `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
+  - Cluster version of OpenMLDB supports configuring distributed properties: Including `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
 - Use of the `SELECT INTO` statement
   - The output of `SELECT INTO` in the standalone version is a file.
   - The output of `SELECT INTO` in the cluster version is a directory.

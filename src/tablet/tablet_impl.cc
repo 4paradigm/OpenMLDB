@@ -190,7 +190,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
         if (!ok) {
-            PDLOG(WARNING, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
+            PDLOG(ERROR, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
             return false;
         }
         startup_mode_ = ::openmldb::type::StartupMode::kCluster;
@@ -210,76 +210,84 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
     std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
     if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
-        LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
+        LOG(ERROR) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
         return false;
     }
     std::set<std::string> file_compression_set{"off", "zlib", "lz4"};
     if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
-        LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
+        LOG(ERROR) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
         return false;
     }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
-        PDLOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
+        PDLOG(ERROR, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
         return false;
     }
 
     if (FLAGS_db_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
-            PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
+            PDLOG(ERROR, "fail to create db root path %s", FLAGS_db_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as db_root_path is not set");
+        PDLOG(ERROR, "db_root_path is required");
+        return false;
     }
 
     if (FLAGS_ssd_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
-            PDLOG(WARNING, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
+            PDLOG(ERROR, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as ssd_root_path is not set");
+        PDLOG(WARNING, "ssd_root_path is not set");
     }
 
     if (FLAGS_hdd_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
-            PDLOG(WARNING, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
+            PDLOG(ERROR, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as hdd_root_path is not set");
+        PDLOG(WARNING, "hdd_root_path is not set");
     }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_db_root_path != "" && FLAGS_recycle_bin_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
-            return false;
+    if (FLAGS_recycle_bin_enabled) {
+        // FLAGS_db_root_path is guaranteed to be not empty
+        if (FLAGS_recycle_bin_root_path != "") {
+            if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
+                PDLOG(ERROR, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
+                return false;
+            }
+        } else {
+            PDLOG(ERROR, "recycle_bin_root_path is not configured. Deleted table is not recycled");
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_root_path");
-    }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_ssd_root_path != "" && FLAGS_recycle_bin_ssd_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_ssd_root_path.c_str());
-            return false;
+        if (FLAGS_ssd_root_path != "") {
+            if (FLAGS_recycle_bin_ssd_root_path != "") {
+                if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
+                    PDLOG(ERROR, "fail to create recycle bin root path %s", FLAGS_recycle_bin_ssd_root_path.c_str());
+                    return false;
+                }
+            } else {
+                PDLOG(ERROR, "recycle_bin_ssd_root_path is not configured. Deleted table is not recycled.");
+            }
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_ssd_root_path");
-    }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_hdd_root_path != "" && FLAGS_recycle_bin_hdd_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_hdd_root_path.c_str());
-            return false;
+        if (FLAGS_hdd_root_path != "") {
+            if (FLAGS_recycle_bin_hdd_root_path != "") {
+                if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
+                    PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_hdd_root_path.c_str());
+                    return false;
+                }
+            } else {
+                PDLOG(ERROR, "recycle_bin_hdd_root_path is not configured. Deleted table is not recycled.");
+            }
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_hdd_root_path");
     }
 
     std::map<std::string, std::string> real_endpoint_map = {{endpoint, real_endpoint}};
     if (!catalog_->UpdateClient(real_endpoint_map)) {
-        PDLOG(WARNING, "update client failed");
+        PDLOG(ERROR, "update client failed");
         return false;
     }
 
@@ -773,6 +781,11 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         if (FLAGS_binlog_notify_on_put) {
             replicator->Notify();
         }
+    }
+    // update global var in standalone mode
+    if (!IsClusterMode() && table->GetDB() == openmldb::nameserver::INFORMATION_SCHEMA_DB &&
+        table->GetName() == openmldb::nameserver::GLOBAL_VARIABLES) {
+        UpdateGlobalVarTable();
     }
 }
 
@@ -1426,7 +1439,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     it = table->NewTraverseIterator(index);
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
-        response->set_msg("ts name not found, when create iterator");
+        response->set_msg("create iterator failed");
         return;
     }
     uint64_t last_time = 0;
@@ -1442,6 +1455,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         it->SeekToFirst();
     }
     std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
+    std::vector<std::string> key_seq;
     uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
@@ -1464,6 +1478,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         if (value_map.find(last_pk) == value_map.end()) {
             value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>()));
             value_map[last_pk].reserve(request->limit());
+            key_seq.emplace_back(last_pk);
         }
         openmldb::base::Slice value = it->GetValue();
         value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
@@ -1496,12 +1511,16 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
     uint32_t offset = 0;
-    for (const auto& kv : value_map) {
-        for (const auto& pair : kv.second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", kv.first.c_str(), pair.first, pair.second.size());
-            ::openmldb::codec::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer,
+    for (const auto& key : key_seq) {
+        auto iter = value_map.find(key);
+        if (iter == value_map.end()) {
+            continue;
+        }
+        for (const auto& pair : iter->second) {
+            DEBUGLOG("encode pk %s ts %lu size %u", key.c_str(), pair.first, pair.second.size());
+            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer,
                                           offset);
-            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
+            offset += (4 + 4 + 8 + key.length() + pair.second.size());
         }
     }
     delete it;
@@ -1957,12 +1976,17 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
                 response->set_msg("table is leader");
                 return;
             }
-            PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
             table->SetLeader(true);
             replicator->SetRole(ReplicatorRole::kLeaderNode);
             if (!zk_cluster_.empty()) {
                 replicator->SetLeaderTerm(request->term());
             }
+        }
+        PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
+        if (catalog_->AddTable(*(table->GetTableMeta()), table)) {
+            LOG(INFO) << "add table " << table->GetName() << " to catalog with db " << table->GetDB();
+        } else {
+            LOG(WARNING) << "fail to add table " << table->GetName() << " to catalog with db " << table->GetDB();
         }
         if (replicator->AddReplicateNode(real_ep_map) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
@@ -1980,17 +2004,22 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
             replicator->AddReplicateNode(r_real_ep_map, e.tid());
         }
     } else {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        if (!table->IsLeader()) {
-            PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kOk);
-            response->set_msg("table is follower");
-            return;
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            if (!table->IsLeader()) {
+                PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
+                response->set_code(::openmldb::base::ReturnCode::kOk);
+                response->set_msg("table is follower");
+                return;
+            }
+            replicator->DelAllReplicateNode();
+            replicator->SetRole(ReplicatorRole::kFollowerNode);
+            table->SetLeader(false);
         }
-        replicator->DelAllReplicateNode();
-        replicator->SetRole(ReplicatorRole::kFollowerNode);
-        table->SetLeader(false);
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
+        if (!table->GetDB().empty()) {
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+        }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -2364,9 +2393,6 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
-            } else {
-                PDLOG(WARNING, "can not get all table status now for disktable. tid %u, pid %u", request->tid(),
-                      request->pid());
             }
         }
     }
@@ -3036,6 +3062,38 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
         ::openmldb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
         if (snapshot->Recover(table, snapshot_offset) &&
             binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
+            // recover aggregator if exists
+            std::string aggr_path = GetDBPath(db_root_path, tid, pid) + "/aggr_info.txt";
+            if (::openmldb::base::IsExists(aggr_path)) {
+                int fd = open(aggr_path.c_str(), O_RDONLY);
+                ::openmldb::api::CreateAggregatorRequest request;
+                if (fd < 0) {
+                    PDLOG(ERROR, "open file failed: [%s] ", aggr_path.c_str());
+                } else {
+                    google::protobuf::io::FileInputStream fileInput(fd);
+                    fileInput.SetCloseOnDelete(true);
+                    if (!google::protobuf::TextFormat::Parse(&fileInput, &request)) {
+                        PDLOG(WARNING, "parse create aggregator meta failed");
+                    } else {
+                        std::string msg;
+                        bool ok = CreateAggregatorInternal(&request, msg);
+                        if (!ok) {
+                            PDLOG(WARNING, "create aggregator failed. msg %s", msg.c_str());
+                        }
+                    }
+                }
+            } else {
+                // init aggregator related to base table if need.
+                auto aggrs = GetAggregators(tid, pid);
+                if (aggrs != nullptr) {
+                    for (auto& aggr : *aggrs) {
+                        if (!aggr->Init(replicator)) {
+                            PDLOG(WARNING, "aggregator init failed");
+                        }
+                    }
+                }
+            }
+
             table->SetTableStat(::openmldb::storage::kNormal);
             replicator->SetOffset(latest_offset);
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
@@ -3792,17 +3850,15 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
     if (!table_meta->db().empty() && table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
-        bool ok = catalog_->AddTable(*table_meta, table);
-        engine_->ClearCacheLocked(table_meta->db());
-        if (ok) {
+        if (catalog_->AddTable(*table_meta, table)) {
             LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         }
+        engine_->ClearCacheLocked(table_meta->db());
 
-        // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
-        // if it is cluster mode, RefreshTableInfo will be triggered automatically
-        if (!IsClusterMode() && boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+        // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
+        if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
             RefreshAggrCatalog();
         }
     }
@@ -4152,27 +4208,34 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
-    // todo: should support distribute iterate
-    if (!GetClusterRouter()) return;
-    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
-
-    std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
-    std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
-    std::string sql = "select * from " + table;
-    hybridse::sdk::Status status;
-    auto rs = sr->ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
-    if (status.code != 0) {
-        LOG(ERROR) << "update global var table failed: " << status.msg;
+    auto table_handler = catalog_->GetTable(nameserver::INFORMATION_SCHEMA_DB, nameserver::GLOBAL_VARIABLES);
+    if (!table_handler) {
+        LOG(WARNING) << "fail to get table handler. db " << nameserver::INFORMATION_SCHEMA_DB <<
+            " table " << nameserver::GLOBAL_VARIABLES;
+        return;
+    }
+    auto it = table_handler->GetIterator();
+    if (!it) {
+        LOG(WARNING) << "fail to get full iterator. db " << nameserver::INFORMATION_SCHEMA_DB <<
+            " table " << nameserver::GLOBAL_VARIABLES;
         return;
     }
     auto old_global_var = std::atomic_load_explicit(&global_variables_, std::memory_order_relaxed);
     auto new_global_var = std::make_shared<std::map<std::string, std::string>>(*old_global_var);
     std::string key;
     std::string value;
-    while (rs->Next()) {
-        key = rs->GetStringUnsafe(0);
-        value = rs->GetStringUnsafe(1);
+    static ::hybridse::codec::RowView row_view(*(table_handler->GetSchema()));
+    it->SeekToFirst();
+    while (it->Valid()) {
+        auto row = it->GetValue();
+        const char* ch = nullptr;
+        uint32_t len = 0;
+        row_view.GetValue(row.buf(), 0, &ch, &len);
+        key.assign(ch, len);
+        row_view.GetValue(row.buf(), 1, &ch, &len);
+        value.assign(ch, len);
         (*new_global_var)[key] = value;
+        it->Next();
     }
     std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
     return;
@@ -4290,96 +4353,50 @@ void TabletImpl::RefreshTableInfo() {
 }
 
 bool TabletImpl::RefreshAggrCatalog() {
-    if (IsClusterMode()) {
-        if (GetClusterRouter()) {
-            auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
-            auto table_infos = sr->GetAggrTables();
-            catalog_->RefreshAggrTables(table_infos);
-            DLOG(INFO) << "Refresh agg catalog in cluster mode (size = " << table_infos.size() << ")";
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        std::string meta_db = nameserver::INTERNAL_DB;
-        std::string meta_table = nameserver::PRE_AGG_META_NAME;
-        std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
-        if (!table) {
-            PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
-            return false;
-        }
-        static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
-
-        auto it = table->GetIterator();
-        it->SeekToFirst();
-        ::hybridse::vm::AggrTableInfo table_info;
-        std::vector<::hybridse::vm::AggrTableInfo> table_infos;
-        while (it->Valid()) {
-            auto row = it->GetValue();
-            const char* str = nullptr;
-            uint32_t len = 0;
-
-            row_view.GetValue(row.buf(), 0, &str, &len);
-            table_info.aggr_table.assign(str, len);
-            row_view.GetValue(row.buf(), 1, &str, &len);
-            table_info.aggr_db.assign(str, len);
-            row_view.GetValue(row.buf(), 2, &str, &len);
-            table_info.base_db.assign(str, len);
-            row_view.GetValue(row.buf(), 3, &str, &len);
-            table_info.base_table.assign(str, len);
-            row_view.GetValue(row.buf(), 4, &str, &len);
-            table_info.aggr_func.assign(str, len);
-            row_view.GetValue(row.buf(), 5, &str, &len);
-            table_info.aggr_col.assign(str, len);
-            row_view.GetValue(row.buf(), 6, &str, &len);
-            table_info.partition_cols.assign(str, len);
-            row_view.GetValue(row.buf(), 7, &str, &len);
-            table_info.order_by_col.assign(str, len);
-            row_view.GetValue(row.buf(), 8, &str, &len);
-            table_info.bucket_size.assign(str, len);
-
-            table_infos.push_back(std::move(table_info));
-            it->Next();
-        }
-        catalog_->RefreshAggrTables(table_infos);
-        DLOG(INFO) << "Refresh agg catalog in standalone mode (size = " << table_infos.size() << ")";
-        return true;
-    }
-}
-
-bool TabletImpl::GetClusterRouter() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire)) return true;
-
-    PDLOG(INFO, "Init ClusterSDK in tablet server");
-    if (IsClusterMode()) {
-        ::openmldb::sdk::SQLRouterOptions copt;
-        copt.zk_cluster = zk_cluster_;
-        copt.zk_path = zk_path_;
-        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(copt);
-        if (sr) {
-            if (!sr->Init()) {
-                PDLOG(WARNING, "Fail to init sql cluster router");
-                return false;
-            }
-
-            ::hybridse::sdk::Status status;
-            sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-            if (!status.IsOK()) {
-                PDLOG(WARNING, "set online mode failed: %s ", status.msg);
-                return false;
-            } else {
-                DLOG(INFO) << "set online mode succeed";
-                std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
-                return true;
-            }
-        } else {
-            PDLOG(WARNING, "create sql router failed");
-            return false;
-        }
-    } else {
-        PDLOG(ERROR, "Un-support standalone mode for now");
+    std::string meta_db = nameserver::INTERNAL_DB;
+    std::string meta_table = nameserver::PRE_AGG_META_NAME;
+    std::shared_ptr<::hybridse::vm::TableHandler> table = catalog_->GetTable(meta_db, meta_table);
+    if (!table) {
+        PDLOG(WARNING, "%s.%s not found", meta_db, meta_table);
         return false;
     }
+    static ::hybridse::codec::RowView row_view(*(table->GetSchema()));
+    auto it = table->GetIterator();
+    if (!it) {
+        PDLOG(WARNING, "fail to get iterator. %s.%s", meta_db, meta_table);
+        return false;
+    }
+    it->SeekToFirst();
+    std::vector<::hybridse::vm::AggrTableInfo> table_infos;
+    while (it->Valid()) {
+        auto row = it->GetValue();
+        const char* str = nullptr;
+        uint32_t len = 0;
+        ::hybridse::vm::AggrTableInfo table_info;
+        row_view.GetValue(row.buf(), 0, &str, &len);
+        table_info.aggr_table.assign(str, len);
+        row_view.GetValue(row.buf(), 1, &str, &len);
+        table_info.aggr_db.assign(str, len);
+        row_view.GetValue(row.buf(), 2, &str, &len);
+        table_info.base_db.assign(str, len);
+        row_view.GetValue(row.buf(), 3, &str, &len);
+        table_info.base_table.assign(str, len);
+        row_view.GetValue(row.buf(), 4, &str, &len);
+        table_info.aggr_func.assign(str, len);
+        row_view.GetValue(row.buf(), 5, &str, &len);
+        table_info.aggr_col.assign(str, len);
+        row_view.GetValue(row.buf(), 6, &str, &len);
+        table_info.partition_cols.assign(str, len);
+        row_view.GetValue(row.buf(), 7, &str, &len);
+        table_info.order_by_col.assign(str, len);
+        row_view.GetValue(row.buf(), 8, &str, &len);
+        table_info.bucket_size.assign(str, len);
+
+        table_infos.emplace_back(std::move(table_info));
+        it->Next();
+    }
+    catalog_->RefreshAggrTables(table_infos);
+    LOG(INFO) << "Refresh agg catalog (size = " << table_infos.size() << ")";
     return true;
 }
 
@@ -4411,7 +4428,17 @@ void TabletImpl::SchedSyncDisk(uint32_t tid, uint32_t pid) {
 void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
-        replicator->DeleteBinlog();
+        // TODO(nauta): need better way to handle aggregator volatile status lost.
+        bool deleted = false;
+        replicator->DeleteBinlog(&deleted);
+        if (deleted) {
+            auto aggrs = GetAggregators(tid, pid);
+            if (aggrs) {
+                for (auto& aggr : *aggrs) {
+                    aggr->FlushAll();
+                }
+            }
+        }
         task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
 }
@@ -5695,22 +5722,76 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
 void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
                              ::openmldb::api::CreateAggregatorResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::string msg;
+
+    // persistent aggregator meta
+    std::string aggr_path;
+    std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
+    auto table_meta = aggr_table->GetTableMeta();
+    ::openmldb::common::StorageMode mode = table_meta->storage_mode();
+    bool ok = ChooseDBRootPath(request->aggr_table_tid(), request->aggr_table_pid(), mode, aggr_path);
+    if (!ok) {
+        response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
+        response->set_msg("fail to get pre-aggr table db root path");
+        PDLOG(WARNING, "pre-aggr table db path is not found. tid %u, pid %u",
+              request->aggr_table_tid(), request->aggr_table_pid());
+        return;
+    }
+    std::string aggr_table_path = GetDBPath(aggr_path, request->aggr_table_tid(), request->aggr_table_pid());
+    if (!::openmldb::base::IsExists(aggr_table_path)) {
+        response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
+        response->set_msg("pre-aggr table db path is not exist");
+        return;
+    }
+    std::string aggr_info;
+    google::protobuf::TextFormat::PrintToString(*request, &aggr_info);
+    std::string aggr_info_path = aggr_table_path + "/aggr_info.txt";
+
+    FILE* fd_write = fopen(aggr_info_path.c_str(), "w");
+    if (fd_write == NULL) {
+        PDLOG(WARNING, "fail to open file %s. err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg("open aggr info file failed");
+        return;
+    }
+    if (fputs(aggr_info.c_str(), fd_write) == EOF) {
+        PDLOG(WARNING, "write error. path[%s], err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
+        fclose(fd_write);
+        return;
+    }
+    fclose(fd_write);
+
+    if (!CreateAggregatorInternal(request, msg)) {
+        response->set_code(::openmldb::base::ReturnCode::kError);
+        response->set_msg(msg.c_str());
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    return;
+}
+
+bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request,
+                                  std::string& msg) {
     const ::openmldb::api::TableMeta* base_meta = &request->base_table_meta();
     std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
     if (!aggr_table) {
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
-        return;
+        msg.assign("table is not exist");
+        return false;
     }
+    auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
     auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
-                                                            aggr_table, request->index_pos(),
+                                                            aggr_table, aggr_replicator, request->index_pos(),
                                                             request->aggr_col(), request->aggr_func(),
                                                             request->order_by_col(), request->bucket_size());
     if (!aggregator) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg("create aggregator failed");
-        return;
+        msg.assign("create aggregator failed");
+        return false;
+    }
+
+    auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
+    if (!aggregator->Init(base_replicator)) {
+        PDLOG(WARNING, "aggregator init failed");
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();
     {
@@ -5720,8 +5801,7 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
         }
         aggregators_[uid]->push_back(aggregator);
     }
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    return;
+    return true;
 }
 
 void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* controller,

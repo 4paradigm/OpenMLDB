@@ -239,7 +239,7 @@ SqlNode *NodeManager::MakeFrameBound(BoundType bound_type, int64_t offset) {
     FrameBound *node_ptr = new FrameBound(bound_type, offset, false);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
+FrameExtent *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
     FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start), dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }

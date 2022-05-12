@@ -6,6 +6,7 @@
 .. toctree::
     :maxdepth: 1
 
-    openmldb_quickstart 
+    openmldb_quickstart
     java_sdk
     python_sdk
+    data_import_guide

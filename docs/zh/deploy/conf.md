@@ -1,4 +1,4 @@
-# 配置文件说明
+# 配置文件
 
 ## nameserver配置文件 conf/nameserver.flags
 
@@ -113,14 +113,28 @@
 #--io_pool_size=2
 # 执行删除表，发送snapshot, load snapshot等任务的线程池大小
 #--task_pool_size=8
-# 配置数据目录，多个磁盘使用英文符号, 隔开
---db_root_path=./db
-# 配置数据回收站目录，drop表的数据就会放在这里
---recycle_bin_root_path=./recycle
 # 配置是否要把表drop后数据放在recycle目录，默认是true
 #--recycle_bin_enabled=true
 # 配置recycle目录里数据的保存时间，如果超过这个时间就会删除对应的目录和数据。默认为0表示永远不删除, 单位是分钟
 #--recycle_ttl=0
+
+# 内存表数据文件路径
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--db_root_path=./db
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_root_path=./recycle
+#
+# HDD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--hdd_root_path=./db_hdd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_hdd_root_path=./recycle_hdd
+#
+# SSD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--ssd_root_path=./db_ssd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_ssd_root_path=./recycle_ssd
 
 # snapshot conf
 # 配置做snapshot的时间，配置为一天中的几点。如23就表示每天23点做snapshot
@@ -135,8 +149,10 @@
 #--snapshot_compression=off
 
 # garbage collection conf
-# 执行过期删除的时间间隔，单位是分钟
+# 执行内存表（即storage_mode=Memory）过期删除的时间间隔，单位是分钟
 --gc_interval=60
+# 执行磁盘表（即storage_mode=HDD/SSD）过期删除的时间间隔，单位是分钟
+--disk_gc_interval=60
 # 执行过期删除的线程池大小
 --gc_pool_size=2
 
@@ -156,7 +172,7 @@
 # 文件发送失败的重试等待时间，单位是毫秒
 #--retry_send_file_wait_time_ms=3000
 #
-# table conf
+# 内存表配置
 # 第一层跳表的最大高度
 #--skiplist_max_height=12
 # 第二层跳表的最大高度
@@ -191,3 +207,44 @@
 # 配置线程池大小
 #--thread_pool_size=16
 ```
+
+
+## TaskManager配置文件 conf/taskmanager.properties
+
+```
+# Server Config
+server.host=0.0.0.0
+server.port=9902
+server.worker_threads=4
+server.io_threads=4
+server.channel_keep_alive_time=1800
+prefetch.jobid.num=1
+job.log.path=./logs/
+external.function.dir=./udf/
+track.unfinished.jobs=true
+job.tracker.interval=30
+
+# OpenMLDB Config
+zookeeper.cluster=0.0.0.0:2181
+zookeeper.root_path=/openmldb
+zookeeper.session_timeout=5000
+zookeeper.connection_timeout=5000
+zookeeper.max_retries=10
+zookeeper.base_sleep_time=1000
+zookeeper.max_connect_waitTime=30000
+
+# Spark Config
+spark.home=
+spark.master=local
+spark.yarn.jars=
+spark.default.conf=
+spark.eventLog.dir=
+spark.yarn.maxAppAttempts=1
+batchjob.jar.path=
+namenode.uri=
+offline.data.prefix=file:///tmp/openmldb_offline_storage/
+hadoop.conf.dir=
+```
+
+* 如果没有配置`spark.home`，则需要在TaskManager运行的环境变量配置`SPARK_HOME`。
+* `spark.master`默认配置为`local`，可以配置为`local[*]`、`yarn`、`yarn-cluster`、`yarn-client`等。如果配置为Yarn集群模式，则需要修改`offline.data.prefix`配置为HDFS路径，避免保存离线文件到Yarn容器本地，同时需要配置环境变量`HADOOP_CONF_DIR`为Hadoop配置文件所在目录。

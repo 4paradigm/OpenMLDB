@@ -16,11 +16,10 @@
 
 package com._4paradigm.openmldb.sdk;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Schema {
-    private List<Column> columnList = new ArrayList<>();
+    private List<Column> columnList;
 
     public Schema(List<Column> columnList) {
         this.columnList = columnList;

@@ -37,7 +37,7 @@ jobs:
     runs-on: self-hosted
     if: github.repository == '4paradigm/OpenMLDB'
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.5
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF

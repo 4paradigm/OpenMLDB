@@ -27,17 +27,17 @@ import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
+import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import scala.Option;
-
-import java.util.Map;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
+    private static final Log logger = LogFactory.getLog(TaskManagerImpl.class);
 
-    private Map<String, String> functionMap = new ConcurrentHashMap<>();
     private volatile static ZKClient zkClient;
 
     static {
@@ -70,13 +70,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
                 try {
                     String value = zkClient.getNodeValue(funPath + "/" + name);
                     Common.ExternalFun fun = Common.ExternalFun.parseFrom(value.getBytes());
-                    functionMap.put(fun.getName(), value);
+
+                    String libraryFileName = fun.getFile().substring(fun.getFile().lastIndexOf("/") + 1);
+                    ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    logger.error("Fail to parse protobuf of function: " + name);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+            logger.error("Fail to init external function from ZooKeeper");
         }
     }
 
@@ -313,29 +317,26 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.CreateFunctionResponse CreateFunction(TaskManager.CreateFunctionRequest request) {
         Common.ExternalFun fun = request.getFun();
-        if (fun.getOfflineFile().isEmpty()) {
+        if (fun.getFile().isEmpty()) {
             return TaskManager.CreateFunctionResponse.newBuilder()
                     .setCode(StatusCode.FAILED)
-                    .setMsg("has not offline path")
+                    .setMsg("ExternalFun does not have the file path")
                     .build();
         }
-        String str = fun.toString();
-        if (!functionMap.containsKey(request.getFun().getName())) {
-            functionMap.put(fun.getName(), str);
+        String libraryFileName = fun.getFile().substring(fun.getFile().lastIndexOf("/") + 1);
+        try {
+            ExternalFunctionManager.addFunction(fun.getName(), libraryFileName);
+        } catch (Exception e) {
+            return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage())
+                    .build();
         }
+
         return TaskManager.CreateFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 
     @Override
     public TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request) {
-        if (functionMap.containsKey(request.getName())) {
-            functionMap.remove(request.getName());
-        } else if (!request.getIfExists()) {
-            return TaskManager.DropFunctionResponse.newBuilder()
-                    .setCode(StatusCode.FAILED)
-                    .setMsg(request.getName() + " is not exist")
-                    .build();
-        }
+        ExternalFunctionManager.dropFunction(request.getName());
         return TaskManager.DropFunctionResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }
 

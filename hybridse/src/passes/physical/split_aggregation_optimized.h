@@ -31,8 +31,8 @@ class SplitAggregationOptimized : public TransformUpPysicalPass {
 
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool SplitProjects(vm::PhysicalAggrerationNode* in, PhysicalOpNode** output);
-    bool IsSplitable(vm::PhysicalAggrerationNode* op);
+    bool SplitProjects(vm::PhysicalAggregationNode* in, PhysicalOpNode** output);
+    bool IsSplitable(vm::PhysicalAggregationNode* op);
 
     std::set<std::string> long_windows_;
 };

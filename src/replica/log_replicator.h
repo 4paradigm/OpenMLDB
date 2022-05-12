@@ -73,7 +73,7 @@ class LogReplicator {
 
     bool RollWLogFile();
 
-    void DeleteBinlog();
+    void DeleteBinlog(bool* deleted = NULL);
 
     // add replication
     int AddReplicateNode(const std::map<std::string, std::string>& real_ep_map);
@@ -107,6 +107,8 @@ class LogReplicator {
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);  // NOLINT
 
     bool DelAllReplicateNode();
+
+    const std::string& GetLogPath() {return log_path_;}
 
  private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);

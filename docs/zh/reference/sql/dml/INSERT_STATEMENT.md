@@ -1,6 +1,6 @@
-# 插入语句
+# INSERT
 
-OpenMLDB支持单行和多行插入语句
+OpenMLDB 支持单行和多行插入语句
 
 ## syntax
 

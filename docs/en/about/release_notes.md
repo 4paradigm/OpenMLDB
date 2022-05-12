@@ -1,4 +1,44 @@
-# v0.4.x Release Notes
+# Release Notes
+
+## v0.5.0 Release Notes
+
+### Highlights
+
+- We have introduced an important performance optimization technique of pre-aggregation, which can significantly improve the performance for a query with time windows containing massive amount of rows, e.g., a few millions. (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
+- We have added a new storage engine that supports persistent storage (such as HDD and SSD) for the online SQL engine. Such a storage engine is helpful when a user wants to reduce the cost with acceptable performance degradation. (#1483 @Leowner)
+- We have supported C/C++ based User-Defined Functions (UDFs) with dynamic registration to enhance the development experience.  (#1509 #1733 #1700 @dl239 @tobegit3hub)
+
+### Other Features
+
+- Enhance the OpenMLDB Prometheus exporter ( #1584, #1645, #1754 @aceforeverd )
+- Support collecting statistics of query response time for online queries ( #1497, #1521 @aceforeverd )
+- Support new SQL commands: `SHOW COMPONENTS`, `SHOW TABLE STATUS` (#1380 #1431 #1704 @aceforeverd)
+- Support setting global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
+- Support reading Spark configuration files from the CLI (#1600 @tobegit3hub)
+- Support using multiple threads for the Spark local mode (#1675 @tobegit3hub)
+- Enhance the performance of join by using the Spark's native expression (#1502 tobegit3hub)
+- Support the validation for TaskManager configuration (#1262 @tobegit3hub)
+- Support tracking unfinished jobs in the TaskManager (#1474 @tobegit3hub)
+- Other minor features (#1601 @dl239; #1574 @vagetablechicken; #1546 @keyu813; #1729 @vagetablechicken; #1460 @tobegit3hub)
+
+### Bug Fixes
+
+- Incorrect results when the order of conditions specified in `where` is different from that of the index (#1709 @aceforeverd)
+- Incorrect results of `lag`/`at`/`lead` under certain circumstances (#1605 #1739 @aceforeverd)
+- Memory leakage in `zk_client` (#1660 @wuxiaobai24)
+- No catalog update if the role of a tablet is changed (#1655 @dl239)
+- Related bugs about `UnsafeRow` for the offline engine (#1298, #1312, #1326, #1362, #1637, #1381, #1731 @tobegit3hub)
+- Incorrect results after adding a new index in the standalone mode (#1721 @keyu813)
+- Incorrect results of `SHOW JOBS` under certain circumstances (#1453 @tobegit3hub)
+- Incorrect results of the date columns with `UnsafeRowOpt`(#1469 @tobegit3hub)
+- Other minor bug fixes (#1698 @kfiring; #1651 @kutlayacar; #1621 @KaidoWang; #1150, #1243 @tobegit3hub; )
+
+### Code Refactoring
+
+#1616 @dl239; #1743 @zjx1319
+
+
+
 
 ## v0.4.4 Release Notes
 
@@ -22,6 +62,8 @@
 ### Acknowledgement
 We appreciate the contribution to this release from all of our contributors, especially those from the community who are not from 4Paradigm's core OpenMLDB team, including @hezhaozhao-git @HuilinWu2 @keyu813 @aimanfatima @L-Y-L @Stevinson . We are looking forward to your contribution!
 
+
+
 ## v0.4.3 Release Notes
 ### Features
 
@@ -33,6 +75,8 @@ We appreciate the contribution to this release from all of our contributors, esp
 - `max_where` and `min_where` results are incorrect if there is no rows matched. (#1403 @aceforeverd)
 - The `insert` and `select` execution of the standalone version fails. (#1426 @dl239)
 - Other minor bug fixes (#1379 @wuteek; #1384 jasleon)
+
+
 
 
 ## v0.4.2 Release Notes
@@ -58,6 +102,8 @@ We appreciate the contribution to this release from all of our contributors, esp
 - LAST JOIN may fail in the cluster version under certain circumstances. (#1226 @dl239)
 - Invalid SQL may run successfully. (#1208 @aceforeverd)
 
+
+
 ## v0.4.1 Release Notes
 ### Features
 - Improve CLI error messages and support the 'enable_trace' system variable (#1129 @jingchen2222)
@@ -69,6 +115,8 @@ We appreciate the contribution to this release from all of our contributors, esp
 - There are incorrect values for the column with the date type when loading data into an online table. (#1103 @yabg-shuai666)
 - Offline data import for the CSV format may cause incorrect results. (#1100 @yabg-shuai666)
 - 'Offline path' cannot be displayed after importing offline data. (#1172 @vagetablechicken)
+
+
 
 ## v0.4.0 Release Notes
 

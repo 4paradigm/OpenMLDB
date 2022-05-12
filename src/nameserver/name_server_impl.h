@@ -677,7 +677,8 @@ class NameServerImpl : public NameServer {
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
                           uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
-    void NotifyTableChanged();
+    // kTable for normal table and kGlobalVar for global var table
+    void NotifyTableChanged(::openmldb::type::NotifyType type);
     void DeleteDoneOP();
     void UpdateTableStatus();
     int DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info);
@@ -776,8 +777,6 @@ class NameServerImpl : public NameServer {
 
     uint64_t GetTerm() const;
 
-    void NotifyGlobalVarChanged();
-
     // write deploy statistics into table
     void SyncDeployStats();
 
@@ -786,6 +785,8 @@ class NameServerImpl : public NameServer {
     bool GetSdkConnection();
 
     void FreeSdkConnection();
+
+    bool RecoverExternalFunction();
 
  private:
     std::mutex mu_;

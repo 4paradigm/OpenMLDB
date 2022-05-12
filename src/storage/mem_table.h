@@ -46,31 +46,32 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
 
     ~MemTableWindowIterator() { delete it_; }
 
-    inline bool Valid() const {
+    bool Valid() const override {
         if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
             return false;
         }
         return true;
     }
 
-    inline void Next() {
+    void Next() override {
         it_->Next();
         record_idx_++;
     }
 
-    inline const uint64_t& GetKey() const { return it_->GetKey(); }
+    const uint64_t& GetKey() const override { return it_->GetKey(); }
 
     // TODO(wangtaize) unify the row object
-    inline const ::hybridse::codec::Row& GetValue() {
+    const ::hybridse::codec::Row& GetValue() override {
         row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
         return row_;
     }
-    inline void Seek(const uint64_t& key) { it_->Seek(key); }
-    inline void SeekToFirst() {
+
+    void Seek(const uint64_t& key) override { it_->Seek(key); }
+    void SeekToFirst() override {
         record_idx_ = 1;
         it_->SeekToFirst();
     }
-    inline bool IsSeekable() const { return true; }
+    bool IsSeekable() const override { return true; }
 
  private:
     TimeEntries::Iterator* it_;
@@ -116,22 +117,20 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint32_t ts_idx_;
 };
 
-class MemTableTraverseIterator : public TableIterator {
+class MemTableTraverseIterator : public TraverseIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                              uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
     ~MemTableTraverseIterator() override;
     inline bool Valid() override;
     void Next() override;
+    void NextPK() override;
     void Seek(const std::string& key, uint64_t time) override;
     openmldb::base::Slice GetValue() const override;
     std::string GetPK() const override;
     uint64_t GetKey() const override;
     void SeekToFirst() override;
     uint64_t GetCount() const override;
-
- private:
-    void NextPK();
 
  private:
     Segment** segments_;
@@ -175,7 +174,7 @@ class MemTable : public Table {
 
     TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) override;
 
-    TableIterator* NewTraverseIterator(uint32_t index) override;
+    TraverseIterator* NewTraverseIterator(uint32_t index) override;
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
 

@@ -51,6 +51,7 @@ public class TaskManagerConfig {
     public static String SPARK_HOME;
     public static int PREFETCH_JOBID_NUM;
     public static String JOB_LOG_PATH;
+    public static String EXTERNAL_FUNCTION_DIR;
     public static boolean TRACK_UNFINISHED_JOBS;
     public static int JOB_TRACKER_INTERVAL;
     public static String SPARK_DEFAULT_CONF;
@@ -94,10 +95,12 @@ public class TaskManagerConfig {
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
         SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
-        if (!Arrays.asList("local", "yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER) ) {
-            throw new ConfigException("spark.master", "should be one of local, yarn, yarn-cluster or yarn-client");
+        if (!SPARK_MASTER.startsWith("local")) {
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            }
         }
-        boolean isLocal = SPARK_MASTER.equals("local");
+        boolean isLocal = SPARK_MASTER.startsWith("local");
         boolean isYarn = SPARK_MASTER.startsWith("yarn");
         boolean isYarnCluster = SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
 
@@ -149,6 +152,21 @@ public class TaskManagerConfig {
                 boolean created = directory.mkdirs();
                 if (created) {
                     throw new ConfigException("job.log.path", "fail to create log path");
+                }
+            }
+        }
+
+        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./udf/");
+        if (EXTERNAL_FUNCTION_DIR.isEmpty()) {
+            throw new ConfigException("external.function.dir", "should not be null");
+        } else {
+            File directory = new File(EXTERNAL_FUNCTION_DIR);
+            if (!directory.exists()) {
+                logger.info("The external function dir does not exist, try to create directory: "
+                        + EXTERNAL_FUNCTION_DIR);
+                boolean created = directory.mkdirs();
+                if (created) {
+                    logger.warn("Fail to create external function directory: " + EXTERNAL_FUNCTION_DIR);
                 }
             }
         }

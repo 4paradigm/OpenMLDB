@@ -2,19 +2,20 @@
 
 ## 概述
 
-OpenMLDB 的监控方案设计详见 [Online Monitoring RPC](https://docs.google.com/document/d/1O-JL-slBneDnpVuR3_FORQ6kPGdfwn7QmdmSTxv2eXo/edit?usp=sharing)
+OpenMLDB 的监控方案概述如下：
 
 - 使用 [prometheus](https://prometheus.io) 收集监控指标，[grafana](https://grafana.com/oss/grafana/) 可视化指标
 - OpenMLDB exporter 暴露数据库级别和组件级别的监控指标
 - 节点内部使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
 
-源代码路径: [OpenMLDB/monitoring](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)
-
 ## 安装运行 OpenMLDB exporter
 
 ### 简介
 
-OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会跟随 OpenMLDB 版本更新发布到 PyPI，生产使用可以直接通过 pip 安装最新发布的 `openmldb_exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)。
+[![PyPI](https://img.shields.io/pypi/v/openmldb-exporter?label=openmldb-exporter)](https://pypi.org/project/openmldb-exporter/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter?style=flat-square)
+
+OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会跟随 OpenMLDB 版本更新发布到 PyPI，生产使用可以直接通过 pip 安装最新发布的 `openmldb-exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring)。
 
 ### 环境要求
 
@@ -44,24 +45,29 @@ OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过�
    OpenMLDB exporter 要求 OpenMLDB 启动时开启 server status 功能, 即启动时添加启动参数 `--enable_status_service=true`, 请确认安装目录下的 `conf/(tablet|nameserver).flags` 中有 `--enable_status_service=true`。
 
    默认启动脚本 `bin/start.sh` 开启了 server status, 不需要额外配置。
+   
+3. 注意：合理选择 OpenMLDB 各组件和 OpenMLDB exporter, 以及 prometheus, grafana 的绑定 IP 地址，确保 grafana 可以访问到 prometheus, 并且 prometheus，OpenMLDB exporter 和 OpenMLDB 各个组件之间可以相互访问。
+
 ### 部署 OpenMLDB exporter
 
-1. 从 PyPi 安装 openmldb_exporter
+1. 从 PyPi 安装 openmldb-exporter
 
    ```bash
-   pip install openmldb_exporter==0.5.0
+   pip install openmldb-exporter==0.5.0
    ```
 
 2. 运行
 
+   默认会安装一个可执行文件 `openmldb-exporter`, 确认 pip install path 在你的 $PATH 环境变量里面。
+
    ```bash
-   ./openmldb_exporter
+   openmldb-exporter
    ```
 
-   注意传入合适的参数，`./openmldb_exporter -h` 查看 help:
+   注意传入合适的参数，`openmldb-exporter -h` 查看 help:
 
    ```bash
-      usage: openmldb_exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
+      usage: openmldb-exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
                                [--web.telemetry-path WEB.TELEMETRY_PATH] [--config.zk_root CONFIG.ZK_ROOT]
                                [--config.zk_path CONFIG.ZK_PATH] [--config.interval CONFIG.INTERVAL]
       
@@ -126,7 +132,7 @@ cd node_exporter-1.3.1-*/
 如何安装部署 prometheus, grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。
 OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [OpenMLDB mixin](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring/openmldb_mixin/README.md)
 
-- prometheus_example.yml: prometheus 配置示例, 注意修改 ’node' 和 'openmldb_exporter' job 中的 target 地址
+- prometheus_example.yml: prometheus 配置示例, 注意修改 `node`, `openmldb_components` 和 `openmldb_exporter` job 中的 target 地址
 - openmldb_dashboard.json: OpenMLDB metrics 的 grafana dashboard 配置, 分为两步:
    1. 在 grafana data source 页面下，添加启动的 prometheus server 地址作为数据源
    2. 在 dashboard 浏览页面下，点击新建导入一个 dashboard, 上传该 json 配置文件

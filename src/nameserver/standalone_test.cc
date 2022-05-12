@@ -43,7 +43,6 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
-DECLARE_bool(enable_timeseries_table);
 
 using brpc::Server;
 using openmldb::tablet::TabletImpl;

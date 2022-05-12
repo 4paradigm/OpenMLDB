@@ -54,11 +54,11 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
         return false;
     }
 
-    auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
-    // TODO(zhanghao): we only support transform PhysicalAggrerationNode with one and only one window aggregation op
+    auto project_aggr_op = dynamic_cast<vm::PhysicalAggregationNode*>(project_op);
+    // TODO(zhanghao): we only support transform PhysicalAggregationNode with one and only one window aggregation op
     // we may remove this constraint in a later optimization
     if (!VerifySingleAggregation(project_op)) {
-        LOG(WARNING) << "we only support transform PhysicalAggrerationNode with one and only one window aggregation op";
+        LOG(WARNING) << "we only support transform PhysicalAggregationNode with one and only one window aggregation op";
         return false;
     }
 
@@ -88,7 +88,7 @@ bool LongWindowOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
     return true;
 }
 
-bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, int idx, PhysicalOpNode** output) {
+bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, int idx, PhysicalOpNode** output) {
     *output = in;
 
     if (in->producers()[0]->GetOpType() != vm::kPhysicalOpRequestUnion) {
@@ -104,7 +104,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
     auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
-    if (aggr_op->GetChildNum() != 1 || aggr_op->GetChild(0)->GetExprType() != node::kExprColumnRef) {
+    auto expr_type = aggr_op->GetChild(0)->GetExprType();
+    if (aggr_op->GetChildNum() != 1 || (expr_type != node::kExprColumnRef && expr_type != node::kExprAll)) {
         LOG(ERROR) << "Not support aggregation over multiple cols: " << ConcatExprList(aggr_op->children_);
         return false;
     }
@@ -131,10 +132,15 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
                 LOG(ERROR) << "OrderBy col is empty";
                 return false;
             }
+            auto col_ref = dynamic_cast<const node::ColumnRefNode*>(order->expr());
+            if (!col_ref) {
+                LOG(ERROR) << "OrderBy Col is not ColumnRefNode";
+                return false;
+            }
             if (order_col.empty()) {
-                order_col = order->expr()->GetExprString();
+                order_col = col_ref->GetColumnName();
             } else {
-                order_col = absl::StrCat(order_col, ",", order->expr()->GetExprString());
+                order_col = absl::StrCat(order_col, ",", col_ref->GetColumnName());
             }
         }
     }
@@ -205,7 +211,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggrerationNode* in, i
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
         req_union_op->output_request_row(), aggr_op->GetFnDef(),
-        dynamic_cast<node::ColumnRefNode*>(aggr_op->GetChild(0)));
+        aggr_op->GetChild(0));
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;
@@ -242,10 +248,19 @@ bool LongWindowOptimized::VerifySingleAggregation(vm::PhysicalProjectNode* op) {
 std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter) {
     std::string str = "";
     for (const auto expr : exprs) {
-        if (str.empty()) {
-            str = absl::StrCat(str, expr->GetExprString());
+        std::string expr_val;
+        if (expr->GetExprType() == node::kExprAll) {
+            expr_val = expr->GetExprString();
+        } else if (expr->GetExprType() == node::kExprColumnRef) {
+            expr_val = dynamic_cast<node::ColumnRefNode*>(expr)->GetColumnName();
         } else {
-            str = absl::StrCat(str, delimiter, expr->GetExprString());
+            LOG(ERROR) << "non support expr type in ConcatExprList";
+            return "";
+        }
+        if (str.empty()) {
+            str = absl::StrCat(str, expr_val);
+        } else {
+            str = absl::StrCat(str, delimiter, expr_val);
         }
     }
     return str;

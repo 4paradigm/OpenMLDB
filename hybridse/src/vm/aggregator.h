@@ -60,6 +60,10 @@ class BaseAggregator {
         return counter_ == 0;
     }
 
+    virtual void Reset() {
+        counter_ = 0;
+    }
+
  protected:
     type::Type type_;
     const Schema& output_schema_;
@@ -71,7 +75,7 @@ template <class T>
 class Aggregator : public BaseAggregator {
  public:
     Aggregator(type::Type type, const Schema& output_schema, T init_val = 0)
-        : BaseAggregator(type, output_schema), val_(init_val) {}
+        : BaseAggregator(type, output_schema), val_(init_val), init_val_(init_val) {}
 
     ~Aggregator() override {}
 
@@ -86,7 +90,15 @@ class Aggregator : public BaseAggregator {
     }
 
     Row Output() override {
-        return OutputInternal();
+        auto row = OutputInternal();
+        // reset the aggregator
+        Reset();
+        return row;
+    }
+
+    void Reset() override {
+        BaseAggregator::Reset();
+        val_ = init_val_;
     }
 
  protected:
@@ -188,6 +200,7 @@ class Aggregator : public BaseAggregator {
     }
 
     T val_ = 0;
+    T init_val_ = 0;
 };
 
 template <class T>
@@ -279,6 +292,11 @@ class AvgAggregator : public Aggregator<double> {
 
     type::Type GetRepType() const override {
         return type::kDouble;
+    }
+
+    void Reset() override {
+        Aggregator::Reset();
+        avg_ = 0;
     }
 
  private:

@@ -41,5 +41,12 @@ class TableIterator {
     virtual uint64_t GetCount() const { return 0; }
 };
 
+class TraverseIterator : public TableIterator {
+ public:
+    TraverseIterator() {}
+    virtual ~TraverseIterator() {}
+    virtual void NextPK() = 0;
+};
+
 }  // namespace storage
 }  // namespace openmldb

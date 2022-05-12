@@ -2,39 +2,39 @@
 
 Notice: The Java SDK currently only supports the cluster version, and the standalone version is planned to be supported in the next version v0.5.0.
 
-## 1. Java SDK package installation
+## 1. Java SDK Package Installation
 
-### Java SDK package installation on Linux
-configure maven pom
-
-```xml
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-jdbc</artifactId>
-    <version>0.4.3</version>
-</dependency>
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-native</artifactId>
-    <version>0.4.3</version>
-</dependency>
-```
-### Java SDK package installation on Mac
-configure maven pom
+### Java SDK Package Installation on Linux
+Configure maven pom
 
 ```xml
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.4.3</version>
+    <version>0.5.0</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.4.3-macos</version>
+    <version>0.5.0</version>
 </dependency>
 ```
-Notice: Since openmldb-native contains the C++ static library compiled by OpenMLDB, the default is the linux static library. On macOS, the version of the above openmldb-native needs to be changed to `0.4.3-macos`, and the version of openmldb-jdbc remains unchanged .
+### Java SDK Package Installation on Mac
+Configure maven pom
+
+```xml
+<dependency>
+    <groupId>com.4paradigm.openmldb</groupId>
+    <artifactId>openmldb-jdbc</artifactId>
+    <version>0.5.0</version>
+</dependency>
+<dependency>
+    <groupId>com.4paradigm.openmldb</groupId>
+    <artifactId>openmldb-native</artifactId>
+    <version>0.5.0-macos</version>
+</dependency>
+```
+Notice: Since openmldb-native contains the C++ static library compiled by OpenMLDB, the default is the linux static library. On macOS, the version of the above openmldb-native needs to be changed to `0.5.0-macos`, and the version of openmldb-jdbc remains unchanged .
 
 ## 2. Java SDK Quick Start
 
@@ -57,7 +57,7 @@ Next, create an Executor using SdkOption. SqlClusterExecutor is thread-safe to e
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-### 2.2 Create database
+### 2.2 Create Database
 
 Create a database using the `SqlClusterExecutor::createDB()` interface:
 
@@ -65,7 +65,7 @@ Create a database using the `SqlClusterExecutor::createDB()` interface:
 sqlExecutor.createDB("db_test");
 ```
 
-### 2.3 Create table
+### 2.3 Create Table
 
 Create a table using the `SqlClusterExecutor::executeDDL(db, createTableSql)` interface:
 
@@ -81,9 +81,9 @@ String createTableSql = "create table trans(c1 string,\n" +
 sqlExecutor.executeDDL("", createTableSql);
 ```
 
-### 2.4 Insert data into the table
+### 2.4 Insert Data into the Table
 
-#### 2.4.1 Insert data directly
+#### 2.4.1 Insert Data Directly
 
 The first step, use the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` interface to get the InsertPrepareStatement.
 
@@ -110,7 +110,7 @@ try {
 }
 ```
 
-#### 2.4.2 Use placeholder to execute insert statement
+#### 2.4.2 Use Placeholder to Execute Insert Statement
 
 The first step, use the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to get the InsertPrepareStatement.
 
@@ -141,7 +141,7 @@ try {
 }
 ```
 
-### 2.5 Execute SQL batch query
+### 2.5 Execute SQL Batch Query
 
 Use the `SqlClusterExecutor::executeSQL(selectSql)` interface to execute SQL batch query statements:
 
@@ -172,7 +172,7 @@ try {
 }
 ```
 
-### 2.6 SQL Queries in the request mode
+### 2.6 SQL Queries in the Request Mode
 
 The first step, use the `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` interface to get the RequestPrepareStatement.
 
@@ -238,7 +238,7 @@ try {
 }
 ```
 
-### 2.7 Delete table
+### 2.7 Delete Table
 
 Use the `SqlClusterExecutor::executeDDL(db, dropTableSql)` interface to delete a table:
 
@@ -247,7 +247,7 @@ String dropTableSql = "drop table trans;";
 sqlExecutor.executeDDL(db, dropTableSql);
 ```
 
-### 2.8 Delete database
+### 2.8 Delete Database
 
 Use the `SqlClusterExecutor::dropDB(db)` interface to drop the specified database:
 
@@ -255,7 +255,7 @@ Use the `SqlClusterExecutor::dropDB(db)` interface to drop the specified databas
 sqlExecutor.dropDB(db);
 ```
 
-## 3. A Complete Java SDK usage example
+## 3. A Complete Java SDK Usage Example
 
 ```java
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;

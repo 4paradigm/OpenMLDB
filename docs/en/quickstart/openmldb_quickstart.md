@@ -2,7 +2,7 @@
 
 This tutorial provides a quick start guide for OpenMLDB. Basic steps are: create database, import data, offline feature extraction, deploy SQL, online real-time feature extraction, the basic usage process of the standalone version of OpenMLDB and the cluster version of OpenMLDB is demonstrated.
 
-## 1. Environment and data preparation
+## 1. Environment and Data Preparation
 
 > :warning: docker engine version required >= 18.03
 
@@ -10,17 +10,17 @@ This tutorial is developed and deployed based on the OpenMLDB CLI, so first you 
 
 :bulb: To compile and install it yourself, you can refer to our [installation and deployment documentation](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/deploy/install_deploy.md).
 
-### 1.1 Mirror preparation
+### 1.1 Mirror Preparation
 
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.2 bash
+docker run -it 4pdosc/openmldb:0.5.0 bash
 ```
 
 :bulb: **After the container is successfully started, the subsequent commands in this tutorial are executed within the container by default. **
 
-### 1.2 Sample data
+### 1.2 Sample Data
 
 Download sample data
 
@@ -29,7 +29,7 @@ curl https://openmldb.ai/demo/data.csv --output ./data/data.csv
 curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 ```
 
-## 2. Quick start with the standalone version of OpenMLDB
+## 2. Quick Start with the Standalone Version of OpenMLDB
 
 ### 2.1 Standalone Server and Client
 
@@ -44,6 +44,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
+cd taxi-trip
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
@@ -51,13 +52,13 @@ The following screenshots show the correct execution of the above docker command
 
 ![image-20220111142406534](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/quickstart/images/cli.png)
 
-### 2.2 Basic usage process
+### 2.2 Basic Usage Process
 
 The workflow of the standalone version of OpenMLDB generally includes several stages: database and table establishment, data preparation, offline feature extraction, SQL solution online, and online real-time feature extraction.
 
 :bulb: Unless otherwise specified, the commands shown below are executed under the standalone version of OpenMLDB CLI by default (CLI commands start with the prompt `>` for distinction).
 
-#### 2.2.1 Create database and table
+#### 2.2.1 Create Database and Table
 
 ```sql
 > CREATE DATABASE demo_db;
@@ -65,7 +66,7 @@ The workflow of the standalone version of OpenMLDB generally includes several st
 > CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
-#### 2.2.2 Data preparation
+#### 2.2.2 Data Preparation
 
 Import the previously downloaded sample data (the saved data in [1.2 Sample Data](#1.2-Sample Data)) as training data for offline and online feature extraction.
 
@@ -95,7 +96,7 @@ Preview data
  ----- ---- ---- ---------- ----------- --------------- - -------------
 ```
 
-#### 2.2.3 Offline feature extraction
+#### 2.2.3 Offline Feature Extraction
 
 Execute SQL for feature extraction, and store the generated features in a file for subsequent model training.
 
@@ -103,7 +104,7 @@ Execute SQL for feature extraction, and store the generated features in a file f
 > SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 
-#### 2.2.4 SQL solution deploy
+#### 2.2.4 SQL Solution Deploy
 
 Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature extraction SQL solution.
 
@@ -133,7 +134,7 @@ After going online, you can view the deployed SQL solution through the command `
 
 Up to this point, you have completed all the development and deployment work based on OpenMLDB CLI, and have returned to the operating system command line.
 
-#### 2.2.6 Real-time feature extraction
+#### 2.2.6 Real-Time Feature Extraction
 
 Real-time online services can be provided through the following Web APIs:
 
@@ -155,13 +156,13 @@ The following is the expected return result for this query (the computed feature
 ```json
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
-\* The api server executes the request, which can support batch requests, and the "input" field supports arrays. The request extraction is performed separately for each line of input. For detailed parameter formats, see [RESTful API](../reference/rest_api.md).
+\* The API server executes the request, which can support batch requests, and the "input" field supports arrays. The request extraction is performed separately for each line of input. For detailed parameter formats, see [RESTful API](../reference/rest_api.md).
 
 \* For the description of the request result, see "3.3.8 Result description of real-time feature extraction" at the end of the article.
 
-## 3. Get started with cluster version of OpenMLDB
+## 3. Get Started with Cluster Version of OpenMLDB
 
-### 3.1 Cluster Edition preparation knowledge
+### 3.1 Cluster Edition Preparation Knowledge
 
 The biggest difference between the cluster version and the standalone version is mainly the following two points
 
@@ -183,14 +184,15 @@ The above differences will be demonstrated based on examples in the following tu
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-> ../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+cd taxi-trip
+../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 The following screenshot shows the screen after the cluster version of the OpenMLDB CLI is correctly started
 
 ![image-20220111141358808](https://github.com/4paradigm/openmldb-docs-zh/blob/28159f05d2903a9f96e78d3205bd8e9a2d7cd5c3/quickstart/images/cli_cluster.png)
 
-### 3.3 Basic usage process
+### 3.3 Basic Usage Process
 
 The workflow of the cluster version of OpenMLDB generally includes several stages: database and table creation, offline data preparation, offline feature extraction, SQL solution online, online data preparation, and online real-time feature extraction.
 
@@ -198,7 +200,7 @@ The cluster version of OpenMLDB needs to manage offline data and online data sep
 
 :bulb: Unless otherwise specified, the commands shown below are executed under the OpenMLDB CLI by default (the CLI command starts with a prompt `>` for distinction).
 
-#### 3.3.1 Create database and table
+#### 3.3.1 Create Database and Table
 
 ```sql
 > CREATE DATABASE demo_db;
@@ -228,7 +230,7 @@ Check out the datasheet:
  --- -------------------- ------ ---- ------ ------------- ----
 ```
 
-#### 3.3.2 Offline data preparation
+#### 3.3.2 Offline Data Preparation
 
 First, please switch to offline execution mode. In this mode, only offline data import/insert and query operations are processed.
 
@@ -244,7 +246,7 @@ Notice, the `LOAD DATA` command is non-blocking, and you can view the task progr
 
 To preview the data, you can also use the `SELECT` statement, but this command is also a non-blocking command in offline mode. You need to view the log for query results, which will not be expanded here.
 
-#### 3.3.3 Offline feature extraction
+#### 3.3.3 Offline Feature Extraction
 
 Execute SQL for feature extraction, and store the generated features in a file for subsequent model training.
 
@@ -256,7 +258,7 @@ Execute SQL for feature extraction, and store the generated features in a file f
 
 Notice, the `SELECT INTO` command in offline mode is non-blocking, and you can view the running progress through offline task management commands such as `SHOW JOBS`.
 
-#### 3.3.4 SQL solution online
+#### 3.3.4 SQL Solution Online
 
 Deploy the explored SQL solution online. Notice, the deployed online SQL solution needs to be consistent with the corresponding offline feature extraction SQL solution.
 
@@ -276,7 +278,7 @@ After going online, you can view the deployed SQL solution through the command `
 1 row in set
 ```
 
-#### 3.3.5 Online data preparation
+#### 3.3.5 Online Data Preparation
 
 First, switch to **Online** execution mode. In this mode, only online data import/insert and query operations are processed. Then in the online mode, import the previously downloaded sample data (downloaded in [1.2 Sample Data] (#1.2-Sample Data)) as online data for online feature extraction.
 
@@ -323,9 +325,9 @@ After waiting for the task to complete, preview the online data:
 
 Up to this point, you have completed all the development and deployment work based on the cluster version of OpenMLDB CLI, and have returned to the operating system command line.
 
-#### 3.3.7 Real-time feature extraction
+#### 3.3.7 Real-Time Feature Extraction
 
-Notice: warning:: According to the default deployment configuration, the http port for apiserver deployment is 9080.
+Notice: According to the default deployment configuration, the http port for apiserver deployment is 9080.
 
 Real-time online services can be provided through the following Web APIs:
 
@@ -349,7 +351,7 @@ The following is the expected return result for this query (the computed feature
 
 ```
 
-#### 3.3.8 Result description of real-time feature extraction
+#### 3.3.8 Result Description of Real-Time Feature Extraction
 
 Real-time request (deployment execution) is SQL execution in request mode. Unlike batch mode (batch mode), request mode will only perform SQL extractions on request rows. In the previous example, the POST input is used as the request line, assuming this line of data exists in the table demo_table1, and execute SQL on it:
 ```

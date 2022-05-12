@@ -45,7 +45,7 @@ class TestTimestampUdf extends SparkTestSuite {
       StructField("col1", TimestampType)))
 
     val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
-    t1.registerTempTable("t1")
+    t1.createOrReplaceTempView("t1")
     sess.registerTable("t1", t1)
 
     val sqlText = "SELECT col1, year(col1), month(col1), day(col1) FROM t1"
@@ -69,7 +69,7 @@ class TestTimestampUdf extends SparkTestSuite {
     ))
 
     val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
-    t1.registerTempTable("t1")
+    t1.createOrReplaceTempView("t1")
     sess.registerTable("t1", t1)
 
     val sqlText ="""

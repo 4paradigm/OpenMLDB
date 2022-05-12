@@ -272,12 +272,11 @@ public class PreparedStatement implements java.sql.PreparedStatement {
                 columnTypes.AddColumnType(types.get(i + 1));
             }
             this.currentRow = SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes);
-            // TODO(hw): check if null
+            if (this.currentRow == null) {
+        	throw new SQLException("fail to create sql request row from column types");
+            }
             this.currentSchema = this.currentRow.GetSchema();
             this.orgTypes = this.types;
-        }
-        if (this.currentRow == null) {
-            throw new SQLException("fail to build data with null row");
         }
         if (this.currentSchema == null) {
             throw new SQLException("fail to build data with null schema");
@@ -670,9 +669,8 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
+        // ResultSet we got is full, this config is unused. But do not throw exception.
     }
 
     @Override

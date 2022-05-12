@@ -4,39 +4,29 @@
 
 ## 1. 环境和数据准备
 
-:::{important}
+```{important}
 Docker engine版本需求 >= 18.03
-:::
+```
 
-本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用
+本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用。
 
-:::{note}
-如果你希望自己编译安装，可以参考我们的[安装部署文档](../deploy/content.md)。
-:::
+```{note}
+如果你希望自己编译安装，可以参考我们的[安装部署](../deploy/install_deploy.md)。
+```
 
 ### 1.1 镜像准备
 
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.4 bash
+docker run -it 4pdosc/openmldb:0.5.0 bash
 ```
 
-:::{important}
+````{important}
 **成功启动容器以后，本教程中的后续命令默认均在容器内执行。**
-:::
-
-````{note}
-本教程将在单个容器中启动 OpenMLDB 单机版或集群版，如果希望从外部访问该容器内的 OpenMLDB 服务端口，启动容器时需要 `-p` 暴露端口。
+```{tip} 
+如果你需要从容器外访问容器内的OpenMLDB服务端，请参考[DockerIP](../reference/ip_tips.md#docker-ip)。
 ```
-docker run -p 6527:6527 -p 2181:2181 -p 8080:8080 -it 4pdosc/openmldb:0.4.4 bash
-```
-或者更方便地，使用 host networking，不进行端口隔离，例如
-```
-docker run --network host -it 4pdosc/openmldb:0.4.4 bash
-```
-注意，OpenMLDB 所有 server 配置的 endpoint 地址都是 `127.0.0.1` 。如果想要外部主机访问本机容器内的服务，需要将回环地址改为外网 IP 或 `0.0.0.0` 。
-
 ````
 
 ### 1.2 样例数据
@@ -44,8 +34,8 @@ docker run --network host -it 4pdosc/openmldb:0.4.4 bash
 下载样例数据
 
 ```bash
-curl https://openmldb.ai/demo/data.csv --output ./data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
+curl https://openmldb.ai/demo/data.csv --output ./taxi-trip/data/data.csv
+curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
 ```
 
 ## 2. 单机版OpenMLDB 快速上手
@@ -63,6 +53,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
+cd taxi-trip
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
@@ -74,9 +65,9 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 单机版OpenMLDB的工作流程一般包含：建立数据库和表、数据准备、离线特征计算、SQL 方案上线、在线实时特征计算几个阶段。
 
-:::{note}
+```{note}
 以下演示的命令如无特别说明，默认均在 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
-:::
+```
 
 #### 2.2.1 创建数据库和表
 
@@ -88,7 +79,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 #### 2.2.2 数据准备
 
-导入之前下载的样例数据（在 [1.2 样例数据](#1.2-样例数据) 中下载保存的数据）作为训练数据，用于离线和在线特征计算。
+导入之前下载的样例数据（在 [1.2 样例数据](#12-样例数据) 中下载保存的数据）作为训练数据，用于离线和在线特征计算。
 
 注意，单机版中一张表的数据没有离线在线隔离，所以该表将同时用于离线和在线特征计算。用户当然也可以手动为离线和在线导入不同的数据，即导入两张表。为简化起见，本教程的单机版使用了同一份数据做离线和在线计算。
 
@@ -144,9 +135,9 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 1 row in set
 ```
 
-:::{note}
+```{note}
 本教程的单机版使用了同一份数据做离线和在线特征计算。如果用户希望使用另一份数据集，在部署之前重新导入新的数据集，并在部署中使用新数据集的表。
-:::
+```
 
 #### 2.2.5 退出 CLI
 
@@ -211,8 +202,9 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB CLI客户端
 
 ```bash
+cd taxi-trip
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-> ../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 以下截图显示正确启动集群版OpenMLDB CLI 以后的画面
@@ -225,9 +217,9 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 集群版OpenMLDB需要分别管理离线数据和在线数据。因此在完成SQL方案上线后，必须做在线数据的准备步骤。
 
-:::{note}
+```{note}
 以下演示的命令如无特别说明，默认均集群版 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
-:::
+```
 
 #### 3.3.1 创建数据库和表
 
@@ -263,7 +255,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 首先，请切换到离线执行模式。在该模式下，只会处理离线数据导入/插入以及查询操作。
 
-接着，导入之前下载的样例数据（在 [1.2 样例数据](#1.2-样例数据) 中已经下载）作为离线数据，用于离线特征计算。
+接着，导入之前下载的样例数据（在 [1.2 样例数据](#12-样例数据) 中已经下载）作为离线数据，用于离线特征计算。
 
 ```sql
 > USE demo_db;
@@ -309,7 +301,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 #### 3.3.5 在线数据准备
 
-首先，请切换到**在线**执行模式。在该模式下，只会处理在线数据导入/插入以及查询操作。接着在在线模式下，导入之前下载的样例数据（在 [1.2 样例数据](#1.2-样例数据) 中已经下载）作为在线数据，用于在线特征计算。
+首先，请切换到**在线**执行模式。在该模式下，只会处理在线数据导入/插入以及查询操作。接着在在线模式下，导入之前下载的样例数据（在 [1.2 样例数据](#12-样例数据) 中已经下载）作为在线数据，用于在线特征计算。
 
 ```sql
 > USE demo_db;
