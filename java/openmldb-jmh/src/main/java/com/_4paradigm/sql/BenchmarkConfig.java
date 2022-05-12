@@ -36,6 +36,9 @@ public class BenchmarkConfig {
     public static String DATABASE = "";
     public static String TABLE = "";
     public static int WINDOW_NUM = 2000;
+    public static int PK_BASE = 1000000;
+    public static long TS_BASE = 1652232079000l;
+    public static String DEPLOY_NAME;
     public static String PARTITION_NUM = "4";
     public static int BATCH_SIZE = 1;
     public static Mode mode = Mode.REQUEST;
@@ -66,12 +69,15 @@ public class BenchmarkConfig {
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
             PARTITION_NUM = prop.getProperty("PARTITION_NUM");
+            TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
+            PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             ddlUrl = prop.getProperty("ddlUrl");
             NEED_PROXY = Boolean.valueOf(prop.getProperty("HTTP_PROXY"));
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
             DATABASE = prop.getProperty("DATABASE");
             TABLE = prop.getProperty("TABLE");
+            DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
             WINDOW_NUM = Integer.valueOf(prop.getProperty("WINDOW_NUM"));
             BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
             TIME_DIFF = Integer.valueOf((String)prop.getProperty("TIME_DIFF", "0"));

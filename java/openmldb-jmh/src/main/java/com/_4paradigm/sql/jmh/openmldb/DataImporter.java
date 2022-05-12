@@ -12,14 +12,14 @@ import java.util.*;
 public class DataImporter {
     private String dbName;
     private String tableName;
-    private int pkNum = 1;
-    private int windowNum = 10;
-    int pkBase = 1000000;
-    long tsBase = 1652232079000l;
+    private int pkNum;
+    private int windowNum;
+    private int pkBase;
+    private long tsBase;
     private SqlExecutor executor;
-    List<Type.DataType> schema;
-    Set<Integer> index;
-    Set<Integer> tsIndex;
+    private List<Type.DataType> schema;
+    private Set<Integer> index;
+    private Set<Integer> tsIndex;
 
 
     public DataImporter() {
@@ -28,6 +28,8 @@ public class DataImporter {
         tableName = BenchmarkConfig.TABLE;
         pkNum = BenchmarkConfig.PK_NUM;
         windowNum = BenchmarkConfig.WINDOW_NUM;
+        tsBase = BenchmarkConfig.TS_BASE;
+        pkBase = BenchmarkConfig.PK_BASE;
         schema = new ArrayList<>();
         index = new HashSet<>();
         tsIndex = new HashSet<>();
