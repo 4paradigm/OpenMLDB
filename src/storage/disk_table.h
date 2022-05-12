@@ -298,8 +298,8 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     TTLSt expire_value_;
     std::string pk_;
     std::string row_pk_;
-    bool has_ts_idx_;
     uint64_t ts_;
+    bool has_ts_idx_;
     uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
     bool pk_valid_;
