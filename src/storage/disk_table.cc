@@ -1330,17 +1330,14 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
             break;
         }
     }
-
     return 0;
 }
 
-uint32_t BloomFilter::hash(const char *str, uint32_t seed)
-{
+uint32_t BloomFilter::hash(const char* str, uint32_t seed) {
     uint a = 63689;
     uint hash = 0;
 
-    while (*str)
-    {
+    while (*str) {
         hash = hash * a + (*str++);
         a *= seed;
     }
@@ -1362,20 +1359,15 @@ bool BloomFilter::getBit(uint32_t bit) {
     return (bits_[bits_num]->load(std::memory_order_relaxed) >> bits_left) & 1;
 }
 
-void BloomFilter::Set(const char *str)
-{
-    for (uint32_t i = 0; i < k_; ++i)
-    {
+void BloomFilter::Set(const char* str) {
+    for (uint32_t i = 0; i < k_; ++i) {
         uint32_t p = hash(str, base_[i]) % bitset_size_;
         setBit(p);
     }
-
 }
 
-bool BloomFilter::Valid(const char *str)
-{
-    for (uint32_t i = 0; i < k_; ++i)
-    {
+bool BloomFilter::Valid(const char* str) {
+    for (uint32_t i = 0; i < k_; ++i) {
         uint32_t p = hash(str, base_[i]) % bitset_size_;
         if (!getBit(p)) {
             return false;
