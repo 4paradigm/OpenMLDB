@@ -16,6 +16,7 @@
 
 #include "storage/disk_table.h"
 #include <utility>
+#include <set>
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
 #include "base/hash.h"
@@ -331,7 +332,8 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
                 }
                 it->Next();
             }
-            batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+            batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1),
+                              rocksdb::Slice(combine_key2));
         }
     } else {
         std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
@@ -352,7 +354,8 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
             }
             it->Next();
         }
-        rocksdb::Status s = batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+        rocksdb::Status s = batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1),
+                                              rocksdb::Slice(combine_key2));
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
@@ -475,10 +478,13 @@ void DiskTable::GcHead() {
                     for (auto ts_idx_iter = key_cnt.begin(); ts_idx_iter != key_cnt.end(); ts_idx_iter++) {
                         auto index_iterator = idx_map.find(ts_idx_iter->first);
                         auto ttl_iter = ttl_map.find(ts_idx_iter->first);
-                        if (ttl_iter != ttl_map.end() && ttl_iter->second > 0 && ts_idx_iter->second <= ttl_iter->second) {
-                            idx_cnt_vec_[index_iterator->second]->fetch_add(ts_idx_iter->second, std::memory_order_relaxed);
+                        if (ttl_iter != ttl_map.end() && ttl_iter->second > 0 &&
+                            ts_idx_iter->second <= ttl_iter->second) {
+                            idx_cnt_vec_[index_iterator->second]->fetch_add(ts_idx_iter->second,
+                                                                            std::memory_order_relaxed);
                         } else {
-                            idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second, std::memory_order_relaxed);
+                            idx_cnt_vec_[index_iterator->second]->fetch_add(ttl_iter->second,
+                                                                            std::memory_order_relaxed);
                         }
                     }
                     if (key_cnt.size() > 0) {

@@ -1951,9 +1951,10 @@ TEST_F(TableTest, GetRecordAbsTTL) {
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
 
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsoluteTime, 90, 0);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50, 0);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kAbsoluteTime, 40, 0);
-
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50,
+                          0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kAbsoluteTime, 40,
+                          0);
 
     Table* table = CreateTable(table_meta, table_path);
     table->Init();
@@ -2193,7 +2194,8 @@ TEST_F(TableTest, GetRecordAbsAndLatTTL) {
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
 
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kLatestTime, 0, 7);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50,
+                          0);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kLatestTime, 0, 4);
 
 
