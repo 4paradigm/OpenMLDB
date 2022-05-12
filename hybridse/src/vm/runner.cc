@@ -3873,7 +3873,7 @@ int32_t IteratorStatus::FindFirstIteratorWithMaximizeKey(const std::vector<Itera
         if (status_list.at(i).is_valid_) {
             auto key = status_list.at(i).key_;
             if (!min_union_order.has_value() || key > min_union_order.value()) {
-                min_union_order = key;
+                min_union_order.emplace(key);
                 min_union_pos = static_cast<int32_t>(i);
             }
         }

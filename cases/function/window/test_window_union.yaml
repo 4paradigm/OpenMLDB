@@ -901,4 +901,68 @@ cases:
       data: |
         1, 6, 999, 0, 200, 233
         2, 7, 10000, 0, 21, 200
+  - id: 19-2
+    mode: cluster-unsupport
+    desc: |
+      rows order for pure history window union
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 10000
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  88, 111, 999
+          1, 100, 111, 233
+          1, 100, 111, 200
+      - name: t3
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 0
+          1, 100, 111, 33
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1,
+          lag(val, 2) over w as l2,
+          lag(val, 3) over w as l3
+       from t1 window w as(
+          union t2,t3
+          partition by `g` order by `ts`
+          ROWS BETWEEN 3 preceding and 1 preceding INSTANCE_NOT_IN_WINDOW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+        - l2 int
+        - l3 int
+      order: id
+      data: |
+        1, 3, 233, 33, 200, 233, 33
+        2, 3, 233, 33, 200, 233, 33
 
