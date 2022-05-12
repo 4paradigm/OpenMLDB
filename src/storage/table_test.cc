@@ -2023,7 +2023,7 @@ TEST_F(TableTest, GetRecordAbsTTL) {
         ts_count += stats[i];
     }
     EXPECT_EQ(100, ts_count);
-    
+
     table->SchedGc();
 
     EXPECT_EQ(140, (int64_t)table->GetRecordIdxCnt());
@@ -2128,7 +2128,7 @@ TEST_F(TableTest, GetRecordLatTTL) {
 
     EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
     EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
-    
+
     table->SchedGc();
     EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
     EXPECT_EQ(120, (int64_t)table->GetRecordIdxCnt());
@@ -2247,7 +2247,7 @@ TEST_F(TableTest, GetRecordAbsAndLatTTL) {
 
     EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
     EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
-    
+
     table->SchedGc();
     EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
     EXPECT_EQ(120, (int64_t)table->GetRecordIdxCnt());

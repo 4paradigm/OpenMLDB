@@ -147,7 +147,7 @@ class BloomFilter {
     bool getBit(uint32_t bit);
 
     uint32_t k_, bitset_size_,
-        string_cnt_;  
+        string_cnt_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> bits_;
     uint32_t base_[100] = {5, 7, 11, 13, 31, 37, 61};
 };

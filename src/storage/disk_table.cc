@@ -225,7 +225,7 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
         if (!bloom_filter_vec_[0].Valid(pk.c_str())) {
             bloom_filter_vec_[0].Set(pk.c_str());
             pk_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
-        } 
+        }
         return true;
     } else {
         DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
