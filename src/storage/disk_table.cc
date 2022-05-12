@@ -316,7 +316,14 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
             std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX, ts_col->GetId());
             std::string combine_key2 = CombineKeyTs(pk, 0, ts_col->GetId());
             it->Seek(rocksdb::Slice(combine_key1));
-            while (it->Valid() && it->key().compare(rocksdb::Slice(combine_key2)) != 0) {
+            while (it->Valid()) {
+                std::string cur_pk;
+                uint64_t cur_ts;
+                uint32_t cur_ts_idx;
+                ParseKeyAndTs(true, it->key(), cur_pk, cur_ts, cur_ts_idx);
+                if (pk.compare(cur_pk) != 0 || cur_ts_idx != ts_col->GetId()) {
+                    break;
+                }
                 if (delete_idx_cnt.find(index->GetId()) != delete_idx_cnt.end()) {
                     delete_idx_cnt[index->GetId()]++;
                 } else {
@@ -324,14 +331,20 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
                 }
                 it->Next();
             }
-            batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+            batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
         }
     } else {
         std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
         std::string combine_key2 = CombineKeyTs(pk, 0);
         it->Seek(rocksdb::Slice(combine_key1));
         const auto& index = inner_index->GetIndex().front();
-        while (it->Valid() && it->key().compare(rocksdb::Slice(combine_key2)) != 0) {
+        while (it->Valid()) {
+            std::string cur_pk;
+            uint64_t cur_ts;
+            ParseKeyAndTs(it->key(), cur_pk, cur_ts);
+            if (pk.compare(cur_pk) != 0) {
+                break;
+            }
             if (delete_idx_cnt.find(index->GetId()) != delete_idx_cnt.end()) {
                 delete_idx_cnt[index->GetId()]++;
             } else {
@@ -339,7 +352,7 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
             }
             it->Next();
         }
-        batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+        rocksdb::Status s = batch.DeleteRange(cf_hs_[index_def->GetInnerPos() + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
@@ -559,7 +572,7 @@ void DiskTable::GcHead() {
 
 void DiskTable::GcTTL() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (int i = 0; i < inner_indexs->size(); i++) {
+    for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         auto s = db_->CompactRange(rocksdb::CompactRangeOptions(), cf_hs_[i + 1], nullptr, nullptr);
         if (!s.ok()) {
             PDLOG(WARNING, "Manual Compaction failed");
@@ -1345,7 +1358,7 @@ bool BloomFilter::getBit(uint32_t bit) {
 
 void BloomFilter::Set(const char *str)
 {
-    for (int i = 0; i < k_; ++i)
+    for (uint32_t i = 0; i < k_; ++i)
     {
         uint32_t p = hash(str, base_[i]) % bitset_size_;
         setBit(p);
@@ -1355,7 +1368,7 @@ void BloomFilter::Set(const char *str)
 
 bool BloomFilter::Valid(const char *str)
 {
-    for (int i = 0; i < k_; ++i)
+    for (uint32_t i = 0; i < k_; ++i)
     {
         uint32_t p = hash(str, base_[i]) % bitset_size_;
         if (!getBit(p)) {

@@ -283,7 +283,6 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
             return true;
         }
         idx_cnt_vec_->at(idx)->fetch_add(1, std::memory_order_relaxed);
-        uint32_t inner_pos = inner_index_->GetId();
         std::string pk;
         if (indexs.size() > 1) {
             pk.assign(key.data(), key.size() - TS_LEN - TS_POS_LEN);

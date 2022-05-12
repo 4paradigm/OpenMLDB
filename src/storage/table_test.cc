@@ -2010,7 +2010,7 @@ TEST_F(TableTest, GetRecordAbsTTL) {
     uint32_t size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
     int ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(100, ts_count);
@@ -2019,7 +2019,7 @@ TEST_F(TableTest, GetRecordAbsTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(100, ts_count);
@@ -2033,7 +2033,7 @@ TEST_F(TableTest, GetRecordAbsTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(50, ts_count);
@@ -2042,7 +2042,7 @@ TEST_F(TableTest, GetRecordAbsTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(40, ts_count);
@@ -2137,7 +2137,7 @@ TEST_F(TableTest, GetRecordLatTTL) {
     uint32_t size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
     int ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(50, ts_count);
@@ -2146,7 +2146,7 @@ TEST_F(TableTest, GetRecordLatTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(40, ts_count);
@@ -2155,7 +2155,7 @@ TEST_F(TableTest, GetRecordLatTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(0, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(70, ts_count);
@@ -2163,7 +2163,7 @@ TEST_F(TableTest, GetRecordLatTTL) {
     table->Delete("test0", 0);
     table->Delete("testnew0", 1);
     EXPECT_EQ(18, (int64_t)table->GetRecordPkCnt());
-    EXPECT_EQ(114, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(108, (int64_t)table->GetRecordIdxCnt());
 
 
     delete table;
@@ -2256,7 +2256,7 @@ TEST_F(TableTest, GetRecordAbsAndLatTTL) {
     uint32_t size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
     int ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(50, ts_count);
@@ -2265,7 +2265,7 @@ TEST_F(TableTest, GetRecordAbsAndLatTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(40, ts_count);
@@ -2274,7 +2274,7 @@ TEST_F(TableTest, GetRecordAbsAndLatTTL) {
     size = 0;
     ASSERT_TRUE(table->GetRecordIdxCnt(0, &stats, &size));
     ts_count = 0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         ts_count += stats[i];
     }
     EXPECT_EQ(70, ts_count);
