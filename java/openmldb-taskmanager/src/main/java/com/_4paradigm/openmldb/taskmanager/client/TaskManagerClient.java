@@ -50,6 +50,15 @@ public class TaskManagerClient {
     private TaskManagerInterface taskManagerInterface;
     private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
+    /**
+     * Constructor of TaskManager client.
+     *
+     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
+     */
+    public TaskManagerClient(String endpoint) {
+        connectTaskManagerServer(endpoint);
+    }
+
     public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
         if (zkCluster == null || zkPath == null) {
             logger.info("Zookeeper address is wrong, please check the configuration");
@@ -65,7 +74,7 @@ public class TaskManagerClient {
         Stat stat = zkClient.checkExists().forPath(masterZnode);
         if (stat != null) {  // The original master exists and is directly connected to it.
             String endpoint = new String(zkClient.getData().forPath(masterZnode));
-            this.rpcConnect(endpoint);
+            this.connectTaskManagerServer(endpoint);
             watch(zkClient, masterZnode, rpcClient, clientOption);
         } else {
             throw new Exception("TaskManager has not started yet, connection failed");
@@ -95,12 +104,7 @@ public class TaskManagerClient {
                 if (endpoint != null) {
                     rpcClient.stop();
                     logger.info("The content of the node was changed, try to reconnect");
-                    rpcClient.stop();
-
-                    String serviceUrl = "list://" + endpoint;
-                    rpcClient = new RpcClient(serviceUrl, clientOption, new ArrayList<Interceptor>());
-                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
-                    RpcContext.getContext().setLogId(1234L);
+                    connectTaskManagerServer(endpoint);
                 } else {
                     logger.info("The content of the node was deleted, please try to reconnect");
                     close();
@@ -116,8 +120,7 @@ public class TaskManagerClient {
      *
      * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
      */
-    public void rpcConnect(String endpoint) {
-
+    public void connectTaskManagerServer(String endpoint) {
         clientOption = new RpcClientOptions();
         clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
         clientOption.setWriteTimeoutMillis(1000);
@@ -132,29 +135,6 @@ public class TaskManagerClient {
         if (rpcClient != null) {
             this.stop();
         }
-        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
-        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
-        RpcContext.getContext().setLogId(1234L);
-    }
-
-    /**
-     * Constructor of TaskManager client.
-     *
-     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
-     */
-    public TaskManagerClient(String endpoint) {
-
-        RpcClientOptions clientOption = new RpcClientOptions();
-        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
-        clientOption.setWriteTimeoutMillis(1000);
-        clientOption.setReadTimeoutMillis(50000);
-        clientOption.setMaxTotalConnections(1000);
-        clientOption.setMinIdleConnections(10);
-        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
-        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
-
-        String serviceUrl = "list://" + endpoint;
-        List<Interceptor> interceptors = new ArrayList<Interceptor>();
         rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
         taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
         RpcContext.getContext().setLogId(1234L);
