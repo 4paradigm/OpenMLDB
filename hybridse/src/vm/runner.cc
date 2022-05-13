@@ -1441,14 +1441,13 @@ std::shared_ptr<DataHandler> WindowAggRunner::Run(
     instance_partition_iter->SeekToFirst();
 
     // Partition Union Table
-    auto union_inpus = windows_union_gen_.RunInputs(ctx);
-    auto union_partitions = windows_union_gen_.PartitionEach(union_inpus, parameter);
+    auto union_inputs = windows_union_gen_.RunInputs(ctx);
+    auto union_partitions = windows_union_gen_.PartitionEach(union_inputs, parameter);
     // Prepare Join Tables
     auto join_right_tables = windows_join_gen_.RunInputs(ctx);
 
     // Compute output
-    std::shared_ptr<MemTableHandler> output_table =
-        std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    std::shared_ptr<MemTableHandler> output_table = std::make_shared<MemTableHandler>();
     while (instance_partition_iter->Valid()) {
         auto key = instance_partition_iter->GetKey().ToString();
         RunWindowAggOnKey(parameter, instance_partition, union_partitions,
@@ -1511,10 +1510,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         union_segment_status[i] = IteratorStatus(ts);
     }
 
-    int32_t min_union_pos =
-        0 == unions_cnt
-            ? -1
-            : IteratorStatus::PickIteratorWithMininumKey(&union_segment_status);
+    int32_t min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
     int32_t cnt = output_table->GetCount();
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
@@ -1527,7 +1523,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         const Row& instance_row = instance_segment_iter->GetValue();
         uint64_t instance_order = instance_segment_iter->GetKey();
         while (min_union_pos >= 0 &&
-               union_segment_status[min_union_pos].key_ < instance_order) {
+               union_segment_status[min_union_pos].key_ <= instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
             if (windows_join_gen_.Valid()) {
                 row = windows_join_gen_.Join(row, join_right_tables, parameter);
@@ -1545,12 +1541,10 @@ void WindowAggRunner::RunWindowAggOnKey(
                     union_segment_iters[min_union_pos]->GetKey());
             }
             // Pick new mininum union pos
-            min_union_pos = IteratorStatus::PickIteratorWithMininumKey(
-                &union_segment_status);
+            min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
         }
         if (windows_join_gen_.Valid()) {
-            Row row = instance_row;
-            row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
+            Row row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
             output_table->AddRow(window_project_gen_.Gen(instance_segment_iter->GetKey(), row, parameter, true,
                                                          append_slices_, &window));
         } else {
@@ -1847,8 +1841,7 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
         is_asc == (table->GetOrderType() == kAscOrder)) {
         return table;
     }
-    auto output_table = std::shared_ptr<MemTimeTableHandler>(
-        new MemTimeTableHandler(table->GetSchema()));
+    auto output_table = std::make_shared<MemTimeTableHandler>(table->GetSchema());
     output_table->SetOrderType(table->GetOrderType());
     auto iter = std::dynamic_pointer_cast<TableHandler>(table)->GetIterator();
     if (!iter) {
@@ -3179,10 +3172,8 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         uint64_t ts = union_segment_iters[i]->GetKey();
         union_segment_status[i] = IteratorStatus(ts);
     }
-    int32_t max_union_pos = 0 == unions_cnt
-                                ? -1
-                                : IteratorStatus::PickIteratorWithMaximizeKey(
-                                      &union_segment_status);
+    int32_t max_union_pos = IteratorStatus::FindFirstIteratorWithMaximizeKey(union_segment_status);
+
     uint64_t cnt = 0;
     auto range_status = window_range.GetWindowPositionStatus(
         cnt > rows_start_preceding, window_range.end_offset_ < 0,
@@ -3220,8 +3211,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
                 union_segment_iters[max_union_pos]->GetKey());
         }
         // Pick new mininum union pos
-        max_union_pos =
-            IteratorStatus::PickIteratorWithMaximizeKey(&union_segment_status);
+        max_union_pos = IteratorStatus::FindFirstIteratorWithMaximizeKey(union_segment_status);
     }
     DLOG(INFO) << "REQUEST UNION cnt = " << window_table->GetCount();
     return window_table;
@@ -3839,10 +3829,8 @@ const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
 std::vector<std::shared_ptr<DataHandler>> InputsGenerator::RunInputs(
     RunnerContext& ctx) {
     std::vector<std::shared_ptr<DataHandler>> union_inputs;
-    if (!input_runners_.empty()) {
-        for (auto runner : input_runners_) {
-            union_inputs.push_back(runner->RunWithCache(ctx));
-        }
+    for (auto runner : input_runners_) {
+        union_inputs.push_back(runner->RunWithCache(ctx));
     }
     return union_inputs;
 }
@@ -3860,33 +3848,37 @@ WindowUnionGenerator::PartitionEach(
     }
     return union_partitions;
 }
-int32_t IteratorStatus::PickIteratorWithMininumKey(
-    std::vector<IteratorStatus>* status_list_ptr) {
-    const auto& status_list = *status_list_ptr;
+
+int32_t IteratorStatus::FindLastIteratorWithMininumKey(const std::vector<IteratorStatus>& status_list) {
     int32_t min_union_pos = -1;
-    uint64_t min_union_order = UINT64_MAX;
+    std::optional<uint64_t> min_union_order;
     for (size_t i = 0; i < status_list.size(); i++) {
-        if (status_list[i].is_valid_ && status_list[i].key_ < min_union_order) {
-            min_union_order = status_list[i].key_;
-            min_union_pos = static_cast<int32_t>(i);
+        if (status_list[i].is_valid_) {
+            auto key = status_list[i].key_;
+            if (!min_union_order.has_value() || key <= min_union_order.value()) {
+                min_union_order.emplace(key);
+                min_union_pos = static_cast<int32_t>(i);
+            }
         }
     }
     return min_union_pos;
 }
-int32_t IteratorStatus::PickIteratorWithMaximizeKey(
-    std::vector<IteratorStatus>* status_list_ptr) {
-    const auto& status_list = *status_list_ptr;
+
+int32_t IteratorStatus::FindFirstIteratorWithMaximizeKey(const std::vector<IteratorStatus>& status_list) {
     int32_t min_union_pos = -1;
-    uint64_t min_union_order = 0;
+    std::optional<uint64_t> min_union_order;
     for (size_t i = 0; i < status_list.size(); i++) {
-        if (status_list[i].is_valid_ &&
-            status_list[i].key_ >= min_union_order) {
-            min_union_order = status_list[i].key_;
-            min_union_pos = static_cast<int32_t>(i);
+        if (status_list.at(i).is_valid_) {
+            auto key = status_list.at(i).key_;
+            if (!min_union_order.has_value() || key > min_union_order.value()) {
+                min_union_order.emplace(key);
+                min_union_pos = static_cast<int32_t>(i);
+            }
         }
     }
     return min_union_pos;
 }
+
 std::vector<std::shared_ptr<DataHandler>> WindowJoinGenerator::RunInputs(
     RunnerContext& ctx) {
     std::vector<std::shared_ptr<DataHandler>> union_inputs;
