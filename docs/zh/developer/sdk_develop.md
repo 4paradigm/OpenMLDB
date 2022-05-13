@@ -18,9 +18,9 @@ OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依
 ### Wrapper层
 由于SDK核心层的实现较复杂，我们提供Java和Python SDK的时候，没有选择从零开发，而是使用Java和Python调用**SDK核心层**。具体来说，我们使用swig做了一层wrapper。
 
-Java wrapper具体实现为[SqlClusterExecutor](https://github.com/4paradigm/OpenMLDB/blob/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java)。可以看到，它仅仅是对`sql_router_sdk`调用的简单封装，比如，对输入类型的转换，对返回结果的封装，对返回错误的封装。
+Java Wrapper具体实现为[SqlClusterExecutor](https://github.com/4paradigm/OpenMLDB/blob/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java)。可以看到，它仅仅是对`sql_router_sdk`调用的简单封装，比如，对输入类型的转换，对返回结果的封装，对返回错误的封装。
 
-Python wrapper具体实现为[OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sdk/sdk.py)。和Java wrapper类似，它也只是简单的封装。
+Python Wrapper具体实现为[OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sdk/sdk.py)。和Java Wrapper类似，它也只是简单的封装。
 
 ### 用户层
 Wrapper层是可以直接使用的，但不够方便。所以，我们再提供了一层，Java/Python SDK的用户层。
@@ -31,7 +31,7 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 
 ## 补充
 
-我们希望增加更易用的C++ SDK。显然，我们不需要wrapper层。
+我们希望增加更易用的C++ SDK。显然，我们不需要Wrapper层。
 所以，理论上讲，开发者只需要用户层的设计与实现，实现中调用SDK核心层。
 
 但考虑到代码复用，可能会一定程度地改动SDK核心层的代码，或者是调整SDK核心代码结构（比如，暴露SDK核心层的部分头文件等）。
