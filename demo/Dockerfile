@@ -20,3 +20,5 @@ COPY setup_openmldb.sh /
 RUN /setup_openmldb.sh "${OPENMLDB_VERSION}"  && rm /setup_openmldb.sh
 
 WORKDIR /work
+
+CMD [ "/bin/bash" ]
