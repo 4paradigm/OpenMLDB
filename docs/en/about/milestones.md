@@ -28,6 +28,7 @@ In 2021, the development team abstracted, enhanced, and added more community-fri
 - 2021.12: Host the first Feature Store Meetup in China
 - 2022.1: v0.4.0 released, enhancing the SQL-centric development experience, introducing the new online monitoring module
 - 2022.1: OpenMLDB first community meeting
+- 2022.5: v0.5.0 released, supporting long window and persistent storage engine, registering udf from external dynamic library
 
 ## 3. Roadmap
 

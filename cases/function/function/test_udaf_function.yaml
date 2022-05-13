@@ -1946,26 +1946,25 @@ cases:
           lag(c7, 0) OVER w1 as m13,
           lag(c7, 2) OVER w1 as m14,
           lag(c8, 0) OVER w1 as m15,
-          lag(c8, 2) OVER w1 as m16,
-          lag(pk, -1) OVER w1 as m17
+          lag(c8, 2) OVER w1 as m16
       FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.pk ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
                 "m7 float", "m8 float", "m9 double", "m10 double",
-                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool", "m17 bigint"]
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool"]
       rows:
         - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
-           1590738990000, NULL, "2020-05-01", NULL, true, NULL, NULL]
+           1590738990000, NULL, "2020-05-01", NULL, true, NULL]
         - [2, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4, NULL,
-           1590738991000, NULL, "2020-05-03", NULL, false, NULL, NULL]
+           1590738991000, NULL, "2020-05-03", NULL, false, NULL]
         - [3, "b", "a", 3, 1, 32, 30, 1.3, 1.1, 2.3, 2.1,
-           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true, NULL]
+           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true]
         - [4, NULL, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4,
-           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false, NULL]
+           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false]
         - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
-           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true, NULL]
+           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true]
 
   - id: 47
     desc: count where value equals first value
@@ -2310,11 +2309,11 @@ cases:
                    "c5 double","c6 timestamp","c7 date","c8 bool"]
         indexs: ["index1:pk:c6"]
         rows:
-          - [1, 1, "a", 1, 30, 1.1, 2.1, 1590738990000, "2020-05-01", true]
-          - [2, 1, "c", 4, 33, 1.4, 2.4, 1590738991000, "2020-05-03", false]
-          - [3, 1, "b", 3, 32, 1.3, 2.3, 1590738992000, "2020-05-02", true,]
+          - [1, 1, "a",  1,    30,   1.1,  2.1,  1590738990000, "2020-05-01", true]
+          - [2, 1, "c",  4,    33,   1.4,  2.4,  1590738991000, "2020-05-03", false]
+          - [3, 1, "b",  3,    32,   1.3,  2.3,  1590738992000, "2020-05-02", true,]
           - [4, 1, NULL, NULL, NULL, NULL, NULL, 1590738993000, NULL, NULL]
-          - [5, 1, "d", 5, 35, 1.5, 2.5, 1590738994000, "2020-05-04", false]
+          - [5, 1, "d",  5,    35,   1.5,  2.5,  1590738994000, "2020-05-04", false]
     sql: |
       SELECT {0}.id,
           at(c1, 0) OVER w1 as m1,
@@ -2332,24 +2331,180 @@ cases:
           at(c7, 0) OVER w1 as m13,
           at(c7, 2) OVER w1 as m14,
           at(c8, 0) OVER w1 as m15,
-          at(c8, 2) OVER w1 as m16,
-          at(pk, -1) OVER w1 as m17
+          at(c8, 2) OVER w1 as m16
       FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.pk ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
                 "m7 float", "m8 float", "m9 double", "m10 double",
-                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool", "m17 bigint"]
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool"]
       rows:
         - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
-           1590738990000, NULL, "2020-05-01", NULL, true, NULL, NULL]
+           1590738990000, NULL, "2020-05-01", NULL, true, NULL]
         - [2, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4, NULL,
-           1590738991000, NULL, "2020-05-03", NULL, false, NULL, NULL]
+           1590738991000, NULL, "2020-05-03", NULL, false, NULL]
         - [3, "b", "a", 3, 1, 32, 30, 1.3, 1.1, 2.3, 2.1,
-           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true, NULL]
+           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true]
         - [4, NULL, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4,
-           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false, NULL]
+           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false]
         - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
-           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true, NULL]
+           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true]
 
+  - id: 57
+    desc: |
+      correctness for at/lag when offset out-of-range rows_range window frame bound.
+      keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130404000, g2, 4
+          7, 1612130405000, g2, 3
+          8, 1612130406000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 1) over w1 as agg2,
+      lag(val1, 3) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, 1,    NULL
+        3, 3, 3, 2,    NULL
+        4, 4, 4, 3,    1
+        5, 5, 5, 4,    2
+        6, 4, 4, NULL, NULL
+        7, 3, 3, 4,    NULL
+        8, 2, 2, 3,    NULL
+
+  - id: 58
+    desc: |
+      correctness for at/lag when offset out-of-range rows_range window frame bound, together with other window function.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 3) over w1 as agg2,
+      first_value(val1) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, NULL, 1
+        3, 3, 3, NULL, 2
+        4, 4, 4, 1,    3
+        5, 5, 5, 2,    4
+        6, 4, 4, NULL, NULL
+        7, 3, 3, NULL, 4
+        8, 2, 2, NULL, 3
+
+  - id: 59
+    desc: |
+      correctness for at/lag when offset out-of-range window frame bound.
+      keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 1) over w1 as agg2,
+      lag(val1, 3) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, 1,    NULL
+        3, 3, 3, 2,    NULL
+        4, 4, 4, 3,    1
+        5, 5, 5, 4,    2
+        6, 4, 4, NULL, NULL
+        7, 3, 3, 4,    NULL
+        8, 2, 2, 3,    NULL
+
+  - id: 60
+    desc: |
+      correctness for at/lag when offset out-of-range rows window frame bound
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 3) over w1 as agg2,
+      first_value(val1) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      data: |
+        1, 1, 1, NULL, NULL
+        2, 2, 2, NULL, 1
+        3, 3, 3, NULL, 2
+        4, 4, 4, 1,    3
+        5, 5, 5, 2,    4
+        6, 4, 4, NULL, NULL
+        7, 3, 3, NULL, 4
+        8, 2, 2, NULL, 3

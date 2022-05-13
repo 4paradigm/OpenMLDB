@@ -29,13 +29,13 @@ Pulsar OpenMLDB connector 用于 OpenMLDB 线上模式的实时数据流接入�
 
 ## 步骤 1：在 OpenMLDB 创建数据库和数据表
 ### 启动 OpenMLDB 集群
-使用Docker可以快速启动OpenMLDB，除此之外，我们还需要创建测试用的表。创建OpenMLDB详请可以参考[集群版OpenMLDB 快速上手](https://openmldb.ai/docs/zh/v0.4/quickstart/openmldb_quickstart.html#id11)。
+使用Docker可以快速启动OpenMLDB，除此之外，我们还需要创建测试用的表。创建OpenMLDB详请可以参考[集群版OpenMLDB 快速上手](https://openmldb.ai/docs/zh/v0.5/quickstart/openmldb_quickstart.html#id11)。
 ```{caution}
 目前只有OpenMLDB集群版可以作为sink的接收端，数据只会sink到集群的在线存储中。
 ```
 我们更推荐你使用‘host network’模式运行docker，以及绑定文件目录‘files’，sql脚本在该目录中。
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.4.4 bash
+docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.0 bash
 docker exec -it openmldb bash
 ```
 

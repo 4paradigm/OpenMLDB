@@ -9,12 +9,12 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.4.3</version>
+    <version>0.5.0</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.4.3</version>
+    <version>0.5.0</version>
 </dependency>
 ```
 ### Package Installation on Mac
@@ -24,15 +24,15 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.4.3</version>
+    <version>0.5.0</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.4.3-macos</version>
+    <version>0.5.0-macos</version>
 </dependency>
 ```
-Since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.4.3-macos`, and the version of openmldb-jdbc remains unchanged .
+Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.5.0-macos`, and the version of openmldb-jdbc remains unchanged .
 
 ## 2. Quickstart
 

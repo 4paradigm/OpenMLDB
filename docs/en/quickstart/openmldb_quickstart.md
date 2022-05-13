@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.4 bash
+docker run -it 4pdosc/openmldb:0.5.0 bash
 ```
 
 ```{important}
@@ -49,6 +49,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
+cd taxi-trip
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
@@ -180,7 +181,8 @@ The above differences will be demonstrated based on examples in the following tu
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-> ../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+cd taxi-trip
+../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 ### 3.3. Steps

@@ -16,7 +16,7 @@
 - Support setting global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
 - Support reading Spark configuration files from the CLI (#1600 @tobegit3hub)
 - Support using multiple threads for the Spark local mode (#1675 @tobegit3hub)
-- Enhance the performance of join by using the Spark’s native expression (#1502 tobegit3hub)
+- Enhance the performance of join by using the Spark's native expression (#1502 @tobegit3hub)
 - Support the validation for TaskManager configuration (#1262 @tobegit3hub)
 - Support tracking unfinished jobs in the TaskManager (#1474 @tobegit3hub)
 - Other minor features (#1601 @dl239; #1574 @vagetablechicken; #1546 @keyu813; #1729 @vagetablechicken; #1460 @tobegit3hub)
@@ -35,7 +35,7 @@
 
 ### Code Refactoring
 
-\#1616 @dl239; #1743 @zjx1319
+#1616 @dl239; #1743 @zjx1319
 
 
 

@@ -22,8 +22,8 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 10,
-  "iteration": 1650193871687,
+  "id": 14,
+  "iteration": 1651828119554,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -302,7 +302,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_query_count\", job=~\"$component_job\"})",
@@ -365,7 +365,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_query_count\", job=~\"$component_job\"})",
@@ -428,7 +428,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sqlbatch_request_query_count\", job=~\"$component_job\"})",
@@ -491,7 +491,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_batch_request_query_count\", job=~\"$component_job\"})",
@@ -796,7 +796,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 19
+            "y": 2
           },
           "id": 106,
           "links": [],
@@ -819,7 +819,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": false,
               "expr": "openmldb_table_partitions{job=~\"$job\", table_path=~\"$table_path\"}",
@@ -862,7 +862,7 @@
             "h": 6,
             "w": 5,
             "x": 7,
-            "y": 19
+            "y": 2
           },
           "id": 16,
           "links": [],
@@ -926,7 +926,7 @@
             "h": 6,
             "w": 4,
             "x": 12,
-            "y": 19
+            "y": 2
           },
           "id": 107,
           "links": [],
@@ -991,7 +991,7 @@
             "h": 6,
             "w": 4,
             "x": 16,
-            "y": 19
+            "y": 2
           },
           "id": 108,
           "links": [],
@@ -1056,7 +1056,7 @@
             "h": 6,
             "w": 4,
             "x": 20,
-            "y": 19
+            "y": 2
           },
           "id": 109,
           "links": [],
@@ -1124,7 +1124,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 22
+            "y": 5
           },
           "id": 105,
           "links": [],
@@ -1147,7 +1147,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "openmldb_table_partitions_unalive{job=~\"$job\", table_path=~\"$table_path\"}",
@@ -1223,7 +1223,7 @@
             "h": 10,
             "w": 8,
             "x": 0,
-            "y": 25
+            "y": 8
           },
           "id": 32,
           "links": [],
@@ -1244,7 +1244,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "openmldb_table_rows{job=~\"$job\", table_path=~\"$table_path\"}",
@@ -1321,7 +1321,7 @@
             "h": 10,
             "w": 8,
             "x": 8,
-            "y": 25
+            "y": 8
           },
           "id": 2,
           "links": [],
@@ -1418,7 +1418,7 @@
             "h": 10,
             "w": 8,
             "x": 16,
-            "y": 25
+            "y": 8
           },
           "id": 65,
           "options": {
@@ -1437,7 +1437,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "openmldb_table_disk_bytes{job=~\"$job\", table_path=~\"$table_path\"}",
@@ -1508,8 +1508,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1597,8 +1596,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1687,8 +1685,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1777,8 +1774,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -1925,7 +1921,7 @@
             "h": 5,
             "w": 6,
             "x": 0,
-            "y": 22
+            "y": 13
           },
           "id": 78,
           "options": {
@@ -1999,7 +1995,7 @@
             "h": 5,
             "w": 4,
             "x": 6,
-            "y": 22
+            "y": 13
           },
           "id": 266,
           "options": {
@@ -2061,7 +2057,7 @@
             "h": 5,
             "w": 3,
             "x": 10,
-            "y": 22
+            "y": 13
           },
           "id": 265,
           "options": {
@@ -2083,7 +2079,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "rpc_channel_connection_count{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2123,7 +2119,7 @@
             "h": 5,
             "w": 3,
             "x": 13,
-            "y": 22
+            "y": 13
           },
           "id": 679,
           "options": {
@@ -2145,7 +2141,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": " process_thread_count{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2185,7 +2181,7 @@
             "h": 5,
             "w": 3,
             "x": 16,
-            "y": 22
+            "y": 13
           },
           "id": 681,
           "options": {
@@ -2207,7 +2203,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "process_fd_count{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2247,7 +2243,7 @@
             "h": 5,
             "w": 3,
             "x": 19,
-            "y": 22
+            "y": 13
           },
           "id": 680,
           "options": {
@@ -2269,7 +2265,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "bthread_count{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2338,7 +2334,7 @@
             "h": 12,
             "w": 6,
             "x": 0,
-            "y": 27
+            "y": 18
           },
           "id": 267,
           "links": [],
@@ -2457,7 +2453,7 @@
             "h": 12,
             "w": 6,
             "x": 6,
-            "y": 27
+            "y": 18
           },
           "id": 97,
           "options": {
@@ -2476,7 +2472,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "process_memory_virtual{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2545,7 +2541,7 @@
             "h": 12,
             "w": 6,
             "x": 12,
-            "y": 27
+            "y": 18
           },
           "id": 677,
           "links": [],
@@ -2651,7 +2647,7 @@
             "h": 12,
             "w": 6,
             "x": 18,
-            "y": 27
+            "y": 18
           },
           "id": 268,
           "links": [],
@@ -2755,7 +2751,7 @@
             "h": 10,
             "w": 6,
             "x": 0,
-            "y": 39
+            "y": 30
           },
           "id": 545,
           "links": [],
@@ -2847,7 +2843,7 @@
             "h": 10,
             "w": 6,
             "x": 6,
-            "y": 39
+            "y": 30
           },
           "id": 269,
           "links": [],
@@ -2938,7 +2934,7 @@
             "h": 10,
             "w": 6,
             "x": 12,
-            "y": 39
+            "y": 30
           },
           "id": 678,
           "options": {
@@ -2956,7 +2952,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": " process_io_write_second{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -2967,7 +2963,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": " process_io_read_second{job=~\"$component_job\", instance=~\"$endpoint\"}",
@@ -3024,7 +3020,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 18
           },
           "id": 423,
           "options": {
@@ -3046,7 +3042,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "{__name__=~\"rpc_server_.*_openmldb_api_tablet_server_query_count\", job=~\"$component_job\", instance=~\"$tablet_endpoint\"}",
@@ -3087,7 +3083,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 18
           },
           "id": 382,
           "options": {
@@ -3109,7 +3105,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": " ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sqlbatch_request_query_count\", job=~\"$component_job\", instance=~\"$tablet_endpoint\"})",
@@ -3150,7 +3146,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 16
+            "y": 23
           },
           "id": 471,
           "options": {
@@ -3172,7 +3168,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "{__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_query_count\", job=~\"$component_job\", instance=~\"$tablet_endpoint\"}",
@@ -3213,7 +3209,7 @@
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 16
+            "y": 23
           },
           "id": 469,
           "options": {
@@ -3235,7 +3231,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "OkWeXB0nk"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": " ({__name__=~\"rpc_server_.*_openmldb_api_tablet_server_sub_batch_request_query_count\", job=~\"$component_job\", instance=~\"$tablet_endpoint\"})",
@@ -3304,7 +3300,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 21
+            "y": 28
           },
           "id": 484,
           "links": [],
@@ -3413,7 +3409,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 35
+            "y": 42
           },
           "id": 87,
           "links": [],
@@ -3522,7 +3518,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 49
+            "y": 56
           },
           "id": 336,
           "links": [],
@@ -3631,7 +3627,7 @@
             "h": 14,
             "w": 8,
             "x": 0,
-            "y": 63
+            "y": 70
           },
           "id": 378,
           "links": [],
@@ -3747,7 +3743,7 @@
             "h": 10,
             "w": 8,
             "x": 0,
-            "y": 77
+            "y": 84
           },
           "id": 66,
           "links": [],
@@ -3811,7 +3807,7 @@
     "list": [
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "default",
           "value": "default"
         },
@@ -3830,7 +3826,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -3862,7 +3858,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -3894,7 +3890,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -3926,7 +3922,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -3958,7 +3954,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -3990,7 +3986,7 @@
       },
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "All"
           ],
@@ -4054,6 +4050,6 @@
   "timezone": "",
   "title": "OpenMLDB databoard",
   "uid": "SXUXvsbMk",
-  "version": 50,
+  "version": 51,
   "weekStart": ""
 }

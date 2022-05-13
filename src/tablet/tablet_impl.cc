@@ -190,7 +190,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
         if (!ok) {
-            PDLOG(WARNING, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
+            PDLOG(ERROR, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
             return false;
         }
         startup_mode_ = ::openmldb::type::StartupMode::kCluster;
@@ -210,76 +210,84 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
         std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
     std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
     if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
-        LOG(WARNING) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
+        LOG(ERROR) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
         return false;
     }
     std::set<std::string> file_compression_set{"off", "zlib", "lz4"};
     if (file_compression_set.find(FLAGS_file_compression) == file_compression_set.end()) {
-        LOG(WARNING) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
+        LOG(ERROR) << "wrong FLAGS_file_compression: " << FLAGS_file_compression;
         return false;
     }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
-        PDLOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
+        PDLOG(ERROR, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
         return false;
     }
 
     if (FLAGS_db_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kMemory])) {
-            PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
+            PDLOG(ERROR, "fail to create db root path %s", FLAGS_db_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as db_root_path is not set");
+        PDLOG(ERROR, "db_root_path is required");
+        return false;
     }
 
     if (FLAGS_ssd_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kSSD])) {
-            PDLOG(WARNING, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
+            PDLOG(ERROR, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as ssd_root_path is not set");
+        PDLOG(WARNING, "ssd_root_path is not set");
     }
 
     if (FLAGS_hdd_root_path != "") {
         if (!CreateMultiDir(mode_root_paths_[::openmldb::common::kHDD])) {
-            PDLOG(WARNING, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
+            PDLOG(ERROR, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
             return false;
         }
     } else {
-        PDLOG(INFO, "Will not create dir as hdd_root_path is not set");
+        PDLOG(WARNING, "hdd_root_path is not set");
     }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_db_root_path != "" && FLAGS_recycle_bin_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
-            return false;
+    if (FLAGS_recycle_bin_enabled) {
+        // FLAGS_db_root_path is guaranteed to be not empty
+        if (FLAGS_recycle_bin_root_path != "") {
+            if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kMemory])) {
+                PDLOG(ERROR, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
+                return false;
+            }
+        } else {
+            PDLOG(ERROR, "recycle_bin_root_path is not configured. Deleted table is not recycled");
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_root_path");
-    }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_ssd_root_path != "" && FLAGS_recycle_bin_ssd_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_ssd_root_path.c_str());
-            return false;
+        if (FLAGS_ssd_root_path != "") {
+            if (FLAGS_recycle_bin_ssd_root_path != "") {
+                if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kSSD])) {
+                    PDLOG(ERROR, "fail to create recycle bin root path %s", FLAGS_recycle_bin_ssd_root_path.c_str());
+                    return false;
+                }
+            } else {
+                PDLOG(ERROR, "recycle_bin_ssd_root_path is not configured. Deleted table is not recycled.");
+            }
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_ssd_root_path");
-    }
 
-    if (FLAGS_recycle_bin_enabled && FLAGS_hdd_root_path != "" && FLAGS_recycle_bin_hdd_root_path != "") {
-        if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
-            PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_hdd_root_path.c_str());
-            return false;
+        if (FLAGS_hdd_root_path != "") {
+            if (FLAGS_recycle_bin_hdd_root_path != "") {
+                if (!CreateMultiDir(mode_recycle_root_paths_[::openmldb::common::kHDD])) {
+                    PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_hdd_root_path.c_str());
+                    return false;
+                }
+            } else {
+                PDLOG(ERROR, "recycle_bin_hdd_root_path is not configured. Deleted table is not recycled.");
+            }
         }
-    } else {
-        PDLOG(INFO, "Will not create recycle_bin_hdd_root_path");
     }
 
     std::map<std::string, std::string> real_endpoint_map = {{endpoint, real_endpoint}};
     if (!catalog_->UpdateClient(real_endpoint_map)) {
-        PDLOG(WARNING, "update client failed");
+        PDLOG(ERROR, "update client failed");
         return false;
     }
 
@@ -3849,9 +3857,8 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         }
         engine_->ClearCacheLocked(table_meta->db());
 
-        // if it is in standalone mode and there is new pre_agg table, refresh aggr catalog manually
-        // if it is cluster mode, RefreshTableInfo will be triggered automatically
-        if (!IsClusterMode() && boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+        // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
+        if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
             RefreshAggrCatalog();
         }
     }
@@ -4389,7 +4396,7 @@ bool TabletImpl::RefreshAggrCatalog() {
         it->Next();
     }
     catalog_->RefreshAggrTables(table_infos);
-    LOG(INFO) << "Refresh agg catalog in (size = " << table_infos.size() << ")";
+    LOG(INFO) << "Refresh agg catalog (size = " << table_infos.size() << ")";
     return true;
 }
 

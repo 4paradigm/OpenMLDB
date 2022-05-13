@@ -36,7 +36,6 @@ With those three steps done, the system is ready to serve real-time features, an
 
 ![workflow](docs/en/about/images/workflow.png)
 
-
 In order to achieve the goal of Development as Deployment, OpenMLDB is designed to provide consistent features for training and inference. The figure above shows the high-level architecture of OpenMLDB, which consists of four key components: (1) SQL as the unified programming language; (2) The real-time SQL engine for for extra-low latency services; (3) The batch SQL engine based on [a tailored Spark distribution](https://github.com/4paradigm/spark); (4) The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the consistency.
 
 ## 3. Highlights

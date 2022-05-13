@@ -402,6 +402,81 @@ TEST_P(DBSDKTest, Deploy) {
     ASSERT_FALSE(status.IsOK());
 }
 
+TEST_P(DBSDKTest, DeployWithSameIndex) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql =
+        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c1, ts=c7, ttl=1, ttl_type=latest));";
+
+    HandleSQL(create_sql);
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
+
+    // origin index
+    std::string msg;
+    auto ns_client = cs->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    ::openmldb::nameserver::TableInfo table = tables[0];
+
+    ASSERT_EQ(table.column_key_size(), 1);
+    ::openmldb::common::ColumnKey column_key = table.column_key(0);
+    ASSERT_EQ(column_key.col_name_size(), 1);
+    ASSERT_EQ(column_key.col_name(0), "c1");
+    ASSERT_EQ(column_key.ts_name(), "c7");
+    ASSERT_TRUE(column_key.has_ttl());
+    ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(column_key.ttl().lat_ttl(), 1);
+
+    std::string deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    // new index, update ttl
+    tables.clear();
+    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    table = tables[0];
+
+    ASSERT_EQ(table.column_key_size(), 1);
+    column_key = table.column_key(0);
+    ASSERT_EQ(column_key.col_name_size(), 1);
+    ASSERT_EQ(column_key.col_name(0), "c1");
+    ASSERT_EQ(column_key.ts_name(), "c7");
+    ASSERT_TRUE(column_key.has_ttl());
+    ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
+    ASSERT_EQ(column_key.ttl().lat_ttl(), 2);
+
+    // type mismatch case
+    create_sql =
+        "create table trans1 (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+        "c8 date, index(key=c1, ts=c7, ttl=1m, ttl_type=absolute));";
+    HandleSQL(create_sql);
+    if (!cs->IsClusterMode()) {
+        HandleSQL("insert into trans1 values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+    }
+    deploy_sql =
+        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
+        " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime");
+
+
+    ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
+}
+
 TEST_P(DBSDKTest, DeployCol) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -464,7 +539,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL("use test2;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
         HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
@@ -544,6 +619,106 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
     ASSERT_TRUE(req->Build());
 }
 
+TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " sum(i16_col) over w1 as w1_sum_i16_col,"
+        " sum(i32_col) over w1 as w1_sum_i32_col,"
+        " sum(f_col) over w1 as w1_sum_f_col,"
+        " sum(d_col) over w1 as w1_sum_d_col,"
+        " sum(t_col) over w1 as w1_sum_t_col,"
+        " sum(col3) over w2 as w2_sum_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_sum_i64_col;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_i16_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_i32_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_f_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_d_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_sum_t_col;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(0, rs->Size());
+
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+        ASSERT_EQ(exp, res->GetInt16Unsafe(3));
+        ASSERT_EQ(exp, res->GetInt32Unsafe(4));
+        ASSERT_EQ(exp, res->GetFloatUnsafe(5));
+        ASSERT_EQ(exp, res->GetDoubleUnsafe(6));
+        ASSERT_EQ(exp, res->GetTimeUnsafe(7));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(8));
+    }
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_sum_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_i16_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_i32_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_f_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_d_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_sum_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
 TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -556,7 +731,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
 
-    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
         " sum(i64_col) over w1 as w1_sum_i64_col,"
         " sum(i16_col) over w1 as w1_sum_i16_col,"
         " sum(i32_col) over w1 as w1_sum_i32_col,"
@@ -565,7 +740,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
         " sum(t_col) over w1 as w1_sum_t_col,"
         " sum(col3) over w2 as w2_sum_col3"
         " from " + base_table +
-        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
         " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
         " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
@@ -1039,6 +1214,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     CreateDBTableForLongWindow(base_db, base_table);
 
     std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " count(*) over w1 as w1_count_all,"
         " count(i64_col) over w1 as w1_count_i64_col,"
         " count(i16_col) over w1 as w1_count_i16_col,"
         " count(i32_col) over w1 as w1_count_i32_col,"
@@ -1103,6 +1279,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     result_sql = "select * from pre_test_aggr_w1_count_date_col;";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
+    result_sql = "select * from pre_test_aggr_w1_count_;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
 
     int req_num = 2;
     for (int i = 0; i < req_num; i++) {
@@ -1126,6 +1305,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
         ASSERT_EQ(exp, res->GetInt64Unsafe(8));
         ASSERT_EQ(exp, res->GetInt64Unsafe(9));
         ASSERT_EQ(exp, res->GetInt64Unsafe(10));
+        ASSERT_EQ(exp, res->GetInt64Unsafe(11));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -1151,6 +1331,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     pre_aggr_table = "pre_test_aggr_w1_count_date_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -1474,6 +1657,9 @@ TEST_P(DBSDKTest, GlobalVariable) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    ProcessSQLs(sr, {
+                        "set @@execute_mode='offline';",
+                    });
 
     ::hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show global variables", &status);
@@ -1484,27 +1670,42 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"job_timeout", "20000"},
                           {"execute_mode", "offline"}},
                          rs.get());
+    // init session variables from systemtable
+    rs = sr->ExecuteSQL("show session variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Value"},
+                          {"enable_trace", "false"},
+                          {"execute_mode", "offline"},
+                          {"job_timeout", "20000"},
+                          {"sync_job", "false"}},
+                         rs.get());
+    // set global variables
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='true';",
                         "set @@global.sync_job='true';",
-                        "set @@global.job_timeout='30000';",
                         "set @@global.execute_mode='online';",
                     });
     rs = sr->ExecuteSQL("show global variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
                           {"enable_trace", "true"},
                           {"sync_job", "true"},
-                          {"job_timeout", "30000"},
+                          {"job_timeout", "20000"},
                           {"execute_mode", "online"}},
+                         rs.get());
+    // update session variables if set global variables
+    rs = sr->ExecuteSQL("show session variables", &status);
+    ExpectResultSetStrEq({{"Variable_name", "Value"},
+                          {"enable_trace", "true"},
+                          {"execute_mode", "online"},
+                          {"job_timeout", "20000"},
+                          {"sync_job", "true"}},
                          rs.get());
 
     ProcessSQLs(sr, {
                         "set @@global.enable_trace='false';",
                         "set @@global.sync_job='false';",
-                        "set @@global.job_timeout='20000';",
                         "set @@global.execute_mode='offline';",
                     });
-
+    rs = sr->ExecuteSQL("show global variables", &status);
     ExpectResultSetStrEq({{"Variable_name", "Variable_value"},
                           {"enable_trace", "false"},
                           {"sync_job", "false"},

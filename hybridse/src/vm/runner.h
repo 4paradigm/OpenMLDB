@@ -572,10 +572,19 @@ class IteratorStatus {
     IteratorStatus() : is_valid_(false), key_(0) {}
     explicit IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
-    static int32_t PickIteratorWithMininumKey(
-        std::vector<IteratorStatus>* status_list_ptr);
-    static int32_t PickIteratorWithMaximizeKey(
-        std::vector<IteratorStatus>* status_list_ptr);
+
+    /// \brief find the vaild iterators whose iterator key are the minium of all iterators given
+    ///
+    /// \param status_list: a list of iterators
+    /// \return index of last found iterators, -1 if not found
+    static int32_t FindLastIteratorWithMininumKey(const std::vector<IteratorStatus>& status_list);
+
+    /// \brief find the vaild iterators whose iterator key are the maximum of all iterators given
+    ///
+    /// \param status_list: a list of iterators
+    /// \return index of first found iterators, -1 if not found
+    static int32_t FindFirstIteratorWithMaximizeKey(const std::vector<IteratorStatus>& status_list);
+
     void MarkInValid() {
         is_valid_ = false;
         key_ = 0;
@@ -977,13 +986,17 @@ class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
                           bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ColumnRefNode* agg_col)
+                          const node::ExprNode* agg_col)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
           func_(func),
-          agg_col_(agg_col) {}
+          agg_col_(agg_col) {
+    if (agg_col_->GetExprType() == node::kExprColumnRef) {
+        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+    }
+}
 
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
@@ -1016,7 +1029,8 @@ class RequestAggUnionRunner : public Runner {
     bool output_request_row_;
     const node::FnDefNode* func_ = nullptr;
     AggType agg_type_;
-    const node::ColumnRefNode* agg_col_ = nullptr;
+    const node::ExprNode* agg_col_ = nullptr;
+    std::string agg_col_name_;
     std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
 };
 

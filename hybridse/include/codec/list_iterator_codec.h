@@ -49,7 +49,7 @@ template <class V, class R>
 class WrapListImpl : public ListV<V> {
  public:
     WrapListImpl() : ListV<V>() {}
-    ~WrapListImpl() {}
+    ~WrapListImpl() override {}
     virtual const V GetFieldUnsafe(const R &row) const = 0;
     virtual void GetField(const R &row, V *, bool *) const = 0;
     virtual const bool IsNull(const R &row) const = 0;
@@ -67,7 +67,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
           col_idx_(col_idx),
           offset_(offset) {}
 
-    ~ColumnImpl() {}
+    ~ColumnImpl() override {}
 
     const V GetFieldUnsafe(const Row &row) const override {
         V value;
@@ -398,7 +398,7 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
           start_(start),
           end_(end) {
         if (nullptr != root_) {
-            root_->SeekToFirst();
+            SeekToFirst();
             start_key_ = root_->Valid() ? root_->GetKey() : 0;
         }
     }
@@ -416,9 +416,13 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
         root_->Seek(start_);
     }
     virtual bool IsSeekable() const { return root_->IsSeekable(); }
+
     std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    // the row key corresponding to the window
     uint64_t start_key_;
+    // range start, key decrease start to end
     const uint64_t start_;
+    // range end, key decrease start to end
     const uint64_t end_;
 };
 

@@ -1012,7 +1012,7 @@ public class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getSQLStateType() throws SQLException {
-        return 0;
+        return sqlStateSQL99;
     }
 
     @Override

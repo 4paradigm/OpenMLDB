@@ -187,3 +187,43 @@
 # Configure thread pool size
 #--thread_pool_size=16
 ```
+
+## he Configuration file for TaskManager: conf/taskmanager.properties
+
+```
+# Server Config
+server.host=0.0.0.0
+server.port=9902
+server.worker_threads=4
+server.io_threads=4
+server.channel_keep_alive_time=1800
+prefetch.jobid.num=1
+job.log.path=./logs/
+external.function.dir=./udf/
+track.unfinished.jobs=true
+job.tracker.interval=30
+
+# OpenMLDB Config
+zookeeper.cluster=0.0.0.0:2181
+zookeeper.root_path=/openmldb
+zookeeper.session_timeout=5000
+zookeeper.connection_timeout=5000
+zookeeper.max_retries=10
+zookeeper.base_sleep_time=1000
+zookeeper.max_connect_waitTime=30000
+
+# Spark Config
+spark.home=
+spark.master=local
+spark.yarn.jars=
+spark.default.conf=
+spark.eventLog.dir=
+spark.yarn.maxAppAttempts=1
+batchjob.jar.path=
+namenode.uri=
+offline.data.prefix=file:///tmp/openmldb_offline_storage/
+hadoop.conf.dir=
+```
+
+* If configuration of `spark.home` is not set，please set the environment variable of `SPARK_HOME` in TaskManager server.
+* The default value of configruation `spark.master` is `local`. We can set `local[*]`, `yarn`, `yarn-cluster` or `yarn-client` as well. If we are using Yarn mode, please set configuration `offline.data.prefix` as the HDFS path to avoid saving offline data in local filesystem of Yarn containers. Meanwhile we need to set environment variable of `HADOOP_CONF_DIR` as the directory of Hadoop configuration files.

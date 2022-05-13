@@ -25,8 +25,13 @@ For the cluster version, you can execute the below command in CLI to set the exe
 
 ```sql
 > SET @@execute_mode = "offline" | "online"
-````
+```
 
+In offline execution mode, it is asynchronous by default. We can set as synchronous so that the command will be blocked util the job has been finished.
+
+```sql
+set @@sync_job = true;
+```
 
 ### 2.3. Offline Task Management
 

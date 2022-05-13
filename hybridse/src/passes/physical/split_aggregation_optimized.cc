@@ -56,7 +56,7 @@ bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** o
         return false;
     }
 
-    auto project_aggr_op = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op);
+    auto project_aggr_op = dynamic_cast<vm::PhysicalAggregationNode*>(project_op);
     const auto& projects = project_aggr_op->project();
     for (size_t i = 0; i < projects.size(); i++) {
         const auto* expr = projects.GetExpr(i);
@@ -76,7 +76,7 @@ bool SplitAggregationOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** o
     return false;
 }
 
-bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, PhysicalOpNode** output) {
+bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggregationNode* in, PhysicalOpNode** output) {
     const auto& projects = in->project();
     *output = in;
 
@@ -100,18 +100,18 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
             const auto* window = call_expr->GetOver();
 
             if (window) {
-                // create PhysicalAggrerationNode of the window project
+                // create PhysicalAggregationNode of the window project
                 vm::ColumnProjects column_projects;
                 column_projects.Add(name, expr, projects.GetFrame(i));
                 column_projects.SetPrimaryFrame(projects.GetPrimaryFrame());
-                vm::PhysicalAggrerationNode* node = nullptr;
+                vm::PhysicalAggregationNode* node = nullptr;
                 DLOG(INFO) << "Create Single Aggregation: size = " << column_projects.size()
                            << ", expr = " << column_projects.GetExpr(column_projects.size() - 1)->GetExprString();
 
-                auto status = plan_ctx_->CreateOp<vm::PhysicalAggrerationNode>(
+                auto status = plan_ctx_->CreateOp<vm::PhysicalAggregationNode>(
                     &node, in->GetProducer(0), column_projects, in->having_condition_.condition());
                 if (!status.isOK()) {
-                    LOG(ERROR) << "Fail to create PhysicalAggrerationNode: " << status;
+                    LOG(ERROR) << "Fail to create PhysicalAggregationNode: " << status;
                     return false;
                 }
 
@@ -170,7 +170,7 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggrerationNode* in, P
     return true;
 }
 
-bool SplitAggregationOptimized::IsSplitable(vm::PhysicalAggrerationNode* op) {
+bool SplitAggregationOptimized::IsSplitable(vm::PhysicalAggregationNode* op) {
     // TODO(zhanghao): currently we only split the aggregation project that depends on a single physical table
     if (op->project().size() <= 1 || op->producers()[0]->GetOpType() != vm::kPhysicalOpRequestUnion) {
         return false;
