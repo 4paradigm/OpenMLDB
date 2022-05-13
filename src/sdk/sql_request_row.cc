@@ -363,7 +363,7 @@ std::shared_ptr<SQLRequestRow> SQLRequestRow::CreateSQLRequestRowFromColumnTypes
         auto column = schema.Add();
         column->set_type(hybridse_type);
     }
-    const std::shared_ptr<::hybridse::sdk::Schema> schema_impl = std::make_shared<hybridse::sdk::SchemaImpl>(schema);
+    std::shared_ptr<const ::hybridse::sdk::Schema> schema_impl = std::make_shared<hybridse::sdk::SchemaImpl>(schema);
     return std::make_shared<SQLRequestRow>(schema_impl, std::set<std::string>());
 }
 

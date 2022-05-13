@@ -350,7 +350,7 @@ std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t t
     }
     return tables_handler;
 }
-PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
+PartitionClientManager::PartitionClientManager(uint32_t pid, std::shared_ptr<const TabletAccessor>& leader,
                                                const std::vector<std::shared_ptr<TabletAccessor>>& followers)
     : pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
 

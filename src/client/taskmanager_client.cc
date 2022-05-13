@@ -271,7 +271,7 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
 }
 
 ::openmldb::base::Status TaskManagerClient::CreateFunction(
-        const std::shared_ptr<::openmldb::common::ExternalFun>& fun) {
+        std::shared_ptr<const ::openmldb::common::ExternalFun>& fun) {
     if (!fun) {
         return {-1, "nullptr"};
     }

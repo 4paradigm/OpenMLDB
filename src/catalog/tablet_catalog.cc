@@ -379,7 +379,7 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 bool TabletCatalog::IndexSupport() { return true; }
 
 bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
-                                 const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info) {
+                                 std::shared_ptr<const hybridse::sdk::ProcedureInfo>& sp_info) {
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {

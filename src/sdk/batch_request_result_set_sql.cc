@@ -29,8 +29,8 @@ namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
 SQLBatchRequestResultSet::SQLBatchRequestResultSet(
-    const std::shared_ptr<::openmldb::api::SQLBatchRequestQueryResponse>& response,
-    const std::shared_ptr<brpc::Controller>& cntl)
+    std::shared_ptr<const ::openmldb::api::SQLBatchRequestQueryResponse>& response,
+    std::shared_ptr<const brpc::Controller>& cntl)
     : response_(response),
       index_(-1),
       byte_size_(0),

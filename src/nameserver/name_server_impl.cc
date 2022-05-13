@@ -80,7 +80,7 @@ constexpr uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                                          const std::vector<::openmldb::nameserver::TableInfo>& tables_remote,
-                                         const std::shared_ptr<::openmldb::client::NsClient> ns_client) {
+                                         std::shared_ptr<const ::openmldb::client::NsClient> ns_client) {
     for (const TableInfo& table_info_remote : tables_remote) {
         std::string name = table_info_remote.name();
         std::string db = table_info_remote.db();
@@ -185,7 +185,7 @@ void NameServerImpl::TableInfoToVec(
 
 void NameServerImpl::CheckSyncTable(const std::string& alias,
                                     const std::vector<::openmldb::nameserver::TableInfo> tables,
-                                    const std::shared_ptr<::openmldb::client::NsClient> ns_client) {
+                                    std::shared_ptr<const ::openmldb::client::NsClient> ns_client) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.empty() && db_table_info_.empty()) {
@@ -989,7 +989,7 @@ bool NameServerImpl::RecoverOPTask() {
               ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
     for (auto& op_list : task_vec_) {
-        op_list.sort([](const std::shared_ptr<OPData>& a, const std::shared_ptr<OPData>& b) {
+        op_list.sort([](std::shared_ptr<const OPData>& a, std::shared_ptr<const OPData>& b) {
             if (a->op_info_.parent_id() < b->op_info_.parent_id()) {
                 return true;
             } else if (a->op_info_.parent_id() > b->op_info_.parent_id()) {
@@ -2294,7 +2294,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     return 0;
 }
 
-int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+int NameServerImpl::CreateTableOnTablet(std::shared_ptr<const ::openmldb::nameserver::TableInfo>& table_info,
                                         bool is_leader, std::map<uint32_t, std::vector<std::string>>& endpoint_map,
                                         uint64_t term) {
     ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
@@ -4920,7 +4920,7 @@ int NameServerImpl::CreateOPData(::openmldb::api::OPType op_type, const std::str
     return 0;
 }
 
-int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency) {
+int NameServerImpl::AddOPData(std::shared_ptr<const OPData>& op_data, uint32_t concurrency) {
     uint32_t idx = 0;
     if (op_data->op_info_.for_replica_cluster() == 1) {
         if (op_data->op_info_.pid() == INVALID_PID) {
@@ -8773,13 +8773,13 @@ void NameServerImpl::DistributeTabletMode() {
 
 bool NameServerImpl::CreateTableRemote(const ::openmldb::api::TaskInfo& task_info,
                                        const ::openmldb::nameserver::TableInfo& table_info,
-                                       const std::shared_ptr<::openmldb::nameserver::ClusterInfo> cluster_info) {
+                                       std::shared_ptr<const ::openmldb::nameserver::ClusterInfo> cluster_info) {
     return cluster_info->CreateTableRemote(task_info, table_info, zone_info_);
 }
 
 bool NameServerImpl::DropTableRemote(const ::openmldb::api::TaskInfo& task_info, const std::string& name,
                                      const std::string& db,
-                                     const std::shared_ptr<::openmldb::nameserver::ClusterInfo> cluster_info) {
+                                     std::shared_ptr<const ::openmldb::nameserver::ClusterInfo> cluster_info) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto db_iter = cluster_info->last_status.find(db);
@@ -8916,7 +8916,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
     PDLOG(INFO, "delete index : table[%s] index[%s]", request->table_name().c_str(), request->idx_name().c_str());
 }
 
-bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
+bool NameServerImpl::UpdateZkTableNode(std::shared_ptr<const ::openmldb::nameserver::TableInfo>& table_info) {
     if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
         NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         if (table_info->db() == INFORMATION_SCHEMA_DB && table_info->name() == GLOBAL_VARIABLES) {
