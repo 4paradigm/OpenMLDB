@@ -406,9 +406,9 @@ static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
             break;
         }
         case ProjectType::kAggregation: {
-            PhysicalAggrerationNode* op = nullptr;
+            PhysicalAggregationNode* op = nullptr;
             CHECK_STATUS(
-                ctx->CreateOp<PhysicalAggrerationNode>(&op, input, projects, having_condition));
+                ctx->CreateOp<PhysicalAggregationNode>(&op, input, projects, having_condition));
             *out = op;
             break;
         }
@@ -424,7 +424,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
                                             BuildOpState* state) {
     // process window agg
     if (project_op->project_type_ == ProjectType::kAggregation) {
-        auto window_agg_op = dynamic_cast<PhysicalAggrerationNode*>(project_op);
+        auto window_agg_op = dynamic_cast<PhysicalAggregationNode*>(project_op);
         return ProcessWindow(ctx, window_agg_op, state);
     }
 
@@ -487,7 +487,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
 //    const node::ExprNode* having_condition = project_op->having_condition_.condition();
     vm::ConditionFilter having_condition;
     if (project_op->project_type_ == vm::kAggregation) {
-        having_condition = dynamic_cast<vm::PhysicalAggrerationNode*>(project_op)->having_condition_;
+        having_condition = dynamic_cast<vm::PhysicalAggregationNode*>(project_op)->having_condition_;
     } else if (project_op->project_type_ == vm::kGroupAggregation) {
         having_condition = dynamic_cast<vm::PhysicalGroupAggrerationNode*>(project_op)->having_condition_;
     }
@@ -687,7 +687,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
 }
 
 Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
-                                           PhysicalAggrerationNode* agg_op,
+                                           PhysicalAggregationNode* agg_op,
                                            BuildOpState* state) {
     // find request union path
     auto input = agg_op->GetProducer(0);
@@ -795,8 +795,8 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         new_union == agg_op->GetProducer(0)) {
         state->common_op = agg_op;
     } else if (common_projects.size() > 0) {
-        PhysicalAggrerationNode* common_project_op = nullptr;
-        CHECK_STATUS(ctx->CreateOp<PhysicalAggrerationNode>(
+        PhysicalAggregationNode* common_project_op = nullptr;
+        CHECK_STATUS(ctx->CreateOp<PhysicalAggregationNode>(
             &common_project_op, new_union, common_projects, new_having_condition));
         state->common_op = common_project_op;
     } else {
@@ -807,8 +807,8 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         new_union == agg_op->GetProducer(0)) {
         state->non_common_op = agg_op;
     } else if (non_common_projects.size() > 0) {
-        PhysicalAggrerationNode* non_common_project_op = nullptr;
-        CHECK_STATUS(ctx->CreateOp<PhysicalAggrerationNode>(
+        PhysicalAggregationNode* non_common_project_op = nullptr;
+        CHECK_STATUS(ctx->CreateOp<PhysicalAggregationNode>(
             &non_common_project_op, new_union, non_common_projects, new_having_condition));
         state->non_common_op = non_common_project_op;
     } else {

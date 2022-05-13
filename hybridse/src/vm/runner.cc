@@ -201,7 +201,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kAggregation: {
                     AggRunner* runner = nullptr;
                     CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                                            dynamic_cast<const PhysicalAggrerationNode*>(node)->having_condition_,
+                                            dynamic_cast<const PhysicalAggregationNode*>(node)->having_condition_,
                                             op->project().fn_info());
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
@@ -3051,8 +3051,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     window_table->AddRow(start, aggregator_->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
-    // reset the aggregator
-    aggregator_->Reset();
     return window_table;
 }
 

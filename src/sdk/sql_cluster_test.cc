@@ -454,7 +454,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                       "("
                       "col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8, replicanum=2);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -626,7 +626,7 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
                       "("
                       " col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
