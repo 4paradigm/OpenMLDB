@@ -6,4 +6,5 @@ Maintenance
     :maxdepth: 1
 
     cli
+    faq
 
