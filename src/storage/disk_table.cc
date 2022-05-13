@@ -173,8 +173,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         const auto& indexs = inner_index->GetIndex();
         for (const auto& index_def : indexs) {
-            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
-                index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
                 cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(
                     inner_index, &idx_cnt_vec_, pk_cnt_vec_[inner_index->GetId()],
                     &bloom_filter_vec_[inner_index->GetId()]);
@@ -424,7 +423,7 @@ void DiskTable::GcHead() {
         if (indexs.size() > 1) {
             std::map<uint32_t, uint64_t> ttl_map;
             std::map<uint32_t, uint32_t> idx_map;
-            std::set<uint32_t> abs_set;
+            std::set<uint32_t> other_TTL_set;
             for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
@@ -432,9 +431,9 @@ void DiskTable::GcHead() {
                     if (lat_ttl > 0) {
                         ttl_map.emplace(ts_col->GetId(), lat_ttl);
                     }
-                    auto abs_ttl = index->GetTTL()->abs_ttl;
-                    if (abs_ttl > 0) {
-                        abs_set.insert(ts_col->GetId());
+                    auto TTL_type = index->GetTTLType();
+                    if (TTL_type != openmldb::storage::TTLType::kLatestTime) {
+                        other_TTL_set.insert(ts_col->GetId());
                     }
                     idx_map.emplace(ts_col->GetId(), index->GetId());
                 }
@@ -447,7 +446,7 @@ void DiskTable::GcHead() {
                 uint64_t ts = 0;
                 uint32_t ts_idx = 0;
                 ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
-                if (abs_set.find(ts_idx) != abs_set.end()) {
+                if (other_TTL_set.find(ts_idx) != other_TTL_set.end()) {
                     it->Next();
                     continue;
                 }

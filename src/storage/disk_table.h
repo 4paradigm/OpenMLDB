@@ -259,6 +259,9 @@ class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
                     return false;
                 }
                 if (ts_col->GetId() == ts_idx) {
+                    if (index->GetTTLType() != ::openmldb::storage::TTLType::kAbsoluteTime) {
+                        return false;
+                    }
                     real_ttl = index->GetTTL()->abs_ttl;
                     idx = index->GetId();
                     has_found = true;
