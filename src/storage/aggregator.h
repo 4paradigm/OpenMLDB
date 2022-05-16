@@ -75,9 +75,9 @@ class AggrBuffer {
     uint64_t binlog_offset_;
     int64_t non_null_cnt_;
     int32_t aggr_cnt_;
-    int32_t key_end_;
+    uint32_t key_end_;
     DataType data_type_;
-    AggrBuffer(int32_t key_end)
+    explicit AggrBuffer(uint32_t key_end)
         : aggr_val_(),
           ts_begin_(-1),
           ts_end_(0),
@@ -123,7 +123,7 @@ class AggrBuffer {
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
     AggrBuffer buffer_;
-    AggrBufferLocked(int32_t key_end) : mu_(std::make_unique<std::mutex>()), buffer_(key_end) {}
+    explicit AggrBufferLocked(int32_t key_end) : mu_(std::make_unique<std::mutex>()), buffer_(key_end) {}
 };
 
 class Aggregator {

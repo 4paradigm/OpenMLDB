@@ -567,8 +567,8 @@ void CreateDBTableForLongWindow(const std::string& base_db, const std::string& b
     std::string ddl =
         "create table " + base_table +
         "(col1 string, col2 string, col3 timestamp, i64_col bigint, i16_col smallint, i32_col int, f_col "
-        "float, d_col double, t_col timestamp, s_col string, date_col date, filter int, index(key=(col1,col2), ts=col3, "
-        "abs_ttl=0, ttl_type=absolute)) "
+        "float, d_col double, t_col timestamp, s_col string, date_col date, filter int, "
+        "index(key=(col1,col2), ts=col3, abs_ttl=0, ttl_type=absolute)) "
         "options(partitionnum=8);";
     ok = sr->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok) << status.msg;
