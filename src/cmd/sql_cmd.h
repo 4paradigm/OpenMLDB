@@ -157,13 +157,8 @@ void Shell() {
         auto last_semicolon_pos = buffer.find_last_of(';');
         if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
             absl::string_view input = buffer;
-            input.remove_prefix(last_semicolon_pos);
-            std::string prefix(" ");
-            while (true) {
-                if (!absl::ConsumePrefix(&input, prefix)) {
-                    break;
-                }
-            }
+            input.remove_prefix(last_semicolon_pos + 1);
+            while (absl::ConsumePrefix(&input, " ")) {}
             sql.append(buffer.begin(), buffer.begin() + last_semicolon_pos + 1);
             sql.append(input.begin(), input.end());
         } else {
