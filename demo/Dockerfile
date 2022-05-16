@@ -14,7 +14,7 @@ COPY talkingdata-adtracking-fraud-detection /work/talkingdata/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.0.0-bin-openmldbspark
-ARG OPENMLDB_VERSION=0.4.4
+ARG OPENMLDB_VERSION=0.5.0
 
 COPY setup_openmldb.sh /
 RUN /setup_openmldb.sh "${OPENMLDB_VERSION}"  && rm /setup_openmldb.sh
