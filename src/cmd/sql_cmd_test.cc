@@ -567,7 +567,7 @@ void CreateDBTableForLongWindow(const std::string& base_db, const std::string& b
     std::string ddl =
         "create table " + base_table +
         "(col1 string, col2 string, col3 timestamp, i64_col bigint, i16_col smallint, i32_col int, f_col "
-        "float, d_col double, t_col timestamp, s_col string, date_col date, index(key=(col1,col2), ts=col3, "
+        "float, d_col double, t_col timestamp, s_col string, date_col date, filter int, index(key=(col1,col2), ts=col3, "
         "abs_ttl=0, ttl_type=absolute)) "
         "options(partitionnum=8);";
     ok = sr->ExecuteDDL(base_db, ddl, &status);
@@ -585,6 +585,7 @@ void PrepareDataForLongWindow(const std::string& base_db, const std::string& bas
     ::hybridse::sdk::Status status;
     for (int i = 1; i <= 11; i++) {
         std::string val = std::to_string(i);
+        std::string filter_val = std::to_string(i % 2);
         std::string date;
         if (i < 10) {
             date = absl::StrCat("1900-01-0", std::to_string(i));
@@ -593,7 +594,7 @@ void PrepareDataForLongWindow(const std::string& base_db, const std::string& bas
         }
         std::string insert =
             absl::StrCat("insert into ", base_table, " values('str1', 'str2', ", val, ", ", val, ", ", val, ", ", val,
-                         ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "');");
+                         ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "', ", filter_val, ");");
         bool ok = sr->ExecuteInsert(base_db, insert, &status);
         ASSERT_TRUE(ok) << status.msg;
     }
@@ -1334,6 +1335,115 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     pre_aggr_table = "pre_test_aggr_w1_count_";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        // " count_where(*, filter=1) over w1 as w1_count_all,"
+        " count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col,"
+        " count_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,"
+        " count_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,"
+        " count_where(f_col, 0=filter) over w1 as w1_count_where_f_col,"
+        " count_where(d_col, 1=filter) over w1 as w1_count_where_d_col,"
+        " count_where(t_col, 1>=filter) over w1 as w1_count_where_t_col,"
+        " count_where(s_col, 2<filter) over w1 as w1_count_where_s_col,"
+        " count_where(date_col, 2>filter) over w1 as w1_count_where_date_col,"
+        " count_where(col3, 0>=filter) over w2 as w2_count_where_col3"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
+        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
+        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string result_sql = "select * from pre_test_aggr_w1_count_where_i64_col_filter;";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    for (int i = 4; i >= 1; i--) {
+        ASSERT_TRUE(rs->Next());
+        ASSERT_EQ("str1|str2", rs->GetStringUnsafe(0));
+        ASSERT_EQ(2, rs->GetInt32Unsafe(3));
+        std::string aggr_val_str = rs->GetStringUnsafe(4);
+        int64_t aggr_val = *reinterpret_cast<int64_t*>(&aggr_val_str[0]);
+        ASSERT_EQ(2, aggr_val);
+        std::string filter_key = rs->GetStringUnsafe(6);
+        ASSERT_EQ(std::to_string(i % 2), filter_key);
+    }
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_i16_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_i32_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_f_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_d_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_t_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_s_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_date_col_filter;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(4, rs->Size());
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    std::string pre_aggr_table = "pre_test_aggr_w1_count_where_i64_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_i16_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_i32_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_f_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_d_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_t_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_s_col_filter";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_date_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);

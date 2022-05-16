@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <utility>
 #include "boost/algorithm/string.hpp"
+#include "absl/strings/str_cat.h"
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -115,13 +116,14 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return false;
         }
     }
+    auto aggr_key = GetAggregateKey(key, row_ptr);
 
     AggrBufferLocked* aggr_buffer_lock;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto it = aggr_buffer_map_.find(key);
+        auto it = aggr_buffer_map_.find(aggr_key);
         if (it == aggr_buffer_map_.end()) {
-            auto insert_pair = aggr_buffer_map_.emplace(key, AggrBufferLocked{});
+            auto insert_pair = aggr_buffer_map_.emplace(aggr_key, AggrBufferLocked{key.size()});
             aggr_buffer_lock = &insert_pair.first->second;
         } else {
             aggr_buffer_lock = &it->second;
@@ -151,7 +153,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
         }
         lock.unlock();
-        FlushAggrBuffer(key, flush_buffer);
+        FlushAggrBuffer(aggr_key, flush_buffer);
         lock.lock();
     }
 
@@ -234,7 +236,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     uint64_t recovery_offset = UINT64_MAX;
     uint64_t aggr_latest_offset = 0;
     while (it->Valid()) {
-        auto buf_it = aggr_buffer_map_.emplace(it->GetPK(), AggrBufferLocked{});
+        auto buf_it = aggr_buffer_map_.emplace(it->GetPK(), AggrBufferLocked{it->GetPK().size()});
         auto& buffer = buf_it.first->second.buffer_;
         auto val = it->GetValue();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
@@ -350,14 +352,21 @@ bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const 
     return true;
 }
 
-bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffer) {
+bool Aggregator::FlushAggrBuffer(const std::string& aggr_key, const AggrBuffer& buffer) {
     std::string encoded_row;
     std::string aggr_val;
     if (!EncodeAggrVal(buffer, &aggr_val)) {
         PDLOG(ERROR, "Enocde aggr value to row failed");
         return false;
     }
-    int str_length = key.size() + aggr_val.size();
+    int str_length = aggr_key.size() + aggr_val.size();
+    std::string key, filter_key;
+    if (buffer.key_end_ == aggr_key.size()) {
+        key = aggr_key;
+    } else {
+        key = aggr_key.substr(0, buffer.key_end_);
+        filter_key = aggr_key.substr(buffer.key_end_, aggr_key.size());
+    }
     uint32_t row_size = row_builder_.CalTotalLength(str_length);
     encoded_row.resize(row_size);
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&(encoded_row[0]));
@@ -365,16 +374,22 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const AggrBuffer& buffe
     row_builder_.SetString(row_ptr, row_size, 0, key.c_str(), key.size());
     row_builder_.SetTimestamp(row_ptr, 1, buffer.ts_begin_);
     row_builder_.SetTimestamp(row_ptr, 2, buffer.ts_end_);
+    row_builder_.SetInt32(row_ptr, 3, buffer.aggr_cnt_);
     if ((aggr_type_ == AggrType::kMax || aggr_type_ == AggrType::kMin) && buffer.AggrValEmpty()) {
         row_builder_.SetNULL(row_ptr, row_size, 4);
     } else {
         row_builder_.SetString(row_ptr, row_size, 4, aggr_val.c_str(), aggr_val.size());
     }
-    row_builder_.SetInt32(row_ptr, 3, buffer.aggr_cnt_);
     row_builder_.SetInt64(row_ptr, 5, buffer.binlog_offset_);
+    if (!filter_key.empty()) {
+        row_builder_.SetString(row_ptr, row_size, 6, filter_key.c_str(), filter_key.size());
+    } else {
+        row_builder_.SetNULL(row_ptr, row_size, 6);
+    }
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
     dimensions_.Mutable(0)->set_key(key);
+    PDLOG(WARNING, "aggr table update %u %u", buffer.ts_begin_, buffer.binlog_offset_);
     bool ok = aggr_table_->Put(time, encoded_row, dimensions_);
     if (!ok) {
         PDLOG(ERROR, "Aggregator put failed");
@@ -398,7 +413,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const int8_t* base_
     auto it = aggr_table_->NewTraverseIterator(0);
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
     it->Seek(key, cur_ts + 1);
-    AggrBuffer tmp_buffer;
+    AggrBuffer tmp_buffer(key.size());
     if (it->Valid()) {
         auto val = it->GetValue();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
@@ -490,7 +505,7 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             return false;
         }
     }
-    aggr_buffer->non_null_cnt++;
+    aggr_buffer->non_null_cnt_++;
     return true;
 }
 
@@ -740,7 +755,7 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             return false;
         }
     }
-    aggr_buffer->non_null_cnt++;
+    aggr_buffer->non_null_cnt_++;
     return true;
 }
 
@@ -822,7 +837,7 @@ bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             return false;
         }
     }
-    aggr_buffer->non_null_cnt++;
+    aggr_buffer->non_null_cnt_++;
     return true;
 }
 
@@ -839,7 +854,7 @@ CountAggregator::CountAggregator(const ::openmldb::api::TableMeta& base_meta,
 }
 
 bool CountAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) {
-    int64_t tmp_val = buffer.non_null_cnt;
+    int64_t tmp_val = buffer.non_null_cnt_;
     aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(int64_t));
     return true;
 }
@@ -850,16 +865,37 @@ bool CountAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
         return true;
     }
-    buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val);
+    buffer->non_null_cnt_ = *reinterpret_cast<int64_t*>(aggr_val);
     return true;
 }
 
 bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) {
     if (count_all || !row_view.IsNULL(row_ptr, aggr_col_idx_)) {
-        aggr_buffer->non_null_cnt++;
+        aggr_buffer->non_null_cnt_++;
     }
     return true;
 }
+
+CountWhereAggregator::CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta,
+                                 const ::openmldb::api::TableMeta& aggr_meta, std::shared_ptr<Table> aggr_table,
+                                 std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                 const std::string& aggr_col, const AggrType& aggr_type, const std::string& ts_col,
+                                 WindowType window_tpye, uint32_t window_size, const std::string& filter_col)
+    : CountAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
+                 window_size), filter_col_(filter_col) {
+    for (int i = 0; i < base_meta.column_desc().size(); i++) {
+        if (base_meta.column_desc(i).name() == filter_col_) {
+            filter_col_idx_ = i;
+            break;
+        }
+    }
+}
+std::string CountWhereAggregator::GetAggregateKey(const std::string& pk, int8_t* row_ptr) {
+    std::string filter_key;
+    base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
+    return absl::StrCat(pk, filter_key);
+}
+
 
 AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
@@ -908,14 +944,14 @@ bool AvgAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             return false;
         }
     }
-    aggr_buffer->non_null_cnt++;
+    aggr_buffer->non_null_cnt_++;
     return true;
 }
 
 bool AvgAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) {
     double tmp_val = buffer.aggr_val_.vdouble;
     aggr_val->assign(reinterpret_cast<char*>(&tmp_val), sizeof(double));
-    aggr_val->append(reinterpret_cast<char*>(const_cast<int64_t*>(&buffer.non_null_cnt)), sizeof(int64_t));
+    aggr_val->append(reinterpret_cast<char*>(const_cast<int64_t*>(&buffer.non_null_cnt_)), sizeof(int64_t));
     return true;
 }
 
@@ -927,7 +963,7 @@ bool AvgAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     }
     double origin_val = *reinterpret_cast<double*>(aggr_val);
     buffer->aggr_val_.vdouble = origin_val;
-    buffer->non_null_cnt = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));
+    buffer->non_null_cnt_ = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));
     return true;
 }
 
@@ -936,7 +972,8 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
                                              std::shared_ptr<Table> aggr_table,
                                              std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
-                                             const std::string& ts_col, const std::string& bucket_size) {
+                                             const std::string& ts_col, const std::string& bucket_size,
+                                             const std::string& filter_col) {
     std::string aggr_type = boost::to_lower_copy(aggr_func);
     WindowType window_type;
     uint32_t window_size;
@@ -991,6 +1028,10 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
     } else if (aggr_type == "avg") {
         return std::make_shared<AvgAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
                                                AggrType::kAvg, ts_col, window_type, window_size);
+    } else if (aggr_type == "count_where") {
+        return std::make_shared<CountWhereAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos,
+                                                      aggr_col, AggrType::kCountWhere, ts_col, window_type, window_size,
+                                                      filter_col);
     } else {
         PDLOG(ERROR, "Unsupported aggregate function type");
         return std::shared_ptr<Aggregator>();

@@ -328,15 +328,37 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             }
             std::string aggr_name = agg_expr->GetFnDef()->GetName();
             std::string aggr_col;
-            for (uint32_t i = 0; i < agg_expr->GetChildNum(); i++) {
-                auto child_expr = agg_expr->GetChild(i);
-                aggr_col += child_expr->GetExprString() + ",";
+            if (agg_expr->GetChildNum() > 2 || agg_expr->GetChildNum() <= 0) {
+                DLOG(ERROR) << "only support single aggr column and an optional filter condition";
+                return;
             }
-            if (!aggr_col.empty()) {
-                aggr_col.pop_back();
+            aggr_col += agg_expr->GetChild(0)->GetExprString();
+
+            // extract filter column from condition expr
+            std::string filter_col;
+            if (agg_expr->GetChildNum() == 2) {
+                auto cond_expr = agg_expr->GetChild(1);
+                if (cond_expr->GetExprType() != hybridse::node::kExprBinary) {
+                    DLOG(ERROR) << "long window only support binary expr on single column";
+                    return;
+                }
+                auto left = cond_expr->GetChild(0);
+                auto right = cond_expr->GetChild(1);
+                if (left->GetExprType() == hybridse::node::kExprColumnRef) {
+                    filter_col = dynamic_cast<const hybridse::node::ColumnRefNode*>(left)->GetColumnName();
+                } else if (right->GetExprType() == hybridse::node::kExprColumnRef) {
+                    filter_col = dynamic_cast<const hybridse::node::ColumnRefNode*>(right)->GetColumnName();
+                } else {
+                    DLOG(ERROR) << "get filter_col failed";
+                    return;
+                }
             }
+
             (*long_window_infos).emplace_back(window_name, aggr_name, aggr_col,
                                            partition_col, order_by_col, window_map.at(window_name));
+            if (!filter_col.empty()) {
+                (*long_window_infos).back().filter_col_ = filter_col;
+            }
         }
     }
     return;

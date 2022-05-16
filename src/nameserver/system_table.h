@@ -108,6 +108,7 @@ class SystemTable {
                 SetColumnDesc("partition_cols", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("order_by_col", openmldb::type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("bucket_size", openmldb::type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("filter_col", openmldb::type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
                 index->set_index_name("aggr_table");
                 index->add_col_name("aggr_table");

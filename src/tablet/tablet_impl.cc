@@ -5783,7 +5783,8 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
                                                             aggr_table, aggr_replicator, request->index_pos(),
                                                             request->aggr_col(), request->aggr_func(),
-                                                            request->order_by_col(), request->bucket_size());
+                                                            request->order_by_col(), request->bucket_size(),
+                                                            request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;
