@@ -16,8 +16,8 @@
 
 #include <algorithm>
 #include <utility>
-#include "boost/algorithm/string.hpp"
 #include "absl/strings/str_cat.h"
+#include "boost/algorithm/string.hpp"
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
@@ -877,12 +877,15 @@ bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t
 }
 
 CountWhereAggregator::CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta,
-                                 const ::openmldb::api::TableMeta& aggr_meta, std::shared_ptr<Table> aggr_table,
-                                 std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
-                                 const std::string& aggr_col, const AggrType& aggr_type, const std::string& ts_col,
-                                 WindowType window_tpye, uint32_t window_size, const std::string& filter_col)
-    : CountAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
-                 window_size), filter_col_(filter_col) {
+                                           const ::openmldb::api::TableMeta& aggr_meta,
+                                           std::shared_ptr<Table> aggr_table,
+                                           std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                           const std::string& aggr_col, const AggrType& aggr_type,
+                                           const std::string& ts_col, WindowType window_tpye, uint32_t window_size,
+                                           const std::string& filter_col)
+    : CountAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col,
+                      window_tpye, window_size),
+      filter_col_(filter_col) {
     for (int i = 0; i < base_meta.column_desc().size(); i++) {
         if (base_meta.column_desc(i).name() == filter_col_) {
             filter_col_idx_ = i;
@@ -895,7 +898,6 @@ std::string CountWhereAggregator::GetAggregateKey(const std::string& pk, int8_t*
     base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
     return absl::StrCat(pk, filter_key);
 }
-
 
 AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,

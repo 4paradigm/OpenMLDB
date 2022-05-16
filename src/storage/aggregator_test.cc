@@ -269,8 +269,8 @@ void CheckAvgAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, i
 
 void CheckCountWhereAggrResult(std::shared_ptr<Table> aggr_table, std::shared_ptr<Aggregator> aggr, int64_t count) {
     // there are 101 aggr update, we have 2 filter val
-     // every window have one aggr_val
-     // there are 99 records in aggr table at the end.
+    // every window have one aggr_val
+    // there are 99 records in aggr table at the end.
     ASSERT_EQ(aggr_table->GetRecordCnt(), 99);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
