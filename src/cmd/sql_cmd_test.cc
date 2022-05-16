@@ -1977,6 +1977,7 @@ std::vector<std::pair<std::string_view, std::string_view>> strip_cases = {
                          {"show components;\t", "show components;"},
                          {"show components; \t", "show components;"},
                          {"show components; \v\t\r\n\f", "show components;"},
+                         {"show components; show", "show components;show"},
 };
 
 INSTANTIATE_TEST_SUITE_P(Strip, StripSpaceTest, ::testing::ValuesIn(strip_cases));
