@@ -67,7 +67,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 // final SQL strings are appended into `output`
 //
 // this help handle SQL strings that has space trailing but do not expected to be a statement after semicolon
-void StripStartingSpace(const absl::string_view input, std::string* output) {
+void StripStartingSpaceOfLastStmt(absl::string_view input, std::string* output) {
     auto last_semicolon_pos = input.find_last_of(';');
     if (last_semicolon_pos != std::string::npos && input.back() != ';') {
         absl::string_view last_stmt = input;
@@ -175,7 +175,7 @@ void Shell() {
         }
         // todo: should support multiple sql.
         // trim space after last semicolon in sql
-        StripStartingSpace(buffer, &sql);
+        StripStartingSpaceOfLastStmt(buffer, &sql);
 
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
