@@ -1969,6 +1969,26 @@ TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
     }
 }
 
+class StripSpaceTest : public ::testing::TestWithParam<std::pair<std::string_view, std::string_view>> {};
+
+std::vector<std::pair<std::string_view, std::string_view>> strip_cases = {
+                         {"show components;", "show components;"},
+                         {"show components;  ", "show components;"},
+                         {"show components;\t", "show components;"},
+                         {"show components; \t", "show components;"},
+                         {"show components; \v\t\r\n\f", "show components;"},
+};
+
+INSTANTIATE_TEST_SUITE_P(Strip, StripSpaceTest, ::testing::ValuesIn(strip_cases));
+
+TEST_P(StripSpaceTest, Correctness) {
+    auto& cs = GetParam();
+
+    std::string output;
+    StripStartingSpace(cs.first, &output);
+    EXPECT_EQ(cs.second, output);
+}
+
 /* TODO: Only run test in standalone mode
 TEST_P(DBSDKTest, load_data) {
     auto cli = GetParam();

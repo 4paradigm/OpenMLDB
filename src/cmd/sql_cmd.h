@@ -63,6 +63,27 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 
+// strip any whitespace characters begining of the last unfinished statement from `input` (string after last semicolon)
+// final SQL strings are appended into `output`
+//
+// this help handle SQL strings that has space trailing but do not expected to be a statement after semicolon
+void StripStartingSpace(const absl::string_view input, std::string* output) {
+    auto last_semicolon_pos = input.find_last_of(';');
+    if (last_semicolon_pos != std::string::npos && input.back() != ';') {
+        absl::string_view last_stmt = input;
+        last_stmt.remove_prefix(last_semicolon_pos + 1);
+        while (!last_stmt.empty() && std::isspace(static_cast<unsigned char>(last_stmt.front()))) {
+            last_stmt.remove_prefix(1);
+        }
+        output->append(input.begin(), input.begin() + last_semicolon_pos + 1);
+        if (!last_stmt.empty()) {
+            output->append(last_stmt);
+        }
+    } else {
+        output->append(input);
+    }
+}
+
 void HandleSQL(const std::string& sql) {
     hybridse::sdk::Status status;
     auto result_set = sr->ExecuteSQL(sql, &status);
@@ -154,16 +175,8 @@ void Shell() {
         }
         // todo: should support multiple sql.
         // trim space after last semicolon in sql
-        auto last_semicolon_pos = buffer.find_last_of(';');
-        if (last_semicolon_pos != std::string::npos && buffer.back() != ';') {
-            absl::string_view input = buffer;
-            input.remove_prefix(last_semicolon_pos + 1);
-            while (absl::ConsumePrefix(&input, " ")) {}
-            sql.append(buffer.begin(), buffer.begin() + last_semicolon_pos + 1);
-            sql.append(input.begin(), input.end());
-        } else {
-            sql.append(buffer);
-        }
+        StripStartingSpace(buffer, &sql);
+
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
                 absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
