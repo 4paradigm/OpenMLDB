@@ -6,7 +6,7 @@
 
 - We have introduced an important performance optimization technique of pre-aggregation, which can significantly improve the performance for a query with time windows containing massive amount of rows, e.g., a few millions. (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
 - We have added a new storage engine that supports persistent storage (such as HDD and SSD) for the online SQL engine. Such a storage engine is helpful when a user wants to reduce the cost with acceptable performance degradation. (#1483 @Leowner)
-- We have supported C/C++ based User-Defined Functions (UDFs) with dynamic registration to enhance the development experience.  (#1509 #1733 #1700 @dl239 @tobegit3hub)
+- We have supported C/C++ based User-Defined Functions (UDFs) with dynamic registration to enhance the development experience. (#1509 #1733 #1700 @dl239 @tobegit3hub)
 
 ### Other Features
 
@@ -16,7 +16,7 @@
 - Support setting global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
 - Support reading Spark configuration files from the CLI (#1600 @tobegit3hub)
 - Support using multiple threads for the Spark local mode (#1675 @tobegit3hub)
-- Enhance the performance of join by using the Spark's native expression (#1502 tobegit3hub)
+- Enhance the performance of join by using the Spark's native expression (#1502 @tobegit3hub)
 - Support the validation for TaskManager configuration (#1262 @tobegit3hub)
 - Support tracking unfinished jobs in the TaskManager (#1474 @tobegit3hub)
 - Other minor features (#1601 @dl239; #1574 @vagetablechicken; #1546 @keyu813; #1729 @vagetablechicken; #1460 @tobegit3hub)
@@ -36,7 +36,6 @@
 ### Code Refactoring
 
 #1616 @dl239; #1743 @zjx1319
-
 
 
 
