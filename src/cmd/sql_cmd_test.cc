@@ -1429,6 +1429,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     std::string pre_aggr_table = "pre_test_aggr_w1_count_where_i64_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
+    pre_aggr_table = "pre_test_aggr_w1_count_where_i64_col_col1";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
     pre_aggr_table = "pre_test_aggr_w1_count_where_i16_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
