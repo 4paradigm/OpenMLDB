@@ -123,7 +123,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         std::lock_guard<std::mutex> lock(mu_);
         auto it = aggr_buffer_map_.find(aggr_key);
         if (it == aggr_buffer_map_.end()) {
-            auto insert_pair = aggr_buffer_map_.emplace(aggr_key, AggrBufferLocked{key.size()});
+            uint32_t key_end = key.size();
+            auto insert_pair = aggr_buffer_map_.emplace(aggr_key, AggrBufferLocked{key_end});
             aggr_buffer_lock = &insert_pair.first->second;
         } else {
             aggr_buffer_lock = &it->second;
@@ -236,7 +237,8 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     uint64_t recovery_offset = UINT64_MAX;
     uint64_t aggr_latest_offset = 0;
     while (it->Valid()) {
-        auto buf_it = aggr_buffer_map_.emplace(it->GetPK(), AggrBufferLocked{it->GetPK().size()});
+        uint32_t key_end = it->GetPK().size();
+        auto buf_it = aggr_buffer_map_.emplace(it->GetPK(), AggrBufferLocked{key_end});
         auto& buffer = buf_it.first->second.buffer_;
         auto val = it->GetValue();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
