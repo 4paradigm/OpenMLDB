@@ -1356,8 +1356,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     CreateDBTableForLongWindow(base_db, base_table);
 
     std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
-        // " count_where(*, filter=1) over w1 as w1_count_all,"
-        " count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col,"
+        " count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,"
+        " count_where(i64_col, col1='str1') over w1 as w1_count_where_i64_col_col1,"
         " count_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,"
         " count_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,"
         " count_where(f_col, 0=filter) over w1 as w1_count_where_f_col,"
@@ -1392,6 +1392,10 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
         std::string filter_key = rs->GetStringUnsafe(6);
         ASSERT_EQ(std::to_string(i % 2), filter_key);
     }
+
+    result_sql = "select * from pre_test_aggr_w1_count_where_i64_col_col1;";
+    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
 
     result_sql = "select * from pre_test_aggr_w1_count_where_i16_col_filter;";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
