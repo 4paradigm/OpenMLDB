@@ -123,7 +123,7 @@ class AggrBuffer {
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
     AggrBuffer buffer_;
-    explicit AggrBufferLocked(int32_t key_end) : mu_(std::make_unique<std::mutex>()), buffer_(key_end) {}
+    explicit AggrBufferLocked(uint32_t key_end) : mu_(std::make_unique<std::mutex>()), buffer_(key_end) {}
 };
 
 class Aggregator {
