@@ -94,11 +94,11 @@ class DDLParser {
     static void AddTables(const T& schema, hybridse::type::Database* db);
 
     // traverse plan tree to extract all long window infos
-    static void TraverseNode(hybridse::node::PlanNode* node,
+    static bool TraverseNode(hybridse::node::PlanNode* node,
                                 const std::unordered_map<std::string, std::string>& window_map,
                                 LongWindowInfos* long_window_infos);
 
-    static void ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
+    static bool ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
                                             const std::unordered_map<std::string, std::string>& window_map,
                                             LongWindowInfos* long_window_infos);
 };

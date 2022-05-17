@@ -224,7 +224,9 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
-            TraverseNode(node, window_map, infos);
+            if (!TraverseNode(node, window_map, infos)) {
+                return hybridse::sdk::Status(base::ReturnCode::kError, "TraverseNode failed");
+            }
             break;
         }
         default: {
@@ -237,30 +239,34 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
     return {};
 }
 
-void DDLParser::TraverseNode(hybridse::node::PlanNode* node,
+bool DDLParser::TraverseNode(hybridse::node::PlanNode* node,
                                 const std::unordered_map<std::string, std::string>& window_map,
                                 LongWindowInfos* long_window_infos) {
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeProject: {
             hybridse::node::ProjectPlanNode* project_plan_node = dynamic_cast<hybridse::node::ProjectPlanNode*>(node);
-            ExtractInfosFromProjectPlan(project_plan_node, window_map, long_window_infos);
-            return;
+            if (!ExtractInfosFromProjectPlan(project_plan_node, window_map, long_window_infos)) {
+                return false;
+            }
+            break;
         }
         default: {
             for (int i = 0; i < node->GetChildrenSize(); ++i) {
-                TraverseNode(node->GetChildren()[i], window_map, long_window_infos);
+                if (!TraverseNode(node->GetChildren()[i], window_map, long_window_infos)) {
+                    return false;
+                }
             }
         }
     }
-    return;
+    return true;
 }
-void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
+bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* project_plan_node,
                                             const std::unordered_map<std::string, std::string>& window_map,
                                             LongWindowInfos* long_window_infos) {
     for (const auto& project_list : project_plan_node->project_list_vec_) {
         if (project_list->GetType() != hybridse::node::kProjectList) {
             DLOG(ERROR) << "extract long window infos from project list failed";
-            return;
+            return false;
         }
         hybridse::node::ProjectListNode* project_list_node
             = dynamic_cast<hybridse::node::ProjectListNode*>(project_list);
@@ -275,7 +281,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             auto partition_key = window->GetKeys()->GetChild(i);
             if (partition_key->GetExprType() != hybridse::node::kExprColumnRef) {
                 DLOG(ERROR) << "extract long window infos from window partition key failed";
-                return;
+                return false;
             }
             hybridse::node::ColumnRefNode* column_node = dynamic_cast<hybridse::node::ColumnRefNode*>(partition_key);
             partition_col += column_node->GetColumnName() + ",";
@@ -290,13 +296,13 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             auto order_expr = order_exprs->GetChild(i);
             if (order_expr->GetExprType() != hybridse::node::kExprOrderExpression) {
                 DLOG(ERROR) << "extract long window infos from window order by failed";
-                return;
+                return false;
             }
             auto order_node = dynamic_cast<hybridse::node::OrderExpression*>(order_expr);
             auto order_col_node = order_node->expr();
             if (order_col_node->GetExprType() != hybridse::node::kExprColumnRef) {
                 DLOG(ERROR) << "extract long window infos from window order by failed";
-                return;
+                return false;
             }
             const hybridse::node::ColumnRefNode* column_node =
                     reinterpret_cast<const hybridse::node::ColumnRefNode*>(order_col_node);
@@ -309,7 +315,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
         for (const auto& project : project_list_node->GetProjects()) {
             if (project->GetType() != hybridse::node::kProjectNode) {
                 DLOG(ERROR) << "extract long window infos from project failed";
-                return;
+                return false;
             }
             hybridse::node::ProjectNode* project_node = dynamic_cast<hybridse::node::ProjectNode*>(project);
             if (!project_node->IsAgg()) {
@@ -318,7 +324,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             auto project_expr = project_node->GetExpression();
             if (project_expr->GetExprType() != hybridse::node::kExprCall) {
                 DLOG(ERROR) << "extract long window infos from agg func failed";
-                return;
+                return false;
             }
             hybridse::node::CallExprNode* agg_expr = dynamic_cast<hybridse::node::CallExprNode*>(project_expr);
             auto window_name = agg_expr->GetOver() ? agg_expr->GetOver()->GetName() : "";
@@ -330,7 +336,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             std::string aggr_col;
             if (agg_expr->GetChildNum() > 2 || agg_expr->GetChildNum() <= 0) {
                 DLOG(ERROR) << "only support single aggr column and an optional filter condition";
-                return;
+                return false;
             }
             aggr_col += agg_expr->GetChild(0)->GetExprString();
 
@@ -340,7 +346,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 auto cond_expr = agg_expr->GetChild(1);
                 if (cond_expr->GetExprType() != hybridse::node::kExprBinary) {
                     DLOG(ERROR) << "long window only support binary expr on single column";
-                    return;
+                    return false;
                 }
                 auto left = cond_expr->GetChild(0);
                 auto right = cond_expr->GetChild(1);
@@ -350,7 +356,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                     filter_col = dynamic_cast<const hybridse::node::ColumnRefNode*>(right)->GetColumnName();
                 } else {
                     DLOG(ERROR) << "get filter_col failed";
-                    return;
+                    return false;
                 }
             }
 
@@ -361,7 +367,7 @@ void DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             }
         }
     }
-    return;
+    return true;
 }
 
 IndexMap DDLParser::ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,
