@@ -15,7 +15,7 @@ Kafka OpenMLDB Connector实现见[extensions/kafka-connect-jdbc](https://github.
 
 - 你需要下载kafka，请点击[kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz)。
 - 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz)。
-- 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](https://openmldb.ai/download/kafka_demo_files.tgz)下载。
+- 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
 本文将使用docker方式启动OpenMLDB，所以无需单独下载OpenMLDB。并且，kafka与connector的启动，都可以在同一个容器中进行。
 
