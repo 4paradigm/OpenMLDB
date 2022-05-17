@@ -169,7 +169,7 @@ public class OpenMLDPerfBenchmark {
     }
 
     public static void main(String[] args) {
-        /*OpenMLDPerfBenchmark benchmark = new OpenMLDPerfBenchmark();
+       /* OpenMLDPerfBenchmark benchmark = new OpenMLDPerfBenchmark();
         benchmark.initEnv();
         benchmark.executeDeployment();
         benchmark.cleanEnv();*/

@@ -25,7 +25,6 @@ import java.sql.*;
 import java.sql.Date;
 import java.util.*;
 
-import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.proto.Type;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.sql.BenchmarkConfig;
@@ -114,7 +113,7 @@ public class Util {
             builder.append("index(key = ").append("col_s").append(i).append( ", ttl=0m, ttl_type=absolute, ts = col_t0),");
         }
         builder.delete(builder.length() - 1, builder.length() - 1);
-        builder.append(");");
+        builder.append(") OPTIONS (REPLICANUM = 1);");
         return builder.toString();
     }
 
@@ -225,7 +224,6 @@ public class Util {
         builder.append(");");
         String insertSQL = builder.toString();
         for (int i = 0; i < BenchmarkConfig.PK_NUM; i++) {
-            String pk = "key" + String.valueOf(BenchmarkConfig.PK_BASE + i);
             for (int tsCnt = 0; tsCnt < windowSize; tsCnt++) {
                 PreparedStatement state = null;
                 try {
@@ -234,7 +232,7 @@ public class Util {
                         int pos = genColIndex.get(idx);
                         Type.DataType type = schema.get(pos);
                         if (type.equals(Type.DataType.kString) || type.equals(Type.DataType.kVarchar)) {
-                            state.setString(idx + 1, pk);
+                            state.setString(idx + 1, "k" + String.valueOf(10 + idx) + String.valueOf(BenchmarkConfig.PK_BASE + i));
                         } else if (type.equals(Type.DataType.kBigInt)) {
                             if (tsIndex.contains(pos)) {
                                 state.setLong(idx + 1, BenchmarkConfig.TS_BASE - tsCnt);
@@ -287,7 +285,7 @@ public class Util {
             int columnType = metaData.getColumnType(i + 1);
             if (columnType == Types.VARCHAR) {
                 if (index.contains(i)) {
-                    requestPs.setString(i + 1, "key" + String.valueOf(numberKey));
+                    requestPs.setString(i + 1, "k" + String.valueOf(10 + i) + String.valueOf(numberKey));
                 } else {
                     requestPs.setString(i + 1, "val" + String.valueOf(numberKey));
                 }
