@@ -68,6 +68,7 @@ cd kafka_2.13-3.1.0
 ```{note}
 OpenMLDB服务已经使用了端口2181启动zookeeper，Kafka不用再次启动zookeeper。所以，此处只需要启动server。
 ```
+
 你可以检查一下Kafka是否正常运行，可以使用`ps`或者检查日志。
 ```
 ps axu|grep kafka
@@ -78,26 +79,29 @@ ps axu|grep kafka
 我们创建一个名为`topic1`的topic。注意，topic名字中尽量不要出现特殊字符。
 ```
 ./bin/kafka-topics.sh --create --topic topic1 --bootstrap-server localhost:9092
+```
+可以`describe`一下topic，确认是否正常。
+```
 ./bin/kafka-topics.sh --describe --topic topic1 --bootstrap-server localhost:9092
 ```
 ![topic status](images/kafka_topic_describe.png)
 
 ## 步骤 3：启动OpenMLDB Connector
 
-首先，解压`/work/kafka`中的connector和demo_files包。
+首先，解压`/work/kafka`中的connector和kafka_demo_files包。
 ```
 cd /work/kafka
 tar zxf kafka-connect-jdbc.tgz
 tar zxf kafka_demo_files.tgz
 ```
-启动connector，需要kafka_demo_files中的两个配置文件。
+启动connector，需要kafka_demo_files中的两个配置文件，并将connector插件放入正确位置。
 
-一个是 connector 自身的配置文件`connect-standalone.properties`，重点配置是“插件目录”，如下：
+第一个配置文件是 connector 自身的配置`connect-standalone.properties`，重点配置是“插件目录”，如下：
 ```
 plugin.path=/usr/local/share/java
 ```
 
-我们需要将 OpenMLDB Kafka Connector 以及运行它所需要的所有依赖包都放入这个目录。命令如下：
+OpenMLDB Connector 以及运行它所需要的所有依赖包，都需要放入这个目录。命令如下：
 ```
 mkdir -p /usr/local/share/java
 cp -r /work/kafka/kafka-connect-jdbc /usr/local/share/java/
