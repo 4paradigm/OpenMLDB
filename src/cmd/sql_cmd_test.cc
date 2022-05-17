@@ -1986,7 +1986,7 @@ TEST_P(StripSpaceTest, Correctness) {
     auto& cs = GetParam();
 
     std::string output;
-    StripStartingSpace(cs.first, &output);
+    StripStartingSpaceOfLastStmt(cs.first, &output);
     EXPECT_EQ(cs.second, output);
 }
 
