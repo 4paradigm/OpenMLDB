@@ -2260,7 +2260,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return {};
             }
             *status = {};
-            std::vector<std::string> value = {info->GetPhysicalPlan()};
+            std::vector<std::string> value = {info->GetPhysicalPlan() + "\n"};
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
         }
         case hybridse::node::kPlanTypeCreate: {

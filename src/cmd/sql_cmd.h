@@ -94,7 +94,7 @@ void HandleSQL(const std::string& sql) {
                 while (result_set->Next()) {
                     std::string val;
                     result_set->GetAsString(0, val);
-                    std::cout << val << std::endl;
+                    std::cout << val;
                 }
             } else {
                 ::hybridse::base::TextTable t('-', ' ', ' ');
