@@ -13,7 +13,7 @@ public class DataImporter {
     private String dbName;
     private String tableName;
     private int pkNum;
-    private int windowNum;
+    private int windowSize;
     private int pkBase;
     private long tsBase;
     private SqlExecutor executor;
@@ -27,7 +27,7 @@ public class DataImporter {
         dbName = BenchmarkConfig.DATABASE;
         tableName = BenchmarkConfig.TABLE;
         pkNum = BenchmarkConfig.PK_NUM;
-        windowNum = BenchmarkConfig.WINDOW_NUM;
+        windowSize = BenchmarkConfig.WINDOW_SIZE;
         tsBase = BenchmarkConfig.TS_BASE;
         pkBase = BenchmarkConfig.PK_BASE;
         schema = new ArrayList<>();
@@ -101,7 +101,7 @@ public class DataImporter {
         String insertSQL = builder.toString();
         for (int i = 0; i < pkNum; i++) {
             String pk = "key" + String.valueOf(pkBase + i);
-            for (int tsCnt = 0; tsCnt < windowNum; tsCnt++) {
+            for (int tsCnt = 0; tsCnt < windowSize; tsCnt++) {
                 PreparedStatement state = null;
                 try {
                     state = executor.getInsertPreparedStmt(dbName, insertSQL);

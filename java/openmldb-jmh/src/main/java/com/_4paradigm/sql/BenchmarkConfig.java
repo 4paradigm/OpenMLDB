@@ -35,7 +35,9 @@ public class BenchmarkConfig {
 
     public static String DATABASE = "";
     public static String TABLE = "";
-    public static int WINDOW_NUM = 2000;
+    public static int WINDOW_NUM = 2;
+    public static int WINDOW_SIZE = 1000;
+    public static int JOIN_NUM = 2;
     public static int PK_BASE = 1000000;
     public static long TS_BASE = 1652232079000l;
     public static String DEPLOY_NAME;
@@ -79,6 +81,8 @@ public class BenchmarkConfig {
             TABLE = prop.getProperty("TABLE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
             WINDOW_NUM = Integer.valueOf(prop.getProperty("WINDOW_NUM"));
+            WINDOW_SIZE = Integer.valueOf(prop.getProperty("WINDOW_SIZE"));
+            JOIN_NUM = Integer.valueOf(prop.getProperty("JOIN_NUM"));
             BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
             TIME_DIFF = Integer.valueOf((String)prop.getProperty("TIME_DIFF", "0"));
             String mode_str = prop.getProperty("MODE");

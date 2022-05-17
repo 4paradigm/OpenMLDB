@@ -14,12 +14,15 @@ import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.SampleTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
+//@BenchmarkMode(Mode.SampleTime)
+@BenchmarkMode({Mode.Throughput, Mode.SampleTime})
+//@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Threads(1)
+@Threads(2)
 @Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
-@Warmup(iterations = 1)
+@Warmup(iterations = 2)
+@Measurement(iterations = 3, time = 20)
 
 public class DeploymentBenchmark {
     private String dbName;
