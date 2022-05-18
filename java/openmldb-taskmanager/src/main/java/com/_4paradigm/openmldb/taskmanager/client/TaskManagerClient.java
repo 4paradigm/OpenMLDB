@@ -179,8 +179,8 @@ public class TaskManagerClient {
      * @return the output string.
      * @throws Exception
      */
-    public String runBatchSql(String sql, String outputPath) throws Exception {
-        return runBatchSql(sql, outputPath, new HashMap<String, String>(), "");
+    public String runBatchSql(String sql) throws Exception {
+        return runBatchSql(sql, new HashMap<String, String>(), "");
     }
     /**
      * Run sql statements in batches.
@@ -191,7 +191,7 @@ public class TaskManagerClient {
      * @return the output string.
      * @throws Exception
      */
-    public String runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
+    public String runBatchSql(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
