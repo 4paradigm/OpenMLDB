@@ -24,6 +24,7 @@ import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, Spark
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, functions}
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.SerializableConfiguration
@@ -87,7 +88,11 @@ object WindowAggPlanUtil {
     val leftTable = inputDf.withColumn(uniqueColName, functions.lit(true))
 
     // Union the left and right tables
-    rightTables.foldLeft(leftTable)((x, y) => x.union(y))
+    val unionDf = rightTables.foldLeft(leftTable)((x, y) => x.union(y))
+
+    // Use order by to make sure that rows with same timestamp from primary will be placed in last
+    // TODO(tobe): support desc if we get config from physical plan
+    unionDf.orderBy(col(uniqueColName).asc)
   }
 
 
