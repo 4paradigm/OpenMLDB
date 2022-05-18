@@ -49,10 +49,10 @@ object WindowAggPlanUtil {
    */
   def windowUnionTables(ctx: PlanContext,
                     physicalNode: PhysicalWindowAggrerationNode,
-                    inputDf: DataFrame): DataFrame = {
+                    inputDf: DataFrame,
+                    uniqueColName: String): DataFrame = {
 
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
-    val uniqueColName = "_WINDOW_UNION_FLAG_" + System.currentTimeMillis()
     val unionNum = physicalNode.window_unions().GetSize().toInt
 
     val rightTables = (0 until unionNum).map(i => {
@@ -88,11 +88,7 @@ object WindowAggPlanUtil {
     val leftTable = inputDf.withColumn(uniqueColName, functions.lit(true))
 
     // Union the left and right tables
-    val unionDf = rightTables.foldLeft(leftTable)((x, y) => x.union(y))
-
-    // Use order by to make sure that rows with same timestamp from primary will be placed in last
-    // TODO(tobe): support desc if we get config from physical plan
-    unionDf.orderBy(col(uniqueColName).asc)
+    rightTables.foldLeft(leftTable)((x, y) => x.union(y))
   }
 
 
