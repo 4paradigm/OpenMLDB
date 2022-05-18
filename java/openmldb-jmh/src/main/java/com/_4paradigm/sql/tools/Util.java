@@ -181,7 +181,7 @@ public class Util {
         return builder.toString();
     }
 
-    public static boolean loadData(TableSchema tableSchema, int windowSize, SqlExecutor executor) {
+    public static boolean putData(List<Integer> pkList, int pkNum, TableSchema tableSchema, int windowSize, SqlExecutor executor) {
         String dbName = tableSchema.getDataBase();
         String tableName = tableSchema.getTableName();
         List<Type.DataType> schema = tableSchema.getSchema();
@@ -223,7 +223,16 @@ public class Util {
         }
         builder.append(");");
         String insertSQL = builder.toString();
-        for (int i = 0; i < BenchmarkConfig.PK_NUM; i++) {
+        if (!pkList.isEmpty()) {
+            pkNum = pkList.size();
+        }
+        for (int i = 0; i < pkNum; i++) {
+            int curKey = BenchmarkConfig.PK_BASE;
+            if (pkList.isEmpty()) {
+                curKey += i;
+            } else {
+                curKey += pkList.get(i);
+            }
             for (int tsCnt = 0; tsCnt < windowSize; tsCnt++) {
                 PreparedStatement state = null;
                 try {
@@ -232,12 +241,12 @@ public class Util {
                         int pos = genColIndex.get(idx);
                         Type.DataType type = schema.get(pos);
                         if (type.equals(Type.DataType.kString) || type.equals(Type.DataType.kVarchar)) {
-                            state.setString(idx + 1, "k" + String.valueOf(10 + idx) + String.valueOf(BenchmarkConfig.PK_BASE + i));
+                            state.setString(idx + 1, "k" + String.valueOf(10 + idx) + String.valueOf(curKey));
                         } else if (type.equals(Type.DataType.kBigInt)) {
                             if (tsIndex.contains(pos)) {
                                 state.setLong(idx + 1, BenchmarkConfig.TS_BASE - tsCnt);
                             } else {
-                                state.setLong(idx + 1, BenchmarkConfig.PK_BASE + i);
+                                state.setLong(idx + 1, curKey);
                             }
                         } else if (type.equals(Type.DataType.kTimestamp)) {
                             if (tsIndex.contains(pos)) {
@@ -246,7 +255,7 @@ public class Util {
                                 state.setTimestamp(idx + 1, new Timestamp(BenchmarkConfig.TS_BASE + i));
                             }
                         } else if (type.equals(Type.DataType.kInt)) {
-                            state.setInt(idx + 1, BenchmarkConfig.PK_BASE + i);
+                            state.setInt(idx + 1, curKey);
                         } else {
                             System.out.println("invalid type");
                         }

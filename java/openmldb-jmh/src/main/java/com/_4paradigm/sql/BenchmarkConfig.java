@@ -56,6 +56,7 @@ public class BenchmarkConfig {
     private static boolean NEED_PROXY= false;
 
     public static int PK_NUM = 1;
+    public static int PK_MAX = 0;
     public static int PUT_THREAD_NUM = 1;
     public static int QUERY_THREAD_NUM = 1;
     public static boolean NEED_CREATE = true;
@@ -98,6 +99,7 @@ public class BenchmarkConfig {
             }
             commonCol = prop.getProperty("commonCol", "");
             PK_NUM = Integer.valueOf((String)prop.getProperty("PK_NUM", "100000"));
+            PK_MAX = Integer.valueOf((String)prop.getProperty("PK_MAX", "0"));
             PUT_THREAD_NUM = Integer.valueOf((String)prop.getProperty("PUT_THREAD_NUM", "1"));
             QUERY_THREAD_NUM = Integer.valueOf((String)prop.getProperty("QUERY_THREAD_NUM", "1"));
 

@@ -11,9 +11,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
@@ -35,6 +33,7 @@ public class OpenMLDPerfBenchmark {
     private int unionNum = 0; // unspport in cluster mode now
     private Map<String, TableSchema> tableSchema = new HashMap<>();
     private Random random;
+    private List<Integer> pkList = new ArrayList<>();
 
     public OpenMLDPerfBenchmark() {
         executor = BenchmarkConfig.GetSqlExecutor(false);
@@ -44,6 +43,14 @@ public class OpenMLDPerfBenchmark {
         windowNum = BenchmarkConfig.WINDOW_NUM;
         windowSize = BenchmarkConfig.WINDOW_SIZE;
         random = new Random(System.currentTimeMillis());
+        if (BenchmarkConfig.PK_MAX > 0) {
+            for (int i = 0; i < BenchmarkConfig.PK_NUM; i++) {
+                int pk = random.nextInt(BenchmarkConfig.PK_MAX);
+                if (!pkList.contains(pk)) {
+                    pkList.add(pk);
+                }
+            }
+        }
     }
 
     private void addTableSchema(String dbName, String tableName) {
@@ -75,14 +82,26 @@ public class OpenMLDPerfBenchmark {
     }
 
     public void putData() {
-        Util.loadData(tableSchema.get("mt"), windowSize, executor);
+        Util.putData(pkList, BenchmarkConfig.PK_NUM, tableSchema.get("mt"), windowSize, executor);
         for (int i = 0; i < unionNum; i++) {
             String tableName = "ut" + String.valueOf(i);
-            Util.loadData(tableSchema.get(tableName), windowSize, executor);
+            Util.putData(pkList, BenchmarkConfig.PK_NUM, tableSchema.get(tableName), windowSize, executor);
         }
         for (int i = 0; i < joinNum; i++) {
             String tableName = "lt" + String.valueOf(i);
-            Util.loadData(tableSchema.get(tableName), windowSize, executor);
+            Util.putData(pkList, BenchmarkConfig.PK_NUM, tableSchema.get(tableName), windowSize, executor);
+        }
+    }
+
+    public void importData() {
+        Util.putData(new ArrayList<>(), BenchmarkConfig.PK_MAX, tableSchema.get("mt"), 1, executor);
+        for (int i = 0; i < unionNum; i++) {
+            String tableName = "ut" + String.valueOf(i);
+            Util.putData(new ArrayList<>(), BenchmarkConfig.PK_MAX, tableSchema.get(tableName), 1, executor);
+        }
+        for (int i = 0; i < joinNum; i++) {
+            String tableName = "lt" + String.valueOf(i);
+            Util.putData(new ArrayList<>(), BenchmarkConfig.PK_MAX, tableSchema.get(tableName), 1, executor);
         }
     }
 
@@ -129,6 +148,9 @@ public class OpenMLDPerfBenchmark {
         }
         addSchema();
         putData();
+        if (!pkList.isEmpty()) {
+            importData();
+        }
     }
 
     @TearDown
@@ -138,7 +160,13 @@ public class OpenMLDPerfBenchmark {
 
     @Benchmark
     public void executeDeployment() {
-        int numberKey = BenchmarkConfig.PK_BASE + random.nextInt(BenchmarkConfig.PK_NUM);
+        int numberKey = BenchmarkConfig.PK_BASE;
+        if (pkList.isEmpty()) {
+            numberKey += random.nextInt(BenchmarkConfig.PK_NUM);
+        } else {
+            int pos = random.nextInt(pkList.size());
+            numberKey += pkList.get(pos);
+        }
         try {
             PreparedStatement stat = Util.getPreparedStatement(deployName, numberKey, tableSchema.get("mt"), executor);
             ResultSet resultSet = stat.executeQuery();
@@ -169,7 +197,7 @@ public class OpenMLDPerfBenchmark {
     }
 
     public static void main(String[] args) {
-       /* OpenMLDPerfBenchmark benchmark = new OpenMLDPerfBenchmark();
+        /*OpenMLDPerfBenchmark benchmark = new OpenMLDPerfBenchmark();
         benchmark.initEnv();
         benchmark.executeDeployment();
         benchmark.cleanEnv();*/
