@@ -1,6 +1,6 @@
-# Version Upgrade
+# Upgrade
 
-Service Impact of upgrade process:
+Here is the impact when upgrading OpenMLDB:
 * If the created table is a single copy, it is not readable and writable during the upgrade process
 * If the created table is multi-replica, the read request on the upgraded node will fail briefly, and the write request will have a small amount of data loss.If short read failures are not tolerated, execute offlineendpoint before stopping each tablet node. If a small amount of write loss cannot be tolerated, write operations need to be stopped during the upgrade process
 
@@ -10,7 +10,7 @@ Service Impact of upgrade process:
     ```bash
     sh bin/start.sh stop nameserver
     ```
-* Backup old version bin and conf directories
+* Backup the old versions directories `bin` and `conf`
 * Download new version bin and conf
 * Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
 * Start nameserver
@@ -25,7 +25,7 @@ Service Impact of upgrade process:
     ```bash
         sh bin/start.sh stop tablet
     ```
-* Backup old version bin and conf directories
+* Backup the old versions directories `bin` and `conf`
 * Download new version bin and conf
 * Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
 * Start nameserver
@@ -46,7 +46,7 @@ recover endpoint ok
 
 ### Confirmation of Upgrade Result
 * showopstatus command checks whether all operations are kDone, and if there is a kFailed task, check the log to troubleshoot the cause
-* showtable to see if the status of all shards is yes
+* showtable to see if the status of all partitions is yes
 
 After a tablet node is upgraded, repeat the above steps for other tablets. \(**You must wait until the data is synchronized before upgrading the next node**\)
 
