@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 2)
 @Measurement(iterations = 1, time = 20)
 
-public class OpenMLDPerfBenchmark {
+public class OpenMLDBPerfBenchmark {
     private SqlExecutor executor;
     private String database;
     private String deployName;
@@ -35,7 +35,7 @@ public class OpenMLDPerfBenchmark {
     private Random random;
     private List<Integer> pkList = new ArrayList<>();
 
-    public OpenMLDPerfBenchmark() {
+    public OpenMLDBPerfBenchmark() {
         executor = BenchmarkConfig.GetSqlExecutor(false);
         deployName = BenchmarkConfig.DEPLOY_NAME;
         database = BenchmarkConfig.DATABASE;
@@ -197,14 +197,14 @@ public class OpenMLDPerfBenchmark {
     }
 
     public static void main(String[] args) {
-        /*OpenMLDPerfBenchmark benchmark = new OpenMLDPerfBenchmark();
+        /*OpenMLDBPerfBenchmark benchmark = new OpenMLDBPerfBenchmark();
         benchmark.initEnv();
         benchmark.executeDeployment();
         benchmark.cleanEnv();*/
 
         try {
             Options opt = new OptionsBuilder()
-                    .include(OpenMLDPerfBenchmark.class.getSimpleName())
+                    .include(OpenMLDBPerfBenchmark.class.getSimpleName())
                     .forks(1)
                     .build();
             new Runner(opt).run();

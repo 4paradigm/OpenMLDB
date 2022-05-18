@@ -1,0 +1,163 @@
+package com._4paradigm.sql.jmh.openmldb;
+
+import com._4paradigm.openmldb.proto.NS;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.sql.BenchmarkConfig;
+import com._4paradigm.sql.tools.TableSchema;
+import com._4paradigm.sql.tools.Util;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.SECONDS)
+@State(Scope.Benchmark)
+@Threads(2)
+@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
+@Warmup(iterations = 2)
+@Measurement(iterations = 1, time = 10)
+public class OpenMLDBLongWindowBenchmark {
+    private SqlExecutor executor;
+    private String database;
+    @Param ({"demo", "demo_long"})
+    private String deployName = "demo_long";
+    private int windowSize;
+    private int pkNum = 1;
+    private Map<String, TableSchema> tableSchema = new HashMap<>();
+
+    public OpenMLDBLongWindowBenchmark() {
+        executor = BenchmarkConfig.GetSqlExecutor(false);
+        database = BenchmarkConfig.DATABASE;
+        windowSize = BenchmarkConfig.WINDOW_SIZE;
+    }
+
+    private void addTableSchema(String dbName, String tableName) {
+        NS.TableInfo tableInfo = null;
+        try {
+            tableInfo = executor.getTableInfo(dbName, tableName);
+            TableSchema schema = new TableSchema(tableInfo);
+            tableSchema.put(tableName, schema);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void create () {
+        Util.executeSQL("CREATE DATABASE IF NOT EXISTS " + database + ";", executor);
+        Util.executeSQL("USE " + database + ";", executor);
+        String ddl = Util.genDDL("mt", 1);
+        Util.executeSQL(ddl, executor);
+    }
+
+    public void putData() {
+        Util.putData(new ArrayList<>(), pkNum, tableSchema.get("mt"), windowSize, executor);
+    }
+
+    public void drop() {
+        Util.executeSQL("USE " + database + ";", executor);
+        Util.executeSQL("DROP DEPLOYMENT demo;", executor);
+        Util.executeSQL("DROP DEPLOYMENT demo_long;", executor);
+        Util.executeSQL("DROP TABLE mt;", executor);
+        Util.executeSQL("DROP TABLE __PRE_AGG_DB.pre_demo_long_w0_count_col_s11;", executor);
+        Util.executeSQL("DROP DATABASE " + database + ";", executor);
+    }
+
+    public void deploy() {
+        String sql = "SELECT\n" +
+                "col_s0,\n" +
+                "count(col_s11) OVER w0 AS count_w0_col_s11,\n" +
+                "from mt\n" +
+                "window w0 as ( partition by col_s0 order by col_t0 rows_range between 30d PRECEDING AND CURRENT ROW);";
+        Util.executeSQL("USE " + database + ";", executor);
+        String longWindowDeployment = "DEPLOY demo_long OPTIONS(long_windows=\"w0:1000\") " + sql;
+        String normalDeployment = "DEPLOY demo " + sql;
+        Util.executeSQL(normalDeployment, executor);
+        Util.executeSQL(longWindowDeployment, executor);
+    }
+
+    public void addSchema() {
+        addTableSchema(database, "mt");
+    }
+
+    @Setup
+    public void initEnv() {
+        if (deployName.equals("demo")) {
+            create();
+            deploy();
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            addSchema();
+            putData();
+        } else {
+            Util.executeSQL("USE " + database + ";", executor);
+            addSchema();
+        }
+    }
+
+    @TearDown
+    public void cleanEnv() {
+        if (!deployName.equals("demo")) {
+            drop();
+        }
+    }
+
+
+    @Benchmark
+    public void executeDeployment() {
+        int numberKey = BenchmarkConfig.PK_BASE;
+        try {
+            PreparedStatement stat = Util.getPreparedStatement(deployName, numberKey, tableSchema.get("mt"), executor);
+            ResultSet resultSet = stat.executeQuery();
+            /*resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.FLOAT) {
+                    val.put(columnName, String.valueOf(resultSet.getFloat(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                }
+            }
+            int a = 0;*/
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        /*OpenMLDBLongWindowBenchmark benchmark = new OpenMLDBLongWindowBenchmark();
+        benchmark.initEnv();
+        benchmark.executeDeployment();
+        benchmark.cleanEnv();*/
+
+        try {
+            Options opt = new OptionsBuilder()
+                    .include(OpenMLDBLongWindowBenchmark.class.getSimpleName())
+                    .forks(1)
+                    .build();
+            new Runner(opt).run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
