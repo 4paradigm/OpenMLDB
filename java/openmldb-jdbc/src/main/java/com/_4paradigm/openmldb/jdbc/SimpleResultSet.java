@@ -35,7 +35,6 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -57,8 +56,8 @@ public class SimpleResultSet implements ResultSet {
         return new SimpleResultSet(cols, table);
     }
 
-    public static <T> ResultSet createResultSet(List<String> names, List<Integer> types,
-                                                List<List<String>> table) throws SQLException {
+    public static ResultSet createResultSet(List<String> names, List<Integer> types,
+                                            List<List<String>> table) throws SQLException {
         if (names.size() != types.size()) {
             throw new SQLException(String.format("column names size %s != types size %s", names.size(),
                     types.size()));

@@ -321,10 +321,3 @@ SELECT * FROM
    window w7d_merchant as (UNION (select 0L as id, mid, card, purchase_time, purchase_amt, purchase_type from t2) as t22 PARTITION BY mid ORDER BY purchase_time ROWS_RANGE BETWEEN 30d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ) as out3 ON out1.id = out3.out3id;
 ```
-
-## 5. 扩展阅读
-
-- [开源机器学习数据库OpenMLDB v0.4.0产品介绍](https://zhuanlan.zhihu.com/p/462559609)
-- 想快速试用 OpenMLDB 来开始写特征计算脚本？快来看一下 [OpenMLDB 快速上手](http://docs-cn.openmldb.ai/2620852)
-- 完整的 SQL 语法参考文档：[中国镜像站点](http://docs-cn.openmldb.ai/2620876)，[国际站点](https://docs.openmldb.ai/)
-- 本系列教程上篇：[4PD开发者社区：深入浅出特征工程 – 基于 OpenMLDB 的实践指南（上）](https://zhuanlan.zhihu.com/p/467625760)
