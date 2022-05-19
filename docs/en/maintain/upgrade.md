@@ -4,7 +4,7 @@ Here is the impact when upgrading OpenMLDB:
 * If the created table is a single copy, it is not readable and writable during the upgrade process
 * If the created table is multi-replica, the read request on the upgraded node will fail briefly, and the write request will have a small amount of data loss.If short read failures are not tolerated, execute offlineendpoint before stopping each tablet node. If a small amount of write loss cannot be tolerated, write operations need to be stopped during the upgrade process
 
-## 1. Upgrade nameserver
+## 1. Upgrade Nameserver
 
 * Stop nameserver
     ```bash
@@ -19,7 +19,9 @@ Here is the impact when upgrading OpenMLDB:
     ```
 * Repeat the above steps for the remaining nameservers
 
-## 2. Upgrade tablet
+## 2. Upgrade Tablets
+
+### 2.1. Steps of Upgrading Tablets
 
 * Stop tablet
     ```bash
@@ -44,15 +46,15 @@ offline endpoint ok
 recover endpoint ok
 ```
 
-### Confirmation of Upgrade Result
-* showopstatus command checks whether all operations are kDone, and if there is a kFailed task, check the log to troubleshoot the cause
-* showtable to see if the status of all partitions is yes
+### 2.2. Confirmation of Upgrade Result
+* `showopstatus` command checks whether all operations are `kDone`, and if there is a `kFailed` task, check the log to troubleshoot the cause
+* `showtable` to see if the status of all partitions is yes
 
 After a tablet node is upgraded, repeat the above steps for other tablets. \(**You must wait until the data is synchronized before upgrading the next node**\)
 
 After all nodes are upgraded, resume write operations, and run the showtable command to check whether the master-slave offset has increased
 
-## 3. Upgrade Java Client
+## 3. Upgrade the Java Client
 
 * Update the java client version number in the pom file
 * Update dependencies
