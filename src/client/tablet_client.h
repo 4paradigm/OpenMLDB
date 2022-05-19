@@ -33,7 +33,7 @@
 #include "rpc/rpc_client.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
-using Cond_Column = ::google::protobuf::RepeatedPtrField<openmldb::api::Columns>;
+
 
 namespace openmldb {
 
