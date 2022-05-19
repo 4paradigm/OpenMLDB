@@ -19,8 +19,7 @@ package com._4paradigm.openmldb.batch
 import java.util.Properties
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import com._4paradigm.openmldb.batch.nodes.LoadDataPlan.autoLoad
-import com._4paradigm.openmldb.proto.{Common, NS, Type}
+import com._4paradigm.openmldb.proto.NS
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.SparkException
 import org.scalatest.Matchers
@@ -77,35 +76,6 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     } catch {
       case e: IllegalArgumentException => println("It should catch this: " + e.toString)
     }
-  }
-
-  test("Test Load Type Timestamp") {
-    val col = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kTimestamp).build()
-    val cols = new java.util.ArrayList[Common.ColumnDesc]
-    cols.add(col)
-
-    val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
-    val df = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null"),
-      testFile, "csv", cols)
-    df.show()
-    val l = df.select("ts").rdd.map(r => r(0)).collect.toList
-    l.toString() should equal("List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
-
-    val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
-    val df2 = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null"),
-      testFile2, "csv", cols)
-    df2.show()
-    val l2 = df2.select("ts").rdd.map(r => r(0)).collect.toList
-    l2.toString() should equal("List(null, null, 2022-02-01 09:00:00.0, null)")
-
-    // won't try to parse timestamp format when loading parquet
-    val testFile3 = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
-    // the format setting in arg1 won't work, autoLoad will use arg2 format to load file
-    val df3 = autoLoad(getSparkSession.read.option("header", "true").option("nullValue", "null").format("csv"),
-      testFile3, "parquet", cols)
-    df3.show()
-    val l3 = df3.select("ts").rdd.map(r => r(0)).collect.toList
-    l3.toString() should equal("List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
   }
 
   ignore("Test Load to Openmldb Offline Storage") {
