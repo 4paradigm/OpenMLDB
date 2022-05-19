@@ -391,7 +391,6 @@ bool Aggregator::FlushAggrBuffer(const std::string& aggr_key, const AggrBuffer& 
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
     dimensions_.Mutable(0)->set_key(key);
-    PDLOG(WARNING, "aggr table update %u %u", buffer.ts_begin_, buffer.binlog_offset_);
     bool ok = aggr_table_->Put(time, encoded_row, dimensions_);
     if (!ok) {
         PDLOG(ERROR, "Aggregator put failed");
