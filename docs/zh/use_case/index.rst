@@ -6,5 +6,5 @@
     :maxdepth: 1
 
     taxi_tour_duration_prediction
-    pulsar_openmldb_connector_demo
-    kafka_openmldb_connector_demo
+    pulsar_connector_demo
+    kafka_connector_demo
