@@ -415,7 +415,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint","m10 bigint"]
       rows:
         - [1,"aa",1,1,1,1,1,1,1,1,1]
         - [2,"aa",1,1,1,1,1,1,1,1,1]
