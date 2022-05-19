@@ -1,12 +1,12 @@
-# Kafka OpenMLDB Connector：接入实时数据流
+# OpenMLDB Kafka Connector：接入实时数据流
 
 ## 简介
-Apache Kafka是一个事件流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Kafka，请参考官网[https://kafka.apache.org/](https://kafka.apache.org/)。我们开发了OpenMLDB Connector，可以无障碍地连接Kafka。在这篇文档中，你将学习到这个connector的概念与使用方法。
+Apache Kafka是一个事件流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Kafka，请参考官网[https://kafka.apache.org/](https://kafka.apache.org/)。我们开发了连接OpenMLDB的Kafka Connector，可以无障碍地将Kafka和OpenMLDB连接起来。在这篇文档中，你将学习到这个connector的概念与使用方法。
 
-注意，为了使演示更简单，本文中将使用Kafka Connect standalone模式来启动connector，来演示OpenMLDB Connector是如何工作的。该connector是完全可以用distributed模式来启动。
+注意，为了使演示更简单，本文中将使用Kafka Connect standalone模式来启动connector。该connector是完全可以用distributed模式来启动。
 
 ```{seealso}
-Kafka OpenMLDB Connector实现见[extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc)。
+OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc)。
 ```
 
 ## 概览
@@ -26,7 +26,7 @@ docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.5.0 bash
 
 ### 流程
 
-Kafka OpenMLDB Connector 用于 OpenMLDB 线上模式的实时数据流接入。使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。
+使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。
 
 整体上，使用流程可以概括为四步：
 1. 启动 OpenMLDB 并创建数据库
@@ -86,7 +86,7 @@ ps axu|grep kafka
 ```
 ![topic status](images/kafka_topic_describe.png)
 
-## 步骤 3：启动OpenMLDB Connector
+## 步骤 3：启动 Connector
 
 首先，解压`/work/kafka`中的connector和kafka_demo_files包。
 ```
@@ -101,7 +101,7 @@ tar zxf kafka_demo_files.tgz
 plugin.path=/usr/local/share/java
 ```
 
-OpenMLDB Connector 以及运行它所需要的所有依赖包，都需要放入这个目录。命令如下：
+Connector 以及运行它所需要的所有依赖包，都需要放入这个目录。命令如下：
 ```
 mkdir -p /usr/local/share/java
 cp -r /work/kafka/kafka-connect-jdbc /usr/local/share/java/
@@ -128,6 +128,7 @@ cd /work/kafka/kafka_2.13-3.1.0
 
 ## 步骤 4：测试
 ### 发送消息
+
 我们使用Kafka提供的console producer作为测试用的消息发送工具。
 
 由于还没有创建表，我们的消息中应该带有schema，才能帮助Kafka对消息进行解析并写入OpenMLDB。
