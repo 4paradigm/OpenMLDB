@@ -2103,7 +2103,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @since 0.1.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef, LiteralTypedRow<>>();
+                 StringRef>();
 
     RegisterUdafTemplate<CountUdafDef>("count")
         .doc(R"(
@@ -2224,7 +2224,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @since 0.1.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef>();
+                 StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
         .doc(R"(
