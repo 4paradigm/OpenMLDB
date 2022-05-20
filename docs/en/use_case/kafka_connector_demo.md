@@ -6,7 +6,7 @@ Apache Kafka is an event streaming platform. It can be used as the online data s
 
 Please note that in order to make the demonstration easier, this article will use the Kafka Connect standalone mode to start the connector. The connector can be started in the distributed mode.
 
-:::{see also}
+:::{seealso}
 
 For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc).
 :::
