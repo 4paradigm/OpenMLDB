@@ -31,7 +31,6 @@ DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
-DECLARE_bool(enable_show_tp);
 
 namespace openmldb {
 namespace client {
@@ -653,11 +652,6 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     if (!ok || response->code() != 0) {
         return NULL;
     }
-    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(response);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
     return kv_it;
 }
 
@@ -699,10 +693,6 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid, ::openmldb::api::T
             kv_it->Next();
             kv_it->GetValue().ToString();
         }
-    }
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
     }
     return kv_it;
 }
@@ -848,10 +838,6 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::openmldb::api::TabletServer_Stub::Get, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
     if (response.has_msg()) {
         msg = response.msg();
     }
