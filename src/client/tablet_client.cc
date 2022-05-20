@@ -837,18 +837,6 @@ bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset
     return true;
 }
 
-void TabletClient::ShowTp() {
-    if (!FLAGS_enable_show_tp) {
-        return;
-    }
-    std::sort(percentile_.begin(), percentile_.end());
-    uint32_t size = percentile_.size();
-    std::cout << "Percentile:99=" << percentile_[(uint32_t)(size * 0.99)]
-              << " ,95=" << percentile_[(uint32_t)(size * 0.95)] << " ,90=" << percentile_[(uint32_t)(size * 0.90)]
-              << " ,50=" << percentile_[(uint32_t)(size * 0.5)] << std::endl;
-    percentile_.clear();
-}
-
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,
                        uint64_t& ts, std::string& msg) {
     ::openmldb::api::GetRequest request;
