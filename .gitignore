@@ -71,8 +71,6 @@ java/openmldb-taskmanager/src/main/java/com/_4paradigm/openmldb/proto/
 java/hybridse-native/src/main/java
 java/hybridse-proto/src
 **/.mvn/wrapper/maven-wrapper.jar
-python/logs
-/python/test/*.xml
 
 **/target/
 **/.settings/
@@ -100,3 +98,9 @@ python/logs
 # test
 logs
 
+# python builds
+/python/openmldb/test/*.xml
+/python/dist/
+/python/*.egg-info/
+# if __init__.py in it is ignored, fix it
+/python/openmldb/native/**
