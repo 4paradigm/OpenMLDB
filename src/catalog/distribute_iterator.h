@@ -95,8 +95,12 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
         row_.Reset(reinterpret_cast<const int8_t*>(slice_row.data()), slice_row.size());
         return row_;
     }
+
+    // seek to the first element whose key is less or equal to `key`
+    // or to the end if not found
     void Seek(const uint64_t& key) override {
-        while (kv_it_->Valid() && key < kv_it_->GetKey() && pk_ == kv_it_->GetPK()) {
+        // key is ordered descending
+        while (kv_it_->Valid() && kv_it_->GetKey() > key && kv_it_->GetPK() == pk_) {
             kv_it_->Next();
         }
     }
