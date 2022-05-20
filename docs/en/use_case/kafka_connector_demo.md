@@ -1,8 +1,8 @@
-# OpenMLDB Kafka Connector：Connect Real-Time Data Streaming
+# OpenMLDB Kafka Connector：Connecting Real-Time Data Streams
 
 ## Introduction
 
-Apache Kafka is an event streaming platform. It can be used as the online data source of OpenMLDB, import the real-time data from data stream into OpenMLDB online. For more information about Kafka, please refer to the official website https://kafka.apache.org/. We have developed a Kafka connector connecting the OpenMLDB, which can connect Kafka and OpenMLDB without obstacles. In this document, you will learn the concept and usage of this connector.
+Apache Kafka is an event streaming platform. It can be used as the online data source of OpenMLDB, import the real-time data from data stream into OpenMLDB online. For more information about Kafka, please refer to the official website https://kafka.apache.org/. We have developed a Kafka connector to bridge the OpenMLDB, which can connect Kafka and OpenMLDB without obstacles. In this document, you will learn the concept and usage of this connector.
 
 Please note that in order to make the demonstration easier, this article will use the Kafka Connect standalone mode to start the connector. The connector can be started in the distributed mode.
 
@@ -15,19 +15,17 @@ For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-c
 
 ### Download and Preparation
 
-- Downloading of Kafka is required, please click on [kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz).
-- Downloading of the connector package and dependencies is required, please click on [kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz).
-- To download the configuration and script files required in this article. Please click on [kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz).
+- Download Kafka: please click on [kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz).
+- Download the connector package and dependencies: please click on [kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz).
+- Download the configuration and script files (for the demonstration purpose used in this article): please click on [kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz).
 
-This article will start the OpenMLDB in docker container, so there is no need to download the OpenMLDB separately. Moreover, Kafka and connector can be started in the same container.
-
-We recommend that you bind the three downloaded packages to the file directory of `kafka`. Of course, you can also download the package after starting the container. Let's assume that the packages are in the `/work/kafka` directory.
+This article will start the OpenMLDB in docker container, so there is no need to download the OpenMLDB separately. Moreover, Kafka and connector can be started in the same container. We recommend that you save the three downloaded packages to the same directory. Let's assume that the packages are in the `/work/kafka` directory.
 
 ```
 docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.5.0 bash
 ```
 
-### The Technological Process
+### Steps
 
 The brief process of using the connector is shown in the figure below. We will describe each step in detail next.
 
@@ -88,7 +86,7 @@ You can check whether Kafka is working normally. You can either use `ps` or, che
 ps axu|grep kafka
 ```
 
-### Create topic
+### Create Topics
 
 We create a topic named `topic1`. Please note that special characters should not appear in the name of the topic.
 
@@ -153,7 +151,7 @@ Check whether the connector is started and correctly connected to the OpenMLDB c
 
 ## Step 4: Test
 
-### To Send Message
+### Send Messages
 
 We use the console producer provided by Kafka as the message sending tool for testing.
 
@@ -169,7 +167,7 @@ More conveniently, we save the above message in the file `kafka_demo_files/messa
 ./bin/kafka-console-producer.sh --topic topic1 --bootstrap-server localhost:9092 < ../kafka_demo_files/message
 ```
 
-### Inspection
+### Check Results
 
 We can query OpenMLDB to check whether the insertion is successful. The query script of `kafka_demo_files/select.sql` is as follows:
 
