@@ -31,20 +31,20 @@ def test_smoke():
     db_name = "pydb" + str(time.time_ns()%100000)
     table_name = "pytable" + str(time.time_ns()%100000)
     create_db = "create database " + db_name + ";"
-    ok, error = sdk.execute_sql(db_name, create_db)
+    ok, error = sdk.executeSQL(db_name, create_db)
     assert ok == True
-    ok, error = sdk.execute_sql(db_name, create_db)
+    ok, error = sdk.executeSQL(db_name, create_db)
     assert ok == False
     
     ddl = "create table " + table_name + "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
-    ok, error = sdk.execute_sql(db_name, ddl)
+    ok, error = sdk.executeSQL(db_name, ddl)
     assert ok == True
-    ok, error = sdk.execute_sql(db_name, ddl)
+    ok, error = sdk.executeSQL(db_name, ddl)
     assert ok == False
     
     # insert table normal
     insert_normal = "insert into " + table_name + " values('hello', 123, 3.14, 1000);"
-    ok, error = sdk.execute_sql(db_name, insert_normal)
+    ok, error = sdk.executeSQL(db_name, insert_normal)
     assert ok == True
 
     # insert table placeholder
@@ -78,21 +78,21 @@ def test_smoke():
 
     # select
     select = "select * from " + table_name + ";"
-    ok, rs = sdk.execute_sql(db_name, select)
+    ok, rs = sdk.executeSQL(db_name, select)
     assert ok == True
     assert rs.Size() == 4
 
     # drop not empty db
     drop_db = "drop database " + db_name + ";"
-    ok, error = sdk.execute_sql(db_name, drop_db)
+    ok, error = sdk.executeSQL(db_name, drop_db)
     assert ok == False
 
     # drop table
-    ok, error = sdk.execute_sql(db_name, "drop table " + table_name + ";")
+    ok, error = sdk.executeSQL(db_name, "drop table " + table_name + ";")
     assert ok == True
 
     # drop db
-    ok, error = sdk.execute_sql(db_name, drop_db)
+    ok, error = sdk.executeSQL(db_name, drop_db)
     assert ok == True
     
 if __name__ == "__main__":

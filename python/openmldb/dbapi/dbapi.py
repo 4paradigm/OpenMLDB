@@ -154,6 +154,7 @@ class Cursor(object):
         self.rowcount = -1
         self.arraysize = 1
         self.connection = conn
+        # self.db > current use db in sdk 
         self.db = db
         self._connected = True
         self._resultSet = None
@@ -271,7 +272,7 @@ class Cursor(object):
             self._pre_process_result(rs)
             return self
         else:
-            ok, rs = self.connection._sdk.execute_sql(self.db, command)
+            ok, rs = self.connection._sdk.executeSQL(self.db, command)
             if not ok:
                 raise DatabaseError(rs)
             self._pre_process_result(rs)
@@ -359,7 +360,7 @@ class Cursor(object):
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
             else:
-                ok, rs = self.connection._sdk.execute_sql(self.db, command)
+                ok, rs = self.connection._sdk.executeSQL(self.db, command)
                 if not ok:
                     raise DatabaseError(rs)
                 self._pre_process_result(rs)

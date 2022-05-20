@@ -16,7 +16,7 @@
 
 
 """
-
+OpenMLDB address used in test
 """
 
 OpenMLDB_ZK_CLUSTER="127.0.0.1:6181"
