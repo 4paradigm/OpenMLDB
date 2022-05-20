@@ -63,15 +63,24 @@ object SparkJobManager {
     launcher
   }
 
-  def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
-                     sparkConf: Map[String, String] = Map(), defaultDb: String = "",
+  def submitSparkJob(jobType: String, mainClass: String,
+                     args: List[String] = List(),
+                     localSqlFile: String = "",
+                     sparkConf: Map[String, String] = Map(),
+                     defaultDb: String = "",
                      blocking: Boolean = false): JobInfo = {
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
-    if (args != null) {
+
+    if (args.nonEmpty) {
       launcher.addAppArgs(args:_*)
+    }
+
+    if (localSqlFile.nonEmpty) {
+      logger.info("Add the local SQL file: " + localSqlFile)
+      launcher.addFile(localSqlFile)
     }
 
     // TODO: Avoid using zh_CN to load openmldb jsdk so

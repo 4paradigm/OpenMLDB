@@ -50,6 +50,15 @@ public class TaskManagerClient {
     private TaskManagerInterface taskManagerInterface;
     private static final Log logger = LogFactory.getLog(TaskManagerClient.class);
 
+    /**
+     * Constructor of TaskManager client.
+     *
+     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
+     */
+    public TaskManagerClient(String endpoint) {
+        connectTaskManagerServer(endpoint);
+    }
+
     public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
         if (zkCluster == null || zkPath == null) {
             logger.info("Zookeeper address is wrong, please check the configuration");
@@ -65,7 +74,7 @@ public class TaskManagerClient {
         Stat stat = zkClient.checkExists().forPath(masterZnode);
         if (stat != null) {  // The original master exists and is directly connected to it.
             String endpoint = new String(zkClient.getData().forPath(masterZnode));
-            this.rpcConnect(endpoint);
+            this.connectTaskManagerServer(endpoint);
             watch(zkClient, masterZnode, rpcClient, clientOption);
         } else {
             throw new Exception("TaskManager has not started yet, connection failed");
@@ -74,9 +83,6 @@ public class TaskManagerClient {
 
     /**
      * Create a data change listener event for this node.
-     *
-     * @param curator the zkClient.
-     * @param path the path of zkNode.
      */
     public void watch(CuratorFramework curator, String path, RpcClient rpcClients, RpcClientOptions clientOption) throws Exception {
         final NodeCache nodeCache = new NodeCache(curator, path, false);
@@ -95,12 +101,7 @@ public class TaskManagerClient {
                 if (endpoint != null) {
                     rpcClient.stop();
                     logger.info("The content of the node was changed, try to reconnect");
-                    rpcClient.stop();
-
-                    String serviceUrl = "list://" + endpoint;
-                    rpcClient = new RpcClient(serviceUrl, clientOption, new ArrayList<Interceptor>());
-                    taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
-                    RpcContext.getContext().setLogId(1234L);
+                    connectTaskManagerServer(endpoint);
                 } else {
                     logger.info("The content of the node was deleted, please try to reconnect");
                     close();
@@ -116,8 +117,7 @@ public class TaskManagerClient {
      *
      * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
      */
-    public void rpcConnect(String endpoint) {
-
+    public void connectTaskManagerServer(String endpoint) {
         clientOption = new RpcClientOptions();
         clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
         clientOption.setWriteTimeoutMillis(1000);
@@ -132,29 +132,6 @@ public class TaskManagerClient {
         if (rpcClient != null) {
             this.stop();
         }
-        rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
-        taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
-        RpcContext.getContext().setLogId(1234L);
-    }
-
-    /**
-     * Constructor of TaskManager client.
-     *
-     * @param endpoint the endpoint of TaskManager server, for example "127.0.0.1:9902".
-     */
-    public TaskManagerClient(String endpoint) {
-
-        RpcClientOptions clientOption = new RpcClientOptions();
-        clientOption.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
-        clientOption.setWriteTimeoutMillis(1000);
-        clientOption.setReadTimeoutMillis(50000);
-        clientOption.setMaxTotalConnections(1000);
-        clientOption.setMinIdleConnections(10);
-        clientOption.setLoadBalanceType(LoadBalanceStrategy.LOAD_BALANCE_FAIR);
-        clientOption.setCompressType(Options.CompressType.COMPRESS_TYPE_NONE);
-
-        String serviceUrl = "list://" + endpoint;
-        List<Interceptor> interceptors = new ArrayList<Interceptor>();
         rpcClient = new RpcClient(serviceUrl, clientOption, interceptors);
         taskManagerInterface = BrpcProxy.getProxy(rpcClient, TaskManagerInterface.class);
         RpcContext.getContext().setLogId(1234L);
@@ -176,9 +153,6 @@ public class TaskManagerClient {
 
     /**
      * Stop the job.
-     *
-     * @param id id of job.
-     * @throws Exception
      */
     public void stopJob(int id) throws Exception {
         TaskManager.StopJobRequest request = TaskManager.StopJobRequest.newBuilder()
@@ -191,27 +165,18 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
     }
+
     /**
      * Run sql statements in batches without default_db.
-     *
-     * @param sql query sql string.
-     * @param outputPath output path.
-     * @return the output string.
-     * @throws Exception
      */
-    public String runBatchSql(String sql, String outputPath) throws Exception {
-        return runBatchSql(sql, outputPath, new HashMap<String, String>(), "");
+    public String runBatchSql(String sql) throws Exception {
+        return runBatchSql(sql, new HashMap<String, String>(), "");
     }
+
     /**
      * Run sql statements in batches.
-     *
-     * @param sql query sql string.
-     * @param outputPath output path.
-     * @param default_db default database.
-     * @return the output string.
-     * @throws Exception
      */
-    public String runBatchSql(String sql, String outputPath, HashMap<String, String> conf, String default_db) throws Exception {
+    public String runBatchSql(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchSqlRequest request = TaskManager.RunBatchSqlRequest.newBuilder()
                 .setSql(sql)
                 .putAllConf(conf)
@@ -224,24 +189,16 @@ public class TaskManagerClient {
         }
         return response.getOutput();
     }
+    
     /**
      * Run batch sql statements and display the results without default_db.
-     *
-     * @param sql query sql string.
-     * @return id of job.
-     * @throws Exception
      */
     public int runBatchAndShow(String sql) throws Exception {
         return runBatchAndShow(sql, new HashMap<String, String>(), "");
     }
+
     /**
      * Run batch sql statements and display the results.
-     *
-     * @param sql query sql string.
-     * @param conf configure.
-     * @param default_db default database.
-     * @return id of job.
-     * @throws Exception
      */
     public int runBatchAndShow(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.RunBatchAndShowRequest request = TaskManager.RunBatchAndShowRequest.newBuilder()
@@ -256,12 +213,9 @@ public class TaskManagerClient {
         }
         return response.getJob().getId();
     }
+
     /**
      * Show the job rely on id.
-     *
-     * @param id id of job.
-     * @return the JobInfo object.
-     * @throws Exception
      */
     public TaskManager.JobInfo showJob(int id) throws Exception {
         TaskManager.ShowJobRequest request = TaskManager.ShowJobRequest.newBuilder()
@@ -274,24 +228,16 @@ public class TaskManagerClient {
         }
         return response.getJob();
     }
+
     /**
      * Import online data without default_db.
-     *
-     * @param sql query sql string.
-     * @return id of job.
-     * @throws Exception
      */
     public int importOnlineData(String sql) throws Exception {
         return importOnlineData(sql, new HashMap<String, String>(), "");
     }
+
     /**
      * Import online data.
-     *
-     * @param sql query sql string.
-     * @param conf configure.
-     * @param default_db default database.
-     * @return id of job.
-     * @throws Exception
      */
     public int importOnlineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOnlineDataRequest request = TaskManager.ImportOnlineDataRequest.newBuilder()
@@ -306,24 +252,16 @@ public class TaskManagerClient {
         }
         return response.getJob().getId();
     }
+
     /**
      * Import offline data without default_db.
-     *
-     * @param sql query sql string.
-     * @return id of job.
-     * @throws Exception
      */
     public int importOfflineData(String sql) throws Exception {
         return importOfflineData(sql, new HashMap<String, String>(), "");
     }
+
     /**
      * Import offline data.
-     *
-     * @param sql query sql string.
-     * @param conf configure.
-     * @param default_db default database.
-     * @return id of job.
-     * @throws Exception
      */
     public int importOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ImportOfflineDataRequest request = TaskManager.ImportOfflineDataRequest.newBuilder()
@@ -338,12 +276,9 @@ public class TaskManagerClient {
         }
         return response.getJob().getId();
     }
+
     /**
      * Delete offline table.
-     *
-     * @param db database name.
-     * @param table table name.
-     * @throws Exception
      */
     public void dropOfflineTable(String db, String table) throws Exception {
         TaskManager.DropOfflineTableRequest request = TaskManager.DropOfflineTableRequest.newBuilder()
@@ -356,24 +291,16 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
     }
+
     /**
      * Export offline data without default_db.
-     *
-     * @param sql query sql string.
-     * @return id of job.
-     * @throws Exception
      */
     public int exportOfflineData(String sql) throws Exception {
         return exportOfflineData(sql, new HashMap<String, String>(), "");
     }
+
     /**
      * Export offline data.
-     *
-     * @param sql query sql string.
-     * @param conf configure.
-     * @param default_db default database.
-     * @return id of job.
-     * @throws Exception
      */
     public int exportOfflineData(String sql, HashMap<String, String> conf, String default_db) throws Exception {
         TaskManager.ExportOfflineDataRequest request = TaskManager.ExportOfflineDataRequest.newBuilder()
@@ -388,21 +315,16 @@ public class TaskManagerClient {
         }
         return response.getJob().getId();
     }
+
     /**
      * Show all the jobs.
-     *
-     * @return the list of the JobInfo protobuf objects.
-     * @throws Exception
      */
     public List<TaskManager.JobInfo> showJobs() throws Exception {
         return showJobs(false);
     }
+
     /**
      * Show all the jobs or only unfinished jobs.
-     *
-     * @param onlyUnfinished only show unfinished jobs or not.
-     * @return the list of the JobInfo protobuf objects.
-     * @throws Exception
      */
     public List<TaskManager.JobInfo> showJobs(boolean onlyUnfinished) throws Exception {
         TaskManager.ShowJobsRequest request = TaskManager.ShowJobsRequest.newBuilder()
@@ -416,10 +338,9 @@ public class TaskManagerClient {
         }
         return response.getJobsList();
     }
+
     /**
      * Print the jobs.
-     *
-     * @throws Exception
      */
     public void printJobs() throws Exception {
         List<TaskManager.JobInfo> jobInfos = this.showJobs();
@@ -428,11 +349,9 @@ public class TaskManagerClient {
             System.out.println(jobInfo);
         }
     }
+
     /**
      * Submit job to show batch version.
-     *
-     * @return id of job.
-     * @throws Exception
      */
     public int showBatchVersion() throws Exception {
         TaskManager.ShowBatchVersionRequest request = TaskManager.ShowBatchVersionRequest.newBuilder()
@@ -447,8 +366,6 @@ public class TaskManagerClient {
 
     /**
      * Submit job to show batch version.
-     *
-     * @throws Exception
      */
     public String getJobLog(int id) throws Exception {
         TaskManager.GetJobLogRequest request = TaskManager.GetJobLogRequest.newBuilder()
@@ -463,9 +380,7 @@ public class TaskManagerClient {
     }
 
     /**
-     * Drop Function
-     *
-     * @throws Exception
+     * Drop Function.
      */
     public void dropFunction(String name) throws Exception {
         TaskManager.DropFunctionRequest request = TaskManager.DropFunctionRequest.newBuilder()
@@ -478,9 +393,7 @@ public class TaskManagerClient {
     }
 
     /**
-     * Create Function
-     *
-     * @throws Exception
+     * Create Function.
      */
     public void createFunction(Common.ExternalFun fun) throws Exception {
         TaskManager.CreateFunctionRequest request = TaskManager.CreateFunctionRequest.newBuilder()
