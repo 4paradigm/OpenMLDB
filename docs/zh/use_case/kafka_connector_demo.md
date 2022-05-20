@@ -31,7 +31,7 @@ docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.5.0 bash
 整体上，使用流程可以概括为四步：
 1. 启动 OpenMLDB 并创建数据库
 2. 启动 Kafka 并创建topic
-3. 启动 Kafka OpenMLDB Connector
+3. 启动 OpenMLDB Kafka Connector
 4. 进行测试或者正常使用
 
 ![demo steps](images/kafka_connector_steps.png)
