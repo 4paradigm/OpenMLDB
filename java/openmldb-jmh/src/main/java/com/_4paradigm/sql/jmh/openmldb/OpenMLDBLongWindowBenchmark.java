@@ -39,9 +39,8 @@ public class OpenMLDBLongWindowBenchmark {
     }
 
     private void addTableSchema(String dbName, String tableName) {
-        NS.TableInfo tableInfo = null;
         try {
-            tableInfo = executor.getTableInfo(dbName, tableName);
+            NS.TableInfo tableInfo = executor.getTableInfo(dbName, tableName);
             TableSchema schema = new TableSchema(tableInfo);
             tableSchema.put(tableName, schema);
         } catch (Exception e) {
