@@ -362,8 +362,12 @@ TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     auto ret = ns->ShowDBTable(db, &tables);
     ASSERT_TRUE(ret.OK());
     ASSERT_EQ(tables.size(), 1);
-    res = router->ExecuteSQL(db, absl::StrCat("select * from ", name), &status);
-    ASSERT_EQ(3u, res->Size());
+    {
+        ::hybridse::sdk::Status status;
+        res = router->ExecuteSQL(db, absl::StrCat("select * from ", name), &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(3u, res->Size());
+    }
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
