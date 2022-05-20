@@ -14,19 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # fmt:off
-import os
 import sys
-sys.path.append(os.path.dirname(__file__) + "/..")
+
+from pathlib import Path
+
+# add parent directory
+sys.path.append(Path(__file__).parent.parent.as_posix())
+from ..dbapi import dbapi as module
 from sqlalchemy.engine import default
 from sqlalchemy import pool
 from sqlalchemy.sql import compiler
+
 # fmt:on
 
-try:
-    from sqlalchemy.sql.compiler import SQLCompiler
-except ImportError:
-    from sqlalchemy.sql.compiler import DefaultCompiler as SQLCompiler
 RESERVED_WORDS = set("select")
+
 
 class OpenMLDBCompiler(compiler.SQLCompiler):
 
@@ -39,9 +41,9 @@ class OpenMLDBCompiler(compiler.SQLCompiler):
     def visit_table(self, table, asfrom=False, **kwargs):
         pass
 
-
     def visit_tablesample(self, tablesample, asfrom=False, **kw):
         pass
+
 
 class OpenMLDBIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()
@@ -90,34 +92,35 @@ class OpenMLDBIdentifierPreparer(compiler.IdentifierPreparer):
     def format_drill_table(self, schema, isFile=True):
         pass
 
+
 class OpenmldbDialect(default.DefaultDialect):
-    
     name = "openmldb_dialect"
     driver = 'rest'
     dbapi = ""
     poolclass = pool.SingletonThreadPool
     returns_unicode_strings = True
-    
 
     def __init__(self, **kw):
         default.DefaultDialect.__init__(self, **kw)
+        self._zkPath = None
+        self._zk = None
+        self._db = None
 
     @classmethod
     def dbapi(cls):
-        from dbapi import dbapi as module
         return module
 
     def has_table(self, connection, table_name, schema=None):
         if schema is not None:
             raise Exception("schema unsupported in OpenMLDB")
         return table_name in connection.connection.cursor().get_all_tables()
-    
+
     def create_connect_args(self, url, **kwargs):
         qargs = {}
         self._db = url.database
         self._zk = url.query.get("zk")
         self._zkPath = url.query.get("zkPath")
-    
+
         qargs["db"] = self._db
         qargs.update(url.query)
 

@@ -99,7 +99,6 @@ java/hybridse-proto/src
 logs
 
 # python builds
-/python/openmldb/test/*.xml
 /python/dist/
 /python/*.egg-info/
 # if __init__.py in it is ignored, fix it

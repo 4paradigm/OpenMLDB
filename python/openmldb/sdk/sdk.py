@@ -14,16 +14,21 @@
 # limitations under the License.
 
 # fmt:off
-import os
 import sys
+from pathlib import Path
+# add parent directory
+sys.path.append(Path(__file__).parent.parent.as_posix())
+print("sdk ", sys.path)
+import native.sql_router_sdk as sql_router_sdk
+
 import logging
-from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
 from prettytable import PrettyTable
 from warnings import warn
+
 # fmt:on
-sys.path.append(os.path.dirname(__file__) + "/..")
+
 logger = logging.getLogger("OpenMLDB_sdk")
 
 
@@ -220,10 +225,10 @@ class OpenMLDBSdk(object):
     def doQuery(self, db, sql):
         return self.executeSQL(db, sql, None)
 
-    def executeQuery(self, db, sql, row_builder = None):
+    def executeQuery(self, db, sql, row_builder=None):
         warn('This method is deprecated.', DeprecationWarning)
         return self.executeSQL(db, sql, row_builder)
-   
+
     def executeSQL(self, db, sql, row_builder=None):
         """
         1. no row_builder: batch mode
@@ -278,7 +283,7 @@ class OpenMLDBSdk(object):
     def doProc(self, db, sp, data):
         ok, requestRow = self.getRowBySp(db, sp)
         if not ok:
-            return ok, requestRow
+            return ok, "get row by sp failed"
         schema = requestRow.GetSchema()
         ok, msg = self._append_request_row(requestRow, schema, data)
         if not ok:

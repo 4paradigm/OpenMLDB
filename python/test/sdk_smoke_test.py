@@ -17,33 +17,42 @@
 import os
 import sys
 sys.path.append(os.path.dirname(__file__) + "/..")
-from sdk import sdk as sdk_module
+from pathlib import Path
+
+# add parent directory
+sys.path.append(Path(__file__).parent.parent.as_posix())
+print("sdk_smoke_test", sys.path)
+from openmldb.sdk import sdk as sdk_module
 import case_conf
 import time
+import pytest
 # fmt:on
+
 
 def test_smoke():
     print("hello")
     options = sdk_module.OpenMLDBClusterSdkOptions(case_conf.OpenMLDB_ZK_CLUSTER,
-                                   case_conf.OpenMLDB_ZK_PATH)
+                                                   case_conf.OpenMLDB_ZK_PATH)
     sdk = sdk_module.OpenMLDBSdk(options, True)
     assert sdk.init()
-    db_name = "pydb" + str(time.time_ns()%100000)
-    table_name = "pytable" + str(time.time_ns()%100000)
+    db_name = "pydb" + str(time.time_ns() % 100000)
+    table_name = "pytable" + str(time.time_ns() % 100000)
     create_db = "create database " + db_name + ";"
     ok, error = sdk.executeSQL(db_name, create_db)
     assert ok == True
     ok, error = sdk.executeSQL(db_name, create_db)
     assert ok == False
-    
-    ddl = "create table " + table_name + "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
+
+    ddl = "create table " + table_name + \
+        "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
     ok, error = sdk.executeSQL(db_name, ddl)
     assert ok == True
     ok, error = sdk.executeSQL(db_name, ddl)
     assert ok == False
-    
+
     # insert table normal
-    insert_normal = "insert into " + table_name + " values('hello', 123, 3.14, 1000);"
+    insert_normal = "insert into " + table_name + \
+        " values('hello', 123, 3.14, 1000);"
     ok, error = sdk.executeSQL(db_name, insert_normal)
     assert ok == True
 
@@ -94,6 +103,7 @@ def test_smoke():
     # drop db
     ok, error = sdk.executeSQL(db_name, drop_db)
     assert ok == True
-    
+
+
 if __name__ == "__main__":
     test_smoke()

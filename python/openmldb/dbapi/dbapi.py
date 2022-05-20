@@ -15,17 +15,17 @@
 # limitations under the License.
 # fmt:off
 import sys
-import os
-from typing import Union
-from typing import List
-
-sys.path.append(os.path.dirname(__file__) + "/..")
-import logging
+from pathlib import Path
+# add parent directory
+sys.path.append(Path(__file__).parent.parent.as_posix())
 from sdk import sdk as sdk_module
 from sdk.sdk import TypeUtil
 from native import sql_router_sdk
-import re
 
+import logging
+from typing import List
+from typing import Union
+import re
 # fmt:on
 
 # Globals
@@ -154,7 +154,7 @@ class Cursor(object):
         self.rowcount = -1
         self.arraysize = 1
         self.connection = conn
-        # self.db > current use db in sdk 
+        # self.db > current use db in sdk
         self.db = db
         self._connected = True
         self._resultSet = None
@@ -213,12 +213,12 @@ class Cursor(object):
             raise DatabaseError("please providate data for proc")
         ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
         if not ok:
-            raise DatabaseError("execute select fail")
+            raise DatabaseError("execute select fail, {}".format(rs))
         self._pre_process_result(rs)
         return self
 
     @classmethod
-    def __add_row_to_builder(cls, row, hold_idxs, schema, builder,appendMap):
+    def __add_row_to_builder(cls, row, hold_idxs, schema, builder, appendMap):
         for i in range(len(hold_idxs)):
             idx = hold_idxs[i]
             name = schema.GetColumnName(idx)
@@ -227,16 +227,19 @@ class Cursor(object):
             if isinstance(row, tuple):
                 ok = appendMap[colType](row[i])
                 if not ok:
-                    raise DatabaseError("error at append data seq {}".format(i))
+                    raise DatabaseError(
+                        "error at append data seq {}".format(i))
             elif isinstance(row, dict):
                 if row[name] is None:
                     builder.AppendNULL()
                     continue
                 ok = appendMap[colType](row[name])
                 if not ok:
-                    raise DatabaseError("error at append data seq {}".format(i))
+                    raise DatabaseError(
+                        "error at append data seq {}".format(i))
             else:
-                raise DatabaseError("error at append data seq {} for unsupported type".format(i))
+                raise DatabaseError(
+                    "error at append data seq {} for unsupported type".format(i))
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
@@ -247,24 +250,31 @@ class Cursor(object):
             if questionMarkCount > 0:
                 if len(parameters) != questionMarkCount:
                     raise DatabaseError("parameters is not enough")
-                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
+                ok, builder = self.connection._sdk.getInsertBuilder(
+                    self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
                 holdIdxs = builder.GetHoleIdx()
-                appendMap = self.__get_append_map(builder, parameters, holdIdxs, schema)
-                self.__add_row_to_builder(parameters, holdIdxs, schema, builder, appendMap)
-                ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
+                appendMap = self.__get_append_map(
+                    builder, parameters, holdIdxs, schema)
+                self.__add_row_to_builder(
+                    parameters, holdIdxs, schema, builder, appendMap)
+                ok, error = self.connection._sdk.executeInsert(
+                    self.db, command, builder)
             else:
-                ok, error = self.connection._sdk.executeInsert(self.db, command)
+                ok, error = self.connection._sdk.executeInsert(
+                    self.db, command)
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
             logging.debug("selectRE: %s", str(parameters))
             if isinstance(parameters, tuple) and len(parameters) > 0:
-                ok, rs = self.connection._sdk.doParameterizedQuery(self.db, command, parameters)
+                ok, rs = self.connection._sdk.doParameterizedQuery(
+                    self.db, command, parameters)
             elif isinstance(parameters, dict):
-                ok, rs = self.connection._sdk.doRequestQuery(self.db, command, parameters)
+                ok, rs = self.connection._sdk.doRequestQuery(
+                    self.db, command, parameters)
             else:
                 ok, rs = self.connection._sdk.doQuery(self.db, command)
             if not ok:
@@ -292,7 +302,8 @@ class Cursor(object):
                     raise DatabaseError("col {} data not given".format(name))
                 if row[name] is None:
                     if schema.IsColumnNotNull(idx):
-                        raise DatabaseError("column seq {} not allow null".format(name))
+                        raise DatabaseError(
+                            "column seq {} not allow null".format(name))
                     continue
                 col_type = schema.GetColumnType(idx)
                 if col_type != sql_router_sdk.kTypeString:
@@ -323,9 +334,12 @@ class Cursor(object):
     def __insert_rows(self, rows: List[Union[tuple, dict]], hold_idxs, schema, rows_builder, command):
         for row in rows:
             tmp_builder = rows_builder.NewRow()
-            appendMap = self.__get_append_map(tmp_builder, row, hold_idxs, schema)
-            self.__add_row_to_builder(row, hold_idxs, schema, tmp_builder, appendMap)
-        ok, error = self.connection._sdk.executeInsert(self.db, command, rows_builder)
+            appendMap = self.__get_append_map(
+                tmp_builder, row, hold_idxs, schema)
+            self.__add_row_to_builder(
+                row, hold_idxs, schema, tmp_builder, appendMap)
+        ok, error = self.connection._sdk.executeInsert(
+            self.db, command, rows_builder)
         if not ok:
             raise DatabaseError(error)
 
@@ -348,17 +362,20 @@ class Cursor(object):
             if question_mark_count > 0:
                 # Because the object obtained by getInsertBatchBuilder has no GetSchema method,
                 # use the object obtained by getInsertBatchBuilder
-                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
+                ok, builder = self.connection._sdk.getInsertBuilder(
+                    self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
                 hold_idxs = builder.GetHoleIdx()
                 for i in range(0, parameters_length, batch_number):
                     rows = parameters[i: i + batch_number]
-                    ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(self.db, command)
+                    ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
+                        self.db, command)
                     if not ok:
                         raise DatabaseError("get insert builder fail")
-                    self.__insert_rows(rows, hold_idxs, schema, batch_builder, command)
+                    self.__insert_rows(
+                        rows, hold_idxs, schema, batch_builder, command)
             else:
                 ok, rs = self.connection._sdk.executeSQL(self.db, command)
                 if not ok:
@@ -370,7 +387,7 @@ class Cursor(object):
 
     def is_online_mode(self):
         return self.connection._sdk.isOnlineMode()
-            
+
     def get_tables(self, db):
         return self.connection._sdk.getTables(db)
 
@@ -381,7 +398,8 @@ class Cursor(object):
         return self.connection._sdk.getDatabases()
 
     def fetchone(self):
-        if self._resultSet is None: raise DatabaseError("query data failed")
+        if self._resultSet is None:
+            raise DatabaseError("query data failed")
         ok = self._resultSet.Next()
         if not ok:
             return None
@@ -395,7 +413,8 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        if self._resultSet is None: raise DatabaseError("query data failed")
+        if self._resultSet is None:
+            raise DatabaseError("query data failed")
         if size is None:
             size = self.arraysize
         elif size < 0:
@@ -410,7 +429,8 @@ class Cursor(object):
                 if self._resultSet.IsNULL(i):
                     row.append(None)
                 else:
-                    row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
+                    row.append(
+                        self.__getMap[self.__schema.GetColumnType(i)](i))
             values.append(tuple(row))
         return values
 
@@ -460,12 +480,13 @@ class Cursor(object):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
-        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol, parameters)
+        ok, rs = self.connection._sdk.doBatchRowRequest(
+            self.db, sql, commonCol, parameters)
         if not ok:
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
         return self
-    
+
     def executeRequest(self, sql, parameter):
         command = sql.strip(' \t\n\r')
         if selectRE.match(command) == False:
@@ -499,9 +520,11 @@ class Connection(object):
         self._connected = True
         self._db = db
         if is_cluster_mode:
-            options = sdk_module.OpenMLDBClusterSdkOptions(zk_or_host, zkPath_or_port)
+            options = sdk_module.OpenMLDBClusterSdkOptions(
+                zk_or_host, zkPath_or_port)
         else:
-            options = sdk_module.OpenMLDBStandaloneSdkOptions(zk_or_host, zkPath_or_port)
+            options = sdk_module.OpenMLDBStandaloneSdkOptions(
+                zk_or_host, zkPath_or_port)
         sdk = sdk_module.OpenMLDBSdk(options, is_cluster_mode)
         ok = sdk.init()
         if not ok:
