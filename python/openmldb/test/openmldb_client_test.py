@@ -13,24 +13,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import openmldb
-import pytest
-import unittest
+
 import logging
 import time
 from datetime import date
 from datetime import datetime
-
 import sqlalchemy as db
-from sqlalchemy import Table, Column, Integer, String, MetaData
-from sqlalchemy.sql import select
 
 from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 
 
-class TestOpenMLDBClient(unittest.TestCase):
+class TestOpenMLDBClient():
 
     def test_basic(self):
         ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1)) OPTIONS(partitionnum=1);"
@@ -348,153 +343,3 @@ class TestOpenMLDBClient(unittest.TestCase):
             (1008, '2021-01-02', 'province3', 'city9', 9, 1590738998000),
         ]
         self.check_result(rs, expectRows)
-
-# test sqlalchemy Table-object-based API in pytest style
-
-
-class TestSqlalchemyAPI:
-
-    def setup_class(self):
-        self.engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
-        self.connection = self.engine.connect()
-        self.metadata = MetaData()
-        self.test_table = Table('test_table', self.metadata,
-                                Column('x', String),
-                                Column('y', Integer))
-        self.metadata.create_all(self.engine)
-
-    def test_create_table(self):
-        assert self.connection.dialect.has_table(self.connection, 'test_table')
-
-    def test_insert(self):
-        try:
-            self.connection.execute(
-                self.test_table.insert().values(x='first', y=100))
-        except Exception as e:
-            # insert failed
-            assert False
-
-    def test_select(self):
-        for row in self.connection.execute(select([self.test_table])):
-            assert 'first' in list(row)
-            assert 100 in list(row)
-
-    def teardown_class(self):
-        self.connection.execute("drop table test_table;")
-        self.connection.close()
-
-
-class TestOpenmldbDBAPI:
-
-    def setup_class(self):
-        self.db = openmldb.dbapi.connect(
-            'db_test', '127.0.0.1:6181', '/onebox')
-        self.cursor = self.db.cursor()
-
-    def execute(self, sql):
-        try:
-            self.cursor.execute(sql)
-            return True
-        except Exception as e:
-            return
-
-    def test_create_table(self):
-        self.cursor.execute('create table new_table (x string, y int);')
-        assert "new_table" in self.cursor.get_all_tables()
-        with pytest.raises(Exception):
-            assert self.execute("create table ")
-
-    def test_insert(self):
-        try:
-            self.cursor.execute("insert into new_table values('first', 100);")
-        except Exception as e:
-            assert False
-        result = self.cursor.execute("select * from new_table;").fetchone()
-        assert 'first' in result
-        assert 100 in result
-
-        with pytest.raises(Exception):
-            assert self.execute("insert into new_table values(100, 'first');")
-        with pytest.raises(Exception):
-            assert self.execute(
-                "insert into new_table values({'x':100, 'y':'first'});")
-
-    def test_select_conditioned(self):
-        self.cursor.execute("insert into new_table values('second', 200);")
-        result = self.cursor.execute(
-            "select * from new_table where x = 'second';").fetchone()
-        assert 'second' in result
-        assert 200 in result
-
-    def test_drop_table(self):
-        try:
-            self.cursor.execute("drop table new_table;")
-        except Exception as e:
-            assert False
-        assert "new_table" not in self.cursor.get_all_tables()
-
-        with pytest.raises(Exception):
-            assert self.execute("drop table new_table;")
-
-    def teardown_class(self):
-        self.cursor.close()
-
-
-class TestSQLMagicOpenMLDB:
-
-    def setup_class(self):
-        self.db = openmldb.dbapi.connect(
-            'db_test', '127.0.0.1:6181', '/onebox')
-        self.ip = openmldb.sql_magic.register(self.db, test=True)
-
-    def execute(self, magic_name, sql):
-        try:
-            self.ip.run_line_magic(magic_name, sql)
-            return True
-        except Exception as e:
-            return
-
-    def test_create_table(self):
-        try:
-            self.ip.run_cell_magic(
-                'sql', '', "create table magic_table (x string, y int);")
-        except Exception as e:
-            assert False
-        assert "magic_table" in self.db.cursor().get_all_tables()
-
-        with pytest.raises(Exception):
-            assert self.execute('sql', "create table magic_table;")
-
-    def test_insert(self):
-        try:
-            self.ip.run_line_magic(
-                'sql', "insert into magic_table values('first', 100);")
-        except Exception as e:
-            assert False
-
-        with pytest.raises(Exception):
-            assert self.execute(
-                'sql', "insert into magic_table values(200, 'second');")
-
-        with pytest.raises(Exception):
-            assert self.execute(
-                'sql', "insert into magic_table values({x: 'first', y:100});")
-
-    def test_select(self):
-        try:
-            self.ip.run_line_magic('sql', "select * from magic_table;")
-        except Exception as e:
-            assert False
-
-    def test_drop(self):
-        try:
-            self.ip.run_line_magic('sql', "drop table magic_table;")
-        except Exception as e:
-            assert False
-
-        assert "magic_table" not in self.db.cursor().get_all_tables()
-
-
-if __name__ == '__main__':
-    unittest.main()

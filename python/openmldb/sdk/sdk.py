@@ -205,7 +205,7 @@ class OpenMLDBSdk(object):
         ok, msg = self._append_request_row(requestRow, schema, data)
         if not ok:
             return ok, msg
-        return self.executeQuery(db, sql, requestRow)
+        return self.executeSQL(db, sql, requestRow)
 
     def doParameterizedQuery(self, db, sql, data):
         logging.debug("doParameterizedQuery data: %s", str(data))
