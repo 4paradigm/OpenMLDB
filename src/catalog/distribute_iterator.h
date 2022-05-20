@@ -96,7 +96,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
         return row_;
     }
     void Seek(const uint64_t& key) override {
-        while (kv_it_->Valid() && key != kv_it_->GetKey() && pk_ == kv_it_->GetPK()) {
+        while (kv_it_->Valid() && key < kv_it_->GetKey() && pk_ == kv_it_->GetPK()) {
             kv_it_->Next();
         }
     }
