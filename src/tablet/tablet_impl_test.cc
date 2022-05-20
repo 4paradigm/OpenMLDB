@@ -714,16 +714,16 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         sr.set_pk(key);
         sr.set_st(92);
         sr.set_et(90);
-        ::openmldb::api::ScanResponse srp;
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, (signed)srp.count());
-        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
-        ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(92l, (signed)kv_it->GetKey());
-        ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it->GetValue().ToString()).c_str());
-        kv_it->Next();
-        ASSERT_FALSE(kv_it->Valid());
+        auto srp = std::make_shared<::openmldb::api::ScanResponse>();
+        tablet.Scan(NULL, &sr, srp.get(), &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(1, (signed)srp->count());
+        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ASSERT_TRUE(kv_it.Valid());
+        ASSERT_EQ(92l, (signed)kv_it.GetKey());
+        ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
+        kv_it.Next();
+        ASSERT_FALSE(kv_it.Valid());
     }
 
     // scan with default et ge
@@ -735,16 +735,16 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         sr.set_st(92);
         sr.set_et(0);
         sr.set_et_type(::openmldb::api::kSubKeyGe);
-        ::openmldb::api::ScanResponse srp;
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, (signed)srp.count());
-        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
-        ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(92l, (signed)kv_it->GetKey());
-        ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it->GetValue().ToString()).c_str());
-        kv_it->Next();
-        ASSERT_TRUE(kv_it->Valid());
+        auto srp = std::make_shared<::openmldb::api::ScanResponse>();
+        tablet.Scan(NULL, &sr, srp.get(), &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(5, (signed)srp->count());
+        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ASSERT_TRUE(kv_it.Valid());
+        ASSERT_EQ(92l, (signed)kv_it.GetKey());
+        ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
+        kv_it.Next();
+        ASSERT_TRUE(kv_it.Valid());
     }
 }
 
@@ -1571,19 +1571,18 @@ TEST_P(TabletImplTest, ScanWithLatestN) {
     sr.set_st(0);
     sr.set_et(0);
     sr.set_limit(2);
-    ::openmldb::api::ScanResponse srp;
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(2, (signed)srp.count());
-    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp, false);
-    ASSERT_EQ(9539, (signed)kv_it->GetKey());
-    ASSERT_STREQ("test9539", ::openmldb::test::DecodeV(kv_it->GetValue().ToString()).c_str());
-    kv_it->Next();
-    ASSERT_EQ(9538, (signed)kv_it->GetKey());
-    ASSERT_STREQ("test9538", ::openmldb::test::DecodeV(kv_it->GetValue().ToString()).c_str());
-    kv_it->Next();
-    ASSERT_FALSE(kv_it->Valid());
-    delete kv_it;
+    auto srp = std::make_shared<::openmldb::api::ScanResponse>();
+    tablet.Scan(NULL, &sr, srp.get(), &closure);
+    ASSERT_EQ(0, srp->code());
+    ASSERT_EQ(2, (signed)srp->count());
+    ::openmldb::base::ScanKvIterator kv_it(srp);
+    ASSERT_EQ(9539, (signed)kv_it.GetKey());
+    ASSERT_STREQ("test9539", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
+    kv_it.Next();
+    ASSERT_EQ(9538, (signed)kv_it.GetKey());
+    ASSERT_STREQ("test9538", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
+    kv_it.Next();
+    ASSERT_FALSE(kv_it.Valid());
 }
 
 
@@ -1618,20 +1617,19 @@ TEST_P(TabletImplTest, Traverse) {
     sr.set_tid(id);
     sr.set_pid(1);
     sr.set_limit(100);
-    ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-    tablet.Traverse(NULL, &sr, srp, &closure);
+    auto srp = std::make_shared<::openmldb::api::TraverseResponse>();
+    tablet.Traverse(NULL, &sr, srp.get(), &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
-    ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(srp);
+    ::openmldb::base::TraverseKvIterator kv_it(srp);
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
-        ASSERT_EQ(cur_ts, kv_it->GetKey());
+        ASSERT_EQ(cur_ts, kv_it.GetKey());
         ASSERT_STREQ(std::string("test" + std::to_string(cur_ts)).c_str(),
-                ::openmldb::test::DecodeV(kv_it->GetValue().ToString()).c_str());
-        kv_it->Next();
+                ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
+        kv_it.Next();
     }
-    ASSERT_FALSE(kv_it->Valid());
-    delete kv_it;
+    ASSERT_FALSE(kv_it.Valid());
 }
 
 TEST_P(TabletImplTest, TraverseTTL) {
@@ -6393,7 +6391,7 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
 }
 
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD,
+                        ::testing::Values(::openmldb::common::kMemory,/*::openmldb::common::kSSD,*/
                                           ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {

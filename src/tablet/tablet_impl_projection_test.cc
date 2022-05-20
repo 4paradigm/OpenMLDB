@@ -81,22 +81,22 @@ class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
         std::vector<std::string> file_path;
         ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (int i = 0; i < file_path.size(); i++) {
+        for (size_t i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
         ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (int i = 0; i < file_path.size(); i++) {
+        for (size_t i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
     }
     virtual void TearDown() {
         std::vector<std::string> file_path;
         ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (int i = 0; i < file_path.size(); i++) {
+        for (size_t i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
         ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (int i = 0; i < file_path.size(); i++) {
+        for (size_t i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
     }
@@ -664,15 +664,15 @@ TEST_P(TabletProjectTest, scan_case) {
         sr.set_st(args->ts);
         sr.set_et(0);
         sr.mutable_projection()->CopyFrom(args->plist);
-        ::openmldb::api::ScanResponse srp;
-        tablet_.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, (int64_t)srp.count());
-        ::openmldb::base::KvIterator* kv_it = new ::openmldb::base::KvIterator(&srp);
-        ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(kv_it->GetValue().size(), args->output_row.size());
+        auto srp = std::make_shared<::openmldb::api::ScanResponse>();
+        tablet_.Scan(NULL, &sr, srp.get(), &closure);
+        ASSERT_EQ(0, srp->code());
+        ASSERT_EQ(1, (int64_t)srp->count());
+        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ASSERT_TRUE(kv_it.Valid());
+        ASSERT_EQ(kv_it.GetValue().size(), args->output_row.size());
         codec::RowView left(args->output_schema);
-        left.Reset(reinterpret_cast<const int8_t*>(kv_it->GetValue().data()), kv_it->GetValue().size());
+        left.Reset(reinterpret_cast<const int8_t*>(kv_it.GetValue().data()), kv_it.GetValue().size());
         codec::RowView right(args->output_schema);
         right.Reset(reinterpret_cast<int8_t*>(args->output_row.data()), args->output_row.size());
         CompareRow(&left, &right, args->output_schema);

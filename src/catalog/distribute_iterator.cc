@@ -130,15 +130,15 @@ bool FullTableIterator::NextFromRemote() {
             if (!kv_it_->IsFinish()) {
                 DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
                     " key " << last_ts_ << " count " << count;
-                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                            FLAGS_traverse_cnt_limit, false, count));
+                kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
+                            FLAGS_traverse_cnt_limit, count);
             } else {
                 iter++;
                 kv_it_.reset();
                 continue;
             }
         } else {
-            kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count));
+            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, count);
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
@@ -200,8 +200,8 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     auto client_iter = tablet_clients_.find(cur_pid_);
     if (client_iter != tablet_clients_.end()) {
         uint32_t count = 0;
-        kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, key, 0,
-                    FLAGS_traverse_cnt_limit, false, count));
+        kv_it_ = client_iter->second->Traverse(tid_, cur_pid_, index_name_, key, 0,
+                    FLAGS_traverse_cnt_limit, count);
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
             return;
@@ -237,7 +237,7 @@ void DistributeWindowIterator::SeekToFirst() {
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
         cur_pid_ = kv.first;
-        kv_it_.reset(kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count));
+        kv_it_ = kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, count);
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
             return;
@@ -278,7 +278,8 @@ std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetVal
     if (it_) {
         return it_->GetRawValue();
     }
-    return new RemoteWindowIterator(kv_it_, response_vec_.back());
+    return new RemoteWindowIterator(tid_, cur_pid_, index_name_, kv_it_,
+            response_vec_.back(), tablet_clients_[cur_pid_]);
 }
 
 const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
@@ -287,6 +288,15 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
     }
     return hybridse::codec::Row(hybridse::base::RefCountedSlice::Create(kv_it_->GetPK().data(),
                 kv_it_->GetPK().size()));
+}
+
+void RemoteWindowIterator::Next() {
+    kv_it_->Next();
+    /*if (!kv_it_->Valid() && !kv_it_->IsFinish()) {
+        uint32_t count = 0;
+        kv_it_.reset(tablet_client_->Traverse(tid_, pid_, index_name_, pk_, ts_,
+                    FLAGS_traverse_cnt_limit, false, count));
+    }*/
 }
 
 }  // namespace catalog

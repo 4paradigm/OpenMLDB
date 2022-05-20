@@ -1636,7 +1636,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     if (no_schema) {
         std::shared_ptr<::openmldb::base::KvIterator> it;
         if (is_pair_format) {
-            it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+            it = tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg);
         } else {
             try {
                 st = boost::lexical_cast<uint64_t>(parts[3]);
@@ -1644,7 +1644,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+                it = tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg);
             } catch (std::exception const& e) {
                 std::cout << "Invalid args. st and et should be uint64_t, limit should"
                           << "be uint32_t" << std::endl;
@@ -1907,8 +1907,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        ::openmldb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
-        if (it == NULL) {
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
         }
@@ -1948,7 +1948,6 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             index++;
             it->Next();
         }
-        delete it;
     }
     tp.Print(true);
 }
