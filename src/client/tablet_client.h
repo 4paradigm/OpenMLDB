@@ -296,7 +296,7 @@ class TabletClient : public Client {
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
-    std::vector<uint64_t> percentile_;
+    std::vector<uint64_t>;
 };
 
 }  // namespace client
