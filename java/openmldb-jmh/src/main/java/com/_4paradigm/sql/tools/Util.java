@@ -233,6 +233,7 @@ public class Util {
             } else {
                 curKey += pkList.get(i);
             }
+            long tsStart = BenchmarkConfig.TS_BASE - windowSize;
             for (int tsCnt = 0; tsCnt < windowSize; tsCnt++) {
                 PreparedStatement state = null;
                 try {
@@ -244,15 +245,15 @@ public class Util {
                             state.setString(idx + 1, "k" + String.valueOf(10 + idx) + String.valueOf(curKey));
                         } else if (type.equals(Type.DataType.kBigInt)) {
                             if (tsIndex.contains(pos)) {
-                                state.setLong(idx + 1, BenchmarkConfig.TS_BASE - tsCnt);
+                                state.setLong(idx + 1, tsStart + tsCnt);
                             } else {
                                 state.setLong(idx + 1, curKey);
                             }
                         } else if (type.equals(Type.DataType.kTimestamp)) {
                             if (tsIndex.contains(pos)) {
-                                state.setTimestamp(idx + 1, new Timestamp(BenchmarkConfig.TS_BASE - tsCnt));
+                                state.setTimestamp(idx + 1, new Timestamp(tsStart + tsCnt));
                             } else {
-                                state.setTimestamp(idx + 1, new Timestamp(BenchmarkConfig.TS_BASE + i));
+                                state.setTimestamp(idx + 1, new Timestamp(tsStart + i));
                             }
                         } else if (type.equals(Type.DataType.kInt)) {
                             state.setInt(idx + 1, curKey);
