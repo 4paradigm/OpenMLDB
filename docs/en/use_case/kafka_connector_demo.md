@@ -1,6 +1,6 @@
-# **OpenMLDB Kafka Connector：Connect Real-Time Data Streaming**
+# OpenMLDB Kafka Connector：Connect Real-Time Data Streaming
 
-### Introduction
+## Introduction
 
 Apache Kafka is an event streaming platform. It can be used as the online data source of OpenMLDB, import the real-time data from data stream into OpenMLDB online. For more information about Kafka, please refer to the official website https://kafka.apache.org/. We have developed a Kafka connector connecting the OpenMLDB, which can connect Kafka and OpenMLDB without obstacles. In this document, you will learn the concept and usage of this connector.
 
@@ -11,9 +11,9 @@ Please note that in order to make the demonstration easier, this article will us
 For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc).
 :::
 
-### **Overview**
+## Overview
 
-### **Download and Preparation**
+### Download and Preparation
 
 - Downloading of Kafka is required, please click on [kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz).
 - Downloading of the connector package and dependencies is required, please click on [kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz).
@@ -41,9 +41,9 @@ In general, the use process can be summarized into four steps:
 ![demo steps](../../zh/use_case/images/kafka_connector_steps.png)
 
 
-### **Step 1: Start the OpenMLDB and Create a Database. **
+## Step 1: Start the OpenMLDB and Create a Database
 
-#### **Start the OpenMLDB Cluster**
+### Start the OpenMLDB Cluster
 
 In the OpenMLDB container, start the cluster:
 
@@ -56,7 +56,7 @@ In the OpenMLDB container, start the cluster:
 At present, only the OpenMLDB cluster version can be used as the receiver of sink, and the data will only be sink to the online storage of the cluster.
 :::
 
-#### **Create Database**
+### Create Database
 
 We can quickly create a database through the pipe without logging into the client CLI:
 
@@ -64,9 +64,9 @@ We can quickly create a database through the pipe without logging into the clien
 echo "create database kafka_test;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-### Step 2: Start the Kafka and Create topic
+## Step 2: Start the Kafka and Create topic
 
-#### Start Kafka
+### Start Kafka
 
 Unzip the Kafka and start the Kafka using the start script.
 
@@ -88,7 +88,7 @@ You can check whether Kafka is working normally. You can either use `ps` or, che
 ps axu|grep kafka
 ```
 
-#### Create topic
+### Create topic
 
 We create a topic named `topic1`. Please note that special characters should not appear in the name of the topic.
 
@@ -104,7 +104,7 @@ You can `describe` the topic to confirm whether it is normal.
 
 ![topic status](../../zh/use_case/images/kafka_topic_describe.png)
 
-### Step 3: Start the Connector
+## Step 3: Start the Connector
 
 First, unzip the connector and the kafka_demo_files package in `/work/kafka`.
 
@@ -151,9 +151,9 @@ cd /work/kafka/kafka_2.13-3.1.0
 
 Check whether the connector is started and correctly connected to the OpenMLDB cluster. You can check with `logs/connect.log`. Under normal circumstances, the log should have `Executing sink task`.
 
-### Step 4: Test
+## Step 4: Test
 
-#### To Send Message
+### To Send Message
 
 We use the console producer provided by Kafka as the message sending tool for testing.
 
@@ -169,7 +169,7 @@ More conveniently, we save the above message in the file `kafka_demo_files/messa
 ./bin/kafka-console-producer.sh --topic topic1 --bootstrap-server localhost:9092 < ../kafka_demo_files/message
 ```
 
-#### Inspection
+### Inspection
 
 We can query OpenMLDB to check whether the insertion is successful. The query script of `kafka_demo_files/select.sql` is as follows:
 
