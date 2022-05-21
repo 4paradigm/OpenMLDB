@@ -13,24 +13,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
+
+import case_conf
+import time
+
 # fmt:off
-import os
 import sys
-sys.path.append(os.path.dirname(__file__) + "/..")
 from pathlib import Path
 
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
-print("sdk_smoke_test", sys.path)
 from openmldb.sdk import sdk as sdk_module
-import case_conf
-import time
-import pytest
 # fmt:on
 
 
-def test_smoke():
-    print("hello")
+def test_sdk_smoke():
     options = sdk_module.OpenMLDBClusterSdkOptions(case_conf.OpenMLDB_ZK_CLUSTER,
                                                    case_conf.OpenMLDB_ZK_PATH)
     sdk = sdk_module.OpenMLDBSdk(options, True)
@@ -39,22 +37,22 @@ def test_smoke():
     table_name = "pytable" + str(time.time_ns() % 100000)
     create_db = "create database " + db_name + ";"
     ok, error = sdk.executeSQL(db_name, create_db)
-    assert ok == True
+    assert ok
     ok, error = sdk.executeSQL(db_name, create_db)
-    assert ok == False
+    assert not ok
 
     ddl = "create table " + table_name + \
-        "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
+          "(col1 string, col2 int, col3 float, col4 bigint, index(key=col1, ts=col4));"
     ok, error = sdk.executeSQL(db_name, ddl)
-    assert ok == True
+    assert ok
     ok, error = sdk.executeSQL(db_name, ddl)
-    assert ok == False
+    assert not ok
 
     # insert table normal
     insert_normal = "insert into " + table_name + \
-        " values('hello', 123, 3.14, 1000);"
+                    " values('hello', 123, 3.14, 1000);"
     ok, error = sdk.executeSQL(db_name, insert_normal)
-    assert ok == True
+    assert ok
 
     # insert table placeholder
     insert_placeholder = "insert into " + table_name + " values(?, ?, ?, ?);"
@@ -65,7 +63,7 @@ def test_smoke():
     row_builder.AppendFloat(2.33)
     row_builder.AppendInt64(1001)
     ok, error = sdk.executeInsert(db_name, insert_placeholder, row_builder)
-    assert ok == True
+    assert ok
 
     # insert table placeholder batch
     ok, rows_builder = sdk.getInsertBatchBuilder(db_name, insert_placeholder)
@@ -83,27 +81,27 @@ def test_smoke():
     row_builder2.AppendFloat(6.6)
     row_builder2.AppendInt64(1003)
     ok, error = sdk.executeInsert(db_name, insert_placeholder, rows_builder)
-    assert ok == True
+    assert ok
 
     # select
     select = "select * from " + table_name + ";"
     ok, rs = sdk.executeSQL(db_name, select)
-    assert ok == True
+    assert ok
     assert rs.Size() == 4
 
     # drop not empty db
     drop_db = "drop database " + db_name + ";"
     ok, error = sdk.executeSQL(db_name, drop_db)
-    assert ok == False
+    assert not ok
 
     # drop table
     ok, error = sdk.executeSQL(db_name, "drop table " + table_name + ";")
-    assert ok == True
+    assert ok
 
     # drop db
     ok, error = sdk.executeSQL(db_name, drop_db)
-    assert ok == True
+    assert ok
 
 
 if __name__ == "__main__":
-    test_smoke()
+    sys.exit(pytest.main(["-vv", "sql_smoke_test.py"]))

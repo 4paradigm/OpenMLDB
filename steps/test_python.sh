@@ -45,6 +45,6 @@ echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 cd "${ROOT_DIR}"/python/test
-pytest --junit-xml=pytest.xml
+pytest -vv --junit-xml=pytest.xml
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

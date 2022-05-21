@@ -18,7 +18,6 @@ import sys
 from pathlib import Path
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
-print("sdk ", sys.path)
 import native.sql_router_sdk as sql_router_sdk
 
 import logging

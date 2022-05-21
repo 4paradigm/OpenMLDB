@@ -72,4 +72,4 @@ class TestOpenmldbDBAPI:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-k", "TestOpenmldbDBAPI"]))
+    sys.exit(pytest.main(["-vv", "dbapi_test.py"]))

@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 
 import openmldb
 import pytest
@@ -21,6 +22,7 @@ import logging
 from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
+
 
 class TestSQLMagicOpenMLDB:
 
@@ -74,3 +76,7 @@ class TestSQLMagicOpenMLDB:
             assert False
 
         assert "magic_table" not in self.db.cursor().get_all_tables()
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main(["-vv", "sql_magic_test.py"]))

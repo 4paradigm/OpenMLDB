@@ -253,4 +253,4 @@ class TestOpenMLDBClient:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "-k", "TestOpenMLDBClient"]))
+    sys.exit(pytest.main(["-vv", "openmldb_client_test.py"]))

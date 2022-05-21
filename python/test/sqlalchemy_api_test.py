@@ -15,13 +15,20 @@
 # limitations under the License.
 
 import logging
+import sys
+import pytest
+# fmt: off
+import openmldb
 import sqlalchemy as db
 from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.sql import select
+# fmt:on
 
 from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
+
+
 class TestSqlalchemyAPI:
 
     def setup_class(self):
@@ -40,7 +47,6 @@ class TestSqlalchemyAPI:
     def test_insert(self):
         self.connection.execute(self.test_table.insert().values(x='first', y=100))
 
-
     def test_select(self):
         for row in self.connection.execute(select([self.test_table])):
             assert 'first' in list(row)
@@ -49,3 +55,7 @@ class TestSqlalchemyAPI:
     def teardown_class(self):
         self.connection.execute("drop table test_table;")
         self.connection.close()
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main(["-vv", "sqlalchemy_api_test.py"]))
