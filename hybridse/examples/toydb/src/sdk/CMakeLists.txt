@@ -51,7 +51,7 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
         add_test(${TEST_TARGET_NAME}
             ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-        target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} toydb_sdk toydb_flags toydb_lib zetasql)
+        target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} toydb_sdk toydb_lib zetasql)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

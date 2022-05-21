@@ -38,6 +38,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       NPROC: 8
+      BUILD_SHARED_LIBS: ON
     steps:
       - uses: actions/checkout@v3
         with:
