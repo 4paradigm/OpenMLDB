@@ -8,4 +8,5 @@ Maintenance
     upgrade
     cli
     faq
+    monitoring
 
