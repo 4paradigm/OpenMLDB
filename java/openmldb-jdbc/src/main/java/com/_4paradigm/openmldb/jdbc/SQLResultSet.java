@@ -330,7 +330,7 @@ public class SQLResultSet implements ResultSet {
     }
 
     /**
-     * @param s
+     * @param s the string for the unicode stream extraction.
      * @deprecated
      */
     @Override
