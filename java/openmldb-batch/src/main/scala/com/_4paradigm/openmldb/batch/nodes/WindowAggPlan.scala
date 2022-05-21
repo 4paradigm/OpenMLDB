@@ -24,11 +24,11 @@ import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.common.codec.CodecUtil
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.JoinedRow
 import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
-import org.apache.spark.sql.{DataFrame, Row, functions}
+import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 
 /** The planner which implements window agg physical node.
@@ -67,17 +67,26 @@ object WindowAggPlan {
     val dfWithIndex = inputTable.getDfConsideringIndex(ctx, physicalNode.GetNodeId())
 
     // Do union if physical node has union flag
+    val uniqueColName = "_WINDOW_UNION_FLAG_" + System.currentTimeMillis()
     val unionTable = if (isWindowWithUnion) {
-      WindowAggPlanUtil.windowUnionTables(ctx, physicalNode, dfWithIndex)
+      WindowAggPlanUtil.windowUnionTables(ctx, physicalNode, dfWithIndex, uniqueColName)
     } else {
       dfWithIndex
     }
 
-    // Do groupby and sort with window skew optimization or not
-    val repartitionDf = if (isWindowSkewOptimization) {
-      windowPartitionWithSkewOpt(ctx, physicalNode, unionTable, windowAggConfig)
+    // Use order by to make sure that rows with same timestamp from primary will be placed in last
+    // TODO(tobe): support desc if we get config from physical plan
+    val unionSparkCol: Option[Column] = if (isWindowWithUnion) {
+      Some(unionTable.col(uniqueColName))
     } else {
-      windowPartition(ctx, physicalNode, unionTable)
+      None
+    }
+
+    // Do group by and sort with window skew optimization or not
+    val repartitionDf = if (isWindowSkewOptimization) {
+      windowPartitionWithSkewOpt(ctx, physicalNode, unionTable, windowAggConfig, unionSparkCol)
+    } else {
+      windowPartition(ctx, physicalNode, unionTable, unionSparkCol)
     }
 
     // Get the output schema which may add the index column
@@ -179,7 +188,8 @@ object WindowAggPlan {
   def windowPartitionWithSkewOpt(ctx: PlanContext,
                                  windowAggNode: PhysicalWindowAggrerationNode,
                                  inputDf: DataFrame,
-                                 windowAggConfig: WindowAggConfig): DataFrame = {
+                                 windowAggConfig: WindowAggConfig,
+                                 unionSparkCol: Option[Column]): DataFrame = {
     val uniqueNamePostfix = ctx.getConf.windowSkewOptPostfix
 
     // Cache the input table which may be used for multiple times
@@ -274,7 +284,12 @@ object WindowAggPlan {
     }
 
     val sortedByCol = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, addColumnsDf)
-    val sortedByCols = repartitionCols ++ sortedByCol
+
+    val sortedByCols = if (unionSparkCol.isEmpty) {
+      repartitionCols ++ sortedByCol
+    } else {
+      repartitionCols ++ sortedByCol ++ Array(unionSparkCol.get)
+    }
 
     // Notice that we should make sure the keys in the same partition are ordering as well
     val sortedDf = repartitionDf.sortWithinPartitions(sortedByCols: _*)
@@ -289,7 +304,8 @@ object WindowAggPlan {
    * 1. Repartition the table with the "partition by" keys.
    * 2. Sort the data within partitions with the "order by" keys.
    */
-  def windowPartition(ctx: PlanContext, windowAggNode: PhysicalWindowAggrerationNode, inputDf: DataFrame): DataFrame = {
+  def windowPartition(ctx: PlanContext, windowAggNode: PhysicalWindowAggrerationNode, inputDf: DataFrame,
+                      unionSparkCol: Option[Column]): DataFrame = {
 
     // Repartition the table with window keys
     val repartitionCols = PhysicalNodeUtil.getRepartitionColumns(windowAggNode, inputDf)
@@ -302,9 +318,12 @@ object WindowAggPlan {
     // Sort with the window orderby keys
     val orderbyCols = PhysicalNodeUtil.getOrderbyColumns(windowAggNode, inputDf)
 
+    val sortedDf = if (unionSparkCol.isEmpty) {
+      repartitionDf.sortWithinPartitions(repartitionCols ++ orderbyCols: _*)
+    } else {
+      repartitionDf.sortWithinPartitions(repartitionCols ++ orderbyCols ++ Array(unionSparkCol.get): _*)
+    }
     // Notice that we should make sure the keys in the same partition are ordering as well
-    val sortedDf = repartitionDf.sortWithinPartitions(repartitionCols ++ orderbyCols: _*)
-
     sortedDf
   }
 

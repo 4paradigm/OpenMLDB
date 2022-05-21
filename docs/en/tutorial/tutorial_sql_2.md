@@ -1,4 +1,4 @@
-# Guidelines for Feature Engineering Development (Part 2)
+# SQL for Feature Extraction (Part 2)
 
 ## 1. Preliminary Knowledge
 

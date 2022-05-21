@@ -326,10 +326,3 @@ fz_topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
-
-## 4. 扩展阅读和下篇预告
-
-- [开源机器学习数据库OpenMLDB v0.4.0产品介绍](https://zhuanlan.zhihu.com/p/462559609)
-- 想快速试用 OpenMLDB 来开始写特征计算脚本？快来看一下 [OpenMLDB 快速上手](http://docs-cn.openmldb.ai/2620852)
-- 完整的 SQL 语法参考 [中国镜像站点](http://docs-cn.openmldb.ai/2620876)，[国际站点](https://docs.openmldb.ai/)
-- 本系列教程下篇：[4PD开发者社区：深入浅出特征工程 -- 基于 OpenMLDB 的实践指南（下）](https://zhuanlan.zhihu.com/p/472080344)

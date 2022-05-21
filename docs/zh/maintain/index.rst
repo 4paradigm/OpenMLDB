@@ -9,4 +9,5 @@
     backup
     scale
     monitoring
+    cli
     faq
