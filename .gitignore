@@ -103,3 +103,4 @@ logs
 /python/*.egg-info/
 # if __init__.py in it is ignored, fix it
 /python/openmldb/native/**
+/python/test/*.xml
