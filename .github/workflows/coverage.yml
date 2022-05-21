@@ -60,16 +60,9 @@ jobs:
         run: |
           make coverage-configure
 
-      - name: build openmldb
-        run: |
-          cmake --build build --target openmldb -- -j${{ env.NPROC }}
-
       - name: start service
         run: |
           ./steps/ut_zookeeper.sh start
-          cd onebox
-          ./start_onebox.sh
-          ./start_onebox.sh standalone
 
       - name: Coverage CPP
         run: |
@@ -85,5 +78,4 @@ jobs:
 
       - name: stop service
         run: |
-          ./onebox/stop_all.sh
           ./steps/ut_zookeeper.sh stop
