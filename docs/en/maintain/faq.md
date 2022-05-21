@@ -1,18 +1,18 @@
-# Operation and maintenance FAQ
+# Operation and Maintenance FAQ
 
-## Deploy and start FAQ
+## Deploy and Startup FAQ
 
 ### 1. How to confirm that the cluster is running normally？
-Although there is one-click to start the script, due to the numerous configurations, problems such as "the port is occupied" and "the directory does not have read and write permissions" may occur. These problems can only be discovered after the server process is running, and there is no timely feedback after exiting. (If monitoring is configured, it can be checked directly by monitoring.）
+Although there is one-click to start the script, due to the numerous configurations, problems such as "the port is occupied" and "the directory does not have read and write permissions" may occur. These problems can only be identified when the server process is running, and there is no timely feedback after exiting. (If monitoring is configured, it can be checked directly by monitoring.）
 Therefore, please make sure that all server processes in the cluster are running normally.
 
-It can be queried by `ps axu | grep openmldb`. (Note that `mon` is used as the daemon process in the official run script, but the running of the `mon` process does not mean that the openmldb server process is running.)
+It can be queried by `ps axu | grep openmldb`. (Note that `mon` is used as the daemon process in the official run script, but the running of the `mon` process does not mean that the OpenMLDB server process is running.)
 
 If the processes are all running and the cluster still behaves abnormally, you need to query the server log. You can give priority to 'WARN' and 'ERROR' level logs, which are most likely the root cause.
 
 ## Server FAQ
 
-### 1. Why is there a Fail to write into Socket warning in the log?
+### 1. Why is there a warning of "Fail to write into Socket" in the log?
 ```
 http_rpc_protocol.cpp:911] Fail to write into Socket{id=xx fd=xx addr=xxx} (0x7a7ca00): Unknown error 1014 [1014]
 ```
