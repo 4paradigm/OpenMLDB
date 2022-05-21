@@ -5905,13 +5905,6 @@ TEST_F(TabletImplTest, DelRecycleMem) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
 
-    std::cout << "sleep for 35s" << std::endl;
-    sleep(35);
-
-    file_vec.clear();
-    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
-    ASSERT_EQ(2, (signed)file_vec.size());
-
     std::cout << "sleep for 65s" << std::endl;
     sleep(65);
 
@@ -5947,13 +5940,6 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
     file_vec.clear();
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_EQ(4, (signed)file_vec.size());
-
-    std::cout << "sleep for 35s" << std::endl;
-    sleep(35);
-
-    file_vec.clear();
-    ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
-    ASSERT_EQ(2, (signed)file_vec.size());
 
     std::cout << "sleep for 65s" << std::endl;
     sleep(65);
