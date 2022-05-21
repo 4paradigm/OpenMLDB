@@ -101,6 +101,7 @@ logs
 # python builds
 /python/dist/
 /python/*.egg-info/
-# if __init__.py in it is ignored, fix it
 /python/openmldb/native/**
+!/python/openmldb/native/__init__.pyt
 /python/test/*.xml
+
