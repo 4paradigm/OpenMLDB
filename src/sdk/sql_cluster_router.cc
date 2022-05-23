@@ -1828,7 +1828,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     sp_info.set_db_name(db);
     sp_info.set_sp_name(create_sp->GetSpName());
     sp_info.set_sql(sql);
-    RtidbSchema* schema = sp_info.mutable_input_schema();
+    PBSchema* schema = sp_info.mutable_input_schema();
     for (auto input : create_sp->GetInputParameterList()) {
         if (input == nullptr) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : InputParameterNode null");
@@ -1871,7 +1871,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     if (!ok) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to explain sql" + sql_status.msg);
     }
-    RtidbSchema rtidb_input_schema;
+    PBSchema rtidb_input_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert input schema failed");
     }
@@ -1880,7 +1880,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     }
     sp_info.mutable_input_schema()->CopyFrom(*schema);
     // get output schema, and fill sp_info
-    RtidbSchema rtidb_output_schema;
+    PBSchema rtidb_output_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert output schema failed");
     }
@@ -1902,7 +1902,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
 }
 
-bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema) {
+bool SQLClusterRouter::CheckParameter(const PBSchema& parameter, const PBSchema& input_schema) {
     if (parameter.size() != input_schema.size()) {
         return false;
     }
