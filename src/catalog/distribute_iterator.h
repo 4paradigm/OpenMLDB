@@ -80,6 +80,8 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
             ts_(0), ts_cnt_(0) {
         if (kv_it_->Valid()) {
             pk_ = kv_it_->GetPK();
+            ts_ = kv_it_->GetKey();
+            ts_cnt_ = 1;
         }
         response_vec_.emplace_back(response);
     }
@@ -112,6 +114,9 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
         DLOG(INFO) << "RemoteWindowIterator SeekToFirst";
     }
     bool IsSeekable() const override { return true; }
+
+ private:
+    void SetTs();
 
  private:
     uint32_t tid_;

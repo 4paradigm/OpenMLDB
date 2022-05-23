@@ -1245,6 +1245,7 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
     }
     response->set_code(code);
     response->set_count(count);
+    response->set_is_finish(is_finish);
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_query_slow_log_threshold < end_time) {
         std::string index_name;

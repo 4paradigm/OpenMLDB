@@ -290,21 +290,28 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
                 kv_it_->GetPK().size()));
 }
 
+void RemoteWindowIterator::SetTs() {
+    if (kv_it_->GetKey() == ts_) {
+        ts_cnt_++;
+    } else {
+        ts_ = kv_it_->GetKey();
+        ts_cnt_ = 1;
+    }
+}
+
 void RemoteWindowIterator::Next() {
     kv_it_->Next();
     if (kv_it_->Valid()) {
-        if (kv_it_->GetKey() == ts_) {
-            ts_cnt_++;
-        } else {
-            ts_ = kv_it_->GetKey();
-            ts_cnt_ = 1;
-        }
+        SetTs();
     } else if (!kv_it_->IsFinish()) {
         std::string msg;
         kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, ts_, 0,
-                    FLAGS_traverse_cnt_limit, msg);
+                    FLAGS_traverse_cnt_limit, ts_cnt_, msg);
+        DLOG(INFO) << "scan key " << pk_ << " ts " << ts_ << " from remote. tid "
+            << tid_ << " pid " << pid_ << " ts_cnt_ " << ts_cnt_;
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
+            SetTs();
         }
     }
 }

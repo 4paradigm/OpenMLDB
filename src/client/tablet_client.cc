@@ -593,7 +593,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
 
 std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
         const std::string& pk, const std::string& idx_name,
-        uint64_t stime, uint64_t etime, uint32_t limit, std::string& msg) {
+        uint64_t stime, uint64_t etime, uint32_t limit, uint32_t skip_record_num, std::string& msg) {
     ::openmldb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -604,6 +604,7 @@ std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid,
         request.set_idx_name(idx_name);
     }
     request.set_limit(limit);
+    request.set_skip_record_num(skip_record_num);
     auto response = std::make_shared<openmldb::api::ScanResponse>();
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Scan, &request, response.get(),
                 FLAGS_request_timeout_ms, 1);
@@ -616,11 +617,11 @@ std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid,
     return std::make_shared<::openmldb::base::ScanKvIterator>(pk, response);
 }
 
-/*std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
-        const std::string& pk, uint64_t stime, uint64_t etime, uint32_t limit,
-        uint32_t atleast, std::string& msg) {
-    return Scan(tid, pid, pk, "", stime, etime, limit, atleast, msg);
-}*/
+std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
+        const std::string& pk, const std::string& idx_name,
+        uint64_t stime, uint64_t etime, uint32_t limit, std::string& msg) {
+    return Scan(tid, pid, pk, idx_name, stime, etime, limit, 0, msg);
+}
 
 bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid, ::openmldb::api::TableMeta& table_meta) {
     ::openmldb::api::GetTableSchemaRequest request;
