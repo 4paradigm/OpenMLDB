@@ -9,14 +9,14 @@ The monitoring scheme of OpenMLDB is outlined as follows：
 - OpenMLDB exporter exposes database-level and component-level monitoring metrics
 - Node uses [node_exporter](https://github.com/prometheus/node_exporter) to expose machine and operating system related metrics
 
-## Install and run OpenMLDB exporter
+## Install and Run OpenMLDB Exporter
 
 ### Introduction
 
 [![PyPI](https://img.shields.io/pypi/v/openmldb-exporter?label=openmldb-exporter)](https://pypi.org/project/openmldb-exporter/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter?style=flat-square)
 
-The OpenMLDB exporter is a prometheus exporter implemented in Python. The core connects the OpenMLDB instance through the database SDK and will query the exposed monitoring indicators through SQL statements. Exporter will follow the OpenMLDB version update and release to PyPI. For production use, you can install the latest `openmldb-exporter` directly through pip. For development and usage instructions, please refer to the code directory [README](https://github.com/4paradigm/OpenMLDB/tree /main/monitoring).
+The OpenMLDB exporter is a prometheus exporter implemented in Python. The core connects the OpenMLDB instance through the database SDK and will query the exposed monitoring indicators through SQL statements. Exporter will follow the OpenMLDB version update and release to PyPI. For production use, you can install the latest `openmldb-exporter` directly through pip. For development and usage instructions, please refer to the code directory [README](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring).
 
 
 ### Environmental Requirements
@@ -48,7 +48,7 @@ The OpenMLDB exporter is a prometheus exporter implemented in Python. The core c
 
    The default startup script `bin/start.sh` enables server status, no additional configuration is required.
    
-3. Note: Make sure to select the binding IP addresses of OpenMLDB components,       OpenMLDB exporter as well as prometheus and grafana to ensure that grafana can access prometheus, and that prometheus, OpenMLDB exporter, and OpenMLDB components can access each other.
+3. Note: Make sure to select the binding IP addresses of OpenMLDB components OpenMLDB exporter as well as prometheus and grafana to ensure that grafana can access prometheus, and that prometheus, OpenMLDB exporter, and OpenMLDB components can access each other.
 
 
 ### Deploy the OpenMLDB exporter
@@ -116,7 +116,7 @@ The OpenMLDB exporter is a prometheus exporter implemented in Python. The core c
       
    ```
 
-## Deploy node exporter
+## Deploy Node Exporter
 For how to install and deploy prometheus, grafana, please refer to the official documents [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [grafana get started](https://grafana.com/docs/ grafana/latest/getting-started/getting-started-prometheus/) .
 
 [node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of prometheus that exposes system metrics.
@@ -141,7 +141,7 @@ OpenMLDB provides prometheus and grafana configuration files for reference, see 
    1. Under the grafana data source page, add the started prometheus server address as the data source
    2. Under the dashboard browsing page, click New to import a dashboard, and upload the json configuration file
 
-## Understand existing monitoring metrics
+## Understand Existing Monitoring Metrics
 
 Taking the OpenMLDB cluster system as an example, the monitoring indicators are divided into two categories according to different prometheus pull jobs:
 
@@ -164,16 +164,13 @@ Taking the OpenMLDB cluster system as an example, the monitoring indicators are 
 
    - deploy query response time: the runtime of the deployment query inside the tablet
 
-   accessible
+   The full DB-Level metrics can be listed through the following command:
 
    ```bash
    curl http://172.17.0.15:8000/metrics
    ```
 
-   curl http://172.17.0.15:8000/metrics
-    View full DB-Level metrics and help information.
-
-2. Component-Level indicator. The related components of OpenMLDB (nameserver, tablet, etc), themselves as BRPC server, and expose [prometheus related metrics](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar .md#export-to-prometheus), you only need to configure the prometheus server to pull metrics from the corresponding address. Corresponding to the `job_name=openmldb_components` item in `prometheus_example.yml`:
+2. Component-Level metrics. The related components of OpenMLDB (nameserver, tablet, etc), themselves as BRPC server, and expose [prometheus related metrics](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar .md#export-to-prometheus), you only need to configure the prometheus server to pull metrics from the corresponding address. It corresponds to the `job_name=openmldb_components` item in `prometheus_example.yml`:
 
    ```yaml
      - job_name: openmldb_components
@@ -186,15 +183,13 @@ Taking the OpenMLDB cluster system as an example, the monitoring indicators are 
            - 172.17.0.15:9622
    ```
 
-   The indicators of exposure are mainly
+   The metrics of exposure are mainly
 
    - BRPC server process related information
-   - Corresponding to the RPC method related indicators defined by the BRPC server, such as the RPC request `count`, `error_count`, `qps` and `response_time`
+   - Corresponding to the RPC method related metrics defined by the BRPC server, such as the RPC request `count`, `error_count`, `qps` and `response_time`
 
-   pass
+   Metrics and help information can be shown through the following command (Note that the metrics exposed by different components will vary):
 
    ```bash
    curl http://${COMPONENT_IP}:${COMPONENT_PORT}/brpc_metrics
    ```
-
-   View metrics and help information. Note that the metrics exposed by different components will vary.
