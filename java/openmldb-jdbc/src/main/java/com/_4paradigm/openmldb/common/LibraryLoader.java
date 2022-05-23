@@ -87,8 +87,13 @@ public class LibraryLoader {
         }
     }
 
+
     /**
      * Extract library in resource into filesystem
+     * @param path the path that will be extracted.
+     * @param isTemp whether to create a temp file.
+     * @return the absolute path of the resources.
+     * @throws IOException if the resources cannot be found.
      */
     public static String extractResource(String path, boolean isTemp) throws IOException {
         InputStream inputStream = LibraryLoader.class.getClassLoader().getResourceAsStream(path);
