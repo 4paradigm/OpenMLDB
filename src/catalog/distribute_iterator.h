@@ -92,7 +92,13 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     }
     const ::hybridse::codec::Row& GetValue() override {
         auto slice_row = kv_it_->GetValue();
-        row_.Reset(reinterpret_cast<const int8_t*>(slice_row.data()), slice_row.size());
+        size_t sz = slice_row.size();
+        // for distributed environment, slice_row probably become invalid sometime because `kv_it_`'s data will be
+        // changed outside from `DistributeWindowIterator`, so copy action occured here
+        int8_t* copyed_row_data = new int8_t[sz];
+        memcpy(copyed_row_data, slice_row.data(), sz);
+        auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+        row_.Reset(shared_slice);
         return row_;
     }
 
