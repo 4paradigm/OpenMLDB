@@ -87,7 +87,7 @@ class Row {
         slice_.reset(reinterpret_cast<const char *>(buf), size);
     }
 
-    void Reset(const RefCountedSlice& r) {
+    void Reset(const ::hybridse::base::RefCountedSlice& r) {
         slice_ = r;
     }
 
