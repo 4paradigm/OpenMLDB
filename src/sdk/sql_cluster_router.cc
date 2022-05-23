@@ -1291,10 +1291,10 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     }
     ::hybridse::sdk::SchemaImpl input_schema(explain_output.input_schema);
     ::hybridse::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    std::shared_ptr<ExplainInfoImpl> impl(
-        new ExplainInfoImpl(input_schema, output_schema, explain_output.logical_plan, explain_output.physical_plan,
-                            explain_output.ir, explain_output.request_db_name, explain_output.request_name));
-    return impl;
+
+    return std::make_shared<ExplainInfoImpl>(input_schema, output_schema, explain_output.logical_plan,
+                                             explain_output.physical_plan, explain_output.ir,
+                                             explain_output.request_db_name, explain_output.request_name);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
@@ -1800,7 +1800,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
     all_tablet = cluster_sdk_->GetAllTablet();
     // set dafault value
-    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
+    uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
@@ -2260,7 +2260,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return {};
             }
             *status = {};
-            std::vector<std::string> value = {info->GetPhysicalPlan()};
+            std::vector<std::string> value = {info->GetPhysicalPlan() + "\n"};
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
         }
         case hybridse::node::kPlanTypeCreate: {

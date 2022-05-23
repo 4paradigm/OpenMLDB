@@ -64,4 +64,5 @@ dependencies:
     - sphinx-multiversion==0.2.4
     - typing-extensions==4.1.1
     - uc-micro-py==1.0.1
+    - sphinx-copybutton=0.5.0
 prefix: /Users/mian/miniconda3/envs/sphinx

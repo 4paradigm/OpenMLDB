@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batchjob
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
 
 object ExportOfflineData {
@@ -28,8 +29,12 @@ object ExportOfflineData {
     exportOfflineData(args(0))
   }
 
-  def exportOfflineData(sql: String): Unit = {
-    val spark = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    spark.sql(sql)
+  def exportOfflineData(sqlFilePath: String): Unit = {
+    val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
+
+    val sqlText = scala.io.Source.fromFile(SparkFiles.get(sqlFilePath)).mkString
+    sess.sql(sqlText)
+
+    sess.close()
   }
 }
