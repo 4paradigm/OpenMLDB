@@ -32,7 +32,7 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
 ::openmldb::sdk::MiniCluster* mc;
@@ -48,7 +48,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     table_info.set_name(name);
     table_info.set_db(db);
     table_info.set_partition_num(1);
-    RtiDBSchema* schema = table_info.mutable_column_desc();
+    PBSchema* schema = table_info.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::openmldb::type::kVarchar);
