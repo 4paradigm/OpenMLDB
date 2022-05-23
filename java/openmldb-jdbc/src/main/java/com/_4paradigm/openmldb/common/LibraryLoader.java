@@ -91,11 +91,7 @@ public class LibraryLoader {
     /**
      * Extract library in resource into filesystem
      * @param path the path that will be extracted.
-<<<<<<< HEAD
-     * @param isTemp true if a temp file is created, otherwise false.
-=======
      * @param isTemp whether to create a temp file.
->>>>>>> b37794fd984b99292f1e78756e4d161d888638f2
      * @return the absolute path of the resources.
      * @throws IOException if the resources cannot be found.
      */
