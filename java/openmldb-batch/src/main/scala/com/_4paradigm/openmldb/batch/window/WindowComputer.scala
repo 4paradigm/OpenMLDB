@@ -222,7 +222,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
       config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
   }
 
-  def extractKey(curRow: Row): Long = {
+  def extractKey(curRow: Row): java.lang.Long = {
     SparkRowUtil.getLongFromIndex(config.orderIdx, orderField.dataType, curRow)
   }
 
