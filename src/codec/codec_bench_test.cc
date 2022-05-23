@@ -196,7 +196,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::openmldb::base::ScanKvIterator it(response);
+        ::openmldb::base::ScanKvIterator it("", response);
         while (it.Valid()) {
             it.Next();
             std::string value = it.GetValue().ToString();

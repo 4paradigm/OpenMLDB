@@ -76,7 +76,8 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
             const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
             const std::shared_ptr<::google::protobuf::Message>& response,
             const std::shared_ptr<openmldb::client::TabletClient>& client)
-        : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client) {
+        : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
+            ts_(0), ts_cnt_(0) {
         if (kv_it_->Valid()) {
             pk_ = kv_it_->GetPK();
         }
@@ -84,7 +85,6 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     }
     bool Valid() const override {
         if (kv_it_->Valid() && pk_ == kv_it_->GetPK()) {
-            ts_ = kv_it_->GetKey();
             DLOG(INFO) << "RemoteWindowIterator Valid pk " << pk_ << " ts " << kv_it_->GetKey();
             return true;
         }
@@ -123,6 +123,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     ::hybridse::codec::Row row_;
     std::string pk_;
     mutable uint64_t ts_;
+    uint32_t ts_cnt_;
 };
 
 class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {

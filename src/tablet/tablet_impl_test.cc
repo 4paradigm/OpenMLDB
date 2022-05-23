@@ -718,7 +718,7 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         tablet.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(1, (signed)srp->count());
-        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ::openmldb::base::ScanKvIterator kv_it(key, srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(92l, (signed)kv_it.GetKey());
         ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
@@ -734,12 +734,11 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         sr.set_pk("1");
         sr.set_st(92);
         sr.set_et(0);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         auto srp = std::make_shared<::openmldb::api::ScanResponse>();
         tablet.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(5, (signed)srp->count());
-        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ::openmldb::base::ScanKvIterator kv_it(sr.pk(), srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(92l, (signed)kv_it.GetKey());
         ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
@@ -1575,7 +1574,7 @@ TEST_P(TabletImplTest, ScanWithLatestN) {
     tablet.Scan(NULL, &sr, srp.get(), &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(2, (signed)srp->count());
-    ::openmldb::base::ScanKvIterator kv_it(srp);
+    ::openmldb::base::ScanKvIterator kv_it(sr.pk(), srp);
     ASSERT_EQ(9539, (signed)kv_it.GetKey());
     ASSERT_STREQ("test9539", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
     kv_it.Next();
@@ -4049,108 +4048,6 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
     FLAGS_disk_gc_interval = old_disk_gc_interval;
 }
 
-TEST_P(TabletImplTest, ScanAtLeast) {
-    ::openmldb::common::StorageMode storage_mode = GetParam();
-    TabletImpl tablet;
-    tablet.Init("");
-    MockClosure closure;
-    uint32_t id = 100;
-    {
-        ::openmldb::api::CreateTableRequest request;
-        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-        table_meta->set_name("t0");
-        table_meta->set_tid(id);
-        table_meta->set_pid(0);
-        table_meta->set_storage_mode(storage_mode);
-        AddDefaultSchema(0, 0, ::openmldb::type::TTLType::kAbsAndLat, table_meta);
-        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
-        ::openmldb::api::CreateTableResponse response;
-        tablet.CreateTable(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    ::openmldb::api::PutResponse presponse;
-    ::openmldb::api::PutRequest prequest;
-    for (int i = 0; i < 1000; ++i) {
-        std::string key = "test" + std::to_string(i % 10);
-        prequest.clear_dimensions();
-        PackDefaultDimension(key, &prequest);
-        prequest.set_time(now - i * 60 * 1000);
-        prequest.set_value(::openmldb::test::EncodeKV(key, "test" + std::to_string(i % 10)));
-        prequest.set_tid(id);
-        prequest.set_pid(0);
-        tablet.Put(NULL, &prequest, &presponse, &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-    ::openmldb::api::ScanRequest sr;
-    ::openmldb::api::ScanResponse srp;
-    // test atleast more than et
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 500 * 60 * 1000);
-        sr.set_atleast(80);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(80, (signed)srp.count());
-    }
-    // test atleast less than et
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 700 * 60 * 1000 + 1000);
-        sr.set_atleast(50);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(70, (signed)srp.count());
-    }
-    // test atleast and limit
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 700 * 60 * 1000 + 1000);
-        sr.set_atleast(50);
-        sr.set_limit(60);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(60, (signed)srp.count());
-    }
-    // test atleast more than limit
-    sr.set_tid(id);
-    sr.set_pid(0);
-    sr.set_pk("test" + std::to_string(0));
-    sr.set_st(now);
-    sr.set_et(now - 700 * 60 * 1000 + 1000);
-    sr.set_atleast(70);
-    sr.set_limit(60);
-    sr.set_et_type(::openmldb::api::kSubKeyGe);
-    tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(307, srp.code());
-    // test atleast more than count
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 1100 * 60 * 1000);
-        sr.set_atleast(120);
-        sr.set_limit(0);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(100, (signed)srp.count());
-    }
-}
-
 TEST_P(TabletImplTest, AbsAndLat) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     TabletImpl tablet;
@@ -4298,7 +4195,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("index0");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -4323,7 +4219,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4348,7 +4243,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -4373,7 +4267,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
@@ -4398,7 +4291,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4423,7 +4315,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 50 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4448,7 +4339,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_idx_name("index1");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4473,7 +4363,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
@@ -4498,7 +4387,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("index2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -4524,7 +4412,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4550,7 +4437,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4576,7 +4462,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4602,7 +4487,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -4628,7 +4512,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4654,7 +4537,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4680,7 +4562,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("index5");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -4803,61 +4684,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
-    // test atleast more than et and no ttl
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 50 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, (signed)srp.count());
-    }
-    // test atleast more than et and expire and with ttl
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 50 * 60 * 1000);
-        sr.set_idx_name("index1");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 50 * 60 * 1000);
-        sr.set_idx_name("index2");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, (signed)srp.count());
-    }
-    // test et less than expire
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, (signed)srp.count());
-    }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
         sr.set_pid(0);
@@ -4865,8 +4691,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index1");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(8, (signed)srp.count());
@@ -4878,38 +4702,9 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index2");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
-    }
-    // test atleast less than expire
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index1");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -4918,113 +4713,12 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("index2");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, (signed)srp.count());
-    }
-    // test atleast and limit ls than valid
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_atleast(5);
-        sr.set_limit(6);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index1");
-        sr.set_atleast(5);
-        sr.set_limit(6);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index2");
-        sr.set_atleast(5);
-        sr.set_limit(6);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, (signed)srp.count());
-    }
-    // test atleast and limit more than valid
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_atleast(9);
         sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(9, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index1");
-        sr.set_atleast(9);
-        sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("index2");
-        sr.set_atleast(9);
-        sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(7, (signed)srp.count());
     }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now - 30 * 60 * 1000);
-        sr.set_et(now - 50 * 60 * 1000);
-        sr.set_idx_name("index0");
-        sr.set_limit(7);
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, (signed)srp.count());
-    }
-}  // NOLINT
+}
 
 TEST_P(TabletImplTest, AbsOrLat) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
@@ -5164,7 +4858,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("ts1");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5189,7 +4882,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 60 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5214,7 +4906,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5239,7 +4930,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
@@ -5264,7 +4954,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5289,7 +4978,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 70 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5314,7 +5002,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 90 * 60 * 1000 + 100);
         sr.set_idx_name("ts2");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5339,7 +5026,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5364,7 +5050,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 80 * 60 * 1000 + 100);
         sr.set_et(now - 100 * 60 * 1000 + 100);
         sr.set_idx_name("ts3");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5390,7 +5075,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5416,7 +5100,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5442,7 +5125,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts4");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5468,7 +5150,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(4, (signed)srp.count());
@@ -5494,7 +5175,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5520,7 +5200,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts5");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
         ASSERT_EQ(0, (signed)srp.count());
@@ -5546,7 +5225,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now - 60 * 60 * 1000 + 100);
         sr.set_et(now - 80 * 60 * 1000 + 100);
         sr.set_idx_name("ts6");
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, (signed)srp.count());
@@ -5669,34 +5347,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         tablet.Get(NULL, &gr, &grp, &closure);
         ASSERT_EQ(0, grp.code());
     }
-    // test atleast more than et and no ttl
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 40 * 60 * 1000);
-        sr.set_idx_name("ts1");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, (signed)srp.count());
-    }
-    // test atleast more than et and expire and with ttl
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 40 * 60 * 1000);
-        sr.set_idx_name("ts2");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, (signed)srp.count());
-    }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
         sr.set_pid(0);
@@ -5704,13 +5354,10 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 40 * 60 * 1000);
         sr.set_idx_name("ts3");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, (signed)srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
     }
-    // test et less than expire
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
         sr.set_pid(0);
@@ -5718,8 +5365,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts1");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5731,8 +5376,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts2");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5744,13 +5387,10 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts3");
-        sr.set_atleast(10);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
     }
-    // test atleast less than expire
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
         sr.set_pid(0);
@@ -5758,8 +5398,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts1");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, (signed)srp.count());
@@ -5770,9 +5408,55 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_pk("test" + std::to_string(i));
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
+        sr.set_idx_name("ts3");
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(6, (signed)srp.count());
+    }
+    for (int i = 0; i < 10; ++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test" + std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now - 100 * 60 * 1000);
+        sr.set_idx_name("ts1");
+        sr.set_limit(4);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, (signed)srp.count());
+    }
+    for (int i = 0; i < 10; ++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test" + std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts2");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
+        sr.set_limit(4);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, (signed)srp.count());
+    }
+    for (int i = 0; i < 10; ++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test" + std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now - 100 * 60 * 1000);
+        sr.set_idx_name("ts3");
+        sr.set_limit(4);
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(4, (signed)srp.count());
+    }
+    for (int i = 0; i < 10; ++i) {
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("test" + std::to_string(i));
+        sr.set_st(now);
+        sr.set_et(now - 100 * 60 * 1000);
+        sr.set_idx_name("ts2");
+        sr.set_limit(9);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(5, (signed)srp.count());
@@ -5784,99 +5468,12 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_st(now);
         sr.set_et(now - 100 * 60 * 1000);
         sr.set_idx_name("ts3");
-        sr.set_atleast(5);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
+        sr.set_limit(9);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(6, (signed)srp.count());
     }
-    // test atleast and limit ls than valid
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts1");
-        sr.set_atleast(3);
-        sr.set_limit(4);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts2");
-        sr.set_atleast(3);
-        sr.set_limit(4);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts3");
-        sr.set_atleast(3);
-        sr.set_limit(4);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, (signed)srp.count());
-    }
-    // test atleast and limit more than valid
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts1");
-        sr.set_atleast(9);
-        sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(9, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts2");
-        sr.set_atleast(9);
-        sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, (signed)srp.count());
-    }
-    for (int i = 0; i < 10; ++i) {
-        sr.set_tid(id);
-        sr.set_pid(0);
-        sr.set_pk("test" + std::to_string(i));
-        sr.set_st(now);
-        sr.set_et(now - 100 * 60 * 1000);
-        sr.set_idx_name("ts3");
-        sr.set_atleast(9);
-        sr.set_limit(9);
-        sr.set_et_type(::openmldb::api::kSubKeyGe);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, (signed)srp.count());
-    }
-}  // NOLINT
+}
 
 TEST_F(TabletImplTest, DelRecycleMem) {
     uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;

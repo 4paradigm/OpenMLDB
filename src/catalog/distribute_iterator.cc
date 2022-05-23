@@ -199,9 +199,9 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     DLOG(INFO) << "seek to key " << key << " from remote. " << " cur_pid " << cur_pid_;
     auto client_iter = tablet_clients_.find(cur_pid_);
     if (client_iter != tablet_clients_.end()) {
-        uint32_t count = 0;
-        kv_it_ = client_iter->second->Traverse(tid_, cur_pid_, index_name_, key, 0,
-                    FLAGS_traverse_cnt_limit, count);
+        std::string msg;
+        kv_it_ = client_iter->second->Scan(tid_, cur_pid_, key, index_name_, 0, 0,
+                    FLAGS_traverse_cnt_limit, msg);
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
             return;
@@ -292,11 +292,21 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
 
 void RemoteWindowIterator::Next() {
     kv_it_->Next();
-    /*if (!kv_it_->Valid() && !kv_it_->IsFinish()) {
-        uint32_t count = 0;
-        kv_it_.reset(tablet_client_->Traverse(tid_, pid_, index_name_, pk_, ts_,
-                    FLAGS_traverse_cnt_limit, false, count));
-    }*/
+    if (kv_it_->Valid()) {
+        if (kv_it_->GetKey() == ts_) {
+            ts_cnt_++;
+        } else {
+            ts_ = kv_it_->GetKey();
+            ts_cnt_ = 1;
+        }
+    } else if (!kv_it_->IsFinish()) {
+        std::string msg;
+        kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, ts_, 0,
+                    FLAGS_traverse_cnt_limit, msg);
+        if (kv_it_ && kv_it_->Valid()) {
+            response_vec_.emplace_back(kv_it_->GetResponse());
+        }
+    }
 }
 
 }  // namespace catalog

@@ -668,7 +668,7 @@ TEST_P(TabletProjectTest, scan_case) {
         tablet_.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(1, (int64_t)srp->count());
-        ::openmldb::base::ScanKvIterator kv_it(srp);
+        ::openmldb::base::ScanKvIterator kv_it(args->pk, srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(kv_it.GetValue().size(), args->output_row.size());
         codec::RowView left(args->output_schema);

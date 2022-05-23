@@ -66,10 +66,12 @@ class KvIterator {
 
 class ScanKvIterator : public KvIterator {
  public:
-    explicit ScanKvIterator(const std::shared_ptr<::openmldb::api::ScanResponse>& response)
+    ScanKvIterator(const std::string& pk, const std::shared_ptr<::openmldb::api::ScanResponse>& response)
         : KvIterator(response) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
+        is_finish_ = response->is_finish();
         tsize_ = response->pairs().size();
+        pk_ = pk;
         Next();
     }
 
@@ -106,8 +108,8 @@ class TraverseKvIterator : public KvIterator {
           last_pk_(response->pk()),
           last_ts_(response->ts()) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
-        tsize_ = response->pairs().size();
         is_finish_ = response->is_finish();
+        tsize_ = response->pairs().size();
         Next();
     }
 

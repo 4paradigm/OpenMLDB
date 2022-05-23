@@ -35,7 +35,7 @@ class KvIteratorTest : public ::testing::Test {
 
 TEST_F(KvIteratorTest, IteratorNULL) {
     auto response = std::make_shared<::openmldb::api::ScanResponse>();
-    ScanKvIterator kv_it(response);
+    ScanKvIterator kv_it("", response);
     ASSERT_FALSE(kv_it.Valid());
 }
 
@@ -46,7 +46,7 @@ TEST_F(KvIteratorTest, IteratorONE) {
     char* data = reinterpret_cast<char*>(&((*pairs)[0]));
     ::openmldb::storage::DataBlock* db1 = new ::openmldb::storage::DataBlock(1, "hello", 5);
     ::openmldb::codec::Encode(9527, db1, data, 0);
-    ScanKvIterator kv_it(response);
+    ScanKvIterator kv_it("", response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (int64_t)(kv_it.GetKey()));
     ASSERT_EQ("hello", kv_it.GetValue().ToString());
@@ -63,7 +63,7 @@ TEST_F(KvIteratorTest, Iterator) {
     ::openmldb::storage::DataBlock* db2 = new ::openmldb::storage::DataBlock(1, "hell1", 5);
     ::openmldb::codec::Encode(9527, db1, data, 0);
     ::openmldb::codec::Encode(9528, db2, data, 17);
-    ScanKvIterator kv_it(response);
+    ScanKvIterator kv_it("", response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_EQ(9527, (signed)kv_it.GetKey());
     ASSERT_EQ("hello", kv_it.GetValue().ToString());

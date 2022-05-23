@@ -114,14 +114,14 @@ class TabletClient : public Client {
                const std::string& ts_name, bool filter_expired_data, uint64_t& value,  // NOLINT
                std::string& msg);                                                      // NOLINT
 
-    std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
+    /*std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
             const std::string& pk, uint64_t stime, uint64_t etime,
-            uint32_t limit, uint32_t atleast, std::string& msg);  // NOLINT
+            uint32_t limit, uint32_t atleast, std::string& msg);*/  // NOLINT
 
     std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
-            const std::string& pk, uint64_t stime,
-            uint64_t etime, const std::string& idx_name, const std::string& ts_name,
-            uint32_t limit, uint32_t atleast, std::string& msg);  // NOLINT
+            const std::string& pk, const std::string& idx_name,
+            uint64_t stime, uint64_t etime,
+            uint32_t limit, std::string& msg);  // NOLINT
 
     bool Scan(const ::openmldb::api::ScanRequest& request, brpc::Controller* cntl,
               ::openmldb::api::ScanResponse* response);
