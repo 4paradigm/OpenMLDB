@@ -193,7 +193,7 @@ class MemTable : public Table {
     void SetCompressType(::openmldb::type::CompressType compress_type);
     ::openmldb::type::CompressType GetCompressType();
 
-    uint64_t GetRecordByteSize() const override { return record_byte_size_.load(std::memory_order_relaxed); }
+    inline uint64_t GetRecordByteSize() const override { return record_byte_size_.load(std::memory_order_relaxed); }
 
     uint64_t GetRecordCnt() const override { return record_cnt_.load(std::memory_order_relaxed); }
 

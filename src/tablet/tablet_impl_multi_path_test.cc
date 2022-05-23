@@ -70,22 +70,22 @@ class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
         std::vector<std::string> file_path;
         ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (size_t i = 0; i < file_path.size(); i++) {
+        for (int i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
         ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (size_t i = 0; i < file_path.size(); i++) {
+        for (int i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
     }
     virtual void TearDown() {
         std::vector<std::string> file_path;
         ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (size_t i = 0; i < file_path.size(); i++) {
+        for (int i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
         ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (size_t i = 0; i < file_path.size(); i++) {
+        for (int i = 0; i < file_path.size(); i++) {
             ::openmldb::base::RemoveDirRecursive(file_path[i]);
         }
     }
