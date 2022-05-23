@@ -90,17 +90,8 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
         ts_ = kv_it_->GetKey();
         return ts_;
     }
-    const ::hybridse::codec::Row& GetValue() override {
-        auto slice_row = kv_it_->GetValue();
-        size_t sz = slice_row.size();
-        // for distributed environment, slice_row probably become invalid sometime because `kv_it_`'s data will be
-        // changed outside from `DistributeWindowIterator`, so copy action occured here
-        int8_t* copyed_row_data = new int8_t[sz];
-        memcpy(copyed_row_data, slice_row.data(), sz);
-        auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
-        row_.Reset(shared_slice);
-        return row_;
-    }
+
+    const ::hybridse::codec::Row& GetValue() override;
 
     // seek to the first element whose key is less or equal to `key`
     // or to the end if not found
