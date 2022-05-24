@@ -24,10 +24,10 @@ import org.scalatest.Matchers.{convertToAnyShouldWrapper, equal}
 
 class HybridseUtilTest extends SparkTestSuite {
 
-  def checkSqlTimestampResult(df: DataFrame): Unit = {
+  def checkTsColResult(df: DataFrame, expected: String): Unit = {
     df.show()
     val l = df.select("ts").rdd.map(r => r(0)).collect.toList
-    l.toString() should equal("List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
+    l.toString() should equal(expected)
   }
 
   test("Test AutoLoad") {
@@ -38,7 +38,7 @@ class HybridseUtilTest extends SparkTestSuite {
 
     // test format with upper case
     val df = autoLoad(getSparkSession, testFile, "Csv", Map(("header", "true"), ("nullValue", "null")), cols)
-    checkSqlTimestampResult(df)
+    checkTsColResult(df, "List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
   }
 
   test("Test AutoLoad Type Timestamp") {
@@ -48,21 +48,17 @@ class HybridseUtilTest extends SparkTestSuite {
 
     val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
     val df = autoLoad(getSparkSession, testFile, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
-    checkSqlTimestampResult(df)
+    checkTsColResult(df, "List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
 
     val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
     val df2 = autoLoad(getSparkSession, testFile2, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
-    df2.show()
-    val l2 = df2.select("ts").rdd.map(r => r(0)).collect.toList
-    l2.toString() should equal("List(null, null, 2022-02-01 09:00:00.0, null)")
+    checkTsColResult(df2, "List(null, null, 2022-02-01 09:00:00.0, null)")
 
     // won't try to parse timestamp format when loading parquet
     val testFile3 = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
     // the format setting in options won't work, autoLoad will use arg2 `format` to load file
     val df3 = autoLoad(getSparkSession, testFile3, "parquet", Map(("header", "true"), ("nullValue", "null"),
       ("format", "csv")), cols)
-    df3.show()
-    val l3 = df3.select("ts").rdd.map(r => r(0)).collect.toList
-    l3.toString() should equal("List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
+    checkTsColResult(df3, "List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
   }
 }
