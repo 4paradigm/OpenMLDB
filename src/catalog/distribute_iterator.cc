@@ -298,6 +298,7 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
     row_.Reset(shared_slice);
+    DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
     return row_;
 }
 
@@ -358,9 +359,12 @@ void RemoteWindowIterator::Seek(const uint64_t& key) {
         }
         kv_it_->Next();
     }
-    if (!kv_it_->Valid() && !kv_it_->IsFinish()) {
+    if (kv_it_->Valid()) {
+        ts_ = kv_it_->GetKey();
+    } else if (!kv_it_->IsFinish()) {
         ScanRemote(key, 0);
     }
+    ts_cnt_ = 1;
 }
 
 void RemoteWindowIterator::Next() {
