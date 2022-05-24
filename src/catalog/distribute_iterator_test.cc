@@ -367,7 +367,7 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
         client1->Put(tid, 0, 0, value, dimensions);
     }
     for (int j = 1000; j < 2000; j++) {
-        std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+        std::vector<std::string> row = {key , "mcc", std::to_string(now - j)};
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
@@ -385,6 +385,21 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
         it->Next();
     }
     ASSERT_EQ(count, 2000);
+
+    DistributeWindowIterator w_it2(tid, 1, tables, 0, "card", tablet_clients);
+    w_it2.Seek(key);
+    ASSERT_TRUE(w_it2.Valid());
+    ASSERT_EQ(w_it2.GetKey().ToString(), key);
+    it = w_it2.GetValue();
+    it->Seek(now - 1500);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(it->GetKey(), now - 1500);
+    count = 0;
+    while (it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 500);
     FLAGS_traverse_cnt_limit = old_limit;
 }
 

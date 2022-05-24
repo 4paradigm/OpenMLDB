@@ -96,6 +96,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
 
  private:
     void SetTs();
+    void ScanRemote(uint64_t key, uint32_t ts_cnt);
 
  private:
     uint32_t tid_;

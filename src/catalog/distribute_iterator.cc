@@ -326,6 +326,18 @@ void RemoteWindowIterator::SetTs() {
     }
 }
 
+void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
+    std::string msg;
+    kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, key, 0,
+                FLAGS_traverse_cnt_limit, ts_cnt, msg);
+    DLOG(INFO) << "scan key " << pk_ << " ts " << key << " from remote. tid "
+        << tid_ << " pid " << pid_ << " ts_cnt " << ts_cnt;
+    if (kv_it_ && kv_it_->Valid()) {
+        response_vec_.emplace_back(kv_it_->GetResponse());
+        SetTs();
+    }
+}
+
 void RemoteWindowIterator::Seek(const uint64_t& key) {
     DLOG(INFO) << "RemoteWindowIterator seek " << key;
     while (kv_it_->Valid() && key < kv_it_->GetKey()) {
@@ -334,6 +346,9 @@ void RemoteWindowIterator::Seek(const uint64_t& key) {
         }
         kv_it_->Next();
     }
+    if (!kv_it_->Valid() && !kv_it_->IsFinish()) {
+        ScanRemote(key, 0);
+    }
 }
 
 void RemoteWindowIterator::Next() {
@@ -341,15 +356,7 @@ void RemoteWindowIterator::Next() {
     if (kv_it_->Valid()) {
         SetTs();
     } else if (!kv_it_->IsFinish()) {
-        std::string msg;
-        kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, ts_, 0,
-                    FLAGS_traverse_cnt_limit, ts_cnt_, msg);
-        DLOG(INFO) << "scan key " << pk_ << " ts " << ts_ << " from remote. tid "
-            << tid_ << " pid " << pid_ << " ts_cnt_ " << ts_cnt_;
-        if (kv_it_ && kv_it_->Valid()) {
-            response_vec_.emplace_back(kv_it_->GetResponse());
-            SetTs();
-        }
+        ScanRemote(ts_, ts_cnt_);
     }
 }
 
