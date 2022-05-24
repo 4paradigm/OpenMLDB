@@ -75,8 +75,11 @@ class AbstractIterator {
     /// method
     virtual bool IsSeekable() const = 0;
 
-    /// Set the dataset's current position move to
-    /// the first element whose key equals to `k` offset.
+    /// Set the dataset's current position to the first element whose key is equal to `key`
+    /// or if list is ordered
+    ///   less or equal to `key`, in a descending list
+    ///   greater or equal to `key`, in a ascending list
+    /// if there is no element found, set position to the end (next element of tail)
     virtual void Seek(const K& k) = 0;
 
     /// Move to the beginning of the dataset.

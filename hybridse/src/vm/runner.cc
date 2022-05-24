@@ -328,10 +328,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         index_key = window_union.second.index_key_;
                         right_task = union_task;
                         right_task.SetRoot(right);
-                    } else if (support_cluster_optimized_) {
-                        LOG(WARNING) << "Fail to build RequestUnionRunner with "
-                                        "multi union table in cluster mode";
-                        return ClusterTask();
                     }
                 }
             }
