@@ -74,42 +74,21 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
             const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
-            const std::shared_ptr<::google::protobuf::Message>& response,
-            const std::shared_ptr<openmldb::client::TabletClient>& client)
-        : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
-            ts_(0), ts_cnt_(0) {
-        if (kv_it_->Valid()) {
-            pk_ = kv_it_->GetPK();
-            ts_ = kv_it_->GetKey();
-            ts_cnt_ = 1;
-        }
-        response_vec_.emplace_back(response);
-    }
-    bool Valid() const override {
-        if (kv_it_->Valid() && pk_ == kv_it_->GetPK()) {
-            DLOG(INFO) << "RemoteWindowIterator Valid pk " << pk_ << " ts " << kv_it_->GetKey();
-            return true;
-        }
-        return false;
-    }
+            const std::shared_ptr<openmldb::client::TabletClient>& client);
+
+    bool Valid() const override;
 
     void Next() override;
 
-    const uint64_t& GetKey() const override {
-        return ts_;
-    }
+    const uint64_t& GetKey() const override { return ts_; }
 
     const ::hybridse::codec::Row& GetValue() override {
         auto slice_row = kv_it_->GetValue();
         row_.Reset(reinterpret_cast<const int8_t*>(slice_row.data()), slice_row.size());
         return row_;
     }
-    void Seek(const uint64_t& key) override {
-        DLOG(INFO) << "RemoteWindowIterator seek " << key;
-        while (kv_it_->Valid() && key < kv_it_->GetKey() && pk_ == kv_it_->GetPK()) {
-            kv_it_->Next();
-        }
-    }
+    void Seek(const uint64_t& key) override;
+
     void SeekToFirst() override {
         DLOG(INFO) << "RemoteWindowIterator SeekToFirst";
     }
@@ -126,6 +105,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
+    bool is_traverse_data_;
     std::string pk_;
     mutable uint64_t ts_;
     uint32_t ts_cnt_;
