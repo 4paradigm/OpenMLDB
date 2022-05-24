@@ -1070,7 +1070,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     auto client = GetTabletClientForBatchQuery(db, sql, parameter, status);
     if (!status->IsOK() || !client) {
         DLOG(INFO) << "no tablet available for sql " << sql;
-        status->msg = "no tablet available for sql";
+        status->msg = absl::StrCat("no tablet available for sql", status->msg);
         status->code = -1;
         return {};
     }
@@ -1291,10 +1291,10 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     }
     ::hybridse::sdk::SchemaImpl input_schema(explain_output.input_schema);
     ::hybridse::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    std::shared_ptr<ExplainInfoImpl> impl(
-        new ExplainInfoImpl(input_schema, output_schema, explain_output.logical_plan, explain_output.physical_plan,
-                            explain_output.ir, explain_output.request_db_name, explain_output.request_name));
-    return impl;
+
+    return std::make_shared<ExplainInfoImpl>(input_schema, output_schema, explain_output.logical_plan,
+                                             explain_output.physical_plan, explain_output.ir,
+                                             explain_output.request_db_name, explain_output.request_name);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
@@ -1800,7 +1800,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
     all_tablet = cluster_sdk_->GetAllTablet();
     // set dafault value
-    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
+    uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
@@ -1828,7 +1828,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     sp_info.set_db_name(db);
     sp_info.set_sp_name(create_sp->GetSpName());
     sp_info.set_sql(sql);
-    RtidbSchema* schema = sp_info.mutable_input_schema();
+    PBSchema* schema = sp_info.mutable_input_schema();
     for (auto input : create_sp->GetInputParameterList()) {
         if (input == nullptr) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : InputParameterNode null");
@@ -1871,7 +1871,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     if (!ok) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to explain sql" + sql_status.msg);
     }
-    RtidbSchema rtidb_input_schema;
+    PBSchema rtidb_input_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert input schema failed");
     }
@@ -1880,7 +1880,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     }
     sp_info.mutable_input_schema()->CopyFrom(*schema);
     // get output schema, and fill sp_info
-    RtidbSchema rtidb_output_schema;
+    PBSchema rtidb_output_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert output schema failed");
     }
@@ -1902,7 +1902,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
 }
 
-bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema) {
+bool SQLClusterRouter::CheckParameter(const PBSchema& parameter, const PBSchema& input_schema) {
     if (parameter.size() != input_schema.size()) {
         return false;
     }
@@ -2262,7 +2262,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return {};
             }
             *status = {};
-            std::vector<std::string> value = {info->GetPhysicalPlan()};
+            std::vector<std::string> value = {info->GetPhysicalPlan() + "\n"};
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
         }
         case hybridse::node::kPlanTypeCreate: {
@@ -3057,7 +3057,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        bool ok = ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
+                        bool ok =
+                            ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
                         if (!ok) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }

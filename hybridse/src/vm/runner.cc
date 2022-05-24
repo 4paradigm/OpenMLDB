@@ -328,10 +328,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         index_key = window_union.second.index_key_;
                         right_task = union_task;
                         right_task.SetRoot(right);
-                    } else if (support_cluster_optimized_) {
-                        LOG(WARNING) << "Fail to build RequestUnionRunner with "
-                                        "multi union table in cluster mode";
-                        return ClusterTask();
                     }
                 }
             }
@@ -2683,38 +2679,36 @@ bool RequestAggUnionRunner::InitAggregator() {
     }
 
     agg_type_ = type_it->second;
-    type::Type agg_col_type;
     if (agg_col_->GetExprType() == node::kExprColumnRef) {
-        agg_col_type = producers_[1]->row_parser()->GetType(agg_col_name_);
+        agg_col_type_ = producers_[1]->row_parser()->GetType(agg_col_name_);
     } else if (agg_col_->GetExprType() == node::kExprAll) {
         if (agg_type_ != kCount) {
             LOG(ERROR) << "only support " << ExprTypeName(agg_col_->GetExprType()) << "on count op";
             return false;
         }
-        agg_col_type = type::Type::kInt64;
+        agg_col_type_ = type::Type::kInt64;
     } else {
         LOG(ERROR) << "non-support aggr expr type " << ExprTypeName(agg_col_->GetExprType());
         return false;
     }
+    return true;
+}
+
+std::unique_ptr<BaseAggregator> RequestAggUnionRunner::CreateAggregator() const {
     switch (agg_type_) {
         case kSum:
-            aggregator_ = MakeOverflowAggregator<SumAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
-            return true;
+            return MakeOverflowAggregator<SumAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kAvg:
-            aggregator_ = std::make_unique<AvgAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
-            return true;
+            return std::make_unique<AvgAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kCount:
-            aggregator_ = std::make_unique<CountAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
-            return true;
+            return std::make_unique<CountAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMin:
-            aggregator_ = MakeSameTypeAggregator<MinAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
-            return true;
+            return MakeSameTypeAggregator<MinAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMax:
-            aggregator_ = MakeSameTypeAggregator<MaxAggregator>(agg_col_type, *output_schemas_->GetOutputSchema());
-            return true;
+            return MakeSameTypeAggregator<MaxAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         default:
-            LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_name;
-            return false;
+            LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
+            return nullptr;
     }
 }
 
@@ -2795,7 +2789,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     const Row& request,
     std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
     const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) {
+    const bool exclude_current_time) const {
     // TOOD(zhanghao): for now, we only support AggUnion with 1 base table and 1 agg table
     size_t unions_cnt = union_segments.size();
     if (unions_cnt != 2) {
@@ -2837,13 +2831,13 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
     int64_t request_key = ts_gen > 0 ? ts_gen : 0;
 
-    auto update_base_aggregator = [row_parser = base_row_parser, this](const Row& row) {
+    auto aggregator = CreateAggregator();
+    auto update_base_aggregator = [aggregator = aggregator.get(), row_parser = base_row_parser, this](const Row& row) {
         if (!agg_col_name_.empty() && row_parser->IsNull(row, agg_col_name_)) {
             return;
         }
 
-        auto type = aggregator_->type();
-        auto aggregator = aggregator_.get();
+        auto type = aggregator->type();
         if (agg_type_ == kCount) {
             dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
             return;
@@ -2896,14 +2890,14 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     };
 
-    auto update_agg_aggregator = [row_parser = agg_row_parser, this](const Row& row) {
+    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
 
         std::string agg_val;
         row_parser->GetString(row, "agg_val", &agg_val);
-        aggregator_->Update(agg_val);
+        aggregator->Update(agg_val);
     };
 
     int64_t cnt = 0;
@@ -2922,7 +2916,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
         LOG(WARNING) << "Base window is empty.";
-        window_table->AddRow(start, aggregator_->Output());
+        window_table->AddRow(start, aggregator->Output());
         DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
         return window_table;
     }
@@ -3042,7 +3036,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     }
 
-    window_table->AddRow(start, aggregator_->Output());
+    window_table->AddRow(start, aggregator->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
     return window_table;
 }
