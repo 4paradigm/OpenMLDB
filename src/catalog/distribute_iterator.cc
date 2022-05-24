@@ -289,6 +289,18 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
                 kv_it_->GetPK().size()));
 }
 
+const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
+    auto slice_row = kv_it_->GetValue();
+    size_t sz = slice_row.size();
+    // for distributed environment, slice_row's data probably become invalid when the DistributeWindowIterator
+    // iterator goes out of scope. so copy action occured here
+    int8_t* copyed_row_data = new int8_t[sz];
+    memcpy(copyed_row_data, slice_row.data(), sz);
+    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+    row_.Reset(shared_slice);
+    return row_;
+}
+
 RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
         const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
         const std::shared_ptr<openmldb::client::TabletClient>& client)
@@ -340,8 +352,8 @@ void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
 
 void RemoteWindowIterator::Seek(const uint64_t& key) {
     DLOG(INFO) << "RemoteWindowIterator seek " << key;
-    while (kv_it_->Valid() && key < kv_it_->GetKey()) {
-        if (is_traverse_data_ && pk_ != kv_it_->GetPK()) {
+    while (kv_it_->Valid() && kv_it_->GetKey() > key) {
+        if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
             break;
         }
         kv_it_->Next();
