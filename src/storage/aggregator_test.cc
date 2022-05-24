@@ -285,9 +285,6 @@ void CheckCountWhereAggrResult(std::shared_ptr<Table> aggr_table, std::shared_pt
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
         int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
-        if (origin_val != count) {
-            return;
-        }
         ASSERT_EQ(origin_val, count);
         it->Next();
     }
@@ -686,16 +683,16 @@ TEST_F(AggregatorTest, CountWhereAggregatorUpdate) {
     std::shared_ptr<Table> aggr_table;
     GetUpdatedResult(counter, "col3", "count_where", "1s", aggregator, aggr_table, &last_buffer);
     CheckCountWhereAggrResult(aggr_table, aggregator, 1);
-    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id20", &last_buffer));
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", "0", &last_buffer));
     ASSERT_EQ(last_buffer->non_null_cnt_, 1);
-    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id21", &last_buffer));
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", "1", &last_buffer));
     ASSERT_EQ(last_buffer->non_null_cnt_, 1);
     counter += 2;
     GetUpdatedResult(counter, "col_null", "count_WHERE", "1m", aggregator, aggr_table, &last_buffer);
     CheckCountWhereAggrResult(aggr_table, aggregator, 0);
-    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id20", &last_buffer));
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", "0", &last_buffer));
     ASSERT_EQ(last_buffer->non_null_cnt_, 0);
-    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id21", &last_buffer));
+    ASSERT_TRUE(aggregator->GetAggrBuffer("id1|id2", "1", &last_buffer));
     ASSERT_EQ(last_buffer->non_null_cnt_, 0);
 }
 
@@ -745,7 +742,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     ASSERT_TRUE(ok);
     ASSERT_EQ(aggr_table->GetRecordCnt(), 51);
     auto it = aggr_table->NewTraverseIterator(0);
-    it->Seek(key, 25 * 1000 + 100);
+    it->Seek(key + "|", 25 * 1000 + 100);
     if (it->Valid()) {
         auto val = it->GetValue();
         std::string origin_data = val.ToString();

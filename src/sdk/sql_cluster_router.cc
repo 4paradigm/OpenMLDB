@@ -2178,6 +2178,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto index = table_info.add_column_key();
     index->set_index_name("key_index");
     index->add_col_name("key");
+    index->add_col_name("filter_key");
     index->set_ts_name("ts_start");
 
     // keep ttl in pre-aggr table the same as base table
@@ -3214,7 +3215,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
                              "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
                              lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "', '",
-                             lw.filter_col_.empty() ? "NULL" : lw.filter_col_, "');");
+                             lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
                 return {base::ReturnCode::kError, "insert pre-aggr meta failed"};

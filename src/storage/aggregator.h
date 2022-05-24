@@ -75,25 +75,14 @@ class AggrBuffer {
     uint64_t binlog_offset_;
     int64_t non_null_cnt_;
     int32_t aggr_cnt_;
-    uint32_t key_end_;
     DataType data_type_;
-    explicit AggrBuffer(uint32_t key_end)
-        : aggr_val_(),
-          ts_begin_(-1),
-          ts_end_(0),
-          binlog_offset_(0),
-          non_null_cnt_(0),
-          aggr_cnt_(0),
-          key_end_(key_end) {}
-    AggrBuffer()
-        : aggr_val_(), ts_begin_(-1), ts_end_(0), binlog_offset_(0), non_null_cnt_(0), aggr_cnt_(0), key_end_(0) {}
+    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), binlog_offset_(0), non_null_cnt_(0), aggr_cnt_(0) {}
     AggrBuffer(const AggrBuffer& buffer) {
         memcpy(&aggr_val_, &buffer.aggr_val_, sizeof(aggr_val_));
         ts_begin_ = buffer.ts_begin_;
         ts_end_ = buffer.ts_end_;
         aggr_cnt_ = buffer.aggr_cnt_;
         binlog_offset_ = buffer.binlog_offset_;
-        key_end_ = buffer.key_end_;
         non_null_cnt_ = buffer.non_null_cnt_;
         data_type_ = buffer.data_type_;
         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
@@ -123,7 +112,7 @@ class AggrBuffer {
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
     AggrBuffer buffer_;
-    explicit AggrBufferLocked(uint32_t key_end) : mu_(std::make_unique<std::mutex>()), buffer_(key_end) {}
+    explicit AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
 };
 
 class Aggregator {
@@ -155,13 +144,14 @@ class Aggregator {
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
-    virtual std::string GetAggregateKey(const std::string& pk, int8_t* /* row_ptr */) { return pk; }
+    bool GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer);
 
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
 
-    std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
+    using FilterMap = std::unordered_map<std::string, AggrBufferLocked>;  // filter_column -> aggregator buffer
+    std::unordered_map<std::string, FilterMap> aggr_buffer_map_;          // key -> filter_map
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
@@ -172,8 +162,9 @@ class Aggregator {
     Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
-    bool FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
-    bool UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
+    bool FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& aggr_buffer);
+    bool UpdateFlushedBuffer(const std::string& key, const std::string& filter_key, const int8_t* base_row_ptr,
+                             int64_t cur_ts, uint64_t offset);
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
@@ -189,6 +180,8 @@ class Aggregator {
  protected:
     int aggr_col_idx_;
     int ts_col_idx_;
+    std::string filter_col_;
+    int filter_col_idx_;
     WindowType window_type_;
 
     // for kRowsNum, window_size_ is the rows num in mini window
@@ -285,12 +278,6 @@ class CountWhereAggregator : public CountAggregator {
                          const std::string& filter_col);
 
     ~CountWhereAggregator() = default;
-
-    std::string GetAggregateKey(const std::string& pk, int8_t* row_ptr) override;
-
- protected:
-    std::string filter_col_;
-    int filter_col_idx_;
 };
 
 class AvgAggregator : public Aggregator {
