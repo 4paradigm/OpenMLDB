@@ -30,7 +30,7 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
   var openmldbSession: OpenmldbSession = _
   var openmldbConnector: SqlClusterExecutor = _
   val db = "batch_test"
-  val table = "load_data_test"
+  var table: String = _
 
   override def customizedBefore(): Unit = {
     // load data needs openmldb cluster
@@ -46,10 +46,13 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     openmldbConnector = openmldbSession.openmldbCatalogService.sqlExecutor
 
     openmldbConnector.createDB(db)
-    // to ensure the offline info is unset
-    // TODO(hw): test openmldb cluster doesn't have task manager now, so drop table will fail
-    //  DO NOT run offline test until task manager works in test env.
-    openmldbConnector.executeDDL(db, s"drop table $table;")
+
+    // NOTICE: test openmldb cluster doesn't have task manager now, so drop table will fail
+    // To ensure the offline info is unset, we use unique table names. But we can't do cleanup.
+    table = "load_data_test" + java.time.Instant.now.toEpochMilli
+    println(s"load test on $db.$table")
+    assert(!tableExists(db, table))
+
     openmldbConnector.executeDDL(db, s"create table $table(c1 int, c2 int64, " +
       s"c3 double not null);")
     assert(tableExists(db, table))
@@ -76,9 +79,10 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     }
   }
 
-  ignore("Test Load to Openmldb Offline Storage") {
+  // Plz DO NOT split this offline test into multi tests, cuz the test is contextual.
+  test("Test Load to Openmldb Offline Storage") {
     val originInfo = getLatestTableInfo(db, table)
-    assert(!originInfo.hasOfflineTableInfo, s"shouldn't have offline info(maybe recreate table failed), $originInfo")
+    assert(!originInfo.hasOfflineTableInfo, s"shouldn't have offline info before the offline test, $originInfo")
     // P.S.
     // When the src **csv** files have header, and the col names are different with table schema:
     // 1. If soft-copy, we don't read data, can't do schema check. When we load files in registering offline table,
