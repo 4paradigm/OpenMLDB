@@ -1,3 +1,8 @@
+# The coverage jobs for cpp code
+#
+# This sperate job exists because C/CPP coverage require build type to be Debug.
+# Other coverage jobs e.g java/scala's coverage lives alongside with their test jobs.
+
 name: coverage
 
 on:
@@ -25,59 +30,52 @@ on:
 
 jobs:
   coverage:
-    runs-on: self-hosted
-    container:
-      image: ghcr.io/4paradigm/hybridsql:latest
+    runs-on: ubuntu-latest
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
-      SQL_PYSDK_ENABLE: OFF
-      SQL_JAVASDK_ENABLE: ON
       TESTING_ENABLE: ON
+      SQL_PYSDK_ENABLE: OFF
+      SQL_JAVASDK_ENABLE: OFF
       NPROC: 8
-      SPARK_HOME: /tmp/spark/
+      BUILD_SHARED_LIBS: ON
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
+      - name: download lcov
+        uses: actions/checkout@v3
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          repository: linux-test-project/lcov
+          ref: master
+          path: lcov
+
+      - name: install lcov
+        working-directory: lcov
+        run: |
+          sudo make install
 
       - name: coverage configure
         run: |
           make coverage-configure
 
-      - name: build openmldb
-        run: |
-          cmake --build build --target openmldb -- -j${{ env.NPROC }}
-
       - name: start service
         run: |
-          sh steps/ut_zookeeper.sh start
-          sh steps/download_openmldb_spark.sh $SPARK_HOME
-          cd onebox
-          bash start_onebox.sh
-          sh start_onebox.sh standalone
+          ./steps/ut_zookeeper.sh start
 
-      - name: Build and Coverage
+      - name: Coverage CPP
         run: |
-          make coverage
+          make coverage-cpp
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
-          files: build/coverage.info,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
+          files: build/coverage.info
           name: coverage
           fail_ci_if_error: true
           verbose: true
 
       - name: stop service
         run: |
-          ./onebox/stop_all.sh
-          sh steps/ut_zookeeper.sh stop
+          ./steps/ut_zookeeper.sh stop
