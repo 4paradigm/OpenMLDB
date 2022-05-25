@@ -33,14 +33,6 @@ public class BenchmarkConfig {
     // memsql can connect via mysql/maraiadb jdbc
     public static String MEMSQL_URL="jdbc:mariadb://localhost:3306";
 
-    public static String DATABASE = "";
-    public static String TABLE = "";
-    public static int WINDOW_NUM = 2;
-    public static int WINDOW_SIZE = 1000;
-    public static int JOIN_NUM = 2;
-    public static int PK_BASE = 1000000;
-    public static long TS_BASE = 1652232079000l;
-    public static String DEPLOY_NAME;
     public static String PARTITION_NUM = "4";
     public static int BATCH_SIZE = 1;
     public static Mode mode = Mode.REQUEST;
@@ -56,7 +48,6 @@ public class BenchmarkConfig {
     private static boolean NEED_PROXY= false;
 
     public static int PK_NUM = 1;
-    public static int PK_MAX = 0;
     public static int PUT_THREAD_NUM = 1;
     public static int QUERY_THREAD_NUM = 1;
     public static boolean NEED_CREATE = true;
@@ -72,18 +63,10 @@ public class BenchmarkConfig {
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
             PARTITION_NUM = prop.getProperty("PARTITION_NUM");
-            TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
-            PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             ddlUrl = prop.getProperty("ddlUrl");
             NEED_PROXY = Boolean.valueOf(prop.getProperty("HTTP_PROXY"));
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
-            DATABASE = prop.getProperty("DATABASE");
-            TABLE = prop.getProperty("TABLE");
-            DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
-            WINDOW_NUM = Integer.valueOf(prop.getProperty("WINDOW_NUM"));
-            WINDOW_SIZE = Integer.valueOf(prop.getProperty("WINDOW_SIZE"));
-            JOIN_NUM = Integer.valueOf(prop.getProperty("JOIN_NUM"));
             BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
             TIME_DIFF = Integer.valueOf((String)prop.getProperty("TIME_DIFF", "0"));
             String mode_str = prop.getProperty("MODE");
@@ -99,7 +82,6 @@ public class BenchmarkConfig {
             }
             commonCol = prop.getProperty("commonCol", "");
             PK_NUM = Integer.valueOf((String)prop.getProperty("PK_NUM", "100000"));
-            PK_MAX = Integer.valueOf((String)prop.getProperty("PK_MAX", "0"));
             PUT_THREAD_NUM = Integer.valueOf((String)prop.getProperty("PUT_THREAD_NUM", "1"));
             QUERY_THREAD_NUM = Integer.valueOf((String)prop.getProperty("QUERY_THREAD_NUM", "1"));
 

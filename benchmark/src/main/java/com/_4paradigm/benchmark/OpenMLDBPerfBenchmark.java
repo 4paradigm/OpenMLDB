@@ -1,10 +1,7 @@
-package com._4paradigm.sql.jmh.openmldb;
+package com._4paradigm.benchmark;
 
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.sql.BenchmarkConfig;
-import com._4paradigm.sql.tools.Util;
-import com._4paradigm.sql.tools.TableSchema;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;

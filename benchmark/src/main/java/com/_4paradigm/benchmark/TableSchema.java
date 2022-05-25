@@ -1,4 +1,4 @@
-package com._4paradigm.sql.tools;
+package com._4paradigm.benchmark;
 
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.proto.Type;
