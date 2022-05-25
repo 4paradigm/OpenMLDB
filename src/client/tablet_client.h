@@ -210,8 +210,6 @@ class TabletClient : public Client {
             const std::string& idx_name, const std::string& pk, uint64_t ts,
             uint32_t limit, uint32_t& count);  // NOLINT
 
-    void ShowTp();
-
     bool SetMode(bool mode);
 
     bool DeleteIndex(uint32_t tid, uint32_t pid, const std::string& idx_name, std::string* msg);
@@ -287,7 +285,6 @@ class TabletClient : public Client {
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
-    std::vector<uint64_t> percentile_;
 };
 
 }  // namespace client
