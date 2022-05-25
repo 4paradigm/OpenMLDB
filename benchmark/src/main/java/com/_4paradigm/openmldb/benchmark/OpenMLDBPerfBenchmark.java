@@ -1,4 +1,4 @@
-package com._4paradigm.benchmark;
+package com._4paradigm.openmldb.benchmark;
 
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.SqlExecutor;

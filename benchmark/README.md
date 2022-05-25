@@ -29,7 +29,7 @@ OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB online fea
 4. Run benchmark
     ```
     cd /work/benchmark
-    java -cp conf/:lib/ com._4paradigm.benchmark.OpenMLDPerfBenchmark
+    java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBPerfBenchmark
     ```
 
 The above testing run with the default confguration. It need to modify `WINDOW_NUM`, `WINDOW_SIZE` and `JOIN_NUM` in confguration file if you want to test other scenes. More over, the default benmark threads is 10. It need to set thead number by `Threads` annotation in source file and compile again if you want to test under other thread confguration.
@@ -37,5 +37,5 @@ The above testing run with the default confguration. It need to modify `WINDOW_N
 ### Long Window Benchmark
 Update `WINDOW_SIZE` in confguration file and execute the following command. 
 ```
-java -cp conf/:lib/ com._4paradigm.benchmark.OpenMLDLongWindowBenchmark
+java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmark
 ```

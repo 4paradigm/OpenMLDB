@@ -20,4 +20,3 @@ WIP
 # run a benchmark class
 java -cp target/openmldb-jmh-0.2.3-SNAPSHOT.jar com._4paradigm.sql.jmh.openmldb.OpenMLDBParameterizedQueryBenchmark
 ```
-

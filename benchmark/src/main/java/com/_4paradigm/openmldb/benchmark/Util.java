@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.benchmark;
+package com._4paradigm.openmldb.benchmark;
 
 import java.sql.*;
 import java.sql.Date;
