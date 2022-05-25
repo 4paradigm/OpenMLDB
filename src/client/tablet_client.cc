@@ -774,7 +774,6 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::openmldb::api::TabletServer_Stub::Get, &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {
