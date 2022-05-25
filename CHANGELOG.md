@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.1] - 2022-05-26
+
+### Features
+- Add kafka connector (#1771 @vagetablechicken)
+- Update ttl of index if new ttl greater than current ttl when depolying sql (#1737 @keyu813)
+- Support large sql in TaskManager (#1833 @tobegit3hub)
+- Support window union in cluster mode (#1855 #1856 @aceforeverd @dl239)
+- Add micro benchmark tools (#1800 @dl239)
+
+### Bug Fixes
+- Offline task will core dump when enable `UnsafeRowOpt` for continuous window over window (#1773 @tobegit3hub)
+- Has not reset aggregator if table is empty (#1784 @zhanghaohit)
+- The Order for union rows and original rows with the same order key is undefined (#1802 @aceforeverd)
+- Long window processing will core dump under stress test (#1838 zhanghaohit)
+- Fail to process ending space in CLI (#1820 @aceforeverd)
+- Cannot `USE` database in python sdk if create engine with empty database (#1854 @vagetablechicken)
+- Cannot read offline path with options when using soft copy with csv file. (#1872 @vagetablechicken)
+
+### Code Refactoring
+#1766 @hiyoyolumi; #1777 @jmoldyvan; #1779 @SohamRatnaparkhi; #1768 @SaumyaBhushan; #1795 @vighnesh-kadam; #1806 @Mount-Blanc; #1978 @wangxinyu666666; #1781 @SaumyaBhushan; #1786 @xuduling; #1810 @IZUMI-Zu; #1824 @bxiiiiii; #1843 @1korenn; #1851 @zhouxh19; #1862 @Ivyee17; #1867, #1869, #1873 @mangoGoForward; #1863 @Ivyee17; #1815 @jmoldyvan; #1857 @frazie
+
 ## [0.5.0] - 2022-05-07
 
 ### Highlights
