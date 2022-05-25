@@ -12,6 +12,6 @@ services:
         ./init.sh
         sleep 5
         cd taxi-trip
-        python3 test/import.py"
+        python3 "test/import.py"
         cd ../talkingdata
         python3 train_and_serve.py
