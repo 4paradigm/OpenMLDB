@@ -40,7 +40,7 @@ jobs:
       - name: Docker Compose Test
         working-directory: demo
         run: |
-          docker-compose -f docker-compose.test.yml -- up --exit-code-from sut talking
+          docker-compose -f docker-compose.test.yml -- up --exit-code-from sut
 
       - name: Decide Push
         run: |
