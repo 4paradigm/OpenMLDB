@@ -1,6 +1,6 @@
 # OpenMLDB Benchmark
 
-OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB online feature extraction.
+OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online SQL engine.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB online fea
     java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBPerfBenchmark
     ```
 
-The above testing run with the default confguration. It need to modify `WINDOW_NUM`, `WINDOW_SIZE` and `JOIN_NUM` in confguration file if you want to test other scenes. 
+The above testing run with the default confguration. You can modify `WINDOW_NUM`, `WINDOW_SIZE` and `JOIN_NUM` in the confguration file if you want to evaluate the performance impact of those parameters.
 
-More over, the default benmark threads is 10. It need to set thead number by `Threads` annotation in `OpenMLDBPerfBenchmark.java` or `OpenMLDBLongWindowBenchmark.java` as below and compile again if you want to test under other thread confguration.
+Moreover, the default number of threads is 10. You need to set the thead number by `Threads` annotation in `OpenMLDBPerfBenchmark.java` or `OpenMLDBLongWindowBenchmark.java` as below and compile again if you want to test under other thread confguration.
 ```
 @Threads(10)
 ```
@@ -44,7 +44,7 @@ If you want to test `Throughput`, set `BenchmarkMode` and `OutputTimeUnit` annot
 @OutputTimeUnit(TimeUnit.SECONDS)
 ```
 
-### Long Window Benchmark
+### Long Window Benchmark (The Pre-Aggregate Optimization)
 Update `WINDOW_SIZE` in confguration file and execute the following command. 
 ```
 java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmark
