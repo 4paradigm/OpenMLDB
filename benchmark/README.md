@@ -34,12 +34,12 @@ OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online S
 
 The above testing run with the default confguration. You can modify `WINDOW_NUM`, `WINDOW_SIZE` and `JOIN_NUM` in the confguration file if you want to evaluate the performance impact of those parameters.
 
-Moreover, the default number of threads is 10. You need to set the thead number by `Threads` annotation in `OpenMLDBPerfBenchmark.java` or `OpenMLDBLongWindowBenchmark.java` as below and compile again if you want to test under other thread confguration.
-```
+Moreover, the default number of threads is 10. You need to set the thread number by `Threads` annotation in `OpenMLDBPerfBenchmark.java` or `OpenMLDBLongWindowBenchmark.java` as below and compile again if you want to test under other thread confguration.
+```java
 @Threads(10)
 ```
 If you want to test `Throughput`, set `BenchmarkMode` and `OutputTimeUnit` annotation in `OpenMLDBPerfBenchmark.java` or `OpenMLDBLongWindowBenchmark.java` file as below:
-```
+```java
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 ```
