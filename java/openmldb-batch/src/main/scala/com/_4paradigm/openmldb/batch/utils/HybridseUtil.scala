@@ -17,13 +17,13 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef}
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
 import org.apache.spark.sql.types.{DataType, LongType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
@@ -105,6 +105,21 @@ object HybridseUtil {
     } else {
       (row1, row2) => {
         keyIdxs.exists(i => row1.get(i) != row2.get(i))
+      }
+    }
+  }
+
+  def createUnsafeGroupKeyComparator(keyIdxs: Array[Int]): (UnsafeRow, UnsafeRow) => Boolean = {
+    // TODO(tobe): check for different data types
+
+    if (keyIdxs.length == 1) {
+      val idx = keyIdxs(0)
+      (row1, row2) => {
+        row1.getLong(idx) != row2.getLong(idx)
+      }
+    } else {
+      (row1, row2) => {
+        keyIdxs.exists(i => row1.getLong(i) != row2.getLong(i))
       }
     }
   }

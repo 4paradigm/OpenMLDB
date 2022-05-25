@@ -24,6 +24,7 @@ import com._4paradigm.openmldb.batch.window.{WindowAggPlanUtil, WindowComputer}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.common.codec.CodecUtil
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
@@ -336,14 +337,17 @@ object WindowAggPlan {
                           outputTimestampColIndexes: mutable.ArrayBuffer[Int],
                           inputDateColIndexes: mutable.ArrayBuffer[Int],
                           outputDateColIndexes: mutable.ArrayBuffer[Int]): Iterator[InternalRow] = {
+
     var lastRow: Row = null
+    var lastUnsafeRow: UnsafeRow = null
 
     // Take the iterator if the limit has been set
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
     if (config.partIdIdx != 0) {
       val skewGroups = config.groupIdxs :+ config.partIdIdx
-      computer.resetGroupKeyComparator(skewGroups)
+      //computer.resetGroupKeyComparator(skewGroups)
+      computer.resetUnsafeGroupKeyComparator(skewGroups)
     }
 
     val resIter = if (sqlConfig.enableWindowSkewOpt) {
@@ -417,11 +421,22 @@ object WindowAggPlan {
           }
         }
 
+        /*
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
         }
         lastRow = row
-        val orderKey = computer.extractKey(row)
+        */
+
+        if (lastUnsafeRow != null) {
+          computer.checkUnsafePartition(internalRow.asInstanceOf[UnsafeRow], lastUnsafeRow)
+        }
+        lastUnsafeRow = internalRow.asInstanceOf[UnsafeRow]
+
+        //val orderKey = computer.extractKey(row)
+        val orderKey = computer.extractUnsafeKey(internalRow.asInstanceOf[UnsafeRow])
+
+
         if (isValidOrder(orderKey)) {
           val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
             config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)

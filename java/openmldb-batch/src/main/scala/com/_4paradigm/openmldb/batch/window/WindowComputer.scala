@@ -55,6 +55,8 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // group key comparation
   private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
+  private var unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(config.groupIdxs)
+
   // native function handle
   private val fn = jit.FindFunction(config.functionName)
 
@@ -209,6 +211,13 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
   }
 
+  def checkUnsafePartition(prev: UnsafeRow, cur: UnsafeRow): Unit = {
+    val groupChanged = unsafeGroupKeyComparator.apply(cur, prev)
+    if (groupChanged) {
+      resetWindow()
+    }
+  }
+
   def resetWindow(): Unit = {
     // TODO: wrap iter to hook iter end; now last window is leak
     window.delete()
@@ -226,6 +235,11 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     SparkRowUtil.getLongFromIndex(config.orderIdx, orderField.dataType, curRow)
   }
 
+  def extractUnsafeKey(curRow: UnsafeRow): Long = {
+    // TODO(tobe): support different data types
+    SparkRowUtil.unsafeGetLongFromIndex(config.orderIdx, orderField.dataType, curRow)
+  }
+
   def delete(): Unit = {
     encoder.delete()
     encoder = null
@@ -237,37 +251,12 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     window = null
   }
 
-  def printWindowCols(windowName: String, cols: Array[String]): Unit = {
-    val windowData = new java.util.ArrayList[String]()
-    if (!config.windowName.equals(windowName) || window.size() <= 0) {
-      return
-    }
-    windowData.add("window " + config.windowName + " data, window size = " + window.size())
-    windowData.add(config.inputSchema.toDDL + "\n")
-    val indexs = new java.util.ArrayList[Int]()
-    for (col <- cols) {
-      indexs.add(config.inputSchema.fieldIndex(col))
-    }
-    val id = config.inputSchema.fieldIndex("reqId")
-    val firstArr = new Array[Any](config.inputSchema.size)
-    encoder.decode(window.Get(0), firstArr)
-
-    for (index <- 0 until window.size().toInt) {
-      val arr = new Array[Any](config.inputSchema.size)
-      encoder.decode(window.Get(index), arr)
-      val filterArr = new Array[Any](indexs.size())
-      for (i <- 0 until indexs.size()) {
-        filterArr(i) = arr(indexs.get(i))
-      }
-      windowData.add(filterArr.mkString(","))
-    }
-    if (windowData.size() > 0) {
-      logger.info(StringUtils.join(windowData, "\n"))
-    }
-  }
-
   def resetGroupKeyComparator(keyIdxs: Array[Int]): Unit = {
     groupKeyComparator = HybridseUtil.createGroupKeyComparator(keyIdxs)
+  }
+
+  def resetUnsafeGroupKeyComparator(keyIdxs: Array[Int]): Unit = {
+    unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(keyIdxs)
   }
 
 
