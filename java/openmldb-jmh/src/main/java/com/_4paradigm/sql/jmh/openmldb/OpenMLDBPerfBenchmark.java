@@ -15,13 +15,13 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@BenchmarkMode(Mode.SampleTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Threads(10)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
+@Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
 @Warmup(iterations = 2)
-@Measurement(iterations = 1, time = 20)
+@Measurement(iterations = 5, time = 60)
 
 public class OpenMLDBPerfBenchmark {
     private SqlExecutor executor;
@@ -30,7 +30,7 @@ public class OpenMLDBPerfBenchmark {
     private int windowNum;
     private int windowSize;
     private int joinNum;
-    private int unionNum = 0; // unspport in cluster mode now
+    private int unionNum = 0; // unspport in cluster mode in 0.5.0
     private Map<String, TableSchema> tableSchema = new HashMap<>();
     private Random random;
     private List<Integer> pkList = new ArrayList<>();
