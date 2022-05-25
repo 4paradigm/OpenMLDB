@@ -133,7 +133,7 @@ Let's clap hands for our community contributors :clap:
 
 - [Blogs (Chinese)](https://www.zhihu.com/column/c_1417199590352916480)
 
-- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d)
+- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://openmldb.feishu.cn/wiki/space/7101318128021307396)
 
 - [Mailing list for developers](https://groups.google.com/g/openmldb-developers)
 
