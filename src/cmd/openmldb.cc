@@ -65,7 +65,6 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
-DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
@@ -256,7 +255,6 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (real_endpoint.empty()) {
