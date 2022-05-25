@@ -1338,7 +1338,7 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
     }
 
     auto& parameter = ctx.GetParameterRow();
-    switch (input->GetHanderType()) {
+    switch (input->GetHandlerType()) {
         case kTableHandler: {
             return std::shared_ptr<TableHandler>(new TableProjectWrapper(
                 std::dynamic_pointer_cast<TableHandler>(input),
