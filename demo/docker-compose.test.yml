@@ -16,5 +16,6 @@ services:
       - -cx
       - |
         ./init.sh
+        sleep 10
         cd talkingdata
         python3 train_and_serve.py

@@ -18,7 +18,7 @@ on:
       OPENMLDB_VERSION:
         description: 'The openmldb version installed in docker. ex: 0.3.0'
         required: true
-        default: '0.3.0'
+        default: '0.5.0'
 
 env:
   IMAGE_NAME: openmldb
