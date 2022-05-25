@@ -241,13 +241,11 @@ message ScanRequest {
     optional uint32 pid = 6;
     optional bool enable_remove_duplicated_record = 7 [default = false];
     optional string idx_name = 8;
-    optional GetType st_type = 9 [default = kSubKeyLe];
-    optional GetType et_type = 10 [default = kSubKeyGt];
-    optional bool enable_remove_ts = 11 [default = false];
-    optional uint32 atleast = 12 [default = 0];
-    repeated uint32 projection = 13;
-    repeated uint32 pid_group = 14;
-    optional bool use_attachment = 15 [default = false];
+    optional bool enable_remove_ts = 9 [default = false];
+    repeated uint32 projection = 10;
+    repeated uint32 pid_group = 11;
+    optional bool use_attachment = 12 [default = false];
+    optional uint32 skip_record_num = 13 [default = 0];
 }
 
 message TraverseRequest {
@@ -277,6 +275,7 @@ message ScanResponse {
     optional int32 code = 3;
     optional uint32 count = 4;
     optional uint32 buf_size = 5;
+    optional bool is_finish = 6 [default = true];
 }
 
 message ReplicaRequest {

@@ -7,7 +7,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
     <artifactId>openmldb-jmh</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-jmh</name>
-    <version>0.2.3-SNAPSHOT</version>
+    <version>0.5.0</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,29 +25,14 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
             <version>1.32</version>
         </dependency>
         <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>org.json</artifactId>
-            <version>chargebee-1.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>0.4.0</version>
+            <version>0.5.0</version>
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
-            <version>0.4.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.hybridse</groupId>
-            <artifactId>hybridse-sdk</artifactId>
-            <version>0.2.3</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.hybridse</groupId>
-            <artifactId>hybridse-native</artifactId>
-            <version>0.2.3</version>
+            <version>0.5.0-allinone</version>
         </dependency>
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>

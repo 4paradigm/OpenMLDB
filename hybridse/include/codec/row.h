@@ -87,6 +87,10 @@ class Row {
         slice_.reset(reinterpret_cast<const char *>(buf), size);
     }
 
+    void Reset(const ::hybridse::base::RefCountedSlice& r) {
+        slice_ = r;
+    }
+
  private:
     void Append(const std::vector<hybridse::base::RefCountedSlice> &slices);
     void Append(const Row &b);
