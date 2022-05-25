@@ -27,7 +27,6 @@ public class BenchmarkConfig {
     public static String ZK_PATH="/onebox";
 
     public static String DATABASE = "";
-    public static String TABLE = "";
     public static int WINDOW_NUM = 2;
     public static int WINDOW_SIZE = 1000;
     public static int JOIN_NUM = 2;
@@ -49,7 +48,6 @@ public class BenchmarkConfig {
             TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
             PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             DATABASE = prop.getProperty("DATABASE");
-            TABLE = prop.getProperty("TABLE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
             WINDOW_NUM = Integer.valueOf(prop.getProperty("WINDOW_NUM"));
             WINDOW_SIZE = Integer.valueOf(prop.getProperty("WINDOW_SIZE"));

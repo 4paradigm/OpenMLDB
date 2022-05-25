@@ -29,13 +29,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@BenchmarkMode(Mode.SampleTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Threads(2)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
+@Threads(10)
+@Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
 @Warmup(iterations = 2)
-@Measurement(iterations = 1, time = 10)
+@Measurement(iterations = 5, time = 60)
 public class OpenMLDBLongWindowBenchmark {
     private SqlExecutor executor;
     private String database;
