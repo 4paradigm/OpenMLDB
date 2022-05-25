@@ -1555,7 +1555,6 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     uint64_t et = 0;
     std::string ts_name;
     uint32_t limit = 0;
-    uint32_t atleast = 0;
     auto iter = parameter_map.begin();
     try {
         if (is_pair_format) {
@@ -1599,10 +1598,6 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             if (iter != parameter_map.end()) {
                 limit = boost::lexical_cast<uint32_t>(iter->second);
             }
-            iter = parameter_map.find("atleast");
-            if (iter != parameter_map.end()) {
-                atleast = boost::lexical_cast<uint32_t>(iter->second);
-            }
         } else {
             table_name = parts[1];
             key = parts[2];
@@ -1636,7 +1631,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     if (no_schema) {
         std::shared_ptr<::openmldb::base::KvIterator> it;
         if (is_pair_format) {
-            it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+            it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
         } else {
             try {
                 st = boost::lexical_cast<uint64_t>(parts[3]);
@@ -1644,7 +1639,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+                it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
             } catch (std::exception const& e) {
                 std::cout << "Invalid args. st and et should be uint64_t, limit should"
                           << "be uint32_t" << std::endl;
@@ -1691,7 +1686,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                     return;
                 }
                 std::shared_ptr<::openmldb::base::KvIterator> it(
-                    tb_client->Scan(tid, cur_pid, key, st, et, index_name, ts_name, limit, atleast, msg));
+                    tb_client->Scan(tid, cur_pid, key, index_name, st, et, limit, msg));
                 if (!it) {
                     std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                     return;
@@ -1700,7 +1695,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             }
         } else {
             std::shared_ptr<::openmldb::base::KvIterator> it(
-                tb_client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, atleast, msg));
+                tb_client->Scan(tid, pid, key, index_name, st, et, limit, msg));
             if (!it) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                 return;
@@ -1907,8 +1902,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        ::openmldb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
-        if (it == NULL) {
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
         }
@@ -1948,7 +1943,6 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             index++;
             it->Next();
         }
-        delete it;
     }
     tp.Print(true);
 }
@@ -3862,8 +3856,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client
         return;
     }
     std::string msg;
-    std::shared_ptr<::openmldb::base::KvIterator> it(
-        client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, 0, msg));
+    std::shared_ptr<::openmldb::base::KvIterator> it(client->Scan(tid, pid, key, index_name, st, et, limit, msg));
     if (!it) {
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         return;
