@@ -396,6 +396,7 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
     ASSERT_EQ(it->GetKey(), now - 1500);
     count = 0;
     while (it->Valid()) {
+        ASSERT_EQ(now - 1500 - count, it->GetKey());
         count++;
         it->Next();
     }

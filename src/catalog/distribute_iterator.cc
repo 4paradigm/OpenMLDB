@@ -307,7 +307,7 @@ RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std
         const std::shared_ptr<openmldb::client::TabletClient>& client)
     : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
         is_traverse_data_(false), ts_(0), ts_cnt_(0) {
-    if (kv_it_->Valid()) {
+    if (kv_it_ && kv_it_->Valid()) {
         pk_ = kv_it_->GetPK();
         ts_ = kv_it_->GetKey();
         ts_cnt_ = 1;
@@ -320,7 +320,7 @@ RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std
 }
 
 bool RemoteWindowIterator::Valid() const {
-    if (!kv_it_->Valid()) {
+    if (!kv_it_ || !kv_it_->Valid()) {
         return false;
     }
     if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
@@ -353,6 +353,9 @@ void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
 
 void RemoteWindowIterator::Seek(const uint64_t& key) {
     DLOG(INFO) << "RemoteWindowIterator seek " << key;
+    if (!kv_it_) {
+        return;
+    }
     while (kv_it_->Valid() && kv_it_->GetKey() > key) {
         if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
             break;
