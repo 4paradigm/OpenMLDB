@@ -1009,8 +1009,8 @@ TEST_F(UdfIRBuilderTest, degrees) {
 }
 TEST_F(UdfIRBuilderTest, char_test) {
     auto udf_name = "char";
-    CheckUdf<StringRef,int32_t>(udf_name, "A", 65);
-    CheckUdf<StringRef,int32_t>(udf_name, "B", 322);
+    CheckUdf<StringRef,int32_t>(udf_name, StringRef("A"), 65);
+    CheckUdf<StringRef,int32_t>(udf_name, StringRef("B"), 322);
     
 }
 }  // namespace codegen
