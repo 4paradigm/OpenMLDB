@@ -25,8 +25,7 @@ import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, LongType, ShortType,
-  StringType, StructField, StructType, TimestampType, IntegerType}
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -111,6 +110,21 @@ object HybridseUtil {
     }
   }
 
+  def createComparator(idx: Int, dataType: DataType, row1: UnsafeRow, row2: UnsafeRow): Boolean = {
+    dataType match {
+      case ShortType => row1.getShort(idx) != row2.getShort(idx)
+      case IntegerType => row1.getInt(idx) != row2.getInt(idx)
+      case LongType => row1.getLong(idx) != row2.getLong(idx)
+      case FloatType => row1.getFloat(idx) != row2.getFloat(idx)
+      case DoubleType => row1.getDouble(idx) != row2.getDouble(idx)
+      case BooleanType => row1.getBoolean(idx) != row2.getBoolean(idx)
+      case TimestampType => row1.getLong(idx) != row2.getLong(idx)
+      // TODO(tobe): check for date type
+      case DateType => row1.getLong(idx) != row2.getLong(idx)
+      case StringType => !row1.getString(idx).equals(row2.getString(idx))
+    }
+  }
+
   def createUnsafeGroupKeyComparator(keyIdxs: Array[Int], dataTypes: Array[DataType]):
     (UnsafeRow, UnsafeRow) => Boolean = {
     // TODO(tobe): check for different data types
@@ -118,43 +132,15 @@ object HybridseUtil {
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
       val dataType = dataTypes(0)
-      dataType match {
-        case ShortType => (row1, row2) => {
-          row1.getShort(idx) != row2.getShort(idx)
-        }
-        case IntegerType => (row1, row2) => {
-          row1.getInt(idx) != row2.getInt(idx)
-        }
-        case LongType => (row1, row2) => {
-          row1.getLong(idx) != row2.getLong(idx)
-        }
-        case FloatType => (row1, row2) => {
-          row1.getFloat(idx) != row2.getFloat(idx)
-        }
-        case DoubleType => (row1, row2) => {
-          row1.getDouble(idx) != row2.getDouble(idx)
-        }
-        case BooleanType => (row1, row2) => {
-          row1.getBoolean(idx) != row2.getBoolean(idx)
-        }
-        case TimestampType => (row1, row2) => {
-          row1.getLong(idx) != row2.getLong(idx)
-        }
-        case DateType => (row1, row2) => {
-          // TODO(tobe): check for date type
-          row1.getLong(idx) != row2.getLong(idx)
-        }
-        case StringType => (row1, row2) => {
-          !row1.getString(idx).equals(row2.getString(idx))
-        }
-      }
-
+      (row1, row2) => createComparator(idx, dataType, row1, row2)
     } else {
       (row1, row2) => {
-        keyIdxs.exists(i => row1.getLong(i) != row2.getLong(i))
+        keyIdxs.exists(i => {
+          val dataType = dataTypes(i)
+          createComparator(i, dataType, row1, row2)
+        })
       }
     }
-
 
   }
 
