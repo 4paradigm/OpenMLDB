@@ -8,6 +8,7 @@
 - Support large sql in TaskManager (#1833 @tobegit3hub)
 - Support window union in cluster mode (#1855 #1856 @aceforeverd @dl239)
 - Add micro benchmark tools (#1800 @dl239)
+- Support count_where(*, condition) (#1841 @nautaa)
 
 ### Bug Fixes
 - Offline task will core dump when enable `UnsafeRowOpt` for continuous window over window (#1773 @tobegit3hub)
@@ -19,7 +20,7 @@
 - Cannot read offline path with options when using soft copy with csv file. (#1872 @vagetablechicken)
 
 ### Code Refactoring
-#1766 @hiyoyolumi; #1777 @jmoldyvan; #1779 @SohamRatnaparkhi; #1768 @SaumyaBhushan; #1795 @vighnesh-kadam; #1806 @Mount-Blanc; #1978 @wangxinyu666666; #1781 @SaumyaBhushan; #1786 @xuduling; #1810 @IZUMI-Zu; #1824 @bxiiiiii; #1843 @1korenn; #1851 @zhouxh19; #1862 @Ivyee17; #1867, #1869, #1873 @mangoGoForward; #1863 @Ivyee17; #1815 @jmoldyvan; #1857 @frazie
+#1766 @hiyoyolumi; #1777 @jmoldyvan; #1779 @SohamRatnaparkhi; #1768 @SaumyaBhushan; #1795 @vighnesh-kadam; #1806 @Mount-Blanc; #1978 @wangxinyu666666; #1781 @SaumyaBhushan; #1786 @xuduling; #1810 @IZUMI-Zu; #1824 @bxiiiiii; #1843 @1korenn; #1851 @zhouxh19; #1862 @Ivyee17; #1867, #1869, #1873, #1884 @mangoGoForward; #1863 @Ivyee17; #1815 @jmoldyvan; #1857 @frazie; #1878 @PrajwalBorkar
 
 ## [0.5.0] - 2022-05-07
 
