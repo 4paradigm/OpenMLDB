@@ -41,6 +41,7 @@ jobs:
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
+      CMAKE_BUILD_TYPE: Debug
       TESTING_ENABLE: ON
       NPROC: 8
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
