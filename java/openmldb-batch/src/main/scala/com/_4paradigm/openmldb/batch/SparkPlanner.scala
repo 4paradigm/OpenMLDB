@@ -35,7 +35,7 @@ import org.apache.spark.SparkFiles
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
 import scala.reflect.io.File
 
