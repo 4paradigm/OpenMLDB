@@ -253,7 +253,10 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
         aggr_row_view_.GetStrValue(data_ptr, 0, &pk);
-        aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
+        auto is_null = aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
+        if (is_null) {
+            filter_key.clear();
+        }
         auto insert_pair = aggr_buffer_map_[pk].insert(std::make_pair(filter_key, AggrBufferLocked{}));
         auto& buffer = insert_pair.first->second.buffer_;
         auto val = it->GetValue();

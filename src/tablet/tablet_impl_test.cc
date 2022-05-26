@@ -201,7 +201,7 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "filter_key", openmldb::type::DataType::kString);
 
     SchemaCodec::SetIndex(table_meta->add_column_key(),
-                          "key", "key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
+                          "key", "key|filter_key", "ts_start", ::openmldb::type::kAbsoluteTime, 0, 0);
 }
 
 std::string EncodeAggrRow(const std::string& key, int64_t ts, int32_t val) {
