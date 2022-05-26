@@ -236,6 +236,7 @@ void DistributeWindowIterator::SeekToFirst() {
                 cur_pid_ = kv.first;
                 return;
             }
+            delete it;
         }
     }
     for (const auto& kv : tablet_clients_) {
