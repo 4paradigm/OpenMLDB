@@ -149,6 +149,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowUnion, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_union.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    WindowUnion, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/window_with_union_query.yaml")));
 
 
 
