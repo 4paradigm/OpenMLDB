@@ -227,22 +227,29 @@ void DistributeWindowIterator::SeekToFirst() {
         return;
     }
     for (const auto& kv : *tables_) {
-        it_.reset(kv.second->NewWindowIterator(index_));
-        it_->SeekToFirst();
-        if (it_->Valid()) {
-            cur_pid_ = kv.first;
-            return;
+        auto it = kv.second->NewWindowIterator(index_);
+        if (it != nullptr) {
+            it->SeekToFirst();
+            if (it->Valid()) {
+                DLOG(INFO) << "first pos in local: pid=" << kv.first;
+                it_.reset(it);
+                cur_pid_ = kv.first;
+                return;
+            }
         }
     }
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
-        cur_pid_ = kv.first;
-        kv_it_ = kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, count);
-        if (kv_it_ && kv_it_->Valid()) {
-            response_vec_.emplace_back(kv_it_->GetResponse());
+        auto it = kv.second->Traverse(tid_, kv.first, index_name_, "", 0, FLAGS_traverse_cnt_limit, count);
+        if (it && it->Valid()) {
+            DLOG(INFO) << "first pos in remote: pid=" << kv.first;
+            response_vec_.push_back(it->GetResponse());
+            kv_it_ = it;
+            cur_pid_ = kv.first;
             return;
         }
     }
+    DLOG(INFO) << "empty window iterator";
 }
 
 void DistributeWindowIterator::Next() {
