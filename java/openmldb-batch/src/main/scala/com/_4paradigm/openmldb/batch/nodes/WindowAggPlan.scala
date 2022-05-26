@@ -730,7 +730,7 @@ object WindowAggPlan {
 
 
 
-  def isValidOrder(key: java.lang.Long): Boolean = {
+  def isValidOrder(key: Long): Boolean = {
     // TODO: Ignore the null value, maybe handle null in the future
     if (key == null) {
       false
