@@ -157,6 +157,17 @@ int32_t weekofyear(Date *date) {
     }
 }
 
+void int_to_char(int32_t val, StringRef* output){
+    if (val > 256) 
+        val = val % 256;
+    char *buffer = AllocManagedStringBuf(1);
+    output->size_ = 1;
+    char v=(char)(val);
+    std::string words(&v);
+    memcpy(buffer, words, output->size_);
+    output->data_ = buffer;
+}
+
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
 double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
