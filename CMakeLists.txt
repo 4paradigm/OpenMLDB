@@ -26,6 +26,11 @@ project(openmldb)
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
+
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
+endif()
+
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 5)
@@ -49,7 +54,6 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
 )
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions('-g')
 add_definitions('-Wall')
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -80,6 +84,9 @@ option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
+# add_library can reply on this variable
+# see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
+option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
 
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -87,9 +94,9 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
-if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
-endif()
+set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
@@ -166,7 +173,7 @@ set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 
-set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
+set(VM_LIBS hybridse_sdk hybridse_core ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -175,9 +182,6 @@ llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
-find_package(SWIG REQUIRED)
-include(UseSWIG)
 find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES
 set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")
