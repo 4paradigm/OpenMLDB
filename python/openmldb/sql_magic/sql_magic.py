@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from IPython.core.magic import (Magics, magics_class, line_magic,
-                                cell_magic, line_cell_magic)
+from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 
 @magics_class
 class SqlMagic(Magics):

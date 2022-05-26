@@ -30,7 +30,7 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
 void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT

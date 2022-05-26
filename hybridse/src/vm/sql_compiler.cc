@@ -96,7 +96,7 @@ bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
 
     if (dump_plan_) {
         std::stringstream physical_plan_ss;
-        ctx.physical_plan->Print(physical_plan_ss, "\t");
+        ctx.physical_plan->Print(physical_plan_ss, "");
         ctx.physical_plan_str = physical_plan_ss.str();
     }
     ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);

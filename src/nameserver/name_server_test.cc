@@ -297,7 +297,6 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
 }
 
 TEST_P(NameServerImplTest, ConfigGetAndSet) {
-    openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
