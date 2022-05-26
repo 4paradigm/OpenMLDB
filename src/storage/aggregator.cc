@@ -254,7 +254,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         std::string pk, filter_key;
         aggr_row_view_.GetStrValue(data_ptr, 0, &pk);
         auto is_null = aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
-        if (is_null) {
+        if (is_null == 1) {
             filter_key.clear();
         }
         auto insert_pair = aggr_buffer_map_[pk].insert(std::make_pair(filter_key, AggrBufferLocked{}));

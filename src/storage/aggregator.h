@@ -112,7 +112,7 @@ class AggrBuffer {
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
     AggrBuffer buffer_;
-    explicit AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
+    AggrBufferLocked() : mu_(std::make_unique<std::mutex>()), buffer_() {}
 };
 
 class Aggregator {

@@ -352,8 +352,16 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 auto right = cond_expr->GetChild(1);
                 if (left->GetExprType() == hybridse::node::kExprColumnRef) {
                     filter_col = dynamic_cast<const hybridse::node::ColumnRefNode*>(left)->GetColumnName();
+                    if (right->GetExprType() != hybridse::node::kExprPrimary) {
+                        DLOG(ERROR) << "the other node should be ConstNode";
+                        return false;
+                    }
                 } else if (right->GetExprType() == hybridse::node::kExprColumnRef) {
                     filter_col = dynamic_cast<const hybridse::node::ColumnRefNode*>(right)->GetColumnName();
+                    if (left->GetExprType() != hybridse::node::kExprPrimary) {
+                        DLOG(ERROR) << "the other node should be ConstNode";
+                        return false;
+                    }
                 } else {
                     DLOG(ERROR) << "get filter_col failed";
                     return false;
