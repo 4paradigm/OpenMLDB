@@ -125,7 +125,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 - [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) 和 [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions): 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 可以讨论任何和 OpenMLDB 相关的内容。
 - [技术博客](https://www.zhihu.com/column/c_1417199590352916480)
-- 开发团队的共享空间  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d) | [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
+- 开发团队的共享空间  [中文](https://openmldb.feishu.cn/wiki/space/7101318128021307396) | [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
 - [开发者邮件群组和邮件列表](https://groups.google.com/g/openmldb-developers)
 - 微信交流群：
   ![wechat](docs/zh/about/images/wechat.png)  
