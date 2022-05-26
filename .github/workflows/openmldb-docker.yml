@@ -18,7 +18,7 @@ on:
       OPENMLDB_VERSION:
         description: 'The openmldb version installed in docker. ex: 0.3.0'
         required: true
-        default: '0.3.0'
+        default: '0.5.0'
 
 env:
   IMAGE_NAME: openmldb
@@ -40,7 +40,7 @@ jobs:
       - name: Docker Compose Test
         working-directory: demo
         run: |
-          docker-compose -f docker-compose.test.yml -- up --exit-code-from sut talking
+          docker-compose -f docker-compose.test.yml -- up --exit-code-from sut
 
       - name: Decide Push
         run: |

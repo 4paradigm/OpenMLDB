@@ -31,7 +31,6 @@ DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
-DECLARE_bool(enable_show_tp);
 
 namespace openmldb {
 namespace client {
@@ -767,18 +766,6 @@ bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset
     return true;
 }
 
-void TabletClient::ShowTp() {
-    if (!FLAGS_enable_show_tp) {
-        return;
-    }
-    std::sort(percentile_.begin(), percentile_.end());
-    uint32_t size = percentile_.size();
-    std::cout << "Percentile:99=" << percentile_[(uint32_t)(size * 0.99)]
-              << " ,95=" << percentile_[(uint32_t)(size * 0.95)] << " ,90=" << percentile_[(uint32_t)(size * 0.90)]
-              << " ,50=" << percentile_[(uint32_t)(size * 0.5)] << std::endl;
-    percentile_.clear();
-}
-
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,
                        uint64_t& ts, std::string& msg) {
     ::openmldb::api::GetRequest request;
@@ -787,13 +774,8 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::openmldb::api::TabletServer_Stub::Get, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
     if (response.has_msg()) {
         msg = response.msg();
     }
