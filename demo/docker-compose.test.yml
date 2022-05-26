@@ -5,16 +5,13 @@ services:
       context: .
     volumes:
       - ./predict-taxi-trip-duration/test:/work/taxi-trip/test
-    command: >
-      bash -c "
-      ./init.sh && cd taxi-trip && python3 test/import.py"
-  talking:
-    build:
-      context: .
     command:
       - /bin/bash
       - -cx
       - |
         ./init.sh
-        cd talkingdata
+        sleep 5
+        cd taxi-trip
+        python3 "test/import.py"
+        cd ../talkingdata
         python3 train_and_serve.py

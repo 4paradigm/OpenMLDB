@@ -205,3 +205,15 @@ openmldb.sql_magic.register(db)
 然后可以在Notebook中使用line magic function `%sql`和block magic function `%%sql`。
 
 ![](./images/openmldb_magic_function.png)
+
+## Q&A
+Q: 使用sqlalchemy出现`ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for `，怎么办？
+A: 这个问题通常出现在，除了import openmldb外，还import了其他第三方库，可能导致加载的顺序产生混乱。
+
+由于系统的复杂度，建议你使用virtual env环境，避免干扰。并且，在`import sqlalchemy`前`import openmldb`，并保证这两个import在最前。
+
+Q: python sdk遇到以下问题，如何解决？
+```
+[libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
+```
+A: 该问题可能是别的库引入了protobuf的其他版本。可以尝试使用virtual env环境。

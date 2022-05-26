@@ -85,7 +85,6 @@ DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query sl
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
 
 // thread pool config
-DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
 DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
