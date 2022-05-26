@@ -895,6 +895,19 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
+    RegisterExternal("char_length")
+        .args<StringRef>(static_cast<int32_t (*)(StringRef*)>(udf::v1::char_length))
+        .doc(R"(
+            @brief Returns the length of the string.
+
+            Example:
+
+            @code{.sql}
+                SELECT CHAR_LENGTH('Spark SQL ');
+                --output 10
+            @endcode
+            @since 0.5.0)");
+    RegisterAlias("character_length","char_length"); 
 }
 
 void DefaultUdfLibrary::InitMathUdf() {

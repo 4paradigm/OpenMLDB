@@ -1007,6 +1007,14 @@ TEST_F(UdfIRBuilderTest, degrees) {
     CheckUdf<double, double>(udf_name, -90.0, -pi/2);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
+
+TEST_F(UdfIRBuilderTest, char_length_udf_test) {
+    auto udf_name = "char_length";
+    CheckUdf<int32_t, StringRef>(udf_name, 10, "Spark SQL ");
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, "");
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, nullptr);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

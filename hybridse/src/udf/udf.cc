@@ -157,6 +157,15 @@ int32_t weekofyear(Date *date) {
     }
 }
 
+int32_t char_length(StringRef *str){
+    if (nullptr == str) {
+        return 0;
+    }
+    std::string words = str->ToString();
+    int32_t res = words.length();
+    return res;
+}
+
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
 double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
