@@ -25,7 +25,6 @@ import java.util.Properties;
 public class BenchmarkConfig {
     public static String ZK_CLUSTER = "127.0.0.1:6181";
     public static String ZK_PATH="/onebox";
-    public static String ZK_NS = "featuredb";
     public static String REDIS_IP = "172.27.128.81";
     public static int REDIS_PORT = 6379;
 
@@ -33,6 +32,7 @@ public class BenchmarkConfig {
 
     // memsql can connect via mysql/maraiadb jdbc
     public static String MEMSQL_URL="jdbc:mariadb://localhost:3306";
+
     public static String PARTITION_NUM = "4";
     public static int BATCH_SIZE = 1;
     public static Mode mode = Mode.REQUEST;
@@ -41,7 +41,6 @@ public class BenchmarkConfig {
     public static String ddlUrl;
     public static String scriptUrl;
     public static String relationUrl;
-    public static String jsonUrl;
     public static String commonCol;
 
     private static SqlExecutor executor = null;
@@ -63,13 +62,11 @@ public class BenchmarkConfig {
             prop.load(BenchmarkConfig.class.getClassLoader().getResourceAsStream("conf.properties"));
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
-            ZK_NS = prop.getProperty("ZK_NS");
             PARTITION_NUM = prop.getProperty("PARTITION_NUM");
             ddlUrl = prop.getProperty("ddlUrl");
             NEED_PROXY = Boolean.valueOf(prop.getProperty("HTTP_PROXY"));
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
-            jsonUrl = prop.getProperty("jsonUrl");
             BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
             TIME_DIFF = Integer.valueOf((String)prop.getProperty("TIME_DIFF", "0"));
             String mode_str = prop.getProperty("MODE");

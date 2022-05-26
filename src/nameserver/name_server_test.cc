@@ -45,7 +45,6 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(system_table_replica_num);
 DECLARE_bool(auto_failover);
-DECLARE_bool(enable_timeseries_table);
 
 using brpc::Server;
 using openmldb::tablet::TabletImpl;
@@ -298,7 +297,6 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
 }
 
 TEST_P(NameServerImplTest, ConfigGetAndSet) {
-    openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 

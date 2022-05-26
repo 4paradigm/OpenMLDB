@@ -34,6 +34,7 @@ version = 'v0.5'
 extensions = [
 'myst_parser',
 'sphinx_multiversion',
+'sphinx_copybutton',
 ]
 
 myst_enable_extensions = [

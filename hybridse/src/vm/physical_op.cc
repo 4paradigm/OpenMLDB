@@ -433,7 +433,7 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
             ConditionFilter new_having_condition;
             {
                 auto& having_condition =
-                    dynamic_cast<PhysicalAggrerationNode*>(this)->having_condition_;
+                    dynamic_cast<PhysicalAggregationNode*>(this)->having_condition_;
                 std::vector<const node::ExprNode*> having_condition_depend_columns;
                 having_condition.ResolvedRelatedColumns(&having_condition_depend_columns);
                 passes::ExprReplacer having_replacer;
@@ -444,7 +444,7 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
                 CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
             }
 
-            op = new PhysicalAggrerationNode(children[0], new_projects, new_having_condition.condition());
+            op = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
             break;
         }
         case kGroupAggregation: {
@@ -565,7 +565,7 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(PhysicalO
 }
 
 
-void PhysicalAggrerationNode::Print(std::ostream& output,
+void PhysicalAggregationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);

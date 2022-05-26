@@ -1,0 +1,12 @@
+io.confluent.connect.jdbc.dialect.GenericDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.Db2DatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.DerbyDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.OracleDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.SqliteDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.PostgreSqlDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.MySqlDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.SqlServerDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.SapHanaDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.SybaseDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.VerticaDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.OpenmldbDatabaseDialect$Provider

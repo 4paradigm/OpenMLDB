@@ -14,27 +14,35 @@
 # limitations under the License.
 
 # fmt:off
-import os
 import sys
+from pathlib import Path
+# add parent directory
+sys.path.append(Path(__file__).parent.parent.as_posix())
+import native.sql_router_sdk as sql_router_sdk
+
 import logging
-from native import sql_router_sdk
 from datetime import date
 from datetime import datetime
 from prettytable import PrettyTable
+from warnings import warn
+
 # fmt:on
-sys.path.append(os.path.dirname(__file__) + "/..")
+
 logger = logging.getLogger("OpenMLDB_sdk")
 
+
 class OpenMLDBClusterSdkOptions(object):
-    def __init__(self, zk_cluster, zk_path, session_timeout = 3000):
+    def __init__(self, zk_cluster, zk_path, session_timeout=3000):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         self.session_timeout = session_timeout
+
 
 class OpenMLDBStandaloneSdkOptions(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
+
 
 class OpenMLDBSdk(object):
     def __init__(self, options, is_cluster_mode):
@@ -49,16 +57,19 @@ class OpenMLDBSdk(object):
             options.zk_path = self.options.zk_path
             self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
             if not self.sdk:
-                logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+                logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s" % (
+                    options.zk_cluster, options.zk_path))
                 return False
-            logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s"%(options.zk_cluster, options.zk_path))
+            logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s" % (
+                options.zk_cluster, options.zk_path))
         else:
             options = sql_router_sdk.StandaloneOptions()
             options.host = self.options.host
             options.port = self.options.port
             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
             if not self.sdk:
-                logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (options.host, options.port))
+                logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (
+                    options.host, options.port))
                 return False
             logger.info(
                 "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
@@ -73,7 +84,7 @@ class OpenMLDBSdk(object):
         dbs = sql_router_sdk.VectorString()
         status = sql_router_sdk.Status()
         self.sdk.ShowDB(dbs, status)
-        if status.code !=0:
+        if status.code != 0:
             return False
         output_dbs = []
         for i in range(dbs.size()):
@@ -108,26 +119,6 @@ class OpenMLDBSdk(object):
             raise Exception("please init sdk first")
         return self.sdk.GetAllTables()
 
-    def executeDDL(self, db, ddl):
-        if not self.sdk:
-            return False, "please init sdk first"
-        status = sql_router_sdk.Status()
-        if not self.sdk.ExecuteDDL(db, ddl, status):
-            return False, status.msg
-        else:
-            self.sdk.RefreshCatalog()
-            return True, "ok"
-        
-    def execute_sql(self, db, sql):
-        if not self.sdk:
-            return False, "please init sdk first"
-        status = sql_router_sdk.Status()
-        rs = self.sdk.ExecuteSQL(db, sql, status)
-        if status.code != 0:
-            return False, status.msg
-        else:
-            return True, rs
-        
     def isOnlineMode(self):
         if not self.sdk:
             return False, "please init sdk first"
@@ -135,7 +126,7 @@ class OpenMLDBSdk(object):
 
     def getParameterBuilder(self, data):
         logger.debug("getParameterBuilder data type: %s", str(type(data)))
-        logger.debug(data);
+        logger.debug(data)
         columnTypes = sql_router_sdk.ColumnTypes()
         for col in data:
             col_type = sql_router_sdk.kTypeUnknow
@@ -151,13 +142,14 @@ class OpenMLDBSdk(object):
                 col_type = sql_router_sdk.kTypeTimestamp
             elif isinstance(col, date):
                 col_type = sql_router_sdk.kTypeDate
-            
-            else: 
+            else:
                 return False, "invalid parameter type " + str(type(col))
-            logger.debug("val type {} Column Type {}".format(type(col), sql_router_sdk.DataTypeName(col_type)))
+            logger.debug("val type {} Column Type {}".format(
+                type(col), sql_router_sdk.DataTypeName(col_type)))
             columnTypes.AddColumnType(col_type)
 
-        parameterRow = sql_router_sdk.SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes)
+        parameterRow = sql_router_sdk.SQLRequestRow.CreateSQLRequestRowFromColumnTypes(
+            columnTypes)
         schema = parameterRow.GetSchema()
         ok, msg = self._append_request_row(parameterRow, schema, data)
         if not ok:
@@ -173,7 +165,7 @@ class OpenMLDBSdk(object):
         if status.code != 0:
             return False, status.msg
         return True, row_builder
-    
+
     def getInsertBatchBuilder(self, db, sql):
         if not self.sdk:
             return False, "please init sdk first"
@@ -183,7 +175,7 @@ class OpenMLDBSdk(object):
             return False, status.msg
         return True, rows_builder
 
-    def executeInsert(self, db, sql, row_builder = None):
+    def executeInsert(self, db, sql, row_builder=None):
         if not self.sdk:
             return False, "please init sdk first"
         status = sql_router_sdk.Status()
@@ -206,7 +198,7 @@ class OpenMLDBSdk(object):
         if status.code != 0:
             return False, status.msg
         return True, row_builder
- 
+
     def doRequestQuery(self, db, sql, data):
         if data is None:
             return False, "please init request data"
@@ -217,8 +209,8 @@ class OpenMLDBSdk(object):
         ok, msg = self._append_request_row(requestRow, schema, data)
         if not ok:
             return ok, msg
-        return self.executeQuery(db, sql, requestRow)
-        
+        return self.executeSQL(db, sql, requestRow)
+
     def doParameterizedQuery(self, db, sql, data):
         logging.debug("doParameterizedQuery data: %s", str(data))
         if isinstance(data, tuple) and len(data) > 0:
@@ -228,18 +220,32 @@ class OpenMLDBSdk(object):
         if not ok:
             return False, parameterRow
         return self.executeQueryParameterized(db, sql, parameterRow)
-    def doQuery(self, db, sql):
-        return self.executeQuery(db, sql, None)
 
-    def executeQuery(self, db, sql, row_builder = None):
+    def doQuery(self, db, sql):
+        return self.executeSQL(db, sql, None)
+
+    def executeQuery(self, db, sql, row_builder=None):
+        warn('This method is deprecated.', DeprecationWarning)
+        return self.executeSQL(db, sql, row_builder)
+
+    def executeSQL(self, db, sql, row_builder=None):
+        """
+        1. no row_builder: batch mode
+        2. row_builder: request mode
+        And if db, use this one, if not, use the db setting in sdk
+        """
         if not self.sdk:
             return False, "please init sdk first"
 
         status = sql_router_sdk.Status()
         if row_builder is not None:
+            # TODO(hw): must set db in request mode now, fix later
             rs = self.sdk.ExecuteSQLRequest(db, sql, row_builder, status)
-        else:
+        elif db:
             rs = self.sdk.ExecuteSQL(db, sql, status)
+        else:
+            # if no db specific in here, use the current db in sdk
+            rs = self.sdk.ExecuteSQL(sql, status)
         if status.code != 0:
             return False, status.msg
         else:
@@ -258,14 +264,14 @@ class OpenMLDBSdk(object):
             return False, status.msg
         else:
             return True, rs
-    
+
     def getRowBySp(self, db, sp):
         status = sql_router_sdk.Status()
         row_builder = self.sdk.GetRequestRowByProcedure(db, sp, status)
         if status.code != 0:
             return False, status.msg
         return True, row_builder
-   
+
     def callProc(self, db, sp, rq):
         status = sql_router_sdk.Status()
         rs = self.sdk.CallProcedure(db, sp, rq, status)
@@ -276,20 +282,20 @@ class OpenMLDBSdk(object):
     def doProc(self, db, sp, data):
         ok, requestRow = self.getRowBySp(db, sp)
         if not ok:
-            return ok, requestRow
-        schema = requestRow.GetSchema();
+            return ok, "get row by sp failed"
+        schema = requestRow.GetSchema()
         ok, msg = self._append_request_row(requestRow, schema, data)
         if not ok:
             return ok, msg
         return self.callProc(db, sp, requestRow)
-    
+
     def _append_request_row(self, requestRow, schema, data):
         if isinstance(data, dict):
             return self._append_request_row_with_dict(requestRow, schema, data)
         elif isinstance(data, tuple) and len(data) > 0:
             return self._append_request_row_with_tuple(requestRow, schema, data)
         else:
-            return False, "Invalid row type " + str(type(data));
+            return False, "Invalid row type " + str(type(data))
 
     def _extract_timestamp(self, x):
         if isinstance(x, str):
@@ -311,7 +317,7 @@ class OpenMLDBSdk(object):
             return True, int(dt.timestamp()*1000)
         else:
             return False, "fail extract datetime, invalid type {}".format(type(x))
-    
+
     def _extract_date(self, x):
         if isinstance(x, str):
             logging.debug("append date with string item")
@@ -328,7 +334,7 @@ class OpenMLDBSdk(object):
             return True, (x.year, x.month, x.day)
         else:
             return False, "fail to extract date, invallid type {}".format(type(x))
- 
+
     def _append_request_row_with_tuple(self, requestRow, schema, data):
         appendMap = {
             sql_router_sdk.kTypeBool: requestRow.AppendBool,
@@ -340,7 +346,7 @@ class OpenMLDBSdk(object):
             sql_router_sdk.kTypeString: requestRow.AppendString,
             sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
             sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
-            }
+        }
         count = schema.GetColumnCnt()
         strSize = 0
         for i in range(count):
@@ -352,7 +358,7 @@ class OpenMLDBSdk(object):
                 strSize += len(val)
             else:
                 return False, "column[{}] type is not str".format(i)
-            
+
         requestRow.Init(strSize)
         for i in range(count):
             val = data[i]
@@ -370,13 +376,13 @@ class OpenMLDBSdk(object):
                     return False, val
                 else:
                     logging.debug("timestamp val: {}".format(val))
-            
+
             ok = appendMap[colType](val)
             if not ok:
                 return False, "erred at append data seq {}".format(i)
         ok = requestRow.Build()
         if not ok:
-           return False, "erred at build request row data"
+            return False, "erred at build request row data"
         return ok, ""
 
     def _append_request_row_with_dict(self, requestRow, schema, data):
@@ -390,7 +396,7 @@ class OpenMLDBSdk(object):
             sql_router_sdk.kTypeString: requestRow.AppendString,
             sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
             sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
-            }
+        }
         count = schema.GetColumnCnt()
         strSize = 0
         for i in range(count):
@@ -430,10 +436,9 @@ class OpenMLDBSdk(object):
                 return False, "erred at append data seq {}".format(i)
         ok = requestRow.Build()
         if not ok:
-           return False, "erred at build request row data"
+            return False, "erred at build request row data"
         return ok, ""
 
-    
     def doBatchRowRequest(self, db, sql, commonCol, parameters):
         ok, requestRow = self.getRequestBuilder(db, sql)
         if not ok:
@@ -446,7 +451,7 @@ class OpenMLDBSdk(object):
             colName = schema.GetColumnName(i)
             if colName in commonCol:
                 commonCols.AddCommonColumnIdx(i)
-                commnColAddCount+=1
+                commnColAddCount += 1
         if commnColAddCount != len(commonCol):
             return False, "some common col is not in table schema"
         requestRowBatch = sql_router_sdk.SQLRequestRowBatch(schema, commonCols)
@@ -479,7 +484,7 @@ class OpenMLDBSdk(object):
         status = sql_router_sdk.Status()
 
         log = self.sdk.GetJobLog(id, status)
-        if status.code !=0:
+        if status.code != 0:
             # TODO: Throw exception if get failure status
             return ""
 
@@ -491,6 +496,7 @@ class OpenMLDBSdk(object):
         for row in rows:
             t.add_row(row)
         print(t)
+
 
 class TypeUtil(object):
 

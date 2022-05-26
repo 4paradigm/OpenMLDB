@@ -362,21 +362,12 @@ TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     auto ret = ns->ShowDBTable(db, &tables);
     ASSERT_TRUE(ret.OK());
     ASSERT_EQ(tables.size(), 1);
-    auto tid = tables[0].tid();
-    auto endpoints = mc_->GetTbEndpoint();
-    uint32_t count = 0;
-    for (const auto& endpoint : endpoints) {
-        ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
-        ::openmldb::api::GetTableStatusRequest request;
-        ::openmldb::api::GetTableStatusResponse response;
-        request.set_tid(tid);
-        MockClosure closure;
-        tb1->GetTableStatus(NULL, &request, &response, &closure);
-        for (const auto& table_status : response.all_table_status()) {
-            count += table_status.record_cnt();
-        }
+    {
+        ::hybridse::sdk::Status status;
+        res = router->ExecuteSQL(db, absl::StrCat("select * from ", name), &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(3u, res->Size());
     }
-    ASSERT_EQ(3u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -454,7 +445,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                       "("
                       "col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8, replicanum=2);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -626,7 +617,7 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
                       "("
                       " col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());

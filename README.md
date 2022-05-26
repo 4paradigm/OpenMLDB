@@ -1,5 +1,4 @@
-
-<div align=center><img src="./images/openmldb_logo.png" width="400" /></div>
+![openmldb_logo](docs/en/about/images/openmldb_logo.png)
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
@@ -35,9 +34,7 @@ OpenMLDB is particularly designed as a feature platform for ML applications to a
 
 With those three steps done, the system is ready to serve real-time features, and highly optimized to achieve low latency and high throughput for production.
 
-<p align="center">
- <img src="docs/en/about/images/workflow.png" alt="image-20211103103052253" width=800 />
-</p>
+![workflow](docs/en/about/images/workflow.png)
 
 In order to achieve the goal of Development as Deployment, OpenMLDB is designed to provide consistent features for training and inference. The figure above shows the high-level architecture of OpenMLDB, which consists of four key components: (1) SQL as the unified programming language; (2) The real-time SQL engine for for extra-low latency services; (3) The batch SQL engine based on [a tailored Spark distribution](https://github.com/4paradigm/spark); (4) The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the consistency.
 
@@ -136,13 +133,13 @@ Let's clap hands for our community contributors :clap:
 
 - [Blogs (Chinese)](https://www.zhihu.com/column/c_1417199590352916480)
 
-- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d)
+- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://openmldb.feishu.cn/wiki/space/7101318128021307396)
 
 - [Mailing list for developers](https://groups.google.com/g/openmldb-developers)
 
 - WeChat Groups (Chinese):
 
-  <img src="images/wechat.png" alt="img" width=120 />  
+  ![wechat](docs/en/about/images/wechat.png)  
 
 ## 12. Publications
 
