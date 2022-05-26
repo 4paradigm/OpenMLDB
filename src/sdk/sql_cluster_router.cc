@@ -3057,8 +3057,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        bool ok =
-                            ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
+                        bool ok = ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl,
+                                column_key.index_name(), err);
                         if (!ok) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
