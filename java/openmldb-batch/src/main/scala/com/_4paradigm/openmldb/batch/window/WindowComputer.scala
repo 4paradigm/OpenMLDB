@@ -55,7 +55,10 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // group key comparation
   private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
-  private var unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(config.groupIdxs)
+  private var unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(
+    config.groupIdxs,
+    config.groupIdxs.map(index => config.inputSchema.fields(index).dataType)
+  )
 
   // native function handle
   private val fn = jit.FindFunction(config.functionName)
@@ -256,9 +259,9 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   }
 
   def resetUnsafeGroupKeyComparator(keyIdxs: Array[Int]): Unit = {
-    unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(keyIdxs)
+    unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(
+      keyIdxs, config.groupIdxs.map(index => config.inputSchema.fields(index).dataType))
   }
-
 
   def getWindow: WindowInterface = window
   def getFn: Long = fn

@@ -382,7 +382,8 @@ object WindowAggPlan {
         if (lastUnsafeRow != null) {
           computer.checkUnsafePartition(internalRow.asInstanceOf[UnsafeRow], lastUnsafeRow)
         }
-        lastUnsafeRow = internalRow.asInstanceOf[UnsafeRow]
+        // Notice that we need to deep copy the UnsafeRow object to avoid reused pointer
+        lastUnsafeRow = internalRow.asInstanceOf[UnsafeRow].copy()
 
         val orderKey = computer.extractUnsafeKey(internalRow.asInstanceOf[UnsafeRow])
 
@@ -520,6 +521,8 @@ object WindowAggPlan {
         lastRow = row
 
         val orderKey = computer.extractKey(row)
+
+
         val expandedFlag = row.getBoolean(config.expandedFlagIdx)
         if (!isValidOrder(orderKey)) {
           None
@@ -539,6 +542,7 @@ object WindowAggPlan {
         }
         lastRow = row
         val orderKey = computer.extractKey(row)
+
         if (isValidOrder(orderKey)) {
           Some(computer.compute(row, orderKey, config.keepIndexColumn, config.unionFlagIdx, config.inputSchema.length,
             outputSchema, sqlConfig.enableUnsafeRowOptimization))

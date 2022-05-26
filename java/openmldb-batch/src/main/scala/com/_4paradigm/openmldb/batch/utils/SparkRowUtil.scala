@@ -81,6 +81,7 @@ object SparkRowUtil {
   }
 
   def unsafeGetLongFromIndex(keyIdx: Int, colType: DataType, row: UnsafeRow): java.lang.Long = {
+
     if (row.isNullAt(keyIdx)) {
       null
     } else {

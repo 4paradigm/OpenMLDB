@@ -25,7 +25,8 @@ import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{DataType, LongType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, LongType, ShortType,
+  StringType, StructField, StructType, TimestampType, IntegerType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -97,6 +98,7 @@ object HybridseUtil {
   }
 
   def createGroupKeyComparator(keyIdxs: Array[Int]): (Row, Row) => Boolean = {
+
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
       (row1, row2) => {
@@ -109,19 +111,51 @@ object HybridseUtil {
     }
   }
 
-  def createUnsafeGroupKeyComparator(keyIdxs: Array[Int]): (UnsafeRow, UnsafeRow) => Boolean = {
+  def createUnsafeGroupKeyComparator(keyIdxs: Array[Int], dataTypes: Array[DataType]):
+    (UnsafeRow, UnsafeRow) => Boolean = {
     // TODO(tobe): check for different data types
 
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
-      (row1, row2) => {
-        row1.getLong(idx) != row2.getLong(idx)
+      val dataType = dataTypes(0)
+      dataType match {
+        case ShortType => (row1, row2) => {
+          row1.getShort(idx) != row2.getShort(idx)
+        }
+        case IntegerType => (row1, row2) => {
+          row1.getInt(idx) != row2.getInt(idx)
+        }
+        case LongType => (row1, row2) => {
+          row1.getLong(idx) != row2.getLong(idx)
+        }
+        case FloatType => (row1, row2) => {
+          row1.getFloat(idx) != row2.getFloat(idx)
+        }
+        case DoubleType => (row1, row2) => {
+          row1.getDouble(idx) != row2.getDouble(idx)
+        }
+        case BooleanType => (row1, row2) => {
+          row1.getBoolean(idx) != row2.getBoolean(idx)
+        }
+        case TimestampType => (row1, row2) => {
+          row1.getLong(idx) != row2.getLong(idx)
+        }
+        case DateType => (row1, row2) => {
+          // TODO(tobe): check for date type
+          row1.getLong(idx) != row2.getLong(idx)
+        }
+        case StringType => (row1, row2) => {
+          !row1.getString(idx).equals(row2.getString(idx))
+        }
       }
+
     } else {
       (row1, row2) => {
         keyIdxs.exists(i => row1.getLong(i) != row2.getLong(i))
       }
     }
+
+
   }
 
   def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {
