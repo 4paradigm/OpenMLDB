@@ -159,6 +159,10 @@ int32_t weekofyear(Date *date) {
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
+double degree_to_radius(double degree){
+    return degree/180.0L*3.141592653589793238463L;
+}
+
 double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
 
 void date_format(Timestamp *timestamp,

@@ -1007,6 +1007,13 @@ TEST_F(UdfIRBuilderTest, degrees) {
     CheckUdf<double, double>(udf_name, -90.0, -pi/2);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
+TEST_F(UdfIRBuilderTest, degree_to_radius_check) {
+    auto udf_name = "radians";
+    CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
+    CheckUdf<double, double>(udf_name, 1.570796326794896619231, 90);
+    CheckUdf<double, double>(udf_name, 0, 0);
+    CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
+}
 }  // namespace codegen
 }  // namespace hybridse
 
