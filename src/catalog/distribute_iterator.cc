@@ -255,8 +255,8 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
             delete it;
         }
     }
-    DLOG(INFO) << "seek to key " << key << " from remote. "
-               << " cur_pid " << cur_pid_;
+    DLOG(INFO) << "seeking to key " << key << " from remote. "
+               << " cur_pid " << pid;
     auto client_iter = tablet_clients_.find(pid);
     if (client_iter != tablet_clients_.end()) {
         std::string msg;
@@ -268,7 +268,7 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 
     // fallback
     for (const auto& kv : *tables_) {
-        if (kv.first <= cur_pid_) {
+        if (kv.first <= pid) {
             continue;
         }
         auto it = kv.second->NewWindowIterator(index_);

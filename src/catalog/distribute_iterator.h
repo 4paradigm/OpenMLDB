@@ -145,12 +145,13 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     ItStat SeekByKey(const std::string& key) const;
 
  private:
-    uint32_t tid_;
-    uint32_t pid_num_;
+    const uint32_t tid_;
+    const uint32_t pid_num_;
     std::shared_ptr<Tables> tables_;
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients_;
-    uint32_t index_;
-    std::string index_name_;
+    const uint32_t index_;
+    const std::string index_name_;
+
     uint32_t cur_pid_;
     // iterator to locally data
     IT it_;
