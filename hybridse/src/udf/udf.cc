@@ -157,11 +157,11 @@ int32_t weekofyear(Date *date) {
     }
 }
 
-void int_to_char(int32_t val, StringRef* output){
-    if (val > 256) 
+void int_to_char(int32_t val, StringRef* output) {
+    if (val > 256)
         val = val % 256;
     output->size_ = 1;
-    char v=(char)(val);
+    char v = static_cast<char>(val);
     std::string word(&v);
     output->data_ = word;
 }
