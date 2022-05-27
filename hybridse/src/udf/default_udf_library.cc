@@ -892,7 +892,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 SELECT REVERSE('abc') as str1;
                 --output "cba"
             @endcode
-            @since 0.4.0)");    
+            @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
 }
@@ -1288,8 +1288,7 @@ void DefaultUdfLibrary::InitMathUdf() {
             @since 0.5.0)");
     RegisterExternal("RADIANS")
         .args<double>(
-            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
-        
+            static_cast<double (*)(double)>(udf::v1::degree_to_radius))       
         .doc(R"(
             @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
 
