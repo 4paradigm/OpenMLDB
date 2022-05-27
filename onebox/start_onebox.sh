@@ -19,8 +19,6 @@ set -x -e
 cd "$(dirname "$0")/../"
 
 ulimit -c unlimited
-# rm -rf logs/
-# mkdir -p logs
 
 # the subdirectory can be set through the environment variable ONEBOX_WORKDIR
 WORKSPACE=${ONEBOX_WORKDIR:-onebox/workspace}
