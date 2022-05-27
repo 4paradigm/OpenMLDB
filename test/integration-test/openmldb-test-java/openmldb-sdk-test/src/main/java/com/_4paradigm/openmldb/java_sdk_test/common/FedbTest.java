@@ -54,8 +54,8 @@ public class FedbTest extends BaseTest {
         }else{
             FedbGlobalVar.mainInfo = FEDBInfo.builder()
                     .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/fedb-auto-test/tmp")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+                    .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
+                    .fedbPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
                     .zk_cluster("172.24.4.55:10000")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)

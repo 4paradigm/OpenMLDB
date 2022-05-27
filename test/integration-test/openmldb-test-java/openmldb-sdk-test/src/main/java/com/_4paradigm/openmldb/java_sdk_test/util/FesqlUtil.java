@@ -1291,4 +1291,12 @@ public class FesqlUtil {
         }
         throw new IllegalArgumentException("not know type");
     }
+    public static void setOnline(SqlExecutor sqlExecutor){
+        Statement statement = sqlExecutor.getStatement();
+        try {
+            statement.execute("SET @@execute_mode='online';");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
