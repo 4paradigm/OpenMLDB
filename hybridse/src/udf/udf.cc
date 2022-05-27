@@ -163,7 +163,7 @@ void int_to_char(int32_t val, StringRef* output) {
     output->size_ = 1;
     char v = static_cast<char>(val);
     std::string s;
-    s = c;
+    s = v;
     output->data_ = s.c_str();
 }
 
