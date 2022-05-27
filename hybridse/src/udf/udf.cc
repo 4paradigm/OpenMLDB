@@ -159,9 +159,7 @@ int32_t weekofyear(Date *date) {
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-double M_PI = 3.141592653589793238463L;
-
-double degree_to_radius(double degree){
+double degree_to_radius(double degree) {
     return degree/180.0L*M_PI;
 }
 
