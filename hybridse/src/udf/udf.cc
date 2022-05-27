@@ -161,8 +161,7 @@ int32_t char_length(StringRef *str){
     if (nullptr == str) {
         return 0;
     }
-    std::string words = str->ToString();
-    int32_t res = words.length();
+    int32_t res = str->size_;
     return res;
 }
 
