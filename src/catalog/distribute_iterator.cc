@@ -267,19 +267,6 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
     }
 
     // fallback
-    for (const auto& kv : *tables_) {
-        if (kv.first <= pid) {
-            continue;
-        }
-        auto it = kv.second->NewWindowIterator(index_);
-        if (it != nullptr) {
-            it->SeekToFirst();
-            if (it->Valid()) {
-                return {static_cast<int32_t>(kv.first), it, {}};
-            }
-            delete it;
-        }
-    }
     return {-1, nullptr, {}};
 }
 
