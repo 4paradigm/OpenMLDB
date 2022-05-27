@@ -225,7 +225,6 @@ int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
 int32_t char_length(StringRef *str);
-
 float Cotf(float x);
 double Degrees(double x);
 
@@ -273,7 +272,6 @@ void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void init_udfcontext(UDFContext* context);
 void trivial_fun();
-
 /**
  * Allocate string buffer from jit runtime.
  */
