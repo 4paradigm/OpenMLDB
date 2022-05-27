@@ -162,7 +162,9 @@ void int_to_char(int32_t val, StringRef* output) {
         val = val % 256;
     output->size_ = 1;
     char v = static_cast<char>(val);
-    output->data_ = &v;
+    std::string s;
+    s = c;
+    output->data_ = s.c_str();
 }
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
