@@ -160,12 +160,10 @@ int32_t weekofyear(Date *date) {
 void int_to_char(int32_t val, StringRef* output){
     if (val > 256) 
         val = val % 256;
-    char *buffer = AllocManagedStringBuf(1);
     output->size_ = 1;
     char v=(char)(val);
-    std::string words(&v);
-    memcpy(buffer, (void*) words.c_str(), output->size_);
-    output->data_ = buffer;
+    std::string word(&v);
+    output->data_ = word;
 }
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
