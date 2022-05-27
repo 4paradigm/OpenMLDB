@@ -1011,6 +1011,7 @@ TEST_F(UdfIRBuilderTest, degrees) {
 TEST_F(UdfIRBuilderTest, char_length_udf_test) {
     auto udf_name = "char_length";
     CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL "));
+    CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL\n"));
     CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, StringRef(""));
     CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, nullptr);
 }
