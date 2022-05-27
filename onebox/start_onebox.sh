@@ -22,12 +22,15 @@ ulimit -c unlimited
 # rm -rf logs/
 # mkdir -p logs
 
+# The subdirectory can be set through the environment variable ONEBOX_WORK
 workspace=$ONEBOX_WORK
 
 IP=127.0.0.1
 
-if [ ! -n $workspace ]; then  
-  $workspace="workspace"
+# work unified file directory
+if [ ! -n "$workspace" ]; then
+  # default work directory
+  workspace="workspace"
   rm -rf $workspace/logs/
   mkdir -p $workspace/logs
 fi    
