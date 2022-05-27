@@ -907,7 +907,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output 10
             @endcode
             @since 0.6.0)");
-    RegisterAlias("character_length", "char_length"); 
+    RegisterAlias("character_length", "char_length");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {
