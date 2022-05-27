@@ -895,12 +895,12 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
-        RegisterExternal("char")
+    RegisterExternal("char")
         .args<int32_t>(
             static_cast<void (*)(int32_t, StringRef*)>(udf::v1::int_to_char))
         .return_by_arg(true)
         .doc(R"(
-            @brief Returns the ASCII character having the binary equivalent to expr. If n is larger than 256 the result is equivalent to chr(n % 256).
+            @brief Returns the ASCII character having the binary equivalent to expr. If n is larger than 256 the result is equivalent to char(n % 256).
 
             Example:
 
@@ -908,7 +908,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 SELECT char(65);
                 --output "A"
             @endcode
-            @since 0.5.0)");
+            @since 0.6.0)");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {
