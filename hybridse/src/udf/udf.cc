@@ -157,7 +157,7 @@ int32_t weekofyear(Date *date) {
     }
 }
 
-int32_t char_length(StringRef *str){
+int32_t char_length(StringRef *str) {
     if (nullptr == str) {
         return 0;
     }
