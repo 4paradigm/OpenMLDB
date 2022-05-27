@@ -1007,10 +1007,11 @@ TEST_F(UdfIRBuilderTest, degrees) {
     CheckUdf<double, double>(udf_name, -90.0, -pi/2);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
-TEST_F(UdfIRBuilderTest, char_test) {
+TEST_F(UdfIRBuilderTest, charTest) {
     auto udf_name = "char";
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("A"), 65);
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("B"), 322);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef("N"), -178);
     CheckUdf<Nullable<StringRef>, Nullable<int32_t>>(udf_name, nullptr, nullptr);
 }
 }  // namespace codegen
