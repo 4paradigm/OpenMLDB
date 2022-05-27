@@ -274,8 +274,6 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void init_udfcontext(UDFContext* context);
 void trivial_fun();
 
-
-
 /**
  * Allocate string buffer from jit runtime.
  */
