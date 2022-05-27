@@ -164,7 +164,7 @@ void int_to_char(int32_t val, StringRef* output){
     output->size_ = 1;
     char v=(char)(val);
     std::string words(&v);
-    memcpy(buffer, (void*)words.c_str(), output->size_);
+    memcpy(buffer, (void*) words.c_str(), output->size_);
     output->data_ = buffer;
 }
 
