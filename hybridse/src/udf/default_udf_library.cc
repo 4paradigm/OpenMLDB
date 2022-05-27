@@ -892,8 +892,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 SELECT REVERSE('abc') as str1;
                 --output "cba"
             @endcode
-            @since 0.4.0)");
-    
+            @since 0.4.0)");    
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
 }
@@ -1300,7 +1299,7 @@ void DefaultUdfLibrary::InitMathUdf() {
                 SELECT RADIANS(90);
                 --output 1.570796326794896619231
             @endcode
-            @since 0.5.0)");
+            @since 0.6.0)");
     InitTrigonometricUdf();
 }
 
