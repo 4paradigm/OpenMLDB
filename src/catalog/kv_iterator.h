@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_KV_ITERATOR_H_
-#define SRC_BASE_KV_ITERATOR_H_
+#ifndef SRC_CATALOG_KV_ITERATOR_H_
+#define SRC_CATALOG_KV_ITERATOR_H_
 
 #include <stdint.h>
 #include <stdio.h>
@@ -28,7 +28,7 @@
 #include "proto/tablet.pb.h"
 
 namespace openmldb {
-namespace base {
+namespace catalog {
 
 class KvIterator {
  public:
@@ -42,7 +42,7 @@ class KvIterator {
 
     const std::string& GetPK() const { return pk_; }
 
-    Slice GetValue() const { return tmp_; }
+    openmldb::base::Slice GetValue() const { return tmp_; }
 
     bool IsFinish() const { return is_finish_; }
 
@@ -60,7 +60,7 @@ class KvIterator {
     uint32_t offset_;
     uint32_t c_size_;
     uint64_t time_;
-    Slice tmp_;
+    openmldb::base::Slice tmp_;
     std::string pk_;
 };
 
@@ -152,6 +152,6 @@ class TraverseKvIterator : public KvIterator {
     uint64_t last_ts_;
 };
 
-}  // namespace base
+}  // namespace catalog
 }  // namespace openmldb
-#endif  // SRC_BASE_KV_ITERATOR_H_
+#endif  // SRC_CATALOG_KV_ITERATOR_H_

@@ -30,7 +30,6 @@
 #include "base/hash.h"
 #include "base/ip.h"
 #include "base/linenoise.h"
-#include "base/kv_iterator.h"
 #include "base/server_name.h"
 #include "base/strings.h"
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -41,6 +40,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
+#include "catalog/kv_iterator.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "cmd/display.h"
@@ -1627,7 +1627,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     }
     bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
-        std::shared_ptr<::openmldb::base::KvIterator> it;
+        std::shared_ptr<::openmldb::catalog::KvIterator> it;
         if (is_pair_format) {
             it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
         } else {
@@ -1648,7 +1648,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             return;
         } else {
-            std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
+            std::vector<std::shared_ptr<::openmldb::catalog::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
             ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
             ::openmldb::cmd::ShowTableRows(key, &sdk_it, tables[0].compress_type());
@@ -1675,7 +1675,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 return;
             }
         }
-        std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
+        std::vector<std::shared_ptr<::openmldb::catalog::KvIterator>> iter_vec;
         if (tables[0].partition_key_size() > 0) {
             for (uint32_t cur_pid = 0; cur_pid < (uint32_t)tables[0].table_partition_size(); cur_pid++) {
                 tb_client = GetTabletClient(tables[0], cur_pid, msg);
@@ -1683,7 +1683,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                     std::cout << "failed to scan. error msg: " << msg << std::endl;
                     return;
                 }
-                std::shared_ptr<::openmldb::base::KvIterator> it(
+                std::shared_ptr<::openmldb::catalog::KvIterator> it(
                     tb_client->Scan(tid, cur_pid, key, index_name, st, et, limit, msg));
                 if (!it) {
                     std::cout << "Fail to scan table. error msg: " << msg << std::endl;
@@ -1692,7 +1692,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 iter_vec.push_back(std::move(it));
             }
         } else {
-            std::shared_ptr<::openmldb::base::KvIterator> it(
+            std::shared_ptr<::openmldb::catalog::KvIterator> it(
                 tb_client->Scan(tid, pid, key, index_name, st, et, limit, msg));
             if (!it) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
@@ -3396,7 +3396,7 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
     tp.AddRow(row);
     uint32_t index = 1;
     uint32_t count = 0;
-    ::openmldb::base::KvIterator* it =
+    ::openmldb::catalog::KvIterator* it =
         client->Traverse(tid, pid, "", "", 0, limit, count);
     if (it == NULL) {
         std::cout << "Fail to preview table" << std::endl;

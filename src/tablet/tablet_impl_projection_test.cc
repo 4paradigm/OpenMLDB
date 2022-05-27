@@ -22,9 +22,9 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
-#include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "brpc/channel.h"
+#include "catalog/kv_iterator.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
@@ -668,7 +668,7 @@ TEST_P(TabletProjectTest, scan_case) {
         tablet_.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(1, (int64_t)srp->count());
-        ::openmldb::base::ScanKvIterator kv_it(args->pk, srp);
+        ::openmldb::catalog::ScanKvIterator kv_it(args->pk, srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(kv_it.GetValue().size(), args->output_row.size());
         codec::RowView left(args->output_schema);

@@ -303,7 +303,7 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
 }
 
 RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
-        const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
+        const std::shared_ptr<::openmldb::catalog::KvIterator>& kv_it,
         const std::shared_ptr<openmldb::client::TabletClient>& client)
     : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
         is_traverse_data_(false), ts_(0), ts_cnt_(0) {
@@ -312,7 +312,7 @@ RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std
         ts_ = kv_it_->GetKey();
         ts_cnt_ = 1;
         response_vec_.emplace_back(kv_it_->GetResponse());
-        auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it);
+        auto traverse_it = std::dynamic_pointer_cast<openmldb::catalog::TraverseKvIterator>(kv_it);
         if (traverse_it) {
             is_traverse_data_ = true;
         }

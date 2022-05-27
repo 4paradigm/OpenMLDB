@@ -21,7 +21,6 @@
 #include <boost/bind.hpp>
 
 #include "base/glog_wapper.h"
-#include "base/kv_iterator.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"

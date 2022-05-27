@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "base/kv_iterator.h"
 
 #include <iostream>
 
 #include "base/strings.h"
+#include "catalog/kv_iterator.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
 
 namespace openmldb {
-namespace base {
+namespace catalog {
 
 class KvIteratorTest : public ::testing::Test {
  public:
@@ -98,7 +98,7 @@ TEST_F(KvIteratorTest, HasPK) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
-}  // namespace base
+}  // namespace catalog
 }  // namespace openmldb
 
 int main(int argc, char** argv) {

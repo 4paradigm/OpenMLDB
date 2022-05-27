@@ -30,7 +30,6 @@
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/hash.h"
-#include "base/kv_iterator.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "base/taskpool.hpp"

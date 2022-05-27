@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "base/hash.h"
-#include "base/kv_iterator.h"
+#include "catalog/kv_iterator.h"
 #include "client/tablet_client.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
@@ -62,7 +62,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     bool in_local_;
     uint32_t cur_pid_;
     std::unique_ptr<::openmldb::storage::TableIterator> it_;
-    std::shared_ptr<::openmldb::base::TraverseKvIterator> kv_it_;
+    std::shared_ptr<::openmldb::catalog::TraverseKvIterator> kv_it_;
     uint64_t key_;
     uint64_t last_ts_;
     std::string last_pk_;
@@ -73,7 +73,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
-            const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
+            const std::shared_ptr<::openmldb::catalog::KvIterator>& kv_it,
             const std::shared_ptr<openmldb::client::TabletClient>& client);
 
     bool Valid() const override;
@@ -101,7 +101,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     uint32_t tid_;
     uint32_t pid_;
     std::string index_name_;
-    std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::shared_ptr<::openmldb::catalog::KvIterator> kv_it_;
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
@@ -136,7 +136,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     std::string index_name_;
     uint32_t cur_pid_;
     std::unique_ptr<::hybridse::codec::WindowIterator> it_;
-    std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::shared_ptr<::openmldb::catalog::KvIterator> kv_it_;
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 
