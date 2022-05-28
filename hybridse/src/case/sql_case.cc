@@ -1619,5 +1619,17 @@ std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
         return std::set<std::string>({"0"});
     }
 }
+
+std::string SqlCase::SqlCaseBaseDir() {
+    char* value = getenv("SQL_CASE_BASE_DIR");
+    if (value != nullptr) {
+        return std::string(value);
+    }
+    value = getenv("YAML_CASE_BASE_DIR");
+    if (value != nullptr) {
+        return std::string(value);
+    }
+    return "";
+}
 }  // namespace sqlcase
 }  // namespace hybridse
