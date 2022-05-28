@@ -909,6 +909,19 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "A"
             @endcode
             @since 0.6.0)");
+    RegisterExternal("char_length")
+        .args<StringRef>(static_cast<int32_t (*)(StringRef*)>(udf::v1::char_length))
+        .doc(R"(
+            @brief Returns the length of the string. It is measured in characters and multibyte character string is not supported.
+
+            Example:
+
+            @code{.sql}
+                SELECT CHAR_LENGTH('Spark SQL ');
+                --output 10
+            @endcode
+            @since 0.6.0)");
+    RegisterAlias("character_length", "char_length");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {

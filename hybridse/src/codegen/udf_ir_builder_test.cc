@@ -1014,6 +1014,13 @@ TEST_F(UdfIRBuilderTest, charTest) {
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("N"), -178);
     CheckUdf<Nullable<StringRef>, Nullable<int32_t>>(udf_name, nullptr, nullptr);
 }
+TEST_F(UdfIRBuilderTest, char_length_udf_test) {
+    auto udf_name = "char_length";
+    CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL "));
+    CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL\n"));
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, StringRef(""));
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, nullptr);
+}
 TEST_F(UdfIRBuilderTest, degree_to_radius_check) {
     auto udf_name = "radians";
     CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);

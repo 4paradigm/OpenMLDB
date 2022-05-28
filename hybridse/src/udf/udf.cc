@@ -167,6 +167,13 @@ void int_to_char(int32_t val, StringRef* output) {
     memcpy(buffer, &v, output->size_);
     output->data_ = buffer;
 }
+int32_t char_length(StringRef *str) {
+    if (nullptr == str) {
+        return 0;
+    }
+    int32_t res = str->size_;
+    return res;
+}
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
