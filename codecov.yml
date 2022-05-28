@@ -1,3 +1,4 @@
 codecov:
   notify:
-    wait_for_ci: no
+    wait_for_ci: yes
+    require_ci_to_pass: no

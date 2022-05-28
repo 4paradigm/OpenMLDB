@@ -275,7 +275,7 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     for (int i = 0; i < 100; i++) {
         std::string key = "card" + std::to_string(i);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key)) % 4;
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key)) % 4;
         cout_map[pid]++;
         if (pid % 2 == 0) {
             PutKey(key, (*tables)[pid]);
@@ -317,7 +317,7 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     for (int i = 0; i < 20; i++) {
         std::string key = "card" + std::to_string(i);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key)) % 4;
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key)) % 4;
         if (pid % 2 == 0) {
             PutKey(key, (*tables)[pid]);
         } else {
