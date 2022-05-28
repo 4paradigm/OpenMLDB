@@ -1013,6 +1013,7 @@ TEST_F(UdfIRBuilderTest, charTest) {
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("B"), 322);
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("N"), -178);
     CheckUdf<Nullable<StringRef>, Nullable<int32_t>>(udf_name, nullptr, nullptr);
+}
 TEST_F(UdfIRBuilderTest, degree_to_radius_check) {
     auto udf_name = "radians";
     CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
