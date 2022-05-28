@@ -157,6 +157,14 @@ int32_t weekofyear(Date *date) {
     }
 }
 
+int32_t char_length(StringRef *str) {
+    if (nullptr == str) {
+        return 0;
+    }
+    int32_t res = str->size_;
+    return res;
+}
+
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
 double degree_to_radius(double degree) {
