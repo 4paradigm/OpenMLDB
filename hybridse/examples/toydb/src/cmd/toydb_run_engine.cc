@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include <utility>
+
+#include "absl/strings/match.h"
 #include "testing/toydb_engine_test_base.h"
 
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
@@ -61,12 +63,14 @@ int DoRunEngine(const SqlCase& sql_case, const EngineOptions& options,
 
 int RunSingle(const std::string& yaml_path) {
     std::vector<SqlCase> cases;
-    if (!SqlCase::CreateSqlCasesFromYaml("", yaml_path, cases)) {
+    // TODO(ace): it become impossible for those want to give case_dir as absolute path, because final case dir always
+    // prefixed with base dir. Should support both
+    if (!SqlCase::CreateSqlCasesFromYaml(SqlCase::SqlCaseBaseDir(), yaml_path, cases)) {
         LOG(WARNING) << "Load cases from " << yaml_path << " failed";
         return ENGINE_TEST_RET_INVALID_CASE;
     }
     EngineOptions options;
-    options.SetClusterOptimized(FLAGS_cluster_mode == "cluster");
+    options.SetClusterOptimized(absl::EqualsIgnoreCase(FLAGS_cluster_mode, "cluster"));
     options.SetBatchRequestOptimized(FLAGS_enable_batch_request_opt);
     options.SetEnableExprOptimize(FLAGS_enable_expr_opt);
     JitOptions& jit_options = options.jit_options();
@@ -80,9 +84,9 @@ int RunSingle(const std::string& yaml_path) {
             continue;
         }
         EngineMode mode;
-        if (FLAGS_runner_mode == "batch") {
+        if (absl::EqualsIgnoreCase(FLAGS_runner_mode, "batch")) {
             mode = kBatchMode;
-        } else if (FLAGS_runner_mode == "request") {
+        } else if (absl::EqualsIgnoreCase(FLAGS_runner_mode, "request")) {
             mode = kRequestMode;
         } else {
             mode = kBatchRequestMode;
