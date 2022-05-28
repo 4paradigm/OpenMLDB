@@ -505,7 +505,7 @@ int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, u
         DLOG(INFO) << "Run batch plan output is empty";
         return 0;
     }
-    switch (output->GetHanlderType()) {
+    switch (output->GetHandlerType()) {
         case kTableHandler: {
             auto iter = std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             if (!iter) {

@@ -86,7 +86,7 @@ class DataHandler : public ListV<Row> {
     virtual const std::string& GetDatabase() = 0;
 
     /// Return the type of DataHandler.
-    virtual const HandlerType GetHanlderType() = 0;
+    virtual const HandlerType GetHandlerType() = 0;
     /// Return the name of handler type
     virtual const std::string GetHandlerTypeName() = 0;
     /// Return dataset status. Default is hybridse::common::kOk
@@ -167,7 +167,7 @@ class RowHandler : public DataHandler {
 
     /// Return the HandlerType of the row handler.
     /// Return HandlerType::kRowHandler by default
-    const HandlerType GetHanlderType() override { return kRowHandler; }
+    const HandlerType GetHandlerType() override { return kRowHandler; }
 
     /// Return value of row
     virtual const Row& GetValue() = 0;
@@ -229,7 +229,7 @@ class TableHandler : public DataHandler {
 
     /// Return the HandlerType of the dataset.
     /// Return HandlerType::kTableHandler by default
-    const HandlerType GetHanlderType() override { return kTableHandler; }
+    const HandlerType GetHandlerType() override { return kTableHandler; }
 
     /// Return partition handler of specify partition binding to given index.
     /// Return `null` by default.
@@ -358,7 +358,7 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
 
     /// Return HandlerType::kPartitionHandler by default
-    const HandlerType GetHanlderType() override { return kPartitionHandler; }
+    const HandlerType GetHandlerType() override { return kPartitionHandler; }
 
     /// Return empty row, cause partition dataset does not support At operation.
     virtual Row At(uint64_t pos) { return Row(); }

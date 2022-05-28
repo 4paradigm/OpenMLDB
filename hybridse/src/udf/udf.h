@@ -225,6 +225,7 @@ int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
 void int_to_char(int32_t, StringRef*);
+double degree_to_radius(double degree);
 
 float Cotf(float x);
 double Degrees(double x);

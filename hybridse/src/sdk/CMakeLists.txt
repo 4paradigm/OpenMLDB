@@ -18,7 +18,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 
 set(SDK_DEPS_LIBS hybridse_core hybridse_flags
-		${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
+		${yaml_libs} ${Boost_filesystem_LIBRARY} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${OS_LIB} )
 
 # split sdk test and bm
 set(SDK_SRC_FILE_LIST)
@@ -33,13 +33,13 @@ foreach(SRC_FILE ${BM_FILES})
 endforeach()
 
 # hybridse sdk library
-add_library(hybridse_sdk STATIC ${SDK_SRC_FILE_LIST})
+add_library(hybridse_sdk ${SDK_SRC_FILE_LIST})
 target_link_libraries(hybridse_sdk ${SDK_DEPS_LIBS})
 
 set_property(SOURCE hybridse_interface_core.i PROPERTY CPLUSPLUS ON)
 
 set(sdk_core_deps_libs
-  hybridse_core hybridse_flags ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
+  hybridse_core hybridse_flags ${yaml_libs} ${Boost_filesystem_LIBRARY} ${LLVM_LIBS} ${ZETASQL_LIBS} ${COMMON_LIBS} )
 set_property(SOURCE hybridse_interface_core.i PROPERTY COMPILE_OPTIONS -package com._4paradigm)
 
 if(SQL_JAVASDK_ENABLE)
