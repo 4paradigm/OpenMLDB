@@ -19,27 +19,27 @@ import tornado.web
 import tornado.ioloop
 import json
 import lightgbm as lgb
-import sqlalchemy as db
 import requests
 import argparse
 
 bst = None
 
 table_schema = [
-	("id", "string"),
-	("vendor_id", "int"),
-	("pickup_datetime", "timestamp"),
-	("dropoff_datetime", "timestamp"),
-	("passenger_count", "int"),
-	("pickup_longitude", "double"),
-	("pickup_latitude", "double"),
-	("dropoff_longitude", "double"),
-	("dropoff_latitude", "double"),
-	("store_and_fwd_flag", "string"),
-	("trip_duration", "int"),
+    ("id", "string"),
+    ("vendor_id", "int"),
+    ("pickup_datetime", "timestamp"),
+    ("dropoff_datetime", "timestamp"),
+    ("passenger_count", "int"),
+    ("pickup_longitude", "double"),
+    ("pickup_latitude", "double"),
+    ("dropoff_longitude", "double"),
+    ("dropoff_latitude", "double"),
+    ("store_and_fwd_flag", "string"),
+    ("trip_duration", "int"),
 ]
 
 url = ""
+
 
 def get_schema():
     dict_schema = {}
@@ -47,17 +47,20 @@ def get_schema():
         dict_schema[i[0]] = i[1]
     return dict_schema
 
+
 dict_schema = get_schema()
 json_schema = json.dumps(dict_schema)
 
+
 def build_feature(rs):
-    var_Y = [rs[0]]
-    var_X = [rs[1:12]]
-    return np.array(var_X)
+    var_x = [rs[1:12]]
+    return np.array(var_x)
+
 
 class SchemaHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(json_schema)
+
 
 class PredictHandler(tornado.web.RequestHandler):
     def post(self):
@@ -72,7 +75,8 @@ class PredictHandler(tornado.web.RequestHandler):
                 row_data.append(row.get(i[0], 0))
             else:
                 row_data.append(None)
-        data["input"].append(row_data)       
+
+        data["input"].append(row_data)
         rs = requests.post(url, json=data)
         result = json.loads(rs.text)
         for r in result["data"]["data"]:
@@ -80,12 +84,14 @@ class PredictHandler(tornado.web.RequestHandler):
             self.write("----------------ins---------------\n")
             self.write(str(ins) + "\n")
             duration = bst.predict(ins)
-            self.write("---------------predict trip_duration -------------\n")
-            self.write("%s s"%str(duration[0]))
+            self.write(f"---------------predict trip_duration -------------\n")
+            self.write("%s s" % str(duration[0]))
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.write("real time execute sparksql demo")
+
 
 def make_app():
     return tornado.web.Application([
@@ -94,10 +100,11 @@ def make_app():
         (r"/predict", PredictHandler),
     ])
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("endpoint",  help="specify the endpoint of apiserver")
-    parser.add_argument("model_path",  help="specify the model path")
+    parser.add_argument("endpoint", help="specify the endpoint of apiserver")
+    parser.add_argument("model_path", help="specify the model path")
     args = parser.parse_args()
     url = "http://%s/dbs/demo_db/deployments/demo" % args.endpoint
     bst = lgb.Booster(model_file=args.model_path)

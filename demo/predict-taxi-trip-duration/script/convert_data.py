@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import sys
-import time, datetime
+import time
 i = 0
 for line in sys.stdin:
     if i == 0:

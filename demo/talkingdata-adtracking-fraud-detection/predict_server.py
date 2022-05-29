@@ -19,7 +19,6 @@ import tornado.web
 import tornado.ioloop
 import json
 import xgboost as xgb
-import sqlalchemy as db
 import requests
 import argparse
 
@@ -32,17 +31,17 @@ table_schema = [
     ("os", "int"),
     ("channel", "int"),
     ("click_time", "timestamp"),
-    ("is_attributed", 'int'),
+    ("is_attributed", "int"),
 ]
 
 url = ""
 
 
 def get_schema():
-    dict_schema = {}
+    dict_schema_tmp = {}
     for i in table_schema:
-        dict_schema[i[0]] = i[1]
-    return dict_schema
+        dict_schema_tmp[i[0]] = i[1]
+    return dict_schema_tmp
 
 
 dict_schema = get_schema()
@@ -52,9 +51,8 @@ print(json_schema)
 
 
 def build_feature(rs):
-    var_Y = [rs[-1]]
-    var_X = [rs[:-1]]
-    return np.array(var_X)
+    var_x = [rs[:-1]]
+    return np.array(var_x)
 
 
 class SchemaHandler(tornado.web.RequestHandler):
@@ -75,7 +73,7 @@ class PredictHandler(tornado.web.RequestHandler):
                 row_data.append(row.get(i[0], 0))
             else:
                 row_data.append(None)
-        print('receive request: ', row_data)
+        print("receive request: ", row_data)
         data["input"].append(row_data)
         rs = requests.post(url, json=data)
         result = json.loads(rs.text)
