@@ -900,7 +900,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             static_cast<void (*)(int32_t, StringRef*)>(udf::v1::int_to_char))
         .return_by_arg(true)
         .doc(R"(
-            @brief Returns the ASCII character having the binary equivalent to expr. If n is larger than 256 the result is equivalent to char(n % 256).
+            @brief Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256).
 
             Example:
 
