@@ -1012,6 +1012,8 @@ TEST_F(UdfIRBuilderTest, charTest) {
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("A"), 65);
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("B"), 322);
     CheckUdf<StringRef, int32_t>(udf_name, StringRef("N"), -178);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef(""), 256);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef(""), -256);
     CheckUdf<Nullable<StringRef>, Nullable<int32_t>>(udf_name, nullptr, nullptr);
 }
 TEST_F(UdfIRBuilderTest, char_length_udf_test) {
