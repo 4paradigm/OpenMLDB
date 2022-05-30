@@ -160,7 +160,7 @@ if __name__ == "__main__":
     parser.add_argument("-db", "--database", help="the database you want to request", default="demo_db")
     parser.add_argument("-d", "--deployment", help="the deployment you want to request", default="demo")
     parser.add_argument("-i", "--init", action=argparse.BooleanOptionalAction, help="init immediately, update later",
-                        default=False)
+                        default=True)
     args = parser.parse_args()
 
     global global_args
