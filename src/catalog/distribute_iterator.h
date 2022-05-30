@@ -124,19 +124,40 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     ::hybridse::codec::RowIterator* GetRawValue() override;
     const ::hybridse::codec::Row GetKey() override;
 
+ public:
+    using IT = std::unique_ptr<::hybridse::codec::WindowIterator>;
+    using KV_IT = std::shared_ptr<::openmldb::base::KvIterator>;
+
+    // structure used for iterator result by Seek or SeekToFirst
+    struct ItStat {
+        // if pid < 0, stat is invalid
+        int32_t pid;
+        ::hybridse::codec::WindowIterator* it;
+        KV_IT kv_it;
+
+        ItStat() = delete;
+        ItStat(int32_t p, ::hybridse::codec::WindowIterator* i, KV_IT kv) : pid(p), it(i), kv_it(kv) {}
+    };
+
  private:
     void Reset();
 
+    ItStat SeekByKey(const std::string& key) const;
+
  private:
-    uint32_t tid_;
-    uint32_t pid_num_;
+    const uint32_t tid_;
+    const uint32_t pid_num_;
     std::shared_ptr<Tables> tables_;
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients_;
-    uint32_t index_;
-    std::string index_name_;
+    const uint32_t index_;
+    const std::string index_name_;
+
     uint32_t cur_pid_;
-    std::unique_ptr<::hybridse::codec::WindowIterator> it_;
-    std::shared_ptr<::openmldb::catalog::KvIterator> kv_it_;
+    // iterator to locally data
+    IT it_;
+    // iterator to remote data, only zero or one of `it_` and `kv_it_` can be non-null
+    KV_IT kv_it_;
+    // underlaying data pointed by `kv_it_`
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 

@@ -2290,9 +2290,8 @@ void Runner::PrintData(std::ostringstream& oss,
                 break;
             }
             while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
-                t.add("KEY: " + std::string(reinterpret_cast<const char*>(
-                                                iter->GetKey().buf()),
-                                            iter->GetKey().size()));
+                auto key = iter->GetKey();
+                t.add("KEY: " + key.ToString());
                 t.end_of_row();
                 auto segment_iter = iter->GetValue();
                 if (!segment_iter) {
