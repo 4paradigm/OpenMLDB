@@ -126,7 +126,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
 
  public:
     using IT = std::unique_ptr<::hybridse::codec::WindowIterator>;
-    using KV_IT = std::shared_ptr<::openmldb::base::KvIterator>;
+    using KV_IT = std::shared_ptr<::openmldb::catalog::KvIterator>;
 
     // structure used for iterator result by Seek or SeekToFirst
     struct ItStat {
