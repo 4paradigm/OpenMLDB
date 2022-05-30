@@ -21,10 +21,12 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.*;
+import java.sql.Date;
+import java.util.*;
 
-// import com._4paradigm.featuredb.proto.Base;
+import com._4paradigm.openmldb.proto.Type;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.sql.BenchmarkConfig;
 
 public class Util {
@@ -61,44 +63,6 @@ public class Util {
         return "";
     }
 
-    /**
-    public static Base.FeatureDBType getFeatureDBType(String type) throws Exception {
-        switch (type.toLowerCase()) {
-            case "bool":
-            case "boolean":
-                return Base.FeatureDBType.kBoolean;
-            case "short":
-            case "int16":
-                return Base.FeatureDBType.kInt16;
-            case "int":
-            case "int32":
-                return Base.FeatureDBType.kInt32;
-            case "long":
-            case "int64":
-                return Base.FeatureDBType.kInt64;
-            case "float":
-                return Base.FeatureDBType.kFloat;
-            case "double":
-                return Base.FeatureDBType.kDouble;
-            case "date":
-                return Base.FeatureDBType.kDate;
-            case "timestamp":
-            case "timestamp-millis":
-                return Base.FeatureDBType.kTimestamp;
-            case "string":
-                return Base.FeatureDBType.kString;
-            case "list":
-            case "array":
-                return Base.FeatureDBType.kList;
-            case "map":
-                return Base.FeatureDBType.kMap;
-            case "feature":
-                return Base.FeatureDBType.kFeature;
-            default:
-                throw new Exception("type " + type + " is not supported");
-        }
-    }*/
-
     public static Map<String, TableInfo> parseDDL(String ddlUrl, Relation relation) {
         String ddl = Util.getContent(ddlUrl);
         String[] arr = ddl.split(";");
@@ -114,8 +78,42 @@ public class Util {
         return tableMap;
     }
 
-    public static String getCreateProcedureDDL(String pName, TableInfo mainTable, String script) {
-        String ddl = "create PROCEDURE " + pName + "(" + mainTable.getTypeString() + ") \n BEGIN \n" + script + "\n END;";
-        return ddl;
+    public static boolean executeSQL(String sql, SqlExecutor executor) {
+        java.sql.Statement state = executor.getStatement();
+        try {
+            boolean ret = state.execute(sql);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
+
+    public static Map<String, String> extractResultSet(ResultSet resultSet) {
+        Map<String, String> val = new HashMap<>();
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.FLOAT) {
+                    val.put(columnName, String.valueOf(resultSet.getFloat(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return val;
+    }
+
 }

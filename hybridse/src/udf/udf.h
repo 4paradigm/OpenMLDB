@@ -224,6 +224,9 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
+int32_t char_length(StringRef *str);
+double degree_to_radius(double degree);
+
 float Cotf(float x);
 double Degrees(double x);
 
