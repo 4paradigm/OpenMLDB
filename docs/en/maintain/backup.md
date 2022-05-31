@@ -1,14 +1,14 @@
-# Backup and restore
+# Backup and Restore
 
 ## High Availability Description
 
-* The nameserver cannot be fully hung up. Failover and recovery cannot be done if all hangs up
-* High availability is not guaranteed in the case of a single copy
-* In the case of two replicas and two nodes, the tablet can only hang on one node at most
-* In the case of two replicas and multiple nodes, the two tablet nodes where the same shard is located cannot hang at the same time
-* In the case of three replicas and three nodes, hanging a tablet node can automatically perform failover and data recovery. Hanging two tablet nodes does not guarantee automatic failover and data recovery, but reads and writes can return to normal within minutes
-* In the case of three replicas and multiple nodes, if the two tablets where the same shard is located hangs, the automatic failover and data recovery of the shard are not guaranteed, but the read and write can return to normal within minutes.
-* If there is a leader fragment in the hanging node and there is always write traffic, a small amount of data may be lost
+* The nameserver nodes cannot all fail. Failover and recovery cannot be done if all fail.
+* High availability is not guaranteed in the case of no secondary replica
+* In the case of two replicas and two nodes, only one node of tablet can fail.
+* In the case of two replicas and multiple nodes, the two tablet nodes where the same partition is located cannot fail at the same time.
+* In the case of three replicas and three nodes, a tablet failure node can automatically perform failover and data recovery. Failure of two tablet nodes does not guarantee automatic failover and data recovery, but reads and writes can return to normal within minutes.
+* In the case of three replicas and multiple nodes, if the two tablets where the same partition is located hangs, the automatic failover and data recovery of the partition are not guaranteed, but the read and write can return to normal within minutes.
+* If there is a leader partition in the failed node and there is always write traffic, a small amount of data may be lost.
 
 ## Downtime and Recovery
 
@@ -30,7 +30,7 @@ set auto_failover ok
   auto_failover       false
 ```
 
-**If auto_failover is enabled, if a node goes offline, the is_alive status of showtable will change to no. If the node contains a leader of a shard, the shard will re-select the master**
+**When auto_failover is enabled, if a node goes offline, the is_alive status of the showtable command will change to no. If the node contains a leader of a partition, the partition will re-select the leader. **
 
 ```
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -51,10 +51,10 @@ If the node fails, you need to execute offlineendpoint to offline the node
 
 Command format: offlineendpoint endpoint
 
-endpoint is the endpoint of the failed node. This command will offline the node and perform the following operations on all shards under the node:
+endpoint is the endpoint of the failed node. This command will offline the node and perform the following operations on all partitions under the node:
 
-* If it is the master, execute the re-election of the master
-* If it is a slave, find the master and delete the current endpoint replica from the master
+* If it is the leader, execute the re-election of the leader
+* If it is a follower, find the leader and delete the current endpoint replica from the leader
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -77,7 +77,7 @@ offline endpoint ok
   flow    4   1    172.27.128.32:8541  follower  0min       no        kNoCompress    0        0           0.000
 ```
 
-After executing offlineendpoint, each shard will be assigned a new leader. If a shard fails to execute, you can execute changeleader on this shard alone. The command format is: changeleader table_name pid
+After executing offlineendpoint, each partition will be assigned a new leader. If a partition fails to execute, you can execute changeleader on this partition alone. The command format is: changeleader table_name pid
 
 If the node has recovered, you can execute recoverendpoint to recover the data
 
@@ -136,7 +136,7 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   flow    4   1    172.27.128.32:8541  follower  0min       yes       kNoCompress    0        0           0.000
 ```
 
-If showtable turns to yes, it means that the recovery has been successful. If some shards fail to recover, you can execute recovertable separately. The command format is: recovertable table_name pid endpoint
+If showtable turns to yes, it means that the recovery has been successful. If some partitions fail to recover, you can execute recovertable separately. The command format is: recovertable table_name pid endpoint
 
 **Note: offlineendpoint must be executed once before recoverendpoint is executed**
 
@@ -157,7 +157,7 @@ If the cluster is restarted after being offline at the same time, autofailover c
 
 ### Manual data recovery
 
-Applicable scenario: The node where all replicas of a table shard are located is down
+Applicable scenario: The nodes where all replicas of a partition are located are down.
 
 #### 1 Start the process of each node
 #### 2 Turn off autofailover
@@ -169,14 +169,14 @@ confset auto_failover false
 
 ### 3 Recover data
 
-When restoring data manually, it is necessary to restore the data by shard by shard. The recovery steps are as follows:
+When restoring data manually, it is necessary to restore the data partition by partition. The recovery steps are as follows:
 
 1. Execute showtable table name with ns client
-2. Modify the table shard alive status to no, execute it with nsclient. updatetablealive table_name pid endppoint is_alive
+2. Modify the table partition alive status to no, execute it with nsclient. updatetablealive table_name pid endppoint is_alive
     ```
     updatetablealive t1 * 172.27.2.52:9991 no
     ```
-3. Perform the following steps for each shard in the table:
+3. Perform the following steps for each partition in the table:
     * Restore the leader. If there are multiple leaders, choose the one with the larger offset
         * Use the tablet client to connect to the node where the leader is located, and execute the loadtable command. loadtable tablename tid pid ttl seg_cnt, seg_cnt is 8
             ```
@@ -195,7 +195,7 @@ When restoring data manually, it is necessary to restore the data by shard by sh
         recovertable table1 1 172.27.128.31:9527 
         ```
 
-#### 4 restore autofailover
+#### 4 Restore autofailover
 Execute the confset command on the ns client
 ```
 confset auto_failover true
