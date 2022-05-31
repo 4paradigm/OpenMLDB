@@ -157,6 +157,14 @@ int32_t weekofyear(Date *date) {
     }
 }
 
+void int_to_char(int32_t val, StringRef* output) {
+    val = val % 256;
+    char v = static_cast<char>(val);
+    char *buffer = AllocManagedStringBuf(1);
+    output->size_ = 1;
+    memcpy(buffer, &v, output->size_);
+    output->data_ = buffer;
+}
 int32_t char_length(StringRef *str) {
     if (nullptr == str) {
         return 0;
