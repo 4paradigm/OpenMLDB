@@ -458,7 +458,7 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     }
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (request->projection().size() > 0 && meta.format_version() == 1) {
+    if (request->projection().size() > 0) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
             return -1;
         }
