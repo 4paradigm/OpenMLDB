@@ -38,7 +38,6 @@ def build_feature(res):
     Real-time feature has it, cuz the history data in OpenMLDB is the training data too.
     It'll have this column, but no effect to feature extraction.
 
-    And we
     :param res: an OpenMLDB reqeust response
     :return: real feature
     """

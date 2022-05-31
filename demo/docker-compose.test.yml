@@ -17,4 +17,5 @@ services:
       - |
         ./init.sh
         cd talkingdata
+        python3 predict_server.py --no-init > predict.log 2>&1 &
         python3 train_and_serve.py
