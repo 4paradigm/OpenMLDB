@@ -74,6 +74,10 @@ struct UdfLibraryEntry;
  */
 class UdfLibrary {
  public:
+    UdfLibrary() = default;
+    UdfLibrary(const UdfLibrary&) = delete;
+    virtual ~UdfLibrary() {}
+
     Status Transform(const std::string& name,
                      const std::vector<node::ExprNode*>& args,
                      node::NodeManager* node_manager, ExprNode** result) const;

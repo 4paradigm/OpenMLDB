@@ -23,9 +23,13 @@ namespace udf {
 
 class DefaultUdfLibrary : public UdfLibrary {
  public:
-    static DefaultUdfLibrary* get() { return &inst_; }
+    static DefaultUdfLibrary* get();
+
+    ~DefaultUdfLibrary() override {}
 
  private:
+    DefaultUdfLibrary() { Init(); }
+
     void Init();
     void InitMathUdf();
     void InitStringUdf();
@@ -42,10 +46,6 @@ class DefaultUdfLibrary : public UdfLibrary {
     void initMaxByCateUdaFs();
     void InitAvgByCateUdafs();
     void InitFeatureZero();
-
-    static DefaultUdfLibrary inst_;
-
-    DefaultUdfLibrary() { Init(); }
 };
 
 }  // namespace udf

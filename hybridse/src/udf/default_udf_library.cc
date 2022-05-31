@@ -40,8 +40,11 @@ using hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
-// static instance
-DefaultUdfLibrary DefaultUdfLibrary::inst_;
+DefaultUdfLibrary* DefaultUdfLibrary::get() {
+    // construct on first use to avoid problem like static initialization order fiasco
+    static DefaultUdfLibrary& inst = *new DefaultUdfLibrary();
+    return &inst;
+}
 
 template <typename T>
 struct BuildGetHourUdf {
@@ -2034,7 +2037,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 }
 
 void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule(this->node_manager());
+    LOG(INFO) << "Initializing DefaultUdfLibrary";
+    udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
     InitTimeAndDateUdf();
     InitTypeUdf();
