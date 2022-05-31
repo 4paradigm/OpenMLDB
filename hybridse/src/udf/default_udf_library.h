@@ -28,6 +28,8 @@ class DefaultUdfLibrary : public UdfLibrary {
     ~DefaultUdfLibrary() override {}
 
  private:
+    static DefaultUdfLibrary* MakeDefaultUdf();
+
     DefaultUdfLibrary() { Init(); }
 
     void Init();
