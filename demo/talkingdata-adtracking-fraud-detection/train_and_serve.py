@@ -1,15 +1,14 @@
 import gc
 import os
-# fmt:off
-import openmldb
-import sqlalchemy as db
-import xgboost as xgb
-import pandas as pd
-# fmt:on
-
 import time
 import glob
 import requests
+# fmt:off
+import openmldb
+import sqlalchemy as db
+import pandas as pd
+import xgboost as xgb
+# fmt:on
 
 # openmldb cluster configs
 zk = "127.0.0.1:2181"
@@ -83,10 +82,8 @@ dtypes = {
     'click_id': 'UInt32'
 }
 
-common_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
-                 ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp')]
-train_schema = common_schema + [('is_attributed', 'int')]
-test_schema = common_schema + [('click_id', 'int')]
+train_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
+                ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp'), ('is_attributed', 'int')]
 
 
 def cut_data():
@@ -120,7 +117,8 @@ connection = engine.connect()
 
 connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
 schema_string = ','.join(list(map(column_string, train_schema)))
-connection.execute("CREATE TABLE {}({});".format(table_name, schema_string))
+connection.execute("CREATE TABLE IF NOT EXISTS {}({});".format(
+    table_name, schema_string))
 
 print("Load train_sample data to offline storage for training(hard copy)")
 connection.execute("USE {}".format(db_name))

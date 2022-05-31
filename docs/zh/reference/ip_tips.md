@@ -37,12 +37,12 @@ docker network inspect bridge
 
 单机版需要暴露三个组件（nameserver，tabletserver，apiserver）的端口：
 ```
-docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.5.0 bash
+docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.5.1 bash
 ```
 
 集群版需要暴露zk端口与所有组件的端口：
 ```
-docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.5.0 bash
+docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.5.1 bash
 ```
 
 ```{tip}
@@ -56,7 +56,7 @@ docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 
 #### host network
 或者更方便地，使用 host networking，不进行端口隔离，例如：
 ```
-docker run --network host -it 4pdosc/openmldb:0.5.0 bash
+docker run --network host -it 4pdosc/openmldb:0.5.1 bash
 ```
 但这种情况下，很容易出现端口已被主机中其他进程占用。如果出现占用，请仔细更改端口号。
 
