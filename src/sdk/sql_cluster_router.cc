@@ -2174,9 +2174,11 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     SetColumnDesc("num_rows", openmldb::type::DataType::kInt, table_info.add_column_desc());
     SetColumnDesc("agg_val", openmldb::type::DataType::kString, table_info.add_column_desc());
     SetColumnDesc("binlog_offset", openmldb::type::DataType::kBigInt, table_info.add_column_desc());
+    SetColumnDesc("filter_key", openmldb::type::DataType::kString, table_info.add_column_desc());
     auto index = table_info.add_column_key();
     index->set_index_name("key_index");
     index->add_col_name("key");
+    index->add_col_name("filter_key");
     index->set_ts_name("ts_start");
 
     // keep ttl in pre-aggr table the same as base table
@@ -3200,20 +3202,21 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
             // check if pre-aggr table exists
-            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw.aggr_func_, lw.aggr_col_, lw.partition_col_,
-                                                   lw.order_col_, lw.bucket_size_);
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw);
             if (is_exist) {
                 continue;
             }
             // insert pre-aggr meta info to meta table
             std::string aggr_col = lw.aggr_col_ == "*" ? "" : lw.aggr_col_;
             auto aggr_table =
-                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col);
+                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
+                             lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
             ::hybridse::sdk::Status status;
             std::string insert_sql =
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
                              "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
-                             lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "');");
+                             lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "', '",
+                             lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
                 return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
@@ -3280,14 +3283,14 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
 }
 
 bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                              const std::string& aggr_func, const std::string& aggr_col,
-                                              const std::string& partition_col, const std::string& order_col,
-                                              const std::string& bucket_size) {
+                                              const openmldb::base::LongWindowInfo& lw) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
     std::string meta_info = absl::StrCat(
-        "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", aggr_func,
-        "' and aggr_col = '", aggr_col, "' and partition_cols = '", partition_col, "' and order_by_col = '", order_col);
+        "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
+        "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
+        "' and order_by_col = '", lw.order_col_, filter_cond);
     std::string select_sql =
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, "';");
     hybridse::sdk::Status status;
@@ -3302,7 +3305,7 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
     while (rs->Next()) {
         std::string exist_bucket_size;
         rs->GetString(0, &exist_bucket_size);
-        if (exist_bucket_size == bucket_size) {
+        if (exist_bucket_size == lw.bucket_size_) {
             LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
             return true;
         }

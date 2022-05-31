@@ -855,6 +855,7 @@ message CreateAggregatorRequest {
     optional string aggr_col = 6;
     optional string order_by_col = 7;
     optional string bucket_size = 8;
+    optional string filter_col = 9;
 }
 
 message CreateAggregatorResponse {
