@@ -98,6 +98,50 @@ TEST_F(KvIteratorTest, HasPK) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
+TEST_F(KvIteratorTest, NextPK) {
+    auto response = std::make_shared<::openmldb::api::TraverseResponse>();
+    std::string* pairs = response->mutable_pairs();
+    pairs->resize(16*9 + 90);
+    std::string value("hello");
+    char* data = reinterpret_cast<char*>(&((*pairs)[0]));
+    uint32_t offset = 0;
+    for (int i = 0; i < 3; i++) {
+        std::string pk = "test" + std::to_string(i);
+        uint64_t ts = 9500;
+        for (int j = 0; j < 3; j++) {
+            ::openmldb::codec::EncodeFull(pk, ts - j, value.data(), value.size(), data, offset);
+            offset += 16 + 10;
+        }
+    }
+    TraverseKvIterator kv_it(response);
+    int count = 0;
+    while (kv_it.Valid()) {
+        count++;
+        kv_it.Next();
+    }
+    ASSERT_EQ(count, 9);
+    kv_it.Seek("test1");
+    count = 0;
+    while (kv_it.Valid()) {
+        if (kv_it.GetPK() != "test2") {
+            break;
+        }
+        count++;
+        kv_it.Next();
+    }
+    ASSERT_EQ(count, 3);
+    kv_it.Seek("test0");
+    kv_it.NextPK();
+    count = 0;
+    while (kv_it.Valid()) {
+        if (kv_it.GetPK() != "test2") {
+            break;
+        }
+        count++;
+        kv_it.Next();
+    }
+}
+
 }  // namespace base
 }  // namespace openmldb
 

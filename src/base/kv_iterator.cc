@@ -20,10 +20,7 @@ namespace openmldb {
 namespace base {
 
 bool ScanKvIterator::Valid() {
-    if (offset_ > tsize_) {
-        return false;
-    }
-    if (tsize_ < 12) {
+    if (tsize_ < 12 || offset_ > tsize_) {
         return false;
     }
     return true;
@@ -45,10 +42,7 @@ void ScanKvIterator::Next() {
 }
 
 bool TraverseKvIterator::Valid() {
-    if (offset_ > tsize_) {
-        return false;
-    }
-    if (tsize_ < 16) {
+    if (tsize_ < 16 || offset_ > tsize_) {
         return false;
     }
     return true;

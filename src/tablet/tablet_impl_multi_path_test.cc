@@ -16,12 +16,9 @@
 
 #include <fcntl.h>
 #include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 #include <sys/stat.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
@@ -31,7 +28,6 @@
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
-#include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(db_root_path);

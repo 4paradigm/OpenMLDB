@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
-
-#include <boost/bind.hpp>
+#include <string>
 
 #include "base/glog_wapper.h"
-#include "common/timer.h"
+#include "boost/bind.hpp"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"
 
 DECLARE_string(endpoint);

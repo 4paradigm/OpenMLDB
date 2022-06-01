@@ -330,16 +330,36 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
         w_it.Seek(key);
         ASSERT_TRUE(w_it.Valid());
         ASSERT_EQ(w_it.GetKey().ToString(), key);
-        auto it = w_it.GetRawValue();
+        auto it = w_it.GetValue();
         it->SeekToFirst();
         int count = 0;
         while (it->Valid()) {
             count++;
             it->Next();
         }
-        delete it;
         ASSERT_EQ(count, 10);
     }
+    int count = 0;
+    w_it.SeekToFirst();
+    while (w_it.Valid()) {
+        count++;
+        w_it.Next();
+    }
+    ASSERT_EQ(count, 20);
+    w_it.Seek("card11");
+    count = 0;
+    while (w_it.Valid()) {
+        count++;
+        w_it.Next();
+    }
+    ASSERT_EQ(count, 17);
+    w_it.Seek("card15");
+    count = 0;
+    while (w_it.Valid()) {
+        count++;
+        w_it.Next();
+    }
+    ASSERT_EQ(count, 10);
 }
 
 TEST_F(DistributeIteratorTest, RemoteIterator) {

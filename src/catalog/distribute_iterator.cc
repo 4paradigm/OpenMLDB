@@ -276,7 +276,9 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 void DistributeWindowIterator::Next() {
     if (it_ && it_->Valid()) {
         it_->Next();
-        if (!it_->Valid()) {
+        if (it_->Valid()) {
+            return;
+        } else {
             auto iter = tables_->find(cur_pid_);
             if (iter == tables_->end()) {
                 return;

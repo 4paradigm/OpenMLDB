@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-
-#include "base/glog_wapper.h"
-#include "common/timer.h"
-#include "config.h"  // NOLINT
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "tablet/tablet_impl.h"

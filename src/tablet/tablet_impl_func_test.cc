@@ -16,8 +16,6 @@
 
 #include <fcntl.h>
 #include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 #include <sys/stat.h>
 
 #include "base/file_util.h"
