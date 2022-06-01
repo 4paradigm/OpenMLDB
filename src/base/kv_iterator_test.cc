@@ -123,7 +123,7 @@ TEST_F(KvIteratorTest, NextPK) {
     kv_it.Seek("test1");
     count = 0;
     while (kv_it.Valid()) {
-        if (kv_it.GetPK() != "test2") {
+        if (kv_it.GetPK() != "test1") {
             break;
         }
         count++;
@@ -134,7 +134,7 @@ TEST_F(KvIteratorTest, NextPK) {
     kv_it.NextPK();
     count = 0;
     while (kv_it.Valid()) {
-        if (kv_it.GetPK() != "test2") {
+        if (kv_it.GetPK() != "test1") {
             break;
         }
         count++;
