@@ -87,7 +87,6 @@ cluster_start_component() {
     fi
 
     # just need extra_opts to split
-    # shellcheck disable=SC2068
     "$OPENMLDB_BIN" \
         --role="$role" \
         --endpoint="$endpoint" \
@@ -107,7 +106,7 @@ TABLET0=$IP:9520
 TABLET1=$IP:9521
 TABLET2=$IP:9522
 
-function start_cluster() {
+start_cluster() {
     # first start zookeeper
 
     cluster_start_component tablet "$TABLET0" "$WORKSPACE/logs/tablet0" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet0-binlogs" "$WORKSPACE/recycle_bin0" >"$WORKSPACE/tablet0.log" 2>&1 &
@@ -136,7 +135,7 @@ SA_TABLET=$IP:9921
 SA_BINLOG="$WORKSPACE/standalone/binlog"
 SA_RECYCLE="$WORKSPACE/standalone/recycle_bin"
 
-function start_standalone() {
+start_standalone() {
 
     # start tablet
     [ -d "$SA_BINLOG" ] && rm -r "$SA_BINLOG"
