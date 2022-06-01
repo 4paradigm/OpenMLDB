@@ -14,130 +14,183 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -x -e
+set -eE
+set -x
 
 cd "$(dirname "$0")/../"
 
+# allow producing core files
 ulimit -c unlimited
+
+OPENMLDB_BIN=${OPENMLDB_BIN:-build/bin/openmldb}
+if [ ! -r "$OPENMLDB_BIN" ]; then
+    echo "openmldb binary: $OPENMLDB_BIN not exist"
+    exit 1
+fi
 
 # the subdirectory can be set through the environment variable ONEBOX_WORKDIR
 WORKSPACE=${ONEBOX_WORKDIR:-onebox/workspace}
-rm -rf $WORKSPACE
-mkdir -p $WORKSPACE
+mkdir -p "$WORKSPACE"
+WORKSPACE=$(cd "$WORKSPACE" && pwd)
 
 IP=127.0.0.1
 
+# Function: cluster_start_component
+#   start a openmldb component for cluster
+# @param $1 role, (tablet/nameserver)
+# @param $2 endpoint
+# @param $3 log directory
+# @param $4 zk root endpoint
+# @param $5 zk root path
+# @param $6 binlog path (tablet only)
+# @param $7 recycle bin path (tablet only)
+cluster_start_component() {
+    if [ $# -lt 5 ]; then
+        echo -e "at least 5 param needed for $0
+\tusage: $0 \$role \$endpoint \$log_dir \$zk_root \$zk_path [ \$binlog_dir ] [ \$recycle_bin_dir ]"
+        return 2
+    fi
 
+    local role=$1
+    local endpoint=$2
+    local log_dir="$3"
+    local zk_end=$4
+    local zk_path=$5
 
-function start_cluster() {
-        # first start zookeeper
-        ZK_CLUSTER=$IP:6181
-        NS1=$IP:9622
-        NS2=$IP:9623
-        NS3=$IP:9624
-        TABLET1=$IP:9520
-        TABLET2=$IP:9521
-        TABLET3=$IP:9522
+    local binlog_dir="$6"
+    local recycle_bin_dir="$7"
 
-        # start tablet0
-        test -d $WORKSPACE/tablet0-binlogs && rm -rf $WORKSPACE/tablet0-binlogs
-        test -d $WORKSPACE/recycle_bin0 && rm -rf $WORKSPACE/recycle_bin0
-        ./build/bin/openmldb --db_root_path=$WORKSPACE/tablet0-binlogs \
-                --recycle_bin_root_path=$WORKSPACE/recycle_bin0 \
-                --endpoint="$TABLET1" --role=tablet \
-                --openmldb_log_dir=$WORKSPACE/logs/tablet0 \
-                --binlog_notify_on_put=true --zk_cluster="$ZK_CLUSTER" \
-                --zk_keep_alive_check_interval=100000000 --zk_root_path=/onebox >$WORKSPACE/tablet0.log 2>&1 &
-        sleep 2
+    mkdir -p "$log_dir"
 
-        test -d $WORKSPACE/tablet1-binlogs && rm -rf $WORKSPACE/tablet1-binlogs
-        test -d $WORKSPACE/recycle_bin1 && rm -rf $WORKSPACE/recycle_bin1
-        # start tablet1
-        ./build/bin/openmldb --db_root_path=$WORKSPACE/tablet1-binlogs \
-                --recycle_bin_root_path=$WORKSPACE/recycle_bin1 \
-                --endpoint="$TABLET2" --role=tablet \
-                --openmldb_log_dir=$WORKSPACE/logs/tablet1 \
-                --zk_cluster="$ZK_CLUSTER" \
-                --binlog_notify_on_put=true --zk_keep_alive_check_interval=100000000 --zk_root_path=/onebox >$WORKSPACE/tablet1.log 2>&1 &
-        sleep 2
+    local extra_opts=()
+    if [[ $role = 'tablet' ]]; then
+        [ -d "$binlog_dir" ] && rm -r "$binlog_dir"
+        mkdir -p "$binlog_dir"
 
-        test -d $WORKSPACE/tablet2-binlogs && rm -rf $WORKSPACE/tablet2-binlogs
-        test -d $WORKSPACE/recycle_bin2 && rm -rf $WORKSPACE/recycle_bin2
-        # start tablet2
-        ./build/bin/openmldb --db_root_path=$WORKSPACE/tablet2-binlogs \
-                --recycle_bin_root_path=$WORKSPACE/recycle_bin2 \
-                --endpoint="$TABLET3" --role=tablet \
-                --openmldb_log_dir=$WORKSPACE/logs/tablet2 \
-                --binlog_notify_on_put=true --zk_cluster="$ZK_CLUSTER" \
-                --zk_keep_alive_check_interval=100000000 --zk_root_path=/onebox >$WORKSPACE/tablet2.log 2>&1 &
-        sleep 2
+        [ -d "$recycle_bin_dir" ] && rm -r "$recycle_bin_dir"
+        mkdir -p "$recycle_bin_dir"
 
-        # start ns1
-        ./build/bin/openmldb --endpoint="$NS1" --role=nameserver \
-                --zk_cluster="$ZK_CLUSTER" \
-                --openmldb_log_dir=$WORKSPACE/logs/ns1 \
-                --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 --zk_root_path=/onebox >$WORKSPACE/ns1.log 2>&1 &
-        sleep 2
+        extra_opts+=(
+            --binlog_notify_on_put=true
+            --zk_keep_alive_check_interval=100000000
+            --db_root_path="$binlog_dir"
+            --recycle_bin_root_path="$recycle_bin_dir"
+        )
+    elif [[ $role = 'nameserver' ]]; then
+        extra_opts+=(
+            --tablet_offline_check_interval=1
+            --tablet_heartbeat_timeout=1
+        )
+    else
+        echo "unsupported role: $role"
+        return 3
+    fi
 
-        # start ns2
-        ./build/bin/openmldb --endpoint="$NS2" --role=nameserver \
-                --zk_cluster="$ZK_CLUSTER" \
-                --openmldb_log_dir=$WORKSPACE/logs/ns2 \
-                --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 --zk_root_path=/onebox >$WORKSPACE/ns2.log 2>&1 &
-        sleep 2
-
-        # start ns3
-        ./build/bin/openmldb --endpoint="$NS3" --role=nameserver \
-                --tablet_offline_check_interval=1 --openmldb_log_dir=$WORKSPACE/logs/ns3 \
-                --tablet_heartbeat_timeout=1 --zk_cluster="$ZK_CLUSTER" \
-                --zk_root_path=/onebox >$WORKSPACE/ns3.log 2>&1 &
-        sleep 2
-        echo "cluster start ok"
+    # just need extra_opts to split
+    "$OPENMLDB_BIN" \
+        --role="$role" \
+        --endpoint="$endpoint" \
+        --openmldb_log_dir="$log_dir" \
+        --zk_cluster="$zk_end" \
+        --zk_root_path="$zk_path" \
+        "${extra_opts[@]}"
 }
 
-function start_standalone() {
-        NS=$IP:6527
-        TABLET=$IP:9921
+ZK_CLUSTER=$IP:6181
 
-        # start tablet
-        test -d $WORKSPACE/tablet-binlogs && rm -rf $WORKSPACE/tablet-binlogs
-        test -d $WORKSPACE/recycle_bin && rm -rf $WORKSPACE/recycle_bin
-        ./build/bin/openmldb --db_root_path=$WORKSPACE/tablet-binlogs \
-                --recycle_bin_root_path=$WORKSPACE/recycle_bin \
-                --openmldb_log_dir=$WORKSPACE/logs/standalone-tb \
-                --endpoint="$TABLET" --role=tablet \
-                --binlog_notify_on_put=true >$WORKSPACE/tablet.log 2>&1 &
-        sleep 2
+NS0=$IP:9622
+NS1=$IP:9623
+NS2=$IP:9624
 
-        # start ns
-        ./build/bin/openmldb --endpoint="$NS" --role=nameserver \
-                --tablet="$TABLET" \
-                --openmldb_log_dir=$WORKSPACE/logs/standalone-ns \
-                --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 >$WORKSPACE/ns.log 2>&1 &
-        sleep 2
-        echo "standalone start ok"
+TABLET0=$IP:9520
+TABLET1=$IP:9521
+TABLET2=$IP:9522
+
+start_cluster() {
+    # first start zookeeper
+
+    cluster_start_component tablet "$TABLET0" "$WORKSPACE/logs/tablet0" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet0-binlogs" "$WORKSPACE/recycle_bin0" >"$WORKSPACE/tablet0.log" 2>&1 &
+    sleep 2
+
+    cluster_start_component tablet "$TABLET1" "$WORKSPACE/logs/tablet1" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet1-binlogs" "$WORKSPACE/recycle_bin1" >"$WORKSPACE/tablet1.log" 2>&1 &
+    sleep 2
+
+    cluster_start_component tablet "$TABLET2" "$WORKSPACE/logs/tablet2" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet2-binlogs" "$WORKSPACE/recycle_bin2" >"$WORKSPACE/tablet1.log" 2>&1 &
+    sleep 2
+
+    cluster_start_component nameserver "$NS0" "$WORKSPACE/logs/ns0" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns0.log" 2>&1 &
+    sleep 2
+
+    cluster_start_component nameserver "$NS1" "$WORKSPACE/logs/ns1" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns1.log" 2>&1 &
+    sleep 2
+
+    cluster_start_component nameserver "$NS2" "$WORKSPACE/logs/ns2" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns2.log" 2>&1 &
+    sleep 2
+
+    echo "cluster start ok"
 }
+
+SA_NS=$IP:6527
+SA_TABLET=$IP:9921
+SA_BINLOG="$WORKSPACE/standalone/binlog"
+SA_RECYCLE="$WORKSPACE/standalone/recycle_bin"
+
+start_standalone() {
+
+    # start tablet
+    [ -d "$SA_BINLOG" ] && rm -r "$SA_BINLOG"
+    [ -d "$SA_RECYCLE" ] && rm -r "$SA_RECYCLE"
+    mkdir -p "$SA_BINLOG"
+    mkdir -p "$SA_RECYCLE"
+    mkdir -p "$WORKSPACE/logs/standalone-tb"
+    mkdir -p "$WORKSPACE/logs/standalone-ns"
+
+    ./build/bin/openmldb --db_root_path="$SA_BINLOG" \
+        --recycle_bin_root_path="$SA_RECYCLE" \
+        --openmldb_log_dir="$WORKSPACE/logs/standalone-tb" \
+        --endpoint="$SA_TABLET" --role=tablet \
+        --binlog_notify_on_put=true >"$WORKSPACE/sa-tablet.log" 2>&1 &
+    sleep 2
+
+    # start ns
+    ./build/bin/openmldb --endpoint="$SA_NS" --role=nameserver \
+        --tablet="$SA_TABLET" \
+        --openmldb_log_dir="$WORKSPACE/logs/standalone-ns" \
+        --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 >"$WORKSPACE/sa-ns.log" 2>&1 &
+    sleep 2
+    echo "standalone start ok"
+}
+
+help() {
+    echo -e "\tUsage: $0 [ cluster | standalone ]"
+}
+
 # with no param, default is cluster mode
 if [ $# -eq 0 ]; then
-        start_cluster
-        exit 0
+    start_cluster
+    exit 0
 fi
 
 if [ $# -ne 1 ]; then
-        echo "parameter must be standalone|cluster"
-        exit 1
+    echo "parameter must be standalone|cluster"
+    exit 1
 fi
 
 OP=$1
 case $OP in
+
 cluster)
-        start_cluster
-        ;;
+    start_cluster
+    ;;
 standalone)
-        start_standalone
-        ;;
+    start_standalone
+    ;;
+-h | help)
+    help
+    ;;
 *)
-        echo "only support standalone|cluster" >&2
-        exit 1
-        ;;
+    echo -e "Invalid argument: $*"
+    help
+    exit 1
+    ;;
 esac
