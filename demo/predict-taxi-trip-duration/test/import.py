@@ -40,11 +40,11 @@ engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmld
 connection = engine.connect()
 try:
     connection.execute('create database db_test;')
-except db.exc.SQLAlchemyError as e:
+except Exception as e:
     print(e)
 try:
     connection.execute(ddl)
-except db.exc.SQLAlchemyError as e:
+except Exception as e:
     print(e)
 
 

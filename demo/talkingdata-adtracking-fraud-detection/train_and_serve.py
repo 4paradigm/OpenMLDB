@@ -106,7 +106,7 @@ def nothrow_execute(sql):
         print('execute ' + sql)
         _, rs = connection.execute(sql)
         print(rs)
-    except db.exc.SQLAlchemyError as e:
+    except Exception as e:
         print(e)
 
 
