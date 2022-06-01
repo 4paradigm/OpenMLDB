@@ -128,17 +128,17 @@ bool FullTableIterator::NextFromRemote() {
         uint32_t count = 0;
         if (kv_it_) {
             if (!kv_it_->IsFinish()) {
+                kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
+                            FLAGS_traverse_cnt_limit, false, count);
                 DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
                     " key " << last_ts_ << " count " << count;
-                kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                            FLAGS_traverse_cnt_limit, count);
             } else {
                 iter++;
                 kv_it_.reset();
                 continue;
             }
         } else {
-            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, count);
+            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count);
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
@@ -204,7 +204,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
 DistributeWindowIterator::ItStat DistributeWindowIterator::SeekToFirstRemote() {
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
-        auto it = kv.second->Traverse(tid_, kv.first, index_name_, "", 0, FLAGS_traverse_cnt_limit, count);
+        auto it = kv.second->Traverse(tid_, kv.first, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count);
         if (it && it->Valid()) {
             DLOG(INFO) << "first pos in remote: pid=" << kv.first;
             return {kv.first, nullptr, it};
@@ -292,58 +292,42 @@ void DistributeWindowIterator::Next() {
         }
     }
     if (kv_it_) {
-        /*std::string cur_pk = kv_it_->GetPK();
-        auto traverse_it = std::dynamic_pointer_cast<openmldb::catalog::TraverseKvIterator>(kv_it_);
+        std::string cur_pk = kv_it_->GetPK();
+        auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it_);
+        uint64_t last_ts = 0;
         if (traverse_it) {
-            if (kv_it_->Valid()) {
-                kv_it_->Next();
-                while (kv_it_->Valid() && cur_pk == kv_it_->GetPK()) {
-                    kv_it_->Next();
-                }
-                if (kv_it_->Valid()) {
-                    return;
-                }
-                if (!kv_it_->IsFinish()) {
-                    DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk <<
-                        " key " << last_ts_ << " count " << count;
-                    kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                                FLAGS_traverse_cnt_limit, count);
-
-                }
+            traverse_it->NextPK();
+            if (traverse_it->Valid()) {
+                return;
             }
+            last_ts = traverse_it->GetLastTS();
         }
         auto iter = tablet_clients_.find(cur_pid_);
+        if (iter == tablet_clients_.end()) {
+            return;
+        }
+        uint32_t count = 0;
+        kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", cur_pk, last_ts, FLAGS_traverse_cnt_limit, true, count);
+        DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk << " key " << last_ts << " count " << count;
+        if (kv_it_ && kv_it_->Valid()) {
+            response_vec_.emplace_back(kv_it_->GetResponse());
+            return;
+        }
         do {
+            iter++;
             if (iter == tablet_clients_.end()) {
-                return false;
+                return;
             }
             cur_pid_ = iter->first;
             uint32_t count = 0;
-            if (kv_it_) {
-                if (!kv_it_->IsFinish()) {
-                    DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
-                        " key " << last_ts_ << " count " << count;
-                    kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                                FLAGS_traverse_cnt_limit, count);
-                } else {
-                    iter++;
-                    kv_it_.reset();
-                    continue;
-                }
-            } else {
-                kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, count);
-                DLOG(INFO) << "count " << count;
-            }
+            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count);
+            DLOG(INFO) << "count " << count;
             if (kv_it_ && kv_it_->Valid()) {
-                last_pk_ = kv_it_->GetLastPK();
-                last_ts_ = kv_it_->GetLastTS();
                 response_vec_.emplace_back(kv_it_->GetResponse());
-                key_ = kv_it_->GetKey();
                 break;
             }
-            iter++;
             kv_it_.reset();
-        } while (true);*/
+        } while (true);
     } else {
         const auto& stat = SeekToFirstRemote();
         if (stat.kv_it) {

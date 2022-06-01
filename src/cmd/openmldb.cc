@@ -30,6 +30,7 @@
 #include "base/hash.h"
 #include "base/ip.h"
 #include "base/linenoise.h"
+#include "base/kv_iterator.h"
 #include "base/server_name.h"
 #include "base/strings.h"
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -37,7 +38,6 @@
 #include "tablet/tablet_impl.h"
 #endif
 #include "apiserver/api_server_impl.h"
-#include "base/kv_iterator.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -1900,7 +1900,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
         if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -3396,7 +3396,7 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
     tp.AddRow(row);
     uint32_t index = 1;
     uint32_t count = 0;
-    ::openmldb::catalog::KvIterator* it =
+    ::openmldb::base::KvIterator* it =
         client->Traverse(tid, pid, "", "", 0, limit, count);
     if (it == NULL) {
         std::cout << "Fail to preview table" << std::endl;

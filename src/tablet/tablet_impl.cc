@@ -1390,8 +1390,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         return;
     }
     index = index_def->GetId();
-    ::openmldb::storage::TableIterator* it = NULL;
-    it = table->NewTraverseIterator(index);
+    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index);
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("create iterator failed");
@@ -1405,6 +1404,10 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
+        auto traverse_it = dynamic_cast<::openmldb::storage::TraverseIterator*>(it);
+        if (traverse_it && traverse_it->Valid() && request->skip_current_pk() && traverse_it->GetPK() == last_pk) {
+            traverse_it->NextPK();
+        }
     } else {
         DEBUGLOG("tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
