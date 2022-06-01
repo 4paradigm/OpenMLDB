@@ -1,12 +1,12 @@
-# Pulsar Connector：接入实时数据流
+# OpenMLDB Pulsar Connector：接入实时数据流
 
 ## 简介
-Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了OpenMLDB JDBC Connector，可以无障碍地连接Pulsar。在这篇文档中，你将学习到这个connector的概念与使用方法。
+Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了在Pulsar中使用的OpenMLDB JDBC Connector，可以无障碍地使Pulsar连接到OpenMLDB。在这篇文档中，你将学习到这个connector的概念与使用方法。
 
 注意，为了使演示更简单，本文中将使用Pulsar Standalone，OpenMLDB集群和一个简单JSON消息生产者程序，来演示OpenMLDB JDBC Connector是如何工作的。该connector是完全可以在Pulsar Cluster中正常使用的。
 
 ```{seealso}
-关于 Pulsar OpenMLDB Connector 的详细信息，也可以参考 Pulsar [官网相关介绍](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb)。
+关于 Pulsar 的 OpenMLDB Connector 的详细信息，也可以参考 Pulsar [官网相关介绍](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb)。
 ```
 
 ## 概览
@@ -18,7 +18,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 
 ### 流程
 
-Pulsar OpenMLDB connector 用于 OpenMLDB 线上模式的实时数据流接入。使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。我们也录制了所有步骤，详情见[terminalizer分享](https://terminalizer.com/view/be2309235671), 你也可以在此下载录制的脚本[demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml)。
+使用connector的简要流程，如下图所示。我们接下来将详细介绍每一步。我们也录制了所有步骤，详情见[terminalizer分享](https://terminalizer.com/view/be2309235671), 你也可以在此下载录制的脚本[demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml)。
 
 整体上，使用流程可以概括为三步：
 1. 在 OpenMLDB 创建相关的数据库和表
@@ -35,7 +35,7 @@ Pulsar OpenMLDB connector 用于 OpenMLDB 线上模式的实时数据流接入�
 ```
 我们更推荐你使用‘host network’模式运行docker，以及绑定文件目录‘files’，sql脚本在该目录中。
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.0 bash
+docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.1 bash
 docker exec -it openmldb bash
 ```
 

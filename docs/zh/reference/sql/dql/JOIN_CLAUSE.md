@@ -54,7 +54,7 @@ SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 ON t1.col1 = 
 
 ```SQL
 -- desc: 简单拼表查询 with ORDER BY
-SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 ORDER BY ts.std_ts ON t1.col1 = t2.col1
+SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 ORDER BY t2.std_ts ON t1.col1 = t2.col1
 ```
 
 `LAST JOIN`时配置 `Order By` ，则右表按Order排序，拼接最后一条命中的数据行。

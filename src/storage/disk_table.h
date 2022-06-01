@@ -420,7 +420,7 @@ class DiskTable : public Table {
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
     uint64_t GetRecordPkCnt() override;
-    inline uint64_t GetRecordByteSize() const override { return 0; }
+    uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT

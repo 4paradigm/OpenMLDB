@@ -130,15 +130,15 @@ bool FullTableIterator::NextFromRemote() {
             if (!kv_it_->IsFinish()) {
                 DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
                     " key " << last_ts_ << " count " << count;
-                kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
-                            FLAGS_traverse_cnt_limit, false, count));
+                kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
+                            FLAGS_traverse_cnt_limit, count);
             } else {
                 iter++;
                 kv_it_.reset();
                 continue;
             }
         } else {
-            kv_it_.reset(iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count));
+            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, count);
             DLOG(INFO) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
@@ -179,47 +179,31 @@ void DistributeWindowIterator::Reset() {
     cur_pid_ = INVALID_PID;
 }
 
+// seek to the pos where key = `key` on success
+// or do nothing on fail (preserve old stat)
 void DistributeWindowIterator::Seek(const std::string& key) {
     DLOG(INFO) << "seek to key " << key;
-    Reset();
-    if (!tables_) {
+    const auto& stat = SeekByKey(key);
+    if (stat.pid < 0) {
+        DLOG(INFO) << "no pos found for key " << key;
         return;
     }
-    if (pid_num_ > 0) {
-        cur_pid_ = (uint32_t)(::openmldb::base::hash64(key) % pid_num_);
+
+    if (stat.it != nullptr) {
+        Reset();
+        it_.reset(stat.it);
+    } else if (stat.kv_it != nullptr) {
+        Reset();
+        response_vec_.push_back(stat.kv_it->GetResponse());
+        kv_it_ = stat.kv_it;
+    } else {
+        DLOG(INFO) << "no pos found for key " << key;
+        return;
     }
-    auto iter = tables_->find(cur_pid_);
-    if (iter != tables_->end()) {
-        it_.reset(iter->second->NewWindowIterator(index_));
-        it_->Seek(key);
-        if (it_->Valid()) {
-            return;
-        }
-    }
-    DLOG(INFO) << "seek to key " << key << " from remote. " << " cur_pid " << cur_pid_;
-    auto client_iter = tablet_clients_.find(cur_pid_);
-    if (client_iter != tablet_clients_.end()) {
-        uint32_t count = 0;
-        kv_it_.reset(client_iter->second->Traverse(tid_, cur_pid_, index_name_, key, 0,
-                    FLAGS_traverse_cnt_limit, false, count));
-        if (kv_it_ && kv_it_->Valid()) {
-            response_vec_.emplace_back(kv_it_->GetResponse());
-            return;
-        }
-    }
-    for (const auto& kv : *tables_) {
-        if (kv.first <= cur_pid_) {
-            continue;
-        }
-        it_.reset(kv.second->NewWindowIterator(index_));
-        it_->SeekToFirst();
-        if (it_->Valid()) {
-            cur_pid_ = kv.first;
-            break;
-        }
-    }
+    cur_pid_ = stat.pid;
 }
 
+// seek to first pos where key exists
 void DistributeWindowIterator::SeekToFirst() {
     DLOG(INFO) << "seek to first";
     Reset();
@@ -227,22 +211,63 @@ void DistributeWindowIterator::SeekToFirst() {
         return;
     }
     for (const auto& kv : *tables_) {
-        it_.reset(kv.second->NewWindowIterator(index_));
-        it_->SeekToFirst();
-        if (it_->Valid()) {
-            cur_pid_ = kv.first;
-            return;
+        auto it = kv.second->NewWindowIterator(index_);
+        if (it != nullptr) {
+            it->SeekToFirst();
+            if (it->Valid()) {
+                DLOG(INFO) << "first pos in local: pid=" << kv.first;
+                it_.reset(it);
+                cur_pid_ = kv.first;
+                return;
+            }
+            delete it;
         }
     }
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
-        cur_pid_ = kv.first;
-        kv_it_.reset(kv.second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count));
-        if (kv_it_ && kv_it_->Valid()) {
-            response_vec_.emplace_back(kv_it_->GetResponse());
+        auto it = kv.second->Traverse(tid_, kv.first, index_name_, "", 0, FLAGS_traverse_cnt_limit, count);
+        if (it && it->Valid()) {
+            DLOG(INFO) << "first pos in remote: pid=" << kv.first;
+            response_vec_.push_back(it->GetResponse());
+            kv_it_ = it;
+            cur_pid_ = kv.first;
             return;
         }
     }
+    DLOG(INFO) << "empty window iterator";
+}
+
+DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::string& key) const {
+    if (!tables_ || pid_num_ <= 0) {
+        return {-1, nullptr, {}};
+    }
+
+    uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % pid_num_);
+
+    auto iter = tables_->find(pid);
+    if (iter != tables_->end()) {
+        auto it = iter->second->NewWindowIterator(index_);
+        if (it != nullptr) {
+            it->Seek(key);
+            if (it->Valid()) {
+                return {static_cast<int32_t>(pid), it, {}};
+            }
+            delete it;
+        }
+    }
+    DLOG(INFO) << "seeking to key " << key << " from remote. "
+               << " cur_pid " << pid;
+    auto client_iter = tablet_clients_.find(pid);
+    if (client_iter != tablet_clients_.end()) {
+        std::string msg;
+        auto it = client_iter->second->Scan(tid_, pid, key, index_name_, 0, 0, FLAGS_traverse_cnt_limit, msg);
+        if (it != nullptr && it->Valid()) {
+            return {static_cast<int32_t>(pid), {}, it};
+        }
+    }
+
+    // fallback
+    return {-1, nullptr, {}};
 }
 
 void DistributeWindowIterator::Next() {
@@ -278,7 +303,7 @@ std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetVal
     if (it_) {
         return it_->GetRawValue();
     }
-    return new RemoteWindowIterator(kv_it_, response_vec_.back());
+    return new RemoteWindowIterator(tid_, cur_pid_, index_name_, kv_it_, tablet_clients_[cur_pid_]);
 }
 
 const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
@@ -287,6 +312,96 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
     }
     return hybridse::codec::Row(hybridse::base::RefCountedSlice::Create(kv_it_->GetPK().data(),
                 kv_it_->GetPK().size()));
+}
+
+const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
+    auto slice_row = kv_it_->GetValue();
+    size_t sz = slice_row.size();
+    // for distributed environment, slice_row's data probably become invalid when the DistributeWindowIterator
+    // iterator goes out of scope. so copy action occured here
+    int8_t* copyed_row_data = new int8_t[sz];
+    memcpy(copyed_row_data, slice_row.data(), sz);
+    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+    row_.Reset(shared_slice);
+    DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
+    return row_;
+}
+
+RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
+        const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
+        const std::shared_ptr<openmldb::client::TabletClient>& client)
+    : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
+        is_traverse_data_(false), ts_(0), ts_cnt_(0) {
+    if (kv_it_ && kv_it_->Valid()) {
+        pk_ = kv_it_->GetPK();
+        ts_ = kv_it_->GetKey();
+        ts_cnt_ = 1;
+        response_vec_.emplace_back(kv_it_->GetResponse());
+        auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it);
+        if (traverse_it) {
+            is_traverse_data_ = true;
+        }
+    }
+}
+
+bool RemoteWindowIterator::Valid() const {
+    if (!kv_it_ || !kv_it_->Valid()) {
+        return false;
+    }
+    if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
+        return false;
+    }
+    DLOG(INFO) << "RemoteWindowIterator Valid pk " << pk_ << " ts " << kv_it_->GetKey();
+    return true;
+}
+
+void RemoteWindowIterator::SetTs() {
+    if (kv_it_->GetKey() == ts_) {
+        ts_cnt_++;
+    } else {
+        ts_ = kv_it_->GetKey();
+        ts_cnt_ = 1;
+    }
+}
+
+void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
+    std::string msg;
+    kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, key, 0,
+                FLAGS_traverse_cnt_limit, ts_cnt, msg);
+    DLOG(INFO) << "scan key " << pk_ << " ts " << key << " from remote. tid "
+        << tid_ << " pid " << pid_ << " ts_cnt " << ts_cnt;
+    if (kv_it_ && kv_it_->Valid()) {
+        response_vec_.emplace_back(kv_it_->GetResponse());
+        SetTs();
+    }
+}
+
+void RemoteWindowIterator::Seek(const uint64_t& key) {
+    DLOG(INFO) << "RemoteWindowIterator seek " << key;
+    if (!kv_it_) {
+        return;
+    }
+    while (kv_it_->Valid() && kv_it_->GetKey() > key) {
+        if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
+            break;
+        }
+        kv_it_->Next();
+    }
+    if (kv_it_->Valid()) {
+        ts_ = kv_it_->GetKey();
+    } else if (!kv_it_->IsFinish()) {
+        ScanRemote(key, 0);
+    }
+    ts_cnt_ = 1;
+}
+
+void RemoteWindowIterator::Next() {
+    kv_it_->Next();
+    if (kv_it_->Valid()) {
+        SetTs();
+    } else if (!kv_it_->IsFinish()) {
+        ScanRemote(ts_, ts_cnt_);
+    }
 }
 
 }  // namespace catalog

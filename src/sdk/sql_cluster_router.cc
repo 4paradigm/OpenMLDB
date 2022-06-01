@@ -1070,7 +1070,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     auto client = GetTabletClientForBatchQuery(db, sql, parameter, status);
     if (!status->IsOK() || !client) {
         DLOG(INFO) << "no tablet available for sql " << sql;
-        status->msg = "no tablet available for sql";
+        status->msg = absl::StrCat("no tablet available for sql", status->msg);
         status->code = -1;
         return {};
     }
@@ -1291,10 +1291,10 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
     }
     ::hybridse::sdk::SchemaImpl input_schema(explain_output.input_schema);
     ::hybridse::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    std::shared_ptr<ExplainInfoImpl> impl(
-        new ExplainInfoImpl(input_schema, output_schema, explain_output.logical_plan, explain_output.physical_plan,
-                            explain_output.ir, explain_output.request_db_name, explain_output.request_name));
-    return impl;
+
+    return std::make_shared<ExplainInfoImpl>(input_schema, output_schema, explain_output.logical_plan,
+                                             explain_output.physical_plan, explain_output.ir,
+                                             explain_output.request_db_name, explain_output.request_name);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
@@ -1800,7 +1800,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
     all_tablet = cluster_sdk_->GetAllTablet();
     // set dafault value
-    uint32_t default_replica_num = std::min((uint32_t)all_tablet.size(), FLAGS_replica_num);
+    uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
@@ -1828,7 +1828,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     sp_info.set_db_name(db);
     sp_info.set_sp_name(create_sp->GetSpName());
     sp_info.set_sql(sql);
-    RtidbSchema* schema = sp_info.mutable_input_schema();
+    PBSchema* schema = sp_info.mutable_input_schema();
     for (auto input : create_sp->GetInputParameterList()) {
         if (input == nullptr) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : InputParameterNode null");
@@ -1871,7 +1871,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     if (!ok) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to explain sql" + sql_status.msg);
     }
-    RtidbSchema rtidb_input_schema;
+    PBSchema rtidb_input_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert input schema failed");
     }
@@ -1880,7 +1880,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     }
     sp_info.mutable_input_schema()->CopyFrom(*schema);
     // get output schema, and fill sp_info
-    RtidbSchema rtidb_output_schema;
+    PBSchema rtidb_output_schema;
     if (!openmldb::schema::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "convert output schema failed");
     }
@@ -1902,7 +1902,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
 }
 
-bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema) {
+bool SQLClusterRouter::CheckParameter(const PBSchema& parameter, const PBSchema& input_schema) {
     if (parameter.size() != input_schema.size()) {
         return false;
     }
@@ -2174,9 +2174,11 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     SetColumnDesc("num_rows", openmldb::type::DataType::kInt, table_info.add_column_desc());
     SetColumnDesc("agg_val", openmldb::type::DataType::kString, table_info.add_column_desc());
     SetColumnDesc("binlog_offset", openmldb::type::DataType::kBigInt, table_info.add_column_desc());
+    SetColumnDesc("filter_key", openmldb::type::DataType::kString, table_info.add_column_desc());
     auto index = table_info.add_column_key();
     index->set_index_name("key_index");
     index->add_col_name("key");
+    index->add_col_name("filter_key");
     index->set_ts_name("ts_start");
 
     // keep ttl in pre-aggr table the same as base table
@@ -2260,7 +2262,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return {};
             }
             *status = {};
-            std::vector<std::string> value = {info->GetPhysicalPlan()};
+            std::vector<std::string> value = {info->GetPhysicalPlan() + "\n"};
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
         }
         case hybridse::node::kPlanTypeCreate: {
@@ -3055,7 +3057,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        bool ok = ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
+                        bool ok = ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl,
+                                column_key.index_name(), err);
                         if (!ok) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
@@ -3199,20 +3202,21 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
             // check if pre-aggr table exists
-            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw.aggr_func_, lw.aggr_col_, lw.partition_col_,
-                                                   lw.order_col_, lw.bucket_size_);
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw);
             if (is_exist) {
                 continue;
             }
             // insert pre-aggr meta info to meta table
             std::string aggr_col = lw.aggr_col_ == "*" ? "" : lw.aggr_col_;
             auto aggr_table =
-                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col);
+                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
+                             lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
             ::hybridse::sdk::Status status;
             std::string insert_sql =
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
                              "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
-                             lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "');");
+                             lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "', '",
+                             lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
                 return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
@@ -3279,14 +3283,14 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
 }
 
 bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                              const std::string& aggr_func, const std::string& aggr_col,
-                                              const std::string& partition_col, const std::string& order_col,
-                                              const std::string& bucket_size) {
+                                              const openmldb::base::LongWindowInfo& lw) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
     std::string meta_info = absl::StrCat(
-        "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", aggr_func,
-        "' and aggr_col = '", aggr_col, "' and partition_cols = '", partition_col, "' and order_by_col = '", order_col);
+        "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
+        "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
+        "' and order_by_col = '", lw.order_col_, filter_cond);
     std::string select_sql =
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, "';");
     hybridse::sdk::Status status;
@@ -3301,7 +3305,7 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
     while (rs->Next()) {
         std::string exist_bucket_size;
         rs->GetString(0, &exist_bucket_size);
-        if (exist_bucket_size == bucket_size) {
+        if (exist_bucket_size == lw.bucket_size_) {
             LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
             return true;
         }

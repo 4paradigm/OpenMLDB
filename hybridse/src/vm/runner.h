@@ -1005,7 +1005,7 @@ class RequestAggUnionRunner : public Runner {
         const Row& request,
         std::vector<std::shared_ptr<TableHandler>> union_segments,
         int64_t request_ts, const WindowRange& window_range,
-        const bool output_request_row, const bool exclude_current_time);
+        const bool output_request_row, const bool exclude_current_time) const;
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
@@ -1019,10 +1019,6 @@ class RequestAggUnionRunner : public Runner {
         kMax
     };
 
-    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
-    };
-
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
@@ -1031,7 +1027,12 @@ class RequestAggUnionRunner : public Runner {
     AggType agg_type_;
     const node::ExprNode* agg_col_ = nullptr;
     std::string agg_col_name_;
-    std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
+    type::Type agg_col_type_;
+
+    std::unique_ptr<BaseAggregator> CreateAggregator() const;
+    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
+        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
+    };
 };
 
 class PostRequestUnionRunner : public Runner {

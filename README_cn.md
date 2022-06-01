@@ -1,5 +1,4 @@
-
-<div align=center><img src="./docs/zh/about/images/openmldb_logo.png" width="400"/></div>
+![openmldb_logo](docs/zh/about/images/openmldb_logo.png)
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
@@ -13,7 +12,7 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-**[English version](./README.md) | 中文版**
+**[English](./README.md) | 中文**
 
 ### OpenMLDB 是一个开源机器学习数据库，提供线上线下一致的生产级特征平台。
 
@@ -33,9 +32,7 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
 - 步骤二：SQL 特征脚本一键部署上线，由线下模式切换为线上模式
 - 步骤三：接入实时数据，进行线上实时特征计算，用于模型推理
 
-<p align="center">
- <img src="docs/zh/about/images/workflow_cn.png" alt="image-20211103103052252" width=800 />
-</p>
+![workflow_cn](docs/zh/about/images/workflow_cn.png)
 
 为了可以达到开发即上线的优化目标，OpenMLDB 的架构基于线上线下一致性的理念所设计。上图显示了 OpenMLDB 的抽象架构，包含了四个重要的设计组件：（1）统一的 **SQL** 编程语言；（2）具备毫秒级延迟的的高性能**实时 SQL 引擎**；（3）基于 [OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)的**批处理 SQL 引擎**；（4）串联实时和批处理 SQL 引擎，保证线上线下一致性的**一致性执行计划生成器**。
 
@@ -128,10 +125,10 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)
 - [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) 和 [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions): 如果你是一个严肃的开发者，我们非常欢迎加入我们 GitHub 上的开发者社区，近距离参与我们的开发迭代。GitHub Issues 主要用来搜集 bugs 以及反馈新特性需求；GitHub Discussions 可以讨论任何和 OpenMLDB 相关的内容。
 - [技术博客](https://www.zhihu.com/column/c_1417199590352916480)
-- 开发团队的共享空间  [中文](https://go005qabor.feishu.cn/drive/folder/fldcn3W5i52QmWqgJzRlHvxFf2d) | [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
+- 开发团队的共享空间  [中文](https://openmldb.feishu.cn/wiki/space/7101318128021307396) | [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL)
 - [开发者邮件群组和邮件列表](https://groups.google.com/g/openmldb-developers)
 - 微信交流群：
-  <img src="images/wechat.png" alt="img" width=120 />  
+  ![wechat](docs/zh/about/images/wechat.png)  
 
 ## 12. 学术论文
 

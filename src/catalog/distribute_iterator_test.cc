@@ -275,7 +275,7 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     for (int i = 0; i < 100; i++) {
         std::string key = "card" + std::to_string(i);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key)) % 4;
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key)) % 4;
         cout_map[pid]++;
         if (pid % 2 == 0) {
             PutKey(key, (*tables)[pid]);
@@ -317,7 +317,7 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     for (int i = 0; i < 20; i++) {
         std::string key = "card" + std::to_string(i);
-        uint32_t pid = (uint32_t)(::openmldb::base::hash64(key)) % 4;
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key)) % 4;
         if (pid % 2 == 0) {
             PutKey(key, (*tables)[pid]);
         } else {
@@ -340,6 +340,68 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
         delete it;
         ASSERT_EQ(count, 10);
     }
+}
+
+TEST_F(DistributeIteratorTest, RemoteIterator) {
+    uint32_t old_limit = FLAGS_traverse_cnt_limit;
+    FLAGS_traverse_cnt_limit = 7;
+    uint32_t tid = 3;
+    auto tables = std::make_shared<Tables>();
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    std::vector<std::string> endpoints = {"127.0.0.1:9230"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 0)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{0, client1}};
+    codec::SDKCodec codec(metas[0]);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    std::string key = "card0";
+    for (int j = 0; j < 1000; j++) {
+        std::vector<std::string> row = {key , "mcc", std::to_string(now)};
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
+        client1->Put(tid, 0, 0, value, dimensions);
+    }
+    for (int j = 1000; j < 2000; j++) {
+        std::vector<std::string> row = {key , "mcc", std::to_string(now - j)};
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
+        client1->Put(tid, 0, 0, value, dimensions);
+    }
+    DistributeWindowIterator w_it(tid, 1, tables, 0, "card", tablet_clients);
+    w_it.Seek(key);
+    ASSERT_TRUE(w_it.Valid());
+    ASSERT_EQ(w_it.GetKey().ToString(), key);
+    auto it = w_it.GetValue();
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 2000);
+
+    DistributeWindowIterator w_it2(tid, 1, tables, 0, "card", tablet_clients);
+    w_it2.Seek(key);
+    ASSERT_TRUE(w_it2.Valid());
+    ASSERT_EQ(w_it2.GetKey().ToString(), key);
+    it = w_it2.GetValue();
+    it->Seek(now - 1500);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(it->GetKey(), now - 1500);
+    count = 0;
+    while (it->Valid()) {
+        ASSERT_EQ(now - 1500 - count, it->GetKey());
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 500);
+    FLAGS_traverse_cnt_limit = old_limit;
 }
 
 }  // namespace catalog

@@ -14,90 +14,133 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import tornado.web
-import tornado.ioloop
-import json
-import xgboost as xgb
-import sqlalchemy as db
-import requests
 import argparse
+import json
+import numpy as np
+import requests
+import tornado.ioloop
+import tornado.web
+import xgboost as xgb
+import logging
 
-bst = None
+logging.basicConfig(encoding='utf-8', level=logging.INFO, format="%(asctime)s-%(name)s-%(levelname)s-%(message)s")
 
-table_schema = [
-    ("ip", "int"),
-    ("app", "int"),
-    ("device", "int"),
-    ("os", "int"),
-    ("channel", "int"),
-    ("click_time", "timestamp"),
-    ("is_attributed", 'int'),
-]
-
+arg_keys = ["endpoint", 'database', 'deployment', 'model_path']
+bst = xgb.Booster()
+# schema column type, ref hybridse::sdk::DataTypeName
+table_schema = []
 url = ""
 
 
-def get_schema():
-    dict_schema = {}
-    for i in table_schema:
-        dict_schema[i[0]] = i[1]
-    return dict_schema
+def build_feature(res):
+    """
+    The last value in list, label `is_attributed` is dummy.
+    Real-time feature has it, cuz the history data in OpenMLDB is the training data too.
+    It'll have this column, but no effect to feature extraction.
 
-
-dict_schema = get_schema()
-json_schema = json.dumps(dict_schema)
-print(json_schema)
-# the label is different
-
-
-def build_feature(rs):
-    var_Y = [rs[-1]]
-    var_X = [rs[:-1]]
-    return np.array(var_X)
+    :param res: an OpenMLDB reqeust response
+    :return: real feature
+    """
+    # col `is_attributed` is dummy, col `ip` won't train, so start from 2
+    return xgb.DMatrix(np.array([res[2:]]))
 
 
 class SchemaHandler(tornado.web.RequestHandler):
     def get(self):
+        json_schema = json.dumps(table_schema)
         self.write(json_schema)
+
+
+def request_row_cvt(json_row):
+    """
+    convert json to array, using table schema
+    APIServer request format only has array now
+    :param json_row: row in json format
+    :return: array
+    """
+    row_data = []
+    for col in table_schema:
+        row_data.append(json_row.get(col['name'], "") if col['type'] == "string" else json_row.get(col['name'], 0))
+    logging.info('request row: %s', row_data)
+    return row_data
+
+
+def get_result(response):
+    result = json.loads(response.text)
+    logging.info('request result: %s', result)
+    return result['data']['data']
 
 
 class PredictHandler(tornado.web.RequestHandler):
     def post(self):
+        # only one row
         row = json.loads(self.request.body)
-        data = {}
-        data["input"] = []
-        row_data = []
-        for i in table_schema:
-            if i[1] == "string":
-                row_data.append(row.get(i[0], ""))
-            elif i[1] == "int" or i[1] == "double" or i[1] == "timestamp" or i[1] == "bigint":
-                row_data.append(row.get(i[0], 0))
-            else:
-                row_data.append(None)
-        print('receive request: ', row_data)
-        data["input"].append(row_data)
-        rs = requests.post(url, json=data)
-        result = json.loads(rs.text)
-        print(result)
-        for r in result["data"]["data"]:
-            ins = build_feature(r)
-            self.write("----------------ins---------------\n")
-            self.write(str(ins) + "\n")
-            # print("==========",ins,type(ins),ins.shape)
-            label = ins[0][5].reshape(1,)
-            ins = np.delete(ins, 5).reshape(1, 9)
-            ins = xgb.DMatrix(ins, label=label)
+        data = {"input": [request_row_cvt(row)]}
+        # request to OpenMLDB
+        response = requests.post(url, json=data)
+
+        # result is a list, even we just do a single request
+        for res in get_result(response):
+            ins = build_feature(res)
+            self.write("real-time feature:\n" + str(res) + "\n")
             prediction = bst.predict(ins)
             self.write(
                 "---------------predict whether is attributed -------------\n")
-            print(prediction)
             self.write("%s" % str(prediction[0]))
+            logging.info('feature: %s, prediction: %s', res, prediction)
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.write("real time execute sparksql demo")
+        self.write("real time fe request demo\n")
+
+
+def args_validator(update_info):
+    return any(key in update_info for key in arg_keys)
+
+
+def make_url():
+    return "http://%s/dbs/%s/deployments/%s" % (global_args['endpoint'],
+                                                global_args['database'],
+                                                global_args['deployment'])
+
+
+def update_schema():
+    r = requests.get(url)
+    rs = json.loads(r.text)
+    global table_schema
+    table_schema = rs['data']['input_schema']
+
+
+def update_model():
+    bst.load_model(fname=global_args['model_path'])
+
+
+def update_all():
+    global url
+    url = make_url()
+    update_schema()
+    logging.info('url and schema updated')
+    update_model()
+    logging.info('model updated')
+
+
+class UpdateHandler(tornado.web.RequestHandler):
+    def post(self):
+        update_info = json.loads(self.request.body)
+        # must use the full names
+        global global_args
+        logging.info('before update: %s', global_args)
+        # just update if update_info is empty
+        # if not, do restrict update
+        if update_info and not args_validator(update_info):
+            msg = 'invalid arg in {}, valid candidates {}'.format(update_info, arg_keys)
+            self.write(msg)
+            return
+        global_args = global_args | update_info
+        logging.info('update: %s', global_args)
+        update_all()
+        self.write("ok\n")
 
 
 def make_app():
@@ -105,17 +148,27 @@ def make_app():
         (r"/", MainHandler),
         (r"/schema", SchemaHandler),
         (r"/predict", PredictHandler),
+        (r"/update", UpdateHandler),
     ])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("endpoint",  help="specify the endpoint of apiserver")
-    parser.add_argument("model_path",  help="specify the model path")
+    parser.add_argument("-e", "--endpoint", help="specify the endpoint of apiserver", default="localhost:9080")
+    parser.add_argument("-m", "--model_path", help="specify the model path", default="/tmp/model.json")
+    parser.add_argument("-db", "--database", help="the database you want to request", default="demo_db")
+    parser.add_argument("-d", "--deployment", help="the deployment you want to request", default="demo")
+    parser.add_argument("-i", "--init", action=argparse.BooleanOptionalAction, help="init immediately, update later",
+                        default=True)
     args = parser.parse_args()
-    url = "http://%s/dbs/demo_db/deployments/demo" % args.endpoint
-    bst = xgb.Booster(model_file=args.model_path)
-    print("model is ready")
+
+    global global_args
+    global_args = vars(args)
+    print(global_args)
+    logging.info('init args: %s', global_args)
+
+    if args.init:
+        update_all()
     app = make_app()
     app.listen(8881)
     tornado.ioloop.IOLoop.current().start()

@@ -1,12 +1,34 @@
 # Release Notes
 
+## v0.5.1 Release Notes
+
+### Features
+- Support the new OpenMLDB Kafka connector (#1771 @vagetablechicken)
+- Support very long SQLs in TaskManager (#1833 @tobegit3hub)
+- Support `window union` correctly in the cluster mode (#1855 #1856 @aceforeverd @dl239)
+- Support `count_where(*, condition)` in the storage engine (#1841 @nautaa)
+- Add a new micro-benchmark tool for performance evaluation (#1800 @dl239)
+
+### Bug Fixes
+- Auto creating table throws error when a new ttl is greater than the current ttl. (#1737 @keyu813)
+- Offline tasks crash when enabling `UnsafeRowOpt` for continuous windows. (#1773 @tobegit3hub)
+- The aggregator is not reset if the table is empty. (#1784 @zhanghaohit)
+- The order for window union rows and original rows with the same order key is undefined. (#1802 @aceforeverd)
+- Queries with pre-aggregate enabled may crash under certain tests. (#1838 zhanghaohit)
+- Ending space in CLI may cause program crash. (#1820 @aceforeverd)
+- When creating an engine with empty databases, it cannot execute the command of `USE` database in the Python SDK. (#1854 @vagetablechicken)
+- When using the soft copy for csv files, it cannot read offline path with options. (#1872 @vagetablechicken)
+
+### Code Refactoring
+#1766 @hiyoyolumi; #1777 @jmoldyvan; #1779 @SohamRatnaparkhi; #1768 @SaumyaBhushan; #1795 @vighnesh-kadam; #1806 @Mount-Blanc; #1978 @wangxinyu666666; #1781 @SaumyaBhushan; #1786 @xuduling; #1810 @IZUMI-Zu; #1824 @bxiiiiii; #1843 @1korenn; #1851 @zhouxh19; #1862 @Ivyee17; #1867, #1869, #1873, #1884 @mangoGoForward; #1863 @Ivyee17; #1815 @jmoldyvan; #1857 @frazie; #1878 @PrajwalBorkar
+
 ## v0.5.0 Release Notes
 
 ### Highlights
 
 - We have introduced an important performance optimization technique of pre-aggregation, which can significantly improve the performance for a query with time windows containing massive amount of rows, e.g., a few millions. (#1532 #1573 #1583 #1622 #1627 #1672 # 1712 @zhanghaohit @nautaa)
 - We have added a new storage engine that supports persistent storage (such as HDD and SSD) for the online SQL engine. Such a storage engine is helpful when a user wants to reduce the cost with acceptable performance degradation. (#1483 @Leowner)
-- We have supported C/C++ based User-Defined Functions (UDFs) with dynamic registration to enhance the development experience.  (#1509 #1733 #1700 @dl239 @tobegit3hub)
+- We have supported C/C++ based User-Defined Functions (UDFs) with dynamic registration to enhance the development experience. (#1509 #1733 #1700 @dl239 @tobegit3hub)
 
 ### Other Features
 
@@ -16,7 +38,7 @@
 - Support setting global variables (#1310 #1359 #1364 @keyu813 @aceforeverd)
 - Support reading Spark configuration files from the CLI (#1600 @tobegit3hub)
 - Support using multiple threads for the Spark local mode (#1675 @tobegit3hub)
-- Enhance the performance of join by using the Spark's native expression (#1502 tobegit3hub)
+- Enhance the performance of join by using the Spark's native expression (#1502 @tobegit3hub)
 - Support the validation for TaskManager configuration (#1262 @tobegit3hub)
 - Support tracking unfinished jobs in the TaskManager (#1474 @tobegit3hub)
 - Other minor features (#1601 @dl239; #1574 @vagetablechicken; #1546 @keyu813; #1729 @vagetablechicken; #1460 @tobegit3hub)
@@ -36,7 +58,6 @@
 ### Code Refactoring
 
 #1616 @dl239; #1743 @zjx1319
-
 
 
 

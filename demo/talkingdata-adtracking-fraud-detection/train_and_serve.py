@@ -1,19 +1,30 @@
 import gc
 import os
-import pandas as pd
 import time
-import xgboost as xgb
-import sqlalchemy as db
 import glob
+import requests
+# fmt:off
+import openmldb
+import sqlalchemy as db
+import pandas as pd
+import xgboost as xgb
+# fmt:on
 
 # openmldb cluster configs
 zk = "127.0.0.1:2181"
 zk_path = "/openmldb"
-db_name = "demo_db"  # db name, predict_server.py will use it, be careful.
-table_name = "talkingdata" + str(int(time.time()))
 
+# db, deploy name and model_path will update to predict server. You only need to modify here.
+db_name = "demo_db"
+deploy_name = "demo"
+# save model to
+model_path = "/tmp/model.json"
+
+table_name = "talkingdata" + str(int(time.time()))
 # make sure that taskmanager can access the path
 train_feature_dir = "/tmp/train_feature"
+
+predict_server = "localhost:8881"
 
 
 def column_string(col_tuple) -> str:
@@ -71,20 +82,17 @@ dtypes = {
     'click_id': 'UInt32'
 }
 
-common_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
-                 ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp')]
-train_schema = common_schema + [('is_attributed', 'int')]
-test_schema = common_schema + [('click_id', 'int')]
+train_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
+                ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp'), ('is_attributed', 'int')]
 
 
 def cut_data():
-    print('Prepare train data, use {} rows, save it as train_sample.csv'.format(sample_cnt))
     data_path = 'data/'
     sample_cnt = 10000  # you can prepare sample data by yourself
+    print('Prepare train data, use {} rows, save it as train_sample.csv'.format(sample_cnt))
     train_df = pd.read_csv(data_path + "train.csv", nrows=sample_cnt,
                            dtype=dtypes, usecols=[c[0] for c in train_schema])
-    len_train = len(train_df)
-    assert len_train == sample_cnt
+    assert len(train_df) == sample_cnt
     # take a portion from train sample data
     train_df.to_csv("train_sample.csv", index=False)
     del train_df
@@ -109,7 +117,8 @@ connection = engine.connect()
 
 connection.execute("CREATE DATABASE IF NOT EXISTS {};".format(db_name))
 schema_string = ','.join(list(map(column_string, train_schema)))
-connection.execute("CREATE TABLE {}({});".format(table_name, schema_string))
+connection.execute("CREATE TABLE IF NOT EXISTS {}({});".format(
+    table_name, schema_string))
 
 print("Load train_sample data to offline storage for training(hard copy)")
 connection.execute("USE {}".format(db_name))
@@ -121,13 +130,13 @@ connection.execute("SET @@job_timeout=1200000;")
 connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {} OPTIONS(format='csv',header=true);".format(
     os.path.abspath("train_sample.csv"), table_name))
 
-
 print('Feature extraction')
+# the first column `is_attributed` is the label
 sql_part = """
-select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
+select is_attributed, ip, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
-count(channel) over w3 as ip_app_os_count
+count(channel) over w3 as ip_app_os_count  
 from {} 
 window 
 w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
@@ -156,7 +165,6 @@ print("valid size: ", len(val_df))
 target = 'is_attributed'
 predictors = ['app', 'device', 'os', 'channel', 'hour',
               'day', 'qty', 'ip_app_count', 'ip_app_os_count']
-categorical = ['app', 'device', 'os', 'channel', 'hour']
 
 gc.collect()
 
@@ -191,14 +199,12 @@ del train_df
 del val_df
 gc.collect()
 
-print("Save model.json")
-bst.save_model("./model.json")
+print("Save model.json to ", model_path)
+bst.save_model(model_path)
 
 print("Prepare online serving")
 
 print("Deploy sql")
-# predict server needs this name
-deploy_name = "demo"
 connection.execute("SET @@execute_mode='online';")
 connection.execute("USE {}".format(db_name))
 nothrow_execute("DROP DEPLOYMENT {}".format(deploy_name))
@@ -208,5 +214,10 @@ connection.execute(deploy_sql)
 print("Import data to online")
 # online feature extraction needs history data
 # set job_timeout bigger if the `LOAD DATA` job timeout
-connection.execute("LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(mode='append',format='csv',header=true);".format(
-    os.path.abspath("train_sample.csv"), db_name, table_name))
+connection.execute(
+    "LOAD DATA INFILE 'file://{}' INTO TABLE {}.{} OPTIONS(mode='append',format='csv',header=true);".format(
+        os.path.abspath("train_sample.csv"), db_name, table_name))
+
+print("Update model to predict server")
+infos = {"database": db_name, "deployment": deploy_name, "model_path": model_path}
+requests.post("http://" + predict_server + "/update", json=infos)
