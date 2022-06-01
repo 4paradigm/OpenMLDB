@@ -17,15 +17,16 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-
 import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef}
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{DataType, LongType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -97,6 +98,7 @@ object HybridseUtil {
   }
 
   def createGroupKeyComparator(keyIdxs: Array[Int]): (Row, Row) => Boolean = {
+
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
       (row1, row2) => {
@@ -107,6 +109,40 @@ object HybridseUtil {
         keyIdxs.exists(i => row1.get(i) != row2.get(i))
       }
     }
+  }
+
+  def createComparator(idx: Int, dataType: DataType, row1: UnsafeRow, row2: UnsafeRow): Boolean = {
+    dataType match {
+      case ShortType => row1.getShort(idx) != row2.getShort(idx)
+      case IntegerType => row1.getInt(idx) != row2.getInt(idx)
+      case LongType => row1.getLong(idx) != row2.getLong(idx)
+      case FloatType => row1.getFloat(idx) != row2.getFloat(idx)
+      case DoubleType => row1.getDouble(idx) != row2.getDouble(idx)
+      case BooleanType => row1.getBoolean(idx) != row2.getBoolean(idx)
+      case TimestampType => row1.getLong(idx) != row2.getLong(idx)
+      // TODO(tobe): check for date type
+      case DateType => row1.getLong(idx) != row2.getLong(idx)
+      case StringType => !row1.getString(idx).equals(row2.getString(idx))
+    }
+  }
+
+  def createUnsafeGroupKeyComparator(keyIdxs: Array[Int], dataTypes: Array[DataType]):
+    (UnsafeRow, UnsafeRow) => Boolean = {
+    // TODO(tobe): check for different data types
+
+    if (keyIdxs.length == 1) {
+      val idx = keyIdxs(0)
+      val dataType = dataTypes(0)
+      (row1, row2) => createComparator(idx, dataType, row1, row2)
+    } else {
+      (row1, row2) => {
+        keyIdxs.exists(i => {
+          val dataType = dataTypes(i)
+          createComparator(i, dataType, row1, row2)
+        })
+      }
+    }
+
   }
 
   def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module of covert data from system stdin"""
 import sys
 import time
 i = 0

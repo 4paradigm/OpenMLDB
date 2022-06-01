@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module of train and save model"""
 import lightgbm as lgb
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -30,12 +31,12 @@ feature_path = args.feature_path
 if os.path.isdir(feature_path):
     path_list = os.listdir(feature_path)
     new_file = '/tmp/merged_feature.csv'
-    with open(new_file, 'w') as wf:
+    with open(new_file, 'w', encoding='utf-8') as wf:
         has_write_header = False
         for filename in path_list:
             if filename == '_SUCCESS' or filename.startswith('.'):
                 continue
-            with open(os.path.join(feature_path, filename), 'r') as f:
+            with open(os.path.join(feature_path, filename), 'r', encoding='utf-8') as f:
                 first_line = True
                 for line in f.readlines():
                     if first_line is True:

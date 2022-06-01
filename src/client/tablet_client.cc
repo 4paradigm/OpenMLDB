@@ -1363,6 +1363,9 @@ bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table
     request.set_aggr_col(window_info.aggr_col_);
     request.set_order_by_col(window_info.order_col_);
     request.set_bucket_size(window_info.bucket_size_);
+    if (!window_info.filter_col_.empty()) {
+        request.set_filter_col(window_info.filter_col_);
+    }
     ::openmldb::api::CreateAggregatorResponse response;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateAggregator, &request, &response,
                                   FLAGS_request_timeout_ms * 2, 1);

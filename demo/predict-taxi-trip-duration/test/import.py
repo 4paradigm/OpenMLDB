@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module of insert data to table"""
 import sqlalchemy as db
 
 import datetime
@@ -38,24 +39,25 @@ index(key=passenger_count, ts=pickup_datetime)
 engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 try:
-    connection.execute('acreate database db_test;')
-except Exception as e:
+    connection.execute('create database db_test;')
+except db.exc.SQLAlchemyError as e:
     print(e)
 try:
     connection.execute(ddl)
-except Exception as e:
+except db.exc.SQLAlchemyError as e:
     print(e)
 
 
 def insert_row(line):
     row = line.split(',')
-    row[2] = '%dl' % int(datetime.datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)
-    row[3] = '%dl' % int(datetime.datetime.strptime(row[3], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)
-    insert = "insert into t1 values('%s', %s, %s, %s, %s, %s, %s, %s, %s, '%s', %s);" % tuple(row)
+    row[2] = f"{int(datetime.datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)}l"
+    row[3] = f"{int(datetime.datetime.strptime(row[3], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)}l"
+    insert = f"insert into t1 values('{row[0]}', {row[1]}, {row[2]}, {row[3]}, {row[4]}, {row[5]}, " \
+             f"{row[6]}, {row[7]}, {row[8]}, '{row[9]}', {row[10]});"
     connection.execute(insert)
 
 
-with open('data/taxi_tour_table_train_simple.csv', 'r') as fd:
+with open('data/taxi_tour_table_train_simple.csv', 'r', encoding='utf-8') as fd:
     idx = 0
     for csv_line in fd:
         if idx == 0:

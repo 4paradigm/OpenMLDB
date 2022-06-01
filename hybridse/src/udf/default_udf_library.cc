@@ -895,6 +895,33 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
+    RegisterExternal("char")
+        .args<int32_t>(
+            static_cast<void (*)(int32_t, StringRef*)>(udf::v1::int_to_char))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256).
+
+            Example:
+
+            @code{.sql}
+                SELECT char(65);
+                --output "A"
+            @endcode
+            @since 0.6.0)");
+    RegisterExternal("char_length")
+        .args<StringRef>(static_cast<int32_t (*)(StringRef*)>(udf::v1::char_length))
+        .doc(R"(
+            @brief Returns the length of the string. It is measured in characters and multibyte character string is not supported.
+
+            Example:
+
+            @code{.sql}
+                SELECT CHAR_LENGTH('Spark SQL ');
+                --output 10
+            @endcode
+            @since 0.6.0)");
+    RegisterAlias("character_length", "char_length");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {
@@ -1286,6 +1313,19 @@ void DefaultUdfLibrary::InitMathUdf() {
             @param expr
 
             @since 0.5.0)");
+    RegisterExternal("RADIANS")
+        .args<double>(
+            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+        .doc(R"(
+            @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
+
+            Example:
+
+            @code{.sql}
+                SELECT RADIANS(90);
+                --output 1.570796326794896619231
+            @endcode
+            @since 0.6.0)");
     InitTrigonometricUdf();
 }
 

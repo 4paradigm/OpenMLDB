@@ -6,7 +6,7 @@ Maintenance
     :maxdepth: 1
 
     upgrade
+    backup
+    monitoring
     cli
     faq
-    monitoring
-

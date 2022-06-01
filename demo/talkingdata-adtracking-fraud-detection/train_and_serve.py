@@ -1,7 +1,9 @@
+"""Module of docstring"""
 import gc
 import os
 import time
 import glob
+import requests
 # fmt:off
 import sqlalchemy as db
 import pandas as pd
@@ -12,11 +14,18 @@ import xgboost as xgb
 # openmldb cluster configs
 zk = '127.0.0.1:2181'
 zk_path = '/openmldb'
-db_name = 'demo_db'  # db name, predict_server.py will use it, be careful.
-table_name = 'talkingdata' + str(int(time.time()))
 
+# db, deploy name and model_path will update to predict server. You only need to modify here.
+db_name = 'demo_db'
+deploy_name = 'demo'
+# save model to
+model_path = '/tmp/model.json'
+
+table_name = 'talkingdata' + str(int(time.time()))
 # make sure that taskmanager can access the path
 train_feature_dir = '/tmp/train_feature'
+
+predict_server = 'localhost:8881'
 
 
 def column_string(col_tuple) -> str:
@@ -84,10 +93,9 @@ def cut_data():
     print(f'Prepare train data, use {sample_cnt} rows, save it as train_sample.csv')
     train_df_tmp = pd.read_csv(data_path + 'train.csv', nrows=sample_cnt,
                                dtype=dtypes, usecols=[c[0] for c in train_schema])
-    len_train_tmp = len(train_df_tmp)
-    assert len_train_tmp == sample_cnt
+    assert len(train_df_tmp) == sample_cnt
     # take a portion from train sample data
-    train_df.to_csv('train_sample.csv', index=False)
+    train_df_tmp.to_csv('train_sample.csv', index=False)
     del train_df_tmp
     gc.collect()
 
@@ -98,7 +106,7 @@ def nothrow_execute(sql):
         print('execute ' + sql)
         _, rs = connection.execute(sql)
         print(rs)
-    except Exception as e:
+    except db.exc.SQLAlchemyError as e:
         print(e)
 
 
@@ -123,17 +131,18 @@ connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv
                    f"INTO TABLE {table_name} OPTIONS(format='csv',header=true);")
 
 print('Feature extraction')
-sql_part = """
-select ip, app, device, os, channel, is_attributed, hour(click_time) as hour, day(click_time) as day, 
+# the first column `is_attributed` is the label
+sql_part = f"""
+select is_attributed, ip, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
-count(channel) over w3 as ip_app_os_count
-from {} 
+count(channel) over w3 as ip_app_os_count  
+from {table_name} 
 window 
 w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
 w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
 w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-""".format(table_name)
+"""
 # extraction will take time
 connection.execute('SET @@job_timeout=1200000;')
 connection.execute(f"{sql_part} INTO OUTFILE '{train_feature_dir}' OPTIONS(mode='overwrite');")
@@ -155,7 +164,6 @@ print('valid size: ', len(val_df))
 target = 'is_attributed'
 predictors = ['app', 'device', 'os', 'channel', 'hour',
               'day', 'qty', 'ip_app_count', 'ip_app_os_count']
-categorical = ['app', 'device', 'os', 'channel', 'hour']
 
 gc.collect()
 
@@ -188,14 +196,12 @@ del train_df
 del val_df
 gc.collect()
 
-print('Save model.json')
-bst.save_model('./model.json')
+print('Save model.json to ', model_path)
+bst.save_model(model_path)
 
 print('Prepare online serving')
 
 print('Deploy sql')
-# predict server needs this name
-deploy_name = 'demo'
 connection.execute("SET @@execute_mode='online';")
 connection.execute(f'USE {db_name}')
 nothrow_execute(f'DROP DEPLOYMENT {deploy_name}')
@@ -208,3 +214,7 @@ print('Import data to online')
 connection.execute(
     f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
     f"INTO TABLE {db_name}.{table_name} OPTIONS(mode='append',format='csv',header=true);")
+
+print('Update model to predict server')
+infos = {'database': db_name, 'deployment': deploy_name, 'model_path': model_path}
+requests.post('http://' + predict_server + '/update', json=infos)

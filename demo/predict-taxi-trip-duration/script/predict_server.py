@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module of predict server"""
 import numpy as np
 import tornado.web
 import tornado.ioloop
@@ -42,10 +43,10 @@ url = ""
 
 
 def get_schema():
-    dict_schema = {}
+    dict_schema_tmp = {}
     for i in table_schema:
-        dict_schema[i[0]] = i[1]
-    return dict_schema
+        dict_schema_tmp[i[0]] = i[1]
+    return dict_schema_tmp
 
 
 dict_schema = get_schema()
@@ -63,6 +64,7 @@ class SchemaHandler(tornado.web.RequestHandler):
 
 
 class PredictHandler(tornado.web.RequestHandler):
+    """Class of PredictHandler docstring."""
     def post(self):
         row = json.loads(self.request.body)
         data = {}
@@ -84,8 +86,8 @@ class PredictHandler(tornado.web.RequestHandler):
             self.write("----------------ins---------------\n")
             self.write(str(ins) + "\n")
             duration = bst.predict(ins)
-            self.write(f"---------------predict trip_duration -------------\n")
-            self.write("%s s" % str(duration[0]))
+            self.write("---------------predict trip_duration -------------\n")
+            self.write(f"{str(duration[0])} s")
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("endpoint", help="specify the endpoint of apiserver")
     parser.add_argument("model_path", help="specify the model path")
     args = parser.parse_args()
-    url = "http://%s/dbs/demo_db/deployments/demo" % args.endpoint
+    url = f"http://{args.endpoint}/dbs/demo_db/deployments/demo"
     bst = lgb.Booster(model_file=args.model_path)
     app = make_app()
     app.listen(8887)
