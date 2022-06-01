@@ -28,9 +28,9 @@
 #include "absl/cleanup/cleanup.h"
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
+#include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "catalog/kv_iterator.h"
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
@@ -719,7 +719,7 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         tablet.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(1, (signed)srp->count());
-        ::openmldb::catalog::ScanKvIterator kv_it(key, srp);
+        ::openmldb::base::ScanKvIterator kv_it(key, srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(92l, (signed)kv_it.GetKey());
         ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
@@ -739,7 +739,7 @@ TEST_P(TabletImplTest, ScanLatestTable) {
         tablet.Scan(NULL, &sr, srp.get(), &closure);
         ASSERT_EQ(0, srp->code());
         ASSERT_EQ(5, (signed)srp->count());
-        ::openmldb::catalog::ScanKvIterator kv_it(sr.pk(), srp);
+        ::openmldb::base::ScanKvIterator kv_it(sr.pk(), srp);
         ASSERT_TRUE(kv_it.Valid());
         ASSERT_EQ(92l, (signed)kv_it.GetKey());
         ASSERT_STREQ("91", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
@@ -1575,7 +1575,7 @@ TEST_P(TabletImplTest, ScanWithLatestN) {
     tablet.Scan(NULL, &sr, srp.get(), &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(2, (signed)srp->count());
-    ::openmldb::catalog::ScanKvIterator kv_it(sr.pk(), srp);
+    ::openmldb::base::ScanKvIterator kv_it(sr.pk(), srp);
     ASSERT_EQ(9539, (signed)kv_it.GetKey());
     ASSERT_STREQ("test9539", ::openmldb::test::DecodeV(kv_it.GetValue().ToString()).c_str());
     kv_it.Next();
@@ -1621,7 +1621,7 @@ TEST_P(TabletImplTest, Traverse) {
     tablet.Traverse(NULL, &sr, srp.get(), &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(13, (signed)srp->count());
-    ::openmldb::catalog::TraverseKvIterator kv_it(srp);
+    ::openmldb::base::TraverseKvIterator kv_it(srp);
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
         ASSERT_EQ(cur_ts, kv_it.GetKey());

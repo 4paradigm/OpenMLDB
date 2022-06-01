@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "boost/container/deque.hpp"
-#include "catalog/kv_iterator.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"

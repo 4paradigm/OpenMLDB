@@ -25,8 +25,8 @@
 
 #include "base/ddl_parser.h"
 #include "base/status.h"
+#include "base/kv_iterator.h"
 #include "brpc/channel.h"
-#include "catalog/kv_iterator.h"
 #include "client/client.h"
 #include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
@@ -114,12 +114,12 @@ class TabletClient : public Client {
                const std::string& ts_name, bool filter_expired_data, uint64_t& value,  // NOLINT
                std::string& msg);                                                      // NOLINT
 
-    std::shared_ptr<openmldb::catalog::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
+    std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
             const std::string& pk, const std::string& idx_name,
             uint64_t stime, uint64_t etime,
             uint32_t limit, uint32_t skip_record_num, std::string& msg);  // NOLINT
 
-    std::shared_ptr<openmldb::catalog::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
+    std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
             const std::string& pk, const std::string& idx_name,
             uint64_t stime, uint64_t etime,
             uint32_t limit, std::string& msg);  // NOLINT
@@ -206,7 +206,7 @@ class TabletClient : public Client {
     bool ConnectZK();
     bool DisConnectZK();
 
-    std::shared_ptr<openmldb::catalog::TraverseKvIterator> Traverse(uint32_t tid, uint32_t pid,
+    std::shared_ptr<openmldb::base::TraverseKvIterator> Traverse(uint32_t tid, uint32_t pid,
             const std::string& idx_name, const std::string& pk, uint64_t ts,
             uint32_t limit, uint32_t& count);  // NOLINT
 

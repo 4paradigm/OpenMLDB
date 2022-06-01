@@ -20,14 +20,14 @@
 #include <string>
 #include <vector>
 
-#include "catalog/kv_iterator.h"
+#include "base/kv_iterator.h"
 
 namespace openmldb {
 namespace cmd {
 
 class SDKIterator {
  public:
-    explicit SDKIterator(std::vector<std::shared_ptr<::openmldb::catalog::KvIterator>> iter_vec, uint32_t limit)
+    explicit SDKIterator(std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec, uint32_t limit)
         : iter_vec_(iter_vec), cur_iter_(), limit_(limit), cnt_(0) {
         Next();
     }
@@ -63,7 +63,7 @@ class SDKIterator {
         }
         if (need_delete) {
             iter_vec_.erase(std::remove_if(iter_vec_.begin(), iter_vec_.end(),
-                                           [](const std::shared_ptr<::openmldb::catalog::KvIterator>& it) { return !it; }),
+                            [](const std::shared_ptr<::openmldb::base::KvIterator>& it) { return !it; }),
                             iter_vec_.end());
         }
         cnt_++;
@@ -76,8 +76,8 @@ class SDKIterator {
     ::openmldb::base::Slice GetValue() { return cur_iter_->GetValue(); }
 
  private:
-    std::vector<std::shared_ptr<::openmldb::catalog::KvIterator>> iter_vec_;
-    std::shared_ptr<::openmldb::catalog::KvIterator> cur_iter_;
+    std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec_;
+    std::shared_ptr<::openmldb::base::KvIterator> cur_iter_;
     uint32_t limit_;
     uint32_t cnt_;
 };

@@ -17,15 +17,15 @@
 
 #include <iostream>
 
+#include "base/kv_iterator.h"
 #include "base/strings.h"
-#include "catalog/kv_iterator.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
 
 namespace openmldb {
-namespace catalog {
+namespace base {
 
 class KvIteratorTest : public ::testing::Test {
  public:
@@ -98,7 +98,7 @@ TEST_F(KvIteratorTest, HasPK) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
-}  // namespace catalog
+}  // namespace base
 }  // namespace openmldb
 
 int main(int argc, char** argv) {

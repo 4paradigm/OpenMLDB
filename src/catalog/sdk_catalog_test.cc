@@ -69,9 +69,9 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     ::hybridse::vm::BatchRunSession session;
     ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
-    std::stringstream ss;
+    /* std::stringstream ss;
     session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
-    std::cout << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;*/
 }
 
 TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
@@ -92,9 +92,9 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     ::hybridse::vm::BatchRunSession session;
     ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
-    std::stringstream ss;
+    /*std::stringstream ss;
     session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
-    std::cout << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;*/
 }
 
 TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
@@ -117,9 +117,9 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     ::hybridse::vm::BatchRunSession session;
     ::hybridse::base::Status status;
     ASSERT_TRUE(engine.Get(sql, "db1", session, status));
-    std::stringstream ss;
+    /*std::stringstream ss;
     session.GetCompileInfo()->DumpPhysicalPlan(ss, "\t");
-    std::cout << ss.str() << std::endl;
+    std::cout << ss.str() << std::endl;*/
 }
 
 }  // namespace catalog

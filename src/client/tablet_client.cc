@@ -20,7 +20,7 @@
 #include <iostream>
 #include <set>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "brpc/channel.h"
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"
@@ -590,7 +590,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     return false;
 }
 
-std::shared_ptr<openmldb::catalog::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
+std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
         const std::string& pk, const std::string& idx_name,
         uint64_t stime, uint64_t etime, uint32_t limit, uint32_t skip_record_num, std::string& msg) {
     ::openmldb::api::ScanRequest request;
@@ -613,10 +613,10 @@ std::shared_ptr<openmldb::catalog::ScanKvIterator> TabletClient::Scan(uint32_t t
     if (!ok || response->code() != 0) {
         return {};
     }
-    return std::make_shared<::openmldb::catalog::ScanKvIterator>(pk, response);
+    return std::make_shared<::openmldb::base::ScanKvIterator>(pk, response);
 }
 
-std::shared_ptr<openmldb::catalog::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
+std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
         const std::string& pk, const std::string& idx_name,
         uint64_t stime, uint64_t etime, uint32_t limit, std::string& msg) {
     return Scan(tid, pid, pk, idx_name, stime, etime, limit, 0, msg);
@@ -901,7 +901,7 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
     return true;
 }
 
-std::shared_ptr<openmldb::catalog::TraverseKvIterator> TabletClient::Traverse(uint32_t tid, uint32_t pid,
+std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint32_t tid, uint32_t pid,
         const std::string& idx_name, const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count) {
     ::openmldb::api::TraverseRequest request;
     auto response = std::make_shared<openmldb::api::TraverseResponse>();
@@ -921,7 +921,7 @@ std::shared_ptr<openmldb::catalog::TraverseKvIterator> TabletClient::Traverse(ui
         return {};
     }
     count = response->count();
-    return std::make_shared<openmldb::catalog::TraverseKvIterator>(response);
+    return std::make_shared<openmldb::base::TraverseKvIterator>(response);
 }
 
 bool TabletClient::SetMode(bool mode) {
