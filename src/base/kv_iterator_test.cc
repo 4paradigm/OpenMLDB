@@ -140,6 +140,7 @@ TEST_F(KvIteratorTest, NextPK) {
         count++;
         kv_it.Next();
     }
+    ASSERT_EQ(count, 3);
 }
 
 }  // namespace base
