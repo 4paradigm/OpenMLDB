@@ -1387,7 +1387,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     std::string key;
     std::string index_name;
     uint64_t timestamp = 0;
-    std::string ts_name;
     auto iter = parameter_map.begin();
     try {
         if (is_pair_format) {
@@ -1415,10 +1414,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
             } else {
                 std::cout << "get format error: ts does not exist!" << std::endl;
                 return;
-            }
-            iter = parameter_map.find("ts_name");
-            if (iter != parameter_map.end()) {
-                ts_name = iter->second;
             }
         } else {
             table_name = parts[1];
@@ -1483,7 +1478,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         uint64_t ts = 0;
         std::string msg;
         if (tables[0].partition_key_size() == 0) {
-            if (!tb_client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg)) {
+            if (!tb_client->Get(tid, pid, key, timestamp, index_name, value, ts, msg)) {
                 std::cout << "Fail to get value! error msg: " << msg << std::endl;
                 return;
             }
@@ -1497,7 +1492,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
                     std::cout << "failed to get. error msg: " << msg << std::endl;
                     return;
                 }
-                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, ts_name, cur_value, cur_ts, msg)) {
+                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, cur_value, cur_ts, msg)) {
                     failed_cnt++;
                     continue;
                 }
