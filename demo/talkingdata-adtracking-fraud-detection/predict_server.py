@@ -164,7 +164,6 @@ if __name__ == "__main__":
                         default=True)
     args = parser.parse_args()
 
-    global global_args
     global_args = vars(args)
     print(global_args)
     logging.info("init args: %s", global_args)

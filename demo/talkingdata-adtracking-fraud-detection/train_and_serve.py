@@ -106,6 +106,7 @@ def nothrow_execute(sql):
         print('execute ' + sql)
         _, rs = connection.execute(sql)
         print(rs)
+        # pylint: disable=broad-except
     except Exception as e:
         print(e)
 
@@ -149,8 +150,7 @@ connection.execute(f"{sql_part} INTO OUTFILE '{train_feature_dir}' OPTIONS(mode=
 
 print(f'Load features from feature dir {train_feature_dir}')
 # train_feature_dir has multi csv files
-train_df = pd.concat(map(lambda file: pd.read_csv(file), glob.glob(
-    os.path.join('', train_feature_dir + '/*.csv'))))
+train_df = pd.concat(map(pd.read_csv, glob.glob(os.path.join('', train_feature_dir + '/*.csv'))))
 print('peek:')
 print(train_df.head())
 len_train = len(train_df)
