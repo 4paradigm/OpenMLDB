@@ -160,8 +160,12 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
             ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));
         return value_;
     } else {
-        value_ = ::hybridse::codec::Row(
-            ::hybridse::base::RefCountedSlice::Create(kv_it_->GetValue().data(), kv_it_->GetValue().size()));
+        auto slice_row = kv_it_->GetValue();
+        size_t sz = slice_row.size();
+        int8_t* copyed_row_data = new int8_t[sz];
+        memcpy(copyed_row_data, slice_row.data(), sz);
+        auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+        value_.Reset(shared_slice);
         return value_;
     }
 }
@@ -249,6 +253,7 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 
     uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % pid_num_);
 
+    DLOG(INFO) << "seeking to key " << key << ". cur_pid " << pid;
     auto iter = tables_->find(pid);
     if (iter != tables_->end()) {
         auto it = iter->second->NewWindowIterator(index_);
@@ -293,7 +298,7 @@ void DistributeWindowIterator::Next() {
             }
         }
     }
-    if (kv_it_) {
+    if (kv_it_ && kv_it_->Valid()) {
         std::string cur_pk = kv_it_->GetPK();
         auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it_);
         uint64_t last_ts = 0;
@@ -359,8 +364,11 @@ std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetVal
         auto new_traverse_it = std::make_shared<openmldb::base::TraverseKvIterator>(response);
         new_traverse_it->Seek(traverse_it->GetPK());
         return new RemoteWindowIterator(tid_, cur_pid_, index_name_, new_traverse_it, tablet_clients_[cur_pid_]);
+    } else {
+        auto response = std::dynamic_pointer_cast<::openmldb::api::ScanResponse>(kv_it_->GetResponse());
+        auto scan_it = std::make_shared<openmldb::base::ScanKvIterator>(kv_it_->GetPK(), response);
+        return new RemoteWindowIterator(tid_, cur_pid_, index_name_, scan_it, tablet_clients_[cur_pid_]);
     }
-    return new RemoteWindowIterator(tid_, cur_pid_, index_name_, kv_it_, tablet_clients_[cur_pid_]);
 }
 
 const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {

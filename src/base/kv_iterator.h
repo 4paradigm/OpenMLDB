@@ -41,7 +41,7 @@ class KvIterator {
 
     const std::string& GetPK() const { return pk_; }
 
-    openmldb::base::Slice GetValue() const { return tmp_; }
+    Slice GetValue() const { return tmp_; }
 
     bool IsFinish() const { return is_finish_; }
 
@@ -58,7 +58,7 @@ class KvIterator {
     uint32_t tsize_;
     uint32_t offset_;
     uint64_t time_;
-    openmldb::base::Slice tmp_;
+    Slice tmp_;
     std::string pk_;
 };
 
