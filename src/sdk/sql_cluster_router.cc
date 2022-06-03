@@ -3259,7 +3259,11 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
             // check if pre-aggr table exists
-            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw);
+            ::hybridse::sdk::Status status;
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw, &status);
+            if (!status.IsOK()) {
+                return status;
+            }
             if (is_exist) {
                 continue;
             }
@@ -3268,7 +3272,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             auto aggr_table =
                 absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
                              lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
-            ::hybridse::sdk::Status status;
             std::string insert_sql =
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
                              "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
@@ -3340,7 +3343,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
 }
 
 bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                              const openmldb::base::LongWindowInfo& lw) {
+                                              const openmldb::base::LongWindowInfo& lw, ::hybridse::sdk::Status* status) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
     std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
@@ -3350,9 +3353,8 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
         "' and order_by_col = '", lw.order_col_, filter_cond);
     std::string select_sql =
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, "';");
-    hybridse::sdk::Status status;
-    auto rs = ExecuteSQL("", select_sql, &status);
-    if (!status.IsOK()) {
+    auto rs = ExecuteSQL("", select_sql, status);
+    if (!status->IsOK()) {
         return false;
     }
 

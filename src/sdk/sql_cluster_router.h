@@ -374,7 +374,7 @@ class SQLClusterRouter : public SQLRouter {
 
 
     bool CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                const openmldb::base::LongWindowInfo& lw);
+                                const openmldb::base::LongWindowInfo& lw, ::hybridse::sdk::Status* status);
 
     ///
     /// \brief Query all registered components, aka tablet, nameserver, task manager,
