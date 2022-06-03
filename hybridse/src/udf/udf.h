@@ -302,7 +302,8 @@ uint32_t to_string_len(const V &v);
 
 }  // namespace v1
 
-void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm);
+/// \brief register native udf related methods into given UdfLibrary `lib`
+void RegisterNativeUdfToModule(UdfLibrary* lib);
 }  // namespace udf
 }  // namespace hybridse
 
