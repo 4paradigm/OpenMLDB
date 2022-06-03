@@ -311,6 +311,7 @@ message TableMeta {
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;
     optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional uint32 base_table_tid = 18 [default = 0];
 }
 
 message CreateTableRequest {

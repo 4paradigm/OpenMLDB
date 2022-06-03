@@ -146,6 +146,8 @@ class Aggregator {
 
     bool GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer);
 
+    uint32_t GetAggrTid() { return aggr_table_->GetId(); }
+
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;

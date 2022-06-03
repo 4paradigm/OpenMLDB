@@ -525,6 +525,8 @@ TEST_P(DBSDKTest, DeployOptions) {
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
+    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo_w1_sum_c4;", &status);
+    ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
@@ -554,6 +556,10 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
+    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w1_sum_c4;", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w2_max_c5;", &status);
+    ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
@@ -1457,6 +1463,45 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     ASSERT_TRUE(ok);
     ok = sr->DropDB(base_db, &status);
     ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, LongWindowsCleanup) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    for (int i = 0; i < 10; i++) {
+        HandleSQL("create database test2;");
+        HandleSQL("use test2;");
+        std::string create_sql =
+            "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+            "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
+        HandleSQL(create_sql);
+        if (!cs->IsClusterMode()) {
+            HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+        }
+
+        std::string deploy_sql =
+            "deploy demo1 OPTIONS(long_windows='w1:100') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+            " max(c5) over w2 as w2_max_c5 FROM trans"
+            " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
+            " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+        sr->ExecuteSQL(deploy_sql, &status);
+        ASSERT_TRUE(status.IsOK());
+        std::string msg;
+
+        std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+        auto rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_EQ(1, rs->Size());
+        ASSERT_TRUE(sr->DropTable(openmldb::nameserver::PRE_AGG_DB, "pre_demo1_w1_sum_c4", &status));
+        result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+        rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_EQ(0, rs->Size());
+        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
+        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
+        ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    }
 }
 
 TEST_P(DBSDKTest, CreateWithoutIndexCol) {
