@@ -3350,9 +3350,9 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
     std::string meta_info = absl::StrCat(
         "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
         "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
-        "' and order_by_col = '", lw.order_col_, filter_cond);
+        "' and order_by_col = '", lw.order_col_, "'", filter_cond);
     std::string select_sql =
-        absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, "';");
+        absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, ";");
     auto rs = ExecuteSQL("", select_sql, status);
     if (!status->IsOK()) {
         return false;
