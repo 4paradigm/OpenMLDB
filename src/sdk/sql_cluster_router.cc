@@ -3342,8 +3342,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
     return {};
 }
 
-bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                              const openmldb::base::LongWindowInfo& lw, ::hybridse::sdk::Status* status) {
+bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table,
+                                              const std::string& base_db,
+                                              const openmldb::base::LongWindowInfo& lw,
+                                              ::hybridse::sdk::Status* status) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
     std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
