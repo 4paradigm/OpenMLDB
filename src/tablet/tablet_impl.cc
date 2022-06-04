@@ -5342,7 +5342,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure " << db_name << "." << sp_name << " in catalog failed";
     }
 
     if (is_deployment_procedure) {
