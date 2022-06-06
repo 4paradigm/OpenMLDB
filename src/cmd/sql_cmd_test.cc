@@ -525,7 +525,7 @@ TEST_P(DBSDKTest, DeployOptions) {
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo_w1_sum_c4;", &status);
+    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
@@ -556,9 +556,9 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w1_sum_c4;", &status);
+    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w2_max_c5;", &status);
+    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
     ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
@@ -657,27 +657,33 @@ TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     ASSERT_TRUE(status.IsOK()) << status.msg;
 
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_sum_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_t_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
@@ -702,22 +708,22 @@ TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_sum_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_t_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -758,7 +764,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_sum_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -774,23 +781,28 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    result_sql = "select * from pre_test_aggr_w1_sum_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_sum_t_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -815,22 +827,22 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_sum_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_sum_t_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -870,7 +882,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_avg_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -889,19 +902,23 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    result_sql = "select * from pre_test_aggr_w1_avg_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_avg_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_avg_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_avg_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -925,19 +942,19 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteAvg) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_avg_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_avg_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_avg_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_avg_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_avg_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_avg_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -980,7 +997,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_min_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -996,31 +1014,38 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    result_sql = "select * from pre_test_aggr_w1_min_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_t_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_t_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_s_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_s_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_min_date_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_date_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -1047,28 +1072,28 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMin) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_min_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_t_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_t_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_s_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_s_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_min_date_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_min_date_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -1111,7 +1136,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_max_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -1127,31 +1153,38 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    result_sql = "select * from pre_test_aggr_w1_max_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_t_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_t_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_s_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_s_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_max_date_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_date_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -1178,28 +1211,28 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteMax) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_max_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_t_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_t_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_s_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_s_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_max_date_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_max_date_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -1243,7 +1276,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_count_i64_col;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -1259,34 +1293,42 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
         ASSERT_EQ(i * 2, rs->GetInt64Unsafe(5));
     }
 
-    result_sql = "select * from pre_test_aggr_w1_count_i16_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i16_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_i32_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i32_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_f_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_f_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_d_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_d_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_t_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_t_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_s_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_s_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_date_col;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_date_col";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
-    result_sql = "select * from pre_test_aggr_w1_count_;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
@@ -1316,31 +1358,31 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_count_i64_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_i16_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i16_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_i32_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_i32_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_f_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_f_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_d_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_d_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_t_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_t_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_s_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_s_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_date_col";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_date_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -1384,7 +1426,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
 
     PrepareDataForLongWindow(base_db, base_table);
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string result_sql = "select * from pre_test_aggr_w1_count_where_i64_col_filter;";
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_filter";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
     auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
@@ -1399,64 +1442,72 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
         ASSERT_EQ(std::to_string(i % 2), filter_key);
     }
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_i64_col_col1;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_col1";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_i16_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i16_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_i32_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i32_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_f_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_f_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_d_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_d_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_t_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_t_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_s_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_s_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
-    result_sql = "select * from pre_test_aggr_w1_count_where_date_col_filter;";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_date_col_filter";
+    result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_count_where_i64_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_i64_col_col1";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_col1";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_i16_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i16_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_i32_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i32_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_f_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_f_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_d_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_d_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_t_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_t_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_s_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_s_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
-    pre_aggr_table = "pre_test_aggr_w1_count_where_date_col_filter";
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_date_col_filter";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -1489,9 +1540,9 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
         ASSERT_EQ(2, rs->Size());
-        auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w1_sum_c4;", &status);
+        auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
         ASSERT_TRUE(ok);
-        ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_demo1_w2_max_c5;", &status);
+        ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
         ASSERT_TRUE(ok);
         result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         rs = sr->ExecuteSQL("", result_sql, &status);
