@@ -804,11 +804,6 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk, cons
 
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
                        std::string& value, uint64_t& ts, std::string& msg) {
-    return Get(tid, pid, pk, time, idx_name, "", value, ts, msg);
-}
-
-bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
-                       const std::string& ts_name, std::string& value, uint64_t& ts, std::string& msg) {
     ::openmldb::api::GetRequest request;
     ::openmldb::api::GetResponse response;
     request.set_tid(tid);
