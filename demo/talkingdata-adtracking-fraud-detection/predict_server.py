@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Module of docstring"""
+"""Module of predict server"""
 import argparse
 import json
 import numpy as np
@@ -73,7 +73,7 @@ def get_result(response):
 
 
 class PredictHandler(tornado.web.RequestHandler):
-    """Class PredictHandler docstring."""
+    """Class PredictHandler."""
     def post(self):
         # only one row
         row = json.loads(self.request.body)
