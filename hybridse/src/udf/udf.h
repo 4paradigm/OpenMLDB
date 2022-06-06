@@ -273,6 +273,20 @@ void string_to_double(StringRef *str, double *v, bool *is_null_ptr);
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
+
+/// \brief string replace, return new string that replace all occurrences of `search` with `replace`
+/// any of `str`, `search`, `replace` is null, results replace string to be null;
+/// if `search` is not found, return `str` unchanged;
+/// if `replace` not specified or is empty string, occurrences of `search` are removed from output string
+///
+/// \param str Input string
+/// \param search The search string
+/// \param replace The replace string
+/// \param output Output replaced String
+/// \param is_null_ptr Output if replaced string is null
+void replace(StringRef *str, StringRef *search, StringRef *replace, StringRef *output, bool *is_null_ptr);
+void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null_ptr);
+
 void init_udfcontext(UDFContext* context);
 void trivial_fun();
 /**

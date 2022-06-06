@@ -15,13 +15,17 @@
  */
 
 #include "udf/udf_test.h"
+
 #include <dlfcn.h>
 #include <gtest/gtest.h>
 #include <stdint.h>
+
 #include <algorithm>
 #include <tuple>
 #include <utility>
 #include <vector>
+
+#include "absl/strings/substitute.h"
 #include "base/fe_slice.h"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
@@ -879,6 +883,104 @@ TEST_F(ExternUdfTest, ILikeMatchNullable) {
     check_null(false, true, &name, &pattern, nullptr);
 
     check_null(true, false, &name, &pattern, &escape_ref);
+}
+
+TEST_F(ExternUdfTest, Replace) {
+    auto check = [](bool is_null, StringRef expect, StringRef str, StringRef search, StringRef replace) {
+        StringRef out;
+        bool out_null = false;
+        auto expr_str = absl::Substitute("replace($0, $1, $2) != $3", str.DebugString(), search.DebugString(),
+                                         replace.DebugString(), expect.DebugString());
+        v1::replace(&str, &search, &replace, &out, &out_null);
+        EXPECT_EQ(is_null, out_null) << expr_str;
+        if (!is_null) {
+            EXPECT_EQ(expect, out) << expr_str;
+        }
+    };
+
+    // replace one
+    check(false, "ABCDEF", "ABCabc", "abc", "DEF");
+    // replace nothing
+    check(false, "ABCabc", "ABCabc", "def", "DEF");
+    // replace multiple chars
+    check(false, "AABACA", "AaBaCa", "a", "A");
+    // replace multiple words
+    check(false, "Hello Bob Hi Bob Be", "Hello Ben Hi Ben Be", "Ben", "Bob");
+
+    // empty replace removes the search
+    // replace one
+    check(false, "ABC", "ABCabc", "abc", "");
+    // replace nothing
+    check(false, "ABCabc", "ABCabc", "def", "");
+    // replace multiple chars
+    check(false, "ABC", "AaBaCa", "a", "");
+    // replace multiple words
+    check(false, "Hello  Hi  Be", "Hello Ben Hi Ben Be", "Ben", "");
+}
+
+TEST_F(ExternUdfTest, ReplaceWithoutReplaceStr) {
+    auto check = [](bool is_null, StringRef expect, StringRef str, StringRef search) {
+        StringRef out;
+        bool out_null = false;
+        auto expr_str =
+            absl::Substitute("replace($0, $1) != $2", str.DebugString(), search.DebugString(), expect.DebugString());
+        v1::replace(&str, &search, &out, &out_null);
+        EXPECT_EQ(is_null, out_null) << expr_str;
+        if (!is_null) {
+            EXPECT_EQ(expect, out) << expr_str;
+        }
+    };
+
+    // replace one
+    check(false, "ABC", "ABCabc", "abc");
+    // replace nothing
+    check(false, "ABCabc", "ABCabc", "def");
+    // replace multiple chars
+    check(false, "ABC", "AaBaCa", "a");
+    // replace multiple words
+    check(false, "Hello  Hi  Be", "Hello Ben Hi Ben Be", "Ben");
+}
+
+TEST_F(ExternUdfTest, ReplaceNullable) {
+    auto debug_str = [](StringRef* ref) -> std::string { return ref == nullptr ? "NULL" : ref->DebugString(); };
+    auto check3 = [&debug_str](bool is_null, StringRef expect, StringRef* str, StringRef* search, StringRef* replace) {
+        StringRef out;
+        bool out_null = false;
+        auto expr_str = absl::Substitute("replace($0, $1, $2) != $3", debug_str(str), debug_str(search),
+                                         debug_str(replace), expect.DebugString());
+        v1::replace(str, search, replace, &out, &out_null);
+        EXPECT_EQ(is_null, out_null) << expr_str;
+        if (!is_null) {
+            EXPECT_EQ(expect, out) << expr_str;
+        }
+    };
+
+    auto check2 = [&debug_str](bool is_null, StringRef expect, StringRef* str, StringRef* search) {
+        StringRef out;
+        bool out_null = false;
+        auto expr_str =
+            absl::Substitute("replace($0, $1) != $2", debug_str(str), debug_str(search), expect.DebugString());
+        v1::replace(str, search, &out, &out_null);
+        EXPECT_EQ(is_null, out_null) << expr_str;
+        if (!is_null) {
+            EXPECT_EQ(expect, out) << expr_str;
+        }
+    };
+
+    StringRef str("ABCabc");
+    StringRef search("abc");
+    StringRef replace("ABC");
+
+    check3(true, nullptr, nullptr, &search, &replace);
+    check3(true, nullptr, &str, nullptr, &replace);
+    check3(true, nullptr, &str, &search, nullptr);
+    check3(true, nullptr, &str, nullptr, nullptr);
+    check3(true, nullptr, nullptr, &search, nullptr);
+    check3(true, nullptr, nullptr, nullptr, nullptr);
+
+    check2(true, nullptr, &str, nullptr);
+    check2(true, nullptr, nullptr, &search);
+    check2(true, nullptr, nullptr, nullptr);
 }
 
 }  // namespace udf

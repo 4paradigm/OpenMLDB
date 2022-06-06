@@ -1030,6 +1030,9 @@ TEST_F(UdfIRBuilderTest, degree_to_radius_check) {
     CheckUdf<double, double>(udf_name, 0, 0);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
+
+TEST_F(UdfIRBuilderTest, Replace) {}
+TEST_F(UdfIRBuilderTest, ReplaceWithoutReplaceStr) {}
 }  // namespace codegen
 }  // namespace hybridse
 
