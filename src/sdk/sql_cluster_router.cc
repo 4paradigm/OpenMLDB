@@ -793,24 +793,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
-    auto tableInfo = GetTableInfo(db, table);
-    // Check offline table info first
-    if (tableInfo.has_offline_table_info()) {
-        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
-        if (!taskmanager_client_ptr) {
-            status->msg = "no TaskManager exist";
-            status->code = -1;
-            return false;
-        }
-
-        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
-        if (rpcStatus.code != 0) {
-            status->msg = rpcStatus.msg;
-            status->code = rpcStatus.code;
-            return false;
-        }
-    }
-
     // delete pre-aggr meta info if need
     if (tableInfo.base_table_tid() > 0) {
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
@@ -863,6 +845,24 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
             !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
             status->msg = "delete aggr meta failed";
             status->code = -1;
+            return false;
+        }
+    }
+
+    auto tableInfo = GetTableInfo(db, table);
+    // Check offline table info first
+    if (tableInfo.has_offline_table_info()) {
+        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+        if (!taskmanager_client_ptr) {
+            status->msg = "no TaskManager exist";
+            status->code = -1;
+            return false;
+        }
+
+        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
+        if (rpcStatus.code != 0) {
+            status->msg = rpcStatus.msg;
+            status->code = rpcStatus.code;
             return false;
         }
     }

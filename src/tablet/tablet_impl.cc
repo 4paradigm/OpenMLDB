@@ -3226,6 +3226,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         // delete related aggregator
         uint32_t base_tid = table->GetTableMeta()->base_table_tid();
         if (base_tid > 0) {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             uint64_t uid = (uint64_t) base_tid << 32 | pid;
             auto it = aggregators_.find(uid);
             if (it != aggregators_.end()) {
