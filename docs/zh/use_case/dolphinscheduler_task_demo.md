@@ -28,7 +28,7 @@ DolphinScheduler OpenMLDB Task 可以更简单地操作 OpenMLDB，同时 OpenML
 
 OpenMLDB 希望能达成开发即上线的目标，让开发回归本质，而不是在工程化落地中耗费过多心思。
 
-通过编写 OpenMLDB Task，我们可以实现 OpenMLDB 的离线导入、特征抽取、SQL 部署上线、在线导入等等需求，也可以在DolphinScheduler 中编写一个完整的使用 OpenMLDB 的训练上线流程。
+通过编写 OpenMLDB Task，我们可以实现 OpenMLDB 的离线导入、特征抽取、SQL 部署上线、在线导入等需求，也可以在DolphinScheduler 中编写一个完整的使用 OpenMLDB 的训练上线流程。
 
 ![task func](images/task_func.png)
 
