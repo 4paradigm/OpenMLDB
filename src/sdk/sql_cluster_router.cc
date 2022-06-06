@@ -793,6 +793,8 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
+    auto tableInfo = GetTableInfo(db, table);
+
     // delete pre-aggr meta info if need
     if (tableInfo.base_table_tid() > 0) {
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
@@ -849,7 +851,6 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         }
     }
 
-    auto tableInfo = GetTableInfo(db, table);
     // Check offline table info first
     if (tableInfo.has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
