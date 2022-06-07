@@ -932,10 +932,10 @@ void DefaultUdfLibrary::InitStringUdf() {
     RegisterAlias("character_length", "char_length");
 
     RegisterExternal("replace")
-        .args<StringRef, StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
         .return_by_arg(true)
-        .returns<StringRef>()
+        .returns<Nullable<StringRef>>()
         .doc(R"r(
              @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
 
@@ -952,10 +952,10 @@ void DefaultUdfLibrary::InitStringUdf() {
              )r");
 
     RegisterExternal("replace")
-        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
         .return_by_arg(true)
-        .returns<StringRef>()
+        .returns<Nullable<StringRef>>()
         .doc(R"r(
              @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
 
