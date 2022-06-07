@@ -14,8 +14,6 @@
 
 **English | [中文](README_cn.md)**
 
-### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
-
 ## Content
 
 1. [Our Philosophy](#1-our-philosophy)
@@ -31,6 +29,8 @@
 11. [Community](#11-community)
 12. [Publications](#12-publications)
 13. [The User List](#13-the-user-list)
+
+### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
 ## 1. Our Philosophy
 
