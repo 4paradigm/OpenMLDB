@@ -16,6 +16,22 @@
 
 ### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
+## Content
+
+1. [Our Philosophy](#1-our-philosophy)
+2. [A Feature Platform for ML Applications](#2-a-feature-platform-for-ml-applications)
+3. [Highlights](#3-highlights)
+4. [FAQ](#4-faq)
+5. [Build & Install](#5-build-&-install)
+6. [QuickStart](#6-quickstart)
+7. [Use Cases](#7-use-cases)
+8. [Documentation](#8-documentation)
+9. [Roadmap](#9-roadmap)
+10. [Contributors](#10-contributors)
+11. [Community](#11-community)
+12. [Publications](#12-publications)
+13. [The User List](#13-the-user-list)
+
 ## 1. Our Philosophy
 
 For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this challenge, tech giants spend thousands of hours on building in-house data and feature platforms to address engineering issues such as data leakage, feature backfilling, and efficiency. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
@@ -84,10 +100,12 @@ OpenMLDB has two versions with different deployment options, which are *cluster 
 
 We are building a list of real-world use cases based on OpenMLDB to demonstrate how it can fit into your business. 
 
-| Application                                                  | Tools                                       | Brief Introduction                                           |
-| ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                          | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
-| [Using the Pulsar connector to import real-time data streams](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, Pulsar OpenMLDB Connector | Apache Pulsar is a cloud-native streaming platform. Based on the [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb) , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| Use cases                                                    | Tools                                                        | Brief Introduction                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [New York City Taxi Trip Duration](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                                           | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [Importing real-time data streams from Pulsar](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://pulsar.apache.org/docs/next/io-connectors/#jdbc-openmldb)              | Apache Pulsar is a cloud-native streaming platform. Based on the OpenMLDB-Kafka connector , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| [Importing real-time data streams from Kafka](https://openmldb.ai/docs/en/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka is a distributed event streaming platform. With the OpenMLDB-Kafka connector, the real-time data streams can be imported from Kafka as the online data sources for OpenMLDB. |
+| [Building an end-to-end ML pipeline in DolphinScheduler](https://openmldb.ai/docs/zh/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | We demonstrate to build an end-to-end machine learning pipeline based on OpenMLDB and DolphinScheduler (an open-source workflow scheduler platform). It consists of feature engineering, model training, and deployment. |
 
 ## 8. Documentation
 
