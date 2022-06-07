@@ -52,7 +52,7 @@ in `train_and_serve.py` to produce new sample csv for training.
 
 ### Start predict server
 
-You can start predict server even if you haven't deployed, with option `not_init`.
+You can start predict server even if you haven't deployed, with option `--no-init`.
 
 ```
 python3 predict_server.py --no-init > predict.log 2>&1 &
