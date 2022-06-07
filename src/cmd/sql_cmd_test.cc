@@ -344,6 +344,26 @@ TEST_P(DBSDKTest, Desc) {
     ASSERT_TRUE(status.IsOK()) << status.msg;
 }
 
+TEST_F(SqlCmdTest, InsertWithDB) {
+    sr = standalone_cli.sr;
+    ProcessSQLs(sr, {"create database test1;",
+            "create database test2;",
+            "use test1;",
+            "create table trans (c1 string, c2 int);",
+            "use test2;",
+            "insert into test1.trans values ('aaa', 123);"
+                     });
+
+    auto cur_cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    cur_cs->Init();
+    auto cur_sr = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
+    cur_sr->Init();
+    ProcessSQLs(cur_sr.get(), {"insert into test1.trans values ('bbb', 123);"});
+    ProcessSQLs(sr, {"drop table test1.trans;",
+            "drop database test1;",
+            "drop database test2;"});
+}
+
 TEST_F(SqlCmdTest, LoadData) {
     sr = standalone_cli.sr;
     cs = standalone_cli.cs;
