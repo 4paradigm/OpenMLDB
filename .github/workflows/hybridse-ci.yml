@@ -32,6 +32,7 @@ jobs:
     env:
       OS: linux
       ARCH: x86_64
+      TESTING_ENABLE: ON
     steps:
       - uses: actions/checkout@v2
         with:
@@ -50,7 +51,7 @@ jobs:
       - name: Core Test
         working-directory: build/hybridse
         run: |
-          make test -j${{ env.NPROC }} SQL_CASE_BASE_DIR=${{ github.action_path }}
+          make test -j${{ env.NPROC }} SQL_CASE_BASE_DIR=${{ github.workspace }}
 
       - name: Upload Cpp UT Results
         if: always()
