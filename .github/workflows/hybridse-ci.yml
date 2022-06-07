@@ -22,6 +22,7 @@ env:
   CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
   CTEST_OUTPUT_ON_FAILURE: ON
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  BUILD_SHARED_LIBS: ON
 
 jobs:
   linux-build:
@@ -36,13 +37,20 @@ jobs:
         with:
           submodules: true
 
-      - name: Build Core
+      - name: configure
         run: |
-          make hybridse-build
+          make configure
 
-      - name: Core Test
+      - name: Build HybridSE
+        working-directory: build/hybridse
         run: |
-          make hybridse-test
+          make -j${{ env.NPROC }}
+
+      # FIXME(#1930)
+      - name: Core Test
+        working-directory: build/hybridse
+        run: |
+          make test -j${{ env.NPROC }} SQL_CASE_BASE_DIR=${{ github.action_path }}
 
       - name: Upload Cpp UT Results
         if: always()
@@ -50,7 +58,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
-            ${{ env.HYBRIDSE_PATH }}/build/*.xml
+            build/${{ env.HYBRIDSE_PATH }}/*.xml
 
   macos-build:
     name: Build in MacOS
