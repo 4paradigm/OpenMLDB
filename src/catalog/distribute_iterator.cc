@@ -184,7 +184,7 @@ void DistributeWindowIterator::Reset() {
 }
 
 // seek to the pos where key = `key` on success
-// or do nothing on fail (preserve old stat)
+// if the key is not exist, iterator will be invalid
 void DistributeWindowIterator::Seek(const std::string& key) {
     Reset();
     DLOG(INFO) << "seek to key " << key;
@@ -205,7 +205,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     cur_pid_ = stat.pid;
 }
 
-DistributeWindowIterator::ItStat DistributeWindowIterator::SeekToFirstRemote() {
+DistributeWindowIterator::ItStat DistributeWindowIterator::SeekToFirstRemote() const {
     for (const auto& kv : tablet_clients_) {
         uint32_t count = 0;
         auto it = kv.second->Traverse(tid_, kv.first, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count);

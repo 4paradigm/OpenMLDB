@@ -143,7 +143,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
 
     ItStat SeekByKey(const std::string& key) const;
 
-    ItStat SeekToFirstRemote();
+    ItStat SeekToFirstRemote() const;
 
  private:
     const uint32_t tid_;
