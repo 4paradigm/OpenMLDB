@@ -18,7 +18,6 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
-
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
@@ -29,11 +28,11 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -48,23 +47,6 @@ using ::openmldb::zk::ZkClient;
 
 namespace openmldb {
 namespace nameserver {
-
-void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
-                      ::openmldb::nameserver::TableInfo* table_meta) {
-    auto column_desc = table_meta->add_column_desc();
-    column_desc->set_name("idx0");
-    column_desc->set_data_type(::openmldb::type::kString);
-    auto column_desc1 = table_meta->add_column_desc();
-    column_desc1->set_name("value");
-    column_desc1->set_data_type(::openmldb::type::kString);
-    auto column_key = table_meta->add_column_key();
-    column_key->set_index_name("idx0");
-    column_key->add_col_name("idx0");
-    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
-    ttl_st->set_abs_ttl(abs_ttl);
-    ttl_st->set_lat_ttl(lat_ttl);
-    ttl_st->set_ttl_type(ttl_type);
-}
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -93,12 +75,12 @@ class NameServerImplRemoteTest : public ::testing::TestWithParam<::openmldb::com
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
-        std::string db, openmldb::common::StorageMode storage_mode);
+        const std::string& db);
     void CreateAndDropTableRemoteFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
-        std::string db, ::openmldb::common::StorageMode storage_mode);
+        const std::string& db);
 };
 
 void StartNameServer(brpc::Server& server,          // NOLINT
@@ -156,7 +138,7 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
     NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
-    std::string db, openmldb::common::StorageMode storage_mode) {  // NOLINT
+    const std::string& db) {
     bool ok = false;
     std::string name = "test" + GenRand();
     {
@@ -165,10 +147,9 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
         table_info->set_db(db);
-        table_info->set_storage_mode(storage_mode);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         PartitionMeta* meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9931");
         meta->set_is_leader(true);
@@ -289,15 +270,13 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
     }
 }
 
-TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
+TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // local ns and tablet
     // ns
-    openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -316,8 +295,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -331,24 +308,17 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     StartTablet(&server3);
 
     // test remote without db
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
-                                             "", storage_mode);
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "");
 
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-    }
 }
 
-TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
+TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     // local ns and tablet
     // ns
-    ::openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -367,8 +337,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -393,20 +361,15 @@ TEST_P(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
         ASSERT_EQ(0, response.code());
     }
     // use db create table
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
-                                             db, storage_mode);
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db);
 
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-    }
 }
 
 void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2, std::string db,
-    ::openmldb::common::StorageMode storage_mode) {
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
+    const std::string& db) {
     bool ok = false;
     {
         ::openmldb::nameserver::SwitchModeRequest request;
@@ -435,8 +398,7 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -525,15 +487,13 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     }
 }
 
-TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
+TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     // local ns and tablet
     // ns
-    ::openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -552,8 +512,6 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -578,24 +536,16 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
         ASSERT_EQ(0, response.code());
     }
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db,
-                                 storage_mode);
-
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-    }
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db);
 }
 
-TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemote) {
+TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // local ns and tablet
     // ns
-    ::openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -614,8 +564,6 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -628,19 +576,13 @@ TEST_P(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     brpc::Server server3;
     StartTablet(&server3);
 
-    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "",
-                                 storage_mode);
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "");
 
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-    }
 }
 
-TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
+TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     // local ns and tablet
     // ns
-    ::openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -655,21 +597,16 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server1;
     StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server2;
     StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path2 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server3;
     StartTablet(&server3);
 
@@ -687,15 +624,11 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path3 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server5;
     StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path4 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server6;
     StartTablet(&server6);
 
@@ -731,7 +664,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -801,7 +733,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -853,7 +784,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -905,8 +835,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
 
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path5 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server7;
     StartTablet(&server7);
 
@@ -918,7 +846,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -988,7 +915,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1049,7 +975,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1084,21 +1009,11 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition_size());
         ASSERT_EQ(1, response.table_info(0).table_partition(0).partition_meta_size());
     }
-
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path2);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path3);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path4);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path5);
-    }
 }
 
-TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
+TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     // local ns and tablet
     // ns
-    ::openmldb::common::StorageMode storage_mode = GetParam();
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -1112,22 +1027,16 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server1;
     StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path2 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server2;
     StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path3 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server3;
     StartTablet(&server3);
 
@@ -1145,15 +1054,11 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path4 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server5;
     StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path5 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server6;
     StartTablet(&server6);
 
@@ -1189,7 +1094,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1244,7 +1148,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1281,7 +1184,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1318,8 +1220,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
 
     FLAGS_endpoint = "127.0.0.1:9952";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
-    std::string old_hdd_root_path6 = FLAGS_hdd_root_path;
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::nameserver::GenRand();
     brpc::Server server7;
     StartTablet(&server7);
 
@@ -1331,7 +1231,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1386,7 +1285,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1432,7 +1330,6 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        table_info->set_storage_mode(storage_mode);
 
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
@@ -1453,20 +1350,7 @@ TEST_P(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(1, response.table_info().table_partition_size());
     }
-
-    if (storage_mode == openmldb::common::kHDD) {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path2);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path3);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path4);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path5);
-        ::openmldb::base::RemoveDirRecursive(old_hdd_root_path6);
-    }
 }
-
-INSTANTIATE_TEST_CASE_P(TestMemAndHDD, NameServerImplRemoteTest,
-                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace nameserver
 }  // namespace openmldb
