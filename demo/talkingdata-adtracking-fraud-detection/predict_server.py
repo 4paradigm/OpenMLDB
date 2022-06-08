@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module of predict server"""
 import argparse
 import json
 import numpy as np
@@ -23,9 +24,9 @@ import tornado.web
 import xgboost as xgb
 import logging
 
-logging.basicConfig(encoding='utf-8', level=logging.INFO, format="%(asctime)s-%(name)s-%(levelname)s-%(message)s")
+logging.basicConfig(encoding="utf-8", level=logging.INFO, format="%(asctime)s-%(name)s-%(levelname)s-%(message)s")
 
-arg_keys = ["endpoint", 'database', 'deployment', 'model_path']
+arg_keys = ["endpoint", "database", "deployment", "model_path"]
 bst = xgb.Booster()
 # schema column type, ref hybridse::sdk::DataTypeName
 table_schema = []
@@ -60,18 +61,19 @@ def request_row_cvt(json_row):
     """
     row_data = []
     for col in table_schema:
-        row_data.append(json_row.get(col['name'], "") if col['type'] == "string" else json_row.get(col['name'], 0))
-    logging.info('request row: %s', row_data)
+        row_data.append(json_row.get(col["name"], "") if col["type"] == "string" else json_row.get(col["name"], 0))
+    logging.info("request row: %s", row_data)
     return row_data
 
 
 def get_result(response):
     result = json.loads(response.text)
-    logging.info('request result: %s', result)
-    return result['data']['data']
+    logging.info("request result: %s", result)
+    return result["data"]["data"]
 
 
 class PredictHandler(tornado.web.RequestHandler):
+    """Class PredictHandler."""
     def post(self):
         # only one row
         row = json.loads(self.request.body)
@@ -86,11 +88,12 @@ class PredictHandler(tornado.web.RequestHandler):
             prediction = bst.predict(ins)
             self.write(
                 "---------------predict whether is attributed -------------\n")
-            self.write("%s" % str(prediction[0]))
-            logging.info('feature: %s, prediction: %s', res, prediction)
+            self.write(f"{str(prediction[0])}")
+            logging.info("feature: %s, prediction: %s", res, prediction)
 
 
 class MainHandler(tornado.web.RequestHandler):
+    """Class of MainHandler."""
     def get(self):
         self.write("real time fe request demo\n")
 
@@ -100,45 +103,44 @@ def args_validator(update_info):
 
 
 def make_url():
-    return "http://%s/dbs/%s/deployments/%s" % (global_args['endpoint'],
-                                                global_args['database'],
-                                                global_args['deployment'])
+    return f"http://{global_args['endpoint']}/dbs/{global_args['database']}/deployments/{global_args['deployment']}"
 
 
 def update_schema():
     r = requests.get(url)
     rs = json.loads(r.text)
     global table_schema
-    table_schema = rs['data']['input_schema']
+    table_schema = rs["data"]["input_schema"]
 
 
 def update_model():
-    bst.load_model(fname=global_args['model_path'])
+    bst.load_model(fname=global_args["model_path"])
 
 
 def update_all():
     global url
     url = make_url()
     update_schema()
-    logging.info('url and schema updated')
+    logging.info("url and schema updated")
     update_model()
-    logging.info('model updated')
+    logging.info("model updated")
 
 
 class UpdateHandler(tornado.web.RequestHandler):
+    """Class of UpdateHandler."""
     def post(self):
         update_info = json.loads(self.request.body)
         # must use the full names
         global global_args
-        logging.info('before update: %s', global_args)
+        logging.info("before update: %s", global_args)
         # just update if update_info is empty
         # if not, do restrict update
         if update_info and not args_validator(update_info):
-            msg = 'invalid arg in {}, valid candidates {}'.format(update_info, arg_keys)
+            msg = f"invalid arg in {update_info}, valid candidates {arg_keys}"
             self.write(msg)
             return
         global_args = global_args | update_info
-        logging.info('update: %s', global_args)
+        logging.info("update: %s", global_args)
         update_all()
         self.write("ok\n")
 
@@ -162,10 +164,9 @@ if __name__ == "__main__":
                         default=True)
     args = parser.parse_args()
 
-    global global_args
     global_args = vars(args)
     print(global_args)
-    logging.info('init args: %s', global_args)
+    logging.info("init args: %s", global_args)
 
     if args.init:
         update_all()
