@@ -27,10 +27,10 @@ namespace base {
 
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
-    StringRef(std::nullptr_t) : size_(0), data_(nullptr) {} // NOLINT
+    StringRef(std::nullptr_t) : size_(0), data_(nullptr) {}  // NOLINT
 
-    StringRef(const char* str) // NOLINT
-        : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
+    StringRef(const char* str)  // NOLINT
+        : size_(strlen(str)), data_(str) {}
     StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
 
     StringRef(const std::string& str) // NOLINT
