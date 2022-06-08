@@ -46,6 +46,7 @@ option(EXAMPLES_TESTING_ENABLE "Enable Examples Test" ON)
 option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
+option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
