@@ -24,6 +24,10 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "absl/cleanup/cleanup.h"
+#include "gflags/gflags.h"
+
+DECLARE_uint32(zk_log_level);
+DECLARE_string(zk_log_stream);
 
 namespace openmldb {
 namespace zk {
@@ -112,10 +116,22 @@ ZkClient::~ZkClient() {
     if (zk_) {
         zookeeper_close(zk_);
     }
+    if(zk_log_stream_file_){
+        fclose(zk_log_stream_file_);
+    }
 }
 
 bool ZkClient::Init() {
     std::unique_lock<std::mutex> lock(mu_);
+    zoo_set_debug_level(ZooLogLevel(FLAGS_zk_log_level));
+
+    if(!FLAGS_zk_log_stream.empty()){
+        zk_log_stream_file_ = fopen(FLAGS_zk_log_stream.c_str(), "w");    
+    } else {
+        zk_log_stream_file_ = fopen("/dev/null", "w");
+    }
+    zoo_set_log_stream(zk_log_stream_file_);
+
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0, (void*)this, 0);  // NOLINT
     // one second
     cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));

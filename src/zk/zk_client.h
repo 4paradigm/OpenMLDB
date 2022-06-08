@@ -27,6 +27,7 @@
 #include "boost/function.hpp"
 
 extern "C" {
+#include "stdio.h"
 #include "zookeeper/zookeeper.h"
 }
 
@@ -141,6 +142,8 @@ class ZkClient {
     std::string endpoint_;
     std::string zk_root_path_;
     std::string real_endpoint_;
+
+    FILE* zk_log_stream_file_ = NULL;
 
     // internal args
     std::string nodes_root_path_;

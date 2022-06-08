@@ -26,6 +26,8 @@ DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
+DEFINE_uint32(zk_log_level, 1, "set level integer: ZOO_LOG_LEVEL_ERROR=1,ZOO_LOG_LEVEL_WARN=2,ZOO_LOG_LEVEL_INFO=3,ZOO_LOG_LEVEL_DEBUG=4");
+DEFINE_string(zk_log_stream, "", "set zk log file, empty means no log output");
 DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
