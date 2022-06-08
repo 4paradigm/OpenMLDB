@@ -308,8 +308,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     StartTablet(&server3);
 
     // test remote without db
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "");
-
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+            name_server_client_1, name_server_client_2, "");
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
@@ -361,8 +361,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
         ASSERT_EQ(0, response.code());
     }
     // use db create table
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db);
-
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+            name_server_client_1, name_server_client_2, db);
 }
 
 void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
@@ -577,7 +577,6 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     StartTablet(&server3);
 
     CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, "");
-
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
@@ -837,7 +836,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server server7;
     StartTablet(&server7);
-
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;

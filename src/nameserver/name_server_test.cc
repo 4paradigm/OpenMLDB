@@ -837,7 +837,6 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
 }
 
 TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
-
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -1005,14 +1004,12 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
 }
 
 TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
-
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
     Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
     Server f2_ns1_svr, f2_ns2_svr, f2_t1_svr, f2_t2_svr;
-    string m1_ns1_ep, m1_ns2_ep, m1_t1_ep,
-        m1_t2_ep;  // ep == endpoint t_ep = tablet endpoint
+    string m1_ns1_ep, m1_ns2_ep, m1_t1_ep, m1_t2_ep;  // ep == endpoint t_ep = tablet endpoint
     string f1_ns1_ep, f1_ns2_ep, f1_t1_ep, f1_t2_ep;
     string f2_ns1_ep, f2_ns2_ep, f2_t1_ep, f2_t2_ep;
     string m1_zkpath, f1_zkpath, f2_zkpath;
