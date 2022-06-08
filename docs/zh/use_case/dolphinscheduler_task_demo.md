@@ -40,7 +40,7 @@ OpenMLDB 希望能达成开发即上线的目标，让开发回归本质，而�
 ### 环境配置
 演示可以在 macOS 或 Linux 上运行，也可以使用我们提供的 OpenMLDB 镜像：
 ```
-docker run -it 4pdosc/openmldb:0.5.1 bash
+docker run -it 4pdosc/openmldb:0.5.2 bash
 ```
 ```{attention}
 DolphinScheduler 需要操作系统的用户，并且该用户需要有 sudo 权限。所以推荐在 OpenMLDB 容器内下载并启动 DolphinScheduler。否则，请准备有sudo权限的操作系统用户。

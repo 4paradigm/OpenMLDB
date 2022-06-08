@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.2] - 2022-06-10
+
+### Features
+- Add a new micro-benchmark tool for performance evaluation (#1800 @dl239)
+
 ## [0.5.1] - 2022-05-26
 
 ### Features
@@ -238,6 +243,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.5.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.4...v0.5.0
 [0.4.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.3...v0.4.4
