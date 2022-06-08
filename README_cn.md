@@ -14,6 +14,22 @@
 
 **[English](./README.md) | 中文**
 
+## 目录
+
+1. [设计理念](#1-设计理念)
+2. [生产级机器学习特征平台](#2-生产级机器学习特征平台)
+3. [核心特性](#3-核心特性)
+4. [FAQ](#4-faq)
+5. [编译和安装](#5-编译和安装)
+6. [QuickStart](#6-quickstart)
+7. [使用案例](#7-使用案例)
+8. [OpenMLDB 文档](#8-openmldb-文档)
+9. [Roadmap](#9-roadmap)
+10. [社区开发者](#10-社区开发者)
+11. [加入社区](#11-加入社区)
+12. [学术论文](#12-学术论文)
+13. [用户列表](#13-用户列表)
+
 ### OpenMLDB 是一个开源机器学习数据库，提供线上线下一致的生产级特征平台。
 
 ## 1. 设计理念
@@ -81,10 +97,12 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 我们正在搜集一个 OpenMLDB 用于实际案例的列表，为 OpenMLDB 如何在你的业务中发挥价值提供参考。
 
-| 应用                                                         | 所用工具                                    | 简介                                                         |
-| ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------ |
-| [出租车行程时间预测](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                          | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
-| [使用 Pulsar connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, Pulsar OpenMLDB connector | Apache Pulsar 是一个高性能的云原生的消息队列平台，基于其 [Pulsar OpenMLDB connector](https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-openmldb)，我们可以高效的将 Pulsar 的数据流作为 OpenMLDB 的在线数据源，实现两者的无缝整合。 |
+| 应用                                                         | 所用工具                                                     | 简介                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [出租车行程时间预测](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                                           | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
+| [使用 Pulsar connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://github.com/apache/pulsar/tree/master/pulsar-io/jdbc/openmldb) | Apache Pulsar 是一个高性能的云原生的消息队列平台，基于  OpenMLDB-Pulsar connector，我们可以高效的将 Pulsar 的数据流作为 OpenMLDB 的在线数据源，实现两者的无缝整合。 |
+| [使用 Kafka connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka 是一个分布式消息流平台。基于 OpenMLDB-Kafka connector，实时数据流可以被简单的引入到 OpenMLDB 作为在线数据源。 |
+| [构建端到端的机器学习工作流](https://openmldb.ai/docs/zh/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | 这个案例新演示了基于 OpenMLDB 和 DolphinScheduler（一个开源的工作流任务调度平台）来构建一个完整的机器学习工作流，包括了特征工程、模型训练，以及部署上线。 |
 
 ## 8. OpenMLDB 文档
 
@@ -118,7 +136,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
   <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=600/>
 </a>
 
-## 11. 社区
+## 11. 加入社区
 
 - 网站：[https://openmldb.ai/](https://openmldb.ai) 
 - Email: [contact@openmldb.ai](mailto:contact@openmldb.ai)

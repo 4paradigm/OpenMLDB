@@ -33,10 +33,8 @@ jobs:
       ARCH: x86_64
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
 
-      - name: Build Core
+      - name: Build HybridSE
         run: |
           make hybridse-build
 

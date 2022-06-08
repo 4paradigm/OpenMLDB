@@ -311,6 +311,7 @@ message TableMeta {
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;
     optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional uint32 base_table_tid = 18 [default = 0];
 }
 
 message CreateTableRequest {
@@ -855,6 +856,7 @@ message CreateAggregatorRequest {
     optional string aggr_col = 6;
     optional string order_by_col = 7;
     optional string bucket_size = 8;
+    optional string filter_col = 9;
 }
 
 message CreateAggregatorResponse {
