@@ -794,6 +794,63 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     }
 
     auto tableInfo = GetTableInfo(db, table);
+
+    // delete pre-aggr meta info if need
+    if (tableInfo.base_table_tid() > 0) {
+        std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+        std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+        std::string select_aggr_info =
+            absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
+                         meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
+        auto rs = ExecuteSQL("", select_aggr_info, status);
+        if (!status->IsOK()) {
+            return false;
+        }
+        if (rs->Size() != 1) {
+            status->msg = "duplicate records generate with aggr table name: " + tableInfo.name();
+            status->code = -1;
+            return false;
+        }
+        std::string idx_key;
+        if (rs->Next()) {
+            for (int i = 0; i < rs->GetSchema()->GetColumnCnt(); i++) {
+                if (!idx_key.empty()) {
+                    idx_key += "|";
+                }
+                auto k = rs->GetAsStringUnsafe(i);
+                if (k.empty()) {
+                    idx_key += hybridse::codec::EMPTY_STRING;
+                } else {
+                    idx_key += k;
+                }
+            }
+        } else {
+            status->msg = "access ResultSet failed";
+            status->code = -1;
+            return false;
+        }
+        auto tablet_accessor = cluster_sdk_->GetTablet(meta_db, meta_table, (uint32_t)0);
+        if (!tablet_accessor) {
+            status->msg = "get tablet accessor failed";
+            status->code = -1;
+            return false;
+        }
+        auto tablet_client = tablet_accessor->GetClient();
+        if (!tablet_client) {
+            status->msg = "get tablet client failed";
+            status->code = -1;
+            return false;
+        }
+        auto tid = cluster_sdk_->GetTableId(meta_db, meta_table);
+        std::string msg;
+        if (!tablet_client->Delete(tid, 0, tableInfo.name(), "aggr_table", msg) ||
+            !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
+            status->msg = "delete aggr meta failed";
+            status->code = -1;
+            return false;
+        }
+    }
+
     // Check offline table info first
     if (tableInfo.has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
@@ -2161,6 +2218,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     table_partition->CopyFrom(base_table_info.table_partition());
     table_info.set_format_version(1);
     table_info.set_storage_mode(base_table_info.storage_mode());
+    table_info.set_base_table_tid(base_table_info.tid());
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
                             openmldb::common::ColumnDesc* field) {
         if (field != nullptr) {
@@ -3202,16 +3260,20 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
             // check if pre-aggr table exists
-            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw);
+            ::hybridse::sdk::Status status;
+            bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw, &status);
+            if (!status.IsOK()) {
+                return status;
+            }
             if (is_exist) {
                 continue;
             }
             // insert pre-aggr meta info to meta table
             std::string aggr_col = lw.aggr_col_ == "*" ? "" : lw.aggr_col_;
             auto aggr_table =
-                absl::StrCat("pre_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
+                absl::StrCat("pre_", base_db, "_", deploy_node->Name(), "_",
+                             lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
                              lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
-            ::hybridse::sdk::Status status;
             std::string insert_sql =
                 absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
                              "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
@@ -3282,20 +3344,21 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
     return {};
 }
 
-bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                              const openmldb::base::LongWindowInfo& lw) {
+bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table,
+                                              const std::string& base_db,
+                                              const openmldb::base::LongWindowInfo& lw,
+                                              ::hybridse::sdk::Status* status) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
     std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
     std::string meta_info = absl::StrCat(
         "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
         "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
-        "' and order_by_col = '", lw.order_col_, filter_cond);
+        "' and order_by_col = '", lw.order_col_, "'", filter_cond);
     std::string select_sql =
-        absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, "';");
-    hybridse::sdk::Status status;
-    auto rs = ExecuteSQL("", select_sql, &status);
-    if (!status.IsOK()) {
+        absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, ";");
+    auto rs = ExecuteSQL("", select_sql, status);
+    if (!status->IsOK()) {
         return false;
     }
 

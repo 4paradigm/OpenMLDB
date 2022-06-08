@@ -348,6 +348,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     return true;
 }
 bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer** buffer) { return GetAggrBuffer(key, "", buffer); }
+
 bool Aggregator::GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer) {
     std::lock_guard<std::mutex> lock(mu_);
     auto it = aggr_buffer_map_.find(key);

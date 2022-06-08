@@ -124,6 +124,7 @@ class SystemTable {
                 index2->add_col_name("aggr_col");
                 index2->add_col_name("partition_cols");
                 index2->add_col_name("order_by_col");
+                index2->add_col_name("filter_col");
                 ttl = index2->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kAbsoluteTime);
                 ttl->set_abs_ttl(0);

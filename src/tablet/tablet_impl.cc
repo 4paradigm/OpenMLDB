@@ -3223,6 +3223,22 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
+        // delete related aggregator
+        uint32_t base_tid = table->GetTableMeta()->base_table_tid();
+        if (base_tid > 0) {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            uint64_t uid = (uint64_t) base_tid << 32 | pid;
+            auto it = aggregators_.find(uid);
+            if (it != aggregators_.end()) {
+                auto aggrs = *it->second;
+                for (auto it = aggrs.begin(); it != aggrs.end(); it++) {
+                    if ((*it)->GetAggrTid() == tid) {
+                        aggrs.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
         bulk_load_mgr_.RemoveReceiver(tid, pid);
@@ -5327,7 +5343,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure " << db_name << "." << sp_name << " in catalog failed";
     }
 
     if (is_deployment_procedure) {
