@@ -930,6 +930,45 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.6.0)");
     RegisterAlias("character_length", "char_length");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc", "ABC")
+                -- output "ABCABC"
+             @endcode
+
+             @since 0.5.2
+             )r");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc")
+                -- output "ABC"
+             @endcode
+             @since 0.5.2
+             )r");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {

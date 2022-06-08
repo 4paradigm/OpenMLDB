@@ -463,3 +463,38 @@ cases:
       order: col1
       rows:
         - [1, true, true, false, null, null, null]
+
+  - id: udf_replace
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "ABCabcabc"]
+          - [2, 1590115420001, "ABC"]
+          - [3, 1590115420001, NULL]
+    sql: |
+      select col1,
+      replace(col2, "abc", "ABC") as rp1,
+      replace(col2, "abca", "A") as rp2,
+      replace(col2, "abc", "") as rp3,
+      replace(col2, "abc", string(null)) as rp4,
+      replace(col2, string(null), "abc") as rp5,
+      replace(col2, "abc") as rp6,
+      replace(string(NULL), "abc", "abc") as rp7,
+      from t1;
+    expect:
+      columns:
+        - col1 int32
+        - rp1 string
+        - rp2 string
+        - rp3 string
+        - rp4 string
+        - rp5 string
+        - rp6 string
+        - rp7 string
+      order: col1
+      data: |
+        1, ABCABCABC, ABCAbc, ABC,  NULL, NULL, ABC,  NULL
+        2, ABC,       ABC,    ABC,  NULL, NULL, ABC,  NULL
+        3, NULL,      NULL,   NULL, NULL, NULL, NULL, NULL

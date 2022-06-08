@@ -21,6 +21,7 @@
 #include <set>
 #include <utility>
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_replace.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -864,6 +865,34 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     output->size_ = str->size_;
     output->data_ = buffer;
     *is_null_ptr = false;
+}
+
+void replace(StringRef *str, StringRef *search, StringRef *replace, StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || search == nullptr || replace == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+
+    absl::string_view str_view(str->data_, str->size_);
+    absl::string_view search_view(search->data_, search->size_);
+    absl::string_view replace_view(replace->data_, replace->size_);
+    std::string out = absl::StrReplaceAll(str_view, {{search_view, replace_view}});
+
+    char *buf = AllocManagedStringBuf(out.size());
+    if (buf == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+    memcpy(buf, out.data(), out.size());
+
+    output->data_ = buf;
+    output->size_ = out.size();
+    *is_null_ptr = false;
+}
+
+void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null_ptr) {
+    StringRef rep(0, "");
+    replace(str, search, &rep, output, is_null_ptr);
 }
 
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
