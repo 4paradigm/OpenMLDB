@@ -363,23 +363,27 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
                                              std::vector<uint32_t>* str_lengths) {
     if (status == NULL || table_info == NULL || default_maps == NULL || str_lengths == NULL) {
         status->msg = "insert info is null";
+        LOG(WARNING) << status->msg;
         return false;
     }
     ::hybridse::node::NodeManager nm;
     ::hybridse::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
     if (!ok || plans.empty()) {
-        status->msg = "fail to get sql plan with sql " + sql;
+        LOG(WARNING) << "fail to get sql plan with sql " << sql;
+        status->msg = "fail to get sql plan with";
         return false;
     }
     ::hybridse::node::PlanNode* plan = plans[0];
     if (plan->GetType() != hybridse::node::kPlanTypeInsert) {
         status->msg = "invalid sql node expect insert";
+        LOG(WARNING) << "invalid sql node expect insert";
         return false;
     }
     auto* iplan = dynamic_cast<::hybridse::node::InsertPlanNode*>(plan);
     const ::hybridse::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
     if (insert_stmt == nullptr) {
+        LOG(WARNING) << "insert stmt is null";
         status->msg = "insert stmt is null";
         return false;
     }
@@ -396,6 +400,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     *table_info = cluster_sdk_->GetTableInfo(db_name, insert_stmt->table_name_);
     if (!(*table_info)) {
         status->msg = "table with name " + insert_stmt->table_name_ + " in db " + db_name + " does not exist";
+        LOG(WARNING) << status->msg;
         return false;
     }
     std::map<uint32_t, uint32_t> column_map;
@@ -416,6 +421,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         }
         if (!find_flag) {
             status->msg = "can't find column " + col_name + " in table " + (*table_info)->name();
+            LOG(WARNING) << status->msg;
             return false;
         }
     }
@@ -427,6 +433,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
                           "]"
                           ": invalid row expression, expect kExprList but " +
                           hybridse::node::ExprTypeName(value->GetExprType());
+            LOG(WARNING) << status->msg;
             return false;
         }
         uint32_t str_length = 0;
@@ -434,6 +441,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
             GetDefaultMap(*table_info, column_map, dynamic_cast<::hybridse::node::ExprListNode*>(value), &str_length));
         if (!default_maps->back()) {
             status->msg = "fail to parse row[" + std::to_string(i) + "]: " + value->GetExprString();
+            LOG(WARNING) << status->msg;
             return false;
         }
         str_lengths->push_back(str_length);
@@ -441,11 +449,13 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     if (default_maps->empty() || str_lengths->empty()) {
         status->msg = "default_maps or str_lengths are empty";
         status->code = 1;
+        LOG(WARNING) << status->msg;
         return false;
     }
     if (default_maps->size() != str_lengths->size()) {
         status->msg = "default maps isn't match with str_lengths";
         status->code = 1;
+        LOG(WARNING) << status->msg;
         return false;
     }
     return true;
@@ -1123,6 +1133,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::vector<uint32_t> str_lengths;
     if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths)) {
         status->code = 1;
+        LOG(WARNING) << "Fail to execute insert statement: " << status->msg;
         return false;
     }
 
@@ -1131,6 +1142,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     bool ret = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets);
     if (!ret || tablets.empty()) {
         status->msg = "Fail to execute insert statement: fail to get " + table_info->name() + " tablet";
+        LOG(WARNING) << status->msg;
         return false;
     }
     size_t cnt = 0;
@@ -1141,12 +1153,15 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
             continue;
         }
         if (!row->Init(0)) {
+            LOG(WARNING) << "fail to encode row[" << i << " for table " << table_info->name();
             continue;
         }
         if (!row->IsComplete()) {
+            LOG(WARNING) << "fail to build row[" << i << "]";
             continue;
         }
         if (!PutRow(table_info->tid(), row, tablets, status)) {
+            LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
             continue;
         }
         cnt++;
