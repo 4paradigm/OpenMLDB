@@ -16,15 +16,14 @@
 
 #include "apiserver/api_server_impl.h"
 #include "brpc/channel.h"
-#include "memory"
 #include "brpc/restful.h"
 #include "brpc/server.h"
 #include "butil/logging.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "json2pb/rapidjson.h"
+#include "memory"
 #include "sdk/mini_cluster.h"
-
 
 namespace openmldb::apiserver {
 
@@ -52,7 +51,7 @@ class APIServerTestEnv : public testing::Environment {
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
         sdk::SQLRouterOptions sql_opt;
-        sql_opt.session_timeout = 30000;
+        sql_opt.zk_session_timeout = 30000;
         sql_opt.zk_cluster = mc->GetZkCluster();
         sql_opt.zk_path = mc->GetZkPath();
         // sql_opt.enable_debug = true;
@@ -509,10 +508,9 @@ TEST_F(APIServerTest, no_common) {
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
         " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+                         " begin " + sql + " end;";
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
     ASSERT_TRUE(env->cluster_sdk->Refresh());
 
@@ -592,14 +590,14 @@ TEST_F(APIServerTest, no_common_not_first_string) {
     ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp1";
-    std::string sql = "SELECT id, c1, sum(c4) OVER (w1) AS w1_c4_sum FROM trans1 "
+    std::string sql =
+        "SELECT id, c1, sum(c4) OVER (w1) AS w1_c4_sum FROM trans1 "
         "WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 "
         "ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);";
 
-    std::string sp_ddl =
-        "create procedure " + sp_name +
-        " (id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
-        " begin " + sql + " end;";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (id int, c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+                         " begin " + sql + " end;";
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
     ASSERT_TRUE(env->cluster_sdk->Refresh());
 
