@@ -176,8 +176,6 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
 
     // TODO: Add index column if needed
-    outputHybridseRow.delete()
-
     outputInternalRowWithAppend
   }
 
