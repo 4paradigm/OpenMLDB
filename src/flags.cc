@@ -18,7 +18,7 @@
 // cluster config
 DEFINE_string(endpoint, "", "ip:port, config the ip and port that openmldb serves for");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir");
-DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
+DEFINE_int32(zk_session_timeout, 2000, "config the zk session timeout of client, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline");
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");

@@ -39,6 +39,7 @@ DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_int32(zk_session_timeout);
 DECLARE_string(cmd);
 // stand-alone mode
 DECLARE_string(host);
@@ -204,6 +205,7 @@ bool InitClusterSDK() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
+    copt.session_timeout = FLAGS_zk_session_timeout;
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
