@@ -3,14 +3,13 @@ import gc
 import os
 import time
 import glob
-import requests
 # fmt:off
 # pylint: disable=unused-import
 import openmldb
 import sqlalchemy as db
 import pandas as pd
 import xgboost as xgb
-
+import requests
 # fmt:on
 
 # openmldb cluster configs
