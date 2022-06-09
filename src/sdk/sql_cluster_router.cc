@@ -222,7 +222,7 @@ bool SQLClusterRouter::Init() {
             ClusterOptions coptions;
             coptions.zk_cluster = options_.zk_cluster;
             coptions.zk_path = options_.zk_path;
-            coptions.session_timeout = options_.zk_session_timeout;
+            coptions.zk_session_timeout = options_.zk_session_timeout;
             cluster_sdk_ = new ClusterSDK(coptions);
             bool ok = cluster_sdk_->Init();
             if (!ok) {
