@@ -29,12 +29,13 @@
 #include "absl/strings/match.h"
 #include "absl/strings/strip.h"
 #include "base/linenoise.h"
-#include "boost/regex.hpp"
 #include "base/texttable.h"
+#include "boost/regex.hpp"
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
+
 DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
 DECLARE_string(cmd);
@@ -43,7 +44,7 @@ DECLARE_string(cmd);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
-DECLARE_uint32(zk_log_level); 
+DECLARE_uint32(zk_log_level);
 DECLARE_string(zk_log_file);
 
 // stand-alone mode

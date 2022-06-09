@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <utility>
 
+#include "absl/cleanup/cleanup.h"
 #include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
-#include "absl/cleanup/cleanup.h"
 #include "gflags/gflags.h"
 
 namespace openmldb {
@@ -113,7 +113,7 @@ ZkClient::~ZkClient() {
     if (zk_) {
         zookeeper_close(zk_);
     }
-    if(zk_log_stream_file_){
+    if (zk_log_stream_file_) {
         fclose(zk_log_stream_file_);
     }
 }
@@ -121,9 +121,9 @@ ZkClient::~ZkClient() {
 bool ZkClient::Init(int log_level, const std::string& log_file) {
     std::unique_lock<std::mutex> lock(mu_);
     zoo_set_debug_level(ZooLogLevel(log_level));
-    if(!log_file.empty()){
+    if (!log_file.empty()) {
         zk_log_stream_file_ = fopen(log_file.c_str(), "w");
-        zoo_set_log_stream(zk_log_stream_file_);    
+        zoo_set_log_stream(zk_log_stream_file_);
     }
 
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0, (void*)this, 0);  // NOLINT
@@ -506,9 +506,7 @@ bool ZkClient::GetChildrenUnLocked(const std::string& path, std::vector<std::str
     struct String_vector data;
     data.count = 0;
     data.data = NULL;
-    absl::Cleanup data_deallocator = [&data] {
-        deallocate_String_vector(&data);
-    };
+    absl::Cleanup data_deallocator = [&data] { deallocate_String_vector(&data); };
     int ret = zoo_get_children(zk_, path.c_str(), 0, &data);
     if (ret != ZOK) {
         PDLOG(WARNING, "fail to get children from path %s with errno %d", path.c_str(), ret);
@@ -534,9 +532,7 @@ bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     struct String_vector data;
     data.count = 0;
     data.data = NULL;
-    absl::Cleanup data_deallocator = [&data] {
-        deallocate_String_vector(&data);
-    };
+    absl::Cleanup data_deallocator = [&data] { deallocate_String_vector(&data); };
     int ret = zoo_get_children(zk_, nodes_root_path_.c_str(), 0, &data);
     if (ret != ZOK) {
         PDLOG(WARNING, "fail to get children from path %s with errno %d", nodes_root_path_.c_str(), ret);

@@ -53,9 +53,10 @@ class ZkClient {
     ~ZkClient();
 
     // init zookeeper connections
-    // log level: DISABLE_LOGGING=0, ZOO_LOG_LEVEL_ERROR=1,ZOO_LOG_LEVEL_WARN=2,ZOO_LOG_LEVEL_INFO=3,ZOO_LOG_LEVEL_DEBUG=4
-    // log file: empty means no file, it'll print to stderr
-    // If you want to disable zk log, set level 0, or set the file "/dev/null".
+    // log level: DISABLE_LOGGING=0, ZOO_LOG_LEVEL_ERROR=1, ZOO_LOG_LEVEL_WARN=2, ZOO_LOG_LEVEL_INFO=3,
+    // ZOO_LOG_LEVEL_DEBUG=4
+    // log file: empty means no file, it'll print to stderr If you want to disable zk log, set
+    // level 0, or set the file "/dev/null".
     bool Init(int log_level = 3, const std::string& log_file = {});
 
     // the client will create a ephemeral node in zk_root_path
