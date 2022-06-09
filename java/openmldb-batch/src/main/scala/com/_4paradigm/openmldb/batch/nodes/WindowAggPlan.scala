@@ -105,7 +105,6 @@ object WindowAggPlan {
       // Combine row and internal row in the tuple for repartition
       val rowRdd = repartitionDf.rdd
       val internalRowRdd = repartitionDf.queryExecution.toRdd
-      val zippedRdd = rowRdd.zip(internalRowRdd)
 
       val inputSchema = repartitionDf.schema
 
@@ -138,6 +137,7 @@ object WindowAggPlan {
       }
 
       val outputInternalRowRdd = if (isWindowWithUnion) {
+        val zippedRdd = rowRdd.zip(internalRowRdd)
         zippedRdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
             val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig, windowAggConfig)
@@ -146,6 +146,7 @@ object WindowAggPlan {
         }
       } else {
         if (isWindowSkewOptimization) {
+          val zippedRdd = rowRdd.zip(internalRowRdd)
           zippedRdd.mapPartitionsWithIndex {
             case (partitionIndex, iter) =>
               val computer = WindowAggPlanUtil.createComputer(partitionIndex, hadoopConf, sparkFeConfig,
