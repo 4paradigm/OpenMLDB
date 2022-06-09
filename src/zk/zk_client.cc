@@ -26,9 +26,6 @@
 #include "absl/cleanup/cleanup.h"
 #include "gflags/gflags.h"
 
-DECLARE_uint32(zk_log_level);
-DECLARE_string(zk_log_stream);
-
 namespace openmldb {
 namespace zk {
 
@@ -121,16 +118,13 @@ ZkClient::~ZkClient() {
     }
 }
 
-bool ZkClient::Init() {
+bool ZkClient::Init(int log_level, const std::string& log_file) {
     std::unique_lock<std::mutex> lock(mu_);
-    zoo_set_debug_level(ZooLogLevel(FLAGS_zk_log_level));
-
-    if(!FLAGS_zk_log_stream.empty()){
-        zk_log_stream_file_ = fopen(FLAGS_zk_log_stream.c_str(), "w");    
-    } else {
-        zk_log_stream_file_ = fopen("/dev/null", "w");
+    zoo_set_debug_level(ZooLogLevel(log_level));
+    if(!log_file.empty()){
+        zk_log_stream_file_ = fopen(log_file.c_str(), "w");
+        zoo_set_log_stream(zk_log_stream_file_);    
     }
-    zoo_set_log_stream(zk_log_stream_file_);
 
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0, (void*)this, 0);  // NOLINT
     // one second

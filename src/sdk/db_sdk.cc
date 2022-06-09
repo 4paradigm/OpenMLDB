@@ -203,14 +203,13 @@ void ClusterSDK::CheckZk() {
 
 bool ClusterSDK::Init() {
     zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", options_.session_timeout, "", options_.zk_path);
-    bool ok = zk_client_->Init();
+    
+    bool ok = zk_client_->Init(options_.zk_log_level, options_.zk_log_file);
     if (!ok) {
-        LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster << " , zk path "
-                     << options_.zk_path << " and session timeout " << options_.session_timeout;
+        LOG(WARNING) << "fail to init zk client with " << options_.to_string();
         return false;
     }
-    LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
-              << ",session timeout " << options_.session_timeout << " and session id " << zk_client_->GetSessionTerm();
+    LOG(INFO) << "init zk client with " << options_.to_string() << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
     eopt.SetCompileOnly(true);

@@ -37,14 +37,18 @@
 #include "version.h"  // NOLINT
 DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
+DECLARE_string(cmd);
+
+// cluster mode
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
-DECLARE_string(cmd);
+DECLARE_uint32(zk_log_level); 
+DECLARE_string(zk_log_file);
+
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
-DECLARE_int32(request_timeout_ms);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -206,6 +210,8 @@ bool InitClusterSDK() {
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
     copt.session_timeout = FLAGS_zk_session_timeout;
+    copt.zk_log_level = FLAGS_zk_log_level;
+    copt.zk_log_file = FLAGS_zk_log_file;
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;

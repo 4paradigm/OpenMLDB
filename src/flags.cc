@@ -18,7 +18,7 @@
 // cluster config
 DEFINE_string(endpoint, "", "ip:port, config the ip and port that openmldb serves for");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir");
-DEFINE_int32(zk_session_timeout, 2000, "config the zk session timeout of client, tablet or nameserver");
+DEFINE_int32(zk_session_timeout, 2000, "config the zk session timeout of cli, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline");
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -26,8 +26,8 @@ DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
-DEFINE_uint32(zk_log_level, 1, "set level integer: ZOO_LOG_LEVEL_ERROR=1,ZOO_LOG_LEVEL_WARN=2,ZOO_LOG_LEVEL_INFO=3,ZOO_LOG_LEVEL_DEBUG=4");
-DEFINE_string(zk_log_stream, "", "set zk log file, empty means no log output");
+DEFINE_uint32(zk_log_level, 0, "CLI: set level integer, DISABLE_LOGGING=0, ZOO_LOG_LEVEL_ERROR=1,ZOO_LOG_LEVEL_WARN=2,ZOO_LOG_LEVEL_INFO=3,ZOO_LOG_LEVEL_DEBUG=4");
+DEFINE_string(zk_log_file, "", "CLI: set zk log file, empty means stderr(default in zk)");
 DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
