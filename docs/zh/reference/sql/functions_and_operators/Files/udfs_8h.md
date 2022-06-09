@@ -698,7 +698,7 @@ SELECT COS(0);
 
 
 
-* The value returned by [cos()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
+* The value returned by [cos()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
 
 **Supported Types**:
 
@@ -988,7 +988,7 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
 Example: ```sql
 
@@ -1020,7 +1020,7 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
 Example: ```sql
 
@@ -1052,7 +1052,7 @@ Return the day of week for a timestamp or date.
 0.4.0
 
 
-Note: This function equals the `[week()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-week)` function.
+Note: This function equals the `[week()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)` function.
 
 Example: ```sql
 
@@ -3008,7 +3008,7 @@ SELECT SIN(0);
 
 
 
-* The value returned by [sin()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
+* The value returned by [sin()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
 
 **Supported Types**:
 
@@ -3130,7 +3130,7 @@ Return a substring from string `str` starting at position `pos`.
 0.1.0
 
 
-Note: This function equals the `[substr()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
+Note: This function equals the `[substr()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
 
 Example:
 
@@ -3173,7 +3173,7 @@ Return a substring from string `str` starting at position `pos`.
 0.1.0
 
 
-Note: This function equals the `[substr()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
+Note: This function equals the `[substr()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
 
 Example:
 
