@@ -3550,61 +3550,13 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
         ASSERT_EQ(0, response.code());
     }
     // table not exist
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(0);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl->set_abs_ttl(10);
-        ttl->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(100, response.code());
-    }
+    ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsAndLat, 10, 5, &tablet));
     // bigger than max ttl
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl->set_abs_ttl(60 * 24 * 365 * 30 * 2);
-        ttl->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(132, response.code());
-    }
+    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
     // bigger than max ttl
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl->set_abs_ttl(30);
-        ttl->set_lat_ttl(20000);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(132, response.code());
-    }
+    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 30, 20000, &tablet));
     // ttl type mismatch
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
-        ttl->set_abs_ttl(10);
-        ttl->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(112, response.code());
-    }
+    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 10, 5, &tablet));
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     ::openmldb::api::PutResponse presponse;
@@ -3651,17 +3603,48 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
     ::openmldb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl->set_abs_ttl(0);
-        ttl->set_lat_ttl(0);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 0, 0, &tablet));
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
+        ::openmldb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 0, 0);
 
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+    }
+    // ttl update from zero to no zero
+    {
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 50, 1, &tablet));
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
+
+        ::openmldb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 50, 1);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
+    }
+    // update from 50 to 100
+    {
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 100, 2, &tablet));
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
@@ -3670,75 +3653,8 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
         ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
-        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
-        sleep(3);
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
-    }
-    // ttl update from zero to no zero
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl_desc->set_abs_ttl(50);
-        ttl_desc->set_lat_ttl(1);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
-
-        ::openmldb::common::TTLSt cur_ttl;
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
-        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
-        sleep(3);
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
-    }
-    // update from 50 to 100
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl = request.mutable_ttl();
-        ttl->set_ttl_type(::openmldb::type::TTLType::kAbsAndLat);
-        ttl->set_abs_ttl(100);
-        ttl->set_lat_ttl(2);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
-
-        ::openmldb::common::TTLSt cur_ttl;
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(50, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
-
+        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 100, 2);
         prequest.set_time(now - 10 * 60 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -3749,10 +3665,6 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
     FLAGS_disk_gc_interval = old_disk_gc_interval;
@@ -3784,61 +3696,13 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(0, response.code());
     }
     // table not exist
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(0);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(100, response.code());
-    }
+    ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsOrLat, 10, 5, &tablet));
     // bigger than max ttl
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(60 * 24 * 365 * 30 * 2);
-        ttl_desc->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(132, response.code());
-    }
+    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
     // bigger than max ttl
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(30);
-        ttl_desc->set_lat_ttl(20000);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(132, response.code());
-    }
+    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 30, 20000, &tablet));
     // ttl type mismatch
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(5);
-        ::openmldb::api::UpdateTTLResponse response;
-        MockClosure closure;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(112, response.code());
-    }
+    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 30, 20000, &tablet));
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     ::openmldb::api::PutRequest prequest;
@@ -3886,94 +3750,56 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
     ::openmldb::api::GetTableStatusResponse gres;
     // ttl update to zero
     {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(0);
-        ttl_desc->set_lat_ttl(0);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 0, 0, &tablet));
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
         ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
+
+        ::openmldb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 0, 0);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+    }
+    // ttl update from zero to no zero
+    {
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 10, 1, &tablet));
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
+
+        ::openmldb::common::TTLSt cur_ttl;
+        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
+        ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
+        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 10, 1);
+        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
+        sleep(3);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(109, gresponse.code());
+    }
+    // update from 10 to 100
+    {
+        ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 100, 2, &tablet));
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(109, gresponse.code());
 
         ::openmldb::common::TTLSt cur_ttl;
         ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
         ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(50, (signed)cur_ttl.lat_ttl());
-
-        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
-        sleep(3);
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
-    }
-    // ttl update from zero to no zero
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(10);
-        ttl_desc->set_lat_ttl(1);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(0, gresponse.code());
-        ASSERT_EQ("test9", ::openmldb::test::DecodeV(gresponse.value()));
-
-        ::openmldb::common::TTLSt cur_ttl;
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(0, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(0, (signed)cur_ttl.lat_ttl());
-
-        tablet.ExecuteGc(NULL, &request_execute, &response_execute, &closure);
-        sleep(3);
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(109, gresponse.code());
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
-    }
-    // update from 10 to 100
-    {
-        ::openmldb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(0);
-        auto ttl_desc = request.mutable_ttl();
-        ttl_desc->set_ttl_type(::openmldb::type::TTLType::kAbsOrLat);
-        ttl_desc->set_abs_ttl(100);
-        ttl_desc->set_lat_ttl(2);
-        ::openmldb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-
-        gresponse.Clear();
-        tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(109, gresponse.code());
-
-        ::openmldb::common::TTLSt cur_ttl;
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(10, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(1, (signed)cur_ttl.lat_ttl());
-
+        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
+        CheckTTLFromMeta(id, 0, storage_mode, "", 100, 2);
         prequest.set_time(now - 10 * 60 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
@@ -3984,10 +3810,6 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
         ASSERT_EQ(0, gresponse.code());
-
-        ASSERT_EQ(0, GetTTL(tablet, id, 0, "", &cur_ttl));
-        ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
-        ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
     }
     FLAGS_gc_interval = old_gc_interval;
     FLAGS_disk_gc_interval = old_disk_gc_interval;
