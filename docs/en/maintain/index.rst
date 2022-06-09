@@ -10,3 +10,4 @@ Maintenance
     monitoring
     cli
     faq
+    scale
