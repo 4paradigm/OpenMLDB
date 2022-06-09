@@ -5,17 +5,17 @@
 ### Features
 - Add new built-in functions, including `char_length`, `char`, `radians`, and `replace` (#1895 #1896 #1897 @Ivyee17, #1924 @aceforeverd)
 - Add the demo of DolphinScheduler task (#1921 @vagetablechicken)
-- Support inserting values with a specified database name. (#1929 @dl239)
+- Support inserting values with a specified database name (#1929 @dl239)
 - Improve window computation with `UnsafeRowOpt` by removing the zipped dataframe (#1882 @tobegit3hub)
 - Improve the documents (#1831 @yclchuxue, #1925 @lumianph, #1902 #1923 @vagetablechicken)
 - Support GitHub Codespaces (#1922 @nautaa)
 
 ### Bug Fixes
-- `DistributeWindowIterator::GetKey()` may result in core dump. (#1892 aceforeverd)
-- `Tablet` does not make `ttl` persistent when updating the ttl of index. (#1935 @dl239)
-- `TaskManager` startup fails if `LANG=zh_CN.UTF-8` is set. (#1912 @vagetablechicken)
-- There are duplicate records in `PRE_AGG_META_INFO`. (#1919 @nautaa)
-- The OpenMLDB Spark fails to fallback to SparkSQL for unsupported functions. (#1908 @tobegit3hub)
+- `DistributeWindowIterator::GetKey()` may result in core dump (#1892 aceforeverd)
+- `Tablet` does not make `ttl` persistent when updating the ttl of index (#1935 @dl239)
+- `TaskManager` startup fails if `LANG=zh_CN.UTF-8` is set (#1912 @vagetablechicken)
+- There are duplicate records in `PRE_AGG_META_INFO` (#1919 @nautaa)
+- The OpenMLDB Spark fails to fallback to SparkSQL for unsupported functions (#1908 @tobegit3hub)
 - Fixing other minor bugs (#1914 aceforeverd, #1900 @mangoGoForward, #1934 @vagetablechicken)
 
 ### Code Refactoring
