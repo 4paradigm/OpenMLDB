@@ -40,7 +40,7 @@ using openmldb::catalog::Procedures;
 struct ClusterOptions {
     std::string zk_cluster;
     std::string zk_path;
-    int32_t session_timeout = 2000;
+    int32_t zk_session_timeout = 2000;
 };
 
 class DBSDK {
