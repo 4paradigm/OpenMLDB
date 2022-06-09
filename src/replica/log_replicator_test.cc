@@ -244,7 +244,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         }
         PDLOG(INFO, "start follower");
     }
-    sleep(20);
+    sleep(5);
     leader.DelAllReplicateNode();
     ASSERT_EQ(3, (int64_t)t8->GetRecordCnt());
     ASSERT_EQ(5, (int64_t)t8->GetRecordIdxCnt());
@@ -390,7 +390,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         }
         PDLOG(INFO, "start follower");
     }
-    sleep(20);
+    sleep(5);
     int result = server1.Stop(10000);
     ASSERT_EQ(0, result);
     sleep(2);
@@ -564,7 +564,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         }
         PDLOG(INFO, "start follower");
     }
-    sleep(20);
+    sleep(5);
     leader.DelReplicateNode("127.0.0.1:18528");
     int result = server1.Stop(10000);
     ASSERT_EQ(0, result);
