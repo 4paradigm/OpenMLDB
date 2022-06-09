@@ -3,7 +3,20 @@
 ## [0.5.2] - 2022-06-10
 
 ### Features
-- Add a new micro-benchmark tool for performance evaluation (#1800 @dl239)
+- Add new build-in functions like `char_length/char/radians/replace`. (#1895 #1896 #1897 @Ivyee17, #1924 @aceforeverd)
+- Add `DolphinScheduler` task demo. (#1921 @vagetablechicken)
+- Support insert values with database name. (#1929 @dl239)
+- Optimize window computation with `UnsafeRowOpt` by removing zipped dataframe. (#1882 @tobegit3hub)
+
+### Bug Fixes
+- `DistributeWindowIterator::GetKey()` may result in core dump. (#1892 aceforeverd)
+- `Tablet` has not save ttl when updating the ttl of index. (#1935 @dl239)
+- `TaskManager` will start failed if set `LANG=zh_CN.UTF-8`. (#1912 @vagetablechicken)
+- Duplicate records in `PRE_AGG_META_INFO`. (#1919 @nautaa)
+- Other minor bugs. (#1914 aceforeverd, #1900 @mangoGoForward)
+
+### Code Refactoring
+#1899 @auula, #1913 @dl239, #1917 @mangoGoForward
 
 ## [0.5.1] - 2022-05-26
 
