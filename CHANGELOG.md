@@ -7,16 +7,18 @@
 - Add the demo of DolphinScheduler task (#1921 @vagetablechicken)
 - Support inserting values with a specified database name. (#1929 @dl239)
 - Improve window computation with `UnsafeRowOpt` by removing the zipped dataframe (#1882 @tobegit3hub)
+- Document improvement. (#1831 @yclchuxue, #1925 @lumianph, #1902 #1923 @vagetablechicken)
 
 ### Bug Fixes
 - `DistributeWindowIterator::GetKey()` may result in core dump. (#1892 aceforeverd)
 - `Tablet` does not make `ttl` persistent when updating the ttl of index. (#1935 @dl239)
 - `TaskManager` startup fails if `LANG=zh_CN.UTF-8` is set. (#1912 @vagetablechicken)
 - There are duplicate records in `PRE_AGG_META_INFO`. (#1919 @nautaa)
+- Throw unsupported exception for `SparkSQL` fallback. (#1908 @tobegit3hub)
 - Fixing other minor bugs (#1914 aceforeverd, #1900 @mangoGoForward)
 
 ### Code Refactoring
-#1899 @auula, #1913 @dl239, #1917 @mangoGoForward
+#1899 @auula, #1913 @dl239, #1917 @mangoGoForward, #1803 @SaumyaBhushan, #1408 @Ivyee17, #1886 @frazie
 
 ## [0.5.1] - 2022-05-26
 
