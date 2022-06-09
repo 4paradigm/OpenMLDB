@@ -77,7 +77,8 @@ public class OpenMLDBLongWindowBenchmark {
         Util.executeSQL("DROP DEPLOYMENT demo;", executor);
         Util.executeSQL("DROP DEPLOYMENT demo_long;", executor);
         Util.executeSQL("DROP TABLE mt;", executor);
-        Util.executeSQL("DROP TABLE __PRE_AGG_DB.pre_demo_long_w0_count_col_s11;", executor);
+        String aggr_table = "pre_" + database + "_demo_long_w0_count_col_s11"; 
+        Util.executeSQL("DROP TABLE __PRE_AGG_DB." + aggr_table + ";", executor);
         Util.executeSQL("DROP DATABASE " + database + ";", executor);
     }
 

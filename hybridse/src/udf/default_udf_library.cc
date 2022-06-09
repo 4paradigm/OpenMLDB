@@ -40,8 +40,16 @@ using hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
-// static instance
-DefaultUdfLibrary DefaultUdfLibrary::inst_;
+DefaultUdfLibrary* DefaultUdfLibrary::MakeDefaultUdf() {
+    LOG(INFO) << "Creating DefaultUdfLibrary";
+    return new DefaultUdfLibrary();
+}
+
+DefaultUdfLibrary* DefaultUdfLibrary::get() {
+    // construct on first use to avoid problem like static initialization order fiasco
+    static DefaultUdfLibrary& inst = *MakeDefaultUdf();
+    return &inst;
+}
 
 template <typename T>
 struct BuildGetHourUdf {
@@ -895,6 +903,72 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
+    RegisterExternal("char")
+        .args<int32_t>(
+            static_cast<void (*)(int32_t, StringRef*)>(udf::v1::int_to_char))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256).
+
+            Example:
+
+            @code{.sql}
+                SELECT char(65);
+                --output "A"
+            @endcode
+            @since 0.6.0)");
+    RegisterExternal("char_length")
+        .args<StringRef>(static_cast<int32_t (*)(StringRef*)>(udf::v1::char_length))
+        .doc(R"(
+            @brief Returns the length of the string. It is measured in characters and multibyte character string is not supported.
+
+            Example:
+
+            @code{.sql}
+                SELECT CHAR_LENGTH('Spark SQL ');
+                --output 10
+            @endcode
+            @since 0.6.0)");
+    RegisterAlias("character_length", "char_length");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc", "ABC")
+                -- output "ABCABC"
+             @endcode
+
+             @since 0.5.2
+             )r");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc")
+                -- output "ABC"
+             @endcode
+             @since 0.5.2
+             )r");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {
@@ -1286,6 +1360,19 @@ void DefaultUdfLibrary::InitMathUdf() {
             @param expr
 
             @since 0.5.0)");
+    RegisterExternal("RADIANS")
+        .args<double>(
+            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+        .doc(R"(
+            @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
+
+            Example:
+
+            @code{.sql}
+                SELECT RADIANS(90);
+                --output 1.570796326794896619231
+            @endcode
+            @since 0.6.0)");
     InitTrigonometricUdf();
 }
 
@@ -1994,7 +2081,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 }
 
 void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule(this->node_manager());
+    udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
     InitTimeAndDateUdf();
     InitTypeUdf();

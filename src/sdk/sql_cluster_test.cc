@@ -468,7 +468,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
 
         std::vector<::openmldb::nameserver::TableInfo> agg_tables;
         std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-        std::string aggr_table = "pre_test1_w1_sum_col3";
+        std::string aggr_table = "pre_" + base_db + "_test1_w1_sum_col3";
         ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, agg_tables, msg));
         ASSERT_EQ(1, agg_tables.size());
         ASSERT_EQ(1, agg_tables[0].column_key_size());
@@ -490,7 +490,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+        ASSERT_EQ(aggr_table, rs->GetStringUnsafe(0));
         ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
         ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
         ASSERT_EQ(base_table, rs->GetStringUnsafe(3));
@@ -501,8 +501,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ("1000", rs->GetStringUnsafe(8));
 
         ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test1", msg));
-        std::string pre_aggr_table = "pre_test1_w1_sum_col3";
-        ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+        ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
         ASSERT_TRUE(ok);
     }
 
@@ -574,7 +573,8 @@ TEST_F(SQLClusterTest, Aggregator) {
         ASSERT_TRUE(ok);
     }
 
-    std::string result_sql = "select * from pre_test_aggr_w1_sum_col4;";
+    std::string aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_col4";
+    std::string result_sql = "select * from " + aggr_table + ";";
 
     auto rs = router->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
@@ -592,8 +592,7 @@ TEST_F(SQLClusterTest, Aggregator) {
     }
 
     ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_sum_col4";
-    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);
@@ -653,10 +652,11 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
     std::string meta_sql = "select * from " + meta_table + " where base_db='" + base_db + "';";
 
     auto rs = router->ExecuteSQL(meta_db, meta_sql, &status);
+    std::string aggr_table = "pre_" + base_db + "_test1_w1_sum_col3";
     ASSERT_EQ(0, static_cast<int>(status.code));
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(aggr_table, rs->GetStringUnsafe(0));
     ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
     ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
     ASSERT_EQ(base_table, rs->GetStringUnsafe(3));

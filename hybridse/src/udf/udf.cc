@@ -21,6 +21,7 @@
 #include <set>
 #include <utility>
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_replace.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -157,9 +158,29 @@ int32_t weekofyear(Date *date) {
     }
 }
 
+void int_to_char(int32_t val, StringRef* output) {
+    val = val % 256;
+    char v = static_cast<char>(val);
+    char *buffer = AllocManagedStringBuf(1);
+    output->size_ = 1;
+    memcpy(buffer, &v, output->size_);
+    output->data_ = buffer;
+}
+int32_t char_length(StringRef *str) {
+    if (nullptr == str) {
+        return 0;
+    }
+    int32_t res = str->size_;
+    return res;
+}
+
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-double Degrees(double x) { return x * (180 / 3.141592653589793238463L); }
+double degree_to_radius(double degree) {
+    return degree/180.0L*M_PI;
+}
+
+double Degrees(double x) { return x * (180 / M_PI); }
 
 void date_format(Timestamp *timestamp,
                  StringRef *format,
@@ -846,6 +867,34 @@ void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
+void replace(StringRef *str, StringRef *search, StringRef *replace, StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || search == nullptr || replace == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+
+    absl::string_view str_view(str->data_, str->size_);
+    absl::string_view search_view(search->data_, search->size_);
+    absl::string_view replace_view(replace->data_, replace->size_);
+    std::string out = absl::StrReplaceAll(str_view, {{search_view, replace_view}});
+
+    char *buf = AllocManagedStringBuf(out.size());
+    if (buf == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+    memcpy(buf, out.data(), out.size());
+
+    output->data_ = buf;
+    output->size_ = out.size();
+    *is_null_ptr = false;
+}
+
+void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null_ptr) {
+    StringRef rep(0, "");
+    replace(str, search, &rep, output, is_null_ptr);
+}
+
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
         return;
@@ -1106,9 +1155,8 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 
-bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
-                    std::initializer_list<hybridse::node::TypeNode *> args,
-                    void *fn_ptr) {
+bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,
+                    std::initializer_list<hybridse::node::TypeNode *> args, void *fn_ptr) {
     node::NodeManager nm;
     base::Status status;
     auto fn_args = nm.MakeFnListNode();
@@ -1117,13 +1165,14 @@ bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
     }
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-    DefaultUdfLibrary::get()->AddExternalFunction(header->GeIRFunctionName(),
+    lib->AddExternalFunction(header->GeIRFunctionName(),
                                                   fn_ptr);
     return true;
 }
 
-void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm) {
+void RegisterNativeUdfToModule(UdfLibrary* lib) {
     base::Status status;
+    hybridse::node::NodeManager* nm = lib->node_manager();
 
     auto bool_ty = nm->MakeTypeNode(node::kBool);
     auto i32_ty = nm->MakeTypeNode(node::kInt32);
@@ -1158,121 +1207,125 @@ void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm) {
     auto iter_string_ty = nm->MakeTypeNode(node::kIterator, string_ty);
     auto iter_row_ty = nm->MakeTypeNode(node::kIterator, row_ty);
 
-    RegisterMethod("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
+    auto RegisterMethodInternal = [&lib](const std::string &fn_name, hybridse::node::TypeNode *ret,
+                                      std::initializer_list<hybridse::node::TypeNode *> args,
+                                      void *fn_ptr) { RegisterMethod(lib, fn_name, ret, args, fn_ptr); };
+
+    RegisterMethodInternal("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
-    RegisterMethod("iterator", bool_ty, {list_i32_ty, iter_i32_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_i32_ty, iter_i32_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int32_t>));
-    RegisterMethod("iterator", bool_ty, {list_i64_ty, iter_i64_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_i64_ty, iter_i64_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int64_t>));
-    RegisterMethod("iterator", bool_ty, {list_bool_ty, iter_bool_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_bool_ty, iter_bool_ty},
                    reinterpret_cast<void *>(v1::iterator_list<bool>));
-    RegisterMethod("iterator", bool_ty, {list_float_ty, iter_float_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_float_ty, iter_float_ty},
                    reinterpret_cast<void *>(v1::iterator_list<float>));
-    RegisterMethod("iterator", bool_ty, {list_double_ty, iter_double_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_double_ty, iter_double_ty},
                    reinterpret_cast<void *>(v1::iterator_list<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "iterator", bool_ty, {list_time_ty, iter_time_ty},
         reinterpret_cast<void *>(v1::iterator_list<Timestamp>));
-    RegisterMethod("iterator", bool_ty, {list_date_ty, iter_date_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_date_ty, iter_date_ty},
                    reinterpret_cast<void *>(v1::iterator_list<Date>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "iterator", bool_ty, {list_string_ty, iter_string_ty},
         reinterpret_cast<void *>(v1::iterator_list<StringRef>));
-    RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod("next", i16_ty, {iter_i16_ty},
+    RegisterMethodInternal("next", i16_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
-    RegisterMethod("next", i32_ty, {iter_i32_ty},
+    RegisterMethodInternal("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
-    RegisterMethod("next", i64_ty, {iter_i64_ty},
+    RegisterMethodInternal("next", i64_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int64_t>));
-    RegisterMethod("next", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_iterator<bool>));
-    RegisterMethod("next", float_ty, {iter_float_ty},
+    RegisterMethodInternal("next", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_iterator<float>));
-    RegisterMethod("next", double_ty, {iter_double_ty},
+    RegisterMethodInternal("next", double_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::next_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next", bool_ty, {iter_time_ty, time_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<Timestamp>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next", bool_ty, {iter_date_ty, date_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<Date>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next", bool_ty, {iter_string_ty, string_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<StringRef>));
-    RegisterMethod("next", row_ty, {iter_row_ty},
+    RegisterMethodInternal("next", row_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::next_row_iterator));
 
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i16_ty, {iter_i16_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int16_t>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i32_ty, {iter_i32_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int32_t>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i64_ty, {iter_i64_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int64_t>));
-    RegisterMethod("next_nullable", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("next_nullable", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<bool>));
-    RegisterMethod("next_nullable", float_ty, {iter_float_ty},
+    RegisterMethodInternal("next_nullable", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<float>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", double_ty, {iter_double_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_time_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<Timestamp>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_date_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<Date>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_string_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<StringRef>));
 
-    RegisterMethod("has_next", bool_ty, {iter_i16_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));
-    RegisterMethod("has_next", bool_ty, {iter_i32_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::has_next<int32_t>));
-    RegisterMethod("has_next", bool_ty, {iter_i64_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::has_next<int64_t>));
-    RegisterMethod("has_next", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::has_next<bool>));
-    RegisterMethod("has_next", bool_ty, {iter_float_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::has_next<float>));
-    RegisterMethod("has_next", bool_ty, {iter_double_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::has_next<double>));
-    RegisterMethod("has_next", bool_ty, {iter_time_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_time_ty},
                    reinterpret_cast<void *>(v1::has_next<Timestamp>));
-    RegisterMethod("has_next", bool_ty, {iter_date_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_date_ty},
                    reinterpret_cast<void *>(v1::has_next<Date>));
-    RegisterMethod("has_next", bool_ty, {iter_string_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_string_ty},
                    reinterpret_cast<void *>(v1::has_next<StringRef>));
-    RegisterMethod("has_next", bool_ty, {iter_row_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::Row>));
 
-    RegisterMethod("delete_iterator", bool_ty, {iter_i16_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int16_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_i32_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int32_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_i64_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int64_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<bool>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_float_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<float>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_double_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "delete_iterator", bool_ty, {iter_time_ty},
         reinterpret_cast<void *>(v1::delete_iterator<Timestamp>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_date_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_date_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<Date>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "delete_iterator", bool_ty, {iter_string_ty},
         reinterpret_cast<void *>(v1::delete_iterator<StringRef>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_row_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
 }
 

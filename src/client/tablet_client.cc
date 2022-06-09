@@ -241,17 +241,11 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
                        const std::vector<std::pair<std::string, uint32_t>>& dimensions) {
-    return Put(tid, pid, time, value, dimensions, 0);
-}
-
-bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-                       const std::vector<std::pair<std::string, uint32_t>>& dimensions, uint32_t format_version) {
     ::openmldb::api::PutRequest request;
     request.set_time(time);
     request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_format_version(format_version);
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::openmldb::api::Dimension* d = request.add_dimensions();
         d->set_key(dimensions[i].first);
@@ -267,17 +261,15 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::str
     return false;
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
-                       uint32_t format_version) {
+bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value) {
     ::openmldb::api::PutRequest request;
     auto dim = request.add_dimensions();
     dim->set_key(pk);
     dim->set_idx(0);
     request.set_time(time);
-    request.set_value(value, size);
+    request.set_value(value);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_format_version(format_version);
     ::openmldb::api::PutResponse response;
 
     bool ok =
@@ -287,11 +279,6 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time
     }
     LOG(WARNING) << "fail to put for error " << response.msg();
     return false;
-}
-
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value,
-                       uint32_t format_version) {
-    return Put(tid, pid, pk.c_str(), time, value.c_str(), value.size(), format_version);
 }
 
 bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset, std::shared_ptr<TaskInfo> task_info) {
@@ -817,11 +804,6 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk, cons
 
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
                        std::string& value, uint64_t& ts, std::string& msg) {
-    return Get(tid, pid, pk, time, idx_name, "", value, ts, msg);
-}
-
-bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
-                       const std::string& ts_name, std::string& value, uint64_t& ts, std::string& msg) {
     ::openmldb::api::GetRequest request;
     ::openmldb::api::GetResponse response;
     request.set_tid(tid);
@@ -1363,6 +1345,9 @@ bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table
     request.set_aggr_col(window_info.aggr_col_);
     request.set_order_by_col(window_info.order_col_);
     request.set_bucket_size(window_info.bucket_size_);
+    if (!window_info.filter_col_.empty()) {
+        request.set_filter_col(window_info.filter_col_);
+    }
     ::openmldb::api::CreateAggregatorResponse response;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateAggregator, &request, &response,
                                   FLAGS_request_timeout_ms * 2, 1);

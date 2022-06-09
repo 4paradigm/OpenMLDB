@@ -310,10 +310,12 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTLRequest* request,
                            ::openmldb::api::UpdateTTLResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
 
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
@@ -321,20 +323,20 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     ::openmldb::common::TTLSt ttl(request->ttl());
     uint64_t abs_ttl = ttl.abs_ttl();
     uint64_t lat_ttl = ttl.lat_ttl();
-    if (request->index_name().empty()) {
+    const auto& index_name = request->index_name();
+    if (index_name.empty()) {
         for (const auto& index : table->GetAllIndex()) {
             if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
                 response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
                 response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
                 return;
             }
         }
     } else {
         auto index = table->GetIndex(request->index_name());
         if (!index) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->index_name().c_str(),
-                  request->tid(), request->pid());
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
@@ -342,7 +344,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
         if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
             response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
             response->set_msg("ttl type mismatch");
-            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
             return;
         }
     }
@@ -359,10 +361,25 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     }
     ::openmldb::storage::TTLSt ttl_st(ttl);
     table->SetTTL(::openmldb::storage::UpdateTTLMeta(ttl_st, request->index_name()));
-    PDLOG(INFO,
-          "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, "
-          "index_name %s",
-          request->tid(), request->pid(), abs_ttl, lat_ttl, request->index_name().c_str());
+    std::string db_root_path;
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+        base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
+        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
+        return;
+    }
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
+    if (!::openmldb::base::IsExists(db_path)) {
+        PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path is not exist", response);
+        return;
+    }
+    if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
+        PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
+        return;
+    }
+    PDLOG(INFO, "update table tid %u pid %u ttl to abs_ttl %lu lat_ttl %lu index_name %s",
+            tid, pid, abs_ttl, lat_ttl, index_name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
@@ -458,7 +475,7 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     }
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (request->projection().size() > 0 && meta.format_version() == 1) {
+    if (request->projection().size() > 0) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
             return -1;
         }
@@ -3223,6 +3240,22 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
         }
+        // delete related aggregator
+        uint32_t base_tid = table->GetTableMeta()->base_table_tid();
+        if (base_tid > 0) {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            uint64_t uid = (uint64_t) base_tid << 32 | pid;
+            auto it = aggregators_.find(uid);
+            if (it != aggregators_.end()) {
+                auto aggrs = *it->second;
+                for (auto it = aggrs.begin(); it != aggrs.end(); it++) {
+                    if ((*it)->GetAggrTid() == tid) {
+                        aggrs.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
         bulk_load_mgr_.RemoveReceiver(tid, pid);
@@ -5327,7 +5360,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure " << db_name << "." << sp_name << " in catalog failed";
     }
 
     if (is_deployment_procedure) {
@@ -5738,7 +5771,8 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
                                                             aggr_table, aggr_replicator, request->index_pos(),
                                                             request->aggr_col(), request->aggr_func(),
-                                                            request->order_by_col(), request->bucket_size());
+                                                            request->order_by_col(), request->bucket_size(),
+                                                            request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;
