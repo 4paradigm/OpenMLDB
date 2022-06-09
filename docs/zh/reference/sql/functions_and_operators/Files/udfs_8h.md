@@ -21,14 +21,11 @@ Return the absolute value of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ABS(-32);
 -- output 32
 ```
-
-
 
 
 **Supported Types**:
@@ -57,14 +54,11 @@ Return the arc cosine of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ACOS(1);
 -- output 0
 ```
-
-
 
 
 **Supported Types**:
@@ -87,14 +81,11 @@ Compute sum of two arguments.
 
 Example:
 
+```sql
 
-
-```cpp
 select add(1, 2);
 -- output 3
 ```
-
-
 
 
 **Supported Types**:
@@ -134,14 +125,11 @@ Return the arc sine of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ASIN(0.0);
 -- output 0.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -156,34 +144,38 @@ at()
 
 **Description**:
 
-Returns the value of expression from the offset-th row of the ordered partition. 
+Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. 
 
 **Parameters**: 
 
-  * **offset** The number of rows forward from the current row from which to obtain the value.
+  * **offset** The number of rows forwarded from the current row, must not negative
 
 
 
 Example:
 
 
-| value    |
-|  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
-| 4    |
+| c1    | c2     |
+|  -------- | -------- |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
+```sql
 
-
-```cpp
-SELECT at(value, 3) OVER w;
--- output 3
+SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+-- output
+-- | co |
+-- |----|
+-- |NULL|
+-- |0   |
+-- |NULL|
+-- |2   |
+-- |3   |
 ```
-
-
 
 **Supported Types**:
 
@@ -215,17 +207,14 @@ Return the arc tangent of expr If called with one parameter, this function retur
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ATAN(-0.0);  
 -- output -0.000000
 
 SELECT ATAN(0, -0);
 -- output 3.141593
 ```
-
-
 
 
 **Supported Types**:
@@ -258,14 +247,11 @@ Return the arc tangent of Y / X..
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ATAN2(0, -0);
 -- output 3.141593
 ```
-
-
 
 
 **Supported Types**:
@@ -298,23 +284,20 @@ Compute average of values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT avg(value) OVER w;
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -341,23 +324,20 @@ Compute average of values grouped by category key and output string. Each group 
 Example:
 
 
-| value   | catagory    |
+| value    | catagory     |
 |  -------- | -------- |
-| 0   | x    |
-| 1   | y    |
-| 2   | x    |
-| 3   | y    |
-| 4   | x    |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
+```sql
 
-
-```cpp
 SELECT avg_cate(value, catagory) OVER w;
 -- output "x:2,y:2"
 ```
-
-
 
 **Supported Types**:
 
@@ -380,32 +360,29 @@ Compute average of values matching specified condition grouped by category key a
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column.
-  * **catagory** Specify catagory column to group by. 
 
 
 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
+```sql
 
-
-```cpp
-SELECT avg_cate_where(value, condition, catagory) OVER w;
+SELECT avg_cate_where(catagory, value, condition) OVER w;
 -- output "x:2,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -440,23 +417,20 @@ Compute average of values match specified condition.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT avg_where(value, value > 2) OVER w;
 -- output 3.5
 ```
-
-
 
 
 **Supported Types**:
@@ -479,14 +453,11 @@ Cast string expression to bool.
 
 Example:
 
+```sql
 
-
-```cpp
 select bool("true");
 -- output true
 ```
-
-
 
 
 **Supported Types**:
@@ -514,14 +485,11 @@ Return the smallest integer value not less than the expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT CEIL(1.23);
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -550,20 +518,98 @@ Return the smallest integer value not less than the expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT CEIL(1.23);
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
 
 * [`bool`]
 * [`number`] 
+
+### function char
+
+```cpp
+char()
+```
+
+**Description**:
+
+Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256). 
+
+**Since**:
+0.6.0
+
+
+Example:
+
+```sql
+
+SELECT char(65);
+--output "A"
+```
+
+
+**Supported Types**:
+
+* [`int32`] 
+
+### function char_length
+
+```cpp
+char_length()
+```
+
+**Description**:
+
+Returns the length of the string. It is measured in characters and multibyte character string is not supported. 
+
+**Since**:
+0.6.0
+
+
+Example:
+
+```sql
+
+SELECT CHAR_LENGTH('Spark SQL ');
+--output 10
+```
+
+
+**Supported Types**:
+
+* [`string`] 
+
+### function character_length
+
+```cpp
+character_length()
+```
+
+**Description**:
+
+Returns the length of the string. It is measured in characters and multibyte character string is not supported. 
+
+**Since**:
+0.6.0
+
+
+Example:
+
+```sql
+
+SELECT CHAR_LENGTH('Spark SQL ');
+--output 10
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function concat
 
@@ -581,14 +627,11 @@ This function returns a string resulting from the joining of two or more string 
 
 Example:
 
+```sql
 
-
-```cpp
 select concat("1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
 -- output "12345.67.82020-05-22 10:43:40"
 ```
-
-
 
 
 **Supported Types**:
@@ -611,14 +654,11 @@ Returns a string resulting from the joining of two or more string value in an en
 
 Example:
 
+```sql
 
-
-```cpp
 select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
 -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
 ```
-
-
 
 
 **Supported Types**:
@@ -650,18 +690,15 @@ Return the cosine of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT COS(0);
 -- output 1.000000
 ```
 
 
 
-
-
-* The value returned by [cos()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
+* The value returned by [cos()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
 
 **Supported Types**:
 
@@ -688,14 +725,11 @@ Return the cotangent of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT COT(1);  
 -- output 0.6420926159343306
 ```
-
-
 
 
 **Supported Types**:
@@ -725,23 +759,20 @@ Compute number of values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT count(value) OVER w;
 -- output 5
 ```
-
-
 
 
 **Supported Types**:
@@ -773,23 +804,20 @@ Compute count of values grouped by category key and output string. Each group is
 Example:
 
 
-| value   | catagory    |
+| value    | catagory     |
 |  -------- | -------- |
-| 0   | x    |
-| 1   | y    |
-| 2   | x    |
-| 3   | y    |
-| 4   | x    |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
+```sql
 
-
-```cpp
 SELECT count_cate(value, catagory) OVER w;
 -- output "x:3,y:2"
 ```
-
-
 
 **Supported Types**:
 
@@ -812,32 +840,29 @@ Compute count of values matching specified condition grouped by category key and
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column.
-  * **catagory** Specify catagory column to group by. 
 
 
 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
+```sql
 
-
-```cpp
-SELECT count_cate_where(value, condition, catagory) OVER w;
+SELECT count_cate_where(catagory, value, condition) OVER w;
 -- output "x:2,y:1"
 ```
-
-
 
 **Supported Types**:
 
@@ -872,29 +897,27 @@ Compute number of values match specified condition.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT count_where(value, value > 2) OVER w;
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
 
 * [`list<date>`, `list<bool>`]
 * [`list<number>`, `list<bool>`]
+* [`list<row>`, `list<bool>`]
 * [`list<string>`, `list<bool>`]
 * [`list<timestamp>`, `list<bool>`] 
 
@@ -914,16 +937,13 @@ Cast timestamp or string expression to date.
 
 Example:
 
+```sql
 
-
-```cpp
 select date(timestamp(1590115420000));
 -- output 2020-05-22
 select date("2020-05-22");
 -- output 2020-05-22
 ```
-
-
 
 
 **Supported Types**:
@@ -943,14 +963,11 @@ Formats the datetime value according to the format string.
 
 Example:
 
+```sql
 
-
-```cpp
 select date_format(timestamp(1590115420000),"%Y-%m-%d %H:%M:%S");
 --output "2020-05-22 10:43:40"
 ```
-
-
 
 **Supported Types**:
 
@@ -971,19 +988,16 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
-Example: 
+Example: ```sql
 
-```cpp
 select dayofmonth(timestamp(1590115420000));
 -- output 22
 
 select day(timestamp(1590115420000));
 -- output 22
 ```
-
-
 
 
 **Supported Types**:
@@ -1006,19 +1020,16 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
-Example: 
+Example: ```sql
 
-```cpp
 select dayofmonth(timestamp(1590115420000));
 -- output 22
 
 select day(timestamp(1590115420000));
 -- output 22
 ```
-
-
 
 
 **Supported Types**:
@@ -1041,16 +1052,13 @@ Return the day of week for a timestamp or date.
 0.4.0
 
 
-Note: This function equals the `[week()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)` function.
+Note: This function equals the `[week()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-week)` function.
 
-Example: 
+Example: ```sql
 
-```cpp
 select dayofweek(timestamp(1590115420000));
 -- output 6
 ```
-
-
 
 
 **Supported Types**:
@@ -1073,9 +1081,8 @@ Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select dayofyear(timestamp(1590115420000));
 -- output 143
 
@@ -1090,13 +1097,43 @@ select dayofyear(date("2020-05-32"));
 ```
 
 
-
-
 **Supported Types**:
 
 * [`date`]
 * [`int64`]
 * [`timestamp`] 
+
+### function degrees
+
+```cpp
+degrees()
+```
+
+**Description**:
+
+Convert radians to degrees. 
+
+**Parameters**: 
+
+  * **expr** 
+
+
+**Since**:
+0.5.0
+
+
+Example:
+
+```sql
+
+SELECT degrees(3.141592653589793);
+-- output  180.0
+```
+
+
+**Supported Types**:
+
+* [`double`] 
 
 ### function distinct_count
 
@@ -1121,23 +1158,20 @@ Compute number of distinct values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 0    |
-| 2    |
-| 2    |
+| 0     |
+| 0     |
+| 2     |
+| 2     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT distinct_count(value) OVER w;
 -- output 3
 ```
-
-
 
 
 **Supported Types**:
@@ -1164,14 +1198,11 @@ Cast string expression to double.
 
 Example:
 
+```sql
 
-
-```cpp
 select double("1.23");
 -- output 1.23
 ```
-
-
 
 
 **Supported Types**:
@@ -1197,14 +1228,11 @@ Return the value of e (the base of natural logarithms) raised to the power of ex
 0.1.0
 
 
+```sql
 
-
-```cpp
 SELECT EXP(0);  
 -- output 1
 ```
-
-
 
 
 **Supported Types**:
@@ -1227,7 +1255,7 @@ Returns the value of expr from the first row of the window frame.
     @since 0.1.0
 ```
 
-**Supported Types**: 
+ **Supported Types**: 
 
 ### function float
 
@@ -1245,14 +1273,11 @@ Cast string expression to float.
 
 Example:
 
+```sql
 
-
-```cpp
 select float("1.23");
 -- output 1.23
 ```
-
-
 
 
 **Supported Types**:
@@ -1280,14 +1305,11 @@ Return the largest integer value not less than the expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT FLOOR(1.23);
 -- output 1
 ```
-
-
 
 
 **Supported Types**:
@@ -1311,14 +1333,11 @@ Used by feature zero, for each string value from specified column of window, joi
 
 Example:
 
+```sql
 
-
-```cpp
 select fz_join(fz_split("k1:v1,k2:v2", ","), " ");
 --  "k1:v1 k2:v2"
 ```
-
-
 
 
 **Supported Types**:
@@ -1398,7 +1417,7 @@ Compute the top1 key's ratio.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`]
 * [`list<number>`]
@@ -1421,7 +1440,7 @@ Return the topN keys sorted by their frequency.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`, `list<int32>`]
 * [`list<number>`, `list<int32>`]
@@ -1499,14 +1518,11 @@ Return the hour for a timestamp.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select hour(timestamp(1590115420000));
 -- output 10
 ```
-
-
 
 
 **Supported Types**:
@@ -1528,14 +1544,11 @@ Return value.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select identity(1);
 -- output 1
 ```
-
-
 
 
 **Supported Types**:
@@ -1568,14 +1581,11 @@ If input is not null, return input value; else return default value.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT if_null("hello", "default"), if_null(NULL, "default");
 -- output ["hello", "default"]
 ```
-
-
 
 
 **Supported Types**:
@@ -1612,14 +1622,11 @@ If input is not null, return input value; else return default value.
 
 Example:
 
+```sql
 
-
-```cpp
-SELECT ifnull("hello", "default"), ifnull(NULL, "default");
+SELECT if_null("hello", "default"), if_null(NULL, "default");
 -- output ["hello", "default"]
 ```
-
-
 
 
 **Supported Types**:
@@ -1667,9 +1674,8 @@ Rules:
 3. case insensitive
 4. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
 5. if one or more of target, pattern and escape are null values, then the result is null
-Example: 
+Example: ```sql
 
-```cpp
 select ilike_match('Mike', 'mi_e', '\\')
 -- output: true
 
@@ -1685,8 +1691,6 @@ select ilike_match('Mi\\ke', 'mi\\_e', '')
 select ilike_match('Mi\\ke', 'mi\\_e', string(null))
 -- output: null
 ```
-
-
 
 
 **Supported Types**:
@@ -1708,14 +1712,11 @@ Return expression + 1.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select inc(1);
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -1738,14 +1739,11 @@ Cast string expression to int16.
 
 Example:
 
+```sql
 
-
-```cpp
 select int16("123");
 -- output 123
 ```
-
-
 
 
 **Supported Types**:
@@ -1768,14 +1766,11 @@ Cast string expression to int32.
 
 Example:
 
+```sql
 
-
-```cpp
 select int32("12345");
 -- output 12345
 ```
-
-
 
 
 **Supported Types**:
@@ -1798,14 +1793,11 @@ Cast string expression to int64.
 
 Example:
 
+```sql
 
-
-```cpp
 select int64("1590115420000");
 -- output 1590115420000
 ```
-
-
 
 
 **Supported Types**:
@@ -1876,34 +1868,38 @@ lag()
 
 **Description**:
 
-Returns the value of expression from the offset-th row of the ordered partition. 
+Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. 
 
 **Parameters**: 
 
-  * **offset** The number of rows forward from the current row from which to obtain the value.
+  * **offset** The number of rows forwarded from the current row, must not negative
 
 
 
 Example:
 
 
-| value    |
-|  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
-| 4    |
+| c1    | c2     |
+|  -------- | -------- |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
+```sql
 
-
-```cpp
-SELECT lag(value, 3) OVER w;
--- output 3
+SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+-- output
+-- | co |
+-- |----|
+-- |NULL|
+-- |0   |
+-- |NULL|
+-- |2   |
+-- |3   |
 ```
-
-
 
 **Supported Types**:
 
@@ -1912,6 +1908,33 @@ SELECT lag(value, 3) OVER w;
 * [`list<number>`, `int64`]
 * [`list<string>`, `int64`]
 * [`list<timestamp>`, `int64`] 
+
+### function lcase
+
+```cpp
+lcase()
+```
+
+**Description**:
+
+Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. 
+
+**Since**:
+0.5.0
+
+
+Example:
+
+```sql
+
+SELECT LCASE('SQl') as str1;
+--output "sql"
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function like_match
 
@@ -1946,9 +1969,8 @@ Rules:
 3. case sensitive
 4. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
 5. if one or more of target, pattern and escape are null values, then the result is null
-Example: 
+Example: ```sql
 
-```cpp
 select like_match('Mike', 'Mi_e', '\\')
 -- output: true
 
@@ -1964,8 +1986,6 @@ select like_match('Mi\\ke', 'Mi\\_e', '')
 select like_match('Mi\\ke', 'Mi\\_e', string(null))
 -- output: null
 ```
-
-
 
 
 **Supported Types**:
@@ -1994,14 +2014,11 @@ Return the natural logarithm of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT LN(1);  
 -- output 0.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -2031,17 +2048,14 @@ log(base, expr) If called with one parameter, this function returns the natural 
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT LOG(1);  
 -- output 0.000000
 
 SELECT LOG(10,100);
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -2080,14 +2094,11 @@ Return the base-10 logarithm of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT LOG10(100);  
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -2116,20 +2127,44 @@ Return the base-2 logarithm of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT LOG2(65536);  
 -- output 16
 ```
-
-
 
 
 **Supported Types**:
 
 * [`bool`]
 * [`number`] 
+
+### function lower
+
+```cpp
+lower()
+```
+
+**Description**:
+
+Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. 
+
+**Since**:
+0.5.0
+
+
+Example:
+
+```sql
+
+SELECT LCASE('SQl') as str1;
+--output "sql"
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function make_tuple
 
@@ -2167,23 +2202,20 @@ Compute maximum of values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT max(value) OVER w;
 -- output 4
 ```
-
-
 
 
 **Supported Types**:
@@ -2213,23 +2245,20 @@ Compute maximum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value   | catagory    |
+| value    | catagory     |
 |  -------- | -------- |
-| 0   | x    |
-| 1   | y    |
-| 2   | x    |
-| 3   | y    |
-| 4   | x    |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
+```sql
 
-
-```cpp
 SELECT max_cate(value, catagory) OVER w;
 -- output "x:4,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -2251,32 +2280,30 @@ max_cate_where()
 Compute maximum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. 
 
 **Parameters**: 
- 
+
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column.
-  * **catagory** Specify catagory column to group by.
+
 
 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
+```sql
 
-
-```cpp
-SELECT max_cate_where(value, condition, catagory) OVER w;
+SELECT max_cate_where(catagory, value, condition) OVER w;
 -- output "x:4,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -2311,23 +2338,20 @@ Compute maximum of values match specified condition.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT max_where(value, value <= 2) OVER w;
 -- output 2
 ```
-
-
 
 
 **Supported Types**:
@@ -2384,23 +2408,20 @@ Compute minimum of values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT min(value) OVER w;
 -- output 0
 ```
-
-
 
 
 **Supported Types**:
@@ -2430,23 +2451,20 @@ Compute minimum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value   | catagory    |
+| value    | catagory     |
 |  -------- | -------- |
-| 0   | x    |
-| 1   | y    |
-| 2   | x    |
-| 3   | y    |
-| 4   | x    |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
+```sql
 
-
-```cpp
 SELECT min_cate(value, catagory) OVER w;
 -- output "x:0,y:1"
 ```
-
-
 
 **Supported Types**:
 
@@ -2469,32 +2487,30 @@ Compute minimum of values matching specified condition grouped by category key a
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column.
-  * **catagory** Specify catagory column to group by. 
+
 
 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 1   | true   | y    |
-| 4   | true   | x    |
-| 3   | true   | y    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 1    | true    | y     |
+| 4    | true    | x     |
+| 3    | true    | y    |
 
 
+```sql
 
-
-```cpp
-SELECT min_cate_where(value, condition, catagory) OVER w;
+SELECT min_cate_where(catagory, value, condition) OVER w;
 -- output "x:0,y:1"
 ```
-
-
 
 **Supported Types**:
 
@@ -2529,23 +2545,20 @@ Compute minimum of values match specified condition.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT min_where(value, value > 2) OVER w;
 -- output 3
 ```
-
-
 
 
 **Supported Types**:
@@ -2593,14 +2606,11 @@ Return the minute for a timestamp.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select minute(timestamp(1590115420000));
 -- output 43
 ```
-
-
 
 
 **Supported Types**:
@@ -2622,14 +2632,11 @@ Return the month part of a timestamp or date.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select month(timestamp(1590115420000));
 -- output 5
 ```
-
-
 
 
 **Supported Types**:
@@ -2660,14 +2667,11 @@ If input is not null, return input value; else return default value.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT if_null("hello", "default"), if_null(NULL, "default");
 -- output ["hello", "default"]
 ```
-
-
 
 
 **Supported Types**:
@@ -2705,14 +2709,11 @@ nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwi
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT nvl2(NULL, 2, 1);
 -- output 1
 ```
-
-
 
 
 **Supported Types**:
@@ -2785,14 +2786,11 @@ Return the value of expr1 to the power of expr2.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT POW(2, 10);
 -- output 1024.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -2824,14 +2822,11 @@ Return the value of expr1 to the power of expr2.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT POW(2, 10);
 -- output 1024.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -2840,6 +2835,90 @@ SELECT POW(2, 10);
 * [`bool`, `number`]
 * [`number`, `bool`]
 * [`number`, `number`] 
+
+### function radians
+
+```cpp
+radians()
+```
+
+**Description**:
+
+Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.) 
+
+**Since**:
+0.6.0
+
+
+Example:
+
+```sql
+
+SELECT RADIANS(90);
+--output 1.570796326794896619231
+```
+
+
+**Supported Types**:
+
+* [`double`] 
+
+### function replace
+
+```cpp
+replace()
+```
+
+**Description**:
+
+replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+**Since**:
+0.5.2
+
+
+if replace is not given or is empty string, matched `search`s removed from final string
+
+Example:
+
+```sql
+
+select replace("ABCabc", "abc", "ABC")
+-- output "ABCABC"
+```
+
+
+**Supported Types**:
+
+* [`string`, `string`]
+* [`string`, `string`, `string`] 
+
+### function reverse
+
+```cpp
+reverse()
+```
+
+**Description**:
+
+Returns the reversed given string. 
+
+**Since**:
+0.4.0
+
+
+Example:
+
+```sql
+
+SELECT REVERSE('abc') as str1;
+--output "cba"
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function round
 
@@ -2862,14 +2941,11 @@ Return the nearest integer value to expr (in floating-point format), rounding ha
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT ROUND(1.23);
 -- output 1
 ```
-
-
 
 
 **Supported Types**:
@@ -2891,14 +2967,11 @@ Return the second for a timestamp.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select second(timestamp(1590115420000));
 -- output 40
 ```
-
-
 
 
 **Supported Types**:
@@ -2927,18 +3000,15 @@ Return the sine of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT SIN(0);
 -- output 0.000000
 ```
 
 
 
-
-
-* The value returned by [sin()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
+* The value returned by [sin()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
 
 **Supported Types**:
 
@@ -2965,14 +3035,11 @@ Return square root of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT SQRT(100);
 -- output 10.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -2995,9 +3062,8 @@ Returns 0 if the strings are the same, -1 if the first argument is smaller than 
 
 Example:
 
+```sql
 
-
-```cpp
 select strcmp("text", "text1");
 -- output -1
 select strcmp("text1", "text");
@@ -3005,8 +3071,6 @@ select strcmp("text1", "text");
 select strcmp("text", "text");
 -- output 0
 ```
-
-
 
 
 **Supported Types**:
@@ -3029,17 +3093,14 @@ Return string converted from numeric expression.
 
 Example:
 
+```sql
 
-
-```cpp
 select string(123);
 -- output "123"
 
 select string(1.23);
 -- output "1.23"
 ```
-
-
 
 
 **Supported Types**:
@@ -3069,21 +3130,18 @@ Return a substring from string `str` starting at position `pos`.
 0.1.0
 
 
-Note: This function equals the `[substr()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
+Note: This function equals the `[substr()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
 
 Example:
 
+```sql
 
-
-```cpp
 select substr("hello world", 2);
 -- output "llo world"
 
 select substring("hello world", 2);
 -- output "llo world"
 ```
-
-
 
 
 
@@ -3115,21 +3173,18 @@ Return a substring from string `str` starting at position `pos`.
 0.1.0
 
 
-Note: This function equals the `[substr()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
+Note: This function equals the `[substr()](/hybridse/language_guide/functions_and_operators/Files/udfs_8h.md#function-substr)` function.
 
 Example:
 
+```sql
 
-
-```cpp
 select substr("hello world", 2);
 -- output "llo world"
 
 select substring("hello world", 2);
 -- output "llo world"
 ```
-
-
 
 
 
@@ -3160,23 +3215,20 @@ Compute sum of values.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT sum(value) OVER w;
 -- output 10
 ```
-
-
 
 **Supported Types**:
 
@@ -3203,23 +3255,20 @@ Compute sum of values grouped by category key and output string. Each group is r
 Example:
 
 
-| value   | catagory    |
+| value    | catagory     |
 |  -------- | -------- |
-| 0   | x    |
-| 1   | y    |
-| 2   | x    |
-| 3   | y    |
-| 4   | x    |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
+```sql
 
-
-```cpp
 SELECT sum_cate(value, catagory) OVER w;
 -- output "x:6,y:4"
 ```
-
-
 
 **Supported Types**:
 
@@ -3242,31 +3291,29 @@ Compute sum of values matching specified condition grouped by category key and o
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column.
-  * **catagory** Specify catagory column to group by. 
+
 
 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
+```sql
 
-
-```cpp
-SELECT sum_cate_where(value, condition, catagory) OVER w;
+SELECT sum_cate_where(catagory, value, condition) OVER w;
 -- output "x:4,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -3301,23 +3348,20 @@ Compute sum of values match specified condition.
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT sum_where(value, value > 2) OVER w;
 -- output 7
 ```
-
-
 
 
 **Supported Types**:
@@ -3345,14 +3389,11 @@ Return the tangent of expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT TAN(0);
 -- output 0.000000
 ```
-
-
 
 
 **Supported Types**:
@@ -3380,22 +3421,17 @@ Supported string style:
 * yyyy-mm-dd hh:mm:ss
 Example:
 
+```sql
 
-```{tip}
-We can use `string()` to make timestamp type values more readable.
-```
-```cpp
-select string(timestamp(1590115420000));
+select timestamp(1590115420000);
 -- output 2020-05-22 10:43:40
 
-select string(timestamp(date("2020-05-22")));
+select date("2020-05-22");
 -- output 2020-05-22 00:00:00
 
-select string(timestamp("2020-05-22 10:43:40"));
+select timestamp("2020-05-22 10:43:40");
 -- output 2020-05-22 10:43:40
 ```
-
-
 
 
 **Supported Types**:
@@ -3427,23 +3463,20 @@ Compute top k of values and output string separated by comma. The outputs are so
 Example:
 
 
-| value    |
+| value     |
 |  -------- |
-| 0    |
-| 1    |
-| 2    |
-| 3    |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
 | 4    |
 
 
+```sql
 
-
-```cpp
 SELECT top(value, 3) OVER w;
 -- output "2,3,4"
 ```
-
-
 
 
 **Supported Types**:
@@ -3468,10 +3501,10 @@ top_n_key_avg_cate_where()
 Compute average of values matching specified condition grouped by category key. Output string for top N keys in descend order. Each group is represented as 'K:V' and separated by comma. 
 
 **Parameters**: 
- 
+
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
   * **n** Fetch top n keys.
 
 
@@ -3479,26 +3512,23 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
-| 5   | true   | z    |
-| 6   | false   | z    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
+```sql
 
-
-```cpp
     SELECT top_n_key_avg_cate_where(value, condition, catagory, 2)
 OVER w;
     -- output "z:5,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -3527,9 +3557,9 @@ Compute count of values matching specified condition grouped by category key. Ou
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -3537,26 +3567,23 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | true   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | false   | x    |
-| 5   | true   | z    |
-| 6   | true   | z    |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
+```sql
 
-
-```cpp
     SELECT top_n_key_count_cate_where(value, condition, catagory, 2)
 OVER w;
     -- output "z:2,y:2"
 ```
-
-
 
 **Supported Types**:
 
@@ -3585,9 +3612,9 @@ Compute maximum of values matching specified condition grouped by category key. 
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -3595,26 +3622,23 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | false   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | true   | x    |
-| 5   | true   | z    |
-| 6   | false   | z    |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
+```sql
 
-
-```cpp
     SELECT top_n_key_max_cate_where(value, condition, catagory, 2)
 OVER w;
     -- output "z:5,y:3"
 ```
-
-
 
 **Supported Types**:
 
@@ -3643,9 +3667,9 @@ Compute minimum of values matching specified condition grouped by category key. 
 
 **Parameters**: 
 
-  * **value** Specify value column to aggregate on. 
-  * **condition** Specify condition column.
   * **catagory** Specify catagory column to group by. 
+  * **value** Specify value column to aggregate on. 
+  * **condition** Specify condition column. 
   * **n** Fetch top n keys.
 
 
@@ -3653,26 +3677,23 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | true   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | false   | x    |
-| 5   | true   | z    |
-| 6   | true   | z    |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
+```sql
 
-
-```cpp
     SELECT top_n_key_min_cate_where(value, condition, catagory, 2)
 OVER w;
     -- output "z:5,y:1"
 ```
-
-
 
 **Supported Types**:
 
@@ -3701,9 +3722,9 @@ Compute sum of values matching specified condition grouped by category key. Outp
 
 **Parameters**: 
 
+  * **catagory** Specify catagory column to group by. 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -3711,26 +3732,23 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value   | condition   | catagory    |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0   | true   | x    |
-| 1   | true   | y    |
-| 2   | false   | x    |
-| 3   | true   | y    |
-| 4   | false   | x    |
-| 5   | true   | z    |
-| 6   | true   | z    |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
+```sql
 
-
-```cpp
     SELECT top_n_key_sum_cate_where(value, condition, catagory, 2)
 OVER w;
     -- output "z:11,y:4"
 ```
-
-
 
 **Supported Types**:
 
@@ -3768,14 +3786,11 @@ Return the nearest integer that is not greater in magnitude than the expr.
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT TRUNCATE(1.23);
 -- output 1.0
 ```
-
-
 
 
 **Supported Types**:
@@ -3799,14 +3814,11 @@ Convert all the characters to uppercase. Note that characters values > 127 are s
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT UCASE('Sql') as str1;
 --output "SQL"
 ```
-
-
 
 
 **Supported Types**:
@@ -3829,14 +3841,11 @@ Convert all the characters to uppercase. Note that characters values > 127 are s
 
 Example:
 
+```sql
 
-
-```cpp
 SELECT UCASE('Sql') as str1;
 --output "SQL"
 ```
-
-
 
 
 **Supported Types**:
@@ -3857,16 +3866,13 @@ Return the week of year for a timestamp or date.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select weekofyear(timestamp(1590115420000));
 -- output 21
 select week(timestamp(1590115420000));
 -- output 21
 ```
-
-
 
 
 **Supported Types**:
@@ -3889,16 +3895,13 @@ Return the week of year for a timestamp or date.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select weekofyear(timestamp(1590115420000));
 -- output 21
 select week(timestamp(1590115420000));
 -- output 21
 ```
-
-
 
 
 **Supported Types**:
@@ -3921,14 +3924,11 @@ Return the year part of a timestamp or date.
 0.1.0
 
 
-Example: 
+Example: ```sql
 
-```cpp
 select year(timestamp(1590115420000));
 -- output 2020
 ```
-
-
 
 
 **Supported Types**:
