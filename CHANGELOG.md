@@ -5,7 +5,7 @@
 ### Features
 - Add new build-in functions like `char_length/char/radians/replace`. (#1895 #1896 #1897 @Ivyee17, #1924 @aceforeverd)
 - Add `DolphinScheduler` task demo. (#1921 @vagetablechicken)
-- Support insert values with database name. (#1929 @dl239)
+- Support inserting values with database name. (#1929 @dl239)
 - Optimize window computation with `UnsafeRowOpt` by removing zipped dataframe. (#1882 @tobegit3hub)
 
 ### Bug Fixes
