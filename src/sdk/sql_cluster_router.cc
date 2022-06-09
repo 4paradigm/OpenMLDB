@@ -2378,12 +2378,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                            "Can not insert in offline mode, please set @@SESSION.execute_mode='online'"};
                 return {};
             }
-
-            // TODO(denglong): Should support table name with database name
-            if (db.empty()) {
-                *status = {::hybridse::common::StatusCode::kCmdError, "Please use database first"};
-                return {};
-            }
+            // if db name has been specified in sql, db parameter will be ignored
             if (!ExecuteInsert(db, sql, status)) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
             } else {
