@@ -19,7 +19,7 @@
 - Fixing other minor bugs (#1914 aceforeverd, #1900 @mangoGoForward, #1934 @vagetablechicken)
 
 ### Code Refactoring
-#1899 @auula, #1913 @dl239, #1917 @mangoGoForward, #1803 @SaumyaBhushan, #1408 @Ivyee17, #1886 @frazie
+#1899 @auula, #1913 @dl239, #1917 @mangoGoForward, #1803 @SaumyaBhushan, #1870 @Ivyee17, #1886 @frazie
 
 ## [0.5.1] - 2022-05-26
 
