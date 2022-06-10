@@ -63,7 +63,7 @@ class SDKIterator {
         }
         if (need_delete) {
             iter_vec_.erase(std::remove_if(iter_vec_.begin(), iter_vec_.end(),
-                                           [](const std::shared_ptr<::openmldb::base::KvIterator>& it) { return !it; }),
+                            [](const std::shared_ptr<::openmldb::base::KvIterator>& it) { return !it; }),
                             iter_vec_.end());
         }
         cnt_++;

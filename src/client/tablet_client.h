@@ -196,7 +196,7 @@ class TabletClient : public Client {
 
     std::shared_ptr<openmldb::base::TraverseKvIterator> Traverse(uint32_t tid, uint32_t pid,
             const std::string& idx_name, const std::string& pk, uint64_t ts,
-            uint32_t limit, uint32_t& count);  // NOLINT
+            uint32_t limit, bool skip_current_pk, uint32_t& count);  // NOLINT
 
     bool SetMode(bool mode);
 

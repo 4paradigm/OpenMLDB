@@ -831,8 +831,7 @@ void MemTableKeyIterator::Seek(const std::string& key) {
 }
 
 bool MemTableKeyIterator::Valid() {
-    bool valid = pk_it_ != NULL && pk_it_->Valid();
-    return valid;
+    return pk_it_ != NULL && pk_it_->Valid();
 }
 
 void MemTableKeyIterator::Next() { NextPK(); }

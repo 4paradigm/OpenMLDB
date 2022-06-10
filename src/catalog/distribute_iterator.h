@@ -130,19 +130,20 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
 
     // structure used for iterator result by Seek or SeekToFirst
     struct ItStat {
-        // if pid < 0, stat is invalid
-        int32_t pid;
+        uint32_t pid;
         ::hybridse::codec::WindowIterator* it;
         KV_IT kv_it;
 
         ItStat() = delete;
-        ItStat(int32_t p, ::hybridse::codec::WindowIterator* i, KV_IT kv) : pid(p), it(i), kv_it(kv) {}
+        ItStat(uint32_t id, ::hybridse::codec::WindowIterator* i, KV_IT kv) : pid(id), it(i), kv_it(kv) {}
     };
 
  private:
     void Reset();
 
     ItStat SeekByKey(const std::string& key) const;
+
+    ItStat SeekToFirstRemote() const;
 
  private:
     const uint32_t tid_;

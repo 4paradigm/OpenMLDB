@@ -33,8 +33,7 @@ namespace base {
 class KvIterator {
  public:
     explicit KvIterator(const std::shared_ptr<::google::protobuf::Message>& response) :
-        response_(response), buffer_(NULL), is_finish_(true), tsize_(0), offset_(0), c_size_(0), tmp_() {
-    }
+        response_(response), buffer_(nullptr), is_finish_(true), tsize_(0), offset_(0), tmp_() {}
 
     virtual ~KvIterator() {}
 
@@ -58,7 +57,6 @@ class KvIterator {
     bool is_finish_;
     uint32_t tsize_;
     uint32_t offset_;
-    uint32_t c_size_;
     uint64_t time_;
     Slice tmp_;
     std::string pk_;
@@ -75,30 +73,9 @@ class ScanKvIterator : public KvIterator {
         Next();
     }
 
-    bool Valid() {
-        if (offset_ > tsize_) {
-            return false;
-        }
-        if (tsize_ < 12) {
-            return false;
-        }
-        return true;
-    }
+    bool Valid();
 
-    void Next() {
-        if (offset_ + 4 > tsize_) {
-            offset_ += 4;
-            return;
-        }
-        uint32_t block_size = 0;
-        memcpy(static_cast<void*>(&block_size), buffer_, 4);
-        buffer_ += 4;
-        memcpy(static_cast<void*>(&time_), buffer_, 8);
-        buffer_ += 8;
-        tmp_.reset(buffer_, block_size - 8);
-        buffer_ += (block_size - 8);
-        offset_ += (4 + block_size);
-    }
+    void Next();
 };
 
 class TraverseKvIterator : public KvIterator {
@@ -113,39 +90,20 @@ class TraverseKvIterator : public KvIterator {
         Next();
     }
 
-    bool Valid() {
-        if (offset_ > tsize_) {
-            return false;
-        }
-        if (tsize_ < 16) {
-            return false;
-        }
-        return true;
-    }
+    bool Valid();
 
-    void Next() {
-        if (offset_ + 8 > tsize_) {
-            offset_ += 8;
-            return;
-        }
-        uint32_t total_size = 0;
-        memcpy(static_cast<void*>(&total_size), buffer_, 4);
-        buffer_ += 4;
-        uint32_t pk_size = 0;
-        memcpy(static_cast<void*>(&pk_size), buffer_, 4);
-        buffer_ += 4;
-        memcpy(static_cast<void*>(&time_), buffer_, 8);
-        buffer_ += 8;
-        pk_.assign(buffer_, pk_size);
-        buffer_ += pk_size;
-        tmp_.reset(buffer_, total_size - pk_size - 8);
-        buffer_ += (total_size - pk_size - 8);
-        offset_ += (8 + total_size);
-    }
+    void Next();
+
+    void NextPK();
+
+    void Seek(const std::string& pk);
 
     const std::string& GetLastPK() const { return last_pk_; }
 
     uint64_t GetLastTS() const { return last_ts_; }
+
+ private:
+    void Reset();
 
  private:
     std::string last_pk_;

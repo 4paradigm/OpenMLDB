@@ -20,7 +20,7 @@
 #include <iostream>
 #include <set>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "brpc/channel.h"
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"
@@ -884,7 +884,8 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
 }
 
 std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint32_t tid, uint32_t pid,
-        const std::string& idx_name, const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count) {
+        const std::string& idx_name, const std::string& pk, uint64_t ts, uint32_t limit, bool skip_current_pk,
+        uint32_t& count) {
     ::openmldb::api::TraverseRequest request;
     auto response = std::make_shared<openmldb::api::TraverseResponse>();
     request.set_tid(tid);
@@ -897,6 +898,7 @@ std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint3
         request.set_pk(pk);
         request.set_ts(ts);
     }
+    request.set_skip_current_pk(skip_current_pk);
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse, &request, response.get(),
                                   FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response->code() != 0) {

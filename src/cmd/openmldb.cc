@@ -1895,7 +1895,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
         if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
