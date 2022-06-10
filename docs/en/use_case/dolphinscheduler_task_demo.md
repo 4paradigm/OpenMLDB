@@ -1,42 +1,34 @@
-# Dolphin Scheduler OpenMLDB Task: Create End-to-End MLOps Workflow
+# Building End-to-End MLOps Workflows (OpenMLDB + DolphinScheduler)
 
-## Reading Guide
-In the business closed loop of machine learning from development to launching online, data processing, feature development, and model training often cost a lot of time and manpower.
+## Background
+In the closed loop of machine learning from development to deployment, data processing, feature development, and model training often cost a lot of time and manpower.
 
-To facilitate AI model construction and application launch, and simplify the process of machine learning modeling engineering, we have developed the DolphinScheduler OpenMLDB Task, which integrates feature platform capabilities into the workflow of DolphinScheduler, links feature engineering and scheduling links, creates an end-to-end MLOps workflow, and helps developers focus on the exploration of business value.
-
-This article will briefly introduce and demonstrate the operation process of the DolphinScheduler OpenMLDB Task.
+To facilitate AI model development and deployment, we have developed the DolphinScheduler OpenMLDB Task, which integrates feature platform capabilities into the workflow of DolphinScheduler to build an end-to-end MLOps workflow. This article will briefly introduce and demonstrate the operation process of the DolphinScheduler OpenMLDB Task.
 
 ```{seealso}
 [DolphinScheduler OpenMLDB Task Official Documentation](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html)
 ```
 
 ## Scenarios and Functions
-### Why was the DolphinScheduler OpenMLDB Task Emerge
+### Why We Need the DolphinScheduler OpenMLDB Task
 
-![eco](images/ecosystem.png)
+![image-20220610170510779](images/ecosystem.png)
 
-As an open-source machine learning database that provides full-stack solutions for production-level data and feature development, the key point for OpenMLDB to improve ease of use and reduce the use threshold comes from upstream and downstream connectivity. As shown in the above figure, accessing the data source can make it easier for the data in DataOps to flow into OpenMLDB, and the features provided by OpenMLDB also need to smoothly enter ModelOps for training.
+As an open-source machine learning database that provides full-stack solutions for production-level data and feature development, the key point for OpenMLDB to improve ease of use and integrate the open-source ecosystem. As shown in the above figure, accessing the data source can make it easier for the data in DataOps to feed into OpenMLDB, and the features provided by OpenMLDB also need to smoothly enter ModelOps for training.
 
-To reduce the huge workload caused by each developer's manual access and improve the convenience of OpenMLDB, we have also developed the OpenMLDB access Deployment and Monitoring functions.
+In this article, we want to focus on the integration with the workflow scheduler platform DolphinScheduler. The DolphinScheduler OpenMLDB Task can operate OpenMLDB more easily. At the same time, the OpenMLDB task is also managed by workflow and is fully automated.
 
-This time, I want to focus on the framework of OpenMLDB accessing the DolphinScheduler workflow.
+### What Can the DolphinScheduler OpenMLDB Task Do
 
-The DolphinScheduler OpenMLDB Task can operate OpenMLDB more easily. At the same time, the OpenMLDB task is also managed by Workflow and is more automated.
+By writing the OpenMLDB task, we can meet the requirements of OpenMLDB for offline import, feature extraction, SQL deployment online, online import, etc. We can build an end-to-end machine learning pipeline using OpenMLDB based on DolphinScheduler.
 
-### What can the DolphinScheduler OpenMLDB Task  Do
-
-OpenMLDB hopes to achieve the goal that development is launched immediately so that development can return to its essence, rather than spending too much effort in engineering implementation.
-
-By writing the OpenMLDB task, we can meet the requirements of OpenMLDB for offline import, feature extraction, SQL deployment online, online import, etc. We can also write a complete online training process using OpenMLDB in the DolphinScheduler.
-
-![task func](images/task_func.png)
+![image-20220610174647990](images/task_func.png)
 
 For example, let's imagine the simplest user operation process, as shown in the figure above, steps 1-4 in the process correspond to offline import, feature extraction, SQL deployment online, and online import, which can be written through the DolphinScheduler OpenMLDB Task.
 
 In addition to SQL online in OpenMLDB, real-time prediction also requires a model online. So next, based on the TalkingData advertising fraud detection scenario in the Kaggle competition, we will demonstrate how to use the DolphinScheduler OpenMLDB Task to arrange a complete process of machine learning training online. For details of the TalkingData competition, see [talkingdata-adtracking-fraud-detection](https://www.kaggle.com/competitions/talkingdata-adtracking-fraud-detection/discussion).
 
-## Practical Demonstration
+## Demo
 ### Environment Configuration
 The demo can run on MacOS or Linux, or use the OpenMLDB image provided by us:
 ```
@@ -116,13 +108,13 @@ Click the workflow name to view the workflow details, as shown in the following 
 
 **Note**: This needs to be modified because the task ID will change after importing the workflow. In particular, the upstream and downstream id in the switch task do not exist and need to be manually changed.
 
-![switch](images/ds_switch.png)
+![image-20220610163343993](images/ds_switch.png)
 
 As shown in the above figure, there is a non-existent ID in the settings of the switch task. Please change the successful and failed "branch flow" and "pre-check condition" to the task of the current workflow.
 
 The correct result is shown in the following figure:
 
-![right](images/ds_switch_right.png)
+![image-20220610163515122](images/ds_switch_right.png)
 
 After modification, save the workflow directly. Tenant in the imported workflow will be deemed as default in the default mode and also **can be run**. If you want to specify your tenant, please select a tenant when saving the workflow, as shown in the following figure.
 ![set tenant](images/ds_set_tenant.png)
