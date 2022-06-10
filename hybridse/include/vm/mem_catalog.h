@@ -292,6 +292,12 @@ class Window : public MemTimeTableHandler {
 };
 class WindowRange {
  public:
+    enum WindowPositionStatus {
+        kInWindow,
+        kExceedWindow,
+        kBeforeWindow,
+    };
+
     WindowRange()
         : frame_type_(Window::kFrameRows),
           start_offset_(0),
@@ -309,6 +315,7 @@ class WindowRange {
           max_size_(max_size) {}
 
     virtual ~WindowRange() {}
+
     static WindowRange CreateRowsWindow(uint64_t rows_preceding) {
         return WindowRange(Window::kFrameRows, 0, 0, rows_preceding, 0);
     }
@@ -324,11 +331,6 @@ class WindowRange {
         return WindowRange(Window::kFrameRowsMergeRowsRange, start_offset, 0,
                            rows_preceding, max_size);
     }
-    enum WindowPositionStatus {
-        kInWindow,
-        kExceedWindow,
-        kBeforeWindow,
-    };
     inline const WindowPositionStatus GetWindowPositionStatus(
         bool out_of_rows, bool before_window, bool exceed_window) const {
         switch (frame_type_) {
@@ -350,6 +352,8 @@ class WindowRange {
         }
         return kExceedWindow;
     }
+
+    std::string DebugString() const;
 
     Window::WindowFrameType frame_type_;
     int64_t start_offset_;
