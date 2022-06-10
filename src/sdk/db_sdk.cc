@@ -202,8 +202,9 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", 
-                     options_.zk_session_timeout, "", options_.zk_path);
+    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "",
+                                              options_.zk_session_timeout,
+                                              "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
         LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster << " , zk path "
