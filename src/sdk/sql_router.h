@@ -38,7 +38,7 @@ namespace sdk {
 
 struct BasicRouterOptions {
     bool enable_debug = false;
-    uint32_t session_timeout = 2000;
+    uint32_t zk_session_timeout = 2000;
     uint32_t max_sql_cache_size = 10;
     uint32_t request_timeout = 60000;
 };

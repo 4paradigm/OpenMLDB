@@ -383,7 +383,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         "                index(key=col2, ts=col3)) "
         "options(partitionnum=2);";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -677,7 +677,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 60000;
+    sql_opt.zk_session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     SetOnlineMode(router);
