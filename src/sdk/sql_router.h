@@ -38,7 +38,6 @@ namespace sdk {
 
 struct BasicRouterOptions {
     bool enable_debug = false;
-    uint32_t zk_session_timeout = 2000;
     uint32_t max_sql_cache_size = 10;
     uint32_t request_timeout = 60000;
 };
@@ -46,6 +45,7 @@ struct BasicRouterOptions {
 struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_cluster;
     std::string zk_path;
+    uint32_t zk_session_timeout = 2000;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
