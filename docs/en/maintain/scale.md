@@ -62,12 +62,12 @@ Scaling in your cluster is to reduce the number of nodes in the cluster.
 ### Step 2. Migrating partitions on nodes that need to be taken offline to other nodes
 * Run the `showtable` command to view the partitions of a table
 * Run the `migrage` command to migrate the targeted partitions to another node. If the leader exists on the offline node, you can run the `changeleader` command to switch the leader to another node
-### Step 3. Make the targeted node offline
-Execute `stop` command
+### Step 3. Making the targeted node offline
+- Execute `stop` command
 ```bash
 sh bin/start.sh stop tablet
 ```
-If nameserver is deployed on the node, you need to disable the nameserver.
+- If nameserver is deployed on the node, you need to disable the nameserver.
 ```bash
 sh bin/start.sh stop nameserver
 ```
