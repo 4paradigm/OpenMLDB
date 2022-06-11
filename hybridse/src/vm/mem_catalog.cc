@@ -392,10 +392,10 @@ std::string WindowFrameTypeStr(Window::WindowFrameType type) {
             return "Rows";
         }
         case Window::WindowFrameType::kFrameRowsRange: {
-            return "Range";
+            return "RowsRange";
         }
         case Window::WindowFrameType::kFrameRowsMergeRowsRange: {
-            return "RowsRange";
+            return "MergeRowsRange";
         }
     }
 }

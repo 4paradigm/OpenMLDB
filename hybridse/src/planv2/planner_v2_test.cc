@@ -1518,7 +1518,7 @@ TEST_F(PlannerV2Test, WindowMergeOptTest) {
     auto w = project_list->GetW();
     ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
     ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-    ASSERT_EQ("range[-172800000,0],rows[-1000,0]", w->frame_node()->GetExprString());
+    ASSERT_EQ("range[172800000 PRECEDING,0 CURRENT],rows[1000 PRECEDING,0 CURRENT]", w->frame_node()->GetExprString());
 }
 TEST_F(PlannerV2Test, RowsWindowExpandTest) {
     const std::string sql =
@@ -1549,7 +1549,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
         ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-        ASSERT_EQ("rows[-1000,0]", w->frame_node()->GetExprString());
+        ASSERT_EQ("rows[1000 PRECEDING,0 CURRENT]", w->frame_node()->GetExprString());
     }
 
     // Pure RowsRange Frame won't expand
@@ -1558,7 +1558,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
         ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-        ASSERT_EQ("range[-172800000,-21600000]", w->frame_node()->GetExprString());
+        ASSERT_EQ("range[172800000 PRECEDING,21600000 PRECEDING]", w->frame_node()->GetExprString());
     }
 }
 

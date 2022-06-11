@@ -63,7 +63,7 @@ TEST_F(NodeManagerTest, MakeAndExprTest) {
     delete manager;
 }
 
-TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
+TEST_F(NodeManagerTest, MergeframenodeRowstest) {
     NodeManager manager;
     // [-100, 0] U [-150, 0] = [-150, 0]
     {
@@ -78,7 +78,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRows, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_rows()->start()->bound_type());
-        ASSERT_EQ(-120, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-120, merged->frame_rows()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_rows()->end()->bound_type());
     }
 
@@ -95,7 +95,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRows, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_rows()->start()->bound_type());
-        ASSERT_EQ(-120, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-120, merged->frame_rows()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_rows()->end()->bound_type());
     }
 
@@ -112,7 +112,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRows, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_rows()->start()->bound_type());
-        ASSERT_EQ(-100, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-100, merged->frame_rows()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_rows()->end()->bound_type());
     }
 
@@ -129,9 +129,9 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRows, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_rows()->start()->bound_type());
-        ASSERT_EQ(-100, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-100, merged->frame_rows()->GetStartOffset());
         ASSERT_EQ(kFollowing, merged->frame_rows()->end()->bound_type());
-        ASSERT_EQ(80, merged->frame_rows()->end()->GetSignedOffset());
+        ASSERT_EQ(80, merged->frame_rows()->GetEndOffset());
     }
 
     // [UNBOUND, 50] U [-30, UNBOUND] = [UNBOUND, UNBOUND]
@@ -151,7 +151,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsTest) {
         ASSERT_EQ(kFollowingUnbound, merged->frame_rows()->end()->bound_type());
     }
 }
-TEST_F(NodeManagerTest, MergeFrameNode_RangeTest) {
+TEST_F(NodeManagerTest, MergeframenodeRangetest) {
     NodeManager manager;
     // [-1d, 0] U [-6h, 0] = [-1d, 0]
     {
@@ -168,7 +168,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
 
@@ -189,7 +189,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
 
@@ -210,7 +210,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
     // [UNBOUND, -1d] U [-6h, UNBOUND] = [UNBOUND, UNBOUND]
@@ -235,7 +235,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RangeTest) {
     }
 }
 
-TEST_F(NodeManagerTest, MergeFrameNode_RowsRangeTest) {
+TEST_F(NodeManagerTest, MergeframenodeRowsrangetest) {
     NodeManager manager;
     // [-1d, 0] U [-6h, 0] = [-1d, 0]
     {
@@ -254,7 +254,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsRangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
 
@@ -276,7 +276,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsRangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
 
@@ -298,7 +298,7 @@ TEST_F(NodeManagerTest, MergeFrameNode_RowsRangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
     }
 
@@ -363,9 +363,9 @@ TEST_F(NodeManagerTest, RowMergeRowsRangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame1, frame2);
         ASSERT_EQ(kFrameRowsMergeRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
-        ASSERT_EQ(-1000L, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-1000L, merged->frame_rows()->GetStartOffset());
     }
 
     // [-1d, 0] U [-1000, 0] U [-10000, 0] = [-1d, 0],rows_size = 10000
@@ -388,9 +388,9 @@ TEST_F(NodeManagerTest, RowMergeRowsRangeTest) {
         FrameNode *merged = manager.MergeFrameNode(frame3, frame4);
         ASSERT_EQ(kFrameRowsMergeRowsRange, merged->frame_type());
         ASSERT_EQ(kPreceding, merged->frame_range()->start()->bound_type());
-        ASSERT_EQ(-86400000, merged->frame_range()->start()->GetSignedOffset());
+        ASSERT_EQ(-86400000, merged->frame_range()->GetStartOffset());
         ASSERT_EQ(kCurrent, merged->frame_range()->end()->bound_type());
-        ASSERT_EQ(-10000L, merged->frame_rows()->start()->GetSignedOffset());
+        ASSERT_EQ(-10000L, merged->frame_rows()->GetStartOffset());
     }
 }
 
