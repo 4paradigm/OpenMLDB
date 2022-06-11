@@ -1,12 +1,12 @@
-# EEnlarge shrinks capacity
+# Scale-Out and Scale-In
 
-## Expansion
+## Scale-Out
 
-With the development of business, dynamic capacity expansion is required if the current cluster topology cannot meet the requirements. Capacity expansion is to migrate some shards from existing tablet nodes to new tablet nodes to reduce memory usage
+With the development of business, dynamic scale-out is required if the current cluster topology cannot meet the requirements. Scale-out is to migrate some partitions from existing tablet nodes to new tablet nodes.
 
-### 1 Start a new tablet node
+### Step 1. Starting a new tablet node
 
-After startup, check whether the newly added node joins the cluster. If the showtablet command is executed and the new node endpoint is listed, it means that it has joined the cluster
+After startup, you need to check whether the new node has joined the cluster. If the `showtablet` command is executed and the new node endpoint is listed, it means that it has joined the cluster
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -19,11 +19,11 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   172.27.128.37:8541  kTabletHealthy  1min
 ```
 
-### 2 Migrate the copy
+### Step 2. Migrating replications
 
-The command used for replica migration is migrate。command format: migrate src\_endpoint table\_name partition des\_endpoint  
+The command used for replication migration is `migrate`. The command format is: `migrate src_endpoint table_name partition des_endpoint` 
 
-**Once the table is created, shards cannot be added or removed, only shards can be migrated. When migrating, only slave shards can be migrated, not primary shards**
+**Once the table is created, partitions cannot be added or removed, only can be migrated. When migrating, only leader partitions can be migrated, not follower partitions**
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -52,23 +52,23 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   flow    4   1    172.27.128.31:8541  follower  0min       yes       kNoCompress    0        0           0.000
   flow    4   1    172.27.128.32:8541  follower  0min       yes       kNoCompress    0        0           0.000
 ```
-**illustrate**: Migrating replicas can also be done by deleting replicas and then adding new ones.
+Note that, migrating replicatins can also be done by deleting replicatins and then adding new ones.
 
-## Shrinkage capacity
+## Scale-In
 
-Capacity reduction refers to reducing the number of nodes in an existing cluster.
+Scaling in your cluster is to reduce the number of nodes in the cluster.
 
-### 1 Select the node that you want to go offline
-### 2 Migrate shards on nodes that need to be taken offline to other nodes
-* Run the showtable command to view the fragment distribution of the table
-* Run the Migrage command to migrate to another node. If the leader exists on the offline node, you can run the Changeleader command to switch the leader to another node
-### 3 Offline node
-Execute stop command
+### Step 1. Selecting the node that you want to go offline
+### Step 2. Migrating partitions on nodes that need to be taken offline to other nodes
+* Run the `showtable` command to view the partitions of a table
+* Run the `migrage` command to migrate the targeted partitions to another node. If the leader exists on the offline node, you can run the `changeleader` command to switch the leader to another node
+### Step 3. Make the targeted node offline
+Execute `stop` command
 ```bash
 sh bin/start.sh stop tablet
 ```
-If nameserver is deployed on the node, disable nameserver
+If nameserver is deployed on the node, you need to disable the nameserver.
 ```bash
 sh bin/start.sh stop nameserver
 ```
-**note**：At least two Nameserver nodes are required to maintain high availability
+Note that, at least two Nameserver nodes are required to maintain high availability
