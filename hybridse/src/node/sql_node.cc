@@ -2006,7 +2006,7 @@ void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, BoundTypeName(bound_type_), "bound", false);
 
     if (kPrecedingUnbound != bound_type_ && kFollowingUnbound != bound_type_) {
-        // oubound information is enough from `bound:` field
+        // unbound information is enough from `bound:` field
         output << "\n";
         PrintValue(output, tab, std::to_string(offset_), "offset", true);
     }
