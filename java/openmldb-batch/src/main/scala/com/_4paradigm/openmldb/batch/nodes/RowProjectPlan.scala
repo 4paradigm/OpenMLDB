@@ -133,11 +133,10 @@ object RowProjectPlan {
           }
 
           // Create native method input from Spark InternalRow
-          var hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
 
           // Call native method to compute
           val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
-          hybridseRowBytes = null
 
           // Call methods to generate Spark InternalRow
           val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
