@@ -185,8 +185,8 @@ cases:
     batch_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=WindowAggregation, limit=10)
-          +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -2, 0))
-          +-UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0))
+          +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT))
+          +-UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT))
               RENAME(name=t1)
                 SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
@@ -194,8 +194,8 @@ cases:
     request_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=Aggregation, limit=10)
-          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0), index_keys=(col2))
-            +-UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0), index_keys=(col2))
+          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT), index_keys=(col2))
+            +-UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT), index_keys=(col2))
                 RENAME(name=t1)
                   SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                     DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
@@ -243,8 +243,8 @@ cases:
     batch_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=WindowAggregation, limit=10)
-          +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, -2, 0))
-          +-UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0))
+          +-WINDOW(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT))
+          +-UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT))
               RENAME(name=)
                 SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
@@ -253,8 +253,8 @@ cases:
     request_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=Aggregation, limit=10)
-          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0), index_keys=(col2))
-            +-UNION(partition_keys=(), orders=(ASC), range=(col5, -2, 0), index_keys=(col2))
+          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT), index_keys=(col2))
+            +-UNION(partition_keys=(), orders=(ASC), range=(col5, 2 PRECEDING, 0 CURRENT), index_keys=(col2))
                 RENAME(name=)
                   SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                     DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
