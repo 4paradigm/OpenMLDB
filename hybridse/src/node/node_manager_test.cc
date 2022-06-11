@@ -63,7 +63,7 @@ TEST_F(NodeManagerTest, MakeAndExprTest) {
     delete manager;
 }
 
-TEST_F(NodeManagerTest, MergeframenodeRowstest) {
+TEST_F(NodeManagerTest, MergeFramenodeRowsTest) {
     NodeManager manager;
     // [-100, 0] U [-150, 0] = [-150, 0]
     {
@@ -151,7 +151,7 @@ TEST_F(NodeManagerTest, MergeframenodeRowstest) {
         ASSERT_EQ(kFollowingUnbound, merged->frame_rows()->end()->bound_type());
     }
 }
-TEST_F(NodeManagerTest, MergeframenodeRangetest) {
+TEST_F(NodeManagerTest, MergeFramenodeRangeTest) {
     NodeManager manager;
     // [-1d, 0] U [-6h, 0] = [-1d, 0]
     {
@@ -235,7 +235,7 @@ TEST_F(NodeManagerTest, MergeframenodeRangetest) {
     }
 }
 
-TEST_F(NodeManagerTest, MergeframenodeRowsrangetest) {
+TEST_F(NodeManagerTest, MergeFramenodeRowsRangeTest) {
     NodeManager manager;
     // [-1d, 0] U [-6h, 0] = [-1d, 0]
     {
