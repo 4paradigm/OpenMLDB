@@ -136,7 +136,7 @@ std::vector<std::string> GenDDL(
     }
     auto index_map = openmldb::base::DDLParser::ExtractIndexes(sql, table_desc_map);
     std::vector<std::string> ddl_vector;
-    for (auto& table_item : table_desc_map) {
+    for (const auto& table_item : table_desc_map) {
         std::string ddl = "CREATE TABLE IF NOT EXISTS ";
         std::string table_name = table_item.first;
         ddl = ddl.append(table_name);
@@ -157,13 +157,12 @@ std::vector<std::string> GenDDL(
             auto column_key_list = iter->second;
             if (!column_key_list.empty()) {
                 for (const auto& column_key : column_key_list) {
-                    auto col_name_list = column_key.col_name();
                     std::string key_name;
-                    for (const auto& col_name : col_name_list) {
-                        key_name = col_name;
-                        key_name = key_name.append(",");
+                    for (const auto& col_name : column_key.col_name()) {
+                        key_name.append(col_name);
+                        key_name.append(",");
                     }
-                    key_name = key_name.substr(0, key_name.find_last_of(','));
+                    key_name.pop_back();
                     const auto& ttl = column_key.ttl();
                     auto ttl_type = ttl.ttl_type();
                     auto abs_ttl = ttl.abs_ttl();
@@ -176,7 +175,6 @@ std::vector<std::string> GenDDL(
                 }
             }
         }
-
         ddl = ddl.substr(0, ddl.find_last_of(','));
         ddl = ddl.append("\n);");
         DLOG(INFO) << "ddl is " + ddl;

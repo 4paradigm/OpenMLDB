@@ -1129,6 +1129,51 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
     ASSERT_EQ(output_col_names, expected);
 }
 
+TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {
+    std::string sql =
+            "select reqId as reqId_75, \n"
+            "max(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s_100 "
+            "as bo_hislabel_fWatchedTimeLen_multi_max_74, \n"
+            "avg(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s_100 "
+            "as bo_hislabel_fWatchedTimeLen_multi_avg_75 \n"
+            "from \n"
+            "(select `eventTime` as `ingestionTime`, `zUserId` as `zUserId`, `uUserId` as `uUserId`, "
+            "timestamp('2019-07-18 09:20:20') as `nRequestTime`, double(0) as `fWatchedTimeLen`, "
+            "reqId from `flattenRequest`) \n"
+            "window bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s_100 as ( \n"
+            "UNION (select `ingestionTime`, `zUserId`, `uUserId`, `nRequestTime`, `fWatchedTimeLen`, "
+            "'' as reqId from `bo_hislabel`) \n"
+            "partition by `zUserId`,`uUserId` order by `ingestionTime` "
+            "rows_range between 172800999 preceding and 1s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW);";
+    std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>> table_map;
+    {
+        TableSchemaBuilder builder("flattenRequest");
+        builder.AddCol("reqId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("eventTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("index1", hybridse::sdk::DataType::kTypeString)
+            .AddCol("uUserId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("zUserId", hybridse::sdk::DataType::kTypeString);
+        table_map.emplace_back(builder.table_name_, builder.cols_);
+    }
+    {
+        TableSchemaBuilder builder("bo_hislabel");
+        builder.AddCol("ingestionTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("zUserId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("uUserId", hybridse::sdk::DataType::kTypeString)
+            .AddCol("nRequestTime", hybridse::sdk::DataType::kTypeTimestamp)
+            .AddCol("fWatchedTimeLen", hybridse::sdk::DataType::kTypeDouble);
+        table_map.emplace_back(builder.table_name_, builder.cols_);
+    }
+
+    std::vector<std::string> ddl_list = GenDDL(sql, table_map);
+    ASSERT_EQ(2, ddl_list.size());
+    EXPECT_EQ(
+        "CREATE TABLE IF NOT EXISTS bo_hislabel(\n\tingestionTime timestamp,\n\tzUserId string,\n\tuUserId string,\n\t"
+        "nRequestTime timestamp,\n\tfWatchedTimeLen double,\n\t"
+        "index(key=(uUserId,zUserId), ttl=2881m, ttl_type=absolute, ts=`ingestionTime`)\n);",
+        ddl_list.at(0));
+}
+
 }  // namespace sdk
 }  // namespace openmldb
 
