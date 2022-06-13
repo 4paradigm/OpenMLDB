@@ -101,7 +101,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                                    std::string* index,
                                    IndexBitMap* best_bitmap);
     bool MatchBestIndex(const std::vector<std::string>& columns,
-                        const std::vector<std::string>& order_columns,
+                        const std::vector<std::string>& order_columns,  // NOLINT
                         std::shared_ptr<TableHandler> table_handler,
                         IndexBitMap* bitmap,
                         std::string* index_name,
