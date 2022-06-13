@@ -353,8 +353,6 @@ class WindowRange {
         return kExceedWindow;
     }
 
-    std::string DebugString() const;
-
     Window::WindowFrameType frame_type_;
     int64_t start_offset_;
     int64_t end_offset_;

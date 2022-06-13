@@ -386,26 +386,6 @@ RowIterator* RequestUnionTableHandler::GetRawIterator() {
     return new RequestUnionIterator(request_ts_, &request_row_, window_iter);
 }
 
-std::string WindowFrameTypeStr(Window::WindowFrameType type) {
-    switch (type) {
-        case Window::WindowFrameType::kFrameRows: {
-            return "Rows";
-        }
-        case Window::WindowFrameType::kFrameRowsRange: {
-            return "RowsRange";
-        }
-        case Window::WindowFrameType::kFrameRowsMergeRowsRange: {
-            return "MergeRowsRange";
-        }
-    }
-}
-
-std::string WindowRange::DebugString() const {
-    auto type = WindowFrameTypeStr(frame_type_);
-    return absl::Substitute("$0 start_offset=$1, end_offset=$2, start_row=$3, end_row=$4, maxsize=$5", type,
-                            start_offset_, end_offset_, start_row_, end_row_, max_size_);
-}
-
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter_addr) {
     auto list_ref = reinterpret_cast<codec::ListRef<Row>*>(input);
