@@ -45,7 +45,7 @@
 SdkOption option = new SdkOption();
 option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
-option.setSessionTimeout(10000);
+option.setZkSessionTimeout(10000);
 option.setRequestTimeout(60000);
 
 // 单机版配置方式如下：
@@ -53,7 +53,7 @@ SdkOption option = new SdkOption();
 option.setHost("127.0.0.1");
 option.setPort(6527);
 option.setClusterMode(false);
-option.setSessionTimeout(10000);
+option.setZkSessionTimeout(10000);
 option.setRequestTimeout(60000);
 ```
 
@@ -387,7 +387,7 @@ public class Demo {
         SdkOption option = new SdkOption();
         option.setZkCluster("172.27.128.37:7181");
         option.setZkPath("/rtidb_wb");
-        option.setSessionTimeout(10000);
+        option.setZkSessionTimeout(10000);
         option.setRequestTimeout(60000);
         // sqlExecutor执行sql操作是多线程安全的，在实际环境中只创建一个即可
         sqlExecutor = new SqlClusterExecutor(option);

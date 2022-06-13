@@ -25,7 +25,7 @@ public class RequestPreparedStatementTest {
             SdkOption option = new SdkOption();
             option.setZkPath(TestConfig.ZK_PATH);
             option.setZkCluster(TestConfig.ZK_CLUSTER);
-            option.setSessionTimeout(200000);
+            option.setZkSessionTimeout(200000);
             executor = new SqlClusterExecutor(option);
             java.sql.Statement state = executor.getStatement();
             state.execute("SET @@execute_mode='online';");

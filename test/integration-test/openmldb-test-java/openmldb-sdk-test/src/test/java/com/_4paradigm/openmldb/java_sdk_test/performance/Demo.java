@@ -63,7 +63,7 @@ public class Demo {
         SdkOption option = new SdkOption();
         option.setZkCluster("172.27.128.37:7181");
         option.setZkPath("/rtidb_wb");
-        option.setSessionTimeout(10000);
+        option.setZkSessionTimeout(10000);
         option.setRequestTimeout(60000);
         sqlExecutor = new SqlClusterExecutor(option);
     }

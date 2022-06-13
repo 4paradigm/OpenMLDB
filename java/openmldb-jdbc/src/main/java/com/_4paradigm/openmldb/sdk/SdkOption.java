@@ -28,7 +28,7 @@ public class SdkOption {
     private String host;
     private long port;
 
-    private long sessionTimeout = 10000;
+    private long zkSessionTimeout = 10000;
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
     private boolean isClusterMode = true;

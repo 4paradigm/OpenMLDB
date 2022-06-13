@@ -57,7 +57,7 @@ public class FESQLInsertRowBenchmark {
     private long counter = 0;
     public FESQLInsertRowBenchmark() {
         SdkOption sdkOption = new SdkOption();
-        sdkOption.setSessionTimeout(30000);
+        sdkOption.setZkSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
         sdkOption.setZkPath(BenchmarkConfig.ZK_PATH);
         this.option = sdkOption;

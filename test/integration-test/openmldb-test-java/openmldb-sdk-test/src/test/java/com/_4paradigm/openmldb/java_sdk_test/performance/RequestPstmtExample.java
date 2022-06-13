@@ -164,7 +164,7 @@ public class RequestPstmtExample extends BaseExample{
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
-        option.setSessionTimeout(10000);
+        option.setZkSessionTimeout(10000);
         sqlExecutor = new SqlClusterExecutor(option);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);

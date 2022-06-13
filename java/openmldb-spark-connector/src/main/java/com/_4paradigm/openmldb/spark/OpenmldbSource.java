@@ -50,9 +50,9 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
         option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
-        String timeout = options.get("sessionTimeout");
+        String timeout = options.get("zkSessionTimeout");
         if (timeout != null) {
-            option.setSessionTimeout(Integer.parseInt(timeout));
+            option.setZkSessionTimeout(Integer.parseInt(timeout));
         }
         timeout = options.get("requestTimeout");
         if (timeout != null) {

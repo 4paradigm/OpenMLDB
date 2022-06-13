@@ -76,7 +76,7 @@ public class SQLDriver implements Driver {
      * <p>Some examples :<br>
      * {@code jdbc:openmldb:///?zk=localhost:6181&zkPath=/onebox}<br>
      * {@code
-     * jdbc:openmldb:///db_test?zk=localhost:6181&zkPath=/onebox&sessionTimeout=1000&enableDebug=true}
+     * jdbc:openmldb:///db_test?zk=localhost:6181&zkPath=/onebox&zkSessionTimeout=1000&enableDebug=true}
      * <br>
      */
     private void parseAndMergeClusterProps(String url, Properties info) throws SQLException {
@@ -135,9 +135,9 @@ public class SQLDriver implements Driver {
         } else {
             throw new IllegalArgumentException("must set param 'zkPath'");
         }
-        prop = properties.getProperty("sessionTimeout");
+        prop = properties.getProperty("zkSessionTimeout");
         if (prop != null) {
-            option.setSessionTimeout(Long.parseLong(prop));
+            option.setZkSessionTimeout(Long.parseLong(prop));
         }
         prop = properties.getProperty("enableDebug");
         if (prop != null) {

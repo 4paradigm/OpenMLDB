@@ -97,7 +97,7 @@ public class FESQLMixerWorkloadExample extends BaseExample {
 
     public void initExecutor() {
         SdkOption sdkOption = new SdkOption();
-        sdkOption.setSessionTimeout(30000);
+        sdkOption.setZkSessionTimeout(30000);
         sdkOption.setZkCluster(zkCluster);
         sdkOption.setZkPath(zkPath);
         sdkOption.setEnableDebug(true);

@@ -85,7 +85,7 @@ public class ComplexSql2Example extends BaseExample {
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
-        option.setSessionTimeout(10000);
+        option.setZkSessionTimeout(10000);
         sqlExecutor = new SqlClusterExecutor(option);
     }
 

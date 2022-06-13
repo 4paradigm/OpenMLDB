@@ -44,7 +44,7 @@ First, the OpenMLDB connection parameters should be configured.
 SdkOption option = new SdkOption();
 option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
-option.setSessionTimeout(10000);
+option.setZkSessionTimeout(10000);
 option.setRequestTimeout(60000);
 ```
 
@@ -295,7 +295,7 @@ public class Demo {
         SdkOption option = new SdkOption();
         option.setZkCluster("172.27.128.37:7181");
         option.setZkPath("/rtidb_wb");
-        option.setSessionTimeout(10000);
+        option.setZkSessionTimeout(10000);
         option.setRequestTimeout(60000);
         // sqlExecutor is multi-threaded safe to execute sql operations, and only one can be created in the actual environment
         sqlExecutor = new SqlClusterExecutor(option);

@@ -52,7 +52,7 @@ public class SQLRouterSmokeTest {
             SdkOption option = new SdkOption();
             option.setZkPath(TestConfig.ZK_PATH);
             option.setZkCluster(TestConfig.ZK_CLUSTER);
-            option.setSessionTimeout(200000);
+            option.setZkSessionTimeout(200000);
             clusterExecutor = new SqlClusterExecutor(option);
             java.sql.Statement state = clusterExecutor.getStatement();
             state.execute("SET @@execute_mode='online';");
@@ -62,7 +62,7 @@ public class SQLRouterSmokeTest {
             standaloneOption.setHost(TestConfig.HOST);
             standaloneOption.setPort(TestConfig.PORT);
             standaloneOption.setClusterMode(false);
-            standaloneOption.setSessionTimeout(20000);
+            standaloneOption.setZkSessionTimeout(20000);
             standaloneExecutor = new SqlClusterExecutor(standaloneOption);
         } catch (Exception e) {
             e.printStackTrace();
