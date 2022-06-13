@@ -1,4 +1,4 @@
-# Integration with Pulsar
+# Importing Real-Time Data Streams from Pulsar
 
 ## Introduction
 

@@ -1,4 +1,4 @@
-# OpenMLDB Kafka Connector：Connecting Real-Time Data Streams
+# Importing Real-Time Data Streams from Kafka
 
 ## Introduction
 
