@@ -35,7 +35,7 @@ using hybridse::base::Status;
 using hybridse::codec::Row;
 using hybridse::common::kTestEngineError;
 using hybridse::sqlcase::SqlCase;
-void BuildAggTableDef(::hybridse::type::TableDef& table,
+void BuildAggTableDef(::hybridse::type::TableDef& table, // NOLINT
                       const std::string& aggr_table = "aggr_t1",
                       const std::string& aggr_db = "aggr_db");
 void BuildTableDef(::hybridse::type::TableDef& table);    // NOLINT
