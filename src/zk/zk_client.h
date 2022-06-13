@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <condition_variable>  // NOLINT
+#include <cstdio>
 #include <map>
 #include <mutex>  // NOLINT
 #include <string>
@@ -27,7 +28,6 @@
 #include "boost/function.hpp"
 
 extern "C" {
-#include "stdio.h"
 #include "zookeeper/zookeeper.h"
 }
 
