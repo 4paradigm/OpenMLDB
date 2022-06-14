@@ -228,7 +228,7 @@ bool ClusterSDK::Init() {
 }
 
 void ClusterSDK::WatchNotify() {
-    LOG(INFO) << "start to watch table notify";
+    LOG(INFO) << "start to watch notify on table, function, ns leader, taskamanger leader";
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
