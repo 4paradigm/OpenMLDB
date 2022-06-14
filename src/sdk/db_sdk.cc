@@ -202,19 +202,14 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "",
-                                              options_.zk_session_timeout, "",
-                                              options_.zk_path);
-    bool ok = zk_client_->Init();
+    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", options_.zk_session_timeout, "", options_.zk_path);
+
+    bool ok = zk_client_->Init(options_.zk_log_level, options_.zk_log_file);
     if (!ok) {
-        LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster << " , zk path "
-                     << options_.zk_path << " and zookeeper session timeout "
-                     << options_.zk_session_timeout;
+        LOG(WARNING) << "fail to init zk client with " << options_.to_string();
         return false;
     }
-    LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
-              << ",zookeeper session timeout " << options_.zk_session_timeout
-              << " and session id " << zk_client_->GetSessionTerm();
+    LOG(INFO) << "init zk client with " << options_.to_string() << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
     eopt.SetCompileOnly(true);
@@ -236,12 +231,10 @@ void ClusterSDK::WatchNotify() {
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
     zk_client_->WatchChildren(options_.zk_path + "/data/function",
-            std::bind(&ClusterSDK::RefreshExternalFun, this, std::placeholders::_1));
+                              std::bind(&ClusterSDK::RefreshExternalFun, this, std::placeholders::_1));
 }
 
-void ClusterSDK::RefreshExternalFun(const std::vector<std::string>& funs) {
-    InitExternalFun();
-}
+void ClusterSDK::RefreshExternalFun(const std::vector<std::string>& funs) { InitExternalFun(); }
 
 bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
     if (type == ::openmldb::type::NotifyType::kTable) {

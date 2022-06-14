@@ -55,14 +55,14 @@ DolphinScheduler 支持 OpenMLDB Task 的版本，请下载[dolphinscheduler-bin
 
 启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/en-us/docs/3.0.0/user_doc/guide/installation/standalone.html)。
 ```
-tar -xvzf apache-dolpSchedulerler-*-bin.tar.gz
-cd apache-dolpSchedulerler-*-bin
-sh ./bin/dolpSchedulerler-daemon.sh start standalone-server
+tar -xvzf apache-dolphinscheduler-*-bin.tar.gz
+cd apache-dolphinscheduler-*-bin
+sh ./bin/dolphinscheduler-daemon.sh start standalone-server
 ```
 
-浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI。默认的用户名和密码是 admin/dolpSchedulerler123。
+浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI。默认的用户名和密码是 admin/dolphinScheduler123。
 
-DolpSchedulerler 的 worker server 需要 OpenMLDB Python SDK，DolpSchedulerler standalone 的 worker 即本机，所以只需在本机安装OpenMLDB Python SDK。我们的OpenMLDB镜像中已经安装了。如果你在别的环境中，请运行：
+DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler standalone 的 worker 即本机，所以只需在本机安装OpenMLDB Python SDK。我们的OpenMLDB镜像中已经安装了。如果你在别的环境中，请运行：
 
 ```
 pip3 install openmldb
