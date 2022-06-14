@@ -3957,7 +3957,7 @@ void StartAPIServer() {
         ::openmldb::sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = FLAGS_zk_cluster;
         cluster_options.zk_path = FLAGS_zk_root_path;
-        cluster_options.session_timeout = FLAGS_zk_session_timeout;
+        cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);
