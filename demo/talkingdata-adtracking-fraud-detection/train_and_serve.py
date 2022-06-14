@@ -9,100 +9,67 @@ import openmldb
 import sqlalchemy as db
 import pandas as pd
 import xgboost as xgb
+from xgboost.sklearn import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score
 import requests
+
 # fmt:on
 
 # openmldb cluster configs
-zk = '127.0.0.1:2181'
-zk_path = '/openmldb'
+ZK = '127.0.0.1:2181'
+ZK_PATH = '/openmldb'
 
 # db, deploy name and model_path will update to predict server. You only need to modify here.
-db_name = 'demo_db'
-deploy_name = 'demo'
+DB_NAME = 'demo_db'
+DEPLOY_NAME = 'demo'
 # save model to
-model_path = '/tmp/model.json'
+MODEL_PATH = '/tmp/model.json'
 
-table_name = 'talkingdata' + str(int(time.time()))
+TABLE_NAME = 'talkingdata' + str(int(time.time()))
 # make sure that taskmanager can access the path
-train_feature_dir = '/tmp/train_feature'
+TRAIN_FEATURE_DIR = '/tmp/train_feature'
 
-predict_server = 'localhost:8881'
+PREDICT_SERVER = 'localhost:8881'
 
 
 def column_string(col_tuple) -> str:
+    """convert to str, used by CREATE TABLE DDL"""
     return ' '.join(col_tuple)
 
 
-def xgb_modelfit_nocv(params, dtrain, dvalid, objective='binary:logistic', metrics='auc',
-                      feval=None, num_boost_round=3000, early_stopping_rounds=20):
-    xgb_params = {
-        'booster': 'gbtree',
-        'obj': objective,
-        'eval_metric': metrics,
-        'num_leaves': 31,  # we should let it be smaller than 2^(max_depth)
-        'max_depth': -1,  # -1 means no limit
-        'max_bin': 255,  # Number of bucketed bin for feature values
-        'subsample': 0.6,  # Subsample ratio of the training instance.
-        'colsample_bytree': 0.3,
-        'min_child_weight': 5,
-        'alpha': 0,  # L1 regularization term on weights
-        'lambda': 0,  # L2 regularization term on weights
-        'nthread': 8,
-        'verbosity': 0,
-    }
-    xgb_params.update(params)
-
-    print('preparing validation datasets')
-
-    evals_results = {}
-
-    bst1 = xgb.train(xgb_params,
-                     dtrain,
-                     evals=dvalid,
-                     evals_result=evals_results,
-                     num_boost_round=num_boost_round,
-                     early_stopping_rounds=early_stopping_rounds,
-                     verbose_eval=10,
-                     feval=feval)
-
-    n_estimators = bst1.best_iteration
-    print('\nModel Report')
-    print('n_estimators : ', n_estimators)
-    print(metrics + ':', evals_results['eval'][metrics][n_estimators - 1])
-
-    return bst1
-
-
-# use pandas extension types to support NA in integer column
-dtypes = {
-    'ip': 'UInt32',
-    'app': 'UInt16',
-    'device': 'UInt16',
-    'os': 'UInt16',
-    'channel': 'UInt16',
-    'is_attributed': 'UInt8',
-    'click_id': 'UInt32'
-}
-
+# NOTE: ignore column 'attributed_time'
 train_schema = [('ip', 'int'), ('app', 'int'), ('device', 'int'),
-                ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp'), ('is_attributed', 'int')]
+                ('os', 'int'), ('channel', 'int'), ('click_time', 'timestamp'),
+                ('is_attributed', 'int')]
 
 
 def cut_data():
+    """prepare sample data, use train_schema, not the origin schema"""
     data_path = 'data/'
     sample_cnt = 10000  # you can prepare sample data by yourself
-    print(f'Prepare train data, use {sample_cnt} rows, save it as train_sample.csv')
-    train_df_tmp = pd.read_csv(data_path + 'train.csv', nrows=sample_cnt,
-                               dtype=dtypes, usecols=[c[0] for c in train_schema])
-    assert len(train_df_tmp) == sample_cnt
+
+    print(
+        f'Prepare train data, use {sample_cnt} rows, save it as train_sample.csv')
+    df = pd.read_csv(data_path + 'train.csv',
+                     usecols=[c[0] for c in train_schema])
+
     # take a portion from train sample data
-    train_df_tmp.to_csv('train_sample.csv', index=False)
-    del train_df_tmp
+    df_tmp = df.sample(n=sample_cnt)
+    assert len(df_tmp) == sample_cnt
+    attr_count = df_tmp.is_attributed.value_counts()
+    print(attr_count)
+    # 'is_attributed' must have two values: 0, 1
+    assert attr_count.count() > 1
+    df_tmp.to_csv('train_sample.csv', index=False)
+    del df_tmp
+    del df
     gc.collect()
 
 
 def nothrow_execute(sql):
-    # only used for drop deployment, cuz 'if not exist' is not supported now
+    """only used for drop deployment, cuz 'if not exist' is not supported now"""
     try:
         print('execute ' + sql)
         _, rs = connection.execute(sql)
@@ -112,34 +79,38 @@ def nothrow_execute(sql):
         print(e)
 
 
-print(f'Prepare openmldb, db {db_name} table {table_name}')
+# skip preparing sample data
 # cut_data()
+
+
+print(f'Prepare openmldb, db {DB_NAME} table {TABLE_NAME}')
 engine = db.create_engine(
-    f'openmldb:///{db_name}?zk={zk}&zkPath={zk_path}')
+    f'openmldb:///{DB_NAME}?zk={ZK}&zkPath={ZK_PATH}')
 connection = engine.connect()
 
-connection.execute(f'CREATE DATABASE IF NOT EXISTS {db_name};')
+connection.execute(f'CREATE DATABASE IF NOT EXISTS {DB_NAME};')
 schema_string = ','.join(list(map(column_string, train_schema)))
-connection.execute(f'CREATE TABLE IF NOT EXISTS {table_name}({schema_string});')
+connection.execute(
+    f'CREATE TABLE IF NOT EXISTS {TABLE_NAME}({schema_string});')
 
-print('Load train_sample data to offline storage for training(hard copy)')
-connection.execute(f'USE {db_name}')
+print('Load train_sample data to offline storage for training(soft copy)')
+connection.execute(f'USE {DB_NAME}')
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute('SET @@sync_job=true;')
 connection.execute('SET @@job_timeout=1200000;')
 # use soft link after https://github.com/4paradigm/OpenMLDB/issues/1565 fixed
 connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
-                   f"INTO TABLE {table_name} OPTIONS(format='csv',header=true);")
+                   f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=false);")
 
 print('Feature extraction')
 # the first column `is_attributed` is the label
 sql_part = f"""
-select is_attributed, ip, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
+select is_attributed, app, device, os, channel, hour(click_time) as hour, day(click_time) as day, 
 count(channel) over w1 as qty, 
 count(channel) over w2 as ip_app_count, 
 count(channel) over w3 as ip_app_os_count  
-from {table_name} 
+from {TABLE_NAME} 
 window 
 w1 as (partition by ip order by click_time ROWS_RANGE BETWEEN 1h PRECEDING AND CURRENT ROW), 
 w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
@@ -147,66 +118,50 @@ w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED 
 """
 # extraction will take time
 connection.execute('SET @@job_timeout=1200000;')
-connection.execute(f"{sql_part} INTO OUTFILE '{train_feature_dir}' OPTIONS(mode='overwrite');")
+connection.execute(
+    f"{sql_part} INTO OUTFILE '{TRAIN_FEATURE_DIR}' OPTIONS(mode='overwrite');")
 
-print(f'Load features from feature dir {train_feature_dir}')
+print(f'Load features from feature dir {TRAIN_FEATURE_DIR}')
 # train_feature_dir has multi csv files
-train_df = pd.concat(map(pd.read_csv, glob.glob(os.path.join('', train_feature_dir + '/*.csv'))))
-print('peek:')
-print(train_df.head())
-len_train = len(train_df)
-train_row_cnt = int(len_train * 3 / 4)
-train_df = train_df[(len_train - train_row_cnt):len_train]
-val_df = train_df[:(len_train - train_row_cnt)]
+# all int, so no need to set read types
+train_df = pd.concat(map(pd.read_csv, glob.glob(
+    os.path.join('', TRAIN_FEATURE_DIR + '/*.csv'))))
 
-print('train size: ', len(train_df))
-print('valid size: ', len(val_df))
+# drop column label
+X_data = train_df.drop('is_attributed', axis=1)
+# drop column 'ip'
+X_data = X_data.drop('ip', axis=1)
+y = train_df.is_attributed
 
-target = 'is_attributed'
-predictors = ['app', 'device', 'os', 'channel', 'hour',
-              'day', 'qty', 'ip_app_count', 'ip_app_os_count']
+# Split the dataset into train and Test
+SEED = 7
+TEST_SIZE = 0.25
+X_train, X_test, y_train, y_test = train_test_split(
+    X_data, y, test_size=TEST_SIZE, random_state=SEED)
 
 gc.collect()
 
 print('Training by xgb')
-params_xgb = {
-    'num_leaves': 7,  # we should let it be smaller than 2^(max_depth)
-    'max_depth': 3,  # -1 means no limit
-    'min_child_samples': 100,
-    'max_bin': 100,  # Number of bucketed bin for feature values
-    'subsample': 0.7,  # Subsample ratio of the training instance.
-    # Subsample ratio of columns when constructing each tree.
-    'colsample_bytree': 0.7,
-    # Minimum sum of instance weight(hessian) needed in a child(leaf)
-    'min_child_weight': 0
-}
-xgtrain = xgb.DMatrix(train_df[predictors].values,
-                      label=train_df[target].values)
-xgvalid = xgb.DMatrix(val_df[predictors].values, label=val_df[target].values)
-watchlist = [(xgvalid, 'eval'), (xgtrain, 'train')]
 
-bst = xgb_modelfit_nocv(params_xgb,
-                        xgtrain,
-                        watchlist,
-                        objective='binary:logistic',
-                        metrics='auc',
-                        num_boost_round=300,
-                        early_stopping_rounds=50)
+# default is binary:logistic
+train_model = XGBClassifier(use_label_encoder=False).fit(X_train, y_train)
+pred = train_model.predict(X_test)
+print("Classification report:\n", classification_report(y_test, pred))
+print(f"Accuracy score: {accuracy_score(y_test, pred) * 100}")
 
 del train_df
-del val_df
 gc.collect()
 
-print('Save model.json to ', model_path)
-bst.save_model(model_path)
+print('Save model to ', MODEL_PATH)
+train_model.save_model(MODEL_PATH)
 
 print('Prepare online serving')
 
 print('Deploy sql')
 connection.execute("SET @@execute_mode='online';")
-connection.execute(f'USE {db_name}')
-nothrow_execute(f'DROP DEPLOYMENT {deploy_name}')
-deploy_sql = f"""DEPLOY {deploy_name} {sql_part}"""
+connection.execute(f'USE {DB_NAME}')
+nothrow_execute(f'DROP DEPLOYMENT {DEPLOY_NAME}')
+deploy_sql = f"""DEPLOY {DEPLOY_NAME} {sql_part}"""
 print(deploy_sql)
 connection.execute(deploy_sql)
 print('Import data to online')
@@ -214,8 +169,9 @@ print('Import data to online')
 # set job_timeout bigger if the `LOAD DATA` job timeout
 connection.execute(
     f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
-    f"INTO TABLE {db_name}.{table_name} OPTIONS(mode='append',format='csv',header=true);")
+    f"INTO TABLE {DB_NAME}.{TABLE_NAME} OPTIONS(mode='append',format='csv',header=true);")
 
 print('Update model to predict server')
-infos = {'database': db_name, 'deployment': deploy_name, 'model_path': model_path}
-requests.post('http://' + predict_server + '/update', json=infos)
+infos = {'database': DB_NAME,
+         'deployment': DEPLOY_NAME, 'model_path': MODEL_PATH}
+requests.post('http://' + PREDICT_SERVER + '/update', json=infos)
