@@ -1517,7 +1517,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             break;
         }
         const Row& instance_row = instance_segment_iter->GetValue();
-        uint64_t instance_order = instance_segment_iter->GetKey();
+        const uint64_t instance_order = instance_segment_iter->GetKey();
         while (min_union_pos >= 0 &&
                union_segment_status[min_union_pos].key_ <= instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
@@ -1541,12 +1541,11 @@ void WindowAggRunner::RunWindowAggOnKey(
         }
         if (windows_join_gen_.Valid()) {
             Row row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
-            output_table->AddRow(window_project_gen_.Gen(instance_segment_iter->GetKey(), row, parameter, true,
-                                                         append_slices_, &window));
+            output_table->AddRow(
+                window_project_gen_.Gen(instance_order, row, parameter, true, append_slices_, &window));
         } else {
-            output_table->AddRow(window_project_gen_.Gen(
-                instance_segment_iter->GetKey(), instance_row, parameter, true,
-                append_slices_, &window));
+            output_table->AddRow(
+                window_project_gen_.Gen(instance_order, instance_row, parameter, true, append_slices_, &window));
         }
 
         cnt++;

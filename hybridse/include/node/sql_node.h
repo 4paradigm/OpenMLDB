@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
@@ -1115,48 +1116,46 @@ class FrameBound : public SqlNode {
 
     ~FrameBound() {}
 
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SqlNode::Print(output, org_tab);
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        output << tab << SPACE_ST << "bound: " << BoundTypeName(bound_type_) << "\n";
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 
-        if (kFollowing == bound_type_ || kPreceding == bound_type_) {
-            output << space << offset_;
-        }
-    }
     const std::string GetExprString() const {
-        switch (bound_type_) {
-            case node::kCurrent:
-                return "0";
-            case node::kOpenFollowing:
-            case node::kOpenPreceding:
-            case node::kFollowing:
-            case node::kPreceding:
-                return std::to_string(GetSignedOffset());
-            case node::kPrecedingUnbound:
-            case node::kFollowingUnbound:
-                return "UNBOUND";
-        }
-        return "";
+        return absl::StrCat(offset_, " ", BoundTypeName(bound_type_));
     }
 
     BoundType bound_type() const { return bound_type_; }
     const bool is_time_offset() const { return is_time_offset_; }
     int64_t GetOffset() const { return offset_; }
-    int64_t GetSignedOffset() const {
+
+
+    /// \brief get the inclusive frame bound offset value that has signed symbol
+    ///
+    /// usually, `offset_` is non-negative (think about the offset expr in SQL window frame:
+    ///         'ROWS BETWEEN 2 PRECEDING AND 0 OPEN PRECEDING')
+    /// * for 'PRECEDING' bound, output is negative
+    /// * for 'FOLLOWING' bound, output is positive
+    /// * for 'OPEN [ PRECEDING | FOLLOWING ]', output is one increasing or decreasing, based on
+    ///   whether it is start bound or end bound
+    ///
+    /// \param is_start_frame whether this bound is start or end of window frame
+    ///
+    /// by convention, start frame is the one has the lower signed offset value
+    /// and should be the first frame in SQL string
+    ///
+    /// e.g
+    /// 2s PRECEDING AND 0s PRECEDING -> (true, false)
+    /// 2s following and 1s following -> (true, false)
+    int64_t GetSignedOffset(bool is_start_frame) const {
         switch (bound_type_) {
             case node::kCurrent:
                 return 0;
             case node::kFollowing:
                 return offset_;
             case node::kOpenFollowing:
-                return offset_ - 1;
+                return is_start_frame ? offset_ + 1 : offset_ - 1;
             case node::kPreceding:
                 return -1 * offset_;
             case node::kOpenPreceding:
-                return -1 * (offset_ - 1);
+                return is_start_frame ? -1 * ( offset_  - 1 ) : -1 * (offset_ + 1);
             case node::kPrecedingUnbound:
                 return INT64_MIN;
             case node::kFollowingUnbound:
@@ -1207,6 +1206,15 @@ class FrameExtent : public SqlNode {
         return str;
     }
 
+    // get the inclusive frome bound offset value for start and end
+    inline int64_t GetStartOffset() const {
+        return start_->GetSignedOffset(true);
+    }
+
+    inline int64_t GetEndOffset() const {
+        return end_->GetSignedOffset(false);
+    }
+
     FrameExtent* ShadowCopy(NodeManager* nm) const override;
 
  private:
@@ -1237,18 +1245,18 @@ class FrameNode : public SqlNode {
         }
         if (nullptr == frame_rows_) {
             return nullptr == frame_range_ || nullptr == frame_range_->start() ? INT64_MIN
-                   : frame_range_->start()->GetSignedOffset() > 0              ? 0
-                                                                  : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->GetStartOffset() > 0                        ? 0
+                                                                               : frame_range_->GetStartOffset();
         } else {
             return nullptr == frame_range_ || nullptr == frame_range_->start() ? 0
-                   : frame_range_->start()->GetSignedOffset() > 0              ? 0
-                                                                  : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->GetStartOffset() > 0                        ? 0
+                                                                               : frame_range_->GetStartOffset();
         }
     }
     int64_t GetHistoryRangeEnd() const {
         return nullptr == frame_range_ || nullptr == frame_range_->end() ? 0
-               : frame_range_->end()->GetSignedOffset() > 0              ? 0
-                                                                         : frame_range_->end()->GetSignedOffset();
+               : frame_range_->GetEndOffset() > 0                        ? 0
+                                                                         : frame_range_->GetEndOffset();
     }
 
     int64_t GetHistoryRowsStartPreceding() const { return -1 * GetHistoryRowsStart(); }
@@ -1258,12 +1266,12 @@ class FrameNode : public SqlNode {
         }
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? INT64_MIN
-                   : frame_rows_->start()->GetSignedOffset() > 0             ? 0
-                                                                             : frame_rows_->start()->GetSignedOffset();
+                   : frame_rows_->GetStartOffset() > 0                       ? 0
+                                                                             : frame_rows_->GetStartOffset();
         } else {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->start()->GetSignedOffset() > 0             ? 0
-                                                                             : frame_rows_->start()->GetSignedOffset();
+                   : frame_rows_->GetStartOffset() > 0                       ? 0
+                                                                             : frame_rows_->GetStartOffset();
         }
     }
     int64_t GetHistoryRowsEnd() const {
@@ -1272,11 +1280,11 @@ class FrameNode : public SqlNode {
         }
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? INT64_MIN
-                                                                             : frame_rows_->end()->GetSignedOffset();
+                                                                             : frame_rows_->GetEndOffset();
         } else {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->end()->GetSignedOffset() > 0               ? 0
-                                                                             : frame_rows_->end()->GetSignedOffset();
+                   : frame_rows_->GetEndOffset() > 0                         ? 0
+                                                                             : frame_rows_->GetEndOffset();
         }
     }
     inline const bool IsHistoryFrame() const {

@@ -972,12 +972,12 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
     CHECK_TRUE(nullptr != window_frame->end_expr(), common::kSqlAstError, "Un-support window frame with null end")
     CHECK_STATUS(ConvertFrameBound(window_frame->start_expr(), node_manager, &start))
     CHECK_STATUS(ConvertFrameBound(window_frame->end_expr(), node_manager, &end))
-    node::ExprNode* frame_size = nullptr;
+    node::ExprNode* frame_max_size = nullptr;
     if (nullptr != window_frame->max_size()) {
-        CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_size))
+        CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_max_size))
     }
     *output = dynamic_cast<node::FrameNode*>(
-        node_manager->MakeFrameNode(frame_type, node_manager->MakeFrameExtent(start, end), frame_size));
+        node_manager->MakeFrameNode(frame_type, node_manager->MakeFrameExtent(start, end), frame_max_size));
     return base::Status::OK();
 }
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
