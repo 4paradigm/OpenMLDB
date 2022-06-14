@@ -1138,7 +1138,8 @@ class FrameBound : public SqlNode {
     ///
     /// \param is_start_frame whether this bound is start or end of window frame
     ///
-    /// by convention, the frame that is more close to the current row is the end frame
+    /// by convention, start frame is the one has the lower signed offset value
+    /// and should be the first frame in SQL string
     ///
     /// e.g
     /// 2s PRECEDING AND 0s PRECEDING -> (true, false)
@@ -1150,7 +1151,7 @@ class FrameBound : public SqlNode {
             case node::kFollowing:
                 return offset_;
             case node::kOpenFollowing:
-                return is_start_frame ? offset_ - 1 : offset_ + 1;
+                return is_start_frame ? offset_ + 1 : offset_ - 1;
             case node::kPreceding:
                 return -1 * offset_;
             case node::kOpenPreceding:
