@@ -210,7 +210,7 @@ bool InitClusterSDK() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
-    copt.session_timeout = FLAGS_zk_session_timeout;
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
     copt.zk_log_level = FLAGS_zk_log_level;
     copt.zk_log_file = FLAGS_zk_log_file;
     cs = new ::openmldb::sdk::ClusterSDK(copt);
