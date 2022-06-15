@@ -35,7 +35,7 @@ class OpenMLDBClusterSdkOptions(object):
     def __init__(self, zk_cluster, zk_path, session_timeout=3000):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
-        self.session_timeout = session_timeout
+        self.zk_session_timeout = session_timeout
 
 
 class OpenMLDBStandaloneSdkOptions(object):

@@ -64,7 +64,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
         if (option.isClusterMode()) {
             SQLRouterOptions sqlOpt = new SQLRouterOptions();
-            sqlOpt.setSession_timeout(option.getSessionTimeout());
+            sqlOpt.setZk_session_timeout(option.getSessionTimeout());
             sqlOpt.setZk_cluster(option.getZkCluster());
             sqlOpt.setZk_path(option.getZkPath());
             sqlOpt.setEnable_debug(option.getEnableDebug());
@@ -73,7 +73,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlOpt.delete();
         } else {
             StandaloneOptions sqlOpt = new StandaloneOptions();
-            sqlOpt.setSession_timeout(option.getSessionTimeout());
             sqlOpt.setEnable_debug(option.getEnableDebug());
             sqlOpt.setRequest_timeout(option.getRequestTimeout());
             sqlOpt.setHost(option.getHost());

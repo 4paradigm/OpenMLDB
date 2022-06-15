@@ -58,7 +58,7 @@ TEST_F(SQLRouterTest, bad_zk) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = "127.0.0.1:1111";
     sql_opt.zk_path = "/path";
-    sql_opt.session_timeout = 10;
+    sql_opt.zk_session_timeout = 10;
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router == nullptr);
 }
