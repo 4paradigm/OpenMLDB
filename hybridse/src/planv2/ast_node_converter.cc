@@ -976,8 +976,11 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
     if (nullptr != window_frame->max_size()) {
         CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_max_size))
     }
+    auto* frame_ext = node_manager->MakeFrameExtent(start, end);
+    CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
+               "The lower bound of a window frame must be less than or equal to the upper bound");
     *output = dynamic_cast<node::FrameNode*>(
-        node_manager->MakeFrameNode(frame_type, node_manager->MakeFrameExtent(start, end), frame_max_size));
+        node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size));
     return base::Status::OK();
 }
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
