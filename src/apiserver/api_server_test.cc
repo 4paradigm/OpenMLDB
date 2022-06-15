@@ -52,7 +52,7 @@ class APIServerTestEnv : public testing::Environment {
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
         sdk::SQLRouterOptions sql_opt;
-        sql_opt.session_timeout = 30000;
+        sql_opt.zk_session_timeout = 30000;
         sql_opt.zk_cluster = mc->GetZkCluster();
         sql_opt.zk_path = mc->GetZkPath();
         // sql_opt.enable_debug = true;
