@@ -40,6 +40,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // reuse Spark output row backed array
   private val outputFieldNum =
   if (keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
+
   private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
   // native row codecs
@@ -242,14 +243,20 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   }
 
   def delete(): Unit = {
-    encoder.delete()
-    encoder = null
+    if (encoder != null) {
+      encoder.delete()
+      encoder = null
+    }
 
-    decoder.delete()
-    decoder = null
+    if (decoder != null) {
+      decoder.delete()
+      decoder = null
+    }
 
-    window.delete()
-    window = null
+    if (window != null) {
+      window.delete()
+      window = null
+    }
   }
 
   def resetGroupKeyComparator(keyIdxs: Array[Int]): Unit = {

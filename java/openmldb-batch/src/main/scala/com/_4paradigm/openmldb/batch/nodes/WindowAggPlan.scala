@@ -29,7 +29,6 @@ import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.util.SerializableConfiguration
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
 
 /** The planner which implements window agg physical node.
@@ -98,16 +97,11 @@ object WindowAggPlan {
       HybridseUtil.getSparkSchema(physicalNode.GetOutputSchema())
     }
 
-
     // Do window agg with UnsafeRow optimization or not
     val outputDf = if (isUnsafeRowOptimization) {
 
-      // Combine row and internal row in the tuple for repartition
-      val rowRdd = repartitionDf.rdd
       val internalRowRdd = repartitionDf.queryExecution.toRdd
-
       val inputSchema = repartitionDf.schema
-
       val inputTimestampColIndexes = mutable.ArrayBuffer[Int]()
       for (i <- 0 until inputSchema.size) {
         if (inputSchema(i).dataType == TimestampType) {
@@ -137,6 +131,8 @@ object WindowAggPlan {
       }
 
       val outputInternalRowRdd = if (isWindowWithUnion) {
+        val rowRdd = repartitionDf.rdd
+        // Combine row and internal row in the tuple for repartition
         val zippedRdd = rowRdd.zip(internalRowRdd)
         zippedRdd.mapPartitionsWithIndex {
           case (partitionIndex, iter) =>
@@ -146,6 +142,8 @@ object WindowAggPlan {
         }
       } else {
         if (isWindowSkewOptimization) {
+          val rowRdd = repartitionDf.rdd
+          // Combine row and internal row in the tuple for repartition
           val zippedRdd = rowRdd.zip(internalRowRdd)
           zippedRdd.mapPartitionsWithIndex {
             case (partitionIndex, iter) =>
@@ -164,10 +162,11 @@ object WindowAggPlan {
           }
         }
 
-
       }
 
       SparkUtil.rddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
+      // TODO(tobe): Use custom Spark library to avoid Java reflection
+      // ctx.getSparkSession.internalCreateDataFrame(outputInternalRowRdd, outputSchema, false)
 
     } else { // isUnsafeRowOptimization is false
       val outputRdd = if (isWindowWithUnion) {
@@ -777,8 +776,6 @@ object WindowAggPlan {
       computer.delete()
     }
   }
-
-
 
   def isValidOrder(key: java.lang.Long): Boolean = {
     // TODO: Ignore the null value, maybe handle null in the future
