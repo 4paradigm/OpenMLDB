@@ -16,9 +16,6 @@
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
-#include <algorithm>
-#include <fstream>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -30,7 +27,6 @@
 #include "absl/strings/strip.h"
 #include "base/linenoise.h"
 #include "base/texttable.h"
-#include "boost/regex.hpp"
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
