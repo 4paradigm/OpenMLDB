@@ -3,7 +3,7 @@
     <check level="warning" class="org.scalastyle.file.FileTabChecker" enabled="true"/>
     <check level="warning" class="org.scalastyle.file.FileLengthChecker" enabled="true">
         <parameters>
-            <parameter name="maxFileLength"><![CDATA[800]]></parameter>
+            <parameter name="maxFileLength"><![CDATA[1000]]></parameter>
         </parameters>
     </check>
     <check level="warning" class="org.scalastyle.file.HeaderMatchesChecker" enabled="true">
