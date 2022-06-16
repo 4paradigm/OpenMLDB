@@ -42,7 +42,7 @@ namespace sdk {
 class SQLRequestRowBatch;
 }  // namespace sdk
 
-const uint32_t INVALID_TID = UINT32_MAX;
+
 namespace client {
 using ::openmldb::api::TaskInfo;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
