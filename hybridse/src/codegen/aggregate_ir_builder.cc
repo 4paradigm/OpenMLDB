@@ -118,13 +118,9 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                 *res_agg_type = col_type;
             }
 
-            std::string col_key = rel_name + "." + col_name;
-            auto iter = agg_col_infos_.find(col_key);
-            if (iter == agg_col_infos_.end()) {
-                agg_col_infos_[col_key] =
-                    AggColumnInfo(col, node_type, schema_idx, col_idx, offset);
-            }
-            agg_col_infos_[col_key].AddAgg(agg_func_name, output_idx);
+            std::string col_key = absl::StrCat(rel_name, ".", col_name);
+            auto res = agg_col_infos_.try_emplace(col_key, col, node_type, schema_idx, col_idx, offset);
+            res.first->second.AddAgg(agg_func_name, output_idx);
             return true;
         }
         default:
@@ -149,7 +145,7 @@ class StatisticalAggGenerator {
           avg_states_(col_num_, nullptr),
           min_states_(col_num_, nullptr),
           max_states_(col_num_, nullptr),
-          count_state_(nullptr) {}
+          count_state_(col_num_, nullptr) {}
 
     ::llvm::Value* GenSumInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
@@ -245,24 +241,24 @@ class StatisticalAggGenerator {
                 } else {
                     avg_states_[i] = GenAvgInitState(builder);
                 }
-                if (count_state_ == nullptr) {
-                    count_state_ = GenCountInitState(builder);
+                if (count_state_[i] == nullptr) {
+                    count_state_[i] = GenCountInitState(builder);
                 }
             }
             if (!count_idxs_[i].empty()) {
-                if (count_state_ == nullptr) {
-                    count_state_ = GenCountInitState(builder);
+                if (count_state_[i] == nullptr) {
+                    count_state_[i] = GenCountInitState(builder);
                 }
             }
             if (!min_idxs_[i].empty()) {
-                if (count_state_ == nullptr) {
-                    count_state_ = GenCountInitState(builder);
+                if (count_state_[i] == nullptr) {
+                    count_state_[i] = GenCountInitState(builder);
                 }
                 min_states_[i] = GenMinInitState(builder);
             }
             if (!max_idxs_[i].empty()) {
-                if (count_state_ == nullptr) {
-                    count_state_ = GenCountInitState(builder);
+                if (count_state_[i] == nullptr) {
+                    count_state_[i] = GenCountInitState(builder);
                 }
                 max_states_[i] = GenMaxInitState(builder);
             }
@@ -295,15 +291,13 @@ class StatisticalAggGenerator {
         builder->CreateStore(sum, avg_states_[i]);
     }
 
-    void GenCountUpdate(::llvm::IRBuilder<>* builder, ::llvm::Value* is_null) {
+    void GenCountUpdate(size_t i, ::llvm::Value* is_null, ::llvm::IRBuilder<>* builder) {
         ::llvm::Value* one = ::llvm::ConstantInt::get(
-            reinterpret_cast<::llvm::PointerType*>(count_state_->getType())
-                ->getElementType(),
-            1, true);
-        ::llvm::Value* cnt = builder->CreateLoad(count_state_);
+            reinterpret_cast<::llvm::PointerType*>(count_state_[i]->getType())->getElementType(), 1, true);
+        ::llvm::Value* cnt = builder->CreateLoad(count_state_[i]);
         ::llvm::Value* new_cnt = builder->CreateAdd(cnt, one);
         new_cnt = builder->CreateSelect(is_null, cnt, new_cnt);
-        builder->CreateStore(new_cnt, count_state_);
+        builder->CreateStore(new_cnt, count_state_[i]);
     }
 
     void GenMinUpdate(size_t i, ::llvm::Value* input, ::llvm::Value* is_null,
@@ -339,20 +333,15 @@ class StatisticalAggGenerator {
     void GenUpdate(::llvm::IRBuilder<>* builder,
                    const std::vector<::llvm::Value*>& inputs,
                    const std::vector<::llvm::Value*>& is_null) {
-        bool count_updated = false;
         for (size_t i = 0; i < col_num_; ++i) {
-            if (!sum_idxs_[i].empty() ||
-                (!avg_idxs_[i].empty() && avg_states_[i] == nullptr)) {
+            if (!sum_idxs_[i].empty() || (!avg_idxs_[i].empty() && avg_states_[i] == nullptr)) {
                 GenSumUpdate(i, inputs[i], is_null[i], builder);
             }
             if (!avg_idxs_[i].empty() && avg_states_[i] != nullptr) {
                 GenAvgUpdate(i, inputs[i], is_null[i], builder);
             }
-            if ((!avg_idxs_[i].empty() || !count_idxs_[i].empty() ||
-                 !min_idxs_[i].empty() || !max_idxs_[i].empty()) &&
-                !count_updated) {
-                GenCountUpdate(builder, is_null[i]);
-                count_updated = true;
+            if (!avg_idxs_[i].empty() || !count_idxs_[i].empty() || !min_idxs_[i].empty() || !max_idxs_[i].empty()) {
+                GenCountUpdate(i, is_null[i], builder);
             }
             if (!min_idxs_[i].empty()) {
                 GenMinUpdate(i, inputs[i], is_null[i], builder);
@@ -369,13 +358,12 @@ class StatisticalAggGenerator {
             if (!sum_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(sum_states_[i]);
                 for (int idx : sum_idxs_[i]) {
-                    outputs->emplace_back(
-                        std::make_pair(idx, NativeValue::Create(accum)));
+                    outputs->emplace_back(idx, NativeValue::Create(accum));
                 }
             }
             ::llvm::Value* cnt = nullptr;
-            if (count_state_ != nullptr) {
-                cnt = builder->CreateLoad(count_state_);
+            if (count_state_[i] != nullptr) {
+                cnt = builder->CreateLoad(count_state_[i]);
             }
             if (!avg_idxs_[i].empty()) {
                 ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLlvmType(
@@ -389,14 +377,12 @@ class StatisticalAggGenerator {
                 ::llvm::Value* avg = builder->CreateFDiv(
                     sum, builder->CreateSIToFP(cnt, avg_ty));
                 for (int idx : avg_idxs_[i]) {
-                    outputs->emplace_back(
-                        std::make_pair(idx, NativeValue::Create(avg)));
+                    outputs->emplace_back(idx, NativeValue::Create(avg));
                 }
             }
             if (!count_idxs_[i].empty()) {
                 for (int idx : count_idxs_[i]) {
-                    outputs->emplace_back(
-                        std::make_pair(idx, NativeValue::Create(cnt)));
+                    outputs->emplace_back(idx, NativeValue::Create(cnt));
                 }
             }
             ::llvm::Value* is_empty = nullptr;
@@ -406,15 +392,13 @@ class StatisticalAggGenerator {
             if (!min_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
                 for (int idx : min_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(
-                        idx, NativeValue::CreateWithFlag(accum, is_empty)));
+                    outputs->emplace_back(idx, NativeValue::CreateWithFlag(accum, is_empty));
                 }
             }
             if (!max_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
                 for (int idx : max_idxs_[i]) {
-                    outputs->emplace_back(std::make_pair(
-                        idx, NativeValue::CreateWithFlag(accum, is_empty)));
+                    outputs->emplace_back(idx, NativeValue::CreateWithFlag(accum, is_empty));
                 }
             }
         }
@@ -458,7 +442,7 @@ class StatisticalAggGenerator {
     std::vector<::llvm::Value*> avg_states_;
     std::vector<::llvm::Value*> min_states_;
     std::vector<::llvm::Value*> max_states_;
-    ::llvm::Value* count_state_;
+    std::vector<::llvm::Value*> count_state_;
 };
 
 llvm::Type* AggregateIRBuilder::GetOutputLlvmType(
@@ -610,8 +594,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                common::kCodegenLoadValueError, "fail to get output row ptr")
     ::llvm::Value* output_buf = output_buf_wrapper.GetValue(&builder);
 
-    std::string fn_name =
-        base_funcname + "_multi_column_agg_" + std::to_string(id_) + "__";
+    std::string fn_name = absl::StrCat(base_funcname, "_multi_column_agg_", id_, "__");
     auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
     ::llvm::FunctionType* fnt = ::llvm::FunctionType::get(
         llvm::Type::getVoidTy(llvm_ctx), {ptr_ty, ptr_ty}, false);
