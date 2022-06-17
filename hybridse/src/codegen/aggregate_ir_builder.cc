@@ -232,34 +232,25 @@ class StatisticalAggGenerator {
 
     void GenInitState(::llvm::IRBuilder<>* builder) {
         for (size_t i = 0; i < col_num_; ++i) {
+            // any of min/max/avg/sum/count need the count info
+            count_state_[i] = GenCountInitState(builder);
+
             if (!sum_idxs_[i].empty()) {
                 sum_states_[i] = GenSumInitState(builder);
             }
             if (!avg_idxs_[i].empty()) {
                 if (col_type_ == ::hybridse::node::kDouble) {
-                    sum_states_[i] = GenSumInitState(builder);
+                    if (sum_states_[i] == nullptr) {
+                        sum_states_[i] = GenSumInitState(builder);
+                    }
                 } else {
                     avg_states_[i] = GenAvgInitState(builder);
                 }
-                if (count_state_[i] == nullptr) {
-                    count_state_[i] = GenCountInitState(builder);
-                }
-            }
-            if (!count_idxs_[i].empty()) {
-                if (count_state_[i] == nullptr) {
-                    count_state_[i] = GenCountInitState(builder);
-                }
             }
             if (!min_idxs_[i].empty()) {
-                if (count_state_[i] == nullptr) {
-                    count_state_[i] = GenCountInitState(builder);
-                }
                 min_states_[i] = GenMinInitState(builder);
             }
             if (!max_idxs_[i].empty()) {
-                if (count_state_[i] == nullptr) {
-                    count_state_[i] = GenCountInitState(builder);
-                }
                 max_states_[i] = GenMaxInitState(builder);
             }
         }
@@ -334,14 +325,12 @@ class StatisticalAggGenerator {
                    const std::vector<::llvm::Value*>& inputs,
                    const std::vector<::llvm::Value*>& is_null) {
         for (size_t i = 0; i < col_num_; ++i) {
+            GenCountUpdate(i, is_null[i], builder);
             if (!sum_idxs_[i].empty() || (!avg_idxs_[i].empty() && avg_states_[i] == nullptr)) {
                 GenSumUpdate(i, inputs[i], is_null[i], builder);
             }
             if (!avg_idxs_[i].empty() && avg_states_[i] != nullptr) {
                 GenAvgUpdate(i, inputs[i], is_null[i], builder);
-            }
-            if (!avg_idxs_[i].empty() || !count_idxs_[i].empty() || !min_idxs_[i].empty() || !max_idxs_[i].empty()) {
-                GenCountUpdate(i, is_null[i], builder);
             }
             if (!min_idxs_[i].empty()) {
                 GenMinUpdate(i, inputs[i], is_null[i], builder);
@@ -352,49 +341,46 @@ class StatisticalAggGenerator {
         }
     }
 
-    void GenOutputs(::llvm::IRBuilder<>* builder,
-                    std::vector<std::pair<size_t, NativeValue>>* outputs) {
+    void GenOutputs(::llvm::IRBuilder<>* builder, std::vector<std::pair<size_t, NativeValue>>* outputs) {
         for (size_t i = 0; i < col_num_; ++i) {
+            // cnt always exists
+            ::llvm::Value* cnt = builder->CreateLoad(count_state_[i]);
+            ::llvm::Value* is_empty = builder->CreateICmpEQ(cnt, builder->getInt64(0));
+
             if (!sum_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(sum_states_[i]);
                 for (int idx : sum_idxs_[i]) {
-                    outputs->emplace_back(idx, NativeValue::Create(accum));
+                    outputs->emplace_back(idx, NativeValue::CreateWithFlag(accum, is_empty));
                 }
             }
-            ::llvm::Value* cnt = nullptr;
-            if (count_state_[i] != nullptr) {
-                cnt = builder->CreateLoad(count_state_[i]);
-            }
+
             if (!avg_idxs_[i].empty()) {
-                ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLlvmType(
-                    builder->getContext(), "avg", col_type_);
+                ::llvm::Type* avg_ty = AggregateIRBuilder::GetOutputLlvmType(builder->getContext(), "avg", col_type_);
                 ::llvm::Value* sum;
                 if (avg_states_[i] == nullptr) {
                     sum = builder->CreateLoad(sum_states_[i]);
                 } else {
                     sum = builder->CreateLoad(avg_states_[i]);
                 }
-                ::llvm::Value* avg = builder->CreateFDiv(
-                    sum, builder->CreateSIToFP(cnt, avg_ty));
+                ::llvm::Value* raw_avg = builder->CreateFDiv(sum, builder->CreateSIToFP(cnt, avg_ty));
                 for (int idx : avg_idxs_[i]) {
-                    outputs->emplace_back(idx, NativeValue::Create(avg));
+                    outputs->emplace_back(idx, NativeValue::CreateWithFlag(raw_avg, is_empty));
                 }
             }
+
             if (!count_idxs_[i].empty()) {
                 for (int idx : count_idxs_[i]) {
                     outputs->emplace_back(idx, NativeValue::Create(cnt));
                 }
             }
-            ::llvm::Value* is_empty = nullptr;
-            if (cnt != nullptr) {
-                is_empty = builder->CreateICmpEQ(cnt, builder->getInt64(0));
-            }
+
             if (!min_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
                 for (int idx : min_idxs_[i]) {
                     outputs->emplace_back(idx, NativeValue::CreateWithFlag(accum, is_empty));
                 }
             }
+
             if (!max_idxs_[i].empty()) {
                 ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
                 for (int idx : max_idxs_[i]) {
@@ -442,6 +428,9 @@ class StatisticalAggGenerator {
     std::vector<::llvm::Value*> avg_states_;
     std::vector<::llvm::Value*> min_states_;
     std::vector<::llvm::Value*> max_states_;
+    // the count of non-null values of corresponding column
+    // represent the result of `count(col)`
+    // and help sum/avg/min/max to determine if `NULL` should returned
     std::vector<::llvm::Value*> count_state_;
 };
 
@@ -539,7 +528,7 @@ base::Status ScheduleAggGenerators(
             StatisticalAggGenerator agg_gen(cur_col_type, agg_gen_col_seq);
             for (size_t i = 0; i < agg_gen_col_seq.size(); ++i) {
                 auto& geninfo = agg_col_infos[agg_gen_col_seq[i]];
-                geninfo.Show();
+                DLOG(INFO) << geninfo.DebugString();
                 for (size_t j = 0; j < geninfo.GetOutputNum(); j++) {
                     auto& fname = geninfo.agg_funcs[j];
                     size_t out_idx = geninfo.output_idxs[j];
