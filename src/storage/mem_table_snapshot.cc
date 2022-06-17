@@ -26,7 +26,6 @@
 #include <set>
 #include <utility>
 
-#include "base/count_down_latch.h"
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/hash.h"
