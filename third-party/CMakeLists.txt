@@ -29,7 +29,7 @@ set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install di
 # By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
-option(WITH_ZETASQL "Download or build zetasql" ON)
+option(WITH_ZETASQL "Download and build zetasql" ON)
 
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
@@ -68,7 +68,7 @@ set(MAKEOPTS "$ENV{MAKEOPTS}" CACHE STRING "Extra options to make")
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
 set(HYBRIDSQL_ASSERTS_HOME https://github.com/4paradigm/hybridsql-asserts)
-set(HYBRIDSQL_ASSERTS_VERSION 0.5.0.b3)
+set(HYBRIDSQL_ASSERTS_VERSION 0.5.0)
 
 function(get_linux_lsb_release_information)
   execute_process(COMMAND bash ${CMAKE_SOURCE_DIR}/get-lsb-release.sh
@@ -90,17 +90,17 @@ function(init_hybridsql_thirdparty_urls)
     else()
       if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
         set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-        set(HYBRIDSQL_ASSERTS_HASH 1858d7b8950f41fbbdb5293d9843ae15ec3aecd08b7bba5ffe263a8b9e6c8b81 PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_HASH 959ba9e41f1faaae474484c7233b335a4e677ca87f408c04e0e43b012576d997 PARENT_SCOPE)
       elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
         set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-        set(HYBRIDSQL_ASSERTS_HASH eea077b3120fdcc59e64ef36f1c05d887689e4ae2f1daa58844385da83ca3729 PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_HASH 885cc2a955b6c0610c7d68b8ca3b54d3f410f32d4eaaee0a82a1dbfc88a22f54 PARENT_SCOPE)
       else()
         message(FATAL_ERROR "no pre-compiled thirdparty for your operation system, try compile thirdparty from source with '-DBUILD_BUNDLED=ON'")
       endif()
     endif()
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-darwin-i386.tar.gz" PARENT_SCOPE)
-    set(HYBRIDSQL_ASSERTS_HASH 71cece443fba8bb5a21cf86399aaf093b3063c1f811cffcf65dd04c68ea10520 PARENT_SCOPE)
+    set(HYBRIDSQL_ASSERTS_HASH 0e964e82f664cb7f1c124e29a01ea8de25711549c8d1a0c5da07ed24edb1b264 PARENT_SCOPE)
   endif()
 endfunction()
 
