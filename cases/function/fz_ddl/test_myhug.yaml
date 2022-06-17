@@ -154,15 +154,24 @@ cases:
       - [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
       - [NULL,   1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
   expect:
-    schema: |
-      reqId_1:string, flattenRequest_reqId_original_0:string, flattenRequest_eventTime_original_1:timestamp, flattenRequest_uUserId_original_2:string, flattenRequest_zUserId_original_3:string, flattenRequest_uSex_combine_77:string, flattenRequest_zSex_original_8:string, flattenRequest_zChannel_original_14:string, flattenRequest_uPlayGame_original_67:string, flattenRequest_uHasJoinedGroup_original_46:string, flattenRequest_uWatchMorning_original_60:double, flattenRequest_uWatchEvening_original_62:double, flattenRequest_uWatchAvgLength_original_63:double, flattenRequest_zSWihsperNum_original_23:double,
-      flattenRequest_uWatchAvgLength_window_sum_76:double, flattenRequest_uWatchMorning_window_avg_78:double, flattenRequest_uWatchEvening_window_avg_79:double, flattenRequest_zSWihsperNum_window_sum_80:double, flattenRequest_uWatchAvgLength_window_avg_81:double, flattenRequest_zUserId_window_count_82:bigint, flattenRequest_zUserId_window_count_83:bigint, flattenRequest_zUserId_window_count_84:bigint, flattenRequest_zUserId_window_count_85:bigint, flattenRequest_uUserId_window_count_86:bigint, flattenRequest_uUserId_window_count_87:bigint, flattenRequest_uUserId_window_count_88:bigint, flattenRequest_uUserId_window_count_89:bigint, flattenRequest_uUserId_window_count_90:bigint, flattenRequest_uUserId_window_count_91:bigint, flattenRequest_uUserId_window_count_92:bigint, reqId_74:string, action_actionValue_multi_direct_73:double, reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
+    schema: >
+      reqId_1:string, flattenRequest_reqId_original_0:string, flattenRequest_eventTime_original_1:timestamp, flattenRequest_uUserId_original_2:string,
+      flattenRequest_zUserId_original_3:string, flattenRequest_uSex_combine_77:string, flattenRequest_zSex_original_8:string,
+      flattenRequest_zChannel_original_14:string, flattenRequest_uPlayGame_original_67:string, flattenRequest_uHasJoinedGroup_original_46:string,
+      flattenRequest_uWatchMorning_original_60:double, flattenRequest_uWatchEvening_original_62:double, flattenRequest_uWatchAvgLength_original_63:double,
+      flattenRequest_zSWihsperNum_original_23:double, flattenRequest_uWatchAvgLength_window_sum_76:double, flattenRequest_uWatchMorning_window_avg_78:double,
+      flattenRequest_uWatchEvening_window_avg_79:double, flattenRequest_zSWihsperNum_window_sum_80:double, flattenRequest_uWatchAvgLength_window_avg_81:double,
+      flattenRequest_zUserId_window_count_82:bigint, flattenRequest_zUserId_window_count_83:bigint, flattenRequest_zUserId_window_count_84:bigint,
+      flattenRequest_zUserId_window_count_85:bigint, flattenRequest_uUserId_window_count_86:bigint, flattenRequest_uUserId_window_count_87:bigint,
+      flattenRequest_uUserId_window_count_88:bigint, flattenRequest_uUserId_window_count_89:bigint, flattenRequest_uUserId_window_count_90:bigint,
+      flattenRequest_uUserId_window_count_91:bigint, flattenRequest_uUserId_window_count_92:bigint, reqId_74:string, action_actionValue_multi_direct_73:double,
+      reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
     rows:
     - [ reqId1, reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1,
        1.000000, 2.000000, 3.000000, 4.000000,
        33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
        101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
-       reqId1, 1.1, reqId1, NULL, nan ]
+       reqId1, 1.1, reqId1, NULL, NULL ]
     - [ reqId2, reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2,
        1.000000, 2.000000, 3.000000, 4.000000,
        33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
@@ -172,7 +181,7 @@ cases:
         1.000000, 2.000000, 3.000000, 4.000000,
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
         NULL, NULL, NULL, NULL, 1, 1, 101, 101, 101, 101, 101,
-        reqId2, NULL, reqId2, NULL, nan ]
+        reqId2, NULL, reqId2, NULL, NULL ]
     - [ NULL, NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull,
         1.000000, 2.000000, 3.000000, 4.000000,
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
@@ -297,8 +306,8 @@ cases:
   expect:
     schema: reqId_1:string, reqId_74:string, action_actionValue_multi_direct_73:double, reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_sum_73:double, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
     rows:
-      - [ reqId1, reqId1, 1.1, reqId1, 0.0, NULL, nan ] # should be -inf -> NULL, nan -> NULL
-      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0, 1.0 ]
-      - [ NULL, NULL, 3.3, NULL, 0.0, NULL, nan]
-      - [ reqId2, reqId2, NULL, reqId2, 0.0, NULL, nan ] # should be -inf -> NULL, nan -> NULL
-      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0, 1.0 ]
+      - [ reqId1, reqId1, 1.1,  reqId1, NULL,   NULL, NULL ]
+      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]
+      - [ NULL,   NULL,   3.3,  NULL,   NULL,   NULL, NULL]
+      - [ reqId2, reqId2, NULL, reqId2, NULL,   NULL, NULL ]
+      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]

@@ -863,11 +863,11 @@ cases:
       order: c3
       columns: ["c1 string","c3 int","w1_c4_sum bigint"]
       rows:
-        - ["aa",20,0]
+        - ["aa",20,NULL]
         - ["aa",21,30]
         - ["aa",22,61]
         - ["aa",23,63]
-        - ["bb",24,0]
+        - ["bb",24,NULL]
   -
     id: 39
     desc: rows 0-2

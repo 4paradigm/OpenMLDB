@@ -156,7 +156,7 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
+        - [1,"aa", NULL]
         - [2,"aa",30]
         - [3,"aa",61]
         - [4,"aa",93]
@@ -178,9 +178,9 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
-        - [2,"aa",0]
-        - [3,"aa",0]
+        - [1,"aa", NULL]
+        - [2,"aa", NULL]
+        - [3,"aa", NULL]
   -
     id: 8
     desc: 两个pk，都大于maxsize
