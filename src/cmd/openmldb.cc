@@ -1803,7 +1803,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
     }
     uint64_t value = 0;
     if (tables[0].partition_key_size() == 0) {
-        if (!tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg)) {
+        if (!tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg)) {
             std::cout << "Count failed. error msg: " << msg << std::endl;
             return;
         }
@@ -1817,7 +1817,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
                           << cur_pid << std::endl;
                 return;
             }
-            if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name, filter_expired_data, cur_value, msg)) {
+            if (!tablet_client->Count(tid, cur_pid, key, index_name, filter_expired_data, cur_value, msg)) {
                 std::cout << "Count failed. error msg: " << msg << std::endl;
             }
             value += cur_value;
