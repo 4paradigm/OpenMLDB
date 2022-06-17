@@ -317,28 +317,26 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
         zetasql::ASTWindowFrameExpr start;
         zetasql::ASTWindowFrameExpr end;
         start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING);
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
         end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::RANGE);
         dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
-        ASSERT_TRUE(status.isOK());
+        ASSERT_TRUE(status.isOK()) << status;
     }
     {
         zetasql::ASTWindowFrame expression;
         zetasql::ASTWindowFrameExpr start;
         zetasql::ASTWindowFrameExpr end;
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING);
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
-        end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
+        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
+        end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::ROWS);
         dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
-        ASSERT_TRUE(status.isOK());
+        ASSERT_TRUE(status.isOK()) << status;
     }
 }
 
