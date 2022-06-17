@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <memory>
 #include <string>
