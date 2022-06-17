@@ -109,7 +109,7 @@ class DBSDK {
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
 
-    std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
+    static std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
 
  protected:
@@ -124,7 +124,6 @@ class DBSDK {
     ::hybridse::vm::Engine* engine_ = nullptr;
     std::map<std::string, std::shared_ptr<openmldb::common::ExternalFun>> external_fun_;
 
- private:
     // get/set op should be atomic(actually no reset now)
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
     std::shared_ptr<::openmldb::client::TaskManagerClient> taskmanager_client_;
@@ -156,6 +155,8 @@ class ClusterSDK : public DBSDK {
     bool InitTabletClient();
     void WatchNotify();
     void CheckZk();
+    void RefreshNsClient(const std::vector<std::string>& leader_children);
+    void RefreshTaskManagerClient();
 
  private:
     ClusterOptions options_;
@@ -164,6 +165,9 @@ class ClusterSDK : public DBSDK {
     std::string sp_root_path_;
     std::string notify_path_;
     std::string globalvar_changed_notify_path_;
+    std::string leader_path_;
+    std::string taskmanager_leader_path_;
+
     ::openmldb::zk::ZkClient* zk_client_;
     ::baidu::common::ThreadPool pool_;
 };

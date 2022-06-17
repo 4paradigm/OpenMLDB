@@ -179,6 +179,8 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       sp_root_path_(options.zk_path + "/store_procedure/db_sp_data"),
       notify_path_(options.zk_path + "/table/notify"),
       globalvar_changed_notify_path_(options.zk_path + "/notify/global_variable"),
+      leader_path_(options.zk_path + "/leader"),
+      taskmanager_leader_path_(options.zk_path + "/taskmanager/leader"),
       zk_client_(nullptr),
       pool_(1) {}
 
@@ -228,15 +230,28 @@ bool ClusterSDK::Init() {
 }
 
 void ClusterSDK::WatchNotify() {
-    LOG(INFO) << "start to watch table notify";
+    LOG(INFO) << "start to watch notify on table, function, ns leader, taskamanger leader";
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
     zk_client_->WatchChildren(options_.zk_path + "/data/function",
-                              std::bind(&ClusterSDK::RefreshExternalFun, this, std::placeholders::_1));
+                              [this](auto&& PH1) { RefreshExternalFun(std::forward<decltype(PH1)>(PH1)); });
+
+    zk_client_->WatchChildren(leader_path_, [this](auto&& PH1) { RefreshNsClient(std::forward<decltype(PH1)>(PH1)); });
+    zk_client_->WatchItem(taskmanager_leader_path_, [this] { RefreshTaskManagerClient(); });
 }
 
 void ClusterSDK::RefreshExternalFun(const std::vector<std::string>& funs) { InitExternalFun(); }
+
+void ClusterSDK::RefreshNsClient(const std::vector<std::string>& leader_children) {
+    // just reset ns client, lazy get
+    std::atomic_store_explicit(&ns_client_, {}, std::memory_order_relaxed);
+}
+
+void ClusterSDK::RefreshTaskManagerClient() {
+    // just reset taskmanager client, lazy get
+    std::atomic_store_explicit(&taskmanager_client_, {}, std::memory_order_relaxed);
+}
 
 bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
     if (type == ::openmldb::type::NotifyType::kTable) {
@@ -250,14 +265,13 @@ bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
 }
 
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
-    std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
-    if (!zk_client_->GetChildren(ns_node, children) || children.empty()) {
+    if (!zk_client_->GetChildren(leader_path_, children) || children.empty()) {
         LOG(WARNING) << "no nameserver exists";
         return false;
     }
     std::sort(children.begin(), children.end());
-    std::string real_path = ns_node + "/" + children[0];
+    std::string real_path = leader_path_ + "/" + children[0];
 
     if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
         LOG(WARNING) << "fail to get zk value with path " << real_path;
@@ -272,13 +286,11 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
 }
 
 bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) {
-    std::string real_path = options_.zk_path + "/taskmanager/leader";
-
-    if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
-        LOG(WARNING) << "fail to get zk value with path " << real_path;
+    if (!zk_client_->GetNodeValue(taskmanager_leader_path_, *endpoint)) {
+        LOG(WARNING) << "fail to get zk value with path " << taskmanager_leader_path_;
         return false;
     }
-    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+    DLOG(INFO) << "leader path " << taskmanager_leader_path_ << " with value " << endpoint;
 
     // TODO(tobe): Maybe allow users to set backup TaskManager endpoint
     *real_endpoint = "";
