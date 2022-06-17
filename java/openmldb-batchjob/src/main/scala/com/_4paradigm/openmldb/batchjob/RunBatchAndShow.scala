@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.batchjob
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
+import scala.reflect.io.File
 
 object RunBatchAndShow {
 
@@ -33,7 +34,20 @@ object RunBatchAndShow {
   def runBatchSql(sqlFilePath: String): Unit = {
     val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
 
-    val sqlText = scala.io.Source.fromFile(SparkFiles.get(sqlFilePath)).mkString
+    val sparkMaster = sess.getSparkSession.conf.get("spark.master")
+
+    val actualSqlFilePath = if (sparkMaster.equals("local")) {
+      SparkFiles.get(sqlFilePath)
+    } else {
+      sqlFilePath
+    }
+
+    if (!File(actualSqlFilePath).exists) {
+      throw new Exception("SQL file does not exist in " + actualSqlFilePath)
+    }
+
+    val sqlText = scala.io.Source.fromFile(actualSqlFilePath).mkString
+
     sess.sql(sqlText).show()
 
     sess.close()
