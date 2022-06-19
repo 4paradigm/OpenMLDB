@@ -37,7 +37,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpProject, "PROJECT"},
         {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
         {kPhysicalOpConstProject, "CONST_PROJECT"},
-        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpAggregate, "AGGREGATE"},
         {kPhysicalOpLimit, "LIMIT"},
         {kPhysicalOpRename, "RENAME"},
         {kPhysicalOpDistinct, "DISTINCT"},

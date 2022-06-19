@@ -39,7 +39,7 @@ enum PhysicalOpType {
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
-    kPhysicalOpAggrerate,
+    kPhysicalOpAggregate,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
     kPhysicalOpConstProject,
