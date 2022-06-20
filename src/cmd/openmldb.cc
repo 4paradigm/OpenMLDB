@@ -3584,7 +3584,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
         return;
     }
     std::string msg;
-    bool ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
+    bool ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
