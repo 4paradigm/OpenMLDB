@@ -26,7 +26,7 @@ namespace openmldb {
 namespace catalog {
 
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> PBIndex;
 
 class SDKCatalogTest : public ::testing::Test {};
 
@@ -46,7 +46,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     auto col2 = schema->Add();
     col2->set_name("col2");
     col2->set_data_type(::openmldb::type::kBigInt);
-    RtiDBIndex* index = args->meta.mutable_column_key();
+    PBIndex* index = args->meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
