@@ -21,6 +21,7 @@ public class OutInTest extends StandaloneTest {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
+    //11 17 18没有pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/out_in/test_out_in.yaml")
     @Story("Out-In")

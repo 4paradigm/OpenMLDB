@@ -61,7 +61,7 @@ public class DeploymentTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
-    //0有问题
+    //all pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
     @Story("show")
@@ -69,7 +69,7 @@ public class DeploymentTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
-    //0 有问题
+    //all pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
     @Story("drop")

@@ -48,6 +48,7 @@ public class Table implements Serializable{
     private int repeat = 1;
     private int replicaNum = 1;
     private int partitionNum = 1;
+    private String storage;
     private List<OpenMLDBDistribution> distribution;
 
     private List<String> common_column_indices;
@@ -68,7 +69,7 @@ public class Table implements Serializable{
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
-        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum,partitionNum,distribution);
+        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum,partitionNum,distribution,storage);
     }
 
     // public String extractCreate() {
@@ -405,7 +406,7 @@ public class Table implements Serializable{
     }
 
     public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
-                                                         int replicaNum,int partitionNum,List<OpenMLDBDistribution> distribution) {
+                                                         int replicaNum,int partitionNum,List<OpenMLDBDistribution> distribution,String storage) {
         if (CollectionUtils.isEmpty(columns)) {
             return "";
         }
@@ -459,7 +460,13 @@ public class Table implements Serializable{
             }
             distributionStr.deleteCharAt(distributionStr.length()-1).append("]");
         }
-        String option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
+        String option = null;
+        if(StringUtils.isNotEmpty(storage)){
+            option = String.format("options(partitionnum=%s,replicanum=%s%s,storage_mode=\"%s\")",partitionNum,replicaNum,distributionStr,storage);
+        }else {
+            option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
+        }
+        //String option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
         sql = sql+option+";";
         // if (replicaNum == 1) {
         //     sql += ");";

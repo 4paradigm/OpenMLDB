@@ -71,6 +71,7 @@ public class DDLTest extends StandaloneTest {
 
     //SDK版本
 
+    //all-pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create.yaml")
     @Story("create")
@@ -86,7 +87,7 @@ public class DDLTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
-    //有问题
+    //pass 单机
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_options.yaml")
     @Story("options")
@@ -94,7 +95,7 @@ public class DDLTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
-    //有问题
+    //all pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create_index.yaml")
     @Story("create_index")
@@ -102,6 +103,7 @@ public class DDLTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
+    //all pass
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
     @Story("create_no_index")

@@ -2,7 +2,7 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="fedb-sdk-test" parallel="false" thread-count="2">
     <test name="standalone">
-        <parameter name="env" value="standalone"/>
+        <!--<parameter name="env" value="standalone"/>-->
         <parameter name="version" value="0.2.3"/>
         <parameter name="fedbPath" value=""/>
         <packages>

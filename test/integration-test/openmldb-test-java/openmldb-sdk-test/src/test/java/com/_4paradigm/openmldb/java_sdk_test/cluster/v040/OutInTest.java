@@ -27,4 +27,13 @@ public class OutInTest extends FedbTest {
     public void testOutInByOffline(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+
+
+     @Test(dataProvider = "getCase")
+     @Yaml(filePaths = "function/out_in/test_out_in.yaml")
+     @Story("online")
+     public void testOutInByOnline(SQLCase testCase){
+         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+     }
+
 }

@@ -52,6 +52,7 @@ public class FunctionTest extends FedbTest {
     public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
+//    146-157有问题
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/function/")
