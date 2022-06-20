@@ -24,7 +24,8 @@ from util.test_util import getCases
 
 log = LogManager('python-sdk-test').get_logger_and_add_handlers()
 
-#都不行
+
+# 都不行
 class TestStandaloneDeploy(StandaloneTest):
 
     @pytest.mark.parametrize("testCase", getCases(["/function/deploy/test_create_deploy.yaml"]))
@@ -38,5 +39,12 @@ class TestStandaloneDeploy(StandaloneTest):
     @allure.feature("deploy")
     @allure.story("show")
     def test_show(self, testCase):
+        print(testCase)
+        fedb_executor.build(self.connect, testCase).run()
+
+    @pytest.mark.parametrize("testCase", getCases(["/function/deploy/test_drop_deploy.yaml"]))
+    @allure.feature("deploy")
+    @allure.story("drop")
+    def test_drop(self, testCase):
         print(testCase)
         fedb_executor.build(self.connect, testCase).run()
