@@ -35,6 +35,7 @@ import java.util.List;
 @Slf4j
 @Setter
 public class FEDBDeploy {
+    private String installPath;
     private String version;
     private String fedbUrl;
     private String fedbName;
@@ -55,6 +56,9 @@ public class FEDBDeploy {
     }
     public FEDBInfo deployFEDBByStandalone(){
         String testPath = DeployUtil.getTestPath(version);
+        if(StringUtils.isNotEmpty(installPath)){
+            testPath = installPath+"/"+version;
+        }
         String ip = LinuxUtil.getLocalIP();
         File file = new File(testPath);
         if(!file.exists()){
@@ -72,6 +76,9 @@ public class FEDBDeploy {
         FEDBInfo.FEDBInfoBuilder builder = FEDBInfo.builder();
         builder.deployType(OpenMLDBDeployType.CLUSTER);
         String testPath = DeployUtil.getTestPath(version);
+        if(StringUtils.isNotEmpty(installPath)){
+            testPath = installPath+"/"+version;
+        }
         if(StringUtils.isNotEmpty(clusterName)) {
             testPath = testPath + "/" + clusterName;
         }
