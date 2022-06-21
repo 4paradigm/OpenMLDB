@@ -70,7 +70,6 @@ set(HYBRIDSE_CORE_LIBS hybridse_core)
 add_subdirectory(testing)
 # hybridse core unittests
 if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
-
     get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
     string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
     set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -88,6 +87,10 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
                 --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
+        if (TESTING_ENABLE_STRIP)
+            strip_exe(${TEST_TARGET_NAME})
+        endif()
+
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach ()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
