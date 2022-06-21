@@ -22,7 +22,6 @@ env:
   CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
   CTEST_OUTPUT_ON_FAILURE: ON
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
-  TESTING_ENABLE_STRIP: ON
 
 jobs:
   linux-build:
@@ -30,8 +29,7 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
-      OS: linux
-      ARCH: x86_64
+      TESTING_ENABLE_STRIP: ON
     steps:
       - uses: actions/checkout@v2
 
@@ -55,8 +53,6 @@ jobs:
     name: Build in MacOS
     runs-on: macos-latest
     env:
-      OS: darwin
-      ARCH: x86_64
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
     steps:
