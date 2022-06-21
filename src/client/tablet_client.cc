@@ -776,11 +776,6 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64
 
 bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                          bool filter_expired_data, uint64_t& value, std::string& msg) {
-    return Count(tid, pid, pk, idx_name, "", filter_expired_data, value, msg);
-}
-
-bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
-                         const std::string& ts_name, bool filter_expired_data, uint64_t& value, std::string& msg) {
     ::openmldb::api::CountRequest request;
     ::openmldb::api::CountResponse response;
     request.set_tid(tid);
