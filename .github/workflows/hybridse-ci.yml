@@ -48,7 +48,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
-            ${{ env.HYBRIDSE_PATH }}/build/*.xml
+            build/${{ env.HYBRIDSE_PATH }}/*.xml
 
   macos-build:
     name: Build in MacOS
@@ -87,7 +87,7 @@ jobs:
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
-            ${{ env.HYBRIDSE_PATH }}/build/*.xml
+            build/${{ env.HYBRIDSE_PATH }}/*.xml
 
   publish-test-results:
     runs-on: ubuntu-latest
