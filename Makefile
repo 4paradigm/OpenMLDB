@@ -173,8 +173,8 @@ thirdpartysrc-clean:
 
 HYBRIDSE_BUILD_DIR := $(OPENMLDB_BUILD_DIR)/hybridse
 
-# NOTE: need `TESTING_EAABLE=ON` from make
-hybridse-test: hybridse-build
+hybridse-test:
+	$(MAKE) hybridse-build TESTING_ENABLE=ON
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
 hybridse-build: configure
