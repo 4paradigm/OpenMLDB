@@ -571,7 +571,7 @@ std::unique_ptr<::hybridse::vm::RowIterator> TabletSegmentHandler::GetIterator()
     return std::unique_ptr<::hybridse::vm::RowIterator>();
 }
 
-:hybridse::vm::RowIterator* TabletSegmentHandler::GetRawIterator() {
+::hybridse::vm::RowIterator* TabletSegmentHandler::GetRawIterator() {
     auto iter = partition_handler_->GetWindowIterator();
     if (iter) {
         DLOG(INFO) << "seek to pk " << key_;
