@@ -94,9 +94,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
 
     // TODO(xxx): iterator of nullable V
     std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
-        auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
-            new ColumnIterator<V>(root_, this));
-        return std::move(iter);
+        return std::make_unique<ColumnIterator<V>>(root_, this);
     }
     ConstIterator<uint64_t, V> *GetRawIterator() override {
         return new ColumnIterator<V>(root_, this);
