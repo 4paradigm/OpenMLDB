@@ -557,5 +557,44 @@ void TabletCatalog::RefreshAggrTables(const std::vector<::hybridse::vm::AggrTabl
     atomic_store_explicit(&aggr_tables_, new_aggr_tables, std::memory_order_relaxed);
 }
 
+std::unique_ptr<::hybridse::vm::RowIterator> TabletSegmentHandler::GetIterator() {
+    auto iter = partition_handler_->GetWindowIterator();
+    if (iter) {
+        DLOG(INFO) << "seek to pk " << key_;
+        iter->Seek(key_);
+        if (iter->Valid() && 0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
+            return std::move(iter->GetValue());
+        } else {
+            return std::unique_ptr<::hybridse::vm::RowIterator>();
+        }
+    }
+    return std::unique_ptr<::hybridse::vm::RowIterator>();
+}
+
+:hybridse::vm::RowIterator* TabletSegmentHandler::GetRawIterator() {
+    auto iter = partition_handler_->GetWindowIterator();
+    if (iter) {
+        DLOG(INFO) << "seek to pk " << key_;
+        iter->Seek(key_);
+        if (iter->Valid() && 0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
+            return iter->GetRawValue();
+        } else {
+            return nullptr;
+        }
+    }
+    return nullptr;
+}
+
+const uint64_t TabletSegmentHandler::GetCount() {
+    auto iter = GetIterator();
+    if (!iter) return 0;
+    uint64_t cnt = 0;
+    while (iter->Valid()) {
+        cnt++;
+        iter->Next();
+    }
+    return cnt;
+}
+
 }  // namespace catalog
 }  // namespace openmldb

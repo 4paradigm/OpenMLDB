@@ -59,48 +59,15 @@ class TabletSegmentHandler : public ::hybridse::vm::TableHandler {
 
     const ::hybridse::vm::OrderType GetOrderType() const override { return partition_handler_->GetOrderType(); }
 
-    std::unique_ptr<::hybridse::vm::RowIterator> GetIterator() override {
-        auto iter = partition_handler_->GetWindowIterator();
-        if (iter) {
-            DLOG(INFO) << "seek to pk " << key_;
-            iter->Seek(key_);
-            if (iter->Valid() && 0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
-                return std::move(iter->GetValue());
-            } else {
-                return std::unique_ptr<::hybridse::vm::RowIterator>();
-            }
-        }
-        return std::unique_ptr<::hybridse::vm::RowIterator>();
-    }
+    std::unique_ptr<::hybridse::vm::RowIterator> GetIterator() override;
 
-    ::hybridse::vm::RowIterator *GetRawIterator() override {
-        auto iter = partition_handler_->GetWindowIterator();
-        if (iter) {
-            DLOG(INFO) << "seek to pk " << key_;
-            iter->Seek(key_);
-            if (iter->Valid() && 0 == iter->GetKey().compare(hybridse::codec::Row(key_))) {
-                return iter->GetRawValue();
-            } else {
-                return nullptr;
-            }
-        }
-        return nullptr;
-    }
+    ::hybridse::vm::RowIterator *GetRawIterator() override;
 
     std::unique_ptr<::hybridse::vm::WindowIterator> GetWindowIterator(const std::string &idx_name) override {
         return std::unique_ptr<::hybridse::vm::WindowIterator>();
     }
 
-    const uint64_t GetCount() override {
-        auto iter = GetIterator();
-        if (!iter) return 0;
-        uint64_t cnt = 0;
-        while (iter->Valid()) {
-            cnt++;
-            iter->Next();
-        }
-        return cnt;
-    }
+    const uint64_t GetCount() override;
 
     ::hybridse::vm::Row At(uint64_t pos) override {
         auto iter = GetIterator();
