@@ -27,7 +27,6 @@
 #include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
-#include "codec/memcomparable_format.h"
 #include "proto/type.pb.h"
 #include "sdk/base.h"
 
