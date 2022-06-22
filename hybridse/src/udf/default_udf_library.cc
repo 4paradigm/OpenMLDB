@@ -304,20 +304,41 @@ struct DistinctCountDef {
 template <typename T>
 struct SumWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(0.0)
-            .update([](UdfResolveContext* ctx, ExprNode* sum, ExprNode* elem,
-                       ExprNode* cond) {
-                auto nm = ctx->node_manager();
+        helper
+            .templates<T, Tuple<bool, T>, T, bool>()
+            // accumulator is a pair of ( is_null, current_sum)
+            // whenever there is a value not null, `is_null` turns to false and output sum
+            // otherwise result is null
+            .const_init(MakeTuple(true, T(0)))
+            // the update logic is the same as sum but give the cond check at very beginning
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
+                // update (old_flag, acc) elem =
+                //   if cond ->
+                //      if elem is null -> (old_flag, acc)
+                //      otherwise       -> (true, acc + elem)
+                //   otherwise  -> (old_flag, acc)
+                auto* nm = ctx->node_manager();
+                auto* old_sum = nm->MakeGetFieldExpr(acc, 1);
+
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto new_sum =
-                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
-                ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
-                return update;
+
+                auto new_sum = nm->MakeBinaryExprNode(old_sum, elem, node::kFnOpAdd);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
+                                        nm->MakeFuncNode("make_tuple", {nm->MakeConstNode(false), new_sum}, nullptr),
+                                        acc);
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
