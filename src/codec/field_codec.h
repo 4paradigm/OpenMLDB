@@ -42,32 +42,6 @@ using ::openmldb::type::DataType;
 /**
  *  decode part
  */
-static inline void GetBool(const char* ch, void* res) { memcpy(res, ch, 1); }
-
-static inline void GetInt16(const char* ch, void* res) {
-    memcpy(res, ch, 2);
-    memrev32ifbe(static_cast<void*>(res));
-}
-
-static inline void GetInt32(const char* ch, void* res) {
-    memcpy(res, ch, 4);
-    memrev32ifbe(static_cast<void*>(res));
-}
-
-static inline void GetInt64(const char* ch, void* res) {
-    memcpy(res, ch, 8);
-    memrev64ifbe(static_cast<void*>(res));
-}
-
-static inline void GetFloat(const char* ch, void* res) {
-    memcpy(res, ch, 4);
-    memrev32ifbe(static_cast<void*>(res));
-}
-
-static inline void GetDouble(const char* ch, void* res) {
-    memcpy(res, ch, 8);
-    memrev64ifbe(static_cast<void*>(res));
-}
 
 template <typename T>
 static bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool is_not_null,
