@@ -32,13 +32,6 @@
 
 namespace openmldb {
 namespace codec {
-/**
- *  encode part
- */
-
-/**
- *  decode part
- */
 
 template <typename T>
 static bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool is_not_null,
