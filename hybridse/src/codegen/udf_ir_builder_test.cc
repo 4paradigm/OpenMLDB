@@ -319,14 +319,39 @@ TEST_F(UdfIRBuilderTest, distinct_count_udf_test) {
     CheckUdf<int64_t, codec::ListRef<int32_t>>("count", 9, list_ref);
     CheckUdf<int64_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
 }
-TEST_F(UdfIRBuilderTest, sum_udf_test) {
-    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<int32_t> list_ref;
+
+TEST_F(UdfIRBuilderTest, SumUdfTest) {
+    std::vector<Nullable<int32_t>> vec = {1, 3, 5, nullptr, 7, 9};
+    codec::ArrayListV<Nullable<int32_t>> list(&vec);
+    codec::ListRef<Nullable<int32_t>> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckUdf<int32_t, codec::ListRef<int32_t>>("sum", 1 + 3 + 5 + 7 + 9,
-                                               list_ref);
+    CheckUdf<int32_t, codec::ListRef<Nullable<int32_t>>>("sum", 1 + 3 + 5 + 7 + 9, list_ref);
 }
+
+TEST_F(UdfIRBuilderTest, SumUdfNullTest) {
+    std::vector<Nullable<int32_t>> vec = {nullptr};
+    codec::ArrayListV<Nullable<int32_t>> list(&vec);
+    codec::ListRef<Nullable<int32_t>> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckUdf<Nullable<int32_t>, codec::ListRef<Nullable<int32_t>>>("sum", nullptr, list_ref);
+}
+
+TEST_F(UdfIRBuilderTest, AvgUdfTest) {
+    std::vector<Nullable<int32_t>> vec = {1, 3, 5, nullptr, 7};
+    codec::ArrayListV<Nullable<int32_t>> list(&vec);
+    codec::ListRef<Nullable<int32_t>> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckUdf<double, codec::ListRef<Nullable<int32_t>>>("avg", 4.0, list_ref);
+}
+
+TEST_F(UdfIRBuilderTest, AvgUdfNullTest) {
+    std::vector<Nullable<int32_t>> vec = {nullptr};
+    codec::ArrayListV<Nullable<int32_t>> list(&vec);
+    codec::ListRef<Nullable<int32_t>> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(&list);
+    CheckUdf<Nullable<double>, codec::ListRef<Nullable<int32_t>>>("avg", nullptr, list_ref);
+}
+
 TEST_F(UdfIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);

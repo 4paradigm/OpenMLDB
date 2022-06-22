@@ -105,17 +105,29 @@ struct BuildGetSecondUdf {
 template <typename T>
 struct SumUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>()
-            .const_init(T(0))
-            .update([](UdfResolveContext* ctx, ExprNode* cur_sum,
-                       ExprNode* input) {
-                auto nm = ctx->node_manager();
-                auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto new_sum =
-                    nm->MakeBinaryExprNode(cur_sum, input, node::kFnOpAdd);
-                return nm->MakeCondExpr(is_null, cur_sum, new_sum);
+        helper.templates<T, Tuple<bool, T>, T>()
+            .const_init(MakeTuple(true, T(0)))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
+                auto* nm = ctx->node_manager();
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode(
+                        "make_tuple",
+                        {nm->MakeConstNode(false), nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                        nullptr));
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
@@ -236,27 +248,24 @@ struct AvgUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
             .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
-            .update(
-                [](UdfResolveContext* ctx, ExprNode* state, ExprNode* input) {
-                    auto nm = ctx->node_manager();
-                    ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                    ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                    ExprNode* is_null =
-                        nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                    cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
-                                                 node::kFnOpAdd);
-                    sum = nm->MakeBinaryExprNode(sum, input, node::kFnOpAdd);
-                    auto new_state =
-                        nm->MakeFuncNode("make_tuple", {cnt, sum}, nullptr);
-                    return nm->MakeCondExpr(is_null, state, new_state);
-                })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* avg =
-                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
-                return avg;
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode("make_tuple",
+                                     {nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::FnOperator::kFnOpAdd),
+                                      nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                                     nullptr));
+            })
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
+                                        nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
+                                        nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
     }
 };
@@ -383,10 +392,10 @@ struct AvgWhereDef {
                 return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
                                         nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr), acc);
             })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
                 return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
                                         nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
                                         nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
