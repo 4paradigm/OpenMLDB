@@ -1188,23 +1188,7 @@ class FrameExtent : public SqlNode {
     void SetStart(FrameBound* start) { start_ = start; }
     void SetEnd(FrameBound* end) { end_ = end; }
 
-    const std::string GetExprString() const {
-        std::string str = "[";
-        if (nullptr == start_) {
-            str.append("UNBOUND");
-        } else {
-            str.append(start_->GetExprString());
-        }
-        str.append(",");
-        if (nullptr == end_) {
-            str.append("UNBOUND");
-        } else {
-            str.append(end_->GetExprString());
-        }
-
-        str.append("]");
-        return str;
-    }
+    std::string GetExprString() const;
 
     // get the inclusive frome bound offset value for start and end
     inline int64_t GetStartOffset() const {
@@ -1214,6 +1198,12 @@ class FrameExtent : public SqlNode {
     inline int64_t GetEndOffset() const {
         return end_->GetSignedOffset(false);
     }
+
+    /// \brief check if current FrameExtent is valid
+    ///
+    /// rules:
+    /// * start offset <= end offset
+    bool Valid() const;
 
     FrameExtent* ShadowCopy(NodeManager* nm) const override;
 
