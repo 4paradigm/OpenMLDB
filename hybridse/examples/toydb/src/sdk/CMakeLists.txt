@@ -50,7 +50,7 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
 
         add_test(${TEST_TARGET_NAME}
             ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
-            --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+            --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} toydb_sdk toydb_lib zetasql)
         if (TESTING_ENABLE_STRIP)
             strip_exe(${TEST_TARGET_NAME})

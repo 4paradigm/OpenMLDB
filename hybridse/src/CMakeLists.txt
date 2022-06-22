@@ -84,9 +84,10 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
                 ${yaml_libs} ${ZETASQL_LIBS} ${BRPC_LIBS})
         add_test(${TEST_TARGET_NAME}
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
-                --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+                --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
+
         if (TESTING_ENABLE_STRIP)
             strip_exe(${TEST_TARGET_NAME})
         endif()

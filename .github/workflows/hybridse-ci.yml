@@ -18,7 +18,6 @@ on:
   workflow_dispatch:
 
 env:
-  HYBRIDSE_PATH: hybridse
   CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
   CTEST_OUTPUT_ON_FAILURE: ON
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
@@ -47,7 +46,7 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
-            build/${{ env.HYBRIDSE_PATH }}/*.xml
+            build/hybridse/**/*.xml
 
   macos-build:
     name: Build in MacOS
@@ -84,7 +83,7 @@ jobs:
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
-            build/${{ env.HYBRIDSE_PATH }}/*.xml
+            build/hybridse/**/*.xml
 
   publish-test-results:
     runs-on: ubuntu-latest
