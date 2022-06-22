@@ -30,10 +30,6 @@
 #include "proto/type.pb.h"
 #include "sdk/base.h"
 
-namespace openmldb {
-namespace codec {
-
-using ::openmldb::type::DataType;
 /**
  *  encode part
  */
