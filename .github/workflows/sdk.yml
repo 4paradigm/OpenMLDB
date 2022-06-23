@@ -129,7 +129,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
-          name: coverage
+          name: maven coverage
           fail_ci_if_error: true
           verbose: true
 
@@ -284,6 +284,19 @@ jobs:
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+
+      - name: generate python coverage report
+        working-directory: python
+        run: |
+          pip install coverage
+          coverage run -m unittest
+
+      - name: upload python coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: python coverage
+          fail_ci_if_error: true
+          verbose: true
 
   python-sdk-mac:
     runs-on: macos-latest
