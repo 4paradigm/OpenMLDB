@@ -100,7 +100,6 @@ connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute('SET @@sync_job=true;')
 connection.execute('SET @@job_timeout=1200000;')
-# 
 connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
                    f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=true);")
 
@@ -118,7 +117,6 @@ w2 as(partition by ip, app order by click_time ROWS_RANGE BETWEEN UNBOUNDED PREC
 w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 """
 # extraction will take time
-connection.execute('SET @@job_timeout=1200000;')
 connection.execute(
     f"{sql_part} INTO OUTFILE '{TRAIN_FEATURE_DIR}' OPTIONS(mode='overwrite');")
 
