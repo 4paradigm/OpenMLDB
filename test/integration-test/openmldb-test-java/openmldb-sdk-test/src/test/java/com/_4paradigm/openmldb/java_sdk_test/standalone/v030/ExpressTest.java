@@ -41,4 +41,13 @@ public class ExpressTest extends StandaloneTest {
     public void testExpress(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+
+    //都pass   test_predict.yaml最后俩个case还需要解析一下
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/expression/")
+    public void testExpressSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

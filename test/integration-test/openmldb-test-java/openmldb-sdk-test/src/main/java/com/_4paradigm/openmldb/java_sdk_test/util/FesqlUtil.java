@@ -28,7 +28,9 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
+import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
+import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -37,12 +39,10 @@ import org.slf4j.Logger;
 import org.testng.collections.Lists;
 
 import java.sql.*;
+import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -286,6 +286,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult sql(SqlExecutor executor, String dbName, String sql) {
+        useDB(executor,dbName);
         FesqlResult fesqlResult = null;
         if (sql.startsWith("create database") || sql.startsWith("drop database")) {
             fesqlResult = db(executor, sql);
@@ -293,11 +294,127 @@ public class FesqlUtil {
             fesqlResult = ddl(executor, dbName, sql);
         } else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
             fesqlResult = insert(executor, dbName, sql);
-        } else {
+        }else if(sql.startsWith("show deployments;")){
+            fesqlResult  = showDeploys(executor,dbName,sql);
+        }else if(sql.startsWith("show deployment")){
+            fesqlResult = deploy(executor, dbName, sql);
+        }else {
             fesqlResult = select(executor, dbName, sql);
         }
         return fesqlResult;
     }
+
+    public static FesqlResult deploy(SqlExecutor executor,String dbName,String showdeploySql){
+        if (showdeploySql.isEmpty()){
+            return null;
+        }
+        logger.info("show deployment:{}",showdeploySql);
+        FesqlResult fesqlResult = new FesqlResult();
+        ResultSet rawRs = executor.executeSQL(dbName, showdeploySql);
+        if (rawRs == null) {
+            fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
+        } else if  (rawRs instanceof SQLResultSet){
+            try {
+                SQLResultSet rs = (SQLResultSet)rawRs;
+                JDBCUtil.setSchema(rs.getMetaData(),fesqlResult);
+                fesqlResult.setOk(true);
+                String deployStr = convertRestultSetToListDeploy(rs);
+                String[] strings = deployStr.split("\n");
+                List<String> stringList = Arrays.asList(strings);
+                OpenmldbDeployment openmldbDeployment = parseDeployment(stringList);
+                fesqlResult.setDeployment(openmldbDeployment);
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                fesqlResult.setMsg(e.getMessage());
+            }
+        }
+        logger.info("select result:{} \n", fesqlResult);
+        return fesqlResult;
+    }
+
+    public static FesqlResult showDeploys(SqlExecutor executor,String dbName,String showdeploySqls){
+        if (showdeploySqls.isEmpty()){
+            return null;
+        }
+        logger.info("show deployments:{}",showdeploySqls);
+        FesqlResult fesqlResult = new FesqlResult();
+        ResultSet rawRs = executor.executeSQL(dbName, showdeploySqls);
+        if (rawRs == null) {
+            fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
+        } else if  (rawRs instanceof SQLResultSet){
+            try {
+                SQLResultSet rs = (SQLResultSet)rawRs;
+                JDBCUtil.setSchema(rs.getMetaData(),fesqlResult);
+                fesqlResult.setOk(true);
+                List<List<Object>> lists = convertRestultSetToList(rs);
+                if(lists.size() == 0 ||lists.isEmpty()){
+                    fesqlResult.setDeploymentCount(0);
+                }else {
+                    fesqlResult.setDeploymentCount(lists.size());
+                }
+                //String[] strings = deployStr.split("\n");
+                //List<String> stringList = Arrays.asList(strings);
+
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                fesqlResult.setMsg(e.getMessage());
+            }
+        }
+        return fesqlResult;
+    }
+
+    private static String convertRestultSetToListDeploy(SQLResultSet rs) throws SQLException {
+        String string = null;
+        while (rs.next()) {
+            int columnCount = rs.getMetaData().getColumnCount();
+            for (int i = 0; i < columnCount; i++) {
+                string=String.valueOf(getColumnData(rs, i));
+            }
+        }
+        return string;
+    }
+
+    private static OpenmldbDeployment parseDeployment(List<String> lines){
+        OpenmldbDeployment deployment = new OpenmldbDeployment();
+        List<String> inColumns = new ArrayList<>();
+        List<String> outColumns = new ArrayList<>();
+        String[] db_sp = lines.get(3).split("\\s+");
+        deployment.setDbName(db_sp[1]);
+        deployment.setName(db_sp[2]);
+
+        String sql = "";
+        List<String> list = lines.subList(9, lines.size());
+        Iterator<String> it = list.iterator();
+        while(it.hasNext()) {
+            String line = it.next().trim();
+            if (line.contains("row in set")) break;
+            if (line.startsWith("#") || line.startsWith("-")) continue;
+            sql += line+"\n";
+        }
+        deployment.setSql(sql);
+        while(it.hasNext()){
+            String line = it.next().trim();
+            if (line.contains("Output Schema")) break;
+            if (line.startsWith("#") || line.startsWith("-")|| line.equals("")) continue;
+            String[] infos = line.split("\\s+");
+            String in = Joiner.on(",").join(infos);
+            inColumns.add(in);
+        }
+        while(it.hasNext()){
+            String line = it.next().trim();
+            if(line.startsWith("#")||line.startsWith("-"))continue;
+            String[] infos = line.split("\\s+");
+            String out = Joiner.on(",").join(infos);
+            outColumns.add(out);
+        }
+        deployment.setInColumns(inColumns);
+        deployment.setOutColumns(outColumns);
+        return deployment;
+    }
+
+
 
     public static FesqlResult insert(SqlExecutor executor, String dbName, String insertSql) {
         if (insertSql.isEmpty()) {
@@ -1290,6 +1407,24 @@ public class FesqlUtil {
             case Types.BOOLEAN: return "bool";
         }
         throw new IllegalArgumentException("not know type");
+    }
+
+
+
+    public static void useDB(SqlExecutor executor,String dbName){
+        Statement statement = executor.getStatement();
+        String sql = String.format("use %s",dbName);
+        try {
+            statement.execute(sql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            try {
+                statement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
     public static void setOnline(SqlExecutor sqlExecutor){
         Statement statement = sqlExecutor.getStatement();

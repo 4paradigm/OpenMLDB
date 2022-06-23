@@ -81,4 +81,21 @@ public class DMLTest extends StandaloneTest {
         FesqlResult result = OpenMLDBComamndFacade.sql(FedbGlobalVar.mainInfo, FedbGlobalVar.dbName, query);
         Assert.assertEquals(total,result.getCount());
     }
+
+    //pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/test_insert.yaml")
+    @Story("insert")
+    public void testInsertSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Story("insert-multi")
+    public void testInsertMultiSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
 }

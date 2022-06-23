@@ -13,26 +13,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import allure
+import pytest
 
-import sqlalchemy as db
 from nb_log import LogManager
-import openmldb
 
-log = LogManager('fedb-sdk-test').get_logger_and_add_handlers()
+from common.standalone_test import StandaloneTest
+from executor import fedb_executor
+from util.test_util import getCases
 
+log = LogManager('python-sdk-test').get_logger_and_add_handlers()
 
-class FedbClient:
+class TestStanaaloneOutIn(StandaloneTest):
 
-    def __init__(self, zkCluster, zkRootPath, dbName='test_fedb'):
-        self.zkCluster = zkCluster
-        self.zkRootPath = zkRootPath
-        self.dbName = dbName
-
-    def getConnect(self):
-        # engine = db.create_engine('openmldb://@/{}?zk={}&zkPath={}'.format(self.dbName, self.zkCluster, self.zkRootPath))
-        # connect = engine.connect()
-        # return connect
-
-        db = openmldb.dbapi.connect(self.dbName, self.zkCluster, self.zkRootPath)
-        cursor = db.cursor()
-        return cursor
+    #有问题 单机版目前没法测
+    @pytest.mark.parametrize("testCase", getCases(["/function/out_in/test_out_in.yaml"]))
+    @allure.feature("out-in")
+    @allure.story("out-in")
+    def test_function(self, testCase):
+        print(testCase)
+        fedb_executor.build(self.connect, testCase).run()

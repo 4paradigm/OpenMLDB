@@ -946,7 +946,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 17-2
     desc: 两个子查询lastjoin，order不是主表的ts-离线支持
@@ -998,7 +998,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 18-2
     desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby-离线支持
@@ -1026,7 +1026,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 19-1
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby

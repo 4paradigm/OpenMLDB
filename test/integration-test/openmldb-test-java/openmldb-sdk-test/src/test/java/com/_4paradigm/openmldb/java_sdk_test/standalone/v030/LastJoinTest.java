@@ -41,4 +41,12 @@ public class LastJoinTest extends StandaloneTest {
     public void testLastJoin(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //all pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    public void testLastJoinSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }
