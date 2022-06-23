@@ -121,7 +121,6 @@ jobs:
           path: openmldb-*.tar.gz
           name: release-artifacts
 
-
   publish-test-results:
     runs-on: ubuntu-latest
     needs: [ "cpp" ]
@@ -158,7 +157,7 @@ jobs:
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION=${VERSION#v}
           bash steps/prepare_release.sh "$VERSION"
-          echo "OPENMLDB_PREFIX=openmldb-$VERSION-macos" >> $GITHUB_ENV
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-darwin" >> $GITHUB_ENV
 
       - name: enable java on release
         if: github.event_name == 'push'
