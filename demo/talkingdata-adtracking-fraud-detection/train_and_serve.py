@@ -93,15 +93,16 @@ schema_string = ','.join(list(map(column_string, train_schema)))
 connection.execute(
     f'CREATE TABLE IF NOT EXISTS {TABLE_NAME}({schema_string});')
 
-print('Load train_sample data to offline storage for training(soft copy)')
+# use soft copy after 9391eaab8f released
+print(f'Load train_sample data {os.path.abspath("train_sample.csv")} to offline storage for training(hard copy)')
 connection.execute(f'USE {DB_NAME}')
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute('SET @@sync_job=true;')
 connection.execute('SET @@job_timeout=1200000;')
-# use soft link after https://github.com/4paradigm/OpenMLDB/issues/1565 fixed
+# 
 connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
-                   f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=false);")
+                   f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=true);")
 
 print('Feature extraction')
 # the first column `is_attributed` is the label
@@ -129,8 +130,6 @@ train_df = pd.concat(map(pd.read_csv, glob.glob(
 
 # drop column label
 X_data = train_df.drop('is_attributed', axis=1)
-# drop column 'ip'
-X_data = X_data.drop('ip', axis=1)
 y = train_df.is_attributed
 
 # Split the dataset into train and Test
