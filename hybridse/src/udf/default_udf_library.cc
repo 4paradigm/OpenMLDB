@@ -302,6 +302,47 @@ struct DistinctCountDef {
 };
 
 template <typename T>
+struct MedianDef {
+    using ArgT = typename DataTypeTrait<T>::CCallArgType;
+    using VectorT = std::vector<T>;
+
+    void operator()(UdafRegistryHelper& helper) {
+        std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<VectorT>, Nullable<T>>()
+            .init("median_init" + suffix, MedianDef::Init)
+            .update("median_update" + suffix, MedianDef::Update)
+            .output("meadin_output" + suffix, reinterpret_cast<void*>(MedianDef::Output), true);
+    }
+
+    static void Init(VectorT* addr) { new (addr) VectorT(); }
+
+    static VectorT* Update(VectorT* vec, T value, bool is_null) {
+        if (!is_null) {
+            vec->push_back(value);
+        }
+        return vec;
+    }
+
+    static void Output(VectorT* vec, double* ret, bool* is_null) {
+        if (vec->empty()) {
+            *is_null = true;
+        } else {
+            *is_null = false;
+
+            std::sort(vec->begin(), vec->end());
+            size_t mid = vec->size() / 2;
+            if (vec->size() % 2 == 0) {
+                *ret = (vec->at(mid - 1) + vec->at(mid)) / 2.0;
+            } else {
+                *ret = vec->at(mid);
+            }
+        }
+        vec->clear();
+        vec->~VectorT();
+    }
+};
+
+template <typename T>
 struct SumWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<T, T, T, bool>()
@@ -2411,6 +2452,29 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterUdafTemplate<MedianDef>("median")
+        .doc(R"(
+            @brief Compute the median of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+            
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT median(value) OVER w;
+                -- output 2.5
+            @endcode
+            @since 0.5.0
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
 
     InitAggByCateUdafs();
 }

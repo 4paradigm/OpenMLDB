@@ -103,6 +103,24 @@ TEST_F(UdafTest, CountTest) {
 
 // TODO(aceforeverd): add test for sum ,avg, distinct_count
 
+TEST_F(UdafTest, MedianTest) {
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {nullptr, nullptr});
+
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1, {0, 1, 2});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1.5, {0, 1, 2, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1, {0, 1, 2, nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 3, {1, 5, 2, 4, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 2.5, {1, 2, 4, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", -0.5, {-1, -2, 0, 1});
+
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.0, {1.0, 2.0, 3.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.5, {1.0, 2.0, 3.0, 4.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.0, {1.0, 2.0, 3.0, nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 3.0, {1.0, 5.0, 2.0, 4.0, 3.0});
+}
+
 TEST_F(UdafTest, sum_where_test) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "sum_where", 10, MakeList<int32_t>({4, 5, 6}),
