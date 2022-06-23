@@ -49,6 +49,13 @@ function(get_commitid CODE_DIR COMMIT_ID)
     set("${COMMIT_ID}" ${COMMIT_ID_TMP} PARENT_SCOPE)
 endfunction()
 
+# strip the given target
+function(strip_exe TARGET_NAME)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_STRIP}
+            ARGS $<TARGET_FILE:${TARGET_NAME}>)
+endfunction()
+
 get_commitid(${PROJECT_SOURCE_DIR} OPENMLDB_COMMIT_ID)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
@@ -87,6 +94,7 @@ option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
 option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
+option(TESTING_ENABLE_STRIP "Strip test binary that may help reduce storage space" OFF)
 
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
