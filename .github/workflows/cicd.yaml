@@ -75,6 +75,35 @@ jobs:
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
           # make thirdpartybuild-clean
 
+      - name: run cpp
+        id: unittest
+        run: |
+          make test
+
+      - name: run sql_sdk_test
+        id: sql_sdk_test
+        run: |
+          bash steps/ut.sh sql_sdk_test 0
+
+      - name: run sql_cluster_test
+        id: sql_cluster_test
+        run: |
+          bash steps/ut.sh sql_cluster_test 0
+
+      - name: run sql_standalone_sdk_test
+        id: sql_standalone_sdk_test
+        run: |
+          bash steps/ut.sh sql_standalone_sdk_test 0
+
+      - name: upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-cpp-${{ github.sha }}
+          path: |
+            build/**/*.xml
+            reports/*.xml
+
       - name: install
         if: ${{ github.event_name == 'push' }}
         run: |
@@ -126,12 +155,9 @@ jobs:
 
       - name: prepare release
         run: |
-          VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-            bash steps/prepare_release.sh "$VERSION"
-          fi
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          VERSION=${VERSION#v}
+          bash steps/prepare_release.sh "$VERSION"
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-macos" >> $GITHUB_ENV
 
       - name: enable java on release
@@ -151,35 +177,6 @@ jobs:
           # GitHub runner disk space is limited
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
           # make thirdpartybuild-clean
-
-      - name: run cpp
-        id: unittest
-        run: |
-          make test
-
-      - name: run sql_sdk_test
-        id: sql_sdk_test
-        run: |
-          bash steps/ut.sh sql_sdk_test 0
-
-      - name: run sql_cluster_test
-        id: sql_cluster_test
-        run: |
-          bash steps/ut.sh sql_cluster_test 0
-
-      - name: run sql_standalone_sdk_test
-        id: sql_standalone_sdk_test
-        run: |
-          bash steps/ut.sh sql_standalone_sdk_test 0
-
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-cpp-${{ github.sha }}
-          path: |
-            build/**/*.xml
-            reports/*.xml
 
       - name: install
         if: ${{ github.event_name == 'push' }}
