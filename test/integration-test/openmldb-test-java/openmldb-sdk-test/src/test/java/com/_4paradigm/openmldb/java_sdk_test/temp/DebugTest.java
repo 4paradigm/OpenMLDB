@@ -45,14 +45,14 @@ public class DebugTest extends FedbTest {
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"debug/diff-debug-bank.yaml"})
+    @Yaml(filePaths = {"debug/diff-debug-myhug.yaml"})
     public void testSelectRequestMode(SQLCase testCase) throws Exception {
         FesqlUtil.setOnline(executor);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"debug/diff-debug-myhug.yaml"})
     public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }

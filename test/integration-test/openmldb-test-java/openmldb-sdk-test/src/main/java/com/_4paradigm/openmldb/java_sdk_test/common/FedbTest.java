@@ -56,12 +56,12 @@ public class FedbTest extends BaseTest {
                     .deployType(OpenMLDBDeployType.CLUSTER)
                     .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
                     .fedbPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:10000")
+                    .zk_cluster("172.24.4.55:30008")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10004", "172.24.4.55:10005"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10001", "172.24.4.55:10002", "172.24.4.55:10003"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10006"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
                     .build();
             FedbGlobalVar.env = "cluster";
 

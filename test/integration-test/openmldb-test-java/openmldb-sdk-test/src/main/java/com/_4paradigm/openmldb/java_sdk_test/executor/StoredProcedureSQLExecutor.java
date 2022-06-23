@@ -111,7 +111,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         }
         for (String spName : spNames) {
             String drop = "drop procedure " + spName + ";";
-            FesqlUtil.ddl(executor, dbName, drop);
+//            FesqlUtil.ddl(executor, dbName, drop);
         }
         super.tearDown(version,executor);
     }

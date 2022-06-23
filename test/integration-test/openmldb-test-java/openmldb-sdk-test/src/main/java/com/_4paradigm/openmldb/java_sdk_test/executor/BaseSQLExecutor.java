@@ -132,7 +132,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
-                FesqlUtil.ddl(executor, tableDBName, drop);
+//                FesqlUtil.ddl(executor, tableDBName, drop);
             }
         }
     }
