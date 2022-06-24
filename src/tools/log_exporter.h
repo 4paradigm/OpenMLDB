@@ -26,19 +26,19 @@
 #include <vector>
 
 namespace openmldb {
-    namespace tools {
+namespace tools {
 
-        class Exporter {
-        public:
-            Exporter(std::string file_path) : log_path(file_path) {}
-            ~Exporter() {}
-            void ReadLog();
+class Exporter {
+ public:
+    explicit Exporter(std::string file_path) : log_path(file_path) {}
+    ~Exporter() {}
+    void ReadLog();
 
-        private:
-            std::string log_path;
-        };
+ private:
+    std::string log_path;
+};
 
-    }  // namespace tools
+}  // namespace tools
 }  // namespace openmldb
 
-#endif //SRC_TOOLS_LOG_EXPORTER_H_
+#endif  // SRC_TOOLS_LOG_EXPORTER_H_
