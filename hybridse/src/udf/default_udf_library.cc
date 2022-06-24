@@ -21,6 +21,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <queue>
+#include <functional>
 
 #include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
@@ -308,6 +310,71 @@ struct DistinctCountDef {
             return set;
         }
     };
+};
+
+template <typename T>
+struct MedianDef {
+    using ArgT = typename DataTypeTrait<T>::CCallArgType;
+    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>;
+    using MinHeapT = std::priority_queue<T, std::vector<T>, std::greater<>>;
+    using ContainerT = std::tuple<MaxHeapT, MinHeapT>;
+
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("median_init" + suffix, MedianDef::Init)
+            .update("median_update" + suffix, MedianDef::Update)
+            .output("meadin_output" + suffix, reinterpret_cast<void*>(MedianDef::Output), true);
+    }
+
+    static void Init(ContainerT* addr) { new (addr) ContainerT(); }
+
+    static void Push(ContainerT* container, T value) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        // invariant:
+        // max_heap.size() <= min_heap.size() &&
+        // max_head.top() <= median && median < min_head.top()
+        if (max_heap.empty() || value <= max_heap.top()) {
+            max_heap.push(value);
+            if (max_heap.size() > min_heap.size() + 1) {
+                min_heap.push(max_heap.top());
+                max_heap.pop();
+            }
+        } else {
+            min_heap.push(value);
+            if (min_heap.size() > max_heap.size()) {
+                max_heap.push(min_heap.top());
+                min_heap.pop();
+            }
+        }
+    }
+
+    static ContainerT* Update(ContainerT* container, T value, bool is_null) {
+        if (!is_null) {
+            Push(container, value);
+        }
+        return container;
+    }
+
+    static void Output(ContainerT* container, double* ret, bool* is_null) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        if (min_heap.empty() && max_heap.empty()) {
+            *is_null = true;
+        } else {
+            *is_null = false;
+            if (min_heap.size() == max_heap.size()) {
+                *ret = (min_heap.top() + max_heap.top()) / 2.0;
+            } else {
+                *ret = max_heap.top();
+            }
+        }
+
+        container->~ContainerT();
+    }
 };
 
 template <typename T>
@@ -2433,6 +2500,29 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterUdafTemplate<MedianDef>("median")
+        .doc(R"(
+            @brief Compute the median of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+            
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT median(value) OVER w;
+                -- output 2.5
+            @endcode
+            @since 0.6.0
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
 
     InitAggByCateUdafs();
 }
