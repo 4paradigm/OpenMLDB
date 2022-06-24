@@ -143,8 +143,8 @@ print('Training by xgb')
 # default is binary:logistic
 train_model = XGBClassifier(use_label_encoder=False).fit(X_train, y_train)
 pred = train_model.predict(X_test)
-print("Classification report:\n", classification_report(y_test, pred))
-print(f"Accuracy score: {accuracy_score(y_test, pred) * 100}")
+print('Classification report:\n', classification_report(y_test, pred))
+print(f'Accuracy score: {accuracy_score(y_test, pred) * 100}')
 
 del train_df
 gc.collect()
