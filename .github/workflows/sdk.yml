@@ -278,7 +278,7 @@ jobs:
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v2
         with:
-          name: python coverage
+          name: coverage
           files: python/test/coverage.xml
           fail_ci_if_error: true
           verbose: true
