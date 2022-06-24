@@ -6,11 +6,11 @@ With the development of business, dynamic scale-out is required if the current c
 
 ### Step 1. Starting a new tablet node
 
-Start a new tablet node as following steps, refer [deploy docs](../deploy/install_deploy.md)
+You need to first start a new tablet node as following steps, please refer to the [deploy doc](../deploy/install_deploy.md) for details:
 - Check time and zone settings, disable `THP` and `swap`
-- Download package
-- Modify the Configuration File: conf/tablet.flags
-- Start tablet
+- Download the package
+- Modify the configuration file: conf/tablet.flags
+- Start a new tablet
   ```bash
     sh bin/start.sh start tablet
   ```
