@@ -76,7 +76,6 @@ namespace openmldb {
                     for (int i = 0; i < entry.dimensions_size(); i++) {
                         if (entry.dimensions(i).idx() == 0) {
 
-                            values.emplace_back(entry.value());
                             ::openmldb::codec::Schema schema;
                             // TODO: Create schema for common cases
                             // Currently only works on the data from the quickstart.

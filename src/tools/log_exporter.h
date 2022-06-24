@@ -36,7 +36,6 @@ namespace openmldb {
 
         private:
             std::string log_path;
-            std::vector<std::string> values;
         };
 
     }  // namespace tools
