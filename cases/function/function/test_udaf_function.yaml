@@ -2509,3 +2509,27 @@ cases:
         6, 4, 4, NULL, NULL
         7, 3, 3, NULL, 4
         8, 2, 2, NULL, 3
+
+  - id: 61
+    desc: median
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, median(c2) OVER w1 as m2,median(c3) OVER w1 as m3,median(c4) OVER w1 as m4,median(c5) OVER w1 as m5,median(c6) OVER w1 as m6 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      rows:
+        - [1,"aa",1,1,30,1.1000000238418579,2.1]
+        - [2,"aa",2.5,2.5,31.5,1.25,2.25]
+        - [3,"aa",1,1,33,1.1000000238418579,2.1]
+        - [4,"aa",2.5,2.5,33,1.25,2.25]
