@@ -6,6 +6,15 @@ With the development of business, dynamic scale-out is required if the current c
 
 ### Step 1. Starting a new tablet node
 
+Start a new tablet node as following steps, refer [deploy docs](../deploy/install_deploy.md)
+- Check time and zone settings, disable `THP` and `swap`
+- Download package
+- Modify the Configuration File: conf/tablet.flags
+- Start tablet
+  ```bash
+    sh bin/start.sh start tablet
+    ```
+
 After startup, you need to check whether the new node has joined the cluster. If the `showtablet` command is executed and the new node endpoint is listed, it means that it has joined the cluster
 
 ```bash
