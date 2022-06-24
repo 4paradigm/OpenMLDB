@@ -197,7 +197,7 @@ enum FnOperator {
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"
-    kFnOpNonNull,     // ""
+    kFnOpNonNull,     // "" a helper op for compile to ignore null check
     kFnOpNone,        // "NONE"
     kFnOpBitwiseAnd,  // "&"
     kFnOpBitwiseOr,   // "|"

@@ -52,14 +52,14 @@ endif
 ifdef BUILD_SHARED_LIBS
     OPENMLDB_CMAKE_FLAGS += -DBUILD_SHARED_LIBS=$(BUILD_SHARED_LIBS)
 endif
+ifdef TESTING_ENABLE_STRIP
+    OPENMLDB_CMAKE_FLAGS += -DTESTING_ENABLE_STRIP=$(TESTING_ENABLE_STRIP)
+endif
 
 # Extra cmake flags for HybridSE
-HYBRIDSE_CMAKE_FLAGS := $(CMAKE_FLAGS)
+HYBRIDSE_CMAKE_FLAGS :=
 ifdef HYBRIDSE_TESTING_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DHYBRIDSE_TESTING_ENABLE=$(HYBRIDSE_TESTING_ENABLE)
-endif
-ifdef TESTING_ENABLE
-    HYBRIDSE_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
 endif
 ifdef EXAMPLES_ENABLE
     HYBRIDSE_CMAKE_FLAGS += -DEXAMPLES_ENABLE=$(EXAMPLES_ENABLE)
@@ -169,30 +169,21 @@ thirdpartybuild-clean:
 thirdpartysrc-clean:
 	rm -rf "$(THIRD_PARTY_SRC_DIR)"
 
-HYBRIDSE_BUILD_DIR := $(MAKEFILE_DIR)/hybridse/build
-HYBRIDSE_INSTALL_DIR := $(THIRD_PARTY_DIR)/hybridse
 
-.PHONY: hybridse hybridse-build hybridse-test hybridse-configure hybridse-clean
+.PHONY: hybridse-build hybridse-test
 
-# hybridse* target reserved for those like to compile in the old way
-hybridse: hybridse-build
+# FIXME(ace): export_udf_doc.py require the export_udf_info binary in hybridse/build/src
 
-hybridse-install: hybridse-build
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target install
+HYBRIDSE_BUILD_DIR := $(OPENMLDB_BUILD_DIR)/hybridse
 
-hybridse-test: hybridse-build
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) 
+hybridse-test:
+	$(MAKE) hybridse-build TESTING_ENABLE=ON
+	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
-hybridse-build: hybridse-configure
+hybridse-build: configure
 	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
-hybridse-configure: thirdparty-fast
-	$(CMAKE_PRG) -S hybridse -B $(HYBRIDSE_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) -DCMAKE_INSTALL_PREFIX=$(HYBRIDSE_INSTALL_DIR) $(HYBRIDSE_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
-
-hybridse-clean:
-	rm -rf "$(HYBRIDSE_BUILD_DIR)"
-
-clean: hybridse-clean openmldb-clean
+clean: openmldb-clean
 
 .PHONY: distclean lint format javafmt shfmt cppfmt pyfmt configfmt yamlfmt jsonfmt xmlfmt cpplint shlint javalint pylint
 
