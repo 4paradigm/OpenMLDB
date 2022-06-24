@@ -129,7 +129,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
-          name:  coverage
+          name: coverage
           fail_ci_if_error: true
           verbose: true
 
