@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <queue>
 
 #include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
@@ -304,41 +305,65 @@ struct DistinctCountDef {
 template <typename T>
 struct MedianDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
-    using VectorT = std::vector<T>;
+    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>; 
+    using MinHeapT = std::priority_queue<T, std::vector<T>, std::greater<>>;
+    using ContainerT = std::tuple<MaxHeapT, MinHeapT>;
 
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
-        helper.templates<Nullable<double>, Opaque<VectorT>, Nullable<T>>()
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
             .init("median_init" + suffix, MedianDef::Init)
             .update("median_update" + suffix, MedianDef::Update)
             .output("meadin_output" + suffix, reinterpret_cast<void*>(MedianDef::Output), true);
     }
 
-    static void Init(VectorT* addr) { new (addr) VectorT(); }
+    static void Init(ContainerT* addr) { new (addr) ContainerT(); }
 
-    static VectorT* Update(VectorT* vec, T value, bool is_null) {
-        if (!is_null) {
-            vec->push_back(value);
+    static void Push(ContainerT* container, T value) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        // invariant: 
+        // max_heap.size() <= min_heap.size() &&
+        // max_head.top() <= median && median < min_head.top()
+        if (max_heap.empty() || value <= max_heap.top()) {
+            max_heap.push(value);
+            if (max_heap.size() > min_heap.size() + 1) {
+                min_heap.push(max_heap.top());
+                max_heap.pop();
+            }
+        } else {
+            min_heap.push(value);
+            if (min_heap.size() > max_heap.size()) {
+                max_heap.push(min_heap.top());
+                min_heap.pop();
+            }
         }
-        return vec;
     }
 
-    static void Output(VectorT* vec, double* ret, bool* is_null) {
-        if (vec->empty()) {
+    static ContainerT* Update(ContainerT* container, T value, bool is_null) {
+        if (!is_null) {
+            Push(container, value);
+        }
+        return container;
+    }
+
+    static void Output(ContainerT* container, double* ret, bool* is_null) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+        
+        if (min_heap.empty() && max_heap.empty()) {
             *is_null = true;
         } else {
             *is_null = false;
-
-            std::sort(vec->begin(), vec->end());
-            size_t mid = vec->size() / 2;
-            if (vec->size() % 2 == 0) {
-                *ret = (vec->at(mid - 1) + vec->at(mid)) / 2.0;
+            if (min_heap.size() == max_heap.size()) {
+                *ret = (min_heap.top() + max_heap.top()) / 2.0;
             } else {
-                *ret = vec->at(mid);
+                *ret = max_heap.top();
             }
         }
-        vec->clear();
-        vec->~VectorT();
+
+        container->~ContainerT();
     }
 };
 
