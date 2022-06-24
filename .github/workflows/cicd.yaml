@@ -216,3 +216,23 @@ jobs:
             openmldb-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos-release:
+    runs-on: ubuntu-latest
+    # if test failed, shouldn't release
+    needs: [ "macos-cpp" ]
+    if: >
+      success() && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Release Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: release-artifacts
+      - name: Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            openmldb-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
