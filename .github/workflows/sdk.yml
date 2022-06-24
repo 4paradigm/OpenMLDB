@@ -129,7 +129,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
-          name: maven coverage
+          name:  coverage
           fail_ci_if_error: true
           verbose: true
 
@@ -288,13 +288,15 @@ jobs:
       - name: generate python coverage report
         working-directory: python
         run: |
-          pip install coverage
-          coverage run -m unittest
+          pip install pytest
+          pip install pytest-cov
+          pytest --cov=./ --cov-report=xml
 
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v2
         with:
           name: python coverage
+          files: python/coverage.xml
           fail_ci_if_error: true
           verbose: true
 
