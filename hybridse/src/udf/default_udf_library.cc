@@ -306,7 +306,7 @@ struct MedianDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
     using VectorT = std::vector<T>;
 
-    void operator()(UdafRegistryHelper& helper) {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
         helper.templates<Nullable<double>, Opaque<VectorT>, Nullable<T>>()
             .init("median_init" + suffix, MedianDef::Init)
@@ -2471,7 +2471,7 @@ void DefaultUdfLibrary::InitUdaf() {
                 SELECT median(value) OVER w;
                 -- output 2.5
             @endcode
-            @since 0.5.0
+            @since 0.6.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
