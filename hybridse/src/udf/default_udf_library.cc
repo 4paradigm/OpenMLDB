@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 #include <queue>
+#include <functional>
 
 #include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
@@ -314,7 +315,7 @@ struct DistinctCountDef {
 template <typename T>
 struct MedianDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
-    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>; 
+    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>;
     using MinHeapT = std::priority_queue<T, std::vector<T>, std::greater<>>;
     using ContainerT = std::tuple<MaxHeapT, MinHeapT>;
 
@@ -332,7 +333,7 @@ struct MedianDef {
         auto &max_heap = std::get<0>(*container);
         auto &min_heap = std::get<1>(*container);
 
-        // invariant: 
+        // invariant:
         // max_heap.size() <= min_heap.size() &&
         // max_head.top() <= median && median < min_head.top()
         if (max_heap.empty() || value <= max_heap.top()) {
@@ -360,7 +361,7 @@ struct MedianDef {
     static void Output(ContainerT* container, double* ret, bool* is_null) {
         auto &max_heap = std::get<0>(*container);
         auto &min_heap = std::get<1>(*container);
-        
+
         if (min_heap.empty() && max_heap.empty()) {
             *is_null = true;
         } else {
