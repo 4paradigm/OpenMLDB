@@ -263,7 +263,7 @@ jobs:
           pip install setuptools wheel twine
           yum install -y net-tools
 
-      - name: test sqlalchemy
+      - name: test sqlalchemy and generate coverage report
         run: |
           bash steps/test_python.sh
 
@@ -275,6 +275,14 @@ jobs:
           path: |
             python/openmldb/test/pytest.xml
 
+      - name: upload python coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: python coverage
+          files: python/test/coverage.xml
+          fail_ci_if_error: true
+          verbose: true
+
       - name: upload to pypi
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
@@ -284,21 +292,6 @@ jobs:
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-
-      - name: generate python coverage report
-        working-directory: python
-        run: |
-          pip install pytest
-          pip install pytest-cov
-          pytest --cov=./ --cov-report=xml
-
-      - name: upload python coverage to codecov
-        uses: codecov/codecov-action@v2
-        with:
-          name: python coverage
-          files: python/coverage.xml
-          fail_ci_if_error: true
-          verbose: true
 
   python-sdk-mac:
     runs-on: macos-latest
