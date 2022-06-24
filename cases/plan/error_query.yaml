@@ -55,3 +55,17 @@ cases:
     sql: select 100ss;
     expect:
       success: false
+  - id: 7
+    desc: window lower bound frame must less or equal to end bound
+    sql: |
+      select x, sum(y) over (partition by z order by x rows between 0 preceding and 2 preceding) from t1;
+    expect:
+      success: false
+      msg: The lower bound of a window frame must be less than or equal to the upper bound
+  - id: 8
+    desc: window lower bound frame must less or equal to end bound
+    sql: |
+      select x, sum(y) over (partition by z order by x ROWS_RANGE between 2 following and 0 following) from t1;
+    expect:
+      success: false
+      msg: The lower bound of a window frame must be less than or equal to the upper bound

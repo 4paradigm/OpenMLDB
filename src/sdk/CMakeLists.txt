@@ -14,10 +14,10 @@
 
 if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
-    add_dependencies(mini_cluster_bm_common openmldb_proto hybridse_proto)
+    add_dependencies(mini_cluster_bm_common openmldb_proto)
 
     add_library(base_test sql_sdk_base_test.cc ../test/base_test.cc)
-    add_dependencies(base_test hybridse_core openmldb_proto hybridse_proto)
+    add_dependencies(base_test hybridse_core openmldb_proto)
 
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
