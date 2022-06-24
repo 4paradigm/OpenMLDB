@@ -6,13 +6,13 @@
 
 ### 1 启动一个新的tablet节点
 按照如下步骤启动tablet节点，参考[部署文档](../deploy/install_deploy.md)
-- 检查机器配置，关闭THP和swap
-- 拷贝部署包到新的节点并解压
+- 检查时间和时区，关闭THP和swap
+- 下载部署包到新的节点并解压
 - 修改conf/tablet.flags配置文件，zk_cluster和zk_root_path和集群中其他节点保持一致。修改endpoint。
 - 启动tablet
-    ```bash
+  ```bash
     sh bin/start.sh start tablet
-    ```
+  ```
 启动后查看新增节点是否加入集群。如果执行showtablet命令列出了新节点endpoint说明已经加入到集群中
 
 ```bash

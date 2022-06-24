@@ -13,7 +13,7 @@ Start a new tablet node as following steps, refer [deploy docs](../deploy/instal
 - Start tablet
   ```bash
     sh bin/start.sh start tablet
-    ```
+  ```
 
 After startup, you need to check whether the new node has joined the cluster. If the `showtablet` command is executed and the new node endpoint is listed, it means that it has joined the cluster
 
