@@ -2756,7 +2756,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             }
             real_endpoint = iter->second;
         }
-        FileSender sender(remote_tid, pid, real_endpoint);
+        FileSender sender(remote_tid, pid, table->GetStorageMode(), real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
             break;
@@ -4730,7 +4730,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
                 }
                 real_endpoint = iter->second;
             }
-            FileSender sender(tid, kv.first, real_endpoint);
+            FileSender sender(tid, kv.first, table->GetStorageMode(), real_endpoint);
             if (!sender.Init()) {
                 PDLOG(WARNING,
                       "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "

@@ -156,7 +156,8 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
 bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
                                bool leader, const std::vector<std::string>& endpoints,
                                const ::openmldb::type::TTLType& type, uint32_t seg_cnt, uint64_t term,
-                               const ::openmldb::type::CompressType compress_type) {
+                               const ::openmldb::type::CompressType compress_type,
+                               ::openmldb::common::StorageMode storage_mode) {
     ::openmldb::api::CreateTableRequest request;
     if (type == ::openmldb::type::kLatestTime) {
         if (lat_ttl > FLAGS_latest_ttl_max) {
@@ -177,6 +178,7 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t p
     table_meta->set_pid(pid);
     table_meta->set_compress_type(compress_type);
     table_meta->set_seg_cnt(seg_cnt);
+    table_meta->set_storage_mode(storage_mode);
     if (leader) {
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_term(term);
