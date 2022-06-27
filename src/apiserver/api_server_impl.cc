@@ -48,6 +48,7 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
         return false;
     }
     sql_router_ = std::move(router);
+    RegisterQuery();
     RegisterPut();
     RegisterExecSP();
     RegisterExecDeployment();
@@ -81,6 +82,57 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
     provider_.handle(unresolved_path, method, req_body, writer);
 
     cntl->response_attachment().append(writer.GetString());
+}
+
+enum QUERY_MODE { OFFLINE_SYNC, OFFLINE_ASYNC, ONLINE };
+std::map<std::string, QUERY_MODE> mode_map{
+    {"offsync", QUERY_MODE::OFFLINE_SYNC}, {"offasync", QUERY_MODE::OFFLINE_ASYNC}, {"online", QUERY_MODE::ONLINE}};
+
+void APIServerImpl::RegisterQuery() {
+    provider_.post("/dbs/:db_name",
+                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                       auto resp = GeneralResp();
+                       auto db_it = param.find("db_name");
+                       if (db_it == param.end()) {
+                           writer << resp.Set("url has no db_name");
+                           return;
+                       }
+                       auto db = db_it->second;
+
+                       // default mode is offsync
+                       QueryReq req;
+                       JsonReader query_reader(req_body.to_string().c_str());
+                       query_reader >> req;
+                       if (!query_reader) {
+                           writer << resp.Set("Json parse failed, " + req_body.to_string());
+                           return;
+                       }
+                       auto mode = boost::to_lower_copy(req.mode);
+                       auto it = mode_map.find(mode);
+                       if (it == mode_map.end()) {
+                           writer << resp.Set("Invalid mode " + mode);
+                           return;
+                       }
+                       QUERY_MODE query_mode = it->second;
+
+                       auto sql = boost::to_lower_copy(req.sql);
+                       LOG(INFO) << "post [" << mode << "] query on db [" << db << "], sql: " << sql;
+                       // TODO(hw): if api server supports standalone, we should check if cluster mode here
+
+                       hybridse::sdk::Status status;
+                       // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
+                       //  supports ddl http api. It's useful for api server tests(We can create table when we only
+                       //  connect to the api server).
+                       if (query_mode == QUERY_MODE::ONLINE || !boost::starts_with(sql, "select")) {
+                           // TODO(hw): response the result set
+                           auto rs = sql_router_->ExecuteSQL(db, sql, &status);
+                       } else {
+                           // TODO(hw): support mutable timeout
+                           auto rs = sql_router_->ExecuteOfflineQuery(db, sql, query_mode == QUERY_MODE::OFFLINE_SYNC,
+                                                                      600000, &status);
+                       }
+                       writer << resp.Set(status.code, status.msg);
+                   });
 }
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
@@ -207,11 +259,11 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
 void APIServerImpl::RegisterPut() {
     provider_.put("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param,
                                                              const butil::IOBuf& req_body, JsonWriter& writer) {
-        auto err = GeneralError();
+        auto resp = GeneralResp();
         auto db_it = param.find("db_name");
         auto table_it = param.find("table_name");
         if (db_it == param.end() || table_it == param.end()) {
-            writer << err.Set("Invalid path");
+            writer << resp.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -222,14 +274,14 @@ void APIServerImpl::RegisterPut() {
         if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
             DLOG(INFO) << "rapidjson doc parse [" << req_body.to_string().c_str() << "] failed, code "
                        << document.GetParseError() << ", offset " << document.GetErrorOffset();
-            writer << err.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
+            writer << resp.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
             return;
         }
 
         const auto& value = document["value"];
         // value should be an array, and multi put is not supported now
         if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
-            writer << err.Set("Invalid value in body, only support to put one row");
+            writer << resp.Set("Invalid value in body, only support to put one row");
             return;
         }
         const auto& arr = value[0];
@@ -241,13 +293,13 @@ void APIServerImpl::RegisterPut() {
         std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
         auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
         if (!row) {
-            writer << err.Set(status.msg);
+            writer << resp.Set(status.msg);
             return;
         }
         auto schema = row->GetSchema();
         auto cnt = schema->GetColumnCnt();
         if (cnt != static_cast<int>(arr.Size())) {
-            writer << err.Set("column size != schema size");
+            writer << resp.Set("column size != schema size");
             return;
         }
 
@@ -263,38 +315,35 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << err.Set("Translate to insert row failed");
+                writer << resp.Set("Translate to insert row failed");
                 return;
             }
         }
 
         auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
-        if (ok) {
-            PutResp resp;
-            writer << resp;
-        } else {
-            writer << err.Set(status.msg);
-        }
+        writer << resp.Set(status.code, status.msg);
     });
 }
 
 void APIServerImpl::RegisterExecDeployment() {
-    provider_.post("/dbs/:db_name/deployments/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                false, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    provider_.post("/dbs/:db_name/deployments/:sp_name",
+                   std::bind(&APIServerImpl::ExecuteProcedure, this, false, std::placeholders::_1,
+                             std::placeholders::_2, std::placeholders::_3));
 }
 
 void APIServerImpl::RegisterExecSP() {
-    provider_.post("/dbs/:db_name/procedures/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                true, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    provider_.post("/dbs/:db_name/procedures/:sp_name",
+                   std::bind(&APIServerImpl::ExecuteProcedure, this, true, std::placeholders::_1, std::placeholders::_2,
+                             std::placeholders::_3));
 }
 
 void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
-        const butil::IOBuf& req_body, JsonWriter& writer) {
-    auto err = GeneralError();
+                                     const butil::IOBuf& req_body, JsonWriter& writer) {
+    auto resp = GeneralResp();
     auto db_it = param.find("db_name");
     auto sp_it = param.find("sp_name");
     if (db_it == param.end() || sp_it == param.end()) {
-        writer << err.Set("Invalid path");
+        writer << resp.Set("Invalid path");
         return;
     }
     auto db = db_it->second;
@@ -302,7 +351,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     Document document;
     if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-        writer << err.Set("Json parse failed");
+        writer << resp.Set("Json parse failed");
         return;
     }
 
@@ -312,7 +361,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         if (common_cols != document.MemberEnd()) {
             common_cols_v = common_cols->value;  // move
             if (!common_cols_v.IsArray()) {
-                writer << err.Set("common_cols is not array");
+                writer << resp.Set("common_cols is not array");
                 return;
             }
         } else {
@@ -324,7 +373,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     auto input = document.FindMember("input");
     if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
-        writer << err.Set("Invalid input");
+        writer << resp.Set("Invalid input");
         return;
     }
     const auto& rows = input->value;
@@ -334,7 +383,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     // GetRequestRowByProcedure can't do that.
     auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
     if (!sp_info) {
-        writer << err.Set(status.msg);
+        writer << resp.Set(status.msg);
         return;
     }
 
@@ -351,7 +400,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
             }
         }
         if (common_cols_v.Size() != expected_common_size) {
-            writer << err.Set("Invalid common cols size");
+            writer << resp.Set("Invalid common cols size");
             return;
         }
     }
@@ -362,14 +411,14 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     std::set<std::string> col_set;
     for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
         if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
-            writer << err.Set("Invalid input data row");
+            writer << resp.Set("Invalid input data row");
             return;
         }
         auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
         // sizes have been checked
         if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
-            writer << err.Set("Translate to request row failed");
+            writer << resp.Set("Translate to request row failed");
             return;
         }
         row->Build();
@@ -378,30 +427,29 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     auto rs = sql_router_->CallSQLBatchRequestProcedure(db, sp, row_batch, &status);
     if (!rs) {
-        writer << err.Set(status.msg);
+        writer << resp.Set(status.msg);
         return;
     }
 
-    ExecSPResp resp;
+    ExecSPResp sp_resp;
     // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
     // print schema
-    resp.sp_info = sp_info;
-    if (document.HasMember("need_schema") && document["need_schema"].IsBool() &&
-        document["need_schema"].GetBool()) {
-        resp.need_schema = true;
+    sp_resp.sp_info = sp_info;
+    if (document.HasMember("need_schema") && document["need_schema"].IsBool() && document["need_schema"].GetBool()) {
+        sp_resp.need_schema = true;
     }
-    resp.rs = rs;
+    sp_resp.rs = rs;
     writer << resp;
 }
 
 void APIServerImpl::RegisterGetSP() {
     provider_.get("/dbs/:db_name/procedures/:sp_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto sp_it = param.find("sp_name");
                       if (db_it == param.end() || sp_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       auto db = db_it->second;
@@ -410,7 +458,7 @@ void APIServerImpl::RegisterGetSP() {
                       hybridse::sdk::Status status;
                       auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
                       if (!sp_info) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       if (sp_info->GetType() == ::hybridse::sdk::ProcedureType::kReqProcedure) {
@@ -418,7 +466,7 @@ void APIServerImpl::RegisterGetSP() {
                           resp.sp_info = sp_info;
                           writer << resp;
                       } else {
-                          writer << err.Set("procedure not found");
+                          writer << resp.Set("procedure not found");
                       }
                   });
 }
@@ -426,11 +474,11 @@ void APIServerImpl::RegisterGetSP() {
 void APIServerImpl::RegisterGetDeployment() {
     provider_.get("/dbs/:db_name/deployments/:dep_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto sp_it = param.find("dep_name");
                       if (db_it == param.end() || sp_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       auto db = db_it->second;
@@ -439,7 +487,7 @@ void APIServerImpl::RegisterGetDeployment() {
                       hybridse::sdk::Status status;
                       auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
                       if (!sp_info) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       if (sp_info->GetType() == ::hybridse::sdk::ProcedureType::kReqDeployment) {
@@ -447,7 +495,7 @@ void APIServerImpl::RegisterGetDeployment() {
                           resp.sp_info = sp_info;
                           writer << resp;
                       } else {
-                          writer << err.Set("deployment not found");
+                          writer << resp.Set("deployment not found");
                       }
                   });
 }
@@ -455,12 +503,12 @@ void APIServerImpl::RegisterGetDeployment() {
 void APIServerImpl::RegisterGetDB() {
     provider_.get("/dbs",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       writer.StartObject();
@@ -480,23 +528,23 @@ void APIServerImpl::RegisterGetTable() {
     // show all of the tables
     provider_.get("/dbs/:db_name/tables",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       if (db_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer << err.Set("DB not found");
+                          writer << resp.Set("DB not found");
                           return;
                       }
                       auto tables = cluster_sdk_->GetTables(db);
@@ -514,31 +562,31 @@ void APIServerImpl::RegisterGetTable() {
     // show a certain table
     provider_.get("/dbs/:db_name/tables/:table_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto table_it = param.find("table_name");
                       if (db_it == param.end() || table_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer << err.Set("DB not found");
+                          writer << resp.Set("DB not found");
                           return;
                       }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
                       // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
-                          writer << err.Set("Table not found");
+                          writer << resp.Set("Table not found");
                           return;
                       } else {
                           writer.StartObject();

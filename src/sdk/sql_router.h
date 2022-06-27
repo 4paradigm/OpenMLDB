@@ -166,35 +166,34 @@ class SQLRouter {
     virtual bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) = 0;
 
     virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
-                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0; // NOLINT
+                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0;  // NOLINT
 
     virtual ::openmldb::base::Status ShowJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
 
     virtual ::openmldb::base::Status StopJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
 
-    virtual ::openmldb::base::Status ExecuteOfflineQuery(const std::string& sql,
-                                                         const std::map<std::string, std::string>& config,
-                                                         const std::string& default_db, bool sync_job,
-                                                         ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteOfflineQuery(const std::string& db, const std::string& sql,
+                                                                          bool is_sync_job, int job_timeout,
+                                                                          ::hybridse::sdk::Status* status) = 0;
 
     virtual ::openmldb::base::Status ImportOnlineData(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, bool sync_job,
-                                                      ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                                      ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
 
     virtual ::openmldb::base::Status ImportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
                                                        const std::string& default_db, bool sync_job,
-                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
 
     virtual ::openmldb::base::Status ExportOfflineData(const std::string& sql,
                                                        const std::map<std::string, std::string>& config,
                                                        const std::string& default_db, bool sync_job,
-                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0; // NOLINT
+                                                       ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
 
-    virtual std::string GetJobLog(const int id, hybridse::sdk::Status* status) = 0;
+    virtual std::string GetJobLog(int id, hybridse::sdk::Status* status) = 0;
 
     virtual bool NotifyTableChange() = 0;
 

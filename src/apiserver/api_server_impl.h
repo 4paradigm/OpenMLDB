@@ -55,6 +55,7 @@ class APIServerImpl : public APIServer {
                  google::protobuf::Closure* done) override;
 
  private:
+    void RegisterQuery();
     void RegisterPut();
     void RegisterExecSP();
     void RegisterExecDeployment();
@@ -63,8 +64,8 @@ class APIServerImpl : public APIServer {
     void RegisterGetDB();
     void RegisterGetTable();
 
-    void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
-            const butil::IOBuf& req_body, JsonWriter& writer); // NOLINT
+    void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
+                          JsonWriter& writer);  // NOLINT
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,
@@ -80,17 +81,17 @@ class APIServerImpl : public APIServer {
     ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };
 
-struct PutResp {
-    PutResp() = default;
-    int code = 0;
-    std::string msg = "ok";
+struct QueryReq {
+    std::string mode;
+    std::string sql;
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, PutResp& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, QueryReq& s) {  // NOLINT
     ar.StartObject();
-    ar.Member("code") & s.code;
-    ar.Member("msg") & s.msg;
+    // mode is not optional
+    ar.Member("mode") & s.mode;
+    ar.Member("sql") & s.sql;
     return ar.EndObject();
 }
 

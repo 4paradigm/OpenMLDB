@@ -104,4 +104,4 @@ def test_sdk_smoke():
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "sql_smoke_test.py"]))
+    sys.exit(pytest.main(["-vv", "sdk_smoke_test.py"]))

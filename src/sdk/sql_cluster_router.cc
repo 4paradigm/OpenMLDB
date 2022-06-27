@@ -276,7 +276,7 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("execute_mode", "offline");
         session_variables_.emplace("enable_trace", "false");
         session_variables_.emplace("sync_job", "false");
-        session_variables_.emplace("job_timeout", "20000");  // ref TaskManagerClient::request_timeout_ms_
+        session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
     }
     return true;
 }
@@ -860,7 +860,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
             return false;
         }
 
-        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table);
+        ::openmldb::base::Status rpcStatus = taskmanager_client_ptr->DropOfflineTable(db, table, GetJobTimeout());
         if (rpcStatus.code != 0) {
             status->msg = rpcStatus.msg;
             status->code = rpcStatus.code;
@@ -1575,13 +1575,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 }
                 std::vector<std::string> vec = {fun_info.name(),
                                                 openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
-                                                arg_type,
-                                                is_aggregate,
-                                                fun_info.file()};
+                                                arg_type, is_aggregate, fun_info.file()};
                 lines.push_back(vec);
             }
-            return ResultSetSQL::MakeResultSet(
-                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines, status);
+            return ResultSetSQL::MakeResultSet({"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines,
+                                               status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -1590,7 +1588,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 cluster_sdk_->RemoveExternalFun(name);
                 auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
                 if (taskmanager_client) {
-                    base_status = taskmanager_client->DropFunction(name);
+                    base_status = taskmanager_client->DropFunction(name, GetJobTimeout());
                     if (!base_status.OK()) {
                         *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                         return {};
@@ -2131,7 +2129,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ShowJobs(only_unfinished, job_infos);
+    return taskmanager_client_ptr->ShowJobs(only_unfinished, GetJobTimeout(), job_infos);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
@@ -2139,7 +2137,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ShowJob(id, job_info);
+    return taskmanager_client_ptr->ShowJob(id, GetJobTimeout(), job_info);
 }
 
 ::openmldb::base::Status SQLClusterRouter::StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info) {
@@ -2147,29 +2145,28 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->StopJob(id, job_info);
+    return taskmanager_client_ptr->StopJob(id, GetJobTimeout(), job_info);
 }
 
-::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQuery(const std::string& sql,
-                                                               const std::map<std::string, std::string>& config,
-                                                               const std::string& default_db, bool sync_job,
-                                                               ::openmldb::taskmanager::JobInfo& job_info) {
+::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQueryAsync(const std::string& sql,
+                                                                    const std::map<std::string, std::string>& config,
+                                                                    const std::string& default_db, int job_timeout,
+                                                                    ::openmldb::taskmanager::JobInfo& job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, sync_job, job_info);
+    return taskmanager_client_ptr->RunBatchAndShow(sql, config, default_db, false, job_timeout, job_info);
 }
 
-::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQueryGetOutput(const std::string& sql,
-    const std::map<std::string, std::string>& config,
-    const std::string& default_db,
-    std::string& output) {
+::openmldb::base::Status SQLClusterRouter::ExecuteOfflineQueryGetOutput(
+    const std::string& sql, const std::map<std::string, std::string>& config, const std::string& default_db,
+    int job_timeout, std::string& output) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->RunBatchSql(sql, config, default_db, output);
+    return taskmanager_client_ptr->RunBatchSql(sql, config, default_db, job_timeout, output);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ImportOnlineData(const std::string& sql,
@@ -2180,7 +2177,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ImportOnlineData(sql, config, default_db, sync_job, job_info);
+    return taskmanager_client_ptr->ImportOnlineData(sql, config, default_db, sync_job, GetJobTimeout(), job_info);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ImportOfflineData(const std::string& sql,
@@ -2191,7 +2188,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, sync_job, job_info);
+    return taskmanager_client_ptr->ImportOfflineData(sql, config, default_db, sync_job, GetJobTimeout(), job_info);
 }
 
 ::openmldb::base::Status SQLClusterRouter::ExportOfflineData(const std::string& sql,
@@ -2202,7 +2199,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
     }
-    return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, sync_job, job_info);
+    return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, sync_job, GetJobTimeout(), job_info);
 }
 
 ::openmldb::base::Status SQLClusterRouter::CreatePreAggrTable(const std::string& aggr_db, const std::string& aggr_table,
@@ -2273,7 +2270,7 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
 
     // TODO(tobe): Need to pass ::openmldb::base::Status* for TaskManagerClient
     auto openmldbStatus = std::make_shared<::openmldb::base::Status>();
-    auto log = taskmanager_client_ptr->GetJobLog(id, openmldbStatus.get());
+    auto log = taskmanager_client_ptr->GetJobLog(id, GetJobTimeout(), openmldbStatus.get());
     status->code = openmldbStatus->code;
     status->msg = openmldbStatus->msg;
     return log;
@@ -2400,39 +2397,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 return ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             } else {
                 // Run offline query
-                std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
-
-                if (IsSyncJob()) {
-                    // Run offline sql and wait to get output
-                    std::string output;
-                    auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, output);
-                    if (base_status.OK()) {
-                        *status = {};
-                        // Print the output from job output
-                        // TODO(tobe): return result set if want to format the output
-                        std::vector<std::string> value = {output};
-                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
-                    } else {
-                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
-                    }
-                } else {
-                    // Run offline sql and return job info immediately
-                    ::openmldb::taskmanager::JobInfo job_info;
-                    auto base_status = ExecuteOfflineQuery(sql, config, db, IsSyncJob(), job_info);
-                    if (base_status.OK()) {
-                        *status = {};
-                        if (job_info.id() > 0) {
-                            std::stringstream ss;
-                            ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                            std::vector<std::string> value = {ss.str()};
-                            // TODO(tobe): Return the result set with multiple columns
-                            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
-                        }
-                    } else {
-                        *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
-                    }
-                }
+                return ExecuteOfflineQuery(db, sql, IsSyncJob(), GetJobTimeout(), status);
             }
             return {};
         }
@@ -2527,6 +2492,48 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
     }
 }
 
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(const std::string& db,
+                                                                                const std::string& sql,
+                                                                                bool is_sync_job, int job_timeout,
+                                                                                ::hybridse::sdk::Status* status) {
+    std::map<std::string, std::string> config;
+    ReadSparkConfFromFile(FLAGS_spark_conf, &config);
+
+    if (is_sync_job) {
+        // Run offline sql and wait to get output
+        std::string output;
+        auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, output);
+        if (!base_status.OK()) {
+            *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+            return {};
+        }
+        // Print the output from job output
+        // TODO(tobe): return result set if want to format the output
+        std::vector<std::string> value = {output};
+        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+    } else {
+        // Run offline sql and return job info immediately
+        ::openmldb::taskmanager::JobInfo job_info;
+        auto base_status = ExecuteOfflineQueryAsync(sql, config, db, job_timeout, job_info);
+        if (!base_status.OK()) {
+            *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
+            return {};
+        }
+
+        // job info id should > 0
+        if (job_info.id() <= 0) {
+            *status = {::hybridse::common::StatusCode::kCmdError, "job info id should > 0"};
+            return {};
+        }
+
+        std::stringstream ss;
+        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
+        std::vector<std::string> value = {ss.str()};
+        // TODO(tobe): Return the result set with multiple columns
+        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+    }
+}
+
 bool SQLClusterRouter::IsOnlineMode() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("execute_mode");
@@ -2543,6 +2550,7 @@ bool SQLClusterRouter::IsEnableTrace() {
     }
     return false;
 }
+
 bool SQLClusterRouter::IsSyncJob() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("sync_job");
@@ -2550,6 +2558,19 @@ bool SQLClusterRouter::IsSyncJob() {
         return true;
     }
     return false;
+}
+
+int SQLClusterRouter::GetJobTimeout() {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    auto it = session_variables_.find("job_timeout");
+    if (it != session_variables_.end()) {
+        int new_timeout = 0;
+        if (absl::SimpleAtoi(it->second, &new_timeout)) {
+            return new_timeout;
+        }
+    }
+    // default timeout use 60000
+    return 60000;
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
@@ -2581,17 +2602,11 @@ bool SQLClusterRouter::IsSyncJob() {
             return {::hybridse::common::StatusCode::kCmdError, "the value of " + key + " must be true|false"};
         }
     } else if (key == "job_timeout") {
-        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
-        if (!taskmanager_client_ptr) {
-            return {::hybridse::common::StatusCode::kCmdError,
-                    "Fail to get TaskManager client, can't set the request timeout"};
-        }
+        // we only validate the value here, job timeout will be used in every offline call
         int new_timeout = 0;
         if (!absl::SimpleAtoi(value, &new_timeout)) {
             return {::hybridse::common::StatusCode::kCmdError, "Fail to parse value, can't set the request timeout"};
         }
-        // TODO(hw): is it better to set request timeout before every offline call?
-        taskmanager_client_ptr->SetRequestTimeout(new_timeout);
     } else {
         return {};
     }
@@ -2883,7 +2898,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     if (cluster_sdk_->IsClusterMode()) {
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
-            auto ret = taskmanager_client->CreateFunction(fun);
+            auto ret = taskmanager_client->CreateFunction(fun, GetJobTimeout());
             if (!ret.OK()) {
                 return {::hybridse::common::StatusCode::kCmdError, ret.msg};
             }
@@ -3110,8 +3125,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        bool ok = ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl,
-                                column_key.index_name(), err);
+                        bool ok =
+                            ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, column_key.index_name(), err);
                         if (!ok) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
@@ -3119,7 +3134,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                 }
             } else {
                 column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
-                                        std::to_string(::baidu::common::timer::now_time()));
+                                          std::to_string(::baidu::common::timer::now_time()));
                 add_index_num++;
                 new_indexs.emplace_back(column_key);
             }
@@ -3199,8 +3214,7 @@ hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
-    const hybridse::node::DeployPlanNode* deploy_node,
-    const std::set<std::pair<std::string, std::string>>& table_pair,
+    const hybridse::node::DeployPlanNode* deploy_node, const std::set<std::pair<std::string, std::string>>& table_pair,
     const std::string& select_sql) {
     auto iter = deploy_node->Options()->find(hybridse::vm::LONG_WINDOWS);
     std::string long_window_param = "";
@@ -3266,14 +3280,12 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             // insert pre-aggr meta info to meta table
             std::string aggr_col = lw.aggr_col_ == "*" ? "" : lw.aggr_col_;
             auto aggr_table =
-                absl::StrCat("pre_", base_db, "_", deploy_node->Name(), "_",
-                             lw.window_name_, "_", lw.aggr_func_, "_", aggr_col,
-                             lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
-            std::string insert_sql =
-                absl::StrCat("insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db,
-                             "', '", base_db, "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '",
-                             lw.partition_col_, "', '", lw.order_col_, "', '", lw.bucket_size_, "', '",
-                             lw.filter_col_, "');");
+                absl::StrCat("pre_", base_db, "_", deploy_node->Name(), "_", lw.window_name_, "_", lw.aggr_func_, "_",
+                             aggr_col, lw.filter_col_.empty() ? "" : "_" + lw.filter_col_);
+            std::string insert_sql = absl::StrCat(
+                "insert into ", meta_db, ".", meta_table, " values('" + aggr_table, "', '", aggr_db, "', '", base_db,
+                "', '", base_table, "', '", lw.aggr_func_, "', '", lw.aggr_col_, "', '", lw.partition_col_, "', '",
+                lw.order_col_, "', '", lw.bucket_size_, "', '", lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
                 return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
@@ -3339,17 +3351,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
     return {};
 }
 
-bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table,
-                                              const std::string& base_db,
+bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
                                               const openmldb::base::LongWindowInfo& lw,
                                               ::hybridse::sdk::Status* status) {
     std::string meta_db = openmldb::nameserver::INTERNAL_DB;
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
     std::string filter_cond = lw.filter_col_.empty() ? "" : " and filter_col = '" + lw.filter_col_ + "'";
-    std::string meta_info = absl::StrCat(
-        "base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
-        "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
-        "' and order_by_col = '", lw.order_col_, "'", filter_cond);
+    std::string meta_info =
+        absl::StrCat("base_db = '", base_db, "' and base_table = '", base_table, "' and aggr_func = '", lw.aggr_func_,
+                     "' and aggr_col = '", lw.aggr_col_, "' and partition_cols = '", lw.partition_col_,
+                     "' and order_by_col = '", lw.order_col_, "'", filter_cond);
     std::string select_sql =
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, ";");
     auto rs = ExecuteSQL("", select_sql, status);

@@ -148,7 +148,7 @@ TEST_F(APIServerTest, invalidPut) {
     const auto env = APIServerTestEnv::Instance();
     brpc::Controller cntl;
     cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
-    PutResp resp;
+    GeneralResp resp;
 
     // Empty body
     // NOTE: host:port is defined in SetUp, so the host:port here won't work. Only the path works.
@@ -234,7 +234,7 @@ TEST_F(APIServerTest, validPut) {
                                          "\", 111, 1.4,  \"2021-04-27\", 1620471840256, true, \"more str\", null]]}");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(0, resp.code) << resp.msg;
@@ -286,7 +286,7 @@ TEST_F(APIServerTest, putCase1) {
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         LOG(INFO) << cntl.response_attachment().to_string();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(0, resp.code) << resp.msg;
@@ -304,7 +304,7 @@ TEST_F(APIServerTest, putCase1) {
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         LOG(INFO) << cntl.response_attachment().to_string();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(0, resp.code) << resp.msg;
@@ -323,7 +323,7 @@ TEST_F(APIServerTest, putCase1) {
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         LOG(INFO) << cntl.response_attachment().to_string();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(-1, resp.code);
@@ -341,7 +341,7 @@ TEST_F(APIServerTest, putCase1) {
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         LOG(INFO) << cntl.response_attachment().to_string();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(0, resp.code) << resp.msg;
@@ -360,7 +360,7 @@ TEST_F(APIServerTest, putCase1) {
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
         LOG(INFO) << cntl.response_attachment().to_string();
-        PutResp resp;
+        GeneralResp resp;
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(0, resp.code) << resp.msg;
