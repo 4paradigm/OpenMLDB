@@ -25,7 +25,7 @@ Download OpenMLDB server pkg, version >= 0.5.0 .
 Install all dependencies:
 
 ```
-pip install pandas xgboost==1.4.2 tornado "openmldb>=0.5.0"
+pip install pandas xgboost==1.4.2 sklearn tornado "openmldb>=0.5.0" requests
 ```
 
 ### Data Prepare
