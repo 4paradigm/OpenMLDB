@@ -55,18 +55,18 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         logger.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         try {
-            // List<String> sqls = fesqlCase.getSqls();
-            // if (sqls != null && sqls.size() > 0) {
-            //     for (String sql : sqls) {
-            //         // log.info("sql:{}", sql);
-            //         if(MapUtils.isNotEmpty(fedbInfoMap)) {
-            //             sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
-            //         }else {
-            //             sql = FesqlUtil.formatSql(sql, tableNames);
-            //         }
-            //         fesqlResult = FesqlUtil.sql(executor, dbName, sql);
-            //     }
-            // }
+             List<String> sqls = fesqlCase.getSqls();
+             if (sqls != null && sqls.size() > 0) {
+                 for (String sql : sqls) {
+                     // log.info("sql:{}", sql);
+                     if(MapUtils.isNotEmpty(fedbInfoMap)) {
+                         sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                     }else {
+                         sql = FesqlUtil.formatSql(sql, tableNames);
+                     }
+                     fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+                 }
+             }
             String sql = fesqlCase.getSql();
             if (sql != null && sql.length() > 0) {
                 // log.info("sql:{}", sql);

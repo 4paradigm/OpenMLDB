@@ -88,4 +88,12 @@ public class WindowTest extends FedbTest {
     public void testWindowRequestModeWithSp2(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
+
+    //暂时不支持
+    @Story("requestWithSp")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster.yaml"})
+    public void testWindowCLI(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kClusterCLI).run();
+    }
 }

@@ -1555,4 +1555,13 @@ public class FesqlUtil {
             }
         }
     }
+
+    public static void setOnline(SqlExecutor sqlExecutor){
+        Statement statement = sqlExecutor.getStatement();
+        try {
+            statement.execute("SET @@execute_mode='online';");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -29,6 +29,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
+import java.sql.Statement;
+
 /**
  * @author zhaowei
  * @date 2020/6/11 2:02 PM
@@ -56,12 +58,12 @@ public class FedbTest extends BaseTest {
                     .deployType(OpenMLDBDeployType.CLUSTER)
                     .basePath("/home/wangkaidong/openmldb-auto-test/tmp")
                     .fedbPath("/home/wangkaidong/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:30016")
+                    .zk_cluster("172.24.4.55:30030")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30026", "172.24.4.55:30027"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30023", "172.24.4.55:30024", "172.24.4.55:30025"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30028"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30034", "172.24.4.55:30035"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30031", "172.24.4.55:30032", "172.24.4.55:30033"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30036"))
                     .build();
             FedbGlobalVar.env = "cluster";
 
@@ -74,5 +76,9 @@ public class FedbTest extends BaseTest {
         FedbClient fesqlClient = new FedbClient(FedbGlobalVar.mainInfo);
         executor = fesqlClient.getExecutor();
         log.info("executor:{}",executor);
+        //todo
+
+        Statement statement = executor.getStatement();
+        statement.execute("SET @@execute_mode='online';");
     }
 }

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ['HDD 插入索引和ts 一样的数据']
+debugs: ['创建磁盘表，有两个索引，分别为latest和absolute，insert=10 ,where条件']
 cases:
   -
     id: 0
@@ -74,7 +74,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {0}.c3 on {0}.c1={1}.c1;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -101,7 +101,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {0}.c3 on {0}.c1={1}.c1;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -128,7 +128,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {0}.c3 on {0}.c1={1}.c1;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -155,7 +155,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {0}.c3 on {0}.c1={1}.c1;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -183,7 +183,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {0}.c3 on {0}.c1={1}.c1;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -218,7 +218,7 @@ cases:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
           - ["cc", 41, 51, 1590738991000]
-    sql: select {1}.c1,{1}.c2,{2}.c3,{0}.c4 from {1} last join {2} ORDER BY hdd.c3 on ssd.c1=hdd.c1  last join mem on ssd.c1 = mem.c1;
+    sql: select {1}.c1,{1}.c2,{2}.c3,{0}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1  last join {2} on {0}.c1 = {2}.c1;
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -329,10 +329,12 @@ cases:
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
         storage: SSD
-        rows:
-          - ["aa", 2, 3, 1590738989000]
-          - ["aa", 2, 3, 1590738989000]
-    sql: select * from {0};
+#        rows:
+#          - ["aa", 2, 3, 1590738989000]
+    sqls:
+      - insert into {0} values("aa", 2, 3, 1590738989000)
+      - insert into {0} values("aa", 2, 3, 1590738989000)
+      - select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
@@ -359,8 +361,129 @@ cases:
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
         storage: hdp
-        rows:
-          - ["aa", 2, 3, 1590738989000]
+#        rows:
+#          - ["aa", 2, 3, 1590738989000]
     sql: select * from {0};
     expect:
       success: false
+
+
+  - id: 14
+    desc: 创建磁盘表，ttl_type=latest,ttl=4,insert 10
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4:4:latest"]
+        storage: SSD
+        rows:
+          - ["bb", 2, 3, "{currentTime}-600001"]
+          - ["bb", 4, 5, "{currentTime}-600002"]
+          - ["bb", 6, 7, "{currentTime}-600003"]
+          - ["bb", 8, 9, "{currentTime}-600004"]
+          - ["bb", 10, 11, "{currentTime}-600005"]
+          - ["bb", 12, 13, "{currentTime}-600006"]
+          - ["bb", 14, 15, "{currentTime}-600007"]
+          - ["bb", 16, 17, "{currentTime}-600008"]
+          - ["bb", 18, 19, "{currentTime}-600009"]
+          - ["bb", 20, 21, "{currentTime}-600010"]
+    sql: select c1,c2,c3 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint"]
+      rows:
+        - ["bb", 2, 3]
+        - ["bb", 4, 5]
+        - ["bb", 6, 7]
+        - ["bb", 8, 9]
+
+  - id: 15
+    desc: 创建磁盘表，ttl_type=absolute，ttl=10m, insert 10
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4:10m:absolute"]
+        storage: hdd
+        rows:
+          - ["bb", 2, 3, "{currentTime}-100"]
+          - ["bb", 4, 5, "{currentTime}-200"]
+          - ["bb", 6, 7, "{currentTime}-599000"]
+          - ["bb", 8, 9, "{currentTime}-600000"]
+          - ["bb", 10, 11, "{currentTime}-600005"]
+          - ["bb", 12, 13, "{currentTime}-600006"]
+          - ["bb", 14, 15, "{currentTime}-600007"]
+          - ["bb", 16, 17, "{currentTime}-600008"]
+          - ["bb", 18, 19, "{currentTime}-600009"]
+          - ["bb", 20, 21, "{currentTime}-600010"]
+    sql: select c1,c2,c3 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint"]
+      rows:
+        - ["bb", 2, 3]
+        - ["bb", 4, 5]
+        - ["bb", 6, 7]
+
+  - id: 16
+    desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index2:c2:c4:4:latest","index1:c1:c4:10m:absolute"]
+        storage: hdd
+        rows:
+          - ["bb", 2, 3, "{currentTime}-100"]
+          - ["bb", 2, 5, "{currentTime}-200"]
+          - ["bb", 2, 7, "{currentTime}-59"]
+          - ["bb", 2, 9, "{currentTime}-600"]
+          - ["bb", 2, 11, "{currentTime}-602"]
+          - ["bb", 2, 13, "{currentTime}-600006"]
+          - ["bb", 2, 15, "{currentTime}-600007"]
+          - ["bb", 2, 17, "{currentTime}-600008"]
+          - ["bb", 2, 19, "{currentTime}-600009"]
+          - ["bb", 2, 21, "{currentTime}-600010"]
+    sql: select c1,c2,c3 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint"]
+      rows:
+        - ["bb", 2, 7]
+        - ["bb", 2, 3]
+        - ["bb", 2, 5]
+        - ["bb", 2, 9]
+
+  - id: 17
+    desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10 ,where条件
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index2:c2:c4:4:latest","index1:c1:c4:10m:absolute"]
+        storage: hdd
+        rows:
+          - ["bb", 2, 3, "{currentTime}-100"]
+          - ["bb", 2, 5, "{currentTime}-200"]
+          - ["bb", 2, 7, "{currentTime}-59"]
+          - ["bb", 2, 9, "{currentTime}-600"]
+          - ["bb", 2, 11, "{currentTime}-602"]
+          - ["bb", 2, 13, "{currentTime}-600006"]
+          - ["bb", 2, 15, "{currentTime}-600007"]
+          - ["bb", 2, 17, "{currentTime}-600008"]
+          - ["bb", 2, 19, "{currentTime}-600009"]
+          - ["bb", 2, 21, "{currentTime}-600010"]
+    sql: select c1,c2,c3 from {0} where c1 = "bb";
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint"]
+      rows:
+        - ["bb", 2, 7]
+        - ["bb", 2, 3]
+        - ["bb", 2, 5]
+        - ["bb", 2, 9]
+        - ["bb", 2, 11]
+
+# - id: 16
+#   desc: 数据过期类型长时间
+#   inputs:
+#     -
+#       columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+#       indexs: ["index1:c1:c4:10000h"]
+#       storage: hdp
+#       rows:
+#         - ["aa", 2, 3, 1590738989000]
+#   sql: select * from {0};
+#   expect:
