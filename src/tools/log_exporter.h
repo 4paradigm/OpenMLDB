@@ -24,18 +24,29 @@
 
 #include <string>
 #include <vector>
+#include "codec/codec.h"
 
 namespace openmldb {
 namespace tools {
 
+using ::openmldb::codec::Schema;
+using ::openmldb::codec::RowView;
 class Exporter {
  public:
     explicit Exporter(std::string file_path) : log_path(file_path) {}
+
     ~Exporter() {}
+
     void ReadLog();
 
+    void SetSchema(Schema schema_) { schema = schema_; }
+
+    Schema GetSchema() { return schema; }
+
  private:
+    void WriteToFile(std::ofstream&, RowView&);
     std::string log_path;
+    Schema schema;
 };
 
 }  // namespace tools
