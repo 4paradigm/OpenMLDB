@@ -21,13 +21,13 @@ import numpy as np
 import requests
 import tornado.ioloop
 import tornado.web
-import xgboost as xgb
+from xgboost.sklearn import XGBClassifier
 import logging
 
 logging.basicConfig(encoding="utf-8", level=logging.INFO, format="%(asctime)s-%(name)s-%(levelname)s-%(message)s")
 
 arg_keys = ["endpoint", "database", "deployment", "model_path"]
-bst = xgb.Booster()
+bst = XGBClassifier()
 # schema column type, ref hybridse::sdk::DataTypeName
 table_schema = []
 url = ""
@@ -35,15 +35,15 @@ url = ""
 
 def build_feature(res):
     """
-    The last value in list, label `is_attributed` is dummy.
+    The first value in list is the label column, it's dummy.
     Real-time feature has it, cuz the history data in OpenMLDB is the training data too.
     It'll have this column, but no effect to feature extraction.
 
     :param res: an OpenMLDB reqeust response
     :return: real feature
     """
-    # col `is_attributed` is dummy, col `ip` won't train, so start from 2
-    return xgb.DMatrix(np.array([res[2:]]))
+    # col label is dummy, so start from 1
+    return np.array([res[1:]])
 
 
 class SchemaHandler(tornado.web.RequestHandler):
