@@ -263,7 +263,7 @@ jobs:
           pip install setuptools wheel twine
           yum install -y net-tools
 
-      - name: test sqlalchemy
+      - name: test sqlalchemy and generate coverage report
         run: |
           bash steps/test_python.sh
 
@@ -274,6 +274,14 @@ jobs:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb/test/pytest.xml
+
+      - name: upload python coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: coverage
+          files: python/test/coverage.xml
+          fail_ci_if_error: true
+          verbose: true
 
       - name: upload to pypi
         if: >
