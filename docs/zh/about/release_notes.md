@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.5.2 Release Notes
+
+### Features
+- Add new built-in functions, including `char_length`, `char`, `radians`, and `replace` (#1895 #1896 #1897 @Ivyee17, #1924 @aceforeverd)
+- Add the demo of DolphinScheduler task (#1921 @vagetablechicken)
+- Support inserting values with a specified database name (#1929 @dl239)
+- Improve window computation with `UnsafeRowOpt` by removing the zipped dataframe (#1882 @tobegit3hub)
+- Improve the documents (#1831 @yclchuxue, #1925 @lumianph, #1902 #1923 @vagetablechicken)
+- Support GitHub Codespaces (#1922 @nautaa)
+
+### Bug Fixes
+- `DistributeWindowIterator::GetKey()` may result in core dump (#1892 aceforeverd)
+- `Tablet` does not make `ttl` persistent when updating the ttl of index (#1935 @dl239)
+- `TaskManager` startup fails if `LANG=zh_CN.UTF-8` is set (#1912 @vagetablechicken)
+- There are duplicate records in `PRE_AGG_META_INFO` (#1919 @nautaa)
+- The OpenMLDB Spark fails to fallback to SparkSQL for unsupported functions (#1908 @tobegit3hub)
+- Fixing other minor bugs (#1914 aceforeverd, #1900 @mangoGoForward, #1934 @vagetablechicken)
+
+### Code Refactoring
+#1899 @auula, #1913 @dl239, #1917 @mangoGoForward, #1803 @SaumyaBhushan, #1870 @Ivyee17, #1886 @frazie
+
+## v0.5.1 Release Notes
+
+### Features
+- Support the new OpenMLDB Kafka connector (#1771 @vagetablechicken)
+- Support very long SQLs in TaskManager (#1833 @tobegit3hub)
+- Support `window union` correctly in the cluster mode (#1855 #1856 @aceforeverd @dl239)
+- Support `count_where(*, condition)` in the storage engine (#1841 @nautaa)
+- Add a new micro-benchmark tool for performance evaluation (#1800 @dl239)
+
+### Bug Fixes
+- Auto creating table throws error when a new ttl is greater than the current ttl. (#1737 @keyu813)
+- Offline tasks crash when enabling `UnsafeRowOpt` for continuous windows. (#1773 @tobegit3hub)
+- The aggregator is not reset if the table is empty. (#1784 @zhanghaohit)
+- The order for window union rows and original rows with the same order key is undefined. (#1802 @aceforeverd)
+- Queries with pre-aggregate enabled may crash under certain tests. (#1838 zhanghaohit)
+- Ending space in CLI may cause program crash. (#1820 @aceforeverd)
+- When creating an engine with empty databases, it cannot execute the command of `USE` database in the Python SDK. (#1854 @vagetablechicken)
+- When using the soft copy for csv files, it cannot read offline path with options. (#1872 @vagetablechicken)
+
+### Code Refactoring
+#1766 @hiyoyolumi; #1777 @jmoldyvan; #1779 @SohamRatnaparkhi; #1768 @SaumyaBhushan; #1795 @vighnesh-kadam; #1806 @Mount-Blanc; #1978 @wangxinyu666666; #1781 @SaumyaBhushan; #1786 @xuduling; #1810 @IZUMI-Zu; #1824 @bxiiiiii; #1843 @1korenn; #1851 @zhouxh19; #1862 @Ivyee17; #1867, #1869, #1873, #1884 @mangoGoForward; #1863 @Ivyee17; #1815 @jmoldyvan; #1857 @frazie; #1878 @PrajwalBorkar
+
 ## v0.5.0 Release Notes
 
 ### Highlights

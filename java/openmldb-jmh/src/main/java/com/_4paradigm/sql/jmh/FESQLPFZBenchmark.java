@@ -225,20 +225,18 @@ public class FESQLPFZBenchmark {
     @Setup
     public void setup() throws SQLException {
         init();
-        if (!executor.createDB(db)) {
+        if (!Util.executeSQL("CREATE DATABASE " + db + ";", executor)) {
             return;
         }
+        Util.executeSQL("USE " + db + ";", executor);
         for (TableInfo table : tableMap.values()) {
-            //System.out.println(table.getDDL());
-            if (!executor.executeDDL(db, table.getDDL())) {
+            if (!Util.executeSQL(table.getDDL(), executor)) {
                 return;
             }
         }
-        TableInfo main = tableMap.get(mainTable);
-        String pro = Util.getCreateProcedureDDL(pname, main, script);
-        System.out.println(pro);
-        if (!executor.executeDDL(db, pro)) {
-            System.out.println("create PROCEDURE" + pro + "error");
+        String deploySQL= "DEPLOY " + pname + " " + script;
+        if (!Util.executeSQL(deploySQL, executor)) {
+            System.out.println(deploySQL + "execute error");
             return;
         }
         putData();

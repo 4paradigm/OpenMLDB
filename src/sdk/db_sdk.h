@@ -40,7 +40,16 @@ using openmldb::catalog::Procedures;
 struct ClusterOptions {
     std::string zk_cluster;
     std::string zk_path;
-    int32_t session_timeout = 2000;
+    int32_t zk_session_timeout = 2000;
+    int32_t zk_log_level = 3;
+    std::string zk_log_file;
+    std::string to_string() {
+        std::stringstream ss;
+        ss << "zk options [cluster:" << zk_cluster << ", path:" << zk_path
+           << ", zk_session_timeout:" << zk_session_timeout
+           << ", log_level:" << zk_log_level << ", log_file:" << zk_log_file << "]";
+        return ss.str();
+    }
 };
 
 class DBSDK {
@@ -100,7 +109,7 @@ class DBSDK {
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
 
-    std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
+    static std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
 
  protected:
@@ -115,7 +124,6 @@ class DBSDK {
     ::hybridse::vm::Engine* engine_ = nullptr;
     std::map<std::string, std::shared_ptr<openmldb::common::ExternalFun>> external_fun_;
 
- private:
     // get/set op should be atomic(actually no reset now)
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
     std::shared_ptr<::openmldb::client::TaskManagerClient> taskmanager_client_;
@@ -147,6 +155,8 @@ class ClusterSDK : public DBSDK {
     bool InitTabletClient();
     void WatchNotify();
     void CheckZk();
+    void RefreshNsClient(const std::vector<std::string>& leader_children);
+    void RefreshTaskManagerClient();
 
  private:
     ClusterOptions options_;
@@ -155,6 +165,9 @@ class ClusterSDK : public DBSDK {
     std::string sp_root_path_;
     std::string notify_path_;
     std::string globalvar_changed_notify_path_;
+    std::string leader_path_;
+    std::string taskmanager_leader_path_;
+
     ::openmldb::zk::ZkClient* zk_client_;
     ::baidu::common::ThreadPool pool_;
 };

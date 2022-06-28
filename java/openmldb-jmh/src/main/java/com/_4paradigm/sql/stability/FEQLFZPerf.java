@@ -104,10 +104,10 @@ public class FEQLFZPerf {
             }
             logger.info("create table " + table.getName());
         }
-        String procedureDDL = Util.getCreateProcedureDDL(pName, tableMap.get(mainTable), script);
-        logger.info(procedureDDL);
-        if (!executor.executeDDL(db, procedureDDL)) {
-            logger.warn("create PROCEDURE error");
+        String deploySQL = "DEPLOY " + pName + " " + script;
+        logger.info(deploySQL);
+        if (!executor.executeDDL(db, deploySQL)) {
+            logger.warn("deploy sql error");
             return false;
         }
         return true;

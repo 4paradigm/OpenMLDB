@@ -27,6 +27,7 @@ class TestUnsafeWindow extends SparkTestSuite {
     val spark = getSparkSession
     spark.conf.set("spark.openmldb.unsaferow.opt", true)
     spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
+    spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
   }
 
   test("Test unsafe window") {
@@ -54,6 +55,7 @@ class TestUnsafeWindow extends SparkTestSuite {
     val spark = getSparkSession
     spark.conf.set("spark.openmldb.unsaferow.opt", false)
     spark.conf.set("spark.openmldb.opt.unsaferow.window", false)
+    spark.conf.set("spark.openmldb.opt.unsaferow.project", false)
   }
 
 }

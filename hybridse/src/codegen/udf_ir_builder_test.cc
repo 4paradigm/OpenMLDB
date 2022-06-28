@@ -319,14 +319,7 @@ TEST_F(UdfIRBuilderTest, distinct_count_udf_test) {
     CheckUdf<int64_t, codec::ListRef<int32_t>>("count", 9, list_ref);
     CheckUdf<int64_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
 }
-TEST_F(UdfIRBuilderTest, sum_udf_test) {
-    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<int32_t> list_ref;
-    list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckUdf<int32_t, codec::ListRef<int32_t>>("sum", 1 + 3 + 5 + 7 + 9,
-                                               list_ref);
-}
+
 TEST_F(UdfIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);
@@ -1007,6 +1000,69 @@ TEST_F(UdfIRBuilderTest, degrees) {
     CheckUdf<double, double>(udf_name, -90.0, -pi/2);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
+TEST_F(UdfIRBuilderTest, charTest) {
+    auto udf_name = "char";
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef("A"), 65);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef("B"), 322);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef("N"), -178);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef(1, "\0"), 256);
+    CheckUdf<StringRef, int32_t>(udf_name, StringRef(1, "\0"), -256);
+    CheckUdf<Nullable<StringRef>, Nullable<int32_t>>(udf_name, nullptr, nullptr);
+}
+TEST_F(UdfIRBuilderTest, char_length_udf_test) {
+    auto udf_name = "char_length";
+    CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL "));
+    CheckUdf<int32_t, StringRef>(udf_name, 10, StringRef("Spark SQL\n"));
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, StringRef(""));
+    CheckUdf<int32_t, Nullable<StringRef>>(udf_name, 0, nullptr);
+}
+TEST_F(UdfIRBuilderTest, degree_to_radius_check) {
+    auto udf_name = "radians";
+    CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
+    CheckUdf<double, double>(udf_name, 1.570796326794896619231, 90);
+    CheckUdf<double, double>(udf_name, 0, 0);
+    CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
+}
+
+TEST_F(UdfIRBuilderTest, Replace) {
+    auto fn_name = "replace";
+
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>(fn_name, "ABCDEF", "ABCabc", "abc", "DEF");
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>(fn_name, "ABCabc", "ABCabc", "def", "DEF");
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>(fn_name, "AABACA", "AaBaCa", "a", "A");
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>(fn_name, "Hello Bob Hi Bob Be",
+                                                                   "Hello Ben Hi Ben Be", "Ben", "Bob");
+}
+TEST_F(UdfIRBuilderTest, ReplaceWithoutReplaceStr) {
+    auto fn_name = "replace";
+
+    CheckUdf<StringRef, StringRef, StringRef>(fn_name, "ABC", "ABCabc", "abc");
+    CheckUdf<StringRef, StringRef, StringRef>(fn_name, "ABCabc", "ABCabc", "def");
+    CheckUdf<StringRef, StringRef, StringRef>(fn_name, "ABC", "AaBaCa", "a");
+    CheckUdf<StringRef, StringRef, StringRef>(fn_name, "Hello  Hi  Be", "Hello Ben Hi Ben Be", "Ben");
+}
+
+TEST_F(UdfIRBuilderTest, ReplaceNullable) {
+    auto fn_name = "replace";
+
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr,
+                                                                                                 nullptr, "abc", "ABC");
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        fn_name, nullptr, "ABCabc", nullptr, "ABC");
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        fn_name, nullptr, "ABCabc", "ABC", nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        fn_name, nullptr, "ABCabc", nullptr, nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        fn_name, nullptr, nullptr, "ABCabc", nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        fn_name, nullptr, nullptr, nullptr, nullptr);
+
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, "abc");
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, "abc", nullptr);
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, nullptr);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

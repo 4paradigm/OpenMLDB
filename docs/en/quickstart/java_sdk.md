@@ -1,46 +1,44 @@
 # Java SDK Quickstart
 
-Notice: The Java SDK currently only supports the cluster version, and the standalone version is planned to be supported in the next version v0.5.0.
+## 1. Package Installation
 
-## 1. Java SDK Package Installation
-
-### Java SDK Package Installation on Linux
+### Package Installation on Linux
 Configure maven pom
 
 ```xml
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.2</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.2</version>
 </dependency>
 ```
-### Java SDK Package Installation on Mac
+### Package Installation on Mac
 Configure maven pom
 
 ```xml
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.2</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.0-macos</version>
+    <version>0.5.2-macos</version>
 </dependency>
 ```
-Notice: Since openmldb-native contains the C++ static library compiled by OpenMLDB, the default is the linux static library. On macOS, the version of the above openmldb-native needs to be changed to `0.5.0-macos`, and the version of openmldb-jdbc remains unchanged .
+Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.5.2-macos`, and the version of openmldb-jdbc remains unchanged .
 
-## 2. Java SDK Quick Start
+## 2. Quickstart
 
 ### 2.1 Create SqlClusterExecutor
 
-First, configure the OpenMLDB connection parameters
+First, the OpenMLDB connection parameters should be configured.
 
 ```java
 SdkOption option = new SdkOption();
@@ -48,10 +46,9 @@ option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
-
 ```
 
-Next, create an Executor using SdkOption. SqlClusterExecutor is thread-safe to execute SQL operations. In the actual environment, just create one `SqlClusterExecutor`:
+Next, you should create an `SqlExecutor` using `SdkOption`. `SqlClusterExecutor` is thread-safe to execute SQL operations, thus you only need to create one `SqlClusterExecutor`:
 
 ```java
 sqlExecutor = new SqlClusterExecutor(option);
@@ -59,7 +56,7 @@ sqlExecutor = new SqlClusterExecutor(option);
 
 ### 2.2 Create Database
 
-Create a database using the `SqlClusterExecutor::createDB()` interface:
+A database is created by using the `SqlClusterExecutor::createDB()` interface:
 
 ```java
 sqlExecutor.createDB("db_test");
@@ -67,7 +64,7 @@ sqlExecutor.createDB("db_test");
 
 ### 2.3 Create Table
 
-Create a table using the `SqlClusterExecutor::executeDDL(db, createTableSql)` interface:
+A table is created by using the `SqlClusterExecutor::executeDDL(db, createTableSql)` interface:
 
 ```java
 String createTableSql = "create table trans(c1 string,\n" +
@@ -81,13 +78,12 @@ String createTableSql = "create table trans(c1 string,\n" +
 sqlExecutor.executeDDL("", createTableSql);
 ```
 
-### 2.4 Insert Data into the Table
+### 2.4 Insert Data into a Table
 
 #### 2.4.1 Insert Data Directly
 
-The first step, use the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` interface to get the InsertPrepareStatement.
-
-The second step, use the `Statement::execute()` interface to execute the insert statement.
+1.  Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` interface to get the `InsertPrepareStatement`.
+2. Using the `Statement::execute()` interface to execute the insert statement.
 
 ```java
 String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
@@ -112,11 +108,9 @@ try {
 
 #### 2.4.2 Use Placeholder to Execute Insert Statement
 
-The first step, use the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to get the InsertPrepareStatement.
-
-The second step, call the `PreparedStatement::setType(index, value)` interface to fill data into InsertPrepareStatement.
-
-The third step, use the `Statement::execute()` interface to execute the insert statement.
+1. Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to` get the InsertPrepareStatement`.
+2. Calling the `PreparedStatement::setType(index, value)` interface to fill data into `InsertPrepareStatement`.
+3. Using the `Statement::execute()` interface to execute the insert statement.
 
 ```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
@@ -143,14 +137,14 @@ try {
 
 ### 2.5 Execute SQL Batch Query
 
-Use the `SqlClusterExecutor::executeSQL(selectSql)` interface to execute SQL batch query statements:
+1. Using the `SqlClusterExecutor::executeSQL(selectSql)` interface to execute SQL batch query statements:
 
 ```java
 String selectSql = "select * from trans;";
 java.sql.ResultSet result = sqlExecutor.executeSQL(db, selectSql);
 ```
 
-Access query results:
+2. Accessing query results:
 
 ```java
 // Access the result set ResultSet, and output the first three columns of data
@@ -174,11 +168,9 @@ try {
 
 ### 2.6 SQL Queries in the Request Mode
 
-The first step, use the `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` interface to get the RequestPrepareStatement.
-
-The second step, call the `PreparedStatement::setType(index, value)` interface to set the request data. Please call the setType interface and configure a legal value according to the data type corresponding to each column in the data table.
-
-The third step, call the `Statement::executeQuery()` interface to execute the request query statement.
+1. Using the `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` interface to get the `RequestPrepareStatement`.
+2. Calling the `PreparedStatement::setType(index, value)` interface to set the request data. Please call the `setType` interface and configure a valid value according to the data type corresponding to each column in the data table.
+3. Calling the `Statement::executeQuery()` interface to execute the request query statement.
 
 ```java
 String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
@@ -238,24 +230,24 @@ try {
 }
 ```
 
-### 2.7 Delete Table
+### 2.7 Delete a Table
 
-Use the `SqlClusterExecutor::executeDDL(db, dropTableSql)` interface to delete a table:
+You should use the `SqlClusterExecutor::executeDDL(db, dropTableSql)` interface to delete a table:
 
 ```java
 String dropTableSql = "drop table trans;";
 sqlExecutor.executeDDL(db, dropTableSql);
 ```
 
-### 2.8 Delete Database
+### 2.8 Delete a Database
 
-Use the `SqlClusterExecutor::dropDB(db)` interface to drop the specified database:
+You should use the `SqlClusterExecutor::dropDB(db)` interface to drop a specified database:
 
 ```java
 sqlExecutor.dropDB(db);
 ```
 
-## 3. A Complete Java SDK Usage Example
+## 3. A Complete Example
 
 ```java
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;

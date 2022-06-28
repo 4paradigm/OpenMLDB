@@ -15,7 +15,11 @@
  */
 
 #include "vm/mem_catalog.h"
+
 #include <algorithm>
+
+#include "absl/strings/substitute.h"
+
 namespace hybridse {
 namespace vm {
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,

@@ -103,6 +103,7 @@ message TableInfo {
     repeated common.VersionPair schema_versions = 15;
     optional OfflineTableInfo offline_table_info = 16;
     optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional uint32 base_table_tid = 18 [default = 0];
 }
 
 message CreateTableRequest {

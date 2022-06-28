@@ -18,7 +18,10 @@ package com._4paradigm.openmldb.taskmanager
 
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.spark.SparkJobManager
+import com._4paradigm.openmldb.taskmanager.util.SqlFileUtil
 import org.slf4j.LoggerFactory
+
+import java.io.{File, PrintWriter}
 import scala.collection.JavaConverters._
 
 object OpenmldbBatchjobManager {
@@ -44,43 +47,58 @@ object OpenmldbBatchjobManager {
   def runBatchSql(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): String = {
     val jobType = "RunBatchSql"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
-    val args = List(sql)
 
-    val jobInfo = SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb,
-      blocking=true)
+    val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
+    val args = List(tempSqlFile.getName)
+
+    val jobInfo = SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath,
+      sparkConf.asScala.toMap, defaultDb, blocking=true)
+
     LogManager.getJobLog(jobInfo.getId)
   }
 
   def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "RunBatchAndShow"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchAndShow"
-    val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+    val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
+    val args = List(tempSqlFile.getName)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      defaultDb)
   }
 
   def importOnlineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "ImportOnlineData"
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOnlineData"
-    val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+    val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
+    val args = List(tempSqlFile.getName)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      defaultDb)
   }
 
   def importOfflineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "ImportOfflineData"
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOfflineData"
-    val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+    val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
+    val args = List(tempSqlFile.getName)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      defaultDb)
   }
 
   def exportOfflineData(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "ExportOfflineData"
     val mainClass = "com._4paradigm.openmldb.batchjob.ExportOfflineData"
-    val args = List(sql)
 
-    SparkJobManager.submitSparkJob(jobType, mainClass, args, sparkConf.asScala.toMap, defaultDb)
+    val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
+    val args = List(tempSqlFile.getName)
+
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      defaultDb)
   }
 
 }

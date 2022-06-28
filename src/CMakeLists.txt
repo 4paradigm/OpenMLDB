@@ -12,21 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
+include_directories(
+    ${INCLUDE_DIRECTORIES}
+    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/src)
 
 add_subdirectory(statistics)
 
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/src/proto)
+
+set(PROTO_FILES "")
 function(compile_proto proto_name project_dir)
-add_custom_command(OUTPUT ${project_dir}/src/proto/${proto_name}.pb.cc
+    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc
         COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
-        --cpp_out=${project_dir}/src/proto/
+        --cpp_out=${CMAKE_BINARY_DIR}/src/proto
         --java_out=${project_dir}/java/openmldb-native/src/main/java
         --java_out=${project_dir}/java/openmldb-import/src/main/java
         --java_out=${project_dir}/java/openmldb-taskmanager/src/main/java
         --java_out=${project_dir}/java/openmldb-common/src/main/java
         ${project_dir}/src/proto/${proto_name}.proto
-        DEPENDS ${project_dir}/src/proto/${proto_name}.proto
-        )
+        DEPENDS ${project_dir}/src/proto/${proto_name}.proto)
+    list(APPEND PROTO_FILES ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc)
+    set(PROTO_FILES ${PROTO_FILES} PARENT_SCOPE)
 endfunction(compile_proto)
 
 function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
@@ -43,11 +50,12 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
 endfunction(compile_lib)
 
 function(compile_test DIR)
-    set(TEST_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog schema client zk_client storage replica base openmldb_codec openmldb_proto log common zookeeper_mt tcmalloc_minimal gflags ${RocksDB_LIB}
-    ${VM_LIBS}
-    ${LLVM_LIBS}
-    ${ZETASQL_LIBS}
-    ${BRPC_LIBS})
+    set(TEST_LIBS
+        apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog
+        schema client zk_client storage replica base openmldb_codec openmldb_proto log
+        common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
+        ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
+
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
         # GNU implementation prior to 9.1 requires linking with -lstdc++fs
         list(APPEND TEST_LIBS stdc++fs)
@@ -102,9 +110,9 @@ compile_lib(log log "flags.cc")
 compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
-add_library(openmldb_proto STATIC proto/type.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc proto/api_server.pb.cc proto/taskmanager.pb.cc proto/name_server.pb.cc)
+add_library(openmldb_proto STATIC ${PROTO_FILES})
 
-add_library(openmldb_flags flags.cc)
+add_library(openmldb_flags STATIC flags.cc)
 
 set(BIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
 ${VM_LIBS}

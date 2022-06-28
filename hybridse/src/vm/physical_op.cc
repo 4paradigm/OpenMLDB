@@ -37,7 +37,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpProject, "PROJECT"},
         {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
         {kPhysicalOpConstProject, "CONST_PROJECT"},
-        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpAggregate, "AGGREGATE"},
         {kPhysicalOpLimit, "LIMIT"},
         {kPhysicalOpRename, "RENAME"},
         {kPhysicalOpDistinct, "DISTINCT"},
@@ -322,17 +322,13 @@ Status PhysicalConstProjectNode::WithNewChildren(node::NodeManager* nm, const st
 }
 
 Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
-    SchemasContext empty_ctx;
-    CHECK_STATUS(ctx->InitFnDef(project_, &empty_ctx, true, &project_),
+    CHECK_STATUS(ctx->InitFnDef(project_, &empty_schemas_ctx_, true, &project_),
                  "Fail to initialize function def of const project node");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
-    SchemasContext empty_schemas_ctx;
-    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
-    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
-                 "Fail to initialize function def of const project node");
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx_, ctx, project_source));
     return Status::OK();
 }
 

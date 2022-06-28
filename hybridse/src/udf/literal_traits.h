@@ -72,7 +72,7 @@ struct Nullable {
 };
 template <>
 struct Nullable<StringRef> {
-    Nullable(std::nullptr_t) : data_(""), is_null_(true) {}      // NOLINT
+    Nullable(std::nullptr_t) : data_(nullptr), is_null_(true) {}      // NOLINT
     Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable(const char* buf) : data_(buf), is_null_(false) {}    // NOLINT
     Nullable() : is_null_(false) {}

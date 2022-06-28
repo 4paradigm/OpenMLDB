@@ -224,6 +224,10 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
+void int_to_char(int32_t, StringRef*);
+int32_t char_length(StringRef *str);
+double degree_to_radius(double degree);
+
 float Cotf(float x);
 double Degrees(double x);
 
@@ -269,6 +273,20 @@ void string_to_double(StringRef *str, double *v, bool *is_null_ptr);
 void reverse(StringRef *str, StringRef *output, bool *is_null_ptr);
 void lcase(StringRef *str, StringRef *output, bool *is_null_ptr);
 void ucase(StringRef *str, StringRef *output, bool *is_null_ptr);
+
+/// \brief string replace, return new string that replace all occurrences of `search` with `replace`
+/// any of `str`, `search`, `replace` is null, results replace string to be null;
+/// if `search` is not found, return `str` unchanged;
+/// if `replace` not specified or is empty string, occurrences of `search` are removed from output string
+///
+/// \param str Input string
+/// \param search The search string
+/// \param replace The replace string
+/// \param output Output replaced String
+/// \param is_null_ptr Output if replaced string is null
+void replace(StringRef *str, StringRef *search, StringRef *replace, StringRef *output, bool *is_null_ptr);
+void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null_ptr);
+
 void init_udfcontext(UDFContext* context);
 void trivial_fun();
 /**
@@ -298,7 +316,8 @@ uint32_t to_string_len(const V &v);
 
 }  // namespace v1
 
-void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm);
+/// \brief register native udf related methods into given UdfLibrary `lib`
+void RegisterNativeUdfToModule(UdfLibrary* lib);
 }  // namespace udf
 }  // namespace hybridse
 

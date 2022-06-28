@@ -572,10 +572,19 @@ class IteratorStatus {
     IteratorStatus() : is_valid_(false), key_(0) {}
     explicit IteratorStatus(uint64_t key) : is_valid_(true), key_(key) {}
     virtual ~IteratorStatus() {}
-    static int32_t PickIteratorWithMininumKey(
-        std::vector<IteratorStatus>* status_list_ptr);
-    static int32_t PickIteratorWithMaximizeKey(
-        std::vector<IteratorStatus>* status_list_ptr);
+
+    /// \brief find the vaild iterators whose iterator key are the minium of all iterators given
+    ///
+    /// \param status_list: a list of iterators
+    /// \return index of last found iterators, -1 if not found
+    static int32_t FindLastIteratorWithMininumKey(const std::vector<IteratorStatus>& status_list);
+
+    /// \brief find the vaild iterators whose iterator key are the maximum of all iterators given
+    ///
+    /// \param status_list: a list of iterators
+    /// \return index of first found iterators, -1 if not found
+    static int32_t FindFirstIteratorWithMaximizeKey(const std::vector<IteratorStatus>& status_list);
+
     void MarkInValid() {
         is_valid_ = false;
         key_ = 0;
@@ -996,7 +1005,7 @@ class RequestAggUnionRunner : public Runner {
         const Row& request,
         std::vector<std::shared_ptr<TableHandler>> union_segments,
         int64_t request_ts, const WindowRange& window_range,
-        const bool output_request_row, const bool exclude_current_time);
+        const bool output_request_row, const bool exclude_current_time) const;
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
@@ -1010,10 +1019,6 @@ class RequestAggUnionRunner : public Runner {
         kMax
     };
 
-    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
-    };
-
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
@@ -1022,7 +1027,12 @@ class RequestAggUnionRunner : public Runner {
     AggType agg_type_;
     const node::ExprNode* agg_col_ = nullptr;
     std::string agg_col_name_;
-    std::unique_ptr<BaseAggregator> aggregator_ = nullptr;
+    type::Type agg_col_type_;
+
+    std::unique_ptr<BaseAggregator> CreateAggregator() const;
+    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
+        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
+    };
 };
 
 class PostRequestUnionRunner : public Runner {

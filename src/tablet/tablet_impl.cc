@@ -310,10 +310,12 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTLRequest* request,
                            ::openmldb::api::UpdateTTLResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
 
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
@@ -321,20 +323,20 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     ::openmldb::common::TTLSt ttl(request->ttl());
     uint64_t abs_ttl = ttl.abs_ttl();
     uint64_t lat_ttl = ttl.lat_ttl();
-    if (request->index_name().empty()) {
+    const auto& index_name = request->index_name();
+    if (index_name.empty()) {
         for (const auto& index : table->GetAllIndex()) {
             if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
                 response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
                 response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
                 return;
             }
         }
     } else {
         auto index = table->GetIndex(request->index_name());
         if (!index) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->index_name().c_str(),
-                  request->tid(), request->pid());
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
             response->set_msg("idx name not found");
             return;
@@ -342,7 +344,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
         if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
             response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
             response->set_msg("ttl type mismatch");
-            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
             return;
         }
     }
@@ -359,10 +361,25 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     }
     ::openmldb::storage::TTLSt ttl_st(ttl);
     table->SetTTL(::openmldb::storage::UpdateTTLMeta(ttl_st, request->index_name()));
-    PDLOG(INFO,
-          "update table #tid %d #pid %d ttl to abs_ttl %lu lat_ttl %lu, "
-          "index_name %s",
-          request->tid(), request->pid(), abs_ttl, lat_ttl, request->index_name().c_str());
+    std::string db_root_path;
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
+        base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
+        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
+        return;
+    }
+    std::string db_path = GetDBPath(db_root_path, tid, pid);
+    if (!::openmldb::base::IsExists(db_path)) {
+        PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path is not exist", response);
+        return;
+    }
+    if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
+        PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
+        return;
+    }
+    PDLOG(INFO, "update table tid %u pid %u ttl to abs_ttl %lu lat_ttl %lu index_name %s",
+            tid, pid, abs_ttl, lat_ttl, index_name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
@@ -458,7 +475,7 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     }
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (request->projection().size() > 0 && meta.format_version() == 1) {
+    if (request->projection().size() > 0) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
             return -1;
         }
@@ -868,22 +885,16 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
 
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
                               const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-                              CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count) {
+                              CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count, bool* is_finish) {
     uint32_t limit = request->limit();
-    uint32_t atleast = request->atleast();
-    if (combine_it == NULL || io_buf == NULL || count == NULL || (atleast > limit && limit != 0)) {
+    if (combine_it == nullptr || io_buf == nullptr || count == nullptr || is_finish == nullptr) {
         PDLOG(WARNING, "invalid args");
         return -1;
     }
     uint64_t st = request->st();
     uint64_t et = request->et();
-    openmldb::api::GetType et_type = request->et_type();
-    openmldb::api::GetType real_et_type = et_type;
-    uint64_t expire_time = combine_it->GetExpireTime();
-    if (et < expire_time && et_type == ::openmldb::api::GetType::kSubKeyGt) {
-        real_et_type = ::openmldb::api::GetType::kSubKeyGe;
-    }
     ::openmldb::storage::TTLType ttl_type = combine_it->GetTTLType();
+    uint64_t expire_time = combine_it->GetExpireTime();
     if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
         ttl_type == ::openmldb::storage::TTLType::kAbsOrLat) {
         et = std::max(et, expire_time);
@@ -896,7 +907,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
 
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (request->projection().size() > 0 && meta.format_version() == 1) {
+    if (request->projection().size() > 0) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
             return -1;
@@ -908,44 +919,29 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         }
         enable_project = true;
     }
-    bool remove_duplicated_record =
-        request->has_enable_remove_duplicated_record() && request->enable_remove_duplicated_record();
+    bool remove_duplicated_record = request->enable_remove_duplicated_record();
     uint64_t last_time = 0;
     uint32_t total_block_size = 0;
     uint32_t record_count = 0;
+    uint32_t skip_record_num = request->skip_record_num();
     combine_it->SeekToFirst();
     while (combine_it->Valid()) {
         if (limit > 0 && record_count >= limit) {
+            *is_finish = false;
             break;
         }
         if (remove_duplicated_record && record_count > 0 && last_time == combine_it->GetTs()) {
             combine_it->Next();
             continue;
         }
+        if (combine_it->GetTs() == st && skip_record_num > 0) {
+            skip_record_num--;
+            combine_it->Next();
+            continue;
+        }
         uint64_t ts = combine_it->GetTs();
-        if (atleast <= 0 || record_count >= atleast) {
-            bool jump_out = false;
-            switch (real_et_type) {
-                case ::openmldb::api::GetType::kSubKeyEq:
-                    if (ts != et) {
-                        jump_out = true;
-                    }
-                    break;
-                case ::openmldb::api::GetType::kSubKeyGt:
-                    if (ts <= et) {
-                        jump_out = true;
-                    }
-                    break;
-                case ::openmldb::api::GetType::kSubKeyGe:
-                    if (ts < et) {
-                        jump_out = true;
-                    }
-                    break;
-                default:
-                    PDLOG(WARNING, "invalid et type %s", ::openmldb::api::GetType_Name(et_type).c_str());
-                    return -2;
-            }
-            if (jump_out) break;
+        if (ts <= et) {
+            break;
         }
         last_time = ts;
         if (enable_project) {
@@ -967,8 +963,8 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         }
         record_count++;
         if (total_block_size > FLAGS_scan_max_bytes_size) {
-            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
-            return -3;
+            *is_finish = false;
+            break;
         }
         combine_it->Next();
     }
@@ -977,21 +973,15 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
 }
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
                               const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-                              CombineIterator* combine_it, std::string* pairs, uint32_t* count) {
+                              CombineIterator* combine_it, std::string* pairs, uint32_t* count, bool* is_finish) {
     uint32_t limit = request->limit();
-    uint32_t atleast = request->atleast();
-    if (combine_it == NULL || pairs == NULL || count == NULL || (atleast > limit && limit != 0)) {
+    if (combine_it == nullptr || pairs == nullptr || count == nullptr || is_finish == nullptr) {
         PDLOG(WARNING, "invalid args");
         return -1;
     }
     uint64_t st = request->st();
     uint64_t et = request->et();
-    openmldb::api::GetType et_type = request->et_type();
-    openmldb::api::GetType real_et_type = et_type;
     uint64_t expire_time = combine_it->GetExpireTime();
-    if (et < expire_time && et_type == ::openmldb::api::GetType::kSubKeyGt) {
-        real_et_type = ::openmldb::api::GetType::kSubKeyGe;
-    }
     ::openmldb::storage::TTLType ttl_type = combine_it->GetTTLType();
     if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
         ttl_type == ::openmldb::storage::TTLType::kAbsOrLat) {
@@ -1004,7 +994,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
 
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (!request->projection().empty() && meta.format_version() == 1) {
+    if (!request->projection().empty()) {
         if (meta.compress_type() == ::openmldb::type::kSnappy) {
             LOG(WARNING) << "project on compress row data, not supported";
             return -1;
@@ -1016,44 +1006,29 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         }
         enable_project = true;
     }
-    bool remove_duplicated_record =
-        request->has_enable_remove_duplicated_record() && request->enable_remove_duplicated_record();
+    bool remove_duplicated_record = request->enable_remove_duplicated_record();
     uint64_t last_time = 0;
     boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
     combine_it->SeekToFirst();
+    uint32_t skip_record_num = request->skip_record_num();
     while (combine_it->Valid()) {
         if (limit > 0 && tmp.size() >= limit) {
+            *is_finish = false;
             break;
         }
         if (remove_duplicated_record && !tmp.empty() && last_time == combine_it->GetTs()) {
             combine_it->Next();
             continue;
         }
+        if (combine_it->GetTs() == st && skip_record_num > 0) {
+            skip_record_num--;
+            combine_it->Next();
+            continue;
+        }
         uint64_t ts = combine_it->GetTs();
-        if (atleast <= 0 || tmp.size() >= atleast) {
-            bool jump_out = false;
-            switch (real_et_type) {
-                case ::openmldb::api::GetType::kSubKeyEq:
-                    if (ts != et) {
-                        jump_out = true;
-                    }
-                    break;
-                case ::openmldb::api::GetType::kSubKeyGt:
-                    if (ts <= et) {
-                        jump_out = true;
-                    }
-                    break;
-                case ::openmldb::api::GetType::kSubKeyGe:
-                    if (ts < et) {
-                        jump_out = true;
-                    }
-                    break;
-                default:
-                    PDLOG(WARNING, "invalid et type %s", ::openmldb::api::GetType_Name(et_type).c_str());
-                    return -2;
-            }
-            if (jump_out) break;
+        if (ts <= et) {
+            break;
         }
         last_time = ts;
         if (enable_project) {
@@ -1075,7 +1050,8 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         }
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
-            return -3;
+            *is_finish = false;
+            break;
         }
         combine_it->Next();
     }
@@ -1270,23 +1246,23 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
     }
     auto table_meta = query_its.begin()->table->GetTableMeta();
     const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
-    CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expired_value);
+    CombineIterator combine_it(std::move(query_its), request->st(), openmldb::api::GetType::kSubKeyLe, expired_value);
     uint32_t count = 0;
     int32_t code = 0;
+    bool is_finish = true;
     if (!request->has_use_attachment() || !request->use_attachment()) {
         std::string* pairs = response->mutable_pairs();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count);
-        response->set_code(code);
-        response->set_count(count);
+        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count, &is_finish);
     } else {
         auto* cntl = dynamic_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count);
-        response->set_code(code);
-        response->set_count(count);
+        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count, &is_finish);
         response->set_buf_size(buf.size());
         DLOG(INFO) << " scan " << request->pk() << " with buf size " << buf.size();
     }
+    response->set_code(code);
+    response->set_count(count);
+    response->set_is_finish(is_finish);
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_query_slow_log_threshold < end_time) {
         std::string index_name;
@@ -1306,10 +1282,6 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
         case -2:
             response->set_msg("st/et sub key type is invalid");
             response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
-            return;
-        case -3:
-            response->set_code(::openmldb::base::ReturnCode::kReacheTheScanMaxBytesSize);
-            response->set_msg("reach the max scan byte size");
             return;
         case -4:
             response->set_msg("fail to encode data rows");
@@ -1435,8 +1407,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         return;
     }
     index = index_def->GetId();
-    ::openmldb::storage::TableIterator* it = NULL;
-    it = table->NewTraverseIterator(index);
+    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index);
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("create iterator failed");
@@ -1450,6 +1421,10 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
+        auto traverse_it = dynamic_cast<::openmldb::storage::TraverseIterator*>(it);
+        if (traverse_it && traverse_it->Valid() && request->skip_current_pk() && traverse_it->GetPK() == last_pk) {
+            traverse_it->NextPK();
+        }
     } else {
         DEBUGLOG("tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
@@ -3267,6 +3242,22 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         }
         if (!table->GetDB().empty()) {
             catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+        }
+        // delete related aggregator
+        uint32_t base_tid = table->GetTableMeta()->base_table_tid();
+        if (base_tid > 0) {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            uint64_t uid = (uint64_t) base_tid << 32 | pid;
+            auto it = aggregators_.find(uid);
+            if (it != aggregators_.end()) {
+                auto aggrs = *it->second;
+                for (auto it = aggrs.begin(); it != aggrs.end(); it++) {
+                    if ((*it)->GetAggrTid() == tid) {
+                        aggrs.erase(it);
+                        break;
+                    }
+                }
+            }
         }
         // bulk load data receiver should be destroyed too, and can't do table and data receiver destroy at the same
         // time. So keep data receiver destroy before table destroy.
@@ -5372,7 +5363,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure " << db_name << "." << sp_name << " in catalog failed";
     }
 
     if (is_deployment_procedure) {
@@ -5783,7 +5774,8 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     auto aggregator = ::openmldb::storage::CreateAggregator(*base_meta, *aggr_table->GetTableMeta(),
                                                             aggr_table, aggr_replicator, request->index_pos(),
                                                             request->aggr_col(), request->aggr_func(),
-                                                            request->order_by_col(), request->bucket_size());
+                                                            request->order_by_col(), request->bucket_size(),
+                                                            request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;

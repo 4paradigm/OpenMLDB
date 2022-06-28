@@ -34,7 +34,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW);
     request_plan: |
       PROJECT(type=Aggregation)
-        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, 3000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
           DATA_PROVIDER(request=auto_t0)
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -66,7 +66,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW);
     request_plan: |
       PROJECT(type=Aggregation)
-        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, 3000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
           DATA_PROVIDER(request=auto_t0)
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -102,11 +102,11 @@ cases:
       SIMPLE_PROJECT(sources=(c1, c3, c6, c7, w1_cnt, w2_cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, -3000, 0), index_keys=(auto_t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c6, 3000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
               DATA_PROVIDER(request=auto_t0)
               DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, -3000, 0), index_keys=(auto_t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 3000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
               DATA_PROVIDER(request=auto_t0)
               DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
     expect:

@@ -33,7 +33,7 @@
 #include "rpc/rpc_client.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
-using Cond_Column = ::google::protobuf::RepeatedPtrField<openmldb::api::Columns>;
+
 
 namespace openmldb {
 
@@ -42,7 +42,7 @@ namespace sdk {
 class SQLRequestRowBatch;
 }  // namespace sdk
 
-const uint32_t INVALID_TID = UINT32_MAX;
+
 namespace client {
 using ::openmldb::api::TaskInfo;
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
@@ -78,19 +78,10 @@ class TabletClient : public Client {
                               std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
                               ::openmldb::api::SQLBatchRequestQueryResponse* response, const bool is_debug = false);
 
-    bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value,
-             uint32_t format_version = 0);
-
-    bool Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time, const char* value, uint32_t size,
-             uint32_t format_version = 0);
+    bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions);
-
-    bool Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t>>& dimensions, uint32_t format_version);
-
-
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
              uint64_t& ts,                                                                          // NOLINT
@@ -101,35 +92,22 @@ class TabletClient : public Client {
              uint64_t& ts,        // NOLINT
              std::string& msg);   // NOLINT
 
-    bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
-             const std::string& ts_name, std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
-
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name, bool filter_expired_data,
                uint64_t& value, std::string& msg);  // NOLINT
 
-    bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
-               const std::string& ts_name, bool filter_expired_data, uint64_t& value,  // NOLINT
-               std::string& msg);                                                      // NOLINT
 
-    ::openmldb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime,
-                                       uint64_t etime, uint32_t limit, uint32_t atleast,
-                                       std::string& msg);  // NOLINT
+    std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
+            const std::string& pk, const std::string& idx_name,
+            uint64_t stime, uint64_t etime,
+            uint32_t limit, uint32_t skip_record_num, std::string& msg);  // NOLINT
 
-    ::openmldb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime,
-                                       uint64_t etime, const std::string& idx_name, const std::string& ts_name,
-                                       uint32_t limit, uint32_t atleast,
-                                       std::string& msg);  // NOLINT
-
-    ::openmldb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime,
-                                       uint64_t etime, const std::string& idx_name, uint32_t limit, uint32_t atleast,
-                                       std::string& msg);  // NOLINT
-
-    ::openmldb::base::KvIterator* Scan(uint32_t tid, uint32_t pid, const char* pk, uint64_t stime, uint64_t etime,
-                                       std::string& msg,     // NOLINT
-                                       bool showm = false);  // NOLINT
+    std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
+            const std::string& pk, const std::string& idx_name,
+            uint64_t stime, uint64_t etime,
+            uint32_t limit, std::string& msg);  // NOLINT
 
     bool Scan(const ::openmldb::api::ScanRequest& request, brpc::Controller* cntl,
               ::openmldb::api::ScanResponse* response);
@@ -213,15 +191,9 @@ class TabletClient : public Client {
     bool ConnectZK();
     bool DisConnectZK();
 
-    ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
-                                           const std::string& pk, uint64_t ts, uint32_t limit,
-                                           bool need_clean, uint32_t& count);  // NOLINT
-
-    ::openmldb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
-                                           const std::string& pk, uint64_t ts, uint32_t limit,
-                                           uint32_t& count);  // NOLINT
-
-    void ShowTp();
+    std::shared_ptr<openmldb::base::TraverseKvIterator> Traverse(uint32_t tid, uint32_t pid,
+            const std::string& idx_name, const std::string& pk, uint64_t ts,
+            uint32_t limit, bool skip_current_pk, uint32_t& count);  // NOLINT
 
     bool SetMode(bool mode);
 
@@ -298,7 +270,6 @@ class TabletClient : public Client {
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;
-    std::vector<uint64_t> percentile_;
 };
 
 }  // namespace client

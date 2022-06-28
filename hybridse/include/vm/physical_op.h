@@ -39,7 +39,7 @@ enum PhysicalOpType {
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
-    kPhysicalOpAggrerate,
+    kPhysicalOpAggregate,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
     kPhysicalOpConstProject,
@@ -727,6 +727,9 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
 
  private:
     ColumnProjects project_;
+    // a empty SchemContext used by `InitSchema`, defined as class member to extend lifetime
+    // because codegen later need access to it
+    SchemasContext empty_schemas_ctx_;
 };
 
 class PhysicalSimpleProjectNode : public PhysicalUnaryNode {

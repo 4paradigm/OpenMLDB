@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batchjob
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
 
 object ImportOfflineData {
@@ -29,9 +30,12 @@ object ImportOfflineData {
     importOfflineData(args(0))
   }
 
-  def importOfflineData(sql: String): Unit = {
+  def importOfflineData(sqlFilePath: String): Unit = {
     val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    sess.sql(sql)
+
+    val sqlText = scala.io.Source.fromFile(SparkFiles.get(sqlFilePath)).mkString
+    sess.sql(sqlText)
+
     sess.close()
   }
 

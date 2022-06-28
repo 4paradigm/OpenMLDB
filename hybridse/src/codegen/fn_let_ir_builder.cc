@@ -107,14 +107,12 @@ Status RowFnLetIRBuilder::Build(
 
         ::hybridse::type::Type col_agg_type;
 
-        auto agg_iter = window_agg_builder.find(frame_str);
-
-        if (agg_iter == window_agg_builder.end()) {
-            window_agg_builder.insert(std::make_pair(
-                frame_str, AggregateIRBuilder(ctx_->schemas_context(), module,
-                                              frame, agg_builder_id++)));
-            agg_iter = window_agg_builder.find(frame_str);
+        auto res = window_agg_builder.try_emplace(frame_str, ctx_->schemas_context(), module, frame, agg_builder_id);
+        auto agg_iter = res.first;
+        if (res.second) {
+            agg_builder_id++;
         }
+
         if (agg_iter->second.CollectAggColumn(expr, i, &col_agg_type)) {
             continue;
         }

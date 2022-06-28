@@ -29,8 +29,8 @@
 #include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/ip.h"
-#include "base/linenoise.h"
 #include "base/kv_iterator.h"
+#include "base/linenoise.h"
 #include "base/server_name.h"
 #include "base/strings.h"
 #if defined(__linux__) || defined(__mac_tablet__)
@@ -65,7 +65,6 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
-DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
@@ -256,7 +255,6 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (real_endpoint.empty()) {
@@ -317,7 +315,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
             }
         }
 
-        if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second, format_version)) {
+        if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second)) {
             printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
             return -1;
         }
@@ -327,7 +325,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
 }
 
 ::openmldb::base::Status PutSchemaData(const ::openmldb::nameserver::TableInfo& table_info, uint64_t ts,
-                                          const std::vector<std::string>& input_value) {
+                                       const std::vector<std::string>& input_value) {
     std::string value;
     ::openmldb::codec::SDKCodec codec(table_info);
     std::map<uint32_t, ::openmldb::codec::Dimension> dimensions;
@@ -1389,7 +1387,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     std::string key;
     std::string index_name;
     uint64_t timestamp = 0;
-    std::string ts_name;
     auto iter = parameter_map.begin();
     try {
         if (is_pair_format) {
@@ -1417,10 +1414,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
             } else {
                 std::cout << "get format error: ts does not exist!" << std::endl;
                 return;
-            }
-            iter = parameter_map.find("ts_name");
-            if (iter != parameter_map.end()) {
-                ts_name = iter->second;
             }
         } else {
             table_name = parts[1];
@@ -1485,7 +1478,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         uint64_t ts = 0;
         std::string msg;
         if (tables[0].partition_key_size() == 0) {
-            if (!tb_client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg)) {
+            if (!tb_client->Get(tid, pid, key, timestamp, index_name, value, ts, msg)) {
                 std::cout << "Fail to get value! error msg: " << msg << std::endl;
                 return;
             }
@@ -1499,7 +1492,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
                     std::cout << "failed to get. error msg: " << msg << std::endl;
                     return;
                 }
-                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, ts_name, cur_value, cur_ts, msg)) {
+                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, cur_value, cur_ts, msg)) {
                     failed_cnt++;
                     continue;
                 }
@@ -1555,7 +1548,6 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     uint64_t et = 0;
     std::string ts_name;
     uint32_t limit = 0;
-    uint32_t atleast = 0;
     auto iter = parameter_map.begin();
     try {
         if (is_pair_format) {
@@ -1599,10 +1591,6 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             if (iter != parameter_map.end()) {
                 limit = boost::lexical_cast<uint32_t>(iter->second);
             }
-            iter = parameter_map.find("atleast");
-            if (iter != parameter_map.end()) {
-                atleast = boost::lexical_cast<uint32_t>(iter->second);
-            }
         } else {
             table_name = parts[1];
             key = parts[2];
@@ -1636,7 +1624,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
     if (no_schema) {
         std::shared_ptr<::openmldb::base::KvIterator> it;
         if (is_pair_format) {
-            it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+            it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
         } else {
             try {
                 st = boost::lexical_cast<uint64_t>(parts[3]);
@@ -1644,7 +1632,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
+                it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
             } catch (std::exception const& e) {
                 std::cout << "Invalid args. st and et should be uint64_t, limit should"
                           << "be uint32_t" << std::endl;
@@ -1691,7 +1679,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                     return;
                 }
                 std::shared_ptr<::openmldb::base::KvIterator> it(
-                    tb_client->Scan(tid, cur_pid, key, st, et, index_name, ts_name, limit, atleast, msg));
+                    tb_client->Scan(tid, cur_pid, key, index_name, st, et, limit, msg));
                 if (!it) {
                     std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                     return;
@@ -1700,7 +1688,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             }
         } else {
             std::shared_ptr<::openmldb::base::KvIterator> it(
-                tb_client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, atleast, msg));
+                tb_client->Scan(tid, pid, key, index_name, st, et, limit, msg));
             if (!it) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
                 return;
@@ -1815,7 +1803,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
     }
     uint64_t value = 0;
     if (tables[0].partition_key_size() == 0) {
-        if (!tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg)) {
+        if (!tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg)) {
             std::cout << "Count failed. error msg: " << msg << std::endl;
             return;
         }
@@ -1829,7 +1817,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
                           << cur_pid << std::endl;
                 return;
             }
-            if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name, filter_expired_data, cur_value, msg)) {
+            if (!tablet_client->Count(tid, cur_pid, key, index_name, filter_expired_data, cur_value, msg)) {
                 std::cout << "Count failed. error msg: " << msg << std::endl;
             }
             value += cur_value;
@@ -1907,8 +1895,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        ::openmldb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
-        if (it == NULL) {
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
+        if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
         }
@@ -1948,7 +1936,6 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             index++;
             it->Next();
         }
-        delete it;
     }
     tp.Print(true);
 }
@@ -2205,7 +2192,7 @@ int GenTableInfo(const std::string& path,
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n",
-                table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
+                   table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
             return -1;
         }
         if (table_info.key_entry_max_height() == 0) {
@@ -3059,10 +3046,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
         printf("quit - exit client\n");
         printf("recoversnapshot - recover snapshot\n");
         printf("screate - create multi dimension table\n");
-        printf(
-            "sscan - get records for a period of time from multi dimension "
-            "table\n");
-        printf("sget - get only one record from multi dimension table\n");
         printf("sendsnapshot - send snapshot to another endpoint\n");
         printf("setexpire - enable or disable ttl\n");
         printf("showschema - show schema\n");
@@ -3080,21 +3063,6 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("desc: drop table\n");
             printf("usage: drop tid pid\n");
             printf("ex: drop 1 0\n");
-        } else if (parts[1] == "sscan") {
-            printf(
-                "desc: get records for a period of time from multi dimension "
-                "table\n");
-            printf(
-                "usage: sscan tid pid key key_name starttime endtime "
-                "[limit]\n");
-            printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000\n");
-            printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000 10\n");
-            printf("ex: sscan 1 0 card0 card 0 0 10\n");
-        } else if (parts[1] == "sget") {
-            printf("desc: get only one record from multi dimension table\n");
-            printf("usage: sget tid pid key key_name ts\n");
-            printf("ex: sget 1 0 card0 card 1528858466000\n");
-            printf("ex: sget 1 0 card0 card 0\n");
         } else if (parts[1] == "delete") {
             printf("desc: delete pk\n");
             printf("usage: delete tid pid key [key_name]\n");
@@ -3616,7 +3584,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
         return;
     }
     std::string msg;
-    bool ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
+    bool ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
@@ -3648,236 +3616,6 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::openmldb::c
     } else {
         std::cout << "No schema for table" << std::endl;
     }
-}
-
-void HandleClientSGet(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget "
-                     "table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx"
-                  << std::endl;
-        return;
-    }
-    std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", parameter_map)) {
-        std::cout << "sget format erro! eg. sget table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx"
-                  << std::endl;
-        return;
-    }
-    bool is_pair_format = parameter_map.empty() ? false : true;
-    uint32_t tid = 0;
-    uint32_t pid = 0;
-    std::string key;
-    std::string index_name;
-    uint64_t timestamp = 0;
-    std::string ts_name;
-    auto iter = parameter_map.begin();
-    try {
-        if (is_pair_format) {
-            iter = parameter_map.find("tid");
-            if (iter != parameter_map.end()) {
-                tid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "sget format error: tid does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("pid");
-            if (iter != parameter_map.end()) {
-                pid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "sget format error: pid does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("key");
-            if (iter != parameter_map.end()) {
-                key = iter->second;
-            } else {
-                std::cout << "sget format error: key does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("index_name");
-            if (iter != parameter_map.end()) {
-                index_name = iter->second;
-            }
-            iter = parameter_map.find("ts");
-            if (iter != parameter_map.end()) {
-                timestamp = boost::lexical_cast<uint64_t>(iter->second);
-            }
-            iter = parameter_map.find("ts_name");
-            if (iter != parameter_map.end()) {
-                ts_name = iter->second;
-            }
-        } else {
-            tid = boost::lexical_cast<uint32_t>(parts[1]);
-            pid = boost::lexical_cast<uint32_t>(parts[2]);
-            key = parts[3];
-            index_name = parts[4];
-            if (parts.size() > 5) {
-                timestamp = boost::lexical_cast<uint64_t>(parts[5]);
-            }
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args. tid pid should be uint32_t, ts should be "
-                     "uint64_t, "
-                  << std::endl;
-        return;
-    }
-    ::openmldb::api::TableMeta table_meta;
-    bool ok = client->GetTableSchema(tid, pid, table_meta);
-    if (!ok) {
-        std::cout << "No schema for table ,please use command get" << std::endl;
-        return;
-    }
-    std::string value;
-    uint64_t ts = 0;
-    std::string msg;
-    ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
-    if (!ok) {
-        std::cout << "Fail to sget value! error msg: " << msg << std::endl;
-        return;
-    }
-    ::openmldb::api::TableStatus table_status;
-    if (!client->GetTableStatus(tid, pid, table_status)) {
-        std::cout << "Fail to get table status" << std::endl;
-        return;
-    }
-    ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
-    if (table_status.compress_type() == ::openmldb::type::CompressType::kSnappy) {
-        compress_type = ::openmldb::type::CompressType::kSnappy;
-    }
-    if (compress_type == ::openmldb::type::CompressType::kSnappy) {
-        std::string uncompressed;
-        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        value = uncompressed;
-    }
-    // TODO(denglong): display schema
-    /*std::string schema = table_meta.schema();
-    std::vector<::openmldb::codec::ColumnDesc> raw;
-    ::openmldb::codec::SchemaCodec codec;
-    codec.Decode(schema, raw);
-    ::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
-    std::vector<std::string> row;
-    row.push_back("#");
-    row.push_back("ts");
-    for (uint32_t i = 0; i < raw.size(); i++) {
-        row.push_back(raw[i].name);
-    }
-    tp.AddRow(row);
-    row.clear();
-    row.push_back("1");
-    row.push_back(std::to_string(ts));
-    tp.AddRow(row);
-    tp.Print(true);*/
-}
-
-void HandleClientSScan(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
-    if (parts.size() < 7) {
-        std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time "
-                     "end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx "
-                     "st=xxx et=xxx ts_name=xxx [limit=xxx]"
-                  << std::endl;
-        return;
-    }
-    std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", parameter_map)) {
-        std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx "
-                     "index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"
-                  << std::endl;
-        return;
-    }
-    bool is_pair_format = parameter_map.empty() ? false : true;
-    uint32_t tid = 0;
-    uint32_t pid = 0;
-    std::string key;
-    std::string index_name;
-    uint64_t st = 0;
-    uint64_t et = 0;
-    std::string ts_name;
-    uint32_t limit = 0;
-    auto iter = parameter_map.begin();
-    try {
-        if (is_pair_format) {
-            iter = parameter_map.find("tid");
-            if (iter != parameter_map.end()) {
-                tid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "sscan format error: tid does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("pid");
-            if (iter != parameter_map.end()) {
-                pid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "sscan format error: pid does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("key");
-            if (iter != parameter_map.end()) {
-                key = iter->second;
-            } else {
-                std::cout << "sscan format error: key does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("index_name");
-            if (iter != parameter_map.end()) {
-                index_name = iter->second;
-            }
-            iter = parameter_map.find("st");
-            if (iter != parameter_map.end()) {
-                st = boost::lexical_cast<uint64_t>(iter->second);
-            } else {
-                std::cout << "sscan format error: st does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("et");
-            if (iter != parameter_map.end()) {
-                et = boost::lexical_cast<uint64_t>(iter->second);
-            } else {
-                std::cout << "sscan format error: et does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("ts_name");
-            if (iter != parameter_map.end()) {
-                ts_name = iter->second;
-            }
-            iter = parameter_map.find("limit");
-            if (iter != parameter_map.end()) {
-                limit = boost::lexical_cast<uint32_t>(iter->second);
-            }
-        } else {
-            if (parts.size() > 7) {
-                limit = boost::lexical_cast<uint32_t>(parts[7]);
-            }
-            tid = boost::lexical_cast<uint32_t>(parts[1]);
-            pid = boost::lexical_cast<uint32_t>(parts[2]);
-            key = parts[3];
-            index_name = parts[4];
-            st = boost::lexical_cast<uint64_t>(parts[5]);
-            et = boost::lexical_cast<uint64_t>(parts[6]);
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args. tid pid should be uint32_t, st and et "
-                     "should be uint64_t, limit should be uint32"
-                  << std::endl;
-        return;
-    }
-    std::string msg;
-    std::shared_ptr<::openmldb::base::KvIterator> it(
-        client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, 0, msg));
-    if (!it) {
-        std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-        return;
-    }
-    ::openmldb::api::TableMeta table_meta;
-    bool ok = client->GetTableSchema(tid, pid, table_meta);
-    if (!ok) {
-        std::cout << "table is not exist" << std::endl;
-        return;
-    }
-    std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
-    iter_vec.push_back(std::move(it));
-    ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
-    ::openmldb::cmd::ShowTableRows(table_meta, &sdk_it);
 }
 
 void HandleClientDelete(const std::vector<std::string>& parts, ::openmldb::client::TabletClient* client) {
@@ -3939,10 +3677,6 @@ void StartClient() {
         ::openmldb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
-        } else if (parts[0] == "sget") {
-            HandleClientSGet(parts, &client);
-        } else if (parts[0] == "sscan") {
-            HandleClientSScan(parts, &client);
         } else if (parts[0] == "delete") {
             HandleClientDelete(parts, &client);
         } else if (parts[0] == "count") {
@@ -4209,7 +3943,7 @@ void StartAPIServer() {
         }
         int32_t port = 0;
         try {
-             port = boost::lexical_cast<uint32_t>(vec[1]);
+            port = boost::lexical_cast<uint32_t>(vec[1]);
         } catch (std::exception const& e) {
             PDLOG(WARNING, "Invalid nameserver format");
             exit(1);
@@ -4223,6 +3957,7 @@ void StartAPIServer() {
         ::openmldb::sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = FLAGS_zk_cluster;
         cluster_options.zk_path = FLAGS_zk_root_path;
+        cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);

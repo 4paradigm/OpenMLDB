@@ -27,11 +27,13 @@ namespace base {
 
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
-    explicit StringRef(const char* str)
-        : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
+    StringRef(std::nullptr_t) : size_(0), data_(nullptr) {}  // NOLINT
+
+    StringRef(const char* str)  // NOLINT
+        : size_(strlen(str)), data_(str) {}
     StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
 
-    explicit StringRef(const std::string& str)
+    StringRef(const std::string& str) // NOLINT
         : size_(str.size()), data_(str.data()) {}
 
     ~StringRef() {}
@@ -39,6 +41,22 @@ struct StringRef {
     const inline bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
+    }
+
+    /// \brief output the string with nullable information
+    ///
+    /// if StringRef refer to null, returns `NULL`
+    /// otherwise, returns `string(data_, size_)` with literal double quote (") surrounded
+    std::string DebugString() const {
+        if (data_ == nullptr) {
+            return "NULL";
+        }
+
+        std::string out("\"");
+        out.append(data_, size_);
+        out.append("\"");
+
+        return out;
     }
 
     static int compare(const StringRef& a, const StringRef& b) {

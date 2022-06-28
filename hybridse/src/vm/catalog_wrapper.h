@@ -444,11 +444,11 @@ class RowCombineWrapper : public RowHandler {
             status_ = base::Status::OK();
             return value_;
         }
-        if (kRowHandler == right_->GetHanlderType()) {
+        if (kRowHandler == right_->GetHandlerType()) {
             auto right_row =
                 std::dynamic_pointer_cast<RowHandler>(right_)->GetValue();
             value_ = Row(left_slices_, left_row, right_slices_, right_row);
-        } else if (kTableHandler == right_->GetHanlderType()) {
+        } else if (kTableHandler == right_->GetHandlerType()) {
             auto right_table = std::dynamic_pointer_cast<TableHandler>(right_);
             auto right_iter = right_table->GetIterator();
             if (!right_iter) {

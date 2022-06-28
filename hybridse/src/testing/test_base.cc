@@ -21,7 +21,8 @@
 namespace hybridse {
 namespace vm {
 
-void BuildAggTableDef(::hybridse::type::TableDef& table, const std::string& aggr_table, const std::string& aggr_db) {
+void BuildAggTableDef(::hybridse::type::TableDef& table, const std::string& aggr_table, // NOLINT
+                      const std::string& aggr_db) {
     table.set_name(aggr_table);
     table.set_catalog(aggr_db);
     {

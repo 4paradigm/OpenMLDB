@@ -67,6 +67,8 @@ TEST_F(DefaultUdfLibraryTest, TestCheckIsUdafByName) {
     ASSERT_TRUE(library->IsUdaf("count"));
     // avg(...) is an udaf
     ASSERT_TRUE(library->IsUdaf("avg"));
+    // median(...) is an udaf
+    ASSERT_TRUE(library->IsUdaf("median"));
 
     // hour(..) isn't an udaf
     ASSERT_TRUE(!library->IsUdaf("hour"));

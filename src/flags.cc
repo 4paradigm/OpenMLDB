@@ -18,7 +18,7 @@
 // cluster config
 DEFINE_string(endpoint, "", "ip:port, config the ip and port that openmldb serves for");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir");
-DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
+DEFINE_int32(zk_session_timeout, 2000, "config the zk session timeout of cli, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline");
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -26,6 +26,10 @@ DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
+DEFINE_uint32(zk_log_level, 0,
+              "CLI: set level integer, DISABLE_LOGGING=0, "
+              "ZOO_LOG_LEVEL_ERROR=1,ZOO_LOG_LEVEL_WARN=2,ZOO_LOG_LEVEL_INFO=3,ZOO_LOG_LEVEL_DEBUG=4");
+DEFINE_string(zk_log_file, "", "CLI: set zk log file, empty means stderr(default in zk)");
 DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
@@ -41,8 +45,7 @@ DEFINE_uint32(name_server_op_execute_timeout, 2 * 60 * 60 * 1000, "config the ti
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
 DEFINE_uint32(partition_num, 8, "config the default partition_num");
-DEFINE_uint32(replica_num, 3,
-              "config the default replica_num. if set 3, there is one leader and two followers");
+DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 DEFINE_uint32(system_table_replica_num, 1, "config the default replica_num of system table.");
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(disk_gc_interval, 120, "the rocksdb gc interval of tablet");
@@ -85,7 +88,6 @@ DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query sl
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
 
 // thread pool config
-DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
 DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");

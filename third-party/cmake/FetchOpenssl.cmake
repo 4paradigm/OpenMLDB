@@ -14,18 +14,14 @@
 
 
 find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-  set(OPENSSL_URL https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1k.tar.gz)
-  set(OPENSSL_HASH b92f9d3d12043c02860e5e602e50a73ed21a69947bcc74d391f41148e9f6aa95)
+set(OPENSSL_URL https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1o.tar.gz)
+set(OPENSSL_HASH 0f745b85519aab2ce444a3dcada93311ba926aea2899596d01e7f948dbd99981)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+  # in case error: '__NR_eventfd' undeclared
   set(OPENSSL_FLAGS no-shared no-afalgeng)
 else()
-  set(OPENSSL_URL https://github.com/openssl/openssl/archive/OpenSSL_1_1_0.zip)
-  set(OPENSSL_HASH 2150919847ae685b58ae26e737f7e3aff82a934d793c3aee5a01cfc9ef55c121)
-
   set(OPENSSL_FLAGS no-shared)
-  set(OPENSSL_PATCH bash -c "sed -i'' -e 's#qw/glob#qw/:glob#' Configure"
-    COMMAND bash -c "sed -i'' -e 's#qw/glob#qw/:glob#' test/build.info")
 endif()
 
 message(STATUS "build openssl from ${OPENSSL_URL}")
@@ -42,5 +38,4 @@ ExternalProject_Add(
   CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./config --prefix=<INSTALL_DIR> --openssldir=<INSTALL_DIR> ${OPENSSL_FLAGS}"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install
-    COMMAND bash -c "rm -rvf <INSTALL_DIR>/lib/libssl.so*"
-    COMMAND bash -c "rm -rvf <INSTALL_DIR>/lib/libcrypto.so*")
+)

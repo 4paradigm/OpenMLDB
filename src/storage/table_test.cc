@@ -1011,6 +1011,11 @@ TEST_P(TableTest, UpdateTTL) {
     table->SetTTL(update_ttl);
     ASSERT_EQ(10, (int64_t)table->GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(5, (int64_t)table->GetIndex(1)->GetTTL()->abs_ttl / (10 * 6000));
+    auto meta = table->GetTableMeta();
+    for (const auto& cur_column_key : meta->column_key()) {
+        ASSERT_EQ(20, cur_column_key.ttl().abs_ttl());
+        ASSERT_EQ(0, cur_column_key.ttl().lat_ttl());
+    }
     table->SchedGc();
     ASSERT_EQ(20, (int64_t)table->GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
     ASSERT_EQ(20, (int64_t)table->GetIndex(1)->GetTTL()->abs_ttl / (10 * 6000));
