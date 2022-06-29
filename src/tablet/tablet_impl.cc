@@ -155,7 +155,9 @@ TabletImpl::~TabletImpl() {
     gc_pool_.Stop(true);
     io_pool_.Stop(true);
     snapshot_pool_.Stop(true);
-    delete zk_client_;
+    if (zk_client_) {
+        delete zk_client_;
+    }
 }
 
 bool TabletImpl::Init(const std::string& real_endpoint) {
