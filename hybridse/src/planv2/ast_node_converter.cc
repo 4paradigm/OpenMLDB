@@ -1011,9 +1011,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     if (nullptr != window_spec->window_frame()) {
         CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node))
     }
-    // TODO(chenjing): fill the following flags
-    bool instance_is_not_in_window = window_spec->is_instance_not_in_window();
-    bool exclude_current_time = window_spec->is_exclude_current_time();
+
     node::SqlNodeList* union_tables = nullptr;
 
     if (nullptr != window_spec->union_table_references()) {
@@ -1025,7 +1023,8 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
         }
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
-        union_tables, partition_by, order_by, frame_node, exclude_current_time, instance_is_not_in_window));
+        union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
+        window_spec->is_instance_not_in_window(), window_spec->is_exclude_current_row()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }

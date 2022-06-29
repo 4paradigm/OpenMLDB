@@ -378,6 +378,7 @@ base::Status Planner::FillInWindowPlanNode(const node::WindowDefNode *w_ptr, nod
         }
         w_node_ptr->set_instance_not_in_window(w_ptr->instance_not_in_window());
         w_node_ptr->set_exclude_current_time(w_ptr->exclude_current_time());
+        w_node_ptr->set_exclude_current_row(w_ptr->exclude_current_row());
     }
     return base::Status::OK();
 }
@@ -1056,7 +1057,7 @@ bool Planner::ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *
             node::FrameNode *current_frame = node_manager_->MergeFrameNodeWithCurrentHistoryFrame(w_ptr->GetFrame());
             *iter = dynamic_cast<node::WindowDefNode *>(node_manager_->MakeWindowDefNode(
                 w_ptr->union_tables(), w_ptr->GetPartitions(), w_ptr->GetOrders(), current_frame,
-                w_ptr->exclude_current_time(), w_ptr->instance_not_in_window()));
+                w_ptr->exclude_current_time(), w_ptr->instance_not_in_window(), w_ptr->exclude_current_row()));
             has_window_expand = true;
         }
     }

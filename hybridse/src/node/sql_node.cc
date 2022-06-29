@@ -24,6 +24,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
@@ -889,14 +890,6 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
         output << "\n";
         PrintSqlVector(output, tab, union_tables_->GetList(), "union_tables", false);
     }
-    if (exclude_current_time_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "exclude_current_time", false);
-    }
-    if (instance_not_in_window_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "instance_not_in_window", false);
-    }
     output << "\n";
     PrintValue(output, tab, ExprString(partitions_), "partitions", false);
 
@@ -904,13 +897,31 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintValue(output, tab, ExprString(orders_), "orders", false);
 
     output << "\n";
-    PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+
+    std::vector<std::string_view> attrs;
+    if (exclude_current_time_) {
+        attrs.emplace_back("exclude_current_time");
+    }
+    if (exclude_current_row_) {
+        attrs.emplace_back("exclude_current_row");
+    }
+    if (instance_not_in_window_) {
+        attrs.emplace_back("instance_not_in_window");
+    }
+    if (attrs.empty()) {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+    } else {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", false);
+        output << "\n";
+        PrintValue(output, tab, absl::StrJoin(attrs, ", "), "attributes", true);
+    }
 }
 
 // test if two window can be merged into single one
 // besides the two windows is the same one, two can also merged when all of those condition meet:
 // - union table equal
 // - exclude current time equal
+// - exclude current row equal
 // - instance not in window equal
 // - order equal
 // - partion equal
@@ -924,7 +935,8 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     }
     return SqlListEquals(this->union_tables_, that->union_tables_) &&
            this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           this->exclude_current_row() == that->exclude_current_row() && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
            this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
 }
@@ -2023,7 +2035,7 @@ bool QueryRefNode::Equals(const SqlNode *node) const {
 
 void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ST;
+    const std::string tab = org_tab + INDENT;
     output << "\n";
     PrintValue(output, tab, BoundTypeName(bound_type_), "bound", false);
 

@@ -1331,8 +1331,6 @@ class WindowDefNode : public SqlNode {
  public:
     WindowDefNode()
         : SqlNode(kWindowDef, 0, 0),
-          exclude_current_time_(false),
-          instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
           union_tables_(nullptr),
@@ -1362,6 +1360,9 @@ class WindowDefNode : public SqlNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     bool Equals(const SqlNode *that) const override;
     bool CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged = true) const;
@@ -1370,13 +1371,15 @@ class WindowDefNode : public SqlNode {
     WindowDefNode* ShadowCopy(NodeManager* nm) const override;
 
  private:
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */
     SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
+
+    bool exclude_current_time_ = false;
+    bool instance_not_in_window_ = false;
+    bool exclude_current_row_ = false;
 };
 
 class AllNode : public ExprNode {

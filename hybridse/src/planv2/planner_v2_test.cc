@@ -98,10 +98,6 @@ TEST_P(PlannerV2Test, PlannerSucessTest) {
     node::PlanNodeList plan_trees;
     EXPECT_EQ(GetParam().expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
         << status;
-    LOG(INFO) << "logical plan:\n";
-    for (auto tree : plan_trees) {
-        LOG(INFO) << "statement : " << *tree << std::endl;
-    }
 }
 TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     auto sql_case = GetParam();
@@ -115,11 +111,8 @@ TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     }
     base::Status status;
     node::PlanNodeList plan_trees;
+    // TODO(ace): many tests defined in 'cases/plan/' do not pass, should annotated in yaml file
     plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true);
-    LOG(INFO) << "logical plan:\n";
-    for (auto tree : plan_trees) {
-        LOG(INFO) << "statement : " << *tree << std::endl;
-    }
 }
 
 TEST_F(PlannerV2Test, SimplePlannerCreatePlanTest) {
