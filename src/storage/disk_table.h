@@ -41,6 +41,9 @@
 #include "storage/table.h"
 #include "base/glog_wapper.h"  // NOLINT
 
+DECLARE_uint32(bloom_filter_bitset_size);
+DECLARE_uint32(bloom_filter_hash_seed);
+
 namespace openmldb {
 namespace storage {
 
@@ -129,9 +132,8 @@ class KeyTSComparator : public rocksdb::Comparator {
 
 class BloomFilter {
  public:
-    BloomFilter(uint32_t bitset_size, uint32_t string_cnt) : k_(5), bitset_size_(bitset_size), string_cnt_(string_cnt) {
-        bits_.reserve(10000);
-        for (uint32_t i = 0; i < 10000; i++) {
+    BloomFilter() {
+        for (uint32_t i = 0; i < FLAGS_bloom_filter_bitset_size; i++) {
             bits_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
         }
     }
@@ -146,10 +148,8 @@ class BloomFilter {
     void setBit(uint32_t bit);
     bool getBit(uint32_t bit);
 
-    uint32_t k_, bitset_size_,
-        string_cnt_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> bits_;
-    uint32_t base_[100] = {5, 7, 11, 13, 31, 37, 61};
+    uint32_t base_[7] = {5, 7, 11, 13, 31, 37, 61};
 };
 
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {

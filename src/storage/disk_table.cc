@@ -31,6 +31,9 @@ DECLARE_uint32(write_buffer_mb);
 DECLARE_uint32(block_cache_shardbits);
 DECLARE_bool(verify_compression);
 
+DECLARE_uint32(bloom_filter_bitset_size);
+DECLARE_uint32(bloom_filter_hash_seed);
+
 namespace openmldb {
 namespace storage {
 
@@ -154,7 +157,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         pk_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
-        bloom_filter_vec_.push_back(BloomFilter(1000, 100));
+        bloom_filter_vec_.push_back(BloomFilter());
     }
     auto indexs = table_index_.GetAllIndex();
     for (uint32_t i = 0; i < indexs.size(); i++) {
@@ -1359,15 +1362,15 @@ bool BloomFilter::getBit(uint32_t bit) {
 }
 
 void BloomFilter::Set(const char* str) {
-    for (uint32_t i = 0; i < k_; ++i) {
-        uint32_t p = hash(str, base_[i]) % bitset_size_;
+    for (uint32_t i = 0; i < FLAGS_bloom_filter_hash_seed; ++i) {
+        uint32_t p = hash(str, base_[i]) % FLAGS_bloom_filter_bitset_size;
         setBit(p);
     }
 }
 
 bool BloomFilter::Valid(const char* str) {
-    for (uint32_t i = 0; i < k_; ++i) {
-        uint32_t p = hash(str, base_[i]) % bitset_size_;
+    for (uint32_t i = 0; i < FLAGS_bloom_filter_hash_seed; ++i) {
+        uint32_t p = hash(str, base_[i]) % FLAGS_bloom_filter_bitset_size;
         if (!getBit(p)) {
             return false;
         }
