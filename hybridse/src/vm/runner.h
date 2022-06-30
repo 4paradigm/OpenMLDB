@@ -980,17 +980,18 @@ class RequestUnionRunner : public Runner {
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
-    static std::shared_ptr<TableHandler> RequestUnionWindow(
-        const Row& request,
-        std::vector<std::shared_ptr<TableHandler>> union_segments,
-        int64_t request_ts, const WindowRange& window_range,
-        const bool output_request_row, const bool exclude_current_time);
+    static std::shared_ptr<TableHandler> RequestUnionWindow(const Row& request,
+                                                            std::vector<std::shared_ptr<TableHandler>> union_segments,
+                                                            int64_t request_ts, const WindowRange& window_range,
+                                                            bool output_request_row, bool exclude_current_time,
+                                                            bool exclude_current_row = false);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
+    bool exclude_current_row_ = false;
     bool output_request_row_;
 };
 

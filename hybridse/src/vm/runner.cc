@@ -316,6 +316,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
                 op->window().range_, op->exclude_current_time(),
                 op->output_request_row());
+            runner->exclude_current_row_ = op->exclude_current_row_;
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -3122,13 +3123,11 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     // build window with start and end offset
     return RequestUnionWindow(request, union_segments, ts_gen,
                               range_gen_.window_range_, output_request_row_,
-                              exclude_current_time_);
+                              exclude_current_time_, exclude_current_row_);
 }
 std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
@@ -3146,6 +3145,17 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
+
+        // HACK: window ... maxsize .. exclude current_row
+        // due to the implementation, current row should always present in the return table
+        // because `AggRunner` requires that current row to be the first two parameters to udf call
+        // so we make the return one size more if original maxsize is set.
+        // `AggRunner` will pop the current row before calling udf
+        //
+        // see `Runner::GroupbyProject` when `exclude_current_row` is true
+        if (exclude_current_row && max_size > 0) {
+            max_size++;
+        }
     }
     uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
 
