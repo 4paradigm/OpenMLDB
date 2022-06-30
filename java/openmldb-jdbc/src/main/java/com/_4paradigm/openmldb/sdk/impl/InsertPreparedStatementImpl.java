@@ -220,7 +220,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         }
         byte[] bytes = s.getBytes(CHARSET);
         // if this index already set, should first reduce length of bytes last time
-        if (hasSet.size() >= (i - 1) && hasSet.get(i - 1)) {
+        if (hasSet.get(i - 1)) {
             stringsLen -= ((byte[]) currentDatas.get(i - 1)).length;
         }
         stringsLen += bytes.length;
