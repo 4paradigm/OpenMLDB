@@ -102,7 +102,7 @@ namespace openmldb::client {
     }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request,
-                                  &response, FLAGS_request_timeout_ms, 1);
+                                  &response, request_timeout_ms_, 1);
 
     if (ok) {
         if (response.code() == 0) {
