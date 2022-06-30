@@ -98,6 +98,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         bool ok = ::openmldb::schema::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
         if (!ok) {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to get sub schema"};
+            return {};
         }
         rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, response->count(), response->buf_size(), cntl);
     } else {
