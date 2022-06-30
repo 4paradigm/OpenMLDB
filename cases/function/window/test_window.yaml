@@ -1408,7 +1408,7 @@ cases:
           lag(val, 1) over w as l1
        FROM t1 WINDOW w as(
           PARTITION by `g` ORDER by `ts`
-          ROWS_RANGE BETWEEN 2s PRECEDING AND 0s PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
+          ROWS_RANGE BETWEEN 3s PRECEDING AND 0s PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
     # batch_plan: |
     expect:
       columns:
@@ -1423,5 +1423,189 @@ cases:
          2, 1, 21, 21, 21
          3, 2, 22, 21, 22
          4, 2, 23, 22, 23
+         5, 0, NULL, NULL, NULL
+         6, 1, 56, 56, 56
+
+  - id: 43
+    desc: |
+      ROWS_RANGE window with end frame OPEN, exclude current_row do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 3s PRECEDING AND 0s OPEN PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 2, 23, 22, 23
+         5, 0, NULL, NULL, NULL
+         6, 1, 56, 56, 56
+
+  - id: 44
+    desc: |
+      ROWS window with end frame OPEN, exclude current_row do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND 0 OPEN PRECEDING EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 3, 23, 21, 23
+         5, 0, NULL, NULL, NULL
+         6, 1, 56, 56, 56
+
+  - id: 45
+    desc: |
+      ROWS_RANGE window with end frame 'CURRENT_ROW', exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 2, 23, 22, 23
+         5, 0, NULL, NULL, NULL
+         6, 1, 56, 56, 56
+
+  - id: 46
+    desc: |
+      ROWS window with end frame 'CURRENT_ROW', exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 3, 23, 21, 23
          5, 0, NULL, NULL, NULL
          6, 1, 56, 56, 56
