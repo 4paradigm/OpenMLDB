@@ -47,7 +47,7 @@ in `train_and_serve.py` to produce new sample csv for training.
 ### Start OpenMLDB cluster
 
 ```
-./init.sh
+/work/init.sh
 ```
 
 ### Start predict server
@@ -55,7 +55,7 @@ in `train_and_serve.py` to produce new sample csv for training.
 You can start predict server even if you haven't deployed, with option `--no-init`.
 
 ```
-python3 predict_server.py --no-init > predict.log 2>&1 &
+/work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
 After trained, you can make predict server to update, by sending a post request to `<ip>:<port>/update`.
