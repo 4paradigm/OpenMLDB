@@ -367,7 +367,9 @@ public class SQLRouterSmokeTest {
             insert = "insert into tsql1010 values(?, ?, ?, ?, ?);";
             PreparedStatement impl3 = router.getInsertPreparedStmt(dbname, insert);
             impl3.setLong(1, 1003);
+            impl3.setString(3, "zhejiangxx");
             impl3.setString(3, "zhejiang");
+            impl3.setString(4, "xxhangzhou");
             impl3.setString(4, "hangzhou");
             impl3.setDate(2, d4);
             impl3.setInt(5, 4);
