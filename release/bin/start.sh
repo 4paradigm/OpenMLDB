@@ -16,11 +16,10 @@
 
 set -e
 
-if [[ $OSTYPE == 'darwin'* ]]; then
-  MON_BINARY='./bin/mon_mac'
-else
-  MON_BINARY='./bin/mon'
-fi
+ulimit -c unlimited
+ulimit -n 655360
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -71,10 +70,20 @@ case $OP in
 
         # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
-            $MON_BINARY "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 < /dev/null &
+            if [ $? -eq 0 ]; then
+                /bin/echo -n $! > $OPENMLDB_PID_FILE
+            fi
             sleep 1
         else
-            $MON_BINARY "./bin/boot_taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
+            if [ -f "./conf/taskmanager.properties" ]; then
+                cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
+            fi
+            pushd ./taskmanager/bin/ > /dev/null
+            PID = $!
+            sh ./taskmanager.sh
+            popd > /dev/null 
+            /bin/echo -n $PID > $OPENMLDB_PID_FILE
         fi
         ;;
     stop)
