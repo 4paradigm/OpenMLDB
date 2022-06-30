@@ -1024,7 +1024,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
         union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
-        window_spec->is_instance_not_in_window(), window_spec->is_exclude_current_row()));
+        window_spec->is_exclude_current_row(), window_spec->is_instance_not_in_window()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }

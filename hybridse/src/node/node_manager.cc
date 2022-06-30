@@ -91,15 +91,15 @@ SqlNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
                                         bool exclude_current_time) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, exclude_current_time, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, exclude_current_time, false, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders,
-                                        SqlNode *frame, bool exclude_current_time, bool instance_not_in_window,
-                                        bool exclude_current_row) {
+                                        SqlNode *frame, bool exclude_current_time, bool exclude_current_row,
+                                        bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
         if (node::kExprOrder != orders->GetExprType()) {

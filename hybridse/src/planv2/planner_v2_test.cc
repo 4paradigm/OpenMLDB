@@ -92,12 +92,17 @@ INSTANTIATE_TEST_SUITE_P(SQLInsert, PlannerV2Test,
 INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 TEST_P(PlannerV2Test, PlannerSucessTest) {
-    std::string sqlstr = GetParam().sql_str();
+    const auto& param = GetParam();
+    std::string sqlstr = param.sql_str();
     std::cout << sqlstr << std::endl;
     base::Status status;
     node::PlanNodeList plan_trees;
-    EXPECT_EQ(GetParam().expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
+    EXPECT_EQ(param.expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
         << status;
+    if (!param.expect().plan_tree_str_.empty()) {
+        // HACK: weak implementation, but usually it works
+        EXPECT_EQ(param.expect().plan_tree_str_, plan_trees.at(0)->GetTreeString());
+    }
 }
 TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     auto sql_case = GetParam();

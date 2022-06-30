@@ -200,9 +200,15 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kAggregation: {
                     AggRunner* runner = nullptr;
+                    auto agg_node = dynamic_cast<const PhysicalAggregationNode*>(node);
+                    if (agg_node == nullptr) {
+                        status.msg = "fail to build AggRunner: input node is not PhysicalAggregationNode";
+                        status.code = common::kExecutionPlanError;
+                        return fail;
+                    }
                     CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                                            dynamic_cast<const PhysicalAggregationNode*>(node)->having_condition_,
-                                            op->project().fn_info());
+                                            agg_node->having_condition_, op->project().fn_info());
+                    runner->exclude_current_row_ = agg_node->exclude_current_row_;
                     return RegisterTask(node,
                                         UnaryInheritTask(cluster_task, runner));
                 }
@@ -237,11 +243,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         dynamic_cast<const PhysicalWindowAggrerationNode*>(
                             node);
                     WindowAggRunner* runner = nullptr;
-                    CreateRunner<WindowAggRunner>(
-                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->window_, op->project().fn_info(),
-                        op->instance_not_in_window(),
-                        op->exclude_current_time(), op->need_append_input());
+                    CreateRunner<WindowAggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->window_,
+                                                  op->project().fn_info(), op->instance_not_in_window(),
+                                                  op->exclude_current_time(), op->exclude_current_row(),
+                                                  op->need_append_input());
                     size_t input_slices =
                         input->output_schemas()->GetSchemaSourceSize();
                     if (!op->window_unions_.Empty()) {
@@ -962,6 +967,8 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
     return key;
 }
 
+// cache the row into window and
+// if `is_instance`, compute window project for current row
 Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
                           const Row row,
                           const codec::Row& parameter,
@@ -1511,6 +1518,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
+    window.set_exclude_current_row(exclude_current_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -1518,6 +1526,8 @@ void WindowAggRunner::RunWindowAggOnKey(
         }
         const Row& instance_row = instance_segment_iter->GetValue();
         const uint64_t instance_order = instance_segment_iter->GetKey();
+
+        // construct the window
         while (min_union_pos >= 0 &&
                union_segment_status[min_union_pos].key_ <= instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
@@ -1539,6 +1549,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             // Pick new mininum union pos
             min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
         }
+
         if (windows_join_gen_.Valid()) {
             Row row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
             output_table->AddRow(
@@ -3138,8 +3149,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     }
     uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
 
     size_t unions_cnt = union_segments.size();
     // Prepare Union Segment Iterators
@@ -3260,7 +3270,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(
         return std::shared_ptr<DataHandler>();
     }
     auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(
-        agg_gen_.Gen(parameter, table)));
+        agg_gen_.Gen(parameter, table, exclude_current_row_)));
     return row_handler;
 }
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
@@ -3773,11 +3783,13 @@ const Row ConstProjectGenerator::Gen(const Row& parameter) {
     return CoreAPI::RowConstProject(fn_, parameter, false);
 }
 
-const Row AggGenerator::Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table) {
-    return Runner::GroupbyProject(fn_, parameter_row, table.get());
+const Row AggGenerator::Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table,
+                            bool exclude_current_row) {
+    return Runner::GroupbyProject(fn_, parameter_row, table.get(), exclude_current_row);
 }
 
-Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableHandler* table) {
+Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableHandler* table,
+                           bool exclude_current_row) {
     auto iter = table->GetIterator();
     if (!iter) {
         LOG(WARNING) << "Agg table is empty";
@@ -3787,7 +3799,7 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     if (!iter->Valid()) {
         return Row();
     }
-    auto& row = iter->GetValue();
+    const auto& row = iter->GetValue();
     auto& row_key = iter->GetKey();
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
@@ -3798,7 +3810,17 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
 
     codec::ListRef<Row> window_ref;
-    window_ref.list = reinterpret_cast<int8_t*>(table);
+    if (exclude_current_row) {
+        auto mem_table = dynamic_cast<MemTimeTableHandler*>(table);
+        if (mem_table == nullptr) {
+            LOG(ERROR) << "Group By Project: input table is not MemTimeTableHandler";
+            return Row();
+        }
+        mem_table->PopFrontRow();
+        window_ref.list = reinterpret_cast<int8_t*>(mem_table);
+    } else {
+        window_ref.list = reinterpret_cast<int8_t*>(table);
+    }
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_key, row_ptr, window_ptr, parameter_ptr, &buf);

@@ -1123,8 +1123,10 @@ class FrameBound : public SqlNode {
     }
 
     BoundType bound_type() const { return bound_type_; }
+    void set_bound_type(BoundType type) { bound_type_ = type; }
     const bool is_time_offset() const { return is_time_offset_; }
     int64_t GetOffset() const { return offset_; }
+    void SetOffset(int64_t v) { offset_ = v; }
 
 
     /// \brief get the inclusive frame bound offset value that has signed symbol
@@ -1378,8 +1380,8 @@ class WindowDefNode : public SqlNode {
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
 
     bool exclude_current_time_ = false;
-    bool instance_not_in_window_ = false;
     bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 
 class AllNode : public ExprNode {

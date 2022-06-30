@@ -736,6 +736,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::strin
     if (exclude_current_time_) {
         output << ", EXCLUDE_CURRENT_TIME";
     }
+    if (exclude_current_row_) {
+        output << ", EXCLUDE_CURRENT_ROW";
+    }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
@@ -1223,6 +1226,9 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     }
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    if (exclude_current_row_) {
+        output << "EXCLUDE_CURRENT_ROW, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {

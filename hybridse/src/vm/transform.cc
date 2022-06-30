@@ -555,8 +555,19 @@ Status BatchModeTransformer::CreateRequestUnionNode(
         CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
                                                         right, partition));
     } else {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, window_plan));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, window_plan));
+        if (window_plan->exclude_current_row()) {
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                !window_plan->frame_node()->IsHistoryFrame()) {
+                request_union_op->exclude_current_row_ = true;
+            }
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                window_plan->frame_node()->frame_rows()->GetEndOffset() == 0) {
+                request_union_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                    node::BoundType::kOpenPreceding);
+                request_union_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+            }
+        }
     }
     *output = request_union_op;
     return Status::OK();
@@ -1186,6 +1197,11 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             PhysicalAggregationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend,
                                                            column_projects, having_condition));
+            if (kPhysicalOpRequestUnion == depend->GetOpType()) {
+                auto* union_node = dynamic_cast<const PhysicalRequestUnionNode*>(depend);
+                CHECK_TRUE(union_node != nullptr, kPlanError, "can't cast to PhysicalRequestUnionNode");
+                agg_op->exclude_current_row_ = union_node->exclude_current_row_;
+            }
             *output = agg_op;
             break;
         }
@@ -1208,6 +1224,23 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                 &window_agg_op, depend, column_projects, WindowOp(project_list->GetW()),
                 project_list->GetW()->instance_not_in_window(), append_input,
                 project_list->GetW()->exclude_current_time()));
+
+            if (project_list->GetW()->exclude_current_row()) {
+                // there is only special handling for ROWS_RANGE Current History Window
+                // - for pure history windows, exclude current_row do not matter since current row already excluded by
+                //   end frame bound
+                // - for current history ROWS window, exclude current_row is same as OPEN end frame bound
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                    !project_list->GetW()->frame_node()->IsHistoryFrame()) {
+                    window_agg_op->set_exclude_current_row(true);
+                }
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                    project_list->GetW()->frame_node()->frame_rows()->GetEndOffset() == 0) {
+                    window_agg_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                        node::BoundType::kOpenPreceding);
+                    window_agg_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+                }
+            }
             if (!project_list->GetW()->union_tables().empty()) {
                 for (auto iter = project_list->GetW()->union_tables().cbegin();
                      iter != project_list->GetW()->union_tables().cend(); iter++) {

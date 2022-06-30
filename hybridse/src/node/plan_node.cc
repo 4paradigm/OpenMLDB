@@ -87,7 +87,7 @@ void UnaryPlanNode::Print(std::ostream &output,
 }
 void UnaryPlanNode::PrintChildren(std::ostream &output,
                                   const std::string &tab) const {
-    PrintPlanNode(output, tab, children_[0], "", true);
+    PrintPlanNode(output, tab + INDENT, children_[0], "", true);
 }
 bool UnaryPlanNode::Equals(const PlanNode *that) const {
     return PlanNode::Equals(that);

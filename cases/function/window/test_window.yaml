@@ -1213,3 +1213,169 @@ cases:
          1, 0, NULL, NULL, NULL
          2, 1, 21, 21, 21
          3, 1, 22, 22, 22
+
+  - id: 38
+    desc: ROWS_RANGE window with exclude_current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from t1 window w as(
+          partition by `g` order by `ts`
+          ROWS_RANGE between 2s PRECEDING and 0s preceding EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 0, NULL, NULL, NULL
+  - id: 39
+    desc: |
+      ROWS window with exclude_current_row, '0 PRECEDING EXCLUDE CURRENT_ROW' actually is the same as '0 OPEN PRECEDING'
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from t1 window w as(
+          partition by `g` order by `ts`
+          ROWS between 2 PRECEDING and 0 preceding EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 0, NULL, NULL, NULL
+  - id: 40
+    desc: |
+      ROWS_RANGE pure-history window with exclude_current_row
+      whether EXCLUDE CURRENT_ROW is set do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 2s PRECEDING AND 1s PRECEDING EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 0, NULL, NULL, NULL
+  - id: 41
+    desc: |
+      ROWS pure-history window with exclude_current_row
+      whether EXCLUDE CURRENT_ROW is set do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING EXCLUDE CURRENT_ROW);
+    # batch_plan: |
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 0, NULL, NULL, NULL

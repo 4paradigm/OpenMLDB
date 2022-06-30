@@ -943,7 +943,8 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
     return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
-                                                               exclude_current_time_, instance_not_in_window_));
+                                                               exclude_current_time_, exclude_current_row_,
+                                                               instance_not_in_window_));
 }
 
 bool WindowDefNode::Equals(const SqlNode *node) const {

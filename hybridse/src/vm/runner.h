@@ -96,7 +96,10 @@ class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
-    const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table);
+    // \param exclude_current_row if true, current row does not take into window agg computation
+    //        the parameter ony matters in window agg projection
+    const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table,
+                  bool exclude_current_row = false);
 };
 class WindowProjectGenerator : public FnGenerator {
  public:
@@ -505,7 +508,8 @@ class Runner : public node::NodeBase<Runner> {
                              const Row row, const Row& parameter,
                              const bool is_instance,
                              size_t append_slices, Window* window);
-    static Row GroupbyProject(const int8_t* fn, const Row& parameter, TableHandler* table);
+    static Row GroupbyProject(const int8_t* fn, const Row& parameter, TableHandler* table,
+                              bool exclude_current_row = false);
     static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
@@ -894,6 +898,10 @@ class AggRunner : public Runner {
         override;  // NOLINT
     ConditionGenerator having_condition_;
     AggGenerator agg_gen_;
+
+    // Window attribute: EXCLUDE CURRENT_ROW
+    // exclude the current row during agg compuing
+    bool exclude_current_row_ = false;
 };
 
 class ReduceRunner : public Runner {
@@ -912,14 +920,17 @@ class ReduceRunner : public Runner {
 
 class WindowAggRunner : public Runner {
  public:
-    WindowAggRunner(const int32_t id, const SchemasContext* schema,
-                    const int32_t limit_cnt, const WindowOp& window_op,
-                    const FnInfo& fn_info, const bool instance_not_in_window,
-                    const bool exclude_current_time,
-                    const bool need_append_input)
+    WindowAggRunner(int32_t id, const SchemasContext* schema,
+                    int32_t limit_cnt, const WindowOp& window_op,
+                    const FnInfo& fn_info,
+                    bool instance_not_in_window,
+                    bool exclude_current_time,
+                    bool exclude_current_row,
+                    bool need_append_input)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
+          exclude_current_row_(exclude_current_row),
           need_append_input_(need_append_input),
           append_slices_(need_append_input ? schema->GetSchemaSourceSize() : 0),
           instance_window_gen_(window_op),
@@ -946,6 +957,7 @@ class WindowAggRunner : public Runner {
 
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
+    const bool exclude_current_row_ = false;
     const bool need_append_input_;
     const size_t append_slices_;
     WindowGenerator instance_window_gen_;
