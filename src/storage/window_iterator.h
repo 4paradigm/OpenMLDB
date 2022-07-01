@@ -16,6 +16,8 @@
 #ifndef SRC_STORAGE_WINDOW_ITERATOR_H_
 #define SRC_STORAGE_WINDOW_ITERATOR_H_
 
+#include <memory>
+#include <string>
 #include "storage/segment.h"
 #include "vm/catalog.h"
 

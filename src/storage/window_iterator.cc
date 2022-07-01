@@ -16,6 +16,7 @@
 
 #include "storage/window_iterator.h"
 
+#include <string>
 #include "base/hash.h"
 
 namespace openmldb {
