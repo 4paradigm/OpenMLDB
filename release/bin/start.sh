@@ -73,14 +73,12 @@ case $OP in
         # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
             ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 < /dev/null &
-            if [ $? -eq 0 ]; then
-                PID=$!
-                sleep 2
-                if kill -0 $PID > /dev/null 2>&1; then
-                    /bin/echo $PID > "$OPENMLDB_PID_FILE"
-                    echo "Start ${COMPONENT} success"
-                    exit 0
-                fi
+            PID=$!
+            sleep 2
+            if kill -0 $PID > /dev/null 2>&1; then
+                /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                echo "Start ${COMPONENT} success"
+                exit 0
             fi
         else
             if [ -f "./conf/taskmanager.properties" ]; then
