@@ -31,6 +31,8 @@ fi
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
+RED='\E[1;31m'
+RES='\E[0m'
 
 OP=$1
 COMPONENT=$2
@@ -72,19 +74,30 @@ case $OP in
         if [ "$COMPONENT" != "taskmanager" ]; then
             ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 < /dev/null &
             if [ $? -eq 0 ]; then
-                /bin/echo -n $! > $OPENMLDB_PID_FILE
+                PID=$!
+                sleep 2
+                if kill -0 $PID > /dev/null 2>&1; then
+                    /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                    echo "Start ${COMPONENT} success"
+                    exit 0
+                fi
             fi
-            sleep 1
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
             fi
             pushd ./taskmanager/bin/ > /dev/null
-            PID = $!
             sh ./taskmanager.sh
+            PID=$!
             popd > /dev/null 
-            /bin/echo -n $PID > $OPENMLDB_PID_FILE
+            sleep 2
+            if kill -0 $PID > /dev/null 2>&1; then
+                /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                echo "Start ${COMPONENT} success"
+                exit 0
+            fi
         fi
+        echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
@@ -97,7 +110,7 @@ case $OP in
                 kill "$PID"
             fi
             rm "$OPENMLDB_PID_FILE"
-            echo STOPPED
+            echo "Stop ${COMPONENT} success"
         fi
         ;;
     restart)
