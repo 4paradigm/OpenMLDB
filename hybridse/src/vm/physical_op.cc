@@ -571,6 +571,9 @@ void PhysicalAggregationNode::Print(std::ostream& output,
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
+    if (exclude_current_row_) {
+        output << ", EXCLUDE_CURRENT_ROW";
+    }
     output << ")";
     output << "\n";
     PrintChildren(output, tab);
