@@ -24,13 +24,15 @@
 
 #include <string>
 #include <vector>
+
 #include "codec/codec.h"
+
+using ::openmldb::codec::Schema;
+using ::openmldb::codec::RowView;
 
 namespace openmldb {
 namespace tools {
 
-using ::openmldb::codec::Schema;
-using ::openmldb::codec::RowView;
 class Exporter {
  public:
     explicit Exporter(std::string file_path) : table_dir_path(file_path) {}
@@ -50,14 +52,18 @@ class Exporter {
     int GetOffset() { return offset; }
 
  private:
-    uint64_t GetLogStartOffset(std::string&);
-    void ReadLog(std::ofstream&, std::string&);
-    void ReadSnapshot(std::ofstream&);
-    void WriteToFile(std::ofstream&, RowView&);
     std::string table_dir_path;
     uint64_t offset;
     std::string snapshot_path;
     Schema schema;
+
+    uint64_t GetLogStartOffset(std::string&);
+
+    void ReadLog(std::ofstream&, std::string&);
+
+    void ReadSnapshot(std::ofstream&);
+
+    void WriteToFile(std::ofstream&, RowView&);
 };
 
 }  // namespace tools

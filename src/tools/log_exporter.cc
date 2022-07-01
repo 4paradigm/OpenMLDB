@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
+#include "tools/log_exporter.h"
+
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <algorithm>
 #include <dirent.h>
+
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -29,7 +32,6 @@
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 #include "proto/common.pb.h"
-#include "tools/log_exporter.h"
 #include "storage/snapshot.h"
 
 using ::openmldb::base::ParseFileNameFromPath;
@@ -51,25 +53,23 @@ void Exporter::ReadManifest() {
     snapshot_path = table_dir_path + "/snapshot/" +snapshot_name;
     offset = manifest.offset();
     printf("--------snapshot offset: %lu\n", offset);
+    printf("--------snapshot path: %s\n", snapshot_path.c_str());
     printf("--------end readManifest--------\n");
 }
 
 void Exporter::ExportTable() {
-
     std::vector<std::string> file_path;
     // Add all binlog files to file_path lists
     struct dirent *ptr;
     DIR *dir;
     std::string log_dir = table_dir_path + "/binlog/";
     dir=opendir(log_dir.c_str());
-    while((ptr=readdir(dir))!=NULL)
-    {
-        if(ptr->d_name[0] == '.')
+    while ((ptr = readdir(dir)) != NULL) {
+        if (ptr->d_name[0] == '.')
             continue;
         std::string log = log_dir + ptr->d_name;
         file_path.emplace_back(log);
     }
-
 
     std::ofstream my_cout(table_dir_path + "_result.csv");
     for (int i = 0; i < schema.size(); ++i) {
@@ -81,11 +81,11 @@ void Exporter::ExportTable() {
     // Sorts binlog files and performs binary search
     std::sort(file_path.begin(), file_path.end());
     int left = 0, right = file_path.size() - 1;
-    while(left < right) {
+    while (left < right) {
         int mid = (left + right) / 2;
         if (GetLogStartOffset(file_path[mid]) >= offset)
             right = mid;
-         else
+        else
             left = mid + 1;
     }
     int start_index;
@@ -95,12 +95,13 @@ void Exporter::ExportTable() {
         start_index = right - 1;
 
     // Read binlog files
-    for (long unsigned int i = start_index; i < file_path.size(); ++i) {
+    for (uint64_t i = start_index; i < file_path.size(); ++i) {
         printf("--------start ReadLog %s--------\n", file_path[i].c_str());
         std::string log_path = file_path[i];
         ReadLog(my_cout, log_path);
         printf("--------end ReadLog %s--------\n", file_path[i].c_str());
     }
+    
     my_cout.close();
 }
 
@@ -121,17 +122,16 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     status = reader.ReadRecord(&first_value, &scratch);
     ::openmldb::api::LogEntry first_entry;
     first_entry.ParseFromString(first_value.ToString());
-    printf("Start Offset: %lu, ", first_entry.log_index());
+    printf("The start offset of binlog file %s is %lu, \n", log_path.c_str(), first_entry.log_index());
     if (first_entry.log_index() < offset) {
-        printf("Less Than Snapshot's offset. \n");
+        printf("which is less than snapshot's offset.\n");
     } else {
-        printf("Greater Than Snapshot's offset. \n");
+        printf("which is greater than snapshot's offset.\n");
     }
     return first_entry.log_index();
 }
 
 void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
-
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", log_path.c_str());
@@ -177,6 +177,7 @@ void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
 }
 
 void Exporter::ReadSnapshot(std::ofstream& my_cout) {
+    printf("--------start ReadSnapshot--------\n");
     FILE* fd_r = fopen(snapshot_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", snapshot_path.c_str());
@@ -214,6 +215,7 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
             }
         }
     } while (status.ok());
+    printf("--------end ReadSnapshot--------\n");
 }
 
 void Exporter::WriteToFile(std::ofstream &my_cout, ::openmldb::codec::RowView& view) {
