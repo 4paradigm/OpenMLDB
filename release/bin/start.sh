@@ -72,7 +72,7 @@ case $OP in
 
         # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 < /dev/null &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 &
             PID=$!
             sleep 2
             if kill -0 $PID > /dev/null 2>&1; then
@@ -85,7 +85,7 @@ case $OP in
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
             fi
             pushd ./taskmanager/bin/ > /dev/null
-            sh ./taskmanager.sh
+            sh ./taskmanager.sh 2>&1 &
             PID=$!
             popd > /dev/null 
             sleep 2
