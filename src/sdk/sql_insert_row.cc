@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <utility>
 
 #include "glog/logging.h"
 
@@ -27,15 +28,19 @@ namespace sdk {
 
 SQLInsertRows::SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                              std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                             uint32_t default_str_length)
-    : table_info_(table_info), schema_(schema), default_map_(default_map), default_str_length_(default_str_length) {}
+                             uint32_t default_str_length, const std::vector<uint32_t>& hole_idx_arr)
+    : table_info_(std::move(table_info)),
+      schema_(std::move(schema)),
+      default_map_(std::move(default_map)),
+      default_str_length_(default_str_length),
+      hole_idx_arr_(hole_idx_arr) {}
 
 std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
     if (!rows_.empty() && !rows_.back()->IsComplete()) {
-        return std::shared_ptr<SQLInsertRow>();
+        return {};
     }
     std::shared_ptr<SQLInsertRow> row =
-        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_);
+        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_, hole_idx_arr_);
     rows_.push_back(row);
     return row;
 }
@@ -44,8 +49,8 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
                            std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
                            uint32_t default_string_length)
     : table_info_(table_info),
-      schema_(schema),
-      default_map_(default_map),
+      schema_(std::move(schema)),
+      default_map_(std::move(default_map)),
       default_string_length_(default_string_length),
       rb_(table_info->column_desc()),
       val_(),
@@ -69,11 +74,18 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
     }
 }
 
+SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                           std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                           uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr)
+    : SQLInsertRow(std::move(table_info), std::move(schema), std::move(default_map), default_str_length) {
+    hole_idx_arr_ = std::move(hole_idx_arr);
+}
+
 bool SQLInsertRow::Init(int str_length) {
     str_size_ = str_length + default_string_length_;
     uint32_t row_size = rb_.CalTotalLength(str_size_);
     val_.resize(row_size);
-    int8_t* buf = reinterpret_cast<int8_t*>(&(val_[0]));
+    auto* buf = reinterpret_cast<int8_t*>(&(val_[0]));
     bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
     if (!ok) {
         return false;
@@ -83,8 +95,6 @@ bool SQLInsertRow::Init(int str_length) {
 }
 
 void SQLInsertRow::PackDimension(const std::string& val) { raw_dimensions_[rb_.GetAppendPos()] = val; }
-
-
 
 const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& SQLInsertRow::GetDimensions() {
     if (!dimensions_.empty()) {
@@ -101,14 +111,14 @@ const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& SQLInse
             key += raw_dimensions_[idx];
         }
         if (pid_num > 0) {
-            pid = (uint32_t)(::openmldb::base::hash64(key) % pid_num);
+            pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % pid_num);
         }
         auto iter = dimensions_.find(pid);
         if (iter == dimensions_.end()) {
             auto result = dimensions_.emplace(pid, std::vector<std::pair<std::string, uint32_t>>());
             iter = result.first;
         }
-        iter->second.push_back(std::make_pair(key, kv.first));
+        iter->second.emplace_back(key, kv.first);
     }
     return dimensions_;
 }
@@ -281,7 +291,7 @@ bool SQLInsertRow::AppendNULL() {
 
 bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
 
-bool SQLInsertRow::Build() { return str_size_ == 0; }
+bool SQLInsertRow::Build() const { return str_size_ == 0; }
 
 }  // namespace sdk
 }  // namespace openmldb

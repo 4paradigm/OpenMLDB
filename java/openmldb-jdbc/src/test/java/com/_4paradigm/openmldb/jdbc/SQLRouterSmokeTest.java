@@ -31,6 +31,7 @@ import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class SQLRouterSmokeTest {
 
     @DataProvider(name = "executor")
     public Object[] executor() {
-        return new Object[] {clusterExecutor, standaloneExecutor};
+        return new Object[]{clusterExecutor, standaloneExecutor};
     }
 
     @Test(dataProvider = "executor")
@@ -153,7 +154,7 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
 
             List<String> col2InsertRes = new ArrayList<>();
-            while(rs3.next()) {
+            while (rs3.next()) {
                 col2InsertRes.add(rs3.getString(1));
             }
             Collections.sort(col2InsertRes);
@@ -319,7 +320,8 @@ public class SQLRouterSmokeTest {
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));";
+            String ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int," +
+                    " index(key=col3, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -334,11 +336,11 @@ public class SQLRouterSmokeTest {
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
             Object[][] datas = new Object[][]{
-                    {1000l, d1, "guangdong", "广州", 1},
-                    {1001l, d2, "jiangsu", "nanjing", 2},
-                    {1002l, d3, "sandong", "jinan", 3},
-                    {1003l, d4, "zhejiang", "hangzhou", 4},
-                    {1004l, d5, "henan", "zhenzhou", 5},
+                    {1000L, d1, "guangdong", "广州", 1},
+                    {1001L, d2, "jiangsu", "nanjing", 2},
+                    {1002L, d3, "sandong", "jinan", 3},
+                    {1003L, d4, "zhejiang", "hangzhou", 4},
+                    {1004L, d5, "henan", "zhenzhou", 5},
             };
             // insert placeholder
             String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth() + 1, d2.getDate());
@@ -352,15 +354,22 @@ public class SQLRouterSmokeTest {
             }
             ok = impl.execute();
             Assert.assertTrue(ok);
-            insert = "insert into tsql1010 values(1002, ?, ?, 'jinan', 3);";
+
+            // custom insert order
+            insert = "insert into tsql1010 (col1, col3, col2, col4, col5) values (1002, ?, ?, 'jinan', 3);";
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, insert);
+            ResultSetMetaData metaData = impl2.getMetaData();
+            Assert.assertEquals(metaData.getColumnCount(), 2);
+            Assert.assertEquals(metaData.getColumnName(1), "col3");
+            Assert.assertEquals(metaData.getColumnType(1), Types.VARCHAR);
+            Assert.assertEquals(metaData.getColumnTypeName(1), "string");
             try {
-                impl2.setString(1, "c");
+                impl2.setString(2, "c");
             } catch (Exception e) {
                 Assert.assertEquals("data type not match", e.getMessage());
             }
-            impl2.setDate(1, d3);
-            impl2.setString(2, "sandong");
+            impl2.setString(1, "sandong");
+            impl2.setDate(2, d3);
             ok = impl2.execute();
             Assert.assertTrue(ok);
 

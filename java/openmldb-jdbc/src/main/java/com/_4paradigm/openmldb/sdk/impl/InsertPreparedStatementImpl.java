@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.sdk.impl;
 
 import com._4paradigm.openmldb.*;
 
+import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.jdbc.SQLInsertMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,7 @@ import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class InsertPreparedStatementImpl implements PreparedStatement {
     public static final Charset CHARSET = StandardCharsets.UTF_8;
@@ -48,7 +50,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private final List<Object> currentDatas;
     private final List<DataType> currentDatasType;
     private final List<Boolean> hasSet;
-    private final List<Integer> scehmaIdxs;
+    // stmt insert idx -> real table schema idx
+    private final List<Pair<Long, Integer>> schemaIdxes;
 
     private boolean closed = false;
     private boolean closeOnComplete = false;
@@ -63,17 +66,24 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         this.currentSchema = tempRow.GetSchema();
         VectorUint32 idxes = tempRow.GetHoleIdx();
 
+        // In stmt order, if no columns in stmt, in schema order
+        // We'll sort it to schema order later, so needs the map <real_schema_idx, current_data_idx>
+        schemaIdxes = new ArrayList<>(idxes.size());
+        for (int i = 0; i < idxes.size(); i++) {
+            schemaIdxes.add(new Pair<>(idxes.get(i), i));
+        }
+
         currentDatas = new ArrayList<>(idxes.size());
         currentDatasType = new ArrayList<>(idxes.size());
         hasSet = new ArrayList<>(idxes.size());
-        scehmaIdxs = new ArrayList<>(idxes.size());
-        for (int i = 0; i < idxes.size(); i++) {
-            long idx = idxes.get(i);
+        // CurrentDatas and Type order is consistent with insert stmt. We'll do appending in schema order when build
+        // row.
+        for (Pair<Long, Integer> pair : schemaIdxes) {
+            Long idx = pair.getKey();
             DataType type = currentSchema.GetColumnType(idx);
             currentDatasType.add(type);
             currentDatas.add(null);
             hasSet.add(false);
-            scehmaIdxs.add(i);
         }
     }
 
@@ -118,14 +128,14 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (i <= 0) {
             throw new SQLException("error sqe number");
         }
-        if (i > scehmaIdxs.size()) {
+        if (i > schemaIdxes.size()) {
             throw new SQLException("out of data range");
         }
     }
 
     private void checkType(int i, DataType type) throws SQLException {
         if (currentDatasType.get(i - 1) != type) {
-            throw new SQLException("data type not match");
+            throw new SQLException("data type not match, expect " + currentDatasType.get(i - 1) + ", actual " + type);
         }
     }
 
@@ -206,7 +216,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private boolean checkNotAllowNull(int i) {
-        long idx = this.scehmaIdxs.get(i - 1);
+        Long idx = this.schemaIdxes.get(i - 1).getKey();
         return this.currentSchema.IsColumnNotNull(idx);
     }
 
@@ -300,22 +310,26 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     private void buildRow() throws SQLException {
         SQLInsertRow currentRow = getSQLInsertRow();
-
         boolean ok = currentRow.Init(stringsLen);
         if (!ok) {
             throw new SQLException("init row failed");
         }
 
-        for (int i = 0; i < currentDatasType.size(); i++) {
-            Object data = currentDatas.get(i);
+        // SQLInsertRow::AppendXXX order is the schema order(skip the no-hole columns)
+        List<Pair<Long, Integer>> sortedIdxes = schemaIdxes.stream().sorted(Comparator.comparing(Pair::getKey))
+                .collect(Collectors.toList());
+
+        for (Pair<Long, Integer> sortedIdx : sortedIdxes) {
+            Integer currentDataIdx = sortedIdx.getValue();
+            Object data = currentDatas.get(currentDataIdx);
             if (data == null) {
                 ok = currentRow.AppendNULL();
             } else {
-                DataType curType = currentDatasType.get(i);
+                DataType curType = currentDatasType.get(currentDataIdx);
                 if (DataType.kTypeBool.equals(curType)) {
                     ok = currentRow.AppendBool((boolean) data);
                 } else if (DataType.kTypeDate.equals(curType)) {
-                    java.sql.Date date = (java.sql.Date) data;
+                    Date date = (Date) data;
                     ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                 } else if (DataType.kTypeDouble.equals(curType)) {
                     ok = currentRow.AppendDouble((double) data);
@@ -423,9 +437,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public ResultSetMetaData getMetaData() throws SQLException {
-        return new SQLInsertMetaData(this.currentDatasType, this.currentSchema, this.scehmaIdxs);
+        return new SQLInsertMetaData(this.currentDatasType, this.currentSchema, this.schemaIdxes);
     }
 
     @Override
