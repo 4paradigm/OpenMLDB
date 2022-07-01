@@ -396,8 +396,8 @@ class HistoryWindow : public Window {
                 return BufferEffectiveWindow(key, row, start_ts);
             }
         } else if (0 == window_range_.end_offset_) {
-            // current InWindow
-            int64_t sub = (key + window_range_.start_offset_);
+            // current in the ROWS_RANGE window
+            int64_t sub = (static_cast<int64_t>(key) + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             return BufferCurrentTimeBuffer(key, row, start_ts);
         } else {
@@ -409,45 +409,34 @@ class HistoryWindow : public Window {
     }
 
  protected:
-    bool BufferCurrentHistoryBuffer(uint64_t key, const Row& row,
-                                    uint64_t end_ts) {
+    bool BufferCurrentHistoryBuffer(uint64_t key, const Row& row, uint64_t end_ts) {
         current_history_buffer_.emplace_front(key, row);
-        int64_t sub = (key + window_range_.start_offset_);
+        int64_t sub = (static_cast<int64_t>(key) + window_range_.start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        while (!current_history_buffer_.empty()) {
-            auto& back = current_history_buffer_.back();
-            if (back.first > end_ts) {
-                break;
-            }
-            BufferEffectiveWindow(back.first, back.second, start_ts);
-            current_history_buffer_.pop_back();
-        }
+        SlideWindow(start_ts, end_ts);
         return true;
     }
 
-    // Push the new {key, row} into window with one row deplayed.
-    // That is, the row is pushed into `current_history_buffer_` and if new row comes later,
-    // this row got pushed into window and new row replaced in `current_history_buffer_`
+    // sliding rows data from `current_history_buffer_` into effective window
+    // by giving the new start_ts and end_ts.
+    // Resulting the new effective window data whose bound is [start_ts, end_ts]
     //
-    // currently this method is only used for ROWS_RANGE WINDOW EXCLUDE CURRENT_ROW, where
-    // the window's end bound is 0s or CURRENT_ROW. If you find any usage besides, probably is a bug.
-    void BufferCurrentRowDeplayed(uint64_t key, const Row& row) {
-        if (!current_history_buffer_.empty()) {
+    // - elements in `current_history_buffer_` that `ele.first <= end_ts` goes out of
+    //   `current_history_buffer_` and pushed into effective window
+    // - elements in effective window where `ele.first < start_ts` goes out of effective window
+    void SlideWindow(uint64_t start_ts_inclusive, uint64_t end_ts_inclusive) {
+        while (!current_history_buffer_.empty() && current_history_buffer_.back().first <= end_ts_inclusive) {
             auto& back = current_history_buffer_.back();
 
-            int64_t sub = (static_cast<int64_t>(key) + window_range_.start_offset_);
-            uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-            BufferEffectiveWindow(back.first, back.second, start_ts);
+            BufferEffectiveWindow(back.first, back.second, start_ts_inclusive);
             current_history_buffer_.pop_back();
         }
-        current_history_buffer_.emplace_front(key, row);
     }
 
     // push the row to the start of window
     // - pop last elements in window if exceed max window size
     // - also pop last elements in window if there ts less than `start_ts`
-    bool BufferEffectiveWindow(uint64_t key, const Row& row,
-                               uint64_t start_ts) {
+    bool BufferEffectiveWindow(uint64_t key, const Row& row, uint64_t start_ts) {
         AddFrontRow(key, row);
         auto cur_size = table_.size();
         while (window_range_.max_size_ > 0 &&
@@ -475,18 +464,30 @@ class HistoryWindow : public Window {
         }
         return true;
     }
-    bool BufferCurrentTimeBuffer(uint64_t key, const Row& row,
-                                 uint64_t start_ts) {
-        if (exclude_current_time_) {
-            PopEffectiveData();
-            BufferCurrentHistoryBuffer(key, row, key - 1);
-        }
 
+    bool BufferCurrentTimeBuffer(uint64_t key, const Row& row, uint64_t start_ts) {
         if (exclude_current_row_) {
-            BufferCurrentRowDeplayed(key, row);
+            // slide window first so current row kept in `current_history_buffer_`
+            // and will go into window in next action
+            if (exclude_current_time_) {
+                SlideWindow(start_ts, key - 1);
+            } else {
+                SlideWindow(start_ts, key);
+            }
+            current_history_buffer_.emplace_front(key, row);
             return true;
         }
 
+        if (exclude_current_time_) {
+            // except `exclude current_row`, the current row is always added to the effective window
+            // but for next buffer action, previous current row already buffered in `current_history_buffer_`
+            // so the previous current row need eliminated for this next buf action
+            PopEffectiveData();
+            current_history_buffer_.emplace_front(key, row);
+            SlideWindow(start_ts, key - 1);
+        }
+
+        // in queue the current row
         return BufferEffectiveWindow(key, row, start_ts);
     }
 

@@ -1240,7 +1240,12 @@ cases:
        from t1 window w as(
           partition by `g` order by `ts`
           ROWS_RANGE between 2s PRECEDING and 0s preceding EXCLUDE CURRENT_ROW);
-    # batch_plan: |
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 2000 PRECEDING, 0 PRECEDING))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
     expect:
       columns:
         - id int

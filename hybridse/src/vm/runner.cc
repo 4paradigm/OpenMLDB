@@ -3146,6 +3146,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
 
+        // TODO(ace): should optimized in codegen window builder
         // HACK: window ... maxsize sz exclude current_row
         // due to the implementation, current row should always present in the returned table
         // because `AggRunner` requires that current row to be the first two parameters to udf call

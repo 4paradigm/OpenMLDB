@@ -1230,6 +1230,9 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     if (exclude_current_row_) {
         output << "EXCLUDE_CURRENT_ROW, ";
     }
+    if (instance_not_in_window_) {
+        output << "INSTANCE_NOT_IN_WINDOW, ";
+    }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {
         for (auto window_union : window_unions_.window_unions_) {
