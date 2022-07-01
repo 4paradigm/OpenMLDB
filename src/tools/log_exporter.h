@@ -33,19 +33,30 @@ using ::openmldb::codec::Schema;
 using ::openmldb::codec::RowView;
 class Exporter {
  public:
-    explicit Exporter(std::string file_path) : log_path(file_path) {}
+    explicit Exporter(std::string file_path) : table_dir_path(file_path) {}
 
     ~Exporter() {}
 
-    void ReadLog();
+    void ExportTable();
+
+    void ReadManifest();
 
     void SetSchema(Schema schema_) { schema = schema_; }
 
     Schema GetSchema() { return schema; }
 
+    std::string GetSnapshotPath() { return snapshot_path; }
+
+    int GetOffset() { return offset; }
+
  private:
+    uint64_t GetLogStartOffset(std::string&);
+    void ReadLog(std::ofstream&, std::string&);
+    void ReadSnapshot(std::ofstream&);
     void WriteToFile(std::ofstream&, RowView&);
-    std::string log_path;
+    std::string table_dir_path;
+    uint64_t offset;
+    std::string snapshot_path;
     Schema schema;
 };
 

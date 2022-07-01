@@ -19,7 +19,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <algorithm>
+#include <dirent.h>
 #include <fstream>
 #include <iostream>
 
@@ -29,6 +30,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/common.pb.h"
 #include "tools/log_exporter.h"
+#include "storage/snapshot.h"
 
 using ::openmldb::base::ParseFileNameFromPath;
 using ::openmldb::base::Slice;
@@ -40,14 +42,97 @@ using ::openmldb::log::Status;
 namespace openmldb {
 namespace tools {
 
-void Exporter::ReadLog() {
-    std::string fname = ParseFileNameFromPath(log_path);
-    std::ofstream my_cout(fname + "_result.csv");
-    FILE* fd_r = fopen(log_path.c_str(), "rb");
+void Exporter::ReadManifest() {
+    printf("--------start readManifest--------\n");
+    std::string manifest_path = table_dir_path + "/snapshot/MANIFEST";
+    ::openmldb::api::Manifest manifest;
+    ::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest);
+    std::string snapshot_name = manifest.name();
+    snapshot_path = table_dir_path + "/snapshot/" +snapshot_name;
+    offset = manifest.offset();
+    printf("--------snapshot offset: %lu\n", offset);
+    printf("--------end readManifest--------\n");
+}
+
+void Exporter::ExportTable() {
+
+    std::vector<std::string> file_path;
+    // Add all binlog files to file_path lists
+    struct dirent *ptr;
+    DIR *dir;
+    std::string log_dir = table_dir_path + "/binlog/";
+    dir=opendir(log_dir.c_str());
+    while((ptr=readdir(dir))!=NULL)
+    {
+        if(ptr->d_name[0] == '.')
+            continue;
+        std::string log = log_dir + ptr->d_name;
+        file_path.emplace_back(log);
+    }
+
+
+    std::ofstream my_cout(table_dir_path + "_result.csv");
     for (int i = 0; i < schema.size(); ++i) {
         my_cout << schema.Get(i).name() << ",";
     }
     my_cout << "\n";
+    ReadSnapshot(my_cout);
+
+    // Sorts binlog files and performs binary search
+    std::sort(file_path.begin(), file_path.end());
+    int left = 0, right = file_path.size() - 1;
+    while(left < right) {
+        int mid = (left + right) / 2;
+        if (GetLogStartOffset(file_path[mid]) >= offset)
+            right = mid;
+         else
+            left = mid + 1;
+    }
+    int start_index;
+    if (right == 0)
+        start_index = right;
+    else
+        start_index = right - 1;
+
+    // Read binlog files
+    for (long unsigned int i = start_index; i < file_path.size(); ++i) {
+        printf("--------start ReadLog %s--------\n", file_path[i].c_str());
+        std::string log_path = file_path[i];
+        ReadLog(my_cout, log_path);
+        printf("--------end ReadLog %s--------\n", file_path[i].c_str());
+    }
+    my_cout.close();
+}
+
+uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
+    FILE* fd_r = fopen(log_path.c_str(), "rb");
+    if (fd_r == NULL) {
+        printf("fopen failed: %s\n", log_path.c_str());
+        return 0;
+    }
+    SequentialFile* rf = NewSeqFile(log_path, fd_r);
+    std::string scratch;
+    bool for_snapshot = false;
+
+    Reader reader(rf, NULL, true, 0, for_snapshot);
+    Status status;
+
+    Slice first_value;
+    status = reader.ReadRecord(&first_value, &scratch);
+    ::openmldb::api::LogEntry first_entry;
+    first_entry.ParseFromString(first_value.ToString());
+    printf("Start Offset: %lu, ", first_entry.log_index());
+    if (first_entry.log_index() < offset) {
+        printf("Less Than Snapshot's offset. \n");
+    } else {
+        printf("Greater Than Snapshot's offset. \n");
+    }
+    return first_entry.log_index();
+}
+
+void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
+
+    FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", log_path.c_str());
         return;
@@ -56,13 +141,56 @@ void Exporter::ReadLog() {
     SequentialFile* rf = NewSeqFile(log_path, fd_r);
     std::string scratch;
     bool for_snapshot = false;
-    if (log_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos ||
-        log_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+
+    Reader reader(rf, NULL, true, 0, for_snapshot);
+    Status status;
+    uint64_t success_cnt = 0;
+
+    do {
+        Slice value;
+        status = reader.ReadRecord(&value, &scratch);
+        if (!status.ok()) {
+            break;
+        }
+        ::openmldb::api::LogEntry entry;
+        entry.ParseFromString(value.ToString());
+
+        // Determine if there is a dimension with an idx of 0 in the dimensions.
+        // If so, parse the value, else skip it
+        if (entry.dimensions_size() != 0) {
+            for (int i = 0; i < entry.dimensions_size(); i++) {
+                if (entry.dimensions(i).idx() == 0) {
+                    if (entry.log_index() > offset) {
+                        std::string row;
+                        row = entry.value();
+                        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), row.size());
+                        WriteToFile(my_cout, view);
+                        success_cnt++;
+                        break;
+                    }
+                }
+            }
+        }
+    } while (status.ok());
+    printf("--------success_cnt: %lu\n", success_cnt);
+    offset += success_cnt;
+}
+
+void Exporter::ReadSnapshot(std::ofstream& my_cout) {
+    FILE* fd_r = fopen(snapshot_path.c_str(), "rb");
+    if (fd_r == NULL) {
+        printf("fopen failed: %s\n", snapshot_path.c_str());
+        return;
+    }
+    SequentialFile* rf = NewSeqFile(snapshot_path, fd_r);
+    std::string scratch;
+    bool for_snapshot = false;
+    if (snapshot_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos ||
+        snapshot_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
         for_snapshot = true;
     }
     Reader reader(rf, NULL, true, 0, for_snapshot);
     Status status;
-    uint64_t success_cnt = 0;
     do {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
@@ -81,14 +209,11 @@ void Exporter::ReadLog() {
                     row = entry.value();
                     RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), row.size());
                     WriteToFile(my_cout, view);
-                    success_cnt++;
                     break;
                 }
             }
         }
     } while (status.ok());
-    my_cout.close();
-    printf("--------success_cnt: %lu\n", success_cnt);
 }
 
 void Exporter::WriteToFile(std::ofstream &my_cout, ::openmldb::codec::RowView& view) {
@@ -169,6 +294,8 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(argv[1]);
 
+    exporter.ReadManifest();
+
     ::openmldb::codec::Schema schema;
     // TODO(xiaopanz): Create schema for common cases
     // Currently only works on the data from the quickstart.
@@ -195,9 +322,8 @@ int main(int argc, char** argv) {
     col->set_data_type(::openmldb::type::kDate);
     exporter.SetSchema(schema);
 
-    printf("--------start readlog--------\n");
-    printf("--------log_path: %s\n", argv[1]);
-    exporter.ReadLog();
-    printf("--------end readlog--------\n");
+    printf("--------start ExportData--------\n");
+    exporter.ExportTable();
+    printf("--------end ExportData--------\n");
     return 0;
 }
