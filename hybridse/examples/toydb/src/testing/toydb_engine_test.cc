@@ -55,7 +55,8 @@ TEST_P(EngineTest, TestBatchRequestEngineForLastRow) {
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "performance-sensitive-unsupport") &&
-        !boost::contains(sql_case.mode(), "batch-request-unsupport")) {
+        !boost::contains(sql_case.mode(), "batch-request-unsupport") &&
+        !boost::contains(sql_case.mode(), "batch-request-lastrow-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();

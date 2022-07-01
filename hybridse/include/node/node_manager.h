@@ -118,7 +118,7 @@ class NodeManager {
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SqlNode *frame);
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
-                               SqlNode *frame, bool opt_open_interval_window);
+                               SqlNode *frame, bool exclude_current_time);
     SqlNode *MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
                                bool exclude_current_time, bool exclude_current_row,
                                bool instance_not_in_window);

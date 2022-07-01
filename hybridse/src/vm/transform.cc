@@ -552,8 +552,7 @@ Status BatchModeTransformer::CreateRequestUnionNode(
     }
     PhysicalRequestUnionNode* request_union_op = nullptr;
     if (partition != nullptr) {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, partition));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, partition));
     } else {
         CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, window_plan));
         if (window_plan->exclude_current_row()) {

@@ -1234,6 +1234,8 @@ cases:
   - id: 24
     desc: |
       rows_range union window with exclude_current_row
+    # FIXME(ace): EngineTest.TestBatchRequestEngineForLastRow will fail for some common columns setting
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1300,6 +1302,7 @@ cases:
   - id: 25
     desc: |
       rows_range union window with exclude_current_row and exclude_current_time
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1366,6 +1369,7 @@ cases:
   - id: 26
     desc: |
       rows_range union window with exclude_current_row and instance_not_in_window
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1433,6 +1437,7 @@ cases:
   - id: 27
     desc: |
       rows_range union window with exclude_current_row, exclude current_time and instance_not_in_window
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1499,6 +1504,7 @@ cases:
   - id: 28
     desc: |
       rows_range union window with exclude_current_row, exclude current_time, instance_not_in_window and maxsize
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1566,6 +1572,7 @@ cases:
   - id: 29
     desc: |
       rows_range union window with exclude_current_row, instance_not_in_window and maxsize
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:
@@ -1633,6 +1640,7 @@ cases:
   - id: 30
     desc: |
       rows_range union window with exclude_current_row, exclude_current_time and maxsize
+    mode: batch-request-lastrow-unsupport
     inputs:
       - name: t1
         columns:

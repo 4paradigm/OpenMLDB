@@ -389,6 +389,7 @@ static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
                                PhysicalOpNode* input,
                                const ColumnProjects& projects,
                                const node::ExprNode* having_condition,
+                               bool exclude_current_row,
                                PhysicalOpNode** out) {
     switch (ptype) {
         case ProjectType::kRowProject: {
@@ -409,6 +410,7 @@ static Status CreateNewProject(PhysicalPlanContext* ctx, ProjectType ptype,
             PhysicalAggregationNode* op = nullptr;
             CHECK_STATUS(
                 ctx->CreateOp<PhysicalAggregationNode>(&op, input, projects, having_condition));
+            op->exclude_current_row_ = exclude_current_row;
             *out = op;
             break;
         }
@@ -486,8 +488,12 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
     node::ExprNode* new_having_condition = nullptr;
 //    const node::ExprNode* having_condition = project_op->having_condition_.condition();
     vm::ConditionFilter having_condition;
+    bool exclude_current_row = false;
     if (project_op->project_type_ == vm::kAggregation) {
-        having_condition = dynamic_cast<vm::PhysicalAggregationNode*>(project_op)->having_condition_;
+        auto* agg_prj = dynamic_cast<vm::PhysicalAggregationNode*>(project_op);
+        CHECK_TRUE(agg_prj != nullptr, kPlanError, "not a PhysicalAggregationNode");
+        having_condition = agg_prj->having_condition_;
+        exclude_current_row = agg_prj->exclude_current_row_;
     } else if (project_op->project_type_ == vm::kGroupAggregation) {
         having_condition = dynamic_cast<vm::PhysicalGroupAggrerationNode*>(project_op)->having_condition_;
     }
@@ -514,6 +520,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
         CHECK_STATUS(CreateNewProject(ctx, project_op->project_type_,
                                       input_state->common_op, common_projects,
                                       new_having_condition,
+                                      exclude_current_row,
                                       &common_project_op));
         state->common_op = common_project_op;
     } else {
@@ -528,6 +535,7 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
         CHECK_STATUS(CreateNewProject(ctx, project_op->project_type_, new_input,
                                       non_common_projects,
                                       new_having_condition,
+                                      exclude_current_row,
                                       &non_common_project_op));
         state->non_common_op = non_common_project_op;
     } else {
@@ -637,6 +645,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
         &new_request_union, request_state->common_op, new_right,
         request_union_op->window(), request_union_op->instance_not_in_window(),
         request_union_op->exclude_current_time(), false));
+    new_request_union->exclude_current_row_ = request_union_op->exclude_current_row_;
     SetAllCommon(new_request_union);
 
     for (auto& pair : request_union_op->window_unions().window_unions_) {
@@ -798,6 +807,7 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         PhysicalAggregationNode* common_project_op = nullptr;
         CHECK_STATUS(ctx->CreateOp<PhysicalAggregationNode>(
             &common_project_op, new_union, common_projects, new_having_condition));
+        common_project_op->exclude_current_row_ = agg_op->exclude_current_row_;
         state->common_op = common_project_op;
     } else {
         state->common_op = nullptr;
@@ -810,6 +820,7 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         PhysicalAggregationNode* non_common_project_op = nullptr;
         CHECK_STATUS(ctx->CreateOp<PhysicalAggregationNode>(
             &non_common_project_op, new_union, non_common_projects, new_having_condition));
+        non_common_project_op->exclude_current_row_ = agg_op->exclude_current_row_;
         state->non_common_op = non_common_project_op;
     } else {
         state->non_common_op = nullptr;

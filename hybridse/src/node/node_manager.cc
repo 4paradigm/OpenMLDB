@@ -132,7 +132,7 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1, const WindowDef
     }
     return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
         w1->union_tables(), w1->GetPartitions(), w1->GetOrders(), MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->exclude_current_time(), w1->instance_not_in_window(), w1->exclude_current_row()));
+        w1->exclude_current_time(), w1->exclude_current_row(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1) {
     if (nullptr == frame1) {

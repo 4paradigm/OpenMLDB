@@ -3811,7 +3811,7 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
         return Row();
     }
     const auto& row = iter->GetValue();
-    auto& row_key = iter->GetKey();
+    auto row_key = iter->GetKey();
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
@@ -3821,8 +3821,9 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
 
     codec::ListRef<Row> window_ref;
+    MemTimeTableHandler* mem_table = nullptr;
     if (exclude_current_row) {
-        auto mem_table = dynamic_cast<MemTimeTableHandler*>(table);
+        mem_table = dynamic_cast<MemTimeTableHandler*>(table);
         if (mem_table == nullptr) {
             LOG(ERROR) << "Group By Project: input table is not MemTimeTableHandler";
             return Row();
