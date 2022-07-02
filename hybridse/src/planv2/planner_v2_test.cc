@@ -1709,15 +1709,15 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   +-out_file: m.txt
   +- query:
   |  +-[kQueryPlan]
-  |  +-[kProjectPlan]
-  |    +-table: t0
-  |    +-project_list_vec[list]:
-  |      +-[kProjectList]
-  |        +-projects on table [list]:
-  |          +-[kProjectNode]
-  |            +-[0]c2: c2
-  |  +-[kTablePlan]
-  |    +-table: t0
+  |    +-[kProjectPlan]
+  |      +-table: t0
+  |      +-project_list_vec[list]:
+  |        +-[kProjectList]
+  |          +-projects on table [list]:
+  |            +-[kProjectNode]
+  |              +-[0]c2: c2
+  |      +-[kTablePlan]
+  |        +-table: t0
   +-options:
   |  +-key:
   |    +-expr[primary]
