@@ -3821,15 +3821,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
 
     codec::ListRef<Row> window_ref;
-    MemTimeTableHandler* mem_table = nullptr;
+    std::shared_ptr<ListV<Row>> view;
     if (exclude_current_row) {
-        mem_table = dynamic_cast<MemTimeTableHandler*>(table);
-        if (mem_table == nullptr) {
-            LOG(ERROR) << "Group By Project: input table is not MemTimeTableHandler";
-            return Row();
-        }
-        mem_table->PopFrontRow();
-        window_ref.list = reinterpret_cast<int8_t*>(mem_table);
+        view.reset(new codec::InnerRowsList<Row>(table, 1, table->GetCount()));
+        window_ref.list = reinterpret_cast<int8_t*>(view.get());
     } else {
         window_ref.list = reinterpret_cast<int8_t*>(table);
     }
