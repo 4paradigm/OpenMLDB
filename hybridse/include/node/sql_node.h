@@ -1279,22 +1279,7 @@ class FrameNode : public SqlNode {
                                                                              : frame_rows_->GetEndOffset();
         }
     }
-    inline const bool IsHistoryFrame() const {
-        switch (frame_type_) {
-            case kFrameRows:
-                return GetHistoryRowsEnd() < 0;
-            case kFrameRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsMergeRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-        }
-        return false;
-    }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
     const std::string GetExprString() const;
