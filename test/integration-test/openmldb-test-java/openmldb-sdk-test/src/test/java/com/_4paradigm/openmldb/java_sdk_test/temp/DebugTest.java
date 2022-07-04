@@ -62,4 +62,12 @@ public class DebugTest extends FedbTest {
     public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
+
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/select/test_select_sample.yaml"})
+    @Step("{testCase.desc}")
+    public void testSelect2(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    }
 }
