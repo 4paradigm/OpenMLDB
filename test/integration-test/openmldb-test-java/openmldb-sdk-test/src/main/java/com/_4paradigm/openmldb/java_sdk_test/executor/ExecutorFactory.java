@@ -107,11 +107,11 @@ public class ExecutorFactory {
         return executor;
     }
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, SQLCaseType type) {
-        if (FedbConfig.isCluster()) {
-            log.info("cluster unsupport batch query mode");
-            reportLog.info("cluster unsupport batch query mode");
-            return new NullExecutor(sqlExecutor, fesqlCase, type);
-        }
+//        if (FedbConfig.isCluster()) {
+//            log.info("cluster unsupport batch query mode");
+//            reportLog.info("cluster unsupport batch query mode");
+//            return new NullExecutor(sqlExecutor, fesqlCase, type);
+//        }
         BaseSQLExecutor executor = null;
         executor = new BatchSQLExecutor(sqlExecutor, fesqlCase, type);
         return executor;

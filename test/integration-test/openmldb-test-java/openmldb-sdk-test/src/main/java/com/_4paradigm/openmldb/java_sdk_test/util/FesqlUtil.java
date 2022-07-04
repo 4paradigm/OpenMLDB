@@ -21,6 +21,9 @@ import com._4paradigm.openmldb.SQLRequestRow;
 import com._4paradigm.openmldb.Schema;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBColumn;
+import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBIndex;
+import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBSchema;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
@@ -252,7 +255,7 @@ public class FesqlUtil {
     public static FesqlResult sqlRequestMode(SqlExecutor executor, String dbName,
                                              Boolean need_insert_request_row, String sql, InputDesc input) throws SQLException {
         FesqlResult fesqlResult = null;
-        if (sql.toLowerCase().startsWith("select")) {
+        if (sql.toLowerCase().startsWith("select")||sql.toLowerCase().startsWith("deploy")) {
             fesqlResult = selectRequestModeWithPreparedStatement(executor, dbName, need_insert_request_row, sql, input);
         } else {
             logger.error("unsupport sql: {}", sql);
@@ -290,6 +293,8 @@ public class FesqlUtil {
         FesqlResult fesqlResult = null;
         if (sql.startsWith("create database") || sql.startsWith("drop database")) {
             fesqlResult = db(executor, sql);
+        }else if(sql.startsWith("CREATE INDEX")||sql.startsWith("create index")){
+            fesqlResult = createIndex(executor, dbName, sql);
         }else if (sql.startsWith("create") || sql.startsWith("CREATE") || sql.startsWith("DROP")|| sql.startsWith("drop")) {
             fesqlResult = ddl(executor, dbName, sql);
         } else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
@@ -298,9 +303,36 @@ public class FesqlUtil {
             fesqlResult  = showDeploys(executor,dbName,sql);
         }else if(sql.startsWith("show deployment")){
             fesqlResult = deploy(executor, dbName, sql);
+        }else if(sql.startsWith("desc ")){
+            fesqlResult = desc(executor,dbName,sql);
+        }else if(sql.contains("outfile")){
+            fesqlResult = selectInto(executor, dbName, sql);
         }else {
             fesqlResult = select(executor, dbName, sql);
         }
+        return fesqlResult;
+    }
+
+    public static FesqlResult selectInto(SqlExecutor executor,String dbName,String outSql){
+        if (outSql.isEmpty()){
+            return null;
+        }
+        logger.info("select into:{}",outSql);
+        FesqlResult fesqlResult = new FesqlResult();
+        ResultSet rawRs = executor.executeSQL(dbName, outSql);
+        if (rawRs == null) {
+            fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
+        } else if  (rawRs instanceof SQLResultSet){
+            try {
+                SQLResultSet rs = (SQLResultSet)rawRs;
+                fesqlResult.setOk(true);
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                fesqlResult.setMsg(e.getMessage());
+            }
+        }
+        logger.info("select result:{} \n", fesqlResult);
         return fesqlResult;
     }
 
@@ -376,6 +408,18 @@ public class FesqlUtil {
         return string;
     }
 
+    private static List<String> convertRestultSetToListDesc(SQLResultSet rs) throws SQLException {
+        List<String> res = new ArrayList<>();
+        while (rs.next()) {
+            int columnCount = rs.getMetaData().getColumnCount();
+            for (int i = 0; i < columnCount; i++) {
+                String string=String.valueOf(getColumnData(rs, i));
+                res.add(string);
+            }
+        }
+        return res;
+    }
+
     private static OpenmldbDeployment parseDeployment(List<String> lines){
         OpenmldbDeployment deployment = new OpenmldbDeployment();
         List<String> inColumns = new ArrayList<>();
@@ -414,6 +458,91 @@ public class FesqlUtil {
         return deployment;
     }
 
+    public static FesqlResult desc(SqlExecutor executor,String dbName,String descSql){
+        if (descSql.isEmpty()){
+            return null;
+        }
+        logger.info("desc:{}",descSql);
+        FesqlResult fesqlResult = new FesqlResult();
+        ResultSet rawRs = executor.executeSQL(dbName, descSql);
+
+        if (rawRs == null) {
+            fesqlResult.setOk(false);
+            fesqlResult.setMsg("executeSQL fail, result is null");
+        } else if  (rawRs instanceof SQLResultSet){
+            try {
+                SQLResultSet rs = (SQLResultSet)rawRs;
+                JDBCUtil.setSchema(rs.getMetaData(),fesqlResult);
+                fesqlResult.setOk(true);
+                String deployStr = convertRestultSetToListDeploy(rs);
+                List<String> listDesc = convertRestultSetToListDesc(rs);
+                String[] strings = deployStr.split("\n");
+                List<String> stringList = Arrays.asList(strings);
+                OpenMLDBSchema openMLDBSchema = parseSchema(stringList);
+                fesqlResult.setSchema(openMLDBSchema);
+            } catch (Exception e) {
+                fesqlResult.setOk(false);
+                fesqlResult.setMsg(e.getMessage());
+            }
+        }
+
+        return fesqlResult;
+    }
+
+    public static OpenMLDBSchema parseSchema(List<String> lines){
+        OpenMLDBSchema schema = new OpenMLDBSchema();
+        List<OpenMLDBColumn> cols = new ArrayList<>();
+        List<OpenMLDBIndex> indexs = new ArrayList<>();
+        Iterator<String> it = lines.iterator();
+//        while(it.hasNext()){
+//            String line = it.next();
+//            if(line.contains("ttl_type")) break;
+//            if(line.startsWith("#")||line.startsWith("-"))continue;
+//            OpenMLDBColumn col = new OpenMLDBColumn();
+//            String[] infos = line.split("\\s+");
+//            col.setId(Integer.parseInt(infos[0]));
+//            col.setFieldName(infos[1]);
+//            col.setFieldType(infos[2]);
+//            col.setNullable(infos[3].equals("NO")?false:true);
+//            cols.add(col);
+//            it.remove();
+//        }
+        while(it.hasNext()){
+            String line = it.next().trim();
+            if(line.startsWith("#")||line.startsWith("-"))continue;
+            OpenMLDBIndex index = new OpenMLDBIndex();
+            String[] infos = line.split("\\s+");
+            index.setId(Integer.parseInt(infos[0]));
+            index.setIndexName(infos[1]);
+            index.setKeys(Arrays.asList(infos[2].split("\\|")));
+            index.setTs(infos[3]);
+            index.setTtl(infos[4]);
+            index.setTtlType(infos[5]);
+            indexs.add(index);
+            //it.remove();
+        }
+        schema.setIndexs(indexs);
+        //schema.setColumns(cols);
+        return schema;
+    }
+
+    public static FesqlResult createIndex(SqlExecutor executor, String dbName, String sql) {
+        if (sql.isEmpty()) {
+            return null;
+        }
+        logger.info("ddl sql:{}", sql);
+        FesqlResult fesqlResult = new FesqlResult();
+        boolean createOk = false;
+        try {
+            createOk = executor.getStatement().execute(sql);
+            Thread.sleep(10000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        fesqlResult.setOk(createOk);
+        logger.info("ddl result:{}", fesqlResult);
+        return fesqlResult;
+    }
 
 
     public static FesqlResult insert(SqlExecutor executor, String dbName, String insertSql) {
@@ -1426,6 +1555,7 @@ public class FesqlUtil {
             }
         }
     }
+
     public static void setOnline(SqlExecutor sqlExecutor){
         Statement statement = sqlExecutor.getStatement();
         try {

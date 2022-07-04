@@ -66,4 +66,34 @@ public class WindowTest extends FedbTest {
     public void testWindowRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
+
+
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster.yaml"})
+    public void testWindowBatch2(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    }
+
+    @Story("request")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster_thousand.yaml"})
+    public void testWindowRequestMode2(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
+    }
+
+    @Story("requestWithSp")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster.yaml"})
+    public void testWindowRequestModeWithSp2(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
+    }
+
+    //暂时不支持
+    @Story("requestWithSp")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster.yaml"})
+    public void testWindowCLI(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kClusterCLI).run();
+    }
 }

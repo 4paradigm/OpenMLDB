@@ -88,6 +88,7 @@ def sqls(executor, dbName: str, sqls: list):
 
 
 def sql(executor, dbName: str, sql: str):
+    #useDB(executor,dbName)
     # fedbResult = None
     if sql.startswith("create") or sql.startswith("drop"):
         fedbResult = ddl(executor, dbName, sql)
@@ -95,10 +96,62 @@ def sql(executor, dbName: str, sql: str):
         fedbResult = insert(executor, dbName, sql)
     elif sql.startswith("load"):
         fedbResult = load(executor,sql)
+    elif sql.startswith("deploy"):
+        fedbResult = deploy(executor, dbName, sql)
+    elif sql.__contains__("outfile"):
+        fedbResult = outfile(executor, dbName, sql)
+    # elif sql.startswith("show deployment"):
+    #     fedbResult = showDeployment(executor,dbName,sql)
     else:
         fedbResult = select(executor, dbName, sql)
     return fedbResult
 
+def outfile(executor, dbName: str, sql: str):
+    log.info("outfile sql:"+sql)
+    fedbResult = FedbResult()
+    try:
+        executor.execute(sql)
+        time.sleep(4)
+        fedbResult.ok = True
+        fedbResult.msg = "ok"
+    except Exception as e:
+        log.info("select into  exception is {}".format(e))
+        fedbResult.ok = False
+        fedbResult.msg = str(e)
+    log.info("select into result:" + str(fedbResult))
+    return fedbResult
+
+def useDB(executor,dbName:str):
+    sql = "use {};".format(dbName)
+    log.info("use sql:"+sql)
+    executor.execute(sql)
+
+def deploy(executor, dbName: str, sql: str):
+    useDB(executor,dbName)
+    log.info("deploy sql:"+sql)
+    fedbResult = FedbResult()
+    executor.execute(sql)
+    fedbResult.ok = True
+    fedbResult.msg = "ok"
+
+def showDeployment(executor, dbName: str, sql: str):
+    useDB(executor,dbName)
+    log.info("show deployment sql:" + sql)
+    fedbResult = FedbResult()
+    try:
+        rs = executor.execute(sql)
+        fedbResult.ok = True
+        fedbResult.msg = "ok"
+        fedbResult.rs = rs
+        fedbResult.count = rs.rowcount
+        #fedbResult.result = rs.fetchall()
+        fedbResult.result = convertRestultSetToListRS(rs)
+    except Exception as e:
+        log.info("select exception is {}".format(e))
+        fedbResult.ok = False
+        fedbResult.msg = str(e)
+    log.info("select result:" + str(fedbResult))
+    return fedbResult
 
 def selectRequestMode(executor, dbName: str, selectSql: str, input):
     if selectSql is None or len(selectSql) == 0:
@@ -163,6 +216,7 @@ def sqlRequestMode(executor, dbName: str, sql: str, input):
 
 
 def insert(executor, dbName: str, sql: str):
+    useDB(executor,dbName)
     log.info("insert sql:" + sql)
     fesqlResult = FedbResult()
     try:
@@ -295,8 +349,8 @@ def select(executor, dbName: str, sql: str):
         fedbResult.msg = "ok"
         fedbResult.rs = rs
         fedbResult.count = rs.rowcount
-        fedbResult.result = rs.fetchall()
-        #fedbResult.result = convertRestultSetToListRS(rs)
+        #fedbResult.result = rs.fetchall()
+        fedbResult.result = convertRestultSetToListRS(rs)
     except Exception as e:
         log.info("select exception is {}".format(e))
         fedbResult.ok = False
@@ -341,13 +395,13 @@ def createAndInsert(executor, dbName, inputs, requestMode: bool = False):
     dbnames.add(dbName)
     fedbResult = FedbResult()
     if inputs != None and len(inputs) > 0:
-        for index, input in enumerate(inputs):
-            if input.__contains__('db') == True and dbnames.__contains__(input.get('db')) == False:
-                db = input.get('db')
-                log.info("db:" + db)
-                createDB(executor,db)
-                dbnames.add(db)
-                log.info("create input db, dbName:"+db)
+        # for index, input in enumerate(inputs):
+        #     if input.__contains__('db') == True and dbnames.__contains__(input.get('db')) == False:
+        #         db = input.get('db')
+        #         log.info("db:" + db)
+        #         createDB(executor,db)
+        #         dbnames.add(db)
+        #         log.info("create input db, dbName:"+db)
 
 
         for index, input in enumerate(inputs):

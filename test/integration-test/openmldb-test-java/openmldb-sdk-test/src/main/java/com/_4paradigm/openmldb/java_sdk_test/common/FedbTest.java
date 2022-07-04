@@ -29,6 +29,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
+import java.sql.Statement;
+
 /**
  * @author zhaowei
  * @date 2020/6/11 2:02 PM
@@ -74,5 +76,9 @@ public class FedbTest extends BaseTest {
         FedbClient fesqlClient = new FedbClient(FedbGlobalVar.mainInfo);
         executor = fesqlClient.getExecutor();
         log.info("executor:{}",executor);
+        //todo
+
+        Statement statement = executor.getStatement();
+        statement.execute("SET @@execute_mode='online';");
     }
 }
