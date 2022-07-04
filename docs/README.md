@@ -27,6 +27,15 @@ If python is not from conda envs 'sphinx', you may activate 'sphinx' from the (b
 
 Deactivate `(base)` env, and then `conda activate sphinx`.
 
+If you fail to create conda envs by `environment.yml`, try following commands.
+   ```bash
+   conda create -n sphinx 
+   conda activate sphinx 
+   pip3 install -U Sphinx 
+   pip3 install sphinx-multiversion 
+   pip3 install myst-parser
+   pip3 install sphinx-book-theme
+   ```
 ## Tips
 
  Here are some important tips to help you get started:
