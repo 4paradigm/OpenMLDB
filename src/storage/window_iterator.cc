@@ -24,6 +24,40 @@ namespace storage {
 
 constexpr uint32_t SEED = 0xe17a1465;
 
+MemTableWindowIterator::~MemTableWindowIterator() {
+    delete it_;
+}
+
+bool MemTableWindowIterator::Valid() const {
+    if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+        return false;
+    }
+    return true;
+}
+
+void MemTableWindowIterator::Next() {
+    it_->Next();
+    record_idx_++;
+}
+
+const uint64_t& MemTableWindowIterator::GetKey() const {
+    return it_->GetKey();
+}
+
+const ::hybridse::codec::Row& MemTableWindowIterator::GetValue() {
+    row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
+    return row_;
+}
+
+void MemTableWindowIterator::Seek(const uint64_t& key) {
+    it_->Seek(key);
+}
+
+void MemTableWindowIterator::SeekToFirst() {
+    record_idx_ = 1;
+    it_->SeekToFirst();
+}
+
 MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                                          uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index)
     : segments_(segments),
@@ -82,7 +116,9 @@ bool MemTableKeyIterator::Valid() {
     return pk_it_ != nullptr && pk_it_->Valid();
 }
 
-void MemTableKeyIterator::Next() { NextPK(); }
+void MemTableKeyIterator::Next() {
+    NextPK();
+}
 
 ::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
     TimeEntries::Iterator* it = nullptr;
@@ -104,9 +140,8 @@ std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
 }
 
 const hybridse::codec::Row MemTableKeyIterator::GetKey() {
-    hybridse::codec::Row row(
-        ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
-    return row;
+    return hybridse::codec::Row(
+            ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
 }
 
 void MemTableKeyIterator::NextPK() {

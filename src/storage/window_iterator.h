@@ -30,33 +30,20 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
                            uint64_t expire_cnt)
         : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
 
-    ~MemTableWindowIterator() { delete it_; }
+    ~MemTableWindowIterator();
 
-    bool Valid() const override {
-        if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-            return false;
-        }
-        return true;
-    }
+    bool Valid() const override;
 
-    void Next() override {
-        it_->Next();
-        record_idx_++;
-    }
+    void Next() override;
 
-    const uint64_t& GetKey() const override { return it_->GetKey(); }
+    const uint64_t& GetKey() const override;
 
-    // TODO(wangtaize) unify the row object
-    const ::hybridse::codec::Row& GetValue() override {
-        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
-        return row_;
-    }
+    const ::hybridse::codec::Row& GetValue() override;
 
-    void Seek(const uint64_t& key) override { it_->Seek(key); }
-    void SeekToFirst() override {
-        record_idx_ = 1;
-        it_->SeekToFirst();
-    }
+    void Seek(const uint64_t& key) override;
+
+    void SeekToFirst() override;
+
     bool IsSeekable() const override { return true; }
 
  private:
