@@ -3144,12 +3144,11 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
 
-        // TODO(ace): should optimized in codegen window builder
         // HACK: window ... maxsize sz exclude current_row
         // due to the implementation, current row should always present in the returned table
         // because `AggRunner` requires that current row to be the first two parameters to udf call
         // so we make the return one size more if original maxsize is set.
-        // `AggRunner` will pop the current row before calling udf
+        // the proper window list will generated for exclude current_row in codegen
         //
         // see `Runner::GroupbyProject` when `exclude_current_row` is true
         if (exclude_current_row && max_size > 0) {
