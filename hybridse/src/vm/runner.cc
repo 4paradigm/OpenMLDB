@@ -208,9 +208,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                     CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
                                             agg_node->having_condition_, op->project().fn_info());
-                    runner->exclude_current_row_ = agg_node->exclude_current_row_;
-                    return RegisterTask(node,
-                                        UnaryInheritTask(cluster_task, runner));
+                    return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
                 }
                 case kGroupAggregation: {
                     if (support_cluster_optimized_) {
@@ -3280,8 +3278,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(
     if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(
-        agg_gen_.Gen(parameter, table, exclude_current_row_)));
+    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(agg_gen_.Gen(parameter, table)));
     return row_handler;
 }
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
@@ -3794,13 +3791,11 @@ const Row ConstProjectGenerator::Gen(const Row& parameter) {
     return CoreAPI::RowConstProject(fn_, parameter, false);
 }
 
-const Row AggGenerator::Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table,
-                            bool exclude_current_row) {
-    return Runner::GroupbyProject(fn_, parameter_row, table.get(), exclude_current_row);
+const Row AggGenerator::Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table) {
+    return Runner::GroupbyProject(fn_, parameter_row, table.get());
 }
 
-Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableHandler* table,
-                           bool exclude_current_row) {
+Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableHandler* table) {
     auto iter = table->GetIterator();
     if (!iter) {
         LOG(WARNING) << "Agg table is empty";
@@ -3811,7 +3806,7 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
         return Row();
     }
     const auto& row = iter->GetValue();
-    auto row_key = iter->GetKey();
+    const auto& row_key = iter->GetKey();
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
@@ -3821,13 +3816,7 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
 
     codec::ListRef<Row> window_ref;
-    std::shared_ptr<ListV<Row>> view;
-    if (exclude_current_row) {
-        view.reset(new codec::InnerRowsList<Row>(table, 1, table->GetCount()));
-        window_ref.list = reinterpret_cast<int8_t*>(view.get());
-    } else {
-        window_ref.list = reinterpret_cast<int8_t*>(table);
-    }
+    window_ref.list = reinterpret_cast<int8_t*>(table);
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_key, row_ptr, window_ptr, parameter_ptr, &buf);

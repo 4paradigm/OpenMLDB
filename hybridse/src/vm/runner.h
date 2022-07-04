@@ -96,10 +96,7 @@ class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~AggGenerator() {}
-    // \param exclude_current_row if true, current row does not take into window agg computation
-    //        the parameter ony matters in window agg projection
-    const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table,
-                  bool exclude_current_row = false);
+    const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table);
 };
 class WindowProjectGenerator : public FnGenerator {
  public:
@@ -508,8 +505,7 @@ class Runner : public node::NodeBase<Runner> {
                              const Row row, const Row& parameter,
                              const bool is_instance,
                              size_t append_slices, Window* window);
-    static Row GroupbyProject(const int8_t* fn, const Row& parameter, TableHandler* table,
-                              bool exclude_current_row = false);
+    static Row GroupbyProject(const int8_t* fn, const Row& parameter, TableHandler* table);
     static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,
@@ -898,10 +894,6 @@ class AggRunner : public Runner {
         override;  // NOLINT
     ConditionGenerator having_condition_;
     AggGenerator agg_gen_;
-
-    // Window attribute: EXCLUDE CURRENT_ROW
-    // exclude the current row during agg compuing
-    bool exclude_current_row_ = false;
 };
 
 class ReduceRunner : public Runner {

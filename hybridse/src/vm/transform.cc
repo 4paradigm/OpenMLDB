@@ -558,10 +558,15 @@ Status BatchModeTransformer::CreateRequestUnionNode(
         if (window_plan->exclude_current_row()) {
             if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
                 !window_plan->frame_node()->IsHistoryFrame()) {
+                // flag in request union node needed for request union runner
                 request_union_op->exclude_current_row_ = true;
+                // flag in frame node needed for codegen build correct InnerRowsRangeList
+                request_union_op->window().range().frame()->exclude_current_row_ = true;
             }
             if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRows &&
                 window_plan->frame_node()->frame_rows()->GetEndOffset() == 0) {
+                // ROWS .. 0 PRECEDING EXCLUDE CURRENT_ROW is same as
+                // ROWS .. 0 OPEN PRECEDING
                 request_union_op->window().range().frame()->frame_rows()->end()->set_bound_type(
                     node::BoundType::kOpenPreceding);
                 request_union_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
@@ -1196,11 +1201,6 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             PhysicalAggregationNode* agg_op = nullptr;
             CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend,
                                                            column_projects, having_condition));
-            if (kPhysicalOpRequestUnion == depend->GetOpType()) {
-                auto* union_node = dynamic_cast<const PhysicalRequestUnionNode*>(depend);
-                CHECK_TRUE(union_node != nullptr, kPlanError, "can't cast to PhysicalRequestUnionNode");
-                agg_op->exclude_current_row_ = union_node->exclude_current_row_;
-            }
             *output = agg_op;
             break;
         }

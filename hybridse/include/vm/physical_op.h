@@ -772,8 +772,6 @@ class PhysicalAggregationNode : public PhysicalProjectNode {
     virtual ~PhysicalAggregationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     ConditionFilter having_condition_;
-
-    bool exclude_current_row_ = false;
 };
 
 class PhysicalReduceAggregationNode : public PhysicalProjectNode {

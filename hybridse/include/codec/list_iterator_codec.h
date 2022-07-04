@@ -387,6 +387,47 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
 };
 
 template <class V>
+class InnerRowsRangeIterator : public ConstIterator<uint64_t, V> {
+ public:
+    InnerRowsRangeIterator(ListV<V> *list, uint64_t start, uint64_t end)
+        : ConstIterator<uint64_t, V>(),
+          root_(list->GetIterator()),
+          pos_(0),
+          start_rows_(start),
+          end_range_(end) {
+        if (nullptr != root_) {
+            SeekToFirst();
+        }
+    }
+    ~InnerRowsRangeIterator() {}
+
+    bool Valid() const override {
+        return root_->Valid() && pos_ >= start_rows_ && root_->GetKey() >= end_range_;
+    }
+
+    void Next() override {
+        pos_++;
+        return root_->Next();
+    }
+    const uint64_t &GetKey() const override { return root_->GetKey(); }
+    const V &GetValue() override { return root_->GetValue(); }
+    void Seek(const uint64_t &k) override { root_->Seek(k); }
+    void SeekToFirst() override {
+        root_->SeekToFirst();
+        pos_ = 0;
+        while (root_->Valid() && pos_ < start_rows_) {
+            root_->Next();
+            pos_++;
+        }
+    }
+    bool IsSeekable() const { return root_->IsSeekable(); }
+    std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    uint64_t pos_;
+    const uint64_t start_rows_;
+    const uint64_t end_range_;
+};
+
+template <class V>
 class InnerRangeIterator : public ConstIterator<uint64_t, V> {
  public:
     InnerRangeIterator(ListV<V> *list, uint64_t start, uint64_t end)
@@ -463,6 +504,27 @@ class InnerRowsList : public ListV<V> {
     uint64_t start_;
     uint64_t end_;
 };
+
+// start as ROWS offset, end as RANGE offset
+template <class V>
+class InnerRowsRangeList : public ListV<V> {
+ public:
+    InnerRowsRangeList(ListV<Row> *root, uint64_t start_rows, uint64_t end_range)
+        : ListV<V>(), root_(root), start_rows_(start_rows), end_range_(end_range) {}
+    virtual ~InnerRowsRangeList() {}
+
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
+        return std::make_unique<InnerRowsRangeIterator<V>>(root_, start_rows_, end_range_);
+    }
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() {
+        return new InnerRowsRangeIterator<V>(root_, start_rows_, end_range_);
+    }
+
+    ListV<Row> *root_;
+    uint64_t start_rows_;
+    uint64_t end_range_;
+};
+
 template <class V>
 class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:

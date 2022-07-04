@@ -110,7 +110,6 @@ bool SplitAggregationOptimized::SplitProjects(vm::PhysicalAggregationNode* in, P
 
                 auto status = plan_ctx_->CreateOp<vm::PhysicalAggregationNode>(
                     &node, in->GetProducer(0), column_projects, in->having_condition_.condition());
-                node->exclude_current_row_ = in->exclude_current_row_;
                 if (!status.isOK()) {
                     LOG(ERROR) << "Fail to create PhysicalAggregationNode: " << status;
                     return false;

@@ -441,7 +441,6 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
             }
 
             auto* agg_prj = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
-            agg_prj->exclude_current_row_ = dynamic_cast<PhysicalAggregationNode*>(this)->exclude_current_row_;
             op = agg_prj;
             break;
         }
@@ -572,9 +571,6 @@ void PhysicalAggregationNode::Print(std::ostream& output,
     }
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
-    }
-    if (exclude_current_row_) {
-        output << ", EXCLUDE_CURRENT_ROW";
     }
     output << ")";
     output << "\n";
