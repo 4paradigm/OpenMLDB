@@ -80,7 +80,7 @@ case $OP in
             do
                 if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
                     sleep 1
-                    let COUNT+=1
+                    (( COUNT+=1 ))
                 else
                     /bin/echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
