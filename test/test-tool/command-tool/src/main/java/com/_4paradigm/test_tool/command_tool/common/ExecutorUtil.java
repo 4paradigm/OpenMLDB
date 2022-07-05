@@ -43,7 +43,8 @@ public class ExecutorUtil {
     private static CommandExecutor getExecutor(){
         CommandExecutor executor;
         if(OSInfoUtil.isMac()){
-            executor = new RemoteExecutor();
+//            executor = new RemoteExecutor();
+            executor = new LocalExecutor();
         }else{
             executor = new LocalExecutor();
         }

@@ -25,6 +25,7 @@ import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
 import com._4paradigm.qa.openmldb_deploy.util.OpenMLDBCommandUtil;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
+import com._4paradigm.test_tool.command_tool.util.OSInfoUtil;
 import com.google.common.collect.Lists;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -51,9 +52,12 @@ public class OpenMLDBDeploy {
 
     public static final int SLEEP_TIME = 10*1000;
 
+    private String sedSeparator;
+
     public OpenMLDBDeploy(String version){
         this.version = version;
         this.openMLDBUrl = OpenMLDBDeployConfig.getUrl(version);
+        this.sedSeparator = OSInfoUtil.isMac()?"''":"";
     }
     public OpenMLDBInfo deployStandalone(){
         String testPath = DeployUtil.getTestPath(version);
@@ -180,8 +184,8 @@ public class OpenMLDBDeploy {
                     "wget -P "+testPath+" "+ OpenMLDBDeployConfig.getZKUrl(version),
                     "tar -zxvf "+testPath+"/zookeeper-3.4.14.tar.gz -C "+testPath,
                     "cp "+testPath+"/zookeeper-3.4.14/conf/zoo_sample.cfg "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
-                    "sed -i 's#dataDir=/tmp/zookeeper#dataDir="+testPath+"/data#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
-                    "sed -i 's#clientPort=2181#clientPort="+port+"#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
+                    "sed -i "+sedSeparator+" 's#dataDir=/tmp/zookeeper#dataDir="+testPath+"/data#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
+                    "sed -i "+sedSeparator+" 's#clientPort=2181#clientPort="+port+"#' "+testPath+"/zookeeper-3.4.14/conf/zoo.cfg",
                     "sh "+testPath+"/zookeeper-3.4.14/bin/zkServer.sh start"
             };
             for(String command:commands){
@@ -204,15 +208,15 @@ public class OpenMLDBDeploy {
             String ns_name = "/openmldb-ns-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + openMLDBName + " " + testPath + ns_name,
-                    "sed -i 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
-                    "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
-                    "sed -i 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
-                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
-                    "sed -i 's@--tablet=.*@#--tablet=127.0.0.1:9921@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--tablet=.*@#--tablet=127.0.0.1:9921@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "echo '--request_timeout_ms=60000' >> " + testPath + ns_name + "/conf/nameserver.flags"
             );
             if(useName){
-                commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + ns_name + "/conf/nameserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's/--endpoint=.*/#&/' " + testPath + ns_name + "/conf/nameserver.flags");
                 commands.add("echo '--use_name=true' >> " + testPath + ns_name + "/conf/nameserver.flags");
                 commands.add("echo '--port=" + port + "' >> " + testPath + ns_name + "/conf/nameserver.flags");
                 if(name!=null){
@@ -221,13 +225,13 @@ public class OpenMLDBDeploy {
                 }
             }else{
                 String ip_port = ip+":"+port;
-                commands.add("sed -i 's#--endpoint=.*#--endpoint=" + ip_port + "#' " + testPath + ns_name + "/conf/nameserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint=" + ip_port + "#' " + testPath + ns_name + "/conf/nameserver.flags");
             }
             if(isCluster){
-                commands.add("sed -i 's@#--enable_distsql=.*@--enable_distsql=true@' " + testPath + ns_name + "/conf/nameserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's@#--enable_distsql=.*@--enable_distsql=true@' " + testPath + ns_name + "/conf/nameserver.flags");
                 // commands.add("echo '--enable_distsql=true' >> " + testPath + ns_name + "/conf/nameserver.flags");
             }else{
-                commands.add("sed -i 's@#--enable_distsql=.*@--enable_distsql=false@' " + testPath + ns_name + "/conf/nameserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's@#--enable_distsql=.*@--enable_distsql=false@' " + testPath + ns_name + "/conf/nameserver.flags");
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
@@ -251,21 +255,21 @@ public class OpenMLDBDeploy {
             String tablet_name = "/openmldb-tablet-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBName +" "+testPath+tablet_name,
-                    "sed -i 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@#--make_snapshot_threshold_offset=100000@--make_snapshot_threshold_offset=10@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@#--make_snapshot_threshold_offset=100000@--make_snapshot_threshold_offset=10@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "echo '--hdd_root_path=./db_hdd' >> "+testPath+tablet_name+"/conf/tablet.flags",
                     "echo '--recycle_bin_hdd_root_path=./recycle_hdd' >> "+testPath+tablet_name+"/conf/tablet.flags",
                     "echo '--ssd_root_path=./db_ssd' >> "+testPath+tablet_name+"/conf/tablet.flags",
                     "echo '--recycle_bin_ssd_root_path=./recycle_ssd' >> "+testPath+tablet_name+"/conf/tablet.flags"
             );
             if(useName){
-                commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + tablet_name + "/conf/tablet.flags");
+                commands.add("sed -i "+sedSeparator+" 's/--endpoint=.*/#&/' " + testPath + tablet_name + "/conf/tablet.flags");
                 commands.add("echo '--use_name=true' >> " + testPath + tablet_name + "/conf/tablet.flags");
                 commands.add("echo '--port=" + port + "' >> " + testPath + tablet_name + "/conf/tablet.flags");
                 if(name!=null){
@@ -274,13 +278,13 @@ public class OpenMLDBDeploy {
                 }
             }else{
                 String ip_port = ip+":"+port;
-                commands.add("sed -i 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+tablet_name+"/conf/tablet.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+tablet_name+"/conf/tablet.flags");
 
             }
             if(isCluster){
-                commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=true#' " + testPath + tablet_name + "/conf/tablet.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--enable_distsql=.*#--enable_distsql=true#' " + testPath + tablet_name + "/conf/tablet.flags");
             }else{
-                commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=false#' " + testPath + tablet_name + "/conf/tablet.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--enable_distsql=.*#--enable_distsql=false#' " + testPath + tablet_name + "/conf/tablet.flags");
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
@@ -303,14 +307,14 @@ public class OpenMLDBDeploy {
             String apiserver_name = "/openmldb-apiserver-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBName +" "+testPath+apiserver_name,
-                    "sed -i 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
-                    "sed -i 's@--nameserver=.*@#--nameserver=127.0.0.1:6527@' "+testPath+apiserver_name+"/conf/apiserver.flags"
+                    "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
+                    "sed -i "+sedSeparator+" 's@--nameserver=.*@#--nameserver=127.0.0.1:6527@' "+testPath+apiserver_name+"/conf/apiserver.flags"
             );
             if(useName){
-                commands.add("sed -i 's/--endpoint=.*/#&/' " + testPath + apiserver_name + "/conf/apiserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's/--endpoint=.*/#&/' " + testPath + apiserver_name + "/conf/apiserver.flags");
                 commands.add("echo '--use_name=true' >> " + testPath + apiserver_name + "/conf/apiserver.flags");
                 commands.add("echo '--port=" + port + "' >> " + testPath + apiserver_name + "/conf/apiserver.flags");
                 if(name!=null){
@@ -319,13 +323,13 @@ public class OpenMLDBDeploy {
                 }
             }else{
                 String ip_port = ip+":"+port;
-                commands.add("sed -i 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+apiserver_name+"/conf/apiserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint="+ip_port+"#' "+testPath+apiserver_name+"/conf/apiserver.flags");
 
             }
             if(isCluster){
-                commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=true#' " + testPath + apiserver_name + "/conf/apiserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--enable_distsql=.*#--enable_distsql=true#' " + testPath + apiserver_name + "/conf/apiserver.flags");
             }else{
-                commands.add("sed -i 's#--enable_distsql=.*#--enable_distsql=false#' " + testPath + apiserver_name + "/conf/apiserver.flags");
+                commands.add("sed -i "+sedSeparator+" 's#--enable_distsql=.*#--enable_distsql=false#' " + testPath + apiserver_name + "/conf/apiserver.flags");
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
@@ -370,16 +374,16 @@ public class OpenMLDBDeploy {
             }
 
             List<String> commands = Lists.newArrayList(
-                    "sed -i 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
-                    "sed -i 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
-                    "sed -i 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
-                    "sed -i 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
+                    "sed -i "+sedSeparator+" 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@zookeeper.root_path=.*@zookeeper.root_path=/openmldb@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@spark.master=.*@spark.master=" + sparkMaster + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@spark.home=.*@spark.home=" + sparkHome + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
             );
             commands.forEach(ExecutorUtil::run);
             ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
@@ -405,22 +409,22 @@ public class OpenMLDBDeploy {
             String standaloneName = "/openmldb-standalone";
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + openMLDBName + " " + testPath + standaloneName,
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_nameserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
-                    "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
-                    "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_tablet.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_nameserver.flags",
+                    "sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + testPath + standaloneName + "/conf/standalone_nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_tablet.flags",
+                    "sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
                     "echo '--hdd_root_path=./db_hdd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--recycle_bin_hdd_root_path=./recycle_hdd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--ssd_root_path=./db_ssd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--recycle_bin_ssd_root_path=./recycle_ssd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
-                    "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
-                    "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
-                    "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
-                    "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags"
+                    "sed -i "+sedSeparator+" 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i "+sedSeparator+" 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags",
+                    "sed -i "+sedSeparator+" 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+testPath+standaloneName+"/conf/standalone_apiserver.flags"
             );
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){

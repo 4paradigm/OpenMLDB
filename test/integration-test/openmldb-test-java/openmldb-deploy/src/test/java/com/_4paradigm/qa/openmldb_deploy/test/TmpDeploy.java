@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 public class TmpDeploy {
     @Test
     @Parameters({"version","openMLDBPath"})
-    public void testTmp(@Optional("tmp") String version,@Optional("") String openMLDBPath){
+    public void testTmp(@Optional("tmp_mac") String version,@Optional("") String openMLDBPath){
         OpenMLDBDeploy deploy = new OpenMLDBDeploy(version);
         deploy.setOpenMLDBPath(openMLDBPath);
         deploy.setCluster(true);
