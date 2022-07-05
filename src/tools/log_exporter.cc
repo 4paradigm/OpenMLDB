@@ -46,14 +46,14 @@ namespace tools {
 
 void Exporter::ReadManifest() {
     printf("--------start readManifest--------\n");
-    std::string manifest_path = table_dir_path + "/snapshot/MANIFEST";
+    std::string manifest_path = table_dir_path_ + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
     ::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest);
     std::string snapshot_name = manifest.name();
-    snapshot_path = table_dir_path + "/snapshot/" +snapshot_name;
-    offset = manifest.offset();
-    printf("--------snapshot offset: %lu\n", offset);
-    printf("--------snapshot path: %s\n", snapshot_path.c_str());
+    snapshot_path_ = table_dir_path_ + "/snapshot/" +snapshot_name;
+    offset_ = manifest.offset();
+    printf("--------snapshot offset: %lu\n", offset_);
+    printf("--------snapshot path: %s\n", snapshot_path_.c_str());
     printf("--------end readManifest--------\n");
 }
 
@@ -62,8 +62,8 @@ void Exporter::ExportTable() {
     // Add all binlog files to file_path lists
     struct dirent *ptr;
     DIR *dir;
-    std::string log_dir = table_dir_path + "/binlog/";
-    dir=opendir(log_dir.c_str());
+    std::string log_dir = table_dir_path_ + "/binlog/";
+    dir = opendir(log_dir.c_str());
     while ((ptr = readdir(dir)) != NULL) {
         if (ptr->d_name[0] == '.')
             continue;
@@ -71,9 +71,9 @@ void Exporter::ExportTable() {
         file_path.emplace_back(log);
     }
 
-    std::ofstream my_cout(table_dir_path + "_result.csv");
-    for (int i = 0; i < schema.size(); ++i) {
-        my_cout << schema.Get(i).name() << ",";
+    std::ofstream my_cout(table_dir_path_ + "_result.csv");
+    for (int i = 0; i < schema_.size(); ++i) {
+        my_cout << schema_.Get(i).name() << ",";
     }
     my_cout << "\n";
     ReadSnapshot(my_cout);
@@ -83,7 +83,7 @@ void Exporter::ExportTable() {
     int left = 0, right = file_path.size() - 1;
     while (left < right) {
         int mid = (left + right) / 2;
-        if (GetLogStartOffset(file_path[mid]) >= offset)
+        if (GetLogStartOffset(file_path[mid]) >= offset_)
             right = mid;
         else
             left = mid + 1;
@@ -98,10 +98,9 @@ void Exporter::ExportTable() {
     for (uint64_t i = start_index; i < file_path.size(); ++i) {
         printf("--------start ReadLog %s--------\n", file_path[i].c_str());
         std::string log_path = file_path[i];
-        ReadLog(my_cout, log_path);
+        ReadLog(log_path, my_cout);
         printf("--------end ReadLog %s--------\n", file_path[i].c_str());
     }
-    
     my_cout.close();
 }
 
@@ -113,9 +112,9 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     }
     SequentialFile* rf = NewSeqFile(log_path, fd_r);
     std::string scratch;
-    bool for_snapshot = false;
+    bool is_compress = false;
 
-    Reader reader(rf, NULL, true, 0, for_snapshot);
+    Reader reader(rf, NULL, true, 0, is_compress);
     Status status;
 
     Slice first_value;
@@ -123,7 +122,7 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     ::openmldb::api::LogEntry first_entry;
     first_entry.ParseFromString(first_value.ToString());
     printf("The start offset of binlog file %s is %lu, \n", log_path.c_str(), first_entry.log_index());
-    if (first_entry.log_index() < offset) {
+    if (first_entry.log_index() < offset_) {
         printf("which is less than snapshot's offset.\n");
     } else {
         printf("which is greater than snapshot's offset.\n");
@@ -131,7 +130,7 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     return first_entry.log_index();
 }
 
-void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
+void Exporter::ReadLog(std::string &log_path, std::ofstream& my_cout) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", log_path.c_str());
@@ -140,9 +139,9 @@ void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
 
     SequentialFile* rf = NewSeqFile(log_path, fd_r);
     std::string scratch;
-    bool for_snapshot = false;
+    bool is_compress = false;
 
-    Reader reader(rf, NULL, true, 0, for_snapshot);
+    Reader reader(rf, NULL, true, 0, is_compress);
     Status status;
     uint64_t success_cnt = 0;
 
@@ -150,6 +149,7 @@ void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
         if (!status.ok()) {
+            printf("Read to the end of file.\n");
             break;
         }
         ::openmldb::api::LogEntry entry;
@@ -160,42 +160,44 @@ void Exporter::ReadLog(std::ofstream& my_cout, std::string &log_path) {
         if (entry.dimensions_size() != 0) {
             for (int i = 0; i < entry.dimensions_size(); i++) {
                 if (entry.dimensions(i).idx() == 0) {
-                    if (entry.log_index() > offset) {
+                    if (entry.log_index() > offset_) {
                         std::string row;
                         row = entry.value();
-                        RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), row.size());
-                        WriteToFile(my_cout, view);
+                        RowView view(schema_);
+                        view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
+                        WriteToFile(view, my_cout);
                         success_cnt++;
-                        break;
                     }
+                    break;
                 }
             }
         }
     } while (status.ok());
     printf("--------success_cnt: %lu\n", success_cnt);
-    offset += success_cnt;
+    offset_ += success_cnt;
 }
 
 void Exporter::ReadSnapshot(std::ofstream& my_cout) {
     printf("--------start ReadSnapshot--------\n");
-    FILE* fd_r = fopen(snapshot_path.c_str(), "rb");
+    FILE* fd_r = fopen(snapshot_path_.c_str(), "rb");
     if (fd_r == NULL) {
-        printf("fopen failed: %s\n", snapshot_path.c_str());
+        printf("fopen failed: %s\n", snapshot_path_.c_str());
         return;
     }
-    SequentialFile* rf = NewSeqFile(snapshot_path, fd_r);
+    SequentialFile* rf = NewSeqFile(snapshot_path_, fd_r);
     std::string scratch;
-    bool for_snapshot = false;
-    if (snapshot_path.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos ||
-        snapshot_path.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
-        for_snapshot = true;
+    bool is_compress = false;
+    if (snapshot_path_.find(openmldb::log::ZLIB_COMPRESS_SUFFIX) != std::string::npos ||
+        snapshot_path_.find(openmldb::log::SNAPPY_COMPRESS_SUFFIX) != std::string::npos) {
+        is_compress = true;
     }
-    Reader reader(rf, NULL, true, 0, for_snapshot);
+    Reader reader(rf, NULL, true, 0, is_compress);
     Status status;
     do {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
         if (!status.ok()) {
+            printf("Read to the end of file.\n");
             break;
         }
         ::openmldb::api::LogEntry entry;
@@ -208,8 +210,9 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
                 if (entry.dimensions(i).idx() == 0) {
                     std::string row;
                     row = entry.value();
-                    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), row.size());
-                    WriteToFile(my_cout, view);
+                    RowView view(schema_);
+                    view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
+                    WriteToFile(view, my_cout);
                     break;
                 }
             }
@@ -218,10 +221,10 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
     printf("--------end ReadSnapshot--------\n");
 }
 
-void Exporter::WriteToFile(std::ofstream &my_cout, ::openmldb::codec::RowView& view) {
+void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_cout) {
     // Gets the values for each column, then writes the row to the csv file.
-    for (int i = 0; i< schema.size(); ++i) {
-        ::openmldb::type::DataType type = schema.Get(i).data_type();
+    for (int i = 0; i< schema_.size(); ++i) {
+        ::openmldb::type::DataType type = schema_.Get(i).data_type();
         switch (type) {
             case openmldb::type::kBool: {
                 bool val;
