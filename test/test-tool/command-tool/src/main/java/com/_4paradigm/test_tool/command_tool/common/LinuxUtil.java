@@ -61,6 +61,12 @@ public class LinuxUtil {
         return cp(src,dst,null);
     }
 
+    public static String hostnameI(){
+        String command = "hostname -i";  ///usr/sbin/
+        List<String> result = ExecutorUtil.run(command);
+        return result.get(0);
+    }
+
     public static String getLocalIP(){
         String command = "hostname -i";
         try {

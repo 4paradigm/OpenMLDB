@@ -13,6 +13,7 @@
         <module>openmldb-sdk-test</module>
         <module>openmldb-http-test</module>
         <module>openmldb-tool-test</module>
+        <module>openmldb-deploy</module>
     </modules>
 
     <properties>

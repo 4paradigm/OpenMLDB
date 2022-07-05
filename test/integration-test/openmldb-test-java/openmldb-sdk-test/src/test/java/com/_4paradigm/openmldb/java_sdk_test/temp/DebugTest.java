@@ -65,7 +65,7 @@ public class DebugTest extends FedbTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/test_select_sample.yaml"})
+    @Yaml(filePaths = {"function/ddl/test_create.yaml"})
     @Step("{testCase.desc}")
     public void testSelect2(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
