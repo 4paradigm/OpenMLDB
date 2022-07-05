@@ -114,15 +114,13 @@ class TestWindowUnion extends SparkTestSuite {
         Row(1, 1, 233, 233),
         Row(2, 1, 233, 233),
         Row(3, 2, 21,  5),
-        Row(4, 2, 17,  0),
-    )
+        Row(4, 2, 17,  0))
 
     val compareSchema = StructType(List(
       StructField("id", IntegerType),
       StructField("cnt", IntegerType),
       StructField("mv", IntegerType),
-      StructField("mi", IntegerType),
-    ))
+      StructField("mi", IntegerType)))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(expect), compareSchema)
 

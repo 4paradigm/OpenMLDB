@@ -67,7 +67,6 @@ class TestWindow extends SparkTestSuite {
   }
 
   test("Test window aggregation with extra window attributes") {
-
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -109,16 +108,14 @@ class TestWindow extends SparkTestSuite {
          Row(3, 2, 22, 21, 22),
          Row(4, 2, 23, 22, 23),
          Row(5, 0, null, null, null),
-         Row(6, 1, 56, 56, 56),
-    )
+         Row(6, 1, 56, 56, 56))
 
     val compareSchema = StructType(List(
       StructField("id", IntegerType),
       StructField("cnt", IntegerType),
       StructField("mv", IntegerType),
       StructField("mi", IntegerType),
-      StructField("l1", IntegerType),
-    ))
+      StructField("l1", IntegerType)))
 
     val compareDf = spark.createDataFrame(spark.sparkContext.makeRDD(expect), compareSchema)
 
