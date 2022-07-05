@@ -9,4 +9,4 @@
     pulsar_connector_demo
     kafka_connector_demo
     dolphinscheduler_task_demo
-    talkingdata
+    talkingdata_demo
