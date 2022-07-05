@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -72,7 +72,7 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
             PID=$!
             ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
             COUNT=1
