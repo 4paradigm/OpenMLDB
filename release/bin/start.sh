@@ -64,22 +64,29 @@ case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
-            if tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill -0 > /dev/null 2>&1; then
-                echo tablet already running as process "$(tr -d '\0' < "$OPENMLDB_PID_FILE")".
+            PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                echo -e "${RED}$COMPONENT already running as process $PID ${RES}"
                 exit 0
             fi
         fi
 
-        # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
             ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true 2>&1 &
             PID=$!
-            sleep 2
-            if kill -0 $PID > /dev/null 2>&1; then
-                /bin/echo $PID > "$OPENMLDB_PID_FILE"
-                echo "Start ${COMPONENT} success"
-                exit 0
-            fi
+            ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+            COUNT=1
+            while [ $COUNT -lt 15 ]
+            do
+                if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
+                    sleep 1
+                    let COUNT+=1
+                else
+                    /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                    echo "Start ${COMPONENT} success"
+                    exit 0
+                fi
+            done
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
