@@ -82,7 +82,7 @@ case $OP in
                     sleep 1
                     (( COUNT+=1 ))
                 else
-                    /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                    echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
                     exit 0
                 fi
