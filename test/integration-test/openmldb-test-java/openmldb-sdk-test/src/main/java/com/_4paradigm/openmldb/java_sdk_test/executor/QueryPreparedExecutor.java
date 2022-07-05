@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -45,9 +45,9 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
     }
 
     @Override
-    public FesqlResult execute(String version, SqlExecutor executor){
+    public OpenMLDBResult execute(String version, SqlExecutor executor){
         logger.info("version:{} execute begin",version);
-        FesqlResult fesqlResult = null;
+        OpenMLDBResult fesqlResult = null;
         // List<String> sqls = fesqlCase.getSqls();
         // if (sqls != null && sqls.size() > 0) {
         //     for (String sql : sqls) {
@@ -64,14 +64,14 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
             }else {
-                sql = FesqlUtil.formatSql(sql, tableNames);
+                sql = OpenMLDBUtil.formatSql(sql, tableNames);
             }
             InputDesc parameters = fesqlCase.getParameters();
             List<String> types = parameters.getColumns().stream().map(s -> s.split("\\s+")[1]).collect(Collectors.toList());
             List<Object> objects = parameters.getRows().get(0);
-            fesqlResult = FesqlUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
+            fesqlResult = OpenMLDBUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
         }
         logger.info("version:{} execute end",version);
         return fesqlResult;

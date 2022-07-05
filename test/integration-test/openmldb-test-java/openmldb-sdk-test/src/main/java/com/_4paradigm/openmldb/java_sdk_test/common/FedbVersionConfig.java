@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.util.Tool;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Properties;

@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -33,7 +33,7 @@ import java.util.Map;
 public class DiffResultChecker extends BaseChecker{
 
     // private FesqlResult sqlite3Result;
-    public DiffResultChecker(FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
+    public DiffResultChecker(OpenMLDBResult fesqlResult, Map<String, OpenMLDBResult> resultMap){
         super(fesqlResult,resultMap);
         // sqlite3Result = resultMap.get("sqlite3");
     }
@@ -48,7 +48,7 @@ public class DiffResultChecker extends BaseChecker{
             }
         }
     }
-    public void checkMysql(FesqlResult mysqlResult) throws Exception {
+    public void checkMysql(OpenMLDBResult mysqlResult) throws Exception {
         log.info("diff mysql check");
         reportLog.info("diff mysql check");
         //验证success
@@ -67,7 +67,7 @@ public class DiffResultChecker extends BaseChecker{
         //         String.format("ResultChecker fail: mysql size %d, fesql size %d", mysqlRows.size(), fesqlRows.size()));
         Assert.assertEquals(fesqlRows,mysqlRows,String.format("ResultChecker fail: mysql: %s, fesql: %s", mysqlRows, fesqlRows));
     }
-    public void checkSqlite3(FesqlResult sqlite3Result) throws Exception {
+    public void checkSqlite3(OpenMLDBResult sqlite3Result) throws Exception {
         log.info("diff sqlite3 check");
         reportLog.info("diff sqlite3 check");
         //验证success

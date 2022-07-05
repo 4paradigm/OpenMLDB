@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class BaseTest implements ITest {
 
     public static String CaseNameFormat(SQLCase sqlCase) {
         return String.format("%s_%s_%s",
-                FedbGlobalVar.env, sqlCase.getId(), sqlCase.getDesc());
+                OpenMLDBGlobalVar.env, sqlCase.getId(), sqlCase.getDesc());
     }
 
     @DataProvider(name = "getCase")

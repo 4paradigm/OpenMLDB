@@ -16,7 +16,8 @@
 
 package com._4paradigm.openmldb.java_sdk_test.common;
 
-import com._4paradigm.openmldb.java_sdk_test.util.Tool;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.collections.Lists;
@@ -77,13 +78,13 @@ public class FedbConfig {
             log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
         }
 
-        BASE_PATH = CONFIG.getProperty(FedbGlobalVar.env + "_base_path");
+        BASE_PATH = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_base_path");
         // String tb_endpoint_0 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_0");
         // String tb_endpoint_1 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_1");
         // String tb_endpoint_2 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_2");
         String versionStr = System.getProperty("fedbVersion");
         if (StringUtils.isEmpty(versionStr)) {
-            versionStr = CONFIG.getProperty(FedbGlobalVar.env + "_versions");
+            versionStr = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_versions");
         }
         if (StringUtils.isNotEmpty(versionStr)) {
             VERSIONS = Arrays.stream(versionStr.split(",")).collect(Collectors.toList());
@@ -98,14 +99,14 @@ public class FedbConfig {
         }else{
             ADD_REPORT_LOG = true;
         }
-        String init_env = CONFIG.getProperty(FedbGlobalVar.env + "_init_version_env");
+        String init_env = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_init_version_env");
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);
         }
     }
 
     public static boolean isCluster() {
-        return FedbGlobalVar.env.equals("cluster");
+        return OpenMLDBGlobalVar.env.equals("cluster");
     }
 
 }

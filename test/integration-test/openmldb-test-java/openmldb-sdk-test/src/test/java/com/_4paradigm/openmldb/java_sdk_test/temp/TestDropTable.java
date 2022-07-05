@@ -16,9 +16,9 @@
 package com._4paradigm.openmldb.java_sdk_test.temp;
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBClient;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import org.testng.annotations.Test;
 
 import java.util.List;
@@ -30,7 +30,7 @@ public class TestDropTable {
         OpenMLDBClient fedbClient = new OpenMLDBClient("172.24.4.55:10000","/openmldb");
         String dbName = "test_zw";
         String sql = "show tables;";
-        FesqlResult fesqlResult = FesqlUtil.select(fedbClient.getExecutor(), dbName, sql);
+        OpenMLDBResult fesqlResult = OpenMLDBUtil.select(fedbClient.getExecutor(), dbName, sql);
         List<List<Object>> result = fesqlResult.getResult();
         for(List<Object> list:result){
             System.out.println(list);

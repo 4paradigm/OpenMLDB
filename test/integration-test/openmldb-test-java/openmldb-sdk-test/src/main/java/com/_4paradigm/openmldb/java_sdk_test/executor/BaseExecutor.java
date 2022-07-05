@@ -16,9 +16,8 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
-import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +38,7 @@ public abstract class BaseExecutor implements IExecutor{
     protected SQLCaseType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
-    protected FesqlResult mainResult;
+    protected OpenMLDBResult mainResult;
 
     @Override
     public void run() {

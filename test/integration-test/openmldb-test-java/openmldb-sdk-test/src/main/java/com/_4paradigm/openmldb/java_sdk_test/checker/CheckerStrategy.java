@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -29,7 +29,7 @@ import java.util.List;
 
 public class CheckerStrategy {
 
-    public static List<Checker> build(SQLCase fesqlCase, FesqlResult fesqlResult, SQLCaseType executorType) {
+    public static List<Checker> build(SQLCase fesqlCase, OpenMLDBResult fesqlResult, SQLCaseType executorType) {
         List<Checker> checkList = new ArrayList<>();
         if (null == fesqlCase) {
             return checkList;

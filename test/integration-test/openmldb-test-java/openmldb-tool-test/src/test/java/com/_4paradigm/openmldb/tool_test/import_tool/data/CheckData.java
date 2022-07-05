@@ -17,7 +17,7 @@ package com._4paradigm.openmldb.tool_test.import_tool.data;
 
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBClient;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;

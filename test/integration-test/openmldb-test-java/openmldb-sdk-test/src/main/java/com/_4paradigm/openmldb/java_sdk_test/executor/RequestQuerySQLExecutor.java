@@ -17,8 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -51,29 +51,29 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         this.isAsyn = isAsyn;
     }
     @Override
-    public FesqlResult execute(String version, SqlExecutor executor) {
+    public OpenMLDBResult execute(String version, SqlExecutor executor) {
         logger.info("version:{} execute begin",version);
-        FesqlResult fesqlResult = null;
+        OpenMLDBResult fesqlResult = null;
         try {
              List<String> sqls = fesqlCase.getSqls();
              if (sqls != null && sqls.size() > 0) {
                  for (String sql : sqls) {
                      // log.info("sql:{}", sql);
                      if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                         sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                         sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                      }else {
-                         sql = FesqlUtil.formatSql(sql, tableNames);
+                         sql = OpenMLDBUtil.formatSql(sql, tableNames);
                      }
-                     fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+                     fesqlResult = OpenMLDBUtil.sql(executor, dbName, sql);
                  }
              }
             String sql = fesqlCase.getSql();
             if (sql != null && sql.length() > 0) {
                 // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = FesqlUtil.formatSql(sql, tableNames);
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
                 }
                 InputDesc request = null;
                 if (isBatchRequest) {
@@ -91,7 +91,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         }
                     }
 
-                    fesqlResult = FesqlUtil.sqlBatchRequestMode(
+                    fesqlResult = OpenMLDBUtil.sqlBatchRequestMode(
                             executor, dbName, sql, batchRequest, commonColumnIndices);
                 } else {
                     if (null != fesqlCase.getBatch_request()) {
@@ -103,7 +103,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         logger.error("fail to execute in request query sql executor: sql case request columns is empty");
                         return null;
                     }
-                    fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
+                    fesqlResult = OpenMLDBUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
                 }
             }
         }catch (Exception e){
@@ -119,7 +119,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         boolean dbOk = executor.createDB(dbName);
         logger.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
-        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
+        OpenMLDBResult res = OpenMLDBUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
         }

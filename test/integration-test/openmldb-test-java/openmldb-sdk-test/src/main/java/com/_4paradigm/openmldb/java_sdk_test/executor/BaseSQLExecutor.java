@@ -20,8 +20,8 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -45,7 +45,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
     protected SqlExecutor executor;
     private Map<String,SqlExecutor> executorMap;
     protected Map<String, OpenMLDBInfo> fedbInfoMap;
-    private Map<String, FesqlResult> resultMap;
+    private Map<String, OpenMLDBResult> resultMap;
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         this.executor = executor;
@@ -89,7 +89,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         }
     }
 
-    protected abstract FesqlResult execute(String version, SqlExecutor executor);
+    protected abstract OpenMLDBResult execute(String version, SqlExecutor executor);
 
     @Override
     public void check() throws Exception {
@@ -116,11 +116,11 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = FesqlUtil.formatSql(sql, tableNames);
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
                 }
-                FesqlUtil.sql(executor, dbName, sql);
+                OpenMLDBUtil.sql(executor, dbName, sql);
             });
         }
         logger.info("version:{},begin drop table",version);

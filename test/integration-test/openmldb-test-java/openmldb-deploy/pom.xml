@@ -18,11 +18,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-test-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.4paradigm.openmldb.test-tool</groupId>
             <artifactId>command-tool</artifactId>
             <version>1.0-SNAPSHOT</version>

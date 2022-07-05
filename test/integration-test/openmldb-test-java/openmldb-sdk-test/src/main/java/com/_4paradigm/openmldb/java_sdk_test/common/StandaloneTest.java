@@ -18,6 +18,8 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -39,13 +41,13 @@ public class StandaloneTest extends BaseTest {
     @BeforeTest()
     @Parameters({"env","version","fedbPath"})
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
-        FedbGlobalVar.env = env;
+        OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("standalone")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(fedbPath);
-            FedbGlobalVar.mainInfo = openMLDBDeploy.deployStandalone();
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployStandalone();
         }else{
-            FedbGlobalVar.mainInfo = OpenMLDBInfo.builder()
+            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
                     .basePath("/home/wangkaidong/fedb-auto-test/standalone")
                     .openMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
@@ -59,10 +61,10 @@ public class StandaloneTest extends BaseTest {
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
-            FedbGlobalVar.env = caseEnv;
+            OpenMLDBGlobalVar.env = caseEnv;
         }
         //单机版SDK
-        StandaloneClient standaloneClient = new StandaloneClient(FedbGlobalVar.mainInfo);
+        OpenMLDBClient standaloneClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getHost(), OpenMLDBGlobalVar.mainInfo.getPort());
         executor = standaloneClient.getExecutor();
         log.info("executor : {}",executor);
         log.info("fedb global var env: {}", env);

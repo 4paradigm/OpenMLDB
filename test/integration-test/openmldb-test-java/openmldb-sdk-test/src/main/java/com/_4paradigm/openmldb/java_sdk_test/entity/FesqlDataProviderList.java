@@ -19,8 +19,8 @@ package com._4paradigm.openmldb.java_sdk_test.entity;
 
 import com._4paradigm.openmldb.java_sdk_test.common.BaseTest;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
-import com._4paradigm.openmldb.java_sdk_test.util.Tool;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;

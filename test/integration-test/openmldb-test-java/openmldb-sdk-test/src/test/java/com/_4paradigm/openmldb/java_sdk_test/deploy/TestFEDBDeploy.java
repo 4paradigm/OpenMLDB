@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.deploy;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Test;
@@ -24,17 +24,17 @@ import org.testng.annotations.Test;
 public class TestFEDBDeploy{
     @Test
     public void pythonDeploy(@Optional("qa") String env, @Optional("main") String version, @Optional("")String fedbPath){
-        FedbGlobalVar.env = env;
+        OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(fedbPath);
             openMLDBDeploy.setCluster(true);
-            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("standalone")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(fedbPath);
             openMLDBDeploy.setCluster(false);
-            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }
     }
 }

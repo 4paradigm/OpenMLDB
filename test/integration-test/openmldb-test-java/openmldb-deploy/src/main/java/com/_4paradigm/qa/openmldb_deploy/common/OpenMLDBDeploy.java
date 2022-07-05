@@ -16,13 +16,12 @@
 
 package com._4paradigm.qa.openmldb_deploy.common;
 
-
-import com._4paradigm.openmldb.test_common.restful.util.OpenMLDBTool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.conf.OpenMLDBDeployConfig;
 import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
 import com._4paradigm.qa.openmldb_deploy.util.OpenMLDBCommandUtil;
+import com._4paradigm.qa.openmldb_deploy.util.Tool;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
 import com._4paradigm.test_tool.command_tool.util.OSInfoUtil;
@@ -113,7 +112,7 @@ public class OpenMLDBDeploy {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
-            OpenMLDBTool.sleep(SLEEP_TIME);
+            Tool.sleep(SLEEP_TIME);
         }
         for(int i=1;i<=ns;i++){
             int ns_port;
@@ -125,7 +124,7 @@ public class OpenMLDBDeploy {
                 ns_port = deployNS(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
-            OpenMLDBTool.sleep(SLEEP_TIME);
+            Tool.sleep(SLEEP_TIME);
         }
 
         for(int i=1;i<=1;i++) {
@@ -138,7 +137,7 @@ public class OpenMLDBDeploy {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
-            OpenMLDBTool.sleep(SLEEP_TIME);
+            Tool.sleep(SLEEP_TIME);
         }
         if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
             for (int i = 1; i <= 1; i++) {

@@ -16,9 +16,6 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <openmldb.jdbc.version>0.5.0</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.5.0-macos</openmldb.navtive.version>
-
         <suiteXmlFile>test_suite/test_tmp.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
     </properties>
@@ -38,23 +35,13 @@
         <!-- 4paradigm -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-jdbc</artifactId>
-            <version>${openmldb.jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-native</artifactId>
-            <version>${openmldb.navtive.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-test-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-deploy</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.qameta.allure</groupId>

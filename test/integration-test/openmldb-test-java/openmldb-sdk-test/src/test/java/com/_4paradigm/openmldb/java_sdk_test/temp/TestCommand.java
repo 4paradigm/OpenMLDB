@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.java_sdk_test.temp;
 
 
-import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
 import com.google.common.collect.Lists;
 import org.testng.annotations.Test;
 
@@ -37,7 +37,7 @@ public class TestCommand {
                 .build();
         // String command = OpenmlDBCommandFactory.getNoInteractiveCommand(fedbInfo, "test_zw", "desc t3");
         // System.out.println("command = " + command);
-        List<String> test_zw = OpenmlDBCommandFactory.runNoInteractive(fedbInfo, "test_zw", "desc t4;");
+        List<String> test_zw = OpenMLDBCommandFactory.runNoInteractive(fedbInfo, "test_zw", "desc t4;");
         System.out.println("=======");
         test_zw.forEach(System.out::println);
     }

@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -72,8 +72,8 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         logger.info("version:{},create db:{},{}", version, dbName, dbOk);
-        FesqlUtil.useDB(executor,dbName);
-        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
+        OpenMLDBUtil.useDB(executor,dbName);
+        OpenMLDBResult res = OpenMLDBUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
@@ -81,30 +81,30 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     }
 
     @Override
-    public FesqlResult execute(String version,SqlExecutor executor){
+    public OpenMLDBResult execute(String version, SqlExecutor executor){
         logger.info("version:{} execute begin",version);
-        FesqlResult fesqlResult = null;
+        OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = FesqlUtil.formatSql(sql, tableNames);
+                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
                 }
-                fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+                fesqlResult = OpenMLDBUtil.sql(executor, dbName, sql);
             }
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
             }else {
-                sql = FesqlUtil.formatSql(sql, tableNames);
+                sql = OpenMLDBUtil.formatSql(sql, tableNames);
             }
-            fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+            fesqlResult = OpenMLDBUtil.sql(executor, dbName, sql);
         }
         logger.info("version:{} execute end",version);
         return fesqlResult;

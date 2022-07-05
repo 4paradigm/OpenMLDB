@@ -1,15 +1,14 @@
 package com._4paradigm.openmldb.java_sdk_test.cluster.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
-import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
 import java.sql.SQLException;
@@ -22,8 +21,8 @@ public class SchemaTest extends FedbTest {
     @Story("schema-sdk")
     // @Test
     public void testHaveIndexAndOption() throws SQLException {
-        boolean dbOk = executor.createDB(FedbGlobalVar.dbName);
-        log.info("create db:{},{}", FedbGlobalVar.dbName, dbOk);
+        boolean dbOk = executor.createDB(OpenMLDBGlobalVar.dbName);
+        log.info("create db:{},{}", OpenMLDBGlobalVar.dbName, dbOk);
         String tableName = "test_schema1";
         String createSql = "create table "+tableName+"(\n" +
                 "c1 string,\n" +
@@ -36,19 +35,19 @@ public class SchemaTest extends FedbTest {
                 "c8 date,\n" +
                 "c9 bool not null,\n" +
                 "index(key=(c1),ts=c7,ttl=10,ttl_type=latest))options(partitionnum=8,replicanum=3);";
-        FesqlUtil.sql(executor,FedbGlobalVar.dbName,createSql);
-        Schema tableSchema = executor.getTableSchema(FedbGlobalVar.dbName, tableName);
+        OpenMLDBUtil.sql(executor, OpenMLDBGlobalVar.dbName,createSql);
+        Schema tableSchema = executor.getTableSchema(OpenMLDBGlobalVar.dbName, tableName);
         List<Column> columnList = tableSchema.getColumnList();
         List<String> actualList = columnList.stream()
                 .map(column -> String.format("%s %s %s",
                         column.getColumnName(),
-                        FesqlUtil.getColumnTypeByType(column.getSqlType()),
+                        OpenMLDBUtil.getColumnTypeByType(column.getSqlType()),
                         column.isNotNull() ? "not null" : "").trim())
                 .collect(Collectors.toList());
         List<String> expectList = Lists.newArrayList("c1 string","c2 int not null","c3 bigint","c4 smallint",
                 "c5 float","c6 double not null","c7 timestamp not null","c8 date","c9 bool not null");
         Assert.assertEquals(actualList,expectList);
         String deleteSql = "drop table "+tableName+";";
-        FesqlUtil.sql(executor,FedbGlobalVar.dbName,deleteSql);
+        OpenMLDBUtil.sql(executor, OpenMLDBGlobalVar.dbName,deleteSql);
     }
 }

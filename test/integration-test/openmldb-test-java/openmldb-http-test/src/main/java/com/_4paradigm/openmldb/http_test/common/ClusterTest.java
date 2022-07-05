@@ -16,8 +16,8 @@
 package com._4paradigm.openmldb.http_test.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBClient;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
@@ -64,10 +64,10 @@ public class ClusterTest extends BaseTest{
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
                     .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
                     .build();
-            FedbGlobalVar.env = "cluster";
+            OpenMLDBGlobalVar.env = "cluster";
         }
-        OpenMLDBClient fesqlClient = new OpenMLDBClient(RestfulGlobalVar.mainInfo);
-        executor = fesqlClient.getExecutor();
-        System.out.println("fesqlClient = " + fesqlClient);
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(RestfulGlobalVar.mainInfo.getZk_cluster(),RestfulGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
+        System.out.println("fesqlClient = " + openMLDBClient);
     }
 }

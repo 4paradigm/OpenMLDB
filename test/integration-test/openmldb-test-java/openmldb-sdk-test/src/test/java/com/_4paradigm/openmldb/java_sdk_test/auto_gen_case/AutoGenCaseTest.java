@@ -16,9 +16,9 @@
 
 package com._4paradigm.openmldb.java_sdk_test.auto_gen_case;
 
-import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBClient;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -52,13 +52,13 @@ public class AutoGenCaseTest extends FedbTest {
         if(FedbConfig.INIT_VERSION_ENV) {
             FedbConfig.VERSIONS.forEach(version -> {
                 OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
-                openMLDBDeploy.setCluster("cluster".equals(FedbGlobalVar.env));
+                openMLDBDeploy.setCluster("cluster".equals(OpenMLDBGlobalVar.env));
                 OpenMLDBInfo fedbInfo = openMLDBDeploy.deployCluster(2, 3);
-                OpenMLDBClient fesqlClient = new OpenMLDBClient(fedbInfo);
+                OpenMLDBClient fesqlClient = new OpenMLDBClient(fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path());
                 executorMap.put(version, fesqlClient.getExecutor());
                 fedbInfoMap.put(version, fedbInfo);
             });
-            fedbInfoMap.put("mainVersion", FedbGlobalVar.mainInfo);
+            fedbInfoMap.put("mainVersion", OpenMLDBGlobalVar.mainInfo);
         }else{
             //测试调试用
             String verion = "2.2.2";
@@ -71,9 +71,9 @@ public class AutoGenCaseTest extends FedbTest {
                     .nsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10007", "172.24.4.55:10008"))
                     .tabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10009", "172.24.4.55:10010", "172.24.4.55:10011"))
                     .build();
-            executorMap.put(verion, new OpenMLDBClient(fedbInfo).getExecutor());
+            executorMap.put(verion, new OpenMLDBClient(fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path()).getExecutor());
             fedbInfoMap.put(verion, fedbInfo);
-            fedbInfoMap.put("mainVersion", FedbGlobalVar.mainInfo);
+            fedbInfoMap.put("mainVersion", OpenMLDBGlobalVar.mainInfo);
         }
     }
 

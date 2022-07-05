@@ -17,8 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -45,7 +45,7 @@ public class InsertPreparedExecutor extends BatchSQLExecutor {
         logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         logger.info("version:{},create db:{},{}", version, dbName, dbOk);
-        FesqlResult res = FesqlUtil.createAndInsertWithPrepared(executor, dbName, fesqlCase.getInputs(), false);
+        OpenMLDBResult res = OpenMLDBUtil.createAndInsertWithPrepared(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }

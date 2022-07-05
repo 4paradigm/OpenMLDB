@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.java_sdk_test.temp;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
@@ -47,7 +47,7 @@ public class DebugTest extends FedbTest {
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"debug/diff-debug-myhug.yaml"})
     public void testSelectRequestMode(SQLCase testCase) throws Exception {
-        FesqlUtil.setOnline(executor);
+        OpenMLDBUtil.setOnline(executor);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")

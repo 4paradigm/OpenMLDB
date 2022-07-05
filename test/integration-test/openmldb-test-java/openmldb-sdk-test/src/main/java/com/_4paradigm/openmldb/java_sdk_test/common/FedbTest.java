@@ -18,6 +18,8 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -41,19 +43,19 @@ public class FedbTest extends BaseTest {
     @BeforeTest()
     @Parameters({"env","version","fedbPath"})
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
-        FedbGlobalVar.env = env;
+        OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
             openMLDBDeploy.setOpenMLDBPath(fedbPath);
             openMLDBDeploy.setCluster(true);
-            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("standalone")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(fedbPath);
             openMLDBDeploy.setCluster(false);
-            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else{
-            FedbGlobalVar.mainInfo = OpenMLDBInfo.builder()
+            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.CLUSTER)
                     .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
                     .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
@@ -64,15 +66,15 @@ public class FedbTest extends BaseTest {
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
                     .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
                     .build();
-            FedbGlobalVar.env = "cluster";
+            OpenMLDBGlobalVar.env = "cluster";
 
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
-            FedbGlobalVar.env = caseEnv;
+            OpenMLDBGlobalVar.env = caseEnv;
         }
         log.info("fedb global var env: {}", env);
-        OpenMLDBClient fesqlClient = new OpenMLDBClient(FedbGlobalVar.mainInfo);
+        OpenMLDBClient fesqlClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
         executor = fesqlClient.getExecutor();
         log.info("executor:{}",executor);
         //todo
