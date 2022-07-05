@@ -21,7 +21,7 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,11 +31,11 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Data
 @Slf4j
-public class FedbClient {
+public class OpenMLDBClient {
 
     private SqlExecutor executor;
 
-    public FedbClient(String zkCluster, String zkPath){
+    public OpenMLDBClient(String zkCluster, String zkPath){
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
@@ -49,7 +49,7 @@ public class FedbClient {
             e.printStackTrace();
         }
     }
-    public FedbClient(FEDBInfo fedbInfo){
-        this(fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path());
+    public OpenMLDBClient(OpenMLDBInfo openMLDBInfo){
+        this(openMLDBInfo.getZk_cluster(),openMLDBInfo.getZk_root_path());
     }
 }

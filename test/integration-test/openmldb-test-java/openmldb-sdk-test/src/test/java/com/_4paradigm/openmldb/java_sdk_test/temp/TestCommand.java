@@ -17,7 +17,6 @@ package com._4paradigm.openmldb.java_sdk_test.temp;
 
 
 import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com.google.common.collect.Lists;
 import org.testng.annotations.Test;
 

@@ -14,17 +14,9 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-
-        <command.tool.version>1.0-SNAPSHOT</command.tool.version>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.4paradigm.test-tool</groupId>
-            <artifactId>command-tool</artifactId>
-            <version>${command.tool.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>

@@ -18,10 +18,10 @@ package com._4paradigm.openmldb.java_sdk_test.command;
 
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,19 +34,19 @@ import java.util.Objects;
 public class OpenMLDBCommandUtil {
     private static final Logger logger = new LogProxy(log);
 
-    public static FesqlResult createDB(FEDBInfo fedbInfo, String dbName) {
+    public static FesqlResult createDB(OpenMLDBInfo openMLDBInfo, String dbName) {
         String sql = String.format("create database %s ;",dbName);
-        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo,dbName,sql);
+        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,sql);
         return fesqlResult;
     }
 
-    public static FesqlResult desc(FEDBInfo fedbInfo, String dbName, String tableName) {
+    public static FesqlResult desc(OpenMLDBInfo openMLDBInfo, String dbName, String tableName) {
         String sql = String.format("desc %s ;",tableName);
-        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo,dbName,sql);
+        FesqlResult fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,sql);
         return fesqlResult;
     }
 
-    public static FesqlResult createAndInsert(FEDBInfo fedbInfo, String defaultDBName, List<InputDesc> inputs) {
+    public static FesqlResult createAndInsert(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
         HashSet<String> dbNames = new HashSet<>();
         if (StringUtils.isNotEmpty(defaultDBName)) {
             dbNames.add(defaultDBName);
@@ -55,7 +55,7 @@ public class OpenMLDBCommandUtil {
             for (InputDesc input : inputs) {
                 // CreateDB if input's db has been configured and hasn't been created before
                 if (!StringUtils.isEmpty(input.getDb()) && !dbNames.contains(input.getDb())) {
-                    FesqlResult createDBResult = createDB(fedbInfo,input.getDb());
+                    FesqlResult createDBResult = createDB(openMLDBInfo,input.getDb());
                     dbNames.add(input.getDb());
                     log.info("create db:{},{}", input.getDb(), createDBResult.isOk());
                 }
@@ -70,9 +70,9 @@ public class OpenMLDBCommandUtil {
                 //create table
                 String createSql = inputDesc.extractCreate();
                 createSql = SQLCase.formatSql(createSql, i, tableName);
-                createSql = FesqlUtil.formatSql(createSql, fedbInfo);
+                createSql = FesqlUtil.formatSql(createSql, openMLDBInfo);
                 if (!createSql.isEmpty()) {
-                    FesqlResult res = OpenMLDBComamndFacade.sql(fedbInfo,dbName,createSql);
+                    FesqlResult res = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,createSql);
                     if (!res.isOk()) {
                         logger.error("fail to create table");
                         // reportLog.error("fail to create table");
@@ -84,7 +84,7 @@ public class OpenMLDBCommandUtil {
                 for (String insertSql : inserts) {
                     insertSql = SQLCase.formatSql(insertSql, i, input.getName());
                     if (!insertSql.isEmpty()) {
-                        FesqlResult res = OpenMLDBComamndFacade.sql(fedbInfo,dbName,insertSql);
+                        FesqlResult res = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,insertSql);
                         if (!res.isOk()) {
                             logger.error("fail to insert table");
                             // reportLog.error("fail to insert table");

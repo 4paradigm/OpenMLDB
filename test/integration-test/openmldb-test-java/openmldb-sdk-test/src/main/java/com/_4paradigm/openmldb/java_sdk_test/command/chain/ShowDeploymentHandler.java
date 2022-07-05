@@ -20,7 +20,7 @@ package com._4paradigm.openmldb.java_sdk_test.command.chain;
 import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.CommandResultUtil;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com.google.common.base.Joiner;
 
 import java.util.List;
@@ -33,9 +33,9 @@ public class ShowDeploymentHandler extends AbstractSQLHandler{
     }
 
     @Override
-    public FesqlResult onHandle(FEDBInfo fedbInfo, String dbName, String sql) {
+    public FesqlResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
         FesqlResult fesqlResult = new FesqlResult();
-        List<String> result = OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName,sql);
+        List<String> result = OpenmlDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
         boolean ok = CommandResultUtil.success(result);
         fesqlResult.setMsg(Joiner.on("\n").join(result));
         fesqlResult.setOk(ok);

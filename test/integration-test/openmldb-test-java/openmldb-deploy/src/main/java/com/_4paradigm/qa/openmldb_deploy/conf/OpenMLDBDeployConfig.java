@@ -16,8 +16,8 @@
 
 package com._4paradigm.qa.openmldb_deploy.conf;
 
+import com._4paradigm.openmldb.test_common.restful.util.OpenMLDBTool;
 import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
-import com._4paradigm.qa.openmldb_deploy.util.FedbTool;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Properties;
@@ -34,7 +34,7 @@ public class OpenMLDBDeployConfig {
     public static final Properties CONFIG;
 
     static {
-        CONFIG = FedbTool.getProperties("deploy.properties");
+        CONFIG = OpenMLDBTool.getProperties("deploy.properties");
         ZK_URL = CONFIG.getProperty("zk_url");
         SPARK_URL = CONFIG.getProperty("spark_url");
     }

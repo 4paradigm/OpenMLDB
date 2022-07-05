@@ -16,12 +16,11 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
@@ -47,7 +46,7 @@ public class ExecutorFactory {
         return null;
     }
 
-    public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, SQLCase fesqlCase, SQLCaseType type) {
+    public static IExecutor build(SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCase fesqlCase, SQLCaseType type) {
         switch (type) {
             case kDiffBatch: {
                 return new BatchSQLExecutor(fesqlCase, executor, executorMap, fedbInfoMap, type);

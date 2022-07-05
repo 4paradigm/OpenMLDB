@@ -15,11 +15,9 @@
  */
 package com._4paradigm.openmldb.java_sdk_test.command;
 
-import com._4paradigm.openmldb.java_sdk_test.util.Tool;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
-import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
@@ -46,16 +44,16 @@ public class OpenmlDBCommandFactory {
         // logger.info("generate rtidb no interactive command:{}",line);
         return line;
     }
-    private static String getNoInteractiveCommand(FEDBInfo fedbInfo, String dbName, String command){
-        if(fedbInfo.getDeployType()== OpenMLDBDeployType.CLUSTER){
-            return getNoInteractiveCommandByCLuster(fedbInfo.getFedbPath(),fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path(),dbName,command);
+    private static String getNoInteractiveCommand(OpenMLDBInfo openMLDBInfo, String dbName, String command){
+        if(openMLDBInfo.getDeployType()== OpenMLDBDeployType.CLUSTER){
+            return getNoInteractiveCommandByCLuster(openMLDBInfo.getOpenMLDBPath(),openMLDBInfo.getZk_cluster(),openMLDBInfo.getZk_root_path(),dbName,command);
         }else{
-            return getNoInteractiveCommandByStandalone(fedbInfo.getFedbPath(),fedbInfo.getHost(),fedbInfo.getPort(),dbName,command);
+            return getNoInteractiveCommandByStandalone(openMLDBInfo.getOpenMLDBPath(),openMLDBInfo.getHost(),openMLDBInfo.getPort(),dbName,command);
         }
     }
 
-    public static List<String> runNoInteractive(FEDBInfo fedbInfo, String dbName, String command){
-        return CommandUtil.run(getNoInteractiveCommand(fedbInfo,dbName,command));
+    public static List<String> runNoInteractive(OpenMLDBInfo openMLDBInfo, String dbName, String command){
+        return CommandUtil.run(getNoInteractiveCommand(openMLDBInfo,dbName,command));
     }
 
 }

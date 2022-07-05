@@ -20,12 +20,10 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
@@ -38,8 +36,8 @@ public class InsertPreparedExecutor extends BatchSQLExecutor {
     public InsertPreparedExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         super(executor, fesqlCase, executorType);
     }
-    public InsertPreparedExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
+    public InsertPreparedExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(fesqlCase, executor, executorMap, openMLDBInfoMap, executorType);
     }
 
     @Override

@@ -16,7 +16,7 @@
 
 package com._4paradigm.qa.openmldb_deploy.util;
 
-import com._4paradigm.fe.command.common.LinuxUtil;
+import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
 
 /**
  * @author zhaowei

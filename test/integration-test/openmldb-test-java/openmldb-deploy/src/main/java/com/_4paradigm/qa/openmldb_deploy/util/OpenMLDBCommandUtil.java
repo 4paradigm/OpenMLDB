@@ -16,7 +16,7 @@
 
 package com._4paradigm.qa.openmldb_deploy.util;
 
-import com._4paradigm.fe.command.common.LinuxUtil;
+import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
 import org.testng.Assert;
 
 /**
@@ -24,8 +24,8 @@ import org.testng.Assert;
  * @date 2021/2/7 8:50 AM
  */
 public class OpenMLDBCommandUtil {
-    public static void cpRtidb(String path,String fedbPath){
-        boolean ok = LinuxUtil.cp(fedbPath,path+"/bin",path+"/bin/openmldb");
+    public static void cpOpenMLDB(String path, String openMLDBPath){
+        boolean ok = LinuxUtil.cp(openMLDBPath,path+"/bin",path+"/bin/openmldb");
         Assert.assertTrue(ok,"copy conf fail");
     }
     public static void cpConf(String path,String confPath){

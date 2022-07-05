@@ -33,7 +33,7 @@ public class OpenMLDBInfo {
     private String host;
     private int port;
     private String basePath;
-    private String fedbPath;
+    private String openMLDBPath;
     private String zk_cluster;
     private String zk_root_path;
     private int nsNum;
@@ -55,9 +55,9 @@ public class OpenMLDBInfo {
 
     public String getRunCommand(){
         if(deployType==OpenMLDBDeployType.CLUSTER) {
-            return fedbPath + " --zk_cluster=" + zk_cluster + " --zk_root_path=" + zk_root_path + " --role=sql_client";
+            return openMLDBPath + " --zk_cluster=" + zk_cluster + " --zk_root_path=" + zk_root_path + " --role=sql_client";
         }else{
-            return fedbPath + " --host=" + host + " --port=" + port;
+            return openMLDBPath + " --host=" + host + " --port=" + port;
         }
     }
 }

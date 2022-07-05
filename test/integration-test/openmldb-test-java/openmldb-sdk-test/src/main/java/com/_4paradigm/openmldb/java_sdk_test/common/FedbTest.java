@@ -18,10 +18,9 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
-import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -44,20 +43,20 @@ public class FedbTest extends BaseTest {
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
         FedbGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);;
-            fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(true);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
+            openMLDBDeploy.setOpenMLDBPath(fedbPath);
+            openMLDBDeploy.setCluster(true);
+            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("standalone")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            fedbDeploy.setCluster(false);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDB(2, 3);
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
+            openMLDBDeploy.setOpenMLDBPath(fedbPath);
+            openMLDBDeploy.setCluster(false);
+            FedbGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else{
-            FedbGlobalVar.mainInfo = FEDBInfo.builder()
+            FedbGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.CLUSTER)
                     .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
-                    .fedbPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
                     .zk_cluster("172.24.4.55:30000")
                     .zk_root_path("/openmldb")
                     .nsNum(2).tabletNum(3)
@@ -73,7 +72,7 @@ public class FedbTest extends BaseTest {
             FedbGlobalVar.env = caseEnv;
         }
         log.info("fedb global var env: {}", env);
-        FedbClient fesqlClient = new FedbClient(FedbGlobalVar.mainInfo);
+        OpenMLDBClient fesqlClient = new OpenMLDBClient(FedbGlobalVar.mainInfo);
         executor = fesqlClient.getExecutor();
         log.info("executor:{}",executor);
         //todo

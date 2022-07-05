@@ -16,17 +16,17 @@
 
 package com._4paradigm.openmldb.java_sdk_test.auto_gen_case;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbClient;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBClient;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
@@ -45,16 +45,16 @@ import java.util.Map;
 public class AutoGenCaseTest extends FedbTest {
 
     private Map<String, SqlExecutor> executorMap = new HashMap<>();
-    private Map<String, FEDBInfo> fedbInfoMap = new HashMap<>();
+    private Map<String, OpenMLDBInfo> fedbInfoMap = new HashMap<>();
 
     @BeforeClass
     public void beforeClass(){
         if(FedbConfig.INIT_VERSION_ENV) {
             FedbConfig.VERSIONS.forEach(version -> {
-                FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-                fedbDeploy.setCluster("cluster".equals(FedbGlobalVar.env));
-                FEDBInfo fedbInfo = fedbDeploy.deployFEDB(2, 3);
-                FedbClient fesqlClient = new FedbClient(fedbInfo);
+                OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
+                openMLDBDeploy.setCluster("cluster".equals(FedbGlobalVar.env));
+                OpenMLDBInfo fedbInfo = openMLDBDeploy.deployCluster(2, 3);
+                OpenMLDBClient fesqlClient = new OpenMLDBClient(fedbInfo);
                 executorMap.put(version, fesqlClient.getExecutor());
                 fedbInfoMap.put(version, fedbInfo);
             });
@@ -62,16 +62,16 @@ public class AutoGenCaseTest extends FedbTest {
         }else{
             //测试调试用
             String verion = "2.2.2";
-            FEDBInfo fedbInfo = FEDBInfo.builder()
+            OpenMLDBInfo fedbInfo = OpenMLDBInfo.builder()
                     .basePath("/home/zhaowei01/fedb-auto-test/2.2.2")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/2.2.2/fedb-ns-1/bin/fedb")
+                    .openMLDBPath("/home/zhaowei01/fedb-auto-test/2.2.2/fedb-ns-1/bin/fedb")
                     .zk_cluster("172.24.4.55:10006")
                     .zk_root_path("/fedb")
                     .nsNum(2).tabletNum(3)
                     .nsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10007", "172.24.4.55:10008"))
                     .tabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10009", "172.24.4.55:10010", "172.24.4.55:10011"))
                     .build();
-            executorMap.put(verion, new FedbClient(fedbInfo).getExecutor());
+            executorMap.put(verion, new OpenMLDBClient(fedbInfo).getExecutor());
             fedbInfoMap.put(verion, fedbInfo);
             fedbInfoMap.put("mainVersion", FedbGlobalVar.mainInfo);
         }

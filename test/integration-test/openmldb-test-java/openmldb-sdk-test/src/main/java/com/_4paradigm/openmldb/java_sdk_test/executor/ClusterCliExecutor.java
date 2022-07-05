@@ -16,10 +16,10 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
@@ -32,8 +32,8 @@ public class ClusterCliExecutor extends CommandExecutor{
         super(fesqlCase, executorType);
     }
 
-    public ClusterCliExecutor(SQLCase fesqlCase, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, fedbInfoMap, executorType);
+    public ClusterCliExecutor(SQLCase fesqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(fesqlCase, openMLDBInfoMap, executorType);
     }
 
     @Override

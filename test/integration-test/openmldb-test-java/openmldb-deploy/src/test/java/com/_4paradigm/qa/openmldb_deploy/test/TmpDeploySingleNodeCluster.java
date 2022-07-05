@@ -14,7 +14,7 @@ public class TmpDeploySingleNodeCluster {
         deploy.setOpenMLDBPath(openMLDBPath);
         deploy.setCluster(false);
         deploy.setSparkMaster("local");
-        OpenMLDBInfo openMLDBInfo = deploy.deployFEDB(1, 2);
+        OpenMLDBInfo openMLDBInfo = deploy.deployCluster(1, 2);
         System.out.println(openMLDBInfo);
     }
 }

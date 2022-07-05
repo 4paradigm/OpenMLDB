@@ -22,16 +22,14 @@ import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
 import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
 import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbClient;
 import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -46,7 +44,7 @@ import java.util.stream.Collectors;
 public class CommandExecutor extends BaseExecutor{
 
     private static final Logger logger = new LogProxy(log);
-    protected Map<String, FEDBInfo> fedbInfoMap;
+    protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, FesqlResult> resultMap;
 
     public CommandExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
@@ -60,9 +58,9 @@ public class CommandExecutor extends BaseExecutor{
         }
     }
 
-    public CommandExecutor(SQLCase fesqlCase, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
+    public CommandExecutor(SQLCase fesqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
         this(fesqlCase,executorType);
-        this.fedbInfoMap = fedbInfoMap;
+        this.openMLDBInfoMap = openMLDBInfoMap;
     }
 
     @Override
@@ -97,16 +95,16 @@ public class CommandExecutor extends BaseExecutor{
     @Override
     public void prepare(){
         prepare("mainVersion", FedbGlobalVar.mainInfo);
-        if(MapUtils.isNotEmpty(fedbInfoMap)) {
-            fedbInfoMap.entrySet().stream().forEach(e -> prepare(e.getKey(), e.getValue()));
+        if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+            openMLDBInfoMap.entrySet().stream().forEach(e -> prepare(e.getKey(), e.getValue()));
         }
     }
 
-    protected void prepare(String version, FEDBInfo fedbInfo){
+    protected void prepare(String version, OpenMLDBInfo openMLDBInfo){
         logger.info("version:{} prepare begin",version);
-        FesqlResult fesqlResult = OpenMLDBCommandUtil.createDB(fedbInfo,dbName);
+        FesqlResult fesqlResult = OpenMLDBCommandUtil.createDB(openMLDBInfo,dbName);
         logger.info("version:{},create db:{},{}", version, dbName, fesqlResult.isOk());
-        FesqlResult res = OpenMLDBCommandUtil.createAndInsert(fedbInfo, dbName, fesqlCase.getInputs());
+        FesqlResult res = OpenMLDBCommandUtil.createAndInsert(openMLDBInfo, dbName, fesqlCase.getInputs());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
@@ -120,36 +118,36 @@ public class CommandExecutor extends BaseExecutor{
         if(CollectionUtils.isNotEmpty(tableNames)) {
             mainResult.setTableNames(tableNames);
         }
-        if(MapUtils.isNotEmpty(fedbInfoMap)) {
-            resultMap = fedbInfoMap.entrySet().stream().
+        if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+            resultMap = openMLDBInfoMap.entrySet().stream().
                     collect(Collectors.toMap(e -> e.getKey(), e -> execute(e.getKey(), e.getValue())));
         }
     }
 
-    protected FesqlResult execute(String version, FEDBInfo fedbInfo){
+    protected FesqlResult execute(String version, OpenMLDBInfo openMLDBInfo){
         logger.info("version:{} execute begin",version);
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 // log.info("sql:{}", sql);
-                if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                    sql = FesqlUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
                     sql = FesqlUtil.formatSql(sql, tableNames);
                 }
-                fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo, dbName, sql);
+                fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
             }
         }
         String sql = fesqlCase.getSql();
         if (StringUtils.isNotEmpty(sql)) {
             // log.info("sql:{}", sql);
-            if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+            if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                sql = FesqlUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
             }else {
                 sql = FesqlUtil.formatSql(sql, tableNames);
             }
-            fesqlResult = OpenMLDBComamndFacade.sql(fedbInfo, dbName, sql);
+            fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
         }
         logger.info("version:{} execute end",version);
         return fesqlResult;
@@ -168,23 +166,23 @@ public class CommandExecutor extends BaseExecutor{
     @Override
     public void tearDown() {
         tearDown("mainVersion",FedbGlobalVar.mainInfo);
-        if(MapUtils.isNotEmpty(fedbInfoMap)) {
-            fedbInfoMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
+        if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+            openMLDBInfoMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
         }
     }
 
 
-    public void tearDown(String version,FEDBInfo fedbInfo) {
+    public void tearDown(String version,OpenMLDBInfo openMLDBInfo) {
         logger.info("version:{},begin tear down",version);
         List<String> tearDown = fesqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
-                if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                    sql = FesqlUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
                     sql = FesqlUtil.formatSql(sql, tableNames);
                 }
-                OpenmlDBCommandFactory.runNoInteractive(fedbInfo,dbName, sql);
+                OpenmlDBCommandFactory.runNoInteractive(openMLDBInfo,dbName, sql);
             });
         }
         logger.info("version:{},begin drop table",version);
@@ -196,7 +194,7 @@ public class CommandExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String db = table.getDb().isEmpty() ? dbName : table.getDb();
-                OpenmlDBCommandFactory.runNoInteractive(fedbInfo,db,drop);
+                OpenmlDBCommandFactory.runNoInteractive(openMLDBInfo,db,drop);
             }
         }
     }

@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.test_common.util;
+package com._4paradigm.openmldb.test_common.restful.util;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 
 import java.io.File;
@@ -28,30 +27,29 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 
-
-public class FedbTool {
-    private static final Logger logger = LoggerFactory.getLogger(FedbTool.class);
+@Slf4j
+public class OpenMLDBTool {
 
     public static String getFilePath(String filename) {
-        return FedbTool.class.getClassLoader().getResource(filename).getFile();
+        return OpenMLDBTool.class.getClassLoader().getResource(filename).getFile();
     }
 
     public static String getCasePath(String yamlCaseDir, String casePath) {
-        String caseDir = StringUtils.isEmpty(yamlCaseDir) ? FedbTool.rtidbDir().getAbsolutePath() : yamlCaseDir;
+        String caseDir = StringUtils.isEmpty(yamlCaseDir) ? OpenMLDBTool.openMLDBDir().getAbsolutePath() : yamlCaseDir;
         Assert.assertNotNull(caseDir);
         String caseAbsPath = caseDir + "/cases/" + casePath;
-        logger.debug("case absolute path: {}", caseAbsPath);
+        log.debug("case absolute path: {}", caseAbsPath);
         return caseAbsPath;
     }
 
-    public static File rtidbDir() {
+    public static File openMLDBDir() {
         File directory = new File(".");
         directory = directory.getAbsoluteFile();
         while (null != directory) {
             if (directory.isDirectory() && "OpenMLDB".equals(directory.getName())) {
                 break;
             }
-            logger.debug("current directory name {}", directory.getName());
+            log.debug("current directory name {}", directory.getName());
             directory = directory.getParentFile();
         }
 
@@ -84,10 +82,10 @@ public class FedbTool {
     public static Properties getProperties(String fileName) {
         Properties ps = new Properties();
         try {
-            ps.load(FedbTool.class.getClassLoader().getResourceAsStream(fileName));
+            ps.load(OpenMLDBTool.class.getClassLoader().getResourceAsStream(fileName));
         } catch (IOException e) {
             e.printStackTrace();
-            logger.error(e.getMessage());
+            log.error(e.getMessage());
         }
         return ps;
     }

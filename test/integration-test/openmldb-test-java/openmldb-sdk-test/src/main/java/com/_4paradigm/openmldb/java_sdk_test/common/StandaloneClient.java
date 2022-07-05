@@ -4,7 +4,7 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,7 +28,7 @@ public class StandaloneClient {
             e.printStackTrace();
         }
     }
-    public StandaloneClient(FEDBInfo fedbInfo){
+    public StandaloneClient(OpenMLDBInfo fedbInfo){
         this(fedbInfo.getHost(),fedbInfo.getPort());
     }
 }

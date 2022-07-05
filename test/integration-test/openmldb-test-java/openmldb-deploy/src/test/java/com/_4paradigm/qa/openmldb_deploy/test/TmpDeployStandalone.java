@@ -12,7 +12,7 @@ public class TmpDeployStandalone {
     public void testTmp(@Optional("") String openMLDBPath){
         OpenMLDBDeploy deploy = new OpenMLDBDeploy("standalone");
         deploy.setOpenMLDBPath(openMLDBPath);
-        OpenMLDBInfo openMLDBInfo = deploy.deployFEDBByStandalone();
+        OpenMLDBInfo openMLDBInfo = deploy.deployStandalone();
         System.out.println(openMLDBInfo);
     }
 }

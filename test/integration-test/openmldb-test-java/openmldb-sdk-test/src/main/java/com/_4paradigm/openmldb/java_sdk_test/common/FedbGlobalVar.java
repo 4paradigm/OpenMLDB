@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.common;
 
 
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 
 /**
  * @author zhaowei
@@ -28,6 +28,6 @@ public class FedbGlobalVar {
     public static String level;
     public static String version;
     public static String fedbPath;
-    public static FEDBInfo mainInfo;
+    public static OpenMLDBInfo mainInfo;
     public static String dbName = "test_zw";
 }

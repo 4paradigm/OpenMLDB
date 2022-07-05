@@ -18,10 +18,9 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
-import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,14 +41,14 @@ public class StandaloneTest extends BaseTest {
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
         FedbGlobalVar.env = env;
         if(env.equalsIgnoreCase("standalone")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDBByStandalone();
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
+            openMLDBDeploy.setOpenMLDBPath(fedbPath);
+            FedbGlobalVar.mainInfo = openMLDBDeploy.deployStandalone();
         }else{
-            FedbGlobalVar.mainInfo = FEDBInfo.builder()
+            FedbGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
                     .basePath("/home/wangkaidong/fedb-auto-test/standalone")
-                    .fedbPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .openMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
                     .nsEndpoints(Lists.newArrayList("172.24.4.55:30016"))
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:30017"))

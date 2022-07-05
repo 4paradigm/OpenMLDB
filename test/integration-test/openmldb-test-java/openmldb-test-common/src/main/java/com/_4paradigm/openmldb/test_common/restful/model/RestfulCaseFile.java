@@ -16,8 +16,8 @@
 package com._4paradigm.openmldb.test_common.restful.model;
 
 
+import com._4paradigm.openmldb.test_common.restful.util.OpenMLDBTool;
 import com._4paradigm.openmldb.test_common.restful.util.Tool;
-import com._4paradigm.openmldb.test_common.util.FedbTool;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -56,7 +56,7 @@ public class RestfulCaseFile {
         List<String> debugs = getDebugs();
         for (RestfulCase tmpCase : cases) {
             if(baseCase!=null){
-                FedbTool.mergeObject(baseCase,tmpCase);
+                OpenMLDBTool.mergeObject(baseCase,tmpCase);
             }
             if (!CollectionUtils.isEmpty(debugs)) {
                 if (debugs.contains(tmpCase.getDesc().trim())) {

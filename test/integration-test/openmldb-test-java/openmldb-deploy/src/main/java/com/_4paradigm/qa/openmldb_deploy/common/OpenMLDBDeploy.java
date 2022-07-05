@@ -17,11 +17,11 @@
 package com._4paradigm.qa.openmldb_deploy.common;
 
 
+import com._4paradigm.openmldb.test_common.restful.util.OpenMLDBTool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.conf.OpenMLDBDeployConfig;
 import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
-import com._4paradigm.qa.openmldb_deploy.util.FedbTool;
 import com._4paradigm.qa.openmldb_deploy.util.OpenMLDBCommandUtil;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
@@ -55,7 +55,7 @@ public class OpenMLDBDeploy {
         this.version = version;
         this.openMLDBUrl = OpenMLDBDeployConfig.getUrl(version);
     }
-    public OpenMLDBInfo deployFEDBByStandalone(){
+    public OpenMLDBInfo deployStandalone(){
         String testPath = DeployUtil.getTestPath(version);
         if(StringUtils.isNotEmpty(installPath)){
             testPath = installPath+"/"+version;
@@ -65,15 +65,15 @@ public class OpenMLDBDeploy {
         if(!file.exists()){
             file.mkdirs();
         }
-        downloadFEDB(testPath);
+        downloadOpenMLDB(testPath);
         OpenMLDBInfo fedbInfo = deployStandalone(testPath,ip);
         log.info("openmldb-info:"+fedbInfo);
         return fedbInfo;
     }
-    public OpenMLDBInfo deployFEDB(int ns, int tablet){
-        return deployFEDB(null,ns,tablet);
+    public OpenMLDBInfo deployCluster(int ns, int tablet){
+        return deployCluster(null,ns,tablet);
     }
-    public OpenMLDBInfo deployFEDB(String clusterName, int ns, int tablet){
+    public OpenMLDBInfo deployCluster(String clusterName, int ns, int tablet){
         OpenMLDBInfo.OpenMLDBInfoBuilder builder = OpenMLDBInfo.builder();
         builder.deployType(OpenMLDBDeployType.CLUSTER);
         String testPath = DeployUtil.getTestPath(version);
@@ -90,14 +90,14 @@ public class OpenMLDBDeploy {
             file.mkdirs();
         }
         int zkPort = deployZK(testPath);
-        downloadFEDB(testPath);
+        downloadOpenMLDB(testPath);
         String zk_point = ip+":"+zkPort;
         builder.zk_cluster(zk_point).zk_root_path("/openmldb");
         builder.nsEndpoints(Lists.newArrayList()).nsNames(Lists.newArrayList());
         builder.tabletEndpoints(Lists.newArrayList()).tabletNames(Lists.newArrayList());
         builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
         builder.taskManagerEndpoints(Lists.newArrayList());
-        builder.fedbPath(testPath+"/openmldb-ns-1/bin/openmldb");
+        builder.openMLDBPath(testPath+"/openmldb-ns-1/bin/openmldb");
         OpenMLDBInfo fedbInfo = builder.build();
         for(int i=1;i<=tablet;i++) {
             int tablet_port ;
@@ -109,7 +109,7 @@ public class OpenMLDBDeploy {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
-            FedbTool.sleep(SLEEP_TIME);
+            OpenMLDBTool.sleep(SLEEP_TIME);
         }
         for(int i=1;i<=ns;i++){
             int ns_port;
@@ -121,7 +121,7 @@ public class OpenMLDBDeploy {
                 ns_port = deployNS(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
-            FedbTool.sleep(SLEEP_TIME);
+            OpenMLDBTool.sleep(SLEEP_TIME);
         }
 
         for(int i=1;i<=1;i++) {
@@ -134,7 +134,7 @@ public class OpenMLDBDeploy {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
             fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
-            FedbTool.sleep(SLEEP_TIME);
+            OpenMLDBTool.sleep(SLEEP_TIME);
         }
         if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
             for (int i = 1; i <= 1; i++) {
@@ -146,7 +146,7 @@ public class OpenMLDBDeploy {
         return fedbInfo;
     }
 
-    private void downloadFEDB(String testPath){
+    private void downloadOpenMLDB(String testPath){
         try {
             String command;
             if(openMLDBUrl.startsWith("http")) {
@@ -231,7 +231,7 @@ public class OpenMLDBDeploy {
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
-                OpenMLDBCommandUtil.cpRtidb(testPath+ns_name, openMLDBPath);
+                OpenMLDBCommandUtil.cpOpenMLDB(testPath+ns_name, openMLDBPath);
             }
 //            ExecutorUtil.run("sh "+testPath+ns_name+"/bin/start_ns.sh start");
             ExecutorUtil.run("sh "+testPath+ns_name+"/bin/start.sh start nameserver");
@@ -284,7 +284,7 @@ public class OpenMLDBDeploy {
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
-                OpenMLDBCommandUtil.cpRtidb(testPath+tablet_name, openMLDBPath);
+                OpenMLDBCommandUtil.cpOpenMLDB(testPath+tablet_name, openMLDBPath);
             }
             ExecutorUtil.run("sh "+testPath+tablet_name+"/bin/start.sh start tablet");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
@@ -329,7 +329,7 @@ public class OpenMLDBDeploy {
             }
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
-                OpenMLDBCommandUtil.cpRtidb(testPath+apiserver_name, openMLDBPath);
+                OpenMLDBCommandUtil.cpOpenMLDB(testPath+apiserver_name, openMLDBPath);
             }
             ExecutorUtil.run("sh "+testPath+apiserver_name+"/bin/start.sh start apiserver");
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
@@ -424,7 +424,7 @@ public class OpenMLDBDeploy {
             );
             commands.forEach(ExecutorUtil::run);
             if(StringUtils.isNotEmpty(openMLDBPath)){
-                OpenMLDBCommandUtil.cpRtidb(testPath+standaloneName, openMLDBPath);
+                OpenMLDBCommandUtil.cpOpenMLDB(testPath+standaloneName, openMLDBPath);
             }
             ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-standalone.sh");
             boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
@@ -434,7 +434,7 @@ public class OpenMLDBDeploy {
                 log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{},apiServerPort:{}",nsPort,tabletPort,apiServerPort));
                 OpenMLDBInfo fedbInfo = OpenMLDBInfo.builder()
                         .deployType(OpenMLDBDeployType.STANDALONE)
-                        .fedbPath(testPath+"/openmldb-standalone/bin/openmldb")
+                        .openMLDBPath(testPath+"/openmldb-standalone/bin/openmldb")
                         .apiServerEndpoints(Lists.newArrayList())
                         .basePath(testPath)
                         .nsEndpoints(Lists.newArrayList(nsEndpoint))

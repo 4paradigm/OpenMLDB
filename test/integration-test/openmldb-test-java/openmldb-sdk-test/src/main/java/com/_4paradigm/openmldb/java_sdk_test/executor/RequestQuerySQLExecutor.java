@@ -20,10 +20,10 @@ import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -44,7 +44,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }
-    public RequestQuerySQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap,
+    public RequestQuerySQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap,
                                       boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
         this.isBatchRequest = isBatchRequest;

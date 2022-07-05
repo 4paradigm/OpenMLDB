@@ -23,10 +23,10 @@ import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
 import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
 import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 public abstract class BaseSQLExecutor extends BaseExecutor{
     protected SqlExecutor executor;
     private Map<String,SqlExecutor> executorMap;
-    protected Map<String, FEDBInfo> fedbInfoMap;
+    protected Map<String, OpenMLDBInfo> fedbInfoMap;
     private Map<String, FesqlResult> resultMap;
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
@@ -59,7 +59,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         }
     }
 
-    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
+    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
         this(executor,fesqlCase,executorType);
         this.executor = executor;
         this.executorMap = executorMap;

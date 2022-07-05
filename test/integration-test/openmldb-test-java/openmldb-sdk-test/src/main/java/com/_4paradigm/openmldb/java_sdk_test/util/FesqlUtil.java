@@ -28,11 +28,11 @@ import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -1382,7 +1382,7 @@ public class FesqlUtil {
         return obj;
     }
 
-    public static String formatSql(String sql, List<String> tableNames, FEDBInfo fedbInfo) {
+    public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo fedbInfo) {
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
             int index = Integer.parseInt(matcher.group(1));
@@ -1392,7 +1392,7 @@ public class FesqlUtil {
         return sql;
     }
 
-    public static String formatSql(String sql, FEDBInfo fedbInfo) {
+    public static String formatSql(String sql, OpenMLDBInfo fedbInfo) {
         if(sql.contains("{tb_endpoint_0}")){
             sql = sql.replace("{tb_endpoint_0}", fedbInfo.getTabletEndpoints().get(0));
         }
