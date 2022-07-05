@@ -6,7 +6,7 @@
 
 debugs: []
 cases:
-  - id: 1
+  - id: 0
     desc: ROWS_RANGE window with exclude_current_row
     inputs:
       - name: t1
@@ -62,7 +62,7 @@ cases:
          2, 1, 21, 21, 21
          3, 2, 22, 21, 22
          4, 0, NULL, NULL, NULL
-  - id: 2
+  - id: 1
     desc: |
       ROWS window with exclude_current_row, '0 PRECEDING EXCLUDE CURRENT_ROW' actually is the same as '0 OPEN PRECEDING'
     inputs:
@@ -103,7 +103,7 @@ cases:
          2, 1, 21, 21, 21
          3, 2, 22, 21, 22
          4, 0, NULL, NULL, NULL
-  - id: 3
+  - id: 2
     desc: |
       ROWS_RANGE pure-history window with exclude_current_row
       whether EXCLUDE CURRENT_ROW is set do not matter
@@ -161,7 +161,7 @@ cases:
          2, 1, 21, 21, 21
          3, 2, 22, 21, 22
          4, 0, NULL, NULL, NULL
-  - id: 41
+  - id: 3
     desc: |
       ROWS pure-history window with exclude_current_row
       whether EXCLUDE CURRENT_ROW is set do not matter
