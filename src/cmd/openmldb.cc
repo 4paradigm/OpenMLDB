@@ -89,11 +89,6 @@ const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + ".
 
 static std::map<std::string, std::string> real_ep_map;
 
-void shutdown_signal_handler(int signal) {
-    std::cout << "catch signal: " << signal << std::endl;
-    brpc::AskToQuit();
-}
-
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
