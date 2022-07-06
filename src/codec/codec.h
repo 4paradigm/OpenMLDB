@@ -41,8 +41,6 @@ class RowBuilder;
 class RowView;
 class RowProject;
 
-// TODO(wangtaize) share the row codec context
-
 class RowProject {
  public:
     RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist);
