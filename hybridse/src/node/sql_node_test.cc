@@ -559,9 +559,9 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     // Window with same union table and pk and orders can be merged
     {
         ASSERT_TRUE(dynamic_cast<WindowDefNode *>(
-                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                            node_manager_->MakeWindowDefNode(&unions2, pk1, orders1, rows_frame1, false, true))));
+                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                            &unions2, pk1, orders1, rows_frame1, false, false, true))));
     }
 
     // Window with different pks, can't be merged
@@ -584,22 +584,22 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     // Window with different unions, can't be merged
     {
         WindowDefNode *w = dynamic_cast<WindowDefNode *>(
-            node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false));
+            node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, false));
         ASSERT_FALSE(w1->CanMergeWith(w));
     }
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                             node_manager_->MakeWindowDefNode(&unions3, pk1, orders1, rows_frame1, false, true))));
+                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                             &unions3, pk1, orders1, rows_frame1, false, false, true))));
     }
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                             node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false))));
+                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                             &unions1, pk1, orders1, rows_frame1, false, false, false))));
     }
 
     // Window can't be merged when their frame can't be merge

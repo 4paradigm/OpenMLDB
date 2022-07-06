@@ -1083,18 +1083,14 @@ class RequestWindowUnionList {
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
-                                  const ColumnProjects &project,
-                                  const WindowOp &window_op,
-                                  bool instance_not_in_window,
-                                  bool need_append_input,
-                                  bool exclude_current_time)
+    PhysicalWindowAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project, const WindowOp &window_op,
+                                  bool instance_not_in_window, bool need_append_input, bool exclude_current_time)
         : PhysicalProjectNode(node, kWindowAggregation, project, true),
-          need_append_input_(need_append_input),
-          exclude_current_time_(exclude_current_time),
-          instance_not_in_window_(instance_not_in_window),
           window_(window_op),
-          window_unions_() {
+          window_unions_(),
+          need_append_input_(need_append_input),
+          instance_not_in_window_(instance_not_in_window),
+          exclude_current_time_(exclude_current_time) {
         output_type_ = kSchemaTypeTable;
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
@@ -1143,6 +1139,8 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     }
 
     const bool exclude_current_time() const { return exclude_current_time_; }
+    const bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     bool need_append_input() const { return need_append_input_; }
 
     WindowOp &window() { return window_; }
@@ -1154,19 +1152,20 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     base::Status WithNewChildren(node::NodeManager *nm,
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
-
-    const bool need_append_input_;
-    const bool exclude_current_time_;
-    const bool instance_not_in_window_;
-    WindowOp window_;
-    WindowUnionList window_unions_;
-    WindowJoinList window_joins_;
-
     /**
      * Initialize inner state for window joins
      */
     base::Status InitJoinList(PhysicalPlanContext *plan_ctx);
     std::vector<PhysicalOpNode *> joined_op_list_;
+
+    WindowOp window_;
+    WindowUnionList window_unions_;
+    WindowJoinList window_joins_;
+
+    const bool need_append_input_;
+    const bool instance_not_in_window_;
+    const bool exclude_current_time_;
+    bool exclude_current_row_ = false;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -1492,6 +1491,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     const bool exclude_current_time_;
     const bool output_request_row_;
     RequestWindowUnionList window_unions_;
+
+    bool exclude_current_row_ = false;
 };
 
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {

@@ -440,7 +440,8 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
                 CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
             }
 
-            op = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
+            auto* agg_prj = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
+            op = agg_prj;
             break;
         }
         case kGroupAggregation: {
@@ -735,6 +736,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::strin
     output << "(type=" << ProjectTypeName(project_type_);
     if (exclude_current_time_) {
         output << ", EXCLUDE_CURRENT_TIME";
+    }
+    if (exclude_current_row_) {
+        output << ", EXCLUDE_CURRENT_ROW";
     }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
@@ -1195,6 +1199,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const st
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
                                                      exclude_current_time_, output_request_row_);
+    new_union_op->exclude_current_row_ = exclude_current_row_;
 
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
@@ -1223,6 +1228,12 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     }
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    if (exclude_current_row_) {
+        output << "EXCLUDE_CURRENT_ROW, ";
+    }
+    if (instance_not_in_window_) {
+        output << "INSTANCE_NOT_IN_WINDOW, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {

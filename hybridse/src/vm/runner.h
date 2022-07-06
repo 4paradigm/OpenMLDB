@@ -912,14 +912,17 @@ class ReduceRunner : public Runner {
 
 class WindowAggRunner : public Runner {
  public:
-    WindowAggRunner(const int32_t id, const SchemasContext* schema,
-                    const int32_t limit_cnt, const WindowOp& window_op,
-                    const FnInfo& fn_info, const bool instance_not_in_window,
-                    const bool exclude_current_time,
-                    const bool need_append_input)
+    WindowAggRunner(int32_t id, const SchemasContext* schema,
+                    int32_t limit_cnt, const WindowOp& window_op,
+                    const FnInfo& fn_info,
+                    bool instance_not_in_window,
+                    bool exclude_current_time,
+                    bool exclude_current_row,
+                    bool need_append_input)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
+          exclude_current_row_(exclude_current_row),
           need_append_input_(need_append_input),
           append_slices_(need_append_input ? schema->GetSchemaSourceSize() : 0),
           instance_window_gen_(window_op),
@@ -946,6 +949,7 @@ class WindowAggRunner : public Runner {
 
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
+    const bool exclude_current_row_ = false;
     const bool need_append_input_;
     const size_t append_slices_;
     WindowGenerator instance_window_gen_;
@@ -968,17 +972,18 @@ class RequestUnionRunner : public Runner {
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
-    static std::shared_ptr<TableHandler> RequestUnionWindow(
-        const Row& request,
-        std::vector<std::shared_ptr<TableHandler>> union_segments,
-        int64_t request_ts, const WindowRange& window_range,
-        const bool output_request_row, const bool exclude_current_time);
+    static std::shared_ptr<TableHandler> RequestUnionWindow(const Row& request,
+                                                            std::vector<std::shared_ptr<TableHandler>> union_segments,
+                                                            int64_t request_ts, const WindowRange& window_range,
+                                                            bool output_request_row, bool exclude_current_time,
+                                                            bool exclude_current_row = false);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
+    bool exclude_current_row_ = false;
     bool output_request_row_;
 };
 
