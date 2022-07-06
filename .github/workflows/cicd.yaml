@@ -80,6 +80,10 @@ jobs:
         run: |
           make test
 
+      - name: run sql_router_test
+        id: sql_router_test
+        run: |
+          
       - name: run sql_sdk_test
         id: sql_sdk_test
         run: |
