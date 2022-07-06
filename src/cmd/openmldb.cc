@@ -85,7 +85,7 @@ DECLARE_string(data_dir);
 
 const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
                                      std::to_string(OPENMLDB_VERSION_MINOR) + "." +
-                                     std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
+                                     std::to_string(OPENMLDB_VERSION_BUG) + "-" + OPENMLDB_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
