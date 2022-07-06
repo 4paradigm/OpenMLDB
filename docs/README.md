@@ -35,6 +35,8 @@ If you fail to create conda envs by `environment.yml`, try following commands.
    pip3 install sphinx-multiversion 
    pip3 install myst-parser
    pip3 install sphinx-book-theme
+   pip3 install sphinx_copybutton
+   pip3 install myst-parser[linkify]
    ```
 ## Tips
 
