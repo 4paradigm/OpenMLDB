@@ -59,9 +59,8 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
     return true;
 }
 
-void APIServerImpl::Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
-                            google::protobuf::Closure* done) {
-    brpc::ClosureGuard done_guard(done);
+void APIServerImpl::Refresh() {
+    // brpc::ClosureGuard done_guard(done);
     if (sql_router_) {
         sql_router_->RefreshCatalog();
     }
@@ -439,7 +438,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         sp_resp.need_schema = true;
     }
     sp_resp.rs = rs;
-    writer << resp;
+    writer << sp_resp;
 }
 
 void APIServerImpl::RegisterGetSP() {
