@@ -83,6 +83,7 @@ jobs:
       - name: run sql_router_test
         id: sql_router_test
         run: |
+          bash steps/ut.sh sql_router_test 0
           
       - name: run sql_sdk_test
         id: sql_sdk_test
