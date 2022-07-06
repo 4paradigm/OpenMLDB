@@ -17,13 +17,14 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.java_sdk_test.util.JDBCUtil;
 import com._4paradigm.openmldb.java_sdk_test.util.Sqlite3Util;
 import com._4paradigm.openmldb.test_common.model.DBType;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -70,13 +71,13 @@ public class Sqlite3Executor extends JDBCExecutor{
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
-                sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                sql = SQLUtil.formatSql(sql, tableNames);
                 fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
             }
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
-            sql = OpenMLDBUtil.formatSql(sql, tableNames);
+            sql = SQLUtil.formatSql(sql, tableNames);
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
         }
         mainResult = fesqlResult;

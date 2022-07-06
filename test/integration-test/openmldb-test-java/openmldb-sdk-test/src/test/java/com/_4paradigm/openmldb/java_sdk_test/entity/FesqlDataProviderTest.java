@@ -17,7 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.entity;
 
 
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.DataUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import org.testng.Assert;
@@ -96,7 +97,7 @@ public class FesqlDataProviderTest {
         Assert.assertEquals(3, provider.getCases().size());
         SQLCase sqlCase = provider.getCases().get(0);
         Assert.assertEquals(2, sqlCase.getInputs().size());
-        List<List<Object>> expect = OpenMLDBUtil.convertRows(sqlCase.getExpect().getRows(),
+        List<List<Object>> expect = DataUtil.convertRows(sqlCase.getExpect().getRows(),
                 sqlCase.getExpect().getColumns());
     }
 }

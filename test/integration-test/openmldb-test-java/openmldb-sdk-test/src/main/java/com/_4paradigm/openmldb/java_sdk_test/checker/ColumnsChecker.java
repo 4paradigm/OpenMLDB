@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.TypeUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
 import lombok.extern.slf4j.Slf4j;
@@ -50,8 +50,8 @@ public class ColumnsChecker extends BaseChecker {
         for (int i = 0; i < expectColumns.size(); i++) {
             // Assert.assertEquals(columnNames.get(i)+" "+columnTypes.get(i),expectColumns.get(i));
             Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)));
-            Assert.assertEquals(OpenMLDBUtil.getColumnType(columnTypes.get(i)),
-                    OpenMLDBUtil.getColumnType(Table.getColumnType(expectColumns.get(i))));
+            Assert.assertEquals(TypeUtil.getOpenMLDBColumnType(columnTypes.get(i)),
+                    TypeUtil.getOpenMLDBColumnType(Table.getColumnType(expectColumns.get(i))));
         }
 
     }

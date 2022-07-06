@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.util;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.DBType;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.TypeUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
@@ -110,7 +110,7 @@ public class JDBCUtil {
                     columnLabel = metaData.getColumnName(i);
                 }
                 columnNames.add(columnLabel);
-                columnTypes.add(OpenMLDBUtil.getSQLTypeString(metaData.getColumnType(i)));
+                columnTypes.add(TypeUtil.fromJDBCTypeToString(metaData.getColumnType(i)));
             }
             fesqlResult.setColumnNames(columnNames);
             fesqlResult.setColumnTypes(columnTypes);

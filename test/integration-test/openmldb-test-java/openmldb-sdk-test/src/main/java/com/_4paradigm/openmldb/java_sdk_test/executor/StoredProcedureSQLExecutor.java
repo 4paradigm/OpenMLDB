@@ -17,10 +17,11 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -50,7 +51,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         logger.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         logger.info("create db:{},{}", dbName, dbOk);
-        OpenMLDBResult res = OpenMLDBUtil.createAndInsert(
+        OpenMLDBResult res = SDKUtil.createAndInsert(
                 executor, dbName, fesqlCase.getInputs(),
                 !isBatchRequest && null == fesqlCase.getBatch_request());
         if (!res.isOk()) {
@@ -89,16 +90,16 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     private OpenMLDBResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spSql = fesqlCase.getProcedure(sql);
         logger.info("spSql: {}", spSql);
-        return OpenMLDBUtil.sqlRequestModeWithSp(
+        return SDKUtil.sqlRequestModeWithProcedure(
                 executor, dbName, fesqlCase.getSpName(), null == fesqlCase.getBatch_request(),
                 spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
     private OpenMLDBResult executeBatch(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
-        String spSql = OpenMLDBUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
+        String spSql = SQLUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
         logger.info("spSql: {}", spSql);
-        return OpenMLDBUtil.selectBatchRequestModeWithSp(
+        return SDKUtil.selectBatchRequestModeWithSp(
                 executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
 

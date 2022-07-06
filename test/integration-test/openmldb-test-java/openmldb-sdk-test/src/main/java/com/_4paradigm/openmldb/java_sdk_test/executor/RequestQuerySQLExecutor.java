@@ -18,11 +18,12 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -60,20 +61,20 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                  for (String sql : sqls) {
                      // log.info("sql:{}", sql);
                      if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                         sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                         sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                      }else {
-                         sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                         sql = SQLUtil.formatSql(sql, tableNames);
                      }
-                     fesqlResult = OpenMLDBUtil.sql(executor, dbName, sql);
+                     fesqlResult = SDKUtil.sql(executor, dbName, sql);
                  }
              }
             String sql = fesqlCase.getSql();
             if (sql != null && sql.length() > 0) {
                 // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
                 InputDesc request = null;
                 if (isBatchRequest) {
@@ -91,7 +92,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         }
                     }
 
-                    fesqlResult = OpenMLDBUtil.sqlBatchRequestMode(
+                    fesqlResult = SDKUtil.sqlBatchRequestMode(
                             executor, dbName, sql, batchRequest, commonColumnIndices);
                 } else {
                     if (null != fesqlCase.getBatch_request()) {
@@ -103,7 +104,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         logger.error("fail to execute in request query sql executor: sql case request columns is empty");
                         return null;
                     }
-                    fesqlResult = OpenMLDBUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
+                    fesqlResult = SDKUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
                 }
             }
         }catch (Exception e){
@@ -119,7 +120,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         boolean dbOk = executor.createDB(dbName);
         logger.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
-        OpenMLDBResult res = OpenMLDBUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
+        OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
         }

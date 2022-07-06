@@ -23,7 +23,7 @@ import com._4paradigm.openmldb.java_sdk_test.checker.ResultChecker;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBComamndFacade;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.common.Checker;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
@@ -32,6 +32,7 @@ import com._4paradigm.openmldb.test_common.restful.model.AfterAction;
 import com._4paradigm.openmldb.test_common.restful.model.BeforeAction;
 import com._4paradigm.openmldb.test_common.restful.model.HttpMethod;
 import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -82,7 +83,7 @@ public class RestfulCliExecutor extends BaseExecutor{
         }
         if(CollectionUtils.isNotEmpty(beforeAction.getSqls())){
             List<String> sqls = beforeAction.getSqls().stream()
-                    .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                    .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                     .map(sql->{
                         if(sql.contains("{db_name}")){
                             sql = sql.replace("{db_name}",FedbRestfulConfig.DB_NAME);
@@ -116,7 +117,7 @@ public class RestfulCliExecutor extends BaseExecutor{
         if(tearDown!=null){
             if(CollectionUtils.isNotEmpty(tearDown.getSqls())){
                 List<String> sqls = tearDown.getSqls().stream()
-                        .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                        .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                         .map(sql->{
                             if(sql.contains("{db_name}")){
                                 sql = sql.replace("{db_name}",FedbRestfulConfig.DB_NAME);
@@ -148,7 +149,7 @@ public class RestfulCliExecutor extends BaseExecutor{
         if(afterAction!=null){
             if(CollectionUtils.isNotEmpty(afterAction.getSqls())){
                 List<String> sqls = afterAction.getSqls().stream()
-                        .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                        .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                         .collect(Collectors.toList());
                 fesqlResult = OpenMLDBComamndFacade.sqls(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, sqls);
             }

@@ -16,9 +16,11 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.DataUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
+import com._4paradigm.openmldb.test_common.util.SchemaUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
@@ -45,13 +47,13 @@ public class ResultCheckerByJDBC extends BaseChecker {
         if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
-        List<List<Object>> expectRows = OpenMLDBUtil.convertRows(expect.getRows(),
+        List<List<Object>> expectRows = DataUtil.convertRows(expect.getRows(),
                 expect.getColumns());
         List<List<Object>> actual = fesqlResult.getResult();
 
         String orderName = expect.getOrder();
         if (StringUtils.isNotEmpty(orderName)) {
-            int index = OpenMLDBUtil.getIndexByColumnName(fesqlResult.getColumnNames(),orderName);
+            int index = SchemaUtil.getIndexByColumnName(fesqlResult.getColumnNames(),orderName);
             Collections.sort(expectRows, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
         }

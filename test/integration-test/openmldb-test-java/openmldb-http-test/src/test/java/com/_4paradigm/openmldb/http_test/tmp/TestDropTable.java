@@ -17,7 +17,7 @@ package com._4paradigm.openmldb.http_test.tmp;
 
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
 import com._4paradigm.openmldb.test_common.util.HttpRequest;
 import com.google.gson.Gson;
@@ -45,7 +45,7 @@ public class TestDropTable {
         for(int i=0;i<tables.size();i++){
             String name = tables.get(i).getAsJsonObject().get("name").getAsString();
             String sql = "drop table "+name+";";
-            OpenMLDBResult ddl = OpenMLDBUtil.ddl(fedbClient.getExecutor(), dbName, sql);
+            OpenMLDBResult ddl = SDKUtil.ddl(fedbClient.getExecutor(), dbName, sql);
         }
         
     }

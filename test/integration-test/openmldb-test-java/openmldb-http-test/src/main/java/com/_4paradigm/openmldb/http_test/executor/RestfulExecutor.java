@@ -21,7 +21,7 @@ import com._4paradigm.openmldb.http_test.common.RestfulGlobalVar;
 import com._4paradigm.openmldb.http_test.config.FedbRestfulConfig;
 import com._4paradigm.openmldb.java_sdk_test.checker.ResultChecker;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.common.Checker;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
@@ -31,6 +31,7 @@ import com._4paradigm.openmldb.test_common.restful.model.AfterAction;
 import com._4paradigm.openmldb.test_common.restful.model.BeforeAction;
 import com._4paradigm.openmldb.test_common.restful.model.HttpMethod;
 import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 
@@ -69,7 +70,7 @@ public class RestfulExecutor extends BaseExecutor{
             return;
         }
         if(CollectionUtils.isNotEmpty(beforeAction.getTables())) {
-            OpenMLDBResult res = OpenMLDBUtil.createAndInsert(executor, FedbRestfulConfig.DB_NAME, beforeAction.getTables(), false);
+            OpenMLDBResult res = SDKUtil.createAndInsert(executor, FedbRestfulConfig.DB_NAME, beforeAction.getTables(), false);
             if (!res.isOk()) {
                 throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail ");
             }
@@ -82,7 +83,7 @@ public class RestfulExecutor extends BaseExecutor{
         }
         if(CollectionUtils.isNotEmpty(beforeAction.getSqls())){
             List<String> sqls = beforeAction.getSqls().stream()
-                    .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                    .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                     .map(sql->{
                         if(sql.contains("{db_name}")){
                             sql = sql.replace("{db_name}",FedbRestfulConfig.DB_NAME);
@@ -90,7 +91,7 @@ public class RestfulExecutor extends BaseExecutor{
                         return sql;
                     })
                     .collect(Collectors.toList());
-            OpenMLDBUtil.sqls(executor,FedbRestfulConfig.DB_NAME,sqls);
+            SDKUtil.sqlList(executor,FedbRestfulConfig.DB_NAME,sqls);
         }
         logger.info("prepare end");
     }
@@ -115,7 +116,7 @@ public class RestfulExecutor extends BaseExecutor{
         if(tearDown!=null){
             if(CollectionUtils.isNotEmpty(tearDown.getSqls())){
                 List<String> sqls = tearDown.getSqls().stream()
-                        .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                        .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                         .map(sql->{
                             if(sql.contains("{db_name}")){
                                 sql = sql.replace("{db_name}",FedbRestfulConfig.DB_NAME);
@@ -123,7 +124,7 @@ public class RestfulExecutor extends BaseExecutor{
                             return sql;
                         })
                         .collect(Collectors.toList());
-                fesqlResult = OpenMLDBUtil.sqls(executor, FedbRestfulConfig.DB_NAME, sqls);
+                fesqlResult = SDKUtil.sqlList(executor, FedbRestfulConfig.DB_NAME, sqls);
             }
         }
 
@@ -135,7 +136,7 @@ public class RestfulExecutor extends BaseExecutor{
             for (InputDesc table : tables) {
                 if(table.isDrop()) {
                     String drop = "drop table " + table.getName() + ";";
-                    OpenMLDBUtil.ddl(executor, FedbRestfulConfig.DB_NAME, drop);
+                    SDKUtil.ddl(executor, FedbRestfulConfig.DB_NAME, drop);
                 }
             }
         }
@@ -147,9 +148,9 @@ public class RestfulExecutor extends BaseExecutor{
         if(afterAction!=null){
             if(CollectionUtils.isNotEmpty(afterAction.getSqls())){
                 List<String> sqls = afterAction.getSqls().stream()
-                        .map(sql -> OpenMLDBUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
+                        .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                         .collect(Collectors.toList());
-                fesqlResult = OpenMLDBUtil.sqls(executor, FedbRestfulConfig.DB_NAME, sqls);
+                fesqlResult = SDKUtil.sqlList(executor, FedbRestfulConfig.DB_NAME, sqls);
             }
             ExpectDesc expect = afterAction.getExpect();
             if(expect!=null){

@@ -19,7 +19,7 @@
     <dependencies>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-deploy</artifactId>
+            <artifactId>openmldb-test-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

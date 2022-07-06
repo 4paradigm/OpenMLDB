@@ -16,9 +16,6 @@
 
 package com._4paradigm.openmldb.test_common.util;
 
-import com._4paradigm.openmldb.DataType;
-import com._4paradigm.openmldb.SQLRequestRow;
-import com._4paradigm.openmldb.Schema;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBColumn;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
@@ -32,7 +29,6 @@ import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -47,203 +43,16 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author zhaowei
  * @date 2020/6/17 4:00 PM
  */
 @Slf4j
-public class OpenMLDBUtil {
-    private static String reg = "\\{(\\d+)\\}";
-    private static Pattern pattern = Pattern.compile(reg);
+public class SDKUtil {
     private static final Logger logger = new LogProxy(log);
 
-    public static String buildSpSQLWithConstColumns(String spName,
-                                                    String sql,
-                                                    InputDesc input) throws SQLException {
-        StringBuilder builder = new StringBuilder("create procedure " + spName + "(");
-        HashSet<Integer> commonColumnIndices = new HashSet<>();
-        if (input.getCommon_column_indices() != null) {
-            for (String str : input.getCommon_column_indices()) {
-                if (str != null) {
-                    commonColumnIndices.add(Integer.parseInt(str));
-                }
-            }
-        }
-        if (input.getColumns() == null) {
-            throw new SQLException("No schema defined in input desc");
-        }
-        for (int i = 0; i < input.getColumns().size(); ++i) {
-            String[] parts = input.getColumns().get(i).split(" ");
-            if (commonColumnIndices.contains(i)) {
-                builder.append("const ");
-            }
-            builder.append(parts[0]);
-            builder.append(" ");
-            builder.append(parts[1]);
-            if (i != input.getColumns().size() - 1) {
-                builder.append(",");
-            }
-        }
-        builder.append(") ");
-        builder.append("BEGIN ");
-        builder.append(sql.trim());
-        builder.append(" ");
-        builder.append("END;");
-        sql = builder.toString();
-        return sql;
-    }
-
-    public static int getIndexByColumnName(List<String> columnNames, String columnName) {
-        for (int i = 0; i < columnNames.size(); i++) {
-            if (columnNames.get(i).equals(columnName)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public static DataType getColumnType(String type) {
-        switch (type) {
-            case "smallint":
-            case "int16":
-                return DataType.kTypeInt16;
-            case "int32":
-            case "i32":
-            case "int":
-                return DataType.kTypeInt32;
-            case "int64":
-            case "bigint":
-                return DataType.kTypeInt64;
-            case "float":
-                return DataType.kTypeFloat;
-            case "double":
-                return DataType.kTypeDouble;
-            case "bool":
-                return DataType.kTypeBool;
-            case "string":
-                return DataType.kTypeString;
-            case "timestamp":
-                return DataType.kTypeTimestamp;
-            case "date":
-                return DataType.kTypeDate;
-            default:
-                return null;
-        }
-    }
-
-    public static DataType getColumnTypeByJDBC(String type) {
-        switch (type) {
-            case "smallint":
-            case "int16":
-                return DataType.kTypeInt16;
-            case "int32":
-            case "i32":
-            case "int":
-            case "bool":
-                return DataType.kTypeInt32;
-            case "int64":
-            case "bigint":
-                return DataType.kTypeInt64;
-            case "float":
-                return DataType.kTypeFloat;
-            case "double":
-                return DataType.kTypeDouble;
-            // case "bool":
-            //     return DataType.kTypeBool;
-            case "string":
-                return DataType.kTypeString;
-            case "timestamp":
-                return DataType.kTypeTimestamp;
-            case "date":
-                return DataType.kTypeDate;
-            default:
-                return null;
-        }
-    }
-
-    public static int getSQLType(String type) {
-        switch (type) {
-            case "smallint":
-            case "int16":
-                return Types.SMALLINT;
-            case "int32":
-            case "i32":
-            case "int":
-                return Types.INTEGER;
-            case "int64":
-            case "bigint":
-                return Types.BIGINT;
-            case "float":
-                return Types.FLOAT;
-            case "double":
-                return Types.DOUBLE;
-            case "bool":
-                return Types.BOOLEAN;
-            case "string":
-                return Types.VARCHAR;
-            case "timestamp":
-                return Types.TIMESTAMP;
-            case "date":
-                return Types.DATE;
-            default:
-                return 0;
-        }
-    }
-
-    public static String getColumnTypeString(DataType dataType) {
-        if (dataType.equals(DataType.kTypeBool)) {
-            return "bool";
-        } else if (dataType.equals(DataType.kTypeString)) {
-            return "string";
-        } else if (dataType.equals(DataType.kTypeInt16)) {
-            return "smallint";
-        } else if (dataType.equals(DataType.kTypeInt32)) {
-            return "int";
-        } else if (dataType.equals(DataType.kTypeInt64)) {
-            return "bigint";
-        } else if (dataType.equals(DataType.kTypeFloat)) {
-            return "float";
-        } else if (dataType.equals(DataType.kTypeDouble)) {
-            return "double";
-        } else if (dataType.equals(DataType.kTypeTimestamp)) {
-            return "timestamp";
-        } else if (dataType.equals(DataType.kTypeDate)) {
-            return "date";
-        }
-        return null;
-    }
-
-    public static String getSQLTypeString(int dataType) {
-        switch (dataType){
-            case Types.BIT:
-            case Types.BOOLEAN:
-                return "bool";
-            case Types.VARCHAR:
-                return "string";
-            case Types.SMALLINT:
-                return "smallint";
-            case Types.INTEGER:
-                return "int";
-            case Types.BIGINT:
-                return "bigint";
-            case Types.REAL:
-            case Types.FLOAT:
-                return "float";
-            case Types.DOUBLE:
-                return "double";
-            case Types.TIMESTAMP:
-                return "timestamp";
-            case Types.DATE:
-                return "date";
-            default:
-                return null;
-        }
-    }
-
-    public static OpenMLDBResult sqls(SqlExecutor executor, String dbName, List<String> sqls) {
+    public static OpenMLDBResult sqlList(SqlExecutor executor, String dbName, List<String> sqls) {
         OpenMLDBResult fesqlResult = null;
         for (String sql : sqls) {
             fesqlResult = sql(executor, dbName, sql);
@@ -275,9 +84,9 @@ public class OpenMLDBUtil {
         return fesqlResult;
     }
 
-    public static OpenMLDBResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                                                      Boolean needInsertRequestRow, String sql,
-                                                      InputDesc rows, boolean isAsyn) throws SQLException {
+    public static OpenMLDBResult sqlRequestModeWithProcedure(SqlExecutor executor, String dbName, String spName,
+                                                             Boolean needInsertRequestRow, String sql,
+                                                             InputDesc rows, boolean isAsyn) throws SQLException {
         OpenMLDBResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("create procedure")) {
             fesqlResult = selectRequestModeWithSp(executor, dbName, spName, needInsertRequestRow, sql, rows, isAsyn);
@@ -293,7 +102,7 @@ public class OpenMLDBUtil {
         if (sql.startsWith("create database") || sql.startsWith("drop database")) {
             fesqlResult = db(executor, sql);
         }else if(sql.startsWith("CREATE INDEX")||sql.startsWith("create index")){
-            fesqlResult = createIndex(executor, dbName, sql);
+            fesqlResult = createIndex(executor, sql);
         }else if (sql.startsWith("create") || sql.startsWith("CREATE") || sql.startsWith("DROP")|| sql.startsWith("drop")) {
             fesqlResult = ddl(executor, dbName, sql);
         } else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
@@ -350,10 +159,10 @@ public class OpenMLDBUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                String deployStr = convertRestultSetToListDeploy(rs);
+                String deployStr = DataUtil.convertResultSetToListDeploy(rs);
                 String[] strings = deployStr.split("\n");
                 List<String> stringList = Arrays.asList(strings);
-                OpenmldbDeployment openmldbDeployment = parseDeployment(stringList);
+                OpenmldbDeployment openmldbDeployment = ResultUtil.parseDeployment(stringList);
                 fesqlResult.setDeployment(openmldbDeployment);
             } catch (Exception e) {
                 fesqlResult.setOk(false);
@@ -379,7 +188,7 @@ public class OpenMLDBUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                List<List<Object>> lists = convertRestultSetToList(rs);
+                List<List<Object>> lists = DataUtil.convertResultSetToList(rs);
                 if(lists.size() == 0 ||lists.isEmpty()){
                     fesqlResult.setDeploymentCount(0);
                 }else {
@@ -396,66 +205,7 @@ public class OpenMLDBUtil {
         return fesqlResult;
     }
 
-    private static String convertRestultSetToListDeploy(SQLResultSet rs) throws SQLException {
-        String string = null;
-        while (rs.next()) {
-            int columnCount = rs.getMetaData().getColumnCount();
-            for (int i = 0; i < columnCount; i++) {
-                string=String.valueOf(getColumnData(rs, i));
-            }
-        }
-        return string;
-    }
 
-    private static List<String> convertRestultSetToListDesc(SQLResultSet rs) throws SQLException {
-        List<String> res = new ArrayList<>();
-        while (rs.next()) {
-            int columnCount = rs.getMetaData().getColumnCount();
-            for (int i = 0; i < columnCount; i++) {
-                String string=String.valueOf(getColumnData(rs, i));
-                res.add(string);
-            }
-        }
-        return res;
-    }
-
-    private static OpenmldbDeployment parseDeployment(List<String> lines){
-        OpenmldbDeployment deployment = new OpenmldbDeployment();
-        List<String> inColumns = new ArrayList<>();
-        List<String> outColumns = new ArrayList<>();
-        String[] db_sp = lines.get(3).split("\\s+");
-        deployment.setDbName(db_sp[1]);
-        deployment.setName(db_sp[2]);
-
-        String sql = "";
-        List<String> list = lines.subList(9, lines.size());
-        Iterator<String> it = list.iterator();
-        while(it.hasNext()) {
-            String line = it.next().trim();
-            if (line.contains("row in set")) break;
-            if (line.startsWith("#") || line.startsWith("-")) continue;
-            sql += line+"\n";
-        }
-        deployment.setSql(sql);
-        while(it.hasNext()){
-            String line = it.next().trim();
-            if (line.contains("Output Schema")) break;
-            if (line.startsWith("#") || line.startsWith("-")|| line.equals("")) continue;
-            String[] infos = line.split("\\s+");
-            String in = Joiner.on(",").join(infos);
-            inColumns.add(in);
-        }
-        while(it.hasNext()){
-            String line = it.next().trim();
-            if(line.startsWith("#")||line.startsWith("-"))continue;
-            String[] infos = line.split("\\s+");
-            String out = Joiner.on(",").join(infos);
-            outColumns.add(out);
-        }
-        deployment.setInColumns(inColumns);
-        deployment.setOutColumns(outColumns);
-        return deployment;
-    }
 
     public static OpenMLDBResult desc(SqlExecutor executor, String dbName, String descSql){
         if (descSql.isEmpty()){
@@ -473,11 +223,11 @@ public class OpenMLDBUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                String deployStr = convertRestultSetToListDeploy(rs);
-                List<String> listDesc = convertRestultSetToListDesc(rs);
+                String deployStr = DataUtil.convertResultSetToListDeploy(rs);
+                List<String> listDesc = DataUtil.convertResultSetToListDesc(rs);
                 String[] strings = deployStr.split("\n");
                 List<String> stringList = Arrays.asList(strings);
-                OpenMLDBSchema openMLDBSchema = parseSchema(stringList);
+                OpenMLDBSchema openMLDBSchema = SchemaUtil.parseSchema(stringList);
                 fesqlResult.setSchema(openMLDBSchema);
             } catch (Exception e) {
                 fesqlResult.setOk(false);
@@ -488,44 +238,8 @@ public class OpenMLDBUtil {
         return fesqlResult;
     }
 
-    public static OpenMLDBSchema parseSchema(List<String> lines){
-        OpenMLDBSchema schema = new OpenMLDBSchema();
-        List<OpenMLDBColumn> cols = new ArrayList<>();
-        List<OpenMLDBIndex> indexs = new ArrayList<>();
-        Iterator<String> it = lines.iterator();
-//        while(it.hasNext()){
-//            String line = it.next();
-//            if(line.contains("ttl_type")) break;
-//            if(line.startsWith("#")||line.startsWith("-"))continue;
-//            OpenMLDBColumn col = new OpenMLDBColumn();
-//            String[] infos = line.split("\\s+");
-//            col.setId(Integer.parseInt(infos[0]));
-//            col.setFieldName(infos[1]);
-//            col.setFieldType(infos[2]);
-//            col.setNullable(infos[3].equals("NO")?false:true);
-//            cols.add(col);
-//            it.remove();
-//        }
-        while(it.hasNext()){
-            String line = it.next().trim();
-            if(line.startsWith("#")||line.startsWith("-"))continue;
-            OpenMLDBIndex index = new OpenMLDBIndex();
-            String[] infos = line.split("\\s+");
-            index.setId(Integer.parseInt(infos[0]));
-            index.setIndexName(infos[1]);
-            index.setKeys(Arrays.asList(infos[2].split("\\|")));
-            index.setTs(infos[3]);
-            index.setTtl(infos[4]);
-            index.setTtlType(infos[5]);
-            indexs.add(index);
-            //it.remove();
-        }
-        schema.setIndexs(indexs);
-        //schema.setColumns(cols);
-        return schema;
-    }
 
-    public static OpenMLDBResult createIndex(SqlExecutor executor, String dbName, String sql) {
+    public static OpenMLDBResult createIndex(SqlExecutor executor, String sql) {
         if (sql.isEmpty()) {
             return null;
         }
@@ -564,7 +278,7 @@ public class OpenMLDBUtil {
             }
             logger.info("prepare sql:{}", sql);
             PreparedStatement preparedStmt = executor.getPreparedStatement(dbName, sql);
-            setPreparedData(preparedStmt,paramterTypes,params);
+            DataUtil.setPreparedData(preparedStmt,paramterTypes,params);
             ResultSet resultSet = preparedStmt.executeQuery();
 
             if (resultSet == null) {
@@ -575,7 +289,7 @@ public class OpenMLDBUtil {
                     SQLResultSet rs = (SQLResultSet)resultSet;
                     ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                     fesqlResult.setOk(true);
-                    List<List<Object>> result = convertRestultSetToList(rs);
+                    List<List<Object>> result = DataUtil.convertResultSetToList(rs);
                     fesqlResult.setCount(result.size());
                     fesqlResult.setResult(result);
                 } catch (Exception e) {
@@ -600,7 +314,7 @@ public class OpenMLDBUtil {
             }
             logger.info("prepare sql:{}", insertSql);
             PreparedStatement preparedStmt = executor.getInsertPreparedStmt(dbName, insertSql);
-            setRequestData(preparedStmt,params);
+            DataUtil.setRequestData(preparedStmt,params);
             // for(int i=0;i<types.size();i++){
                 // preparedStatementSetValue(preparedStmt,i+1,types.get(i).split("\\s+")[1],params.get(i));
             // }
@@ -646,19 +360,6 @@ public class OpenMLDBUtil {
     }
 
 
-    private static List<List<Object>> convertRestultSetToList(SQLResultSet rs) throws SQLException {
-        List<List<Object>> result = new ArrayList<>();
-        while (rs.next()) {
-            List list = new ArrayList();
-            int columnCount = rs.getMetaData().getColumnCount();
-            for (int i = 0; i < columnCount; i++) {
-                list.add(getColumnData(rs, i));
-            }
-            result.add(list);
-        }
-        return result;
-    }
-
     private static OpenMLDBResult selectRequestModeWithPreparedStatement(SqlExecutor executor, String dbName,
                                                                          Boolean need_insert_request_row,
                                                                          String selectSql, InputDesc input) {
@@ -698,7 +399,7 @@ public class OpenMLDBUtil {
             }
             ResultSet resultSet = null;
             try {
-                resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+                resultSet = buildRequestPreparedStatement(rps, rows.get(i));
 
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
@@ -712,7 +413,7 @@ public class OpenMLDBUtil {
                 return fesqlResult;
             }
             try {
-                result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
+                result.addAll(DataUtil.convertResultSetToList((SQLResultSet) resultSet));
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
                 fesqlResult.setMsg("Convert Result Set To List Fail");
@@ -782,7 +483,7 @@ public class OpenMLDBUtil {
             rps = executor.getBatchRequestPreparedStmt(dbName, selectSql, commonColumnIndices);
 
             for (List<Object> row : rows) {
-                boolean ok = setRequestData(rps, row);
+                boolean ok = DataUtil.setRequestData(rps, row);
                 if (ok) {
                     rps.addBatch();
                 }
@@ -790,7 +491,7 @@ public class OpenMLDBUtil {
 
             sqlResultSet = (SQLResultSet) rps.executeQuery();
             List<List<Object>> result = Lists.newArrayList();
-            result.addAll(convertRestultSetToList(sqlResultSet));
+            result.addAll(DataUtil.convertResultSetToList(sqlResultSet));
             fesqlResult.setResult(result);
             ResultUtil.setSchema(sqlResultSet.getMetaData(),fesqlResult);
             fesqlResult.setCount(result.size());
@@ -867,9 +568,9 @@ public class OpenMLDBUtil {
                     return fesqlResult;
                 }
                 if (!isAsyn) {
-                    resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+                    resultSet = buildRequestPreparedStatement(rps, rows.get(i));
                 } else {
-                    resultSet = buildRequestPreparedStatmentAsync(rps, rows.get(i));
+                    resultSet = buildRequestPreparedStatementAsync(rps, rows.get(i));
                 }
                 if (resultSet == null) {
                     fesqlResult.setOk(false);
@@ -877,7 +578,7 @@ public class OpenMLDBUtil {
                     logger.error("select result:{}", fesqlResult);
                     return fesqlResult;
                 }
-                result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
+                result.addAll(DataUtil.convertResultSetToList((SQLResultSet) resultSet));
                 if (needInsertRequestRow && !executor.executeInsert(insertDbName, inserts.get(i))) {
                     fesqlResult.setOk(false);
                     fesqlResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
@@ -951,7 +652,7 @@ public class OpenMLDBUtil {
                 return fesqlResult;
             }
             for (List<Object> row : rows) {
-                boolean ok = setRequestData(rps, row);
+                boolean ok = DataUtil.setRequestData(rps, row);
                 if (ok) {
                     rps.addBatch();
                 }
@@ -970,7 +671,7 @@ public class OpenMLDBUtil {
                 }
             }
             List<List<Object>> result = Lists.newArrayList();
-            result.addAll(convertRestultSetToList((SQLResultSet) sqlResultSet));
+            result.addAll(DataUtil.convertResultSetToList((SQLResultSet) sqlResultSet));
             fesqlResult.setResult(result);
             ResultUtil.setSchema(sqlResultSet.getMetaData(),fesqlResult);
             fesqlResult.setCount(result.size());
@@ -997,266 +698,65 @@ public class OpenMLDBUtil {
         return fesqlResult;
     }
 
-    public static List<List<Object>> convertRows(List<List<Object>> rows, List<String> columns) throws ParseException {
-        List<List<Object>> list = new ArrayList<>();
-        for (List row : rows) {
-            list.add(convertList(row, columns));
-        }
-        return list;
-    }
 
-    public static List<Object> convertList(List<Object> datas, List<String> columns) throws ParseException {
-        List<Object> list = new ArrayList();
-        for (int i = 0; i < datas.size(); i++) {
-            if (datas.get(i) == null) {
-                list.add(null);
-            } else {
-                String obj = datas.get(i).toString();
-                String column = columns.get(i);
-                list.add(convertData(obj, column));
-            }
-        }
-        return list;
-    }
-
-    public static Object convertData(String data, String column) throws ParseException {
-        String[] ss = column.split("\\s+");
-        String type = ss[ss.length - 1];
-        Object obj = null;
-        if(data == null){
-            return null;
-        }
-        if ("null".equalsIgnoreCase(data)) {
-            return "null";
-        }
-        switch (type) {
-            case "smallint":
-            case "int16":
-                obj = Short.parseShort(data);
-                break;
-            case "int32":
-            case "i32":
-            case "int":
-                obj = Integer.parseInt(data);
-                break;
-            case "int64":
-            case "bigint":
-                obj = Long.parseLong(data);
-                break;
-            case "float": {
-                if (data.equalsIgnoreCase("nan")||data.equalsIgnoreCase("-nan")) {
-                    obj = Float.NaN;
-                }else if(data.equalsIgnoreCase("inf")){
-                    obj = Float.POSITIVE_INFINITY;
-                }else if(data.equalsIgnoreCase("-inf")){
-                    obj = Float.NEGATIVE_INFINITY;
-                }else {
-                    obj = Float.parseFloat(data);
-                }
-                break;
-            }
-            case "double": {
-                if (data.equalsIgnoreCase("nan")||data.equalsIgnoreCase("-nan")) {
-                    obj = Double.NaN;
-                }else if(data.equalsIgnoreCase("inf")){
-                    obj = Double.POSITIVE_INFINITY;
-                }else if(data.equalsIgnoreCase("-inf")){
-                    obj = Double.NEGATIVE_INFINITY;
-                }else {
-                    obj = Double.parseDouble(data);
-                }
-                break;
-            }
-            case "bool":
-                obj = Boolean.parseBoolean(data);
-                break;
-            case "string":
-                obj = data;
-                break;
-            case "timestamp":
-                obj = new Timestamp(Long.parseLong(data));
-                break;
-            case "date":
-                try {
-                    obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.trim() + " 00:00:00").getTime());
-                } catch (ParseException e) {
-                    log.error("Fail convert {} to date", data.trim());
-                    throw e;
-                }
-                break;
-            default:
-                obj = data;
-                break;
-        }
-        return obj;
-    }
-
-    private static boolean buildRequestRow(SQLRequestRow requestRow, List<Object> objects) {
-        Schema schema = requestRow.GetSchema();
-        int totalSize = 0;
-        for (int i = 0; i < schema.GetColumnCnt(); i++) {
-            if (null == objects.get(i)) {
-                continue;
-            }
-            if (DataType.kTypeString.equals(schema.GetColumnType(i))) {
-                totalSize += objects.get(i).toString().length();
-            }
-        }
-
-        logger.info("init request row: {}", totalSize);
-        requestRow.Init(totalSize);
-        for (int i = 0; i < schema.GetColumnCnt(); i++) {
-            Object obj = objects.get(i);
-            if (null == obj) {
-                requestRow.AppendNULL();
-                continue;
-            }
-
-            DataType dataType = schema.GetColumnType(i);
-            if (DataType.kTypeInt16.equals(dataType)) {
-                requestRow.AppendInt16(Short.parseShort(obj.toString()));
-            } else if (DataType.kTypeInt32.equals(dataType)) {
-                requestRow.AppendInt32(Integer.parseInt(obj.toString()));
-            } else if (DataType.kTypeInt64.equals(dataType)) {
-                requestRow.AppendInt64(Long.parseLong(obj.toString()));
-            } else if (DataType.kTypeFloat.equals(dataType)) {
-                requestRow.AppendFloat(Float.parseFloat(obj.toString()));
-            } else if (DataType.kTypeDouble.equals(dataType)) {
-                requestRow.AppendDouble(Double.parseDouble(obj.toString()));
-            } else if (DataType.kTypeTimestamp.equals(dataType)) {
-                requestRow.AppendTimestamp(Long.parseLong(obj.toString()));
-            } else if (DataType.kTypeDate.equals(dataType)) {
-                try {
-                    Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
-                    logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
-                            obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
-                    requestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
-                } catch (ParseException e) {
-                    logger.error("Fail convert {} to date", obj.toString());
-                    return false;
-                }
-            } else if (DataType.kTypeString.equals(schema.GetColumnType(i))) {
-                requestRow.AppendString(obj.toString());
-            } else {
-                logger.error("fail to build request row: invalid data type {]", schema.GetColumnType(i));
-                return false;
-            }
-        }
-        return requestRow.Build();
-    }
-    private static boolean setPreparedData(PreparedStatement ps,List<String> paramterType, List<Object> objects) throws SQLException {
-        for(int i=0;i<objects.size();i++){
-            String type = paramterType.get(i);
-            Object value = objects.get(i);
-            switch (type){
-                case "varchar":
-                case "string":
-                    ps.setString(i+1,String.valueOf(value));
-                    break;
-                case "bool":
-                    ps.setBoolean(i+1,Boolean.parseBoolean(String.valueOf(value)));
-                    break;
-                case "int16":
-                case "smallint":
-                    ps.setShort(i+1,Short.parseShort(String.valueOf(value)));
-                    break;
-                case "int":
-                    ps.setInt(i+1,Integer.parseInt(String.valueOf(value)));
-                    break;
-                case "int64":
-                case "long":
-                case "bigint":
-                    ps.setLong(i+1,Long.parseLong(String.valueOf(value)));
-                    break;
-                case "float":
-                    ps.setFloat(i+1,Float.parseFloat(String.valueOf(value)));
-                    break;
-                case "double":
-                    ps.setDouble(i+1,Double.parseDouble(String.valueOf(value)));
-                    break;
-                case "timestamp":
-                    ps.setTimestamp(i+1,new Timestamp(Long.parseLong(String.valueOf(value))));
-                    break;
-                case "date":
-                    try {
-                        Date date = new Date(new SimpleDateFormat("yyyy-MM-dd").parse(String.valueOf(value)).getTime());
-                        ps.setDate(i + 1, date);
-                        break;
-                    }catch (ParseException e){
-                        e.printStackTrace();
-                        return false;
-                    }
-                default:
-                    throw new IllegalArgumentException("type not match");
-            }
-        }
-        return true;
-    }
-    private static boolean setRequestData(PreparedStatement requestPs, List<Object> objects) throws SQLException {
-        ResultSetMetaData metaData = requestPs.getMetaData();
-        int totalSize = 0;
-        for (int i = 0; i < metaData.getColumnCount(); i++) {
-            if (null == objects.get(i)) {
-                continue;
-            }
-            if (metaData.getColumnType(i + 1) == Types.VARCHAR) {
-                totalSize += objects.get(i).toString().length();
-            }
-        }
-        logger.info("init request row: {}", totalSize);
-        for (int i = 0; i < metaData.getColumnCount(); i++) {
-            Object obj = objects.get(i);
-            if (null == obj || obj.toString().equalsIgnoreCase("null")) {
-                requestPs.setNull(i + 1, 0);
-                continue;
-            }
-            int columnType = metaData.getColumnType(i + 1);
-            if (columnType == Types.BOOLEAN) {
-                requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));
-            } else if (columnType == Types.SMALLINT) {
-                requestPs.setShort(i + 1, Short.parseShort(obj.toString()));
-            } else if (columnType == Types.INTEGER) {
-                requestPs.setInt(i + 1, Integer.parseInt(obj.toString()));
-            } else if (columnType == Types.BIGINT) {
-                requestPs.setLong(i + 1, Long.parseLong(obj.toString()));
-            } else if (columnType == Types.FLOAT) {
-                requestPs.setFloat(i + 1, Float.parseFloat(obj.toString()));
-            } else if (columnType == Types.DOUBLE) {
-                requestPs.setDouble(i + 1, Double.parseDouble(obj.toString()));
-            } else if (columnType == Types.TIMESTAMP) {
-                requestPs.setTimestamp(i + 1, new Timestamp(Long.parseLong(obj.toString())));
-            } else if (columnType == Types.DATE) {
-                if (obj instanceof java.util.Date) {
-                    requestPs.setDate(i + 1, new Date(((java.util.Date) obj).getTime()));
-                } else if (obj instanceof Date) {
-                    requestPs.setDate(i + 1, (Date) (obj));
-                }
-//                else if (obj instanceof DateTime) {
-//                    requestPs.setDate(i + 1, new Date(((DateTime) obj).getMillis()));
+//    private static boolean buildRequestRow(SQLRequestRow requestRow, List<Object> objects) {
+//        Schema schema = requestRow.GetSchema();
+//        int totalSize = 0;
+//        for (int i = 0; i < schema.GetColumnCnt(); i++) {
+//            if (null == objects.get(i)) {
+//                continue;
+//            }
+//            if (DataType.kTypeString.equals(schema.GetColumnType(i))) {
+//                totalSize += objects.get(i).toString().length();
+//            }
+//        }
+//
+//        logger.info("init request row: {}", totalSize);
+//        requestRow.Init(totalSize);
+//        for (int i = 0; i < schema.GetColumnCnt(); i++) {
+//            Object obj = objects.get(i);
+//            if (null == obj) {
+//                requestRow.AppendNULL();
+//                continue;
+//            }
+//
+//            DataType dataType = schema.GetColumnType(i);
+//            if (DataType.kTypeInt16.equals(dataType)) {
+//                requestRow.AppendInt16(Short.parseShort(obj.toString()));
+//            } else if (DataType.kTypeInt32.equals(dataType)) {
+//                requestRow.AppendInt32(Integer.parseInt(obj.toString()));
+//            } else if (DataType.kTypeInt64.equals(dataType)) {
+//                requestRow.AppendInt64(Long.parseLong(obj.toString()));
+//            } else if (DataType.kTypeFloat.equals(dataType)) {
+//                requestRow.AppendFloat(Float.parseFloat(obj.toString()));
+//            } else if (DataType.kTypeDouble.equals(dataType)) {
+//                requestRow.AppendDouble(Double.parseDouble(obj.toString()));
+//            } else if (DataType.kTypeTimestamp.equals(dataType)) {
+//                requestRow.AppendTimestamp(Long.parseLong(obj.toString()));
+//            } else if (DataType.kTypeDate.equals(dataType)) {
+//                try {
+//                    Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
+//                    logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
+//                            obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+//                    requestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+//                } catch (ParseException e) {
+//                    logger.error("Fail convert {} to date", obj.toString());
+//                    return false;
 //                }
-                else {
-                    try {
-                        Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
-                        logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
-                        requestPs.setDate(i + 1, date);
-                    } catch (ParseException e) {
-                        logger.error("Fail convert {} to date: {}", obj, e);
-                        return false;
-                    }
-                }
-            } else if (columnType == Types.VARCHAR) {
-                requestPs.setString(i + 1, obj.toString());
-            } else {
-                logger.error("fail to build request row: invalid data type {]", columnType);
-                return false;
-            }
-        }
-        return true;
-    }
+//            } else if (DataType.kTypeString.equals(schema.GetColumnType(i))) {
+//                requestRow.AppendString(obj.toString());
+//            } else {
+//                logger.error("fail to build request row: invalid data type {]", schema.GetColumnType(i));
+//                return false;
+//            }
+//        }
+//        return requestRow.Build();
+//    }
 
-    private static ResultSet buildRequestPreparedStatment(PreparedStatement requestPs,
-                                                                   List<Object> objects) throws SQLException {
-        boolean success = setRequestData(requestPs, objects);
+
+    private static ResultSet buildRequestPreparedStatement(PreparedStatement requestPs,
+                                                           List<Object> objects) throws SQLException {
+        boolean success = DataUtil.setRequestData(requestPs, objects);
         if (success) {
             return requestPs.executeQuery();
         } else {
@@ -1264,9 +764,9 @@ public class OpenMLDBUtil {
         }
     }
 
-    private static ResultSet buildRequestPreparedStatmentAsync(CallablePreparedStatement requestPs,
-                                                               List<Object> objects) throws SQLException {
-        boolean success = setRequestData(requestPs, objects);
+    private static ResultSet buildRequestPreparedStatementAsync(CallablePreparedStatement requestPs,
+                                                                List<Object> objects) throws SQLException {
+        boolean success = DataUtil.setRequestData(requestPs, objects);
         if (success) {
             QueryFuture future = requestPs.executeQueryAsync(1000, TimeUnit.MILLISECONDS);
             ResultSet sqlResultSet = null;
@@ -1298,7 +798,7 @@ public class OpenMLDBUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                List<List<Object>> result = convertRestultSetToList(rs);
+                List<List<Object>> result = DataUtil.convertResultSetToList(rs);
                 fesqlResult.setCount(result.size());
                 fesqlResult.setResult(result);
             } catch (Exception e) {
@@ -1346,78 +846,11 @@ public class OpenMLDBUtil {
     //     return obj;
     // }
 
-    public static Object getColumnData(SQLResultSet rs, int index) throws SQLException {
-        Object obj = null;
-        int columnType = rs.getMetaData().getColumnType(index + 1);
-        if (rs.getNString(index + 1) == null) {
-            logger.info("rs is null");
-            return null;
-        }
-        if (columnType == Types.BOOLEAN) {
-            obj = rs.getBoolean(index + 1);
-        } else if (columnType == Types.DATE) {
-            try {
-//                obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-//                        .parse(rs.getNString(index + 1) + " 00:00:00").getTime());
-                obj = rs.getDate(index + 1);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        } else if (columnType == Types.DOUBLE) {
-            obj = rs.getDouble(index + 1);
-        } else if (columnType == Types.FLOAT) {
-            obj = rs.getFloat(index + 1);
-        } else if (columnType == Types.SMALLINT) {
-            obj = rs.getShort(index + 1);
-        } else if (columnType == Types.INTEGER) {
-            obj = rs.getInt(index + 1);
-        } else if (columnType == Types.BIGINT) {
-            obj = rs.getLong(index + 1);
-        } else if (columnType == Types.VARCHAR) {
-            obj = rs.getString(index + 1);
-            logger.info("conver string data {}", obj);
-        } else if (columnType == Types.TIMESTAMP) {
-            obj = rs.getTimestamp(index + 1);
-        }
-        return obj;
-    }
 
-    public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo fedbInfo) {
-        Matcher matcher = pattern.matcher(sql);
-        while (matcher.find()) {
-            int index = Integer.parseInt(matcher.group(1));
-            sql = sql.replace("{" + index + "}", tableNames.get(index));
-        }
-        sql = formatSql(sql,fedbInfo);
-        return sql;
-    }
 
-    public static String formatSql(String sql, OpenMLDBInfo fedbInfo) {
-        if(sql.contains("{tb_endpoint_0}")){
-            sql = sql.replace("{tb_endpoint_0}", fedbInfo.getTabletEndpoints().get(0));
-        }
-        if(sql.contains("{tb_endpoint_1}")){
-            sql = sql.replace("{tb_endpoint_1}", fedbInfo.getTabletEndpoints().get(1));
-        }
-        if(sql.contains("{tb_endpoint_2}")){
-            sql = sql.replace("{tb_endpoint_2}", fedbInfo.getTabletEndpoints().get(2));
-        }
-        return sql;
-    }
-
-    public static String formatSql(String sql, List<String> tableNames) {
-        return formatSql(sql,tableNames, OpenMLDBGlobalVar.mainInfo);
-    }
-
-    // public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,
-    //                                           List<InputDesc> inputs,
-    //                                           boolean useFirstInputAsRequests) {
-    //     return createAndInsert(executor, dbName, inputs, useFirstInputAsRequests);
-    // }
     public static OpenMLDBResult createTable(SqlExecutor executor, String dbName, String createSql){
         if (StringUtils.isNotEmpty(createSql)) {
-            OpenMLDBResult res = OpenMLDBUtil.ddl(executor, dbName, createSql);
+            OpenMLDBResult res = SDKUtil.ddl(executor, dbName, createSql);
             if (!res.isOk()) {
                 logger.error("fail to create table");
                 return res;
@@ -1456,7 +889,7 @@ public class OpenMLDBUtil {
                     continue;
                 }
                 createSql = SQLCase.formatSql(createSql, i, tableName);
-                createSql = formatSql(createSql, OpenMLDBGlobalVar.mainInfo);
+                createSql = SQLUtil.formatSql(createSql, OpenMLDBGlobalVar.mainInfo);
                 String dbName = inputs.get(i).getDb().isEmpty() ? defaultDBName : inputs.get(i).getDb();
                 createTable(executor,dbName,createSql);
                 InputDesc input = inputs.get(i);
@@ -1467,7 +900,7 @@ public class OpenMLDBUtil {
                 for (String insertSql : inserts) {
                     insertSql = SQLCase.formatSql(insertSql, i, input.getName());
                     if (!insertSql.isEmpty()) {
-                        OpenMLDBResult res = OpenMLDBUtil.insert(executor, dbName, insertSql);
+                        OpenMLDBResult res = SDKUtil.insert(executor, dbName, insertSql);
                         if (!res.isOk()) {
                             logger.error("fail to insert table");
                             return res;
@@ -1500,7 +933,7 @@ public class OpenMLDBUtil {
                 insertSql = SQLCase.formatSql(insertSql, i, tableName);
                 List<List<Object>> rows = input.getRows();
                 for(List<Object> row:rows){
-                    OpenMLDBResult res = OpenMLDBUtil.insertWithPrepareStatement(executor, dbName, insertSql, row);
+                    OpenMLDBResult res = SDKUtil.insertWithPrepareStatement(executor, dbName, insertSql, row);
                     if (!res.isOk()) {
                         logger.error("fail to insert table");
                         return res;
@@ -1524,20 +957,7 @@ public class OpenMLDBUtil {
         }
         logger.info("RESULT:\n{} row in set\n{}", rs.Size(), sb.toString());
     }
-    public static String getColumnTypeByType(int type){
-        switch (type){
-            case Types.BIGINT: return "bigint";
-            case Types.SMALLINT: return "smallint";
-            case Types.INTEGER: return "int";
-            case Types.VARCHAR: return "string";
-            case Types.FLOAT: return "float";
-            case Types.DOUBLE: return "double";
-            case Types.DATE: return "date";
-            case Types.TIMESTAMP: return "timestamp";
-            case Types.BOOLEAN: return "bool";
-        }
-        throw new IllegalArgumentException("not know type");
-    }
+
 
 
 

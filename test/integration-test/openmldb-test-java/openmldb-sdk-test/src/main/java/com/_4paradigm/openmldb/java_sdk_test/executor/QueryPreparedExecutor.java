@@ -17,11 +17,12 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -64,14 +65,14 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
             }else {
-                sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                sql = SQLUtil.formatSql(sql, tableNames);
             }
             InputDesc parameters = fesqlCase.getParameters();
             List<String> types = parameters.getColumns().stream().map(s -> s.split("\\s+")[1]).collect(Collectors.toList());
             List<Object> objects = parameters.getRows().get(0);
-            fesqlResult = OpenMLDBUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
+            fesqlResult = SDKUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
         }
         logger.info("version:{} execute end",version);
         return fesqlResult;

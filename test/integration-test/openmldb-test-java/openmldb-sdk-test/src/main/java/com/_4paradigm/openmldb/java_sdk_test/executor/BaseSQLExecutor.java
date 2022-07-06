@@ -21,11 +21,12 @@ import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -116,11 +117,11 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                OpenMLDBUtil.sql(executor, dbName, sql);
+                SDKUtil.sql(executor, dbName, sql);
             });
         }
         logger.info("version:{},begin drop table",version);

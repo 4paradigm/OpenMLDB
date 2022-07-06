@@ -24,11 +24,12 @@ import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -132,9 +133,9 @@ public class CommandExecutor extends BaseExecutor{
             for (String sql : sqls) {
                 // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
+                    sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
                 fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
             }
@@ -143,9 +144,9 @@ public class CommandExecutor extends BaseExecutor{
         if (StringUtils.isNotEmpty(sql)) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
-                sql = OpenMLDBUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
+                sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
             }else {
-                sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                sql = SQLUtil.formatSql(sql, tableNames);
             }
             fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
         }
@@ -178,9 +179,9 @@ public class CommandExecutor extends BaseExecutor{
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
                 if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
+                    sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
-                    sql = OpenMLDBUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
                 OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName, sql);
             });

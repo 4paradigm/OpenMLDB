@@ -19,7 +19,8 @@ import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.util.OpenMLDBUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -69,7 +70,7 @@ public class OpenMLDBCommandUtil {
                 //create table
                 String createSql = inputDesc.extractCreate();
                 createSql = SQLCase.formatSql(createSql, i, tableName);
-                createSql = OpenMLDBUtil.formatSql(createSql, openMLDBInfo);
+                createSql = SQLUtil.formatSql(createSql, openMLDBInfo);
                 if (!createSql.isEmpty()) {
                     OpenMLDBResult res = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,createSql);
                     if (!res.isOk()) {
