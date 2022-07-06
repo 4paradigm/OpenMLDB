@@ -28,15 +28,22 @@ public class StatementTest {
         java.sql.Statement state = router.getStatement();
 
         try {
+            // execute success -> result != null -> true
             boolean ret = state.execute("SET @@execute_mode='online';");
-            ret = state.execute("create database test");
+            Assert.assertFalse(ret);
+            ret = state.execute("create database if not exists test");
             Assert.assertFalse(ret);
             ret = state.execute("use test");
             Assert.assertFalse(ret);
-            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1));");
+            // TODO(hw): drop table if exists
+            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, " +
+                    "ts=col1));");
             Assert.assertFalse(ret);
-            state.executeUpdate("insert into testtable111 values(1000, 'hello');");
-            state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");
+            int r = state.executeUpdate("insert into testtable111 values(1000, 'hello');");
+            // update insert stmt, is not dml, return nothing
+            Assert.assertEquals(r,0);
+            r = state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");
+            Assert.assertEquals(r,0);
             ret = state.execute("select * from testtable111");
             Assert.assertTrue(ret);
             java.sql.ResultSet rs = state.getResultSet();
@@ -45,9 +52,9 @@ public class StatementTest {
             result.put(rs.getLong(1), rs.getString(2));
             Assert.assertTrue(rs.next());
             result.put(rs.getLong(1), rs.getString(2));
-            Assert.assertEquals(2, result.size());
-            Assert.assertEquals("hello", result.get(1000L));
-            Assert.assertEquals("xxxx", result.get(1001L));
+            Assert.assertEquals(result.size(), 2);
+            Assert.assertEquals( result.get(1000L), "hello");
+            Assert.assertEquals( result.get(1001L), "xxxx");
 
             ret = state.execute("drop table testtable111");
             Assert.assertFalse(ret);

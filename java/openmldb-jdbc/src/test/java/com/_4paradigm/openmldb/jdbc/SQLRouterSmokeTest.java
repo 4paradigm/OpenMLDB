@@ -366,7 +366,7 @@ public class SQLRouterSmokeTest {
             try {
                 impl2.setString(2, "c");
             } catch (Exception e) {
-                Assert.assertEquals("data type not match", e.getMessage());
+                Assert.assertTrue(e.getMessage().contains("data type not match"));
             }
             impl2.setString(1, "sandong");
             impl2.setDate(2, d3);
@@ -486,7 +486,7 @@ public class SQLRouterSmokeTest {
                 try {
                     impl.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals(e.getMessage(), "data type not match");
+                    Assert.assertTrue(e.getMessage().contains("data type not match"));
                 }
                 try {
                     // set failed, so the row is uncompleted, appending row will be failed
@@ -522,7 +522,7 @@ public class SQLRouterSmokeTest {
                 try {
                     impl2.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals(e.getMessage(), "data type not match");
+                    Assert.assertTrue(e.getMessage().contains("data type not match"));
                 }
                 try {
                     impl2.execute();
