@@ -511,10 +511,10 @@ class InnerRowsRangeList : public ListV<V> {
     ~InnerRowsRangeList() override {}
 
     std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
-        return std::make_unique<InnerRowsRangeIterator<V>>(std::move(root_->GetIterator()), start_rows_, end_range_);
+        return std::make_unique<InnerRowsRangeIterator<V>>(root_->GetIterator(), start_rows_, end_range_);
     }
     ConstIterator<uint64_t, V> *GetRawIterator() override {
-        return new InnerRowsRangeIterator<V>(std::move(root_->GetIterator()), start_rows_, end_range_);
+        return new InnerRowsRangeIterator<V>(root_->GetIterator(), start_rows_, end_range_);
     }
 
     ListV<V> *root_;
