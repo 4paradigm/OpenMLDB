@@ -46,8 +46,8 @@ TEST_F(DistLockTest, Lock) {
     ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/openmldb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
-                  "endpoint1");
+    DistLock lock("/openmldb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback),
+                  boost::bind(&OnLostCallback), "endpoint1");
     lock.Lock();
     sleep(5);
     if (!call_invoked) {
