@@ -197,7 +197,7 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
           iter_(iter_start_),
           key_(0) {}
 
-    explicit ArrayListIterator(const ArrayListIterator<V> &impl)
+    ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
@@ -260,7 +260,7 @@ class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
         }
     }
 
-    explicit BoolArrayListIterator(const BoolArrayListIterator &impl)
+    BoolArrayListIterator(const BoolArrayListIterator &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
