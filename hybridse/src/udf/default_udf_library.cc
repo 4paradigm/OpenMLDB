@@ -21,6 +21,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <queue>
+#include <functional>
 
 #include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
@@ -105,17 +107,29 @@ struct BuildGetSecondUdf {
 template <typename T>
 struct SumUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>()
-            .const_init(T(0))
-            .update([](UdfResolveContext* ctx, ExprNode* cur_sum,
-                       ExprNode* input) {
-                auto nm = ctx->node_manager();
-                auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto new_sum =
-                    nm->MakeBinaryExprNode(cur_sum, input, node::kFnOpAdd);
-                return nm->MakeCondExpr(is_null, cur_sum, new_sum);
+        helper.templates<T, Tuple<bool, T>, T>()
+            .const_init(MakeTuple(true, T(0)))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
+                auto* nm = ctx->node_manager();
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode(
+                        "make_tuple",
+                        {nm->MakeConstNode(false), nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                        nullptr));
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
@@ -236,27 +250,24 @@ struct AvgUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
             .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
-            .update(
-                [](UdfResolveContext* ctx, ExprNode* state, ExprNode* input) {
-                    auto nm = ctx->node_manager();
-                    ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                    ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                    ExprNode* is_null =
-                        nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                    cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
-                                                 node::kFnOpAdd);
-                    sum = nm->MakeBinaryExprNode(sum, input, node::kFnOpAdd);
-                    auto new_state =
-                        nm->MakeFuncNode("make_tuple", {cnt, sum}, nullptr);
-                    return nm->MakeCondExpr(is_null, state, new_state);
-                })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* avg =
-                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
-                return avg;
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode("make_tuple",
+                                     {nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::FnOperator::kFnOpAdd),
+                                      nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                                     nullptr));
+            })
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
+                                        nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
+                                        nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
     }
 };
@@ -302,22 +313,108 @@ struct DistinctCountDef {
 };
 
 template <typename T>
+struct MedianDef {
+    using ArgT = typename DataTypeTrait<T>::CCallArgType;
+    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>;
+    using MinHeapT = std::priority_queue<T, std::vector<T>, std::greater<>>;
+    using ContainerT = std::tuple<MaxHeapT, MinHeapT>;
+
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("median_init" + suffix, MedianDef::Init)
+            .update("median_update" + suffix, MedianDef::Update)
+            .output("meadin_output" + suffix, reinterpret_cast<void*>(MedianDef::Output), true);
+    }
+
+    static void Init(ContainerT* addr) { new (addr) ContainerT(); }
+
+    static void Push(ContainerT* container, T value) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        // invariant:
+        // max_heap.size() <= min_heap.size() &&
+        // max_head.top() <= median && median < min_head.top()
+        if (max_heap.empty() || value <= max_heap.top()) {
+            max_heap.push(value);
+            if (max_heap.size() > min_heap.size() + 1) {
+                min_heap.push(max_heap.top());
+                max_heap.pop();
+            }
+        } else {
+            min_heap.push(value);
+            if (min_heap.size() > max_heap.size()) {
+                max_heap.push(min_heap.top());
+                min_heap.pop();
+            }
+        }
+    }
+
+    static ContainerT* Update(ContainerT* container, T value, bool is_null) {
+        if (!is_null) {
+            Push(container, value);
+        }
+        return container;
+    }
+
+    static void Output(ContainerT* container, double* ret, bool* is_null) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        if (min_heap.empty() && max_heap.empty()) {
+            *is_null = true;
+        } else {
+            *is_null = false;
+            if (min_heap.size() == max_heap.size()) {
+                *ret = (min_heap.top() + max_heap.top()) / 2.0;
+            } else {
+                *ret = max_heap.top();
+            }
+        }
+
+        container->~ContainerT();
+    }
+};
+
+template <typename T>
 struct SumWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(0.0)
-            .update([](UdfResolveContext* ctx, ExprNode* sum, ExprNode* elem,
-                       ExprNode* cond) {
-                auto nm = ctx->node_manager();
+        helper
+            .templates<T, Tuple<bool, T>, T, bool>()
+            // accumulator is a pair of ( is_null, current_sum)
+            // whenever there is a value not null, `is_null` turns to false and output sum
+            // otherwise result is null
+            .const_init(MakeTuple(true, T(0)))
+            // the update logic is the same as sum but give the cond check at very beginning
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
+                // update (flag, acc) elem =
+                //   if cond ->
+                //      if elem is null -> (flag, acc)
+                //      otherwise       -> (true, acc + elem)
+                //   otherwise  -> (flag, acc)
+                auto* nm = ctx->node_manager();
+                auto* old_sum = nm->MakeGetFieldExpr(acc, 1);
+
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto new_sum =
-                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
-                ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
-                return update;
+
+                auto new_sum = nm->MakeBinaryExprNode(old_sum, elem, node::kFnOpAdd);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
+                                        nm->MakeFuncNode("make_tuple", {nm->MakeConstNode(false), new_sum}, nullptr),
+                                        acc);
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
@@ -346,37 +443,29 @@ struct AvgWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T, bool>()
             .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
-            .update([](UdfResolveContext* ctx, ExprNode* state, ExprNode* elem,
-                       ExprNode* cond) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
+                // update (count, sum) elem =
+                //   if cond ->
+                //     if elem is null -> (count, sum)
+                //     otherwise       -> (count + 1, sum + elem)
+                //   otherwise -> (count, sum)
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* is_null =
-                    nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
 
-                ExprNode* new_cnt = nm->MakeBinaryExprNode(
-                    cnt, nm->MakeConstNode(1), node::kFnOpAdd);
-                new_cnt = nm->MakeCondExpr(is_null, cnt, new_cnt);
+                ExprNode* new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::kFnOpAdd);
+                ExprNode* new_sum = nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd);
 
-                if (elem->GetOutputType()->base() == node::kTimestamp) {
-                    elem = nm->MakeCastNode(node::kInt64, elem);
-                }
-
-                ExprNode* new_sum =
-                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
-                new_sum = nm->MakeCondExpr(is_null, sum, new_sum);
-
-                ExprNode* new_state =
-                    nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
-                return nm->MakeCondExpr(cond, new_state, state);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
+                                        nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr), acc);
             })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* avg =
-                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
-                return avg;
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
+                                        nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
+                                        nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
     }
 };
@@ -2411,6 +2500,29 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterUdafTemplate<MedianDef>("median")
+        .doc(R"(
+            @brief Compute the median of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+            
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT median(value) OVER w;
+                -- output 2.5
+            @endcode
+            @since 0.6.0
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
 
     InitAggByCateUdafs();
 }

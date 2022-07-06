@@ -89,11 +89,6 @@ const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + ".
 
 static std::map<std::string, std::string> real_ep_map;
 
-void shutdown_signal_handler(int signal) {
-    std::cout << "catch signal: " << signal << std::endl;
-    brpc::AskToQuit();
-}
-
 void SetupLog() {
     // Config log
     if (FLAGS_log_level == "debug") {
@@ -1277,53 +1272,6 @@ bool ParseCondAndOp(const std::string& source, uint64_t& first_end,  // NOLINT
     return false;
 }
 
-bool GetCondAndPrintColumns(const std::vector<std::string>& parts,
-                            std::map<std::string, std::string>& condition_columns_map,  // NOLINT
-                            std::vector<std::string>& print_column,                     // NOLINT
-                            openmldb::api::GetType& get_type) {                         // NOLINT
-    uint64_t size = parts.size();
-    uint64_t i = 2;
-    if (parts[i] == "*") {
-        print_column.clear();
-        i += 1;
-    } else {
-        for (; i < size; i++) {
-            if (parts[i] == "where") {
-                break;
-            }
-            print_column.push_back(parts[i]);
-        }
-    }
-    if (i + 1 >= size) {
-        std::cerr << "not found where condition" << std::endl;
-        return false;
-    }
-    int32_t first_type = 0;
-    bool first_parse = true;
-    for (i++; i < size; i++) {
-        int32_t col_type;
-        uint64_t col_end = 0, value_begin = 0;
-        bool ok = ParseCondAndOp(parts[i], col_end, value_begin, col_type);
-        if (!ok) {
-            std::cerr << "parse " << parts[i] << " error" << std::endl;
-            return false;
-        }
-        if (first_parse) {
-            first_type = col_type;
-            first_parse = false;
-        }
-        if (col_type != first_type) {
-            std::cerr << "all relational operator must same" << std::endl;
-            return false;
-        }
-        std::string col = parts[i].substr(0, col_end);
-        std::string val = parts[i].substr(value_begin);
-        condition_columns_map.insert(std::make_pair(col, val));
-    }
-    get_type = static_cast<openmldb::api::GetType>(first_type);
-    return true;
-}
-
 void HandleNSShowCatalogVersion(::openmldb::client::NsClient* client) {
     std::map<std::string, uint64_t> catalog_version;
     std::string error;
@@ -1803,7 +1751,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
     }
     uint64_t value = 0;
     if (tables[0].partition_key_size() == 0) {
-        if (!tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg)) {
+        if (!tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg)) {
             std::cout << "Count failed. error msg: " << msg << std::endl;
             return;
         }
@@ -1817,7 +1765,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
                           << cur_pid << std::endl;
                 return;
             }
-            if (!tablet_client->Count(tid, cur_pid, key, index_name, ts_name, filter_expired_data, cur_value, msg)) {
+            if (!tablet_client->Count(tid, cur_pid, key, index_name, filter_expired_data, cur_value, msg)) {
                 std::cout << "Count failed. error msg: " << msg << std::endl;
             }
             value += cur_value;
@@ -3584,7 +3532,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
         return;
     }
     std::string msg;
-    bool ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
+    bool ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {

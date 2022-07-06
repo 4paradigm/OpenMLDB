@@ -319,14 +319,7 @@ TEST_F(UdfIRBuilderTest, distinct_count_udf_test) {
     CheckUdf<int64_t, codec::ListRef<int32_t>>("count", 9, list_ref);
     CheckUdf<int64_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
 }
-TEST_F(UdfIRBuilderTest, sum_udf_test) {
-    std::vector<int32_t> vec = {1, 3, 5, 7, 9};
-    codec::ArrayListV<int32_t> list(&vec);
-    codec::ListRef<int32_t> list_ref;
-    list_ref.list = reinterpret_cast<int8_t *>(&list);
-    CheckUdf<int32_t, codec::ListRef<int32_t>>("sum", 1 + 3 + 5 + 7 + 9,
-                                               list_ref);
-}
+
 TEST_F(UdfIRBuilderTest, min_udf_test) {
     std::vector<int32_t> vec = {10, 8, 6, 4, 2, 1, 3, 5, 7, 9};
     codec::ArrayListV<int32_t> list(&vec);

@@ -64,7 +64,7 @@ struct AggColumnInfo {
 
     size_t GetOutputNum() const { return output_idxs.size(); }
 
-    void Show() {
+    std::string DebugString() const {
         std::stringstream ss;
         ss << DataTypeName(col_type) << " " << GetColKey() << ": [";
         for (size_t i = 0; i < GetOutputNum(); ++i) {
@@ -73,7 +73,8 @@ struct AggColumnInfo {
                 ss << ", ";
             }
         }
-        ss << "]\n";
+        ss << "]";
+        return ss.str();
     }
 };
 

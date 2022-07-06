@@ -59,7 +59,8 @@ class TabletClient : public Client {
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
                      bool leader, const std::vector<std::string>& endpoints, const ::openmldb::type::TTLType& type,
-                     uint32_t seg_cnt, uint64_t term, const ::openmldb::type::CompressType compress_type);
+                     uint32_t seg_cnt, uint64_t term, const ::openmldb::type::CompressType compress_type,
+                     ::openmldb::common::StorageMode storage_mode = ::openmldb::common::kMemory);
 
     bool CreateTable(const ::openmldb::api::TableMeta& table_meta);
 
@@ -98,9 +99,6 @@ class TabletClient : public Client {
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name, bool filter_expired_data,
                uint64_t& value, std::string& msg);  // NOLINT
 
-    bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
-               const std::string& ts_name, bool filter_expired_data, uint64_t& value,  // NOLINT
-               std::string& msg);                                                      // NOLINT
 
     std::shared_ptr<openmldb::base::ScanKvIterator> Scan(uint32_t tid, uint32_t pid,
             const std::string& pk, const std::string& idx_name,

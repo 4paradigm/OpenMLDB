@@ -26,7 +26,7 @@ namespace openmldb {
 namespace catalog {
 
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> PBIndex;
 
 class SDKCatalogTest : public ::testing::Test {};
 
@@ -46,7 +46,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     auto col2 = schema->Add();
     col2->set_name("col2");
     col2->set_data_type(::openmldb::type::kBigInt);
-    RtiDBIndex* index = args->meta.mutable_column_key();
+    PBIndex* index = args->meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
@@ -54,7 +54,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     return args;
 }
 
-TEST_F(SDKCatalogTest, sdk_smoke_test) {
+TEST_F(SDKCatalogTest, SdkSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
@@ -74,7 +74,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     std::cout << ss.str() << std::endl;*/
 }
 
-TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
+TEST_F(SDKCatalogTest, SdkWindowSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
@@ -97,7 +97,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     std::cout << ss.str() << std::endl;*/
 }
 
-TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
+TEST_F(SDKCatalogTest, SdkLastjoinSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     TestArgs* args2 = PrepareTable("t2", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;

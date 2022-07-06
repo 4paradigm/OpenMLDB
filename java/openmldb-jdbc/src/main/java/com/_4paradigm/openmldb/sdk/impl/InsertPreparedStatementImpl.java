@@ -52,7 +52,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     private boolean closed = false;
     private boolean closeOnComplete = false;
-    private final Map<Integer, Integer> stringsLen = new HashMap<>();
+    private Integer stringsLen = 0;
 
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         this.db = db;
@@ -219,7 +219,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             return;
         }
         byte[] bytes = s.getBytes(CHARSET);
-        stringsLen.put(i, bytes.length);
+        // if this index already set, should first reduce length of bytes last time
+        if (hasSet.get(i - 1)) {
+            stringsLen -= ((byte[]) currentDatas.get(i - 1)).length;
+        }
+        stringsLen += bytes.length;
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, bytes);
     }
@@ -285,7 +289,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             hasSet.set(i, false);
             currentDatas.set(i, null);
         }
-        stringsLen.clear();
+        stringsLen = 0;
     }
 
     @Override
@@ -296,12 +300,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     private void buildRow() throws SQLException {
         SQLInsertRow currentRow = getSQLInsertRow();
-        int strLen = 0;
-        for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
-            strLen += entry.getValue();
-        }
 
-        boolean ok = currentRow.Init(strLen);
+        boolean ok = currentRow.Init(stringsLen);
         if (!ok) {
             throw new SQLException("init row failed");
         }

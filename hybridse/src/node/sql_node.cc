@@ -631,6 +631,28 @@ bool FrameExtent::Equals(const SqlNode *node) const {
     return SqlEquals(this->start_, that->start_) && SqlEquals(this->end_, that->end_);
 }
 
+std::string FrameExtent::GetExprString() const {
+    std::string str = "[";
+    if (nullptr == start_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(start_->GetExprString());
+    }
+    str.append(",");
+    if (nullptr == end_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(end_->GetExprString());
+    }
+
+    str.append("]");
+    return str;
+}
+
+bool FrameExtent::Valid() const {
+    return GetStartOffset() <= GetEndOffset();
+}
+
 FrameExtent* FrameExtent::ShadowCopy(NodeManager* nm) const {
     return nm->MakeFrameExtent(start(), end());
 }

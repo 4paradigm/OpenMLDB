@@ -100,6 +100,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     UdfQuery, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/udf_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    UdafQuery, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/udaf_query.yaml")));
 
 // Test Fz DDL
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestFzBank, SQLSDKQueryTest,

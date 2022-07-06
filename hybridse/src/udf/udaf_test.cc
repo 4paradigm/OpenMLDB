@@ -101,23 +101,46 @@ TEST_F(UdafTest, CountTest) {
     CheckUdafOneParam<int64_t, Nullable<StringRef>>("count", 2, {nullptr, StringRef("abc"), StringRef("gc")});
 }
 
-// TODO(aceforeverd): add test for sum ,avg, distinct_count
+// TODO(aceforeverd): add test for distinct_count
 
-TEST_F(UdafTest, sum_where_test) {
+
+TEST_F(UdafTest, MedianTest) {
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", nullptr, {nullptr, nullptr});
+
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1, {0, 1, 2});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1.5, {0, 1, 2, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 1, {0, 1, 2, nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 3, {1, 5, 2, 4, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", 2.5, {1, 2, 4, 3});
+    CheckUdafOneParam<Nullable<double>, Nullable<int32_t>>("median", -0.5, {-1, -2, 0, 1});
+
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.0, {1.0, 2.0, 3.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.5, {1.0, 2.0, 3.0, 4.0});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 2.0, {1.0, 2.0, 3.0, nullptr});
+    CheckUdafOneParam<Nullable<double>, Nullable<double>>("median", 3.0, {1.0, 5.0, 2.0, 4.0, 3.0});
+}
+
+TEST_F(UdafTest, SumWhereTest) {
     CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
         "sum_where", 10, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
-
-    // CheckUdf<double, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
-    //     "sum_where", 4, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
-    //     MakeList<Nullable<bool>>({true, false, nullptr, true}));
 
     CheckUdf<int32_t, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
         "sum_where", 9, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
         MakeList<Nullable<bool>>({true, true, nullptr, false}));
 
-    CheckUdf<int32_t, ListRef<int32_t>, ListRef<bool>>(
-        "sum_where", 0, MakeList<int32_t>({}), MakeBoolList({}));
+    CheckUdf<Nullable<int32_t>, ListRef<int32_t>, ListRef<bool>>(
+        "sum_where", nullptr, MakeList<int32_t>({}), MakeBoolList({}));
+
+    CheckUdf<Nullable<int32_t>, ListRef<Nullable<int32_t>>, ListRef<bool>>(
+        "sum_where", nullptr, MakeList<Nullable<int32_t>>({ nullptr }), MakeBoolList({ true }));
+
+    // only non-null & cond elems are sumed
+    CheckUdf<int32_t, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "sum_where", 4, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
+        MakeList<Nullable<bool>>({true, false, nullptr, true}));
 }
 
 TEST_F(UdafTest, count_where_test) {
@@ -138,12 +161,12 @@ TEST_F(UdafTest, count_where_test) {
         "count_where", 0, MakeList<int32_t>({}), MakeBoolList({}));
 }
 
-TEST_F(UdafTest, avg_where_test_0) {
+TEST_F(UdafTest, AvgWhereTest0) {
     CheckUdf<double, ListRef<int32_t>, ListRef<bool>>(
         "avg_where", 5.0, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
 }
-TEST_F(UdafTest, avg_where_test_1) {
+TEST_F(UdafTest, AvgWhereTest1) {
     CheckUdf<double, ListRef<int32_t>, ListRef<bool>>(
         "avg_where", 5.0, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
@@ -152,14 +175,24 @@ TEST_F(UdafTest, avg_where_test_1) {
     //    "avg_where", 5.0, MakeList<Timestamp>({Timestamp(4), Timestamp(5),
     //    Timestamp(6)}), MakeBoolList({true, false, true}));
 }
-TEST_F(UdafTest, avg_where_test_2) {
+TEST_F(UdafTest, AvgWhereTest2) {
     CheckUdf<double, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
         "avg_where", 5.5, MakeList<Nullable<int32_t>>({4, 5, 6, 7}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 }
-TEST_F(UdafTest, avg_where_test_3) {
-    CheckUdf<double, ListRef<int32_t>, ListRef<bool>>(
-        "avg_where", 0.0 / 0, MakeList<int32_t>({}), MakeBoolList({}));
+
+// nullable test
+TEST_F(UdafTest, AvgWhereTest3) {
+    CheckUdf<Nullable<double>, ListRef<int32_t>, ListRef<bool>>(
+        "avg_where", nullptr, MakeList<int32_t>({}), MakeBoolList({}));
+
+    CheckUdf<Nullable<double>, ListRef<Nullable<int32_t>>, ListRef<bool>>(
+        "avg_where", nullptr, MakeList<Nullable<int32_t>>({ nullptr }), MakeBoolList({ true }));
+
+    // only non-null & cond elems are accumed
+    CheckUdf<double, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
+        "avg_where", 6.0, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr, 8}),
+        MakeList<Nullable<bool>>({true, false, nullptr, true, true}));
 }
 
 TEST_F(UdafTest, MinWhereTest) {
@@ -216,7 +249,7 @@ TEST_F(UdafTest, MaxWhereTest) {
         "max_where", 3, MakeList<Nullable<int32_t>>({1, nullptr, 3}), MakeList<Nullable<bool>>({true, true, true}));
 }
 
-TEST_F(UdafTest, avg_test) {
+TEST_F(UdafTest, AvgTest) {
     CheckUdf<double, ListRef<int16_t>>("avg", 2.5,
                                        MakeList<int16_t>({1, 2, 3, 4}));
     CheckUdf<double, ListRef<int32_t>>("avg", 2.5,
@@ -224,10 +257,26 @@ TEST_F(UdafTest, avg_test) {
     CheckUdf<double, ListRef<int64_t>>("avg", 2.5,
                                        MakeList<int64_t>({1, 2, 3, 4}));
     CheckUdf<double, ListRef<float>>("avg", 2.5, MakeList<float>({1, 2, 3, 4}));
-    CheckUdf<double, ListRef<double>>("avg", 2.5,
-                                      MakeList<double>({1, 2, 3, 4}));
-    // empty list
-    CheckUdf<double, ListRef<double>>("avg", 0.0 / 0, MakeList<double>({}));
+    CheckUdf<double, ListRef<Nullable<double>>>("avg", 2.5,
+                                      MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("avg", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("avg", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, SumTest) {
+    CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
+                                       MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<int32_t, ListRef<int32_t>>("sum", 10,
+                                       MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<int64_t, ListRef<int64_t>>("sum", 10,
+                                       MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<float, ListRef<float>>("sum", 10, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("sum", 10,
+                                      MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("sum", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("sum", nullptr, MakeList<Nullable<double>>({nullptr}));
 }
 
 TEST_F(UdafTest, topk_test) {

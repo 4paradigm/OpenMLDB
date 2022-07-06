@@ -67,8 +67,8 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
                 ${PROJECT_SOURCE_DIR}/src/testing/engine_test_base.cc)
 
         add_test(${TEST_TARGET_NAME}
-            ${TEST_TARGET_NAME}
-            --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+            ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+            --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk toydb_bm_lib hybridse_sdk hybridse_flags

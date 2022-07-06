@@ -26,7 +26,6 @@
 namespace openmldb {
 namespace sdk {
 
-class TableReader;
 class TableReaderImpl : public TableReader {
  public:
     explicit TableReaderImpl(DBSDK* cluster_sdk);
