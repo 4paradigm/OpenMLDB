@@ -249,9 +249,6 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     uint64_t GetVersion() const;
 
     void SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet> local_tablet) { local_tablet_ = local_tablet; }
-    void SetLocalSpTablet(std::shared_ptr<::hybridse::vm::Tablet> local_sp_tablet) {
-        local_sp_tablet_ = local_sp_tablet;
-    }
 
     std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string &db,
                                                                      const std::string &sp_name) override;
@@ -308,7 +305,6 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     ClientManager client_manager_;
     std::atomic<uint64_t> version_;
     std::shared_ptr<::hybridse::vm::Tablet> local_tablet_;
-    std::shared_ptr<::hybridse::vm::Tablet> local_sp_tablet_;
     std::shared_ptr<AggrTableMap> aggr_tables_;
 };
 
