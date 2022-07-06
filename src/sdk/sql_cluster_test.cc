@@ -362,21 +362,12 @@ TEST_F(SQLClusterTest, ClusterInsertWithColumnDefaultValue) {
     auto ret = ns->ShowDBTable(db, &tables);
     ASSERT_TRUE(ret.OK());
     ASSERT_EQ(tables.size(), 1);
-    auto tid = tables[0].tid();
-    auto endpoints = mc_->GetTbEndpoint();
-    uint32_t count = 0;
-    for (const auto& endpoint : endpoints) {
-        ::openmldb::tablet::TabletImpl* tb1 = mc_->GetTablet(endpoint);
-        ::openmldb::api::GetTableStatusRequest request;
-        ::openmldb::api::GetTableStatusResponse response;
-        request.set_tid(tid);
-        MockClosure closure;
-        tb1->GetTableStatus(NULL, &request, &response, &closure);
-        for (const auto& table_status : response.all_table_status()) {
-            count += table_status.record_cnt();
-        }
+    {
+        ::hybridse::sdk::Status status;
+        res = router->ExecuteSQL(db, absl::StrCat("select * from ", name), &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(3u, res->Size());
     }
-    ASSERT_EQ(3u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -392,7 +383,7 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         "                index(key=col2, ts=col3)) "
         "options(partitionnum=2);";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -454,7 +445,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                       "("
                       "col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8, replicanum=2);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8, replicanum=2);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -477,7 +468,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
 
         std::vector<::openmldb::nameserver::TableInfo> agg_tables;
         std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-        std::string aggr_table = "pre_test1_w1_sum_col3";
+        std::string aggr_table = "pre_" + base_db + "_test1_w1_sum_col3";
         ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, agg_tables, msg));
         ASSERT_EQ(1, agg_tables.size());
         ASSERT_EQ(1, agg_tables[0].column_key_size());
@@ -499,7 +490,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ(0, static_cast<int>(status.code));
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
-        ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+        ASSERT_EQ(aggr_table, rs->GetStringUnsafe(0));
         ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
         ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
         ASSERT_EQ(base_table, rs->GetStringUnsafe(3));
@@ -510,8 +501,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ("1000", rs->GetStringUnsafe(8));
 
         ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test1", msg));
-        std::string pre_aggr_table = "pre_test1_w1_sum_col3";
-        ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+        ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
         ASSERT_TRUE(ok);
     }
 
@@ -583,7 +573,8 @@ TEST_F(SQLClusterTest, Aggregator) {
         ASSERT_TRUE(ok);
     }
 
-    std::string result_sql = "select * from pre_test_aggr_w1_sum_col4;";
+    std::string aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_col4";
+    std::string result_sql = "select * from " + aggr_table + ";";
 
     auto rs = router->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(5, rs->Size());
@@ -601,8 +592,7 @@ TEST_F(SQLClusterTest, Aggregator) {
     }
 
     ASSERT_TRUE(mc_->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-    std::string pre_aggr_table = "pre_test_aggr_w1_sum_col4";
-    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);
@@ -626,7 +616,7 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
                       "("
                       " col1 string, col2 bigint, col3 int,"
                       " index(key=col1, ts=col2,"
-                      " TTL_TYPE=latest, TTL=1)) options(partitionnum=8);";
+                      " TTL_TYPE=absolute, TTL=1m)) options(partitionnum=8);";
     ok = router->ExecuteDDL(base_db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -662,10 +652,11 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
     std::string meta_sql = "select * from " + meta_table + " where base_db='" + base_db + "';";
 
     auto rs = router->ExecuteSQL(meta_db, meta_sql, &status);
+    std::string aggr_table = "pre_" + base_db + "_test1_w1_sum_col3";
     ASSERT_EQ(0, static_cast<int>(status.code));
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(aggr_table, rs->GetStringUnsafe(0));
     ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
     ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
     ASSERT_EQ(base_table, rs->GetStringUnsafe(3));
@@ -686,7 +677,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 60000;
+    sql_opt.zk_session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     SetOnlineMode(router);

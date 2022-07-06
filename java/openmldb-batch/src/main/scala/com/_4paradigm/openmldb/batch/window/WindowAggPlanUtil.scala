@@ -24,6 +24,7 @@ import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, Spark
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, functions}
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.SerializableConfiguration
@@ -48,10 +49,10 @@ object WindowAggPlanUtil {
    */
   def windowUnionTables(ctx: PlanContext,
                     physicalNode: PhysicalWindowAggrerationNode,
-                    inputDf: DataFrame): DataFrame = {
+                    inputDf: DataFrame,
+                    uniqueColName: String): DataFrame = {
 
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
-    val uniqueColName = "_WINDOW_UNION_FLAG_" + System.currentTimeMillis()
     val unionNum = physicalNode.window_unions().GetSize().toInt
 
     val rightTables = (0 until unionNum).map(i => {

@@ -213,7 +213,7 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
                 }
                 case kAggregation: {
                     // Code generation for having condition
-                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggrerationNode*>(node))->having_condition_,
+                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggregationNode*>(node))->having_condition_,
                                                     project_op->producers()[0]->schemas_ctx()));
                     break;
                 }
@@ -1183,8 +1183,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kAggregation: {
-            PhysicalAggrerationNode* agg_op = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalAggrerationNode>(&agg_op, depend,
+            PhysicalAggregationNode* agg_op = nullptr;
+            CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend,
                                                            column_projects, having_condition));
             *output = agg_op;
             break;

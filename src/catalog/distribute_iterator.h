@@ -37,7 +37,10 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
  public:
     FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
             const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients);
-    void Seek(const uint64_t& ts) override {}
+    void Seek(const uint64_t& ts) override {
+        LOG(ERROR) << "Unsupport Seek in FullTableIterator";
+    }
+
     void SeekToFirst() override;
     bool Valid() const override;
     void Next() override;
@@ -59,7 +62,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     bool in_local_;
     uint32_t cur_pid_;
     std::unique_ptr<::openmldb::storage::TableIterator> it_;
-    std::unique_ptr<::openmldb::base::KvIterator> kv_it_;
+    std::shared_ptr<::openmldb::base::TraverseKvIterator> kv_it_;
     uint64_t key_;
     uint64_t last_ts_;
     std::string last_pk_;
@@ -69,46 +72,43 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
 
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
  public:
-    RemoteWindowIterator(std::shared_ptr<::openmldb::base::KvIterator> kv_it,
-            std::shared_ptr<::google::protobuf::Message> response)
-        : kv_it_(kv_it), response_(response) {
-        if (kv_it_->Valid()) {
-            pk_ = kv_it_->GetPK();
-        }
+    RemoteWindowIterator(uint32_t tid, uint32_t pid, const std::string& index_name,
+            const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
+            const std::shared_ptr<openmldb::client::TabletClient>& client);
+
+    bool Valid() const override;
+
+    void Next() override;
+
+    const uint64_t& GetKey() const override { return ts_; }
+
+    const ::hybridse::codec::Row& GetValue() override;
+
+    // seek to the first element whose key is less or equal to `key`
+    // or to the end if not found
+    void Seek(const uint64_t& key) override;
+
+    void SeekToFirst() override {
+        DLOG(INFO) << "RemoteWindowIterator SeekToFirst";
     }
-    bool Valid() const override {
-        if (kv_it_->Valid() && pk_ == kv_it_->GetPK()) {
-            DLOG(INFO) << "RemoteWindowIterator Valid pk " << pk_ << " ts " << kv_it_->GetKey();
-            return true;
-        }
-        return false;
-    }
-    void Next() override {
-        kv_it_->Next();
-    }
-    const uint64_t& GetKey() const override {
-        ts_ = kv_it_->GetKey();
-        return ts_;
-    }
-    const ::hybridse::codec::Row& GetValue() override {
-        auto slice_row = kv_it_->GetValue();
-        row_.Reset(reinterpret_cast<const int8_t*>(slice_row.data()), slice_row.size());
-        return row_;
-    }
-    void Seek(const uint64_t& key) override {
-        while (kv_it_->Valid() && key != kv_it_->GetKey() && pk_ == kv_it_->GetPK()) {
-            kv_it_->Next();
-        }
-    }
-    void SeekToFirst() override {}
     bool IsSeekable() const override { return true; }
 
  private:
+    void SetTs();
+    void ScanRemote(uint64_t key, uint32_t ts_cnt);
+
+ private:
+    uint32_t tid_;
+    uint32_t pid_;
+    std::string index_name_;
     std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
-    std::shared_ptr<::google::protobuf::Message> response_;
+    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
+    bool is_traverse_data_;
     std::string pk_;
     mutable uint64_t ts_;
+    uint32_t ts_cnt_;
 };
 
 class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
@@ -124,19 +124,41 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     ::hybridse::codec::RowIterator* GetRawValue() override;
     const ::hybridse::codec::Row GetKey() override;
 
+ public:
+    using IT = std::unique_ptr<::hybridse::codec::WindowIterator>;
+    using KV_IT = std::shared_ptr<::openmldb::base::KvIterator>;
+
+    // structure used for iterator result by Seek or SeekToFirst
+    struct ItStat {
+        uint32_t pid;
+        ::hybridse::codec::WindowIterator* it;
+        KV_IT kv_it;
+
+        ItStat() = delete;
+        ItStat(uint32_t id, ::hybridse::codec::WindowIterator* i, KV_IT kv) : pid(id), it(i), kv_it(kv) {}
+    };
+
  private:
     void Reset();
 
+    ItStat SeekByKey(const std::string& key) const;
+
+    ItStat SeekToFirstRemote() const;
+
  private:
-    uint32_t tid_;
-    uint32_t pid_num_;
+    const uint32_t tid_;
+    const uint32_t pid_num_;
     std::shared_ptr<Tables> tables_;
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients_;
-    uint32_t index_;
-    std::string index_name_;
+    const uint32_t index_;
+    const std::string index_name_;
+
     uint32_t cur_pid_;
-    std::unique_ptr<::hybridse::codec::WindowIterator> it_;
-    std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
+    // iterator to locally data
+    IT it_;
+    // iterator to remote data, only zero or one of `it_` and `kv_it_` can be non-null
+    KV_IT kv_it_;
+    // underlaying data pointed by `kv_it_`
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
 };
 

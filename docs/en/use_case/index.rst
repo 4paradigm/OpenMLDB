@@ -5,4 +5,7 @@ Use Cases
 .. toctree::
     :maxdepth: 1
 
-    pulsar_openmldb_connector_demo
+    lightgbm_demo
+    pulsar_connector_demo
+    kafka_connector_demo
+    dolphinscheduler_task_demo

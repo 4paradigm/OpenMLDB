@@ -19,7 +19,7 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.4.4 bash
+docker run -it 4pdosc/openmldb:0.5.2 bash
 ```
 
 ````{important}
@@ -34,8 +34,8 @@ docker run -it 4pdosc/openmldb:0.4.4 bash
 下载样例数据
 
 ```bash
-curl https://openmldb.ai/demo/data.csv --output ./data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
+curl https://openmldb.ai/demo/data.csv --output ./taxi-trip/data/data.csv
+curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
 ```
 
 ## 2. 单机版OpenMLDB 快速上手
@@ -53,6 +53,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./data/data.parquet
 
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
+cd taxi-trip
 ../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
@@ -201,8 +202,9 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB CLI客户端
 
 ```bash
+cd taxi-trip
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-> ../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 以下截图显示正确启动集群版OpenMLDB CLI 以后的画面

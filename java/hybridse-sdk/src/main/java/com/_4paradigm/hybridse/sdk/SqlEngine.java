@@ -171,22 +171,35 @@ public class SqlEngine implements AutoCloseable {
 
     @Override
      public synchronized void close() throws Exception {
-        engine.delete();
-        engine = null;
+        if (engine != null) {
+            engine.delete();
+            engine = null;
+        }
 
-        compileInfo.delete();
-        compileInfo = null;
+        if (compileInfo != null) {
+            compileInfo.delete();
+            compileInfo = null;
+        }
 
-        options.delete();
-        options = null;
+        if (options != null) {
+            options.delete();
+            options = null;
+        }
 
-        plan.delete();
-        plan = null;
+        if (plan != null) {
+            plan.delete();
+            plan = null;
+        }
 
-        session.delete();
-        session = null;
+        if (session != null) {
+            session.delete();
+            session = null;
+        }
 
-        catalog.delete();
-        catalog = null;
+        if (catalog != null) {
+            catalog.delete();
+            catalog = null;
+        }
     }
+
 }

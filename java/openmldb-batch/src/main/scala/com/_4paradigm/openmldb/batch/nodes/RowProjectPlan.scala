@@ -156,7 +156,6 @@ object RowProjectPlan {
           }
 
           // TODO: Add index column if needed
-          outputHybridseRow.delete()
           outputInternalRow
         })
 

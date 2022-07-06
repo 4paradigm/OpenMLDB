@@ -42,7 +42,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -63,7 +63,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -84,7 +84,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -102,7 +102,7 @@ namespace openmldb::client {
     }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request,
-                                  &response, FLAGS_request_timeout_ms, 1);
+                                  &response, request_timeout_ms_, 1);
 
     if (ok) {
         if (response.code() == 0) {
@@ -110,7 +110,7 @@ namespace openmldb::client {
         }
         return ::openmldb::base::Status(response.code(), "");
     } else {
-        return ::openmldb::base::Status(-1, "Fail to request TaskManager server");
+        return ::openmldb::base::Status(-1, "RPC request (to TaskManager) failed");
     }
 }
 
@@ -139,7 +139,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -168,7 +168,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -197,7 +197,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -226,7 +226,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -243,7 +243,7 @@ namespace openmldb::client {
     if (ok) {
         return {response.code(), response.msg()};
     } else {
-        return {-1, "Fail to request TaskManager server"};
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -266,7 +266,7 @@ std::string TaskManagerClient::GetJobLog(const int id, ::openmldb::base::Status*
         }
     }
     status->code = -1;
-    status->msg = "Fail to request TaskManager server";
+    status->msg = "RPC request (to TaskManager) failed";
     return "";
 }
 

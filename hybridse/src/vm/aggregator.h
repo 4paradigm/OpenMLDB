@@ -90,7 +90,10 @@ class Aggregator : public BaseAggregator {
     }
 
     Row Output() override {
-        return OutputInternal();
+        auto row = OutputInternal();
+        // reset the aggregator
+        Reset();
+        return row;
     }
 
     void Reset() override {

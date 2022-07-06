@@ -826,7 +826,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
                              " sum(col3) over w1 as w1_sum_col3 from " + base_table +
                              " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                             " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+                             " ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
 
@@ -834,7 +834,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     std::string msg;
     auto ns_client = cs_->GetNsClient();
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string aggr_table = "pre_test1_w1_sum_col3";
+    std::string aggr_table = "pre_" + base_db + "_test1_w1_sum_col3";
     ASSERT_TRUE(ns_client->ShowTable(aggr_table, pre_aggr_db, false, tables, msg));
     ASSERT_EQ(tables.size(), 1);
     ASSERT_EQ(tables[0].column_key_size(), 1);
@@ -851,7 +851,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     ASSERT_EQ(0, static_cast<int>(status.code));
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
-    ASSERT_EQ("pre_test1_w1_sum_col3", rs->GetStringUnsafe(0));
+    ASSERT_EQ(aggr_table, rs->GetStringUnsafe(0));
     ASSERT_EQ(pre_aggr_db, rs->GetStringUnsafe(1));
     ASSERT_EQ(base_db, rs->GetStringUnsafe(2));
     ASSERT_EQ(base_table, rs->GetStringUnsafe(3));
@@ -862,8 +862,7 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
     ASSERT_EQ("1000", rs->GetStringUnsafe(8));
 
     ASSERT_TRUE(cs_->GetNsClient()->DropProcedure(base_db, "test1", msg));
-    std::string pre_aggr_table = "pre_test1_w1_sum_col3";
-    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ok = router->ExecuteDDL(pre_aggr_db, "drop table " + aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok);

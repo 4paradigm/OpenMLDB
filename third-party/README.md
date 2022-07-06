@@ -60,6 +60,10 @@ where compiled libraries are installed into `build/usr`, source code installed i
 
     Source code install directory.
 
+- WITH_ZETASQL:BOOL=ON
+
+    Download and build zetasql
+
 ## Guide to compile thirdparty all from source
 
 By default, cmake will download pre-compiled thirdparty to speedup OpenMLDB building. However that may not always goes well since the pre-compiled thirdparty is not platform compatible.

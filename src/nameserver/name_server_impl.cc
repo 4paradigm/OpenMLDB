@@ -67,7 +67,6 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
-DECLARE_bool(enable_timeseries_table);
 DECLARE_uint32(sync_deploy_stats_timeout);
 
 using ::openmldb::api::OPType::kAddIndexOP;
@@ -2310,6 +2309,7 @@ int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::namese
     table_meta.set_compress_type(compress_type);
     table_meta.set_format_version(table_info->format_version());
     table_meta.set_storage_mode(table_info->storage_mode());
+    table_meta.set_base_table_tid(table_info->base_table_tid());
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
@@ -3004,7 +3004,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
         }
     }
     {
-        // if table is associated with procedure, drop it fail
+        // if table is associated with deployment, drop it fail
         if (!request->db().empty()) {
             std::lock_guard<std::mutex> lock(mu_);
             auto db_iter = db_table_sp_map_.find(request->db());
@@ -3015,7 +3015,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
                     const auto& sp_vec = table_iter->second;
                     if (!sp_vec.empty()) {
                         std::stringstream ss;
-                        ss << "table has associated procedure: ";
+                        ss << "table has associated deployment: ";
                         for (uint32_t i = 0; i < sp_vec.size(); i++) {
                             ss << sp_vec[i].first << "." << sp_vec[i].second;
                             if (i != sp_vec.size() - 1) {

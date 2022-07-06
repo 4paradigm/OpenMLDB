@@ -207,3 +207,44 @@
 # 配置线程池大小
 #--thread_pool_size=16
 ```
+
+
+## TaskManager配置文件 conf/taskmanager.properties
+
+```
+# Server Config
+server.host=0.0.0.0
+server.port=9902
+server.worker_threads=4
+server.io_threads=4
+server.channel_keep_alive_time=1800
+prefetch.jobid.num=1
+job.log.path=./logs/
+external.function.dir=./udf/
+track.unfinished.jobs=true
+job.tracker.interval=30
+
+# OpenMLDB Config
+zookeeper.cluster=0.0.0.0:2181
+zookeeper.root_path=/openmldb
+zookeeper.session_timeout=5000
+zookeeper.connection_timeout=5000
+zookeeper.max_retries=10
+zookeeper.base_sleep_time=1000
+zookeeper.max_connect_waitTime=30000
+
+# Spark Config
+spark.home=
+spark.master=local
+spark.yarn.jars=
+spark.default.conf=
+spark.eventLog.dir=
+spark.yarn.maxAppAttempts=1
+batchjob.jar.path=
+namenode.uri=
+offline.data.prefix=file:///tmp/openmldb_offline_storage/
+hadoop.conf.dir=
+```
+
+* 如果没有配置`spark.home`，则需要在TaskManager运行的环境变量配置`SPARK_HOME`。
+* `spark.master`默认配置为`local`，可以配置为`local[*]`、`yarn`、`yarn-cluster`、`yarn-client`等。如果配置为Yarn集群模式，则需要修改`offline.data.prefix`配置为HDFS路径，避免保存离线文件到Yarn容器本地，同时需要配置环境变量`HADOOP_CONF_DIR`为Hadoop配置文件所在目录。

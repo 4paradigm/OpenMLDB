@@ -164,7 +164,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
             uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
                                           TS_POS_LEN));
             bool has_found = false;
-            for (const auto index : indexs) {
+            for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
                 if (!ts_col) {
                     return false;
@@ -298,8 +298,8 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     TTLSt expire_value_;
     std::string pk_;
     std::string row_pk_;
-    bool has_ts_idx_;
     uint64_t ts_;
+    bool has_ts_idx_;
     uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
     bool pk_valid_;
@@ -420,7 +420,7 @@ class DiskTable : public Table {
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
     uint64_t GetRecordPkCnt() override;
-    inline uint64_t GetRecordByteSize() const override { return 0; }
+    uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT

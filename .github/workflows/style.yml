@@ -48,3 +48,24 @@ jobs:
           filter_mode: diff_context
           fail_on_error: true
           exclude: "./.git/*" # Optional.
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+
+      - name: Analysing the code with pylint
+        # FIXME: fix the pylint errors in project and rm continue-on-error flag
+        continue-on-error: true
+        run: |
+          make pylint

@@ -63,23 +63,28 @@ object SparkJobManager {
     launcher
   }
 
-  def submitSparkJob(jobType: String, mainClass: String, args: List[String] = List(),
-                     sparkConf: Map[String, String] = Map(), defaultDb: String = "",
+  def submitSparkJob(jobType: String, mainClass: String,
+                     args: List[String] = List(),
+                     localSqlFile: String = "",
+                     sparkConf: Map[String, String] = Map(),
+                     defaultDb: String = "",
                      blocking: Boolean = false): JobInfo = {
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
-    if (args != null) {
+
+    if (args.nonEmpty) {
       launcher.addAppArgs(args:_*)
     }
 
-    // TODO: Avoid using zh_CN to load openmldb jsdk so
-    launcher.setConf("spark.yarn.appMasterEnv.LANG", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.appMasterEnv.LC_ALL", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
+    if (localSqlFile.nonEmpty) {
+      logger.info("Add the local SQL file: " + localSqlFile)
+      launcher.addFile(localSqlFile)
+    }
 
+    // TODO: Avoid using zh_CN to load openmldb jsdk so
+   
     if (TaskManagerConfig.SPARK_EVENTLOG_DIR.nonEmpty) {
       launcher.setConf("spark.eventLog.enabled", "true")
       launcher.setConf("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)

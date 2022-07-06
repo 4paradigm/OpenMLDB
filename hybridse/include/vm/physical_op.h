@@ -39,7 +39,7 @@ enum PhysicalOpType {
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
-    kPhysicalOpAggrerate,
+    kPhysicalOpAggregate,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
     kPhysicalOpConstProject,
@@ -727,6 +727,9 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
 
  private:
     ColumnProjects project_;
+    // a empty SchemContext used by `InitSchema`, defined as class member to extend lifetime
+    // because codegen later need access to it
+    SchemasContext empty_schemas_ctx_;
 };
 
 class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
@@ -759,14 +762,14 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
     ColumnProjects project_;
 };
 
-class PhysicalAggrerationNode : public PhysicalProjectNode {
+class PhysicalAggregationNode : public PhysicalProjectNode {
  public:
-    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
+    PhysicalAggregationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
         : PhysicalProjectNode(node, kAggregation, project, true), having_condition_(condition) {
         output_type_ = kSchemaTypeRow;
         fn_infos_.push_back(&having_condition_.fn_info());
     }
-    virtual ~PhysicalAggrerationNode() {}
+    virtual ~PhysicalAggregationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     ConditionFilter having_condition_;
 };
@@ -774,7 +777,7 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
 class PhysicalReduceAggregationNode : public PhysicalProjectNode {
  public:
     PhysicalReduceAggregationNode(PhysicalOpNode *node, const ColumnProjects &project,
-                                  const node::ExprNode *condition, const PhysicalAggrerationNode *orig_aggr)
+                                  const node::ExprNode *condition, const PhysicalAggregationNode *orig_aggr)
         : PhysicalProjectNode(node, kReduceAggregation, project, true), having_condition_(condition) {
         output_type_ = kSchemaTypeRow;
         fn_infos_.push_back(&having_condition_.fn_info());
@@ -784,7 +787,7 @@ class PhysicalReduceAggregationNode : public PhysicalProjectNode {
     base::Status InitSchema(PhysicalPlanContext *) override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     ConditionFilter having_condition_;
-    const PhysicalAggrerationNode* orig_aggr_ = nullptr;
+    const PhysicalAggregationNode* orig_aggr_ = nullptr;
 };
 
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {

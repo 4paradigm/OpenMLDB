@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.batchjob
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
 
 object RunBatchSql {
@@ -29,9 +30,12 @@ object RunBatchSql {
     runBatchSql(args(0))
   }
 
-  def runBatchSql(sql: String): Unit = {
+  def runBatchSql(sqlFilePath: String): Unit = {
     val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    sess.sql(sql).show()
+
+    val sqlText = scala.io.Source.fromFile(SparkFiles.get(sqlFilePath)).mkString
+    sess.sql(sqlText).show()
+
     sess.close()
   }
 

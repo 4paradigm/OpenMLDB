@@ -18,7 +18,6 @@
 #include <string>
 #include <vector>
 
-#include "base/kv_iterator.h"
 #include "boost/container/deque.hpp"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"

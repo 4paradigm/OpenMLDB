@@ -373,6 +373,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       val res = body(sqlEngine)
       res
     } catch {
+      case e: UnsupportedHybridSeException => throw e
       case e: Exception =>
         println("Get exception: " + e.getMessage)
         e.printStackTrace()

@@ -1,32 +1,31 @@
-Build
-================
+# Build
 
-# Quick Start
+## 1. Quick Start
 
 [quick-start]: quick-start
 
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
 The docker image has packed required tools and dependencies, so there is no need to set them up separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) below.
 
-Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.4.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.4.4) under `hybridsql:0.4.4` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
+Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.5.0](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.5.0) under `hybridsql:0.5.0` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
 
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.4.4
+    docker pull 4pdosc/hybridsql:0.5
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.4.4 bash
+   docker run -it 4pdosc/hybridsql:0.5 bash
    ```
 
-3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.4.4
+3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.5.0
 
    ```bash
    cd ~
-   git clone -b v0.4.4 https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.5.0 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
@@ -44,11 +43,11 @@ Keep in mind that you should always use the same version of both compile image a
 
 Now you've finished the compilation job, and you may try run OpenMLDB inside the docker container.
 
-# Detailed Instructions for Build
+## 2. Detailed Instructions for Build
 
 [build]: build
 
-## Hardware Requirements
+### 2.1. Hardware Requirements
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
@@ -60,7 +59,7 @@ Note: By default, the parallel build is disabled, and it usually takes an hour t
 make NPROC=4
 ```
 
-## Prerequisites
+### 2.2. Prerequisites
 
 Make sure those tools are installed
 
@@ -70,14 +69,14 @@ Make sure those tools are installed
 - python3, python setuptools, python wheel
 - If you'd like to compile thirdparty from source, checkout the [third-party's requirement](../../third-party/README.md) for extra dependencies
 
-## Build and Install OpenMLDB
+### 2.3. Build and Install OpenMLDB
 
 Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
 - **Method One: Build and Run Inside Docker:** Using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image, the thirdparty is already bundled inside the image and no extra steps are required, refer to above section [Quick Start](#quick-start)
 - **Method Two: Download Pre-Compiled Thirdparty:** It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when building outside a hybridsql container. Currently it supports CentOS 7, Ubuntu 20.04 and macOS. The default command to build and install is `make && make install`
 - **Method Three: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 7 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
-   
+  
    ```bash
    make BUILD_BUNDLED=ON
    make install
@@ -85,7 +84,7 @@ Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is 
 
 All of the three methods above will install OpenMLDB binaries into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#make-opts)).
 
-## Extra Options for `make`
+### 2.4. Extra Options for `make`
 
 [make-opts]: make-opts
 
@@ -136,7 +135,7 @@ make CMAKE_BUILD_TYPE=Debug
   Default: ON
 
 
-# Optimized Spark Distribution for OpenMLDB (Optional)
+## 3. Optimized Spark Distribution for OpenMLDB
 
 [OpenMLDB Spark Distribution](https://github.com/4paradigm/spark) is the fork of [Apache Spark](https://github.com/apache/spark). It adopts specific optimization techniques for OpenMLDB. It provides native `LastJoin` implementation and achieves 10x~100x performance improvement compared with the original Spark distribution. The Java/Scala/Python/SQL APIs of the OpenMLDB Spark distribution are fully compatible with the standard Spark distribution.
 

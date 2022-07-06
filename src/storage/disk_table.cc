@@ -987,12 +987,12 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
       snapshot_(snapshot),
       record_idx_(1),
       expire_value_(expire_time, expire_cnt, ttl_type),
-      row_(),
       pk_(pk),
       row_pk_(pk),
       ts_(ts),
       has_ts_idx_(has_ts_idx),
-      ts_idx_(ts_idx) {}
+      ts_idx_(ts_idx),
+      row_() {}
 
 DiskTableRowIterator::~DiskTableRowIterator() {
     delete it_;

@@ -30,7 +30,7 @@ namespace sdk {
 
 class ScanFutureImpl : public ScanFuture {
  public:
-    explicit ScanFutureImpl(openmldb::RpcCallback<openmldb::api::ScanResponse>* callback,
+    ScanFutureImpl(openmldb::RpcCallback<openmldb::api::ScanResponse>* callback,
                             const ::google::protobuf::RepeatedField<uint32_t>& projection,
                             std::shared_ptr<::hybridse::vm::TableHandler> table_handler)
         : callback_(callback), schema_(), projection_(projection), table_handler_(table_handler) {
@@ -137,9 +137,6 @@ std::shared_ptr<openmldb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std:
     if (!so.idx_name.empty()) {
         request.set_idx_name(so.idx_name);
     }
-    if (so.at_least > 0) {
-        request.set_atleast(so.at_least);
-    }
     auto scan_future = std::make_shared<ScanFutureImpl>(callback, request.projection(), table_handler);
     client->AsyncScan(request, callback);
     return scan_future;
@@ -187,9 +184,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> TableReaderImpl::Scan(const std::strin
     }
     if (!so.idx_name.empty()) {
         request.set_idx_name(so.idx_name);
-    }
-    if (so.at_least > 0) {
-        request.set_atleast(so.at_least);
     }
     auto response = std::make_shared<::openmldb::api::ScanResponse>();
     auto cntl = std::make_shared<::brpc::Controller>();

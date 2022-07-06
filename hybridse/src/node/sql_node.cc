@@ -631,6 +631,28 @@ bool FrameExtent::Equals(const SqlNode *node) const {
     return SqlEquals(this->start_, that->start_) && SqlEquals(this->end_, that->end_);
 }
 
+std::string FrameExtent::GetExprString() const {
+    std::string str = "[";
+    if (nullptr == start_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(start_->GetExprString());
+    }
+    str.append(",");
+    if (nullptr == end_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(end_->GetExprString());
+    }
+
+    str.append("]");
+    return str;
+}
+
+bool FrameExtent::Valid() const {
+    return GetStartOffset() <= GetEndOffset();
+}
+
 FrameExtent* FrameExtent::ShadowCopy(NodeManager* nm) const {
     return nm->MakeFrameExtent(start(), end());
 }
@@ -1998,6 +2020,20 @@ bool QueryRefNode::Equals(const SqlNode *node) const {
     const QueryRefNode *that = dynamic_cast<const QueryRefNode *>(node);
     return SqlEquals(this->query_, that->query_);
 }
+
+void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ST;
+    output << "\n";
+    PrintValue(output, tab, BoundTypeName(bound_type_), "bound", false);
+
+    if (kPrecedingUnbound != bound_type_ && kFollowingUnbound != bound_type_) {
+        // unbound information is enough from `bound:` field
+        output << "\n";
+        PrintValue(output, tab, std::to_string(offset_), "offset", true);
+    }
+}
+
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (SqlEquals(bound1, bound2)) {
         return 0;
@@ -2010,8 +2046,9 @@ int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (nullptr == bound2) {
         return 1;
     }
-    int64_t offset1 = bound1->GetSignedOffset();
-    int64_t offset2 = bound2->GetSignedOffset();
+    // FromeBound itself do not know it is start or end frame, just assume same for the two
+    int64_t offset1 = bound1->GetSignedOffset(true);
+    int64_t offset2 = bound2->GetSignedOffset(true);
     return offset1 == offset2 ? 0 : offset1 > offset2 ? 1 : -1;
 }
 bool FrameBound::Equals(const SqlNode *node) const {

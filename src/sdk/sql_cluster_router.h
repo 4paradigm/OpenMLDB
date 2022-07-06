@@ -38,7 +38,7 @@
 namespace openmldb {
 namespace sdk {
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtidbSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
@@ -323,7 +323,7 @@ class SQLClusterRouter : public SQLRouter {
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
                                   uint32_t* str_length);
 
-    inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
+    inline bool CheckParameter(const PBSchema& parameter, const PBSchema& input_schema);
 
     inline bool CheckSQLSyntax(const std::string& sql);
 
@@ -354,6 +354,18 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
 
+    hybridse::sdk::Status HandleIndex(const std::set<std::pair<std::string, std::string>>& table_pair,
+                                      const std::string& select_sql);
+
+    hybridse::sdk::Status GetNewIndex(
+        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
+        std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
+
+    hybridse::sdk::Status AddNewIndex(
+        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
+
     hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
 
     hybridse::sdk::Status HandleLongWindows(const hybridse::node::DeployPlanNode* deploy_node,
@@ -362,9 +374,7 @@ class SQLClusterRouter : public SQLRouter {
 
 
     bool CheckPreAggrTableExist(const std::string& base_table, const std::string& base_db,
-                                const std::string& aggr_func, const std::string& aggr_col,
-                                const std::string& partition_col, const std::string& order_col,
-                                const std::string& bucket_size);
+                                const openmldb::base::LongWindowInfo& lw, ::hybridse::sdk::Status* status);
 
     ///
     /// \brief Query all registered components, aka tablet, nameserver, task manager,

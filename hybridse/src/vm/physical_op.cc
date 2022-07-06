@@ -37,7 +37,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpProject, "PROJECT"},
         {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
         {kPhysicalOpConstProject, "CONST_PROJECT"},
-        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpAggregate, "AGGREGATE"},
         {kPhysicalOpLimit, "LIMIT"},
         {kPhysicalOpRename, "RENAME"},
         {kPhysicalOpDistinct, "DISTINCT"},
@@ -322,17 +322,13 @@ Status PhysicalConstProjectNode::WithNewChildren(node::NodeManager* nm, const st
 }
 
 Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
-    SchemasContext empty_ctx;
-    CHECK_STATUS(ctx->InitFnDef(project_, &empty_ctx, true, &project_),
+    CHECK_STATUS(ctx->InitFnDef(project_, &empty_schemas_ctx_, true, &project_),
                  "Fail to initialize function def of const project node");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
-    SchemasContext empty_schemas_ctx;
-    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
-    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
-                 "Fail to initialize function def of const project node");
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx_, ctx, project_source));
     return Status::OK();
 }
 
@@ -433,7 +429,7 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
             ConditionFilter new_having_condition;
             {
                 auto& having_condition =
-                    dynamic_cast<PhysicalAggrerationNode*>(this)->having_condition_;
+                    dynamic_cast<PhysicalAggregationNode*>(this)->having_condition_;
                 std::vector<const node::ExprNode*> having_condition_depend_columns;
                 having_condition.ResolvedRelatedColumns(&having_condition_depend_columns);
                 passes::ExprReplacer having_replacer;
@@ -444,7 +440,7 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
                 CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
             }
 
-            op = new PhysicalAggrerationNode(children[0], new_projects, new_having_condition.condition());
+            op = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
             break;
         }
         case kGroupAggregation: {
@@ -565,7 +561,7 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(PhysicalO
 }
 
 
-void PhysicalAggrerationNode::Print(std::ostream& output,
+void PhysicalAggregationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);

@@ -94,8 +94,8 @@ cases:
         - [1,"aa",20,32,32,1]
         - [2,"aa",21,32,64,2]
         - [3,"aa",22,32,64,2]
-        - [4,"bb",23,null,0,0]
-        - [5,"bb",24,null,0,0]
+        - [4,"bb",23,NULL,NULL,0]
+        - [5,"bb",24,NULL,NULL,0]
   - id: 2
     desc: lastjoin+窗口+union
     tags: ["TODO","暂时不支持 lastjoin window + union共存"]

@@ -94,9 +94,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
 
     // TODO(xxx): iterator of nullable V
     std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
-        auto iter = std::unique_ptr<ConstIterator<uint64_t, V>>(
-            new ColumnIterator<V>(root_, this));
-        return std::move(iter);
+        return std::make_unique<ColumnIterator<V>>(root_, this);
     }
     ConstIterator<uint64_t, V> *GetRawIterator() override {
         return new ColumnIterator<V>(root_, this);
@@ -199,7 +197,7 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
           iter_(iter_start_),
           key_(0) {}
 
-    explicit ArrayListIterator(const ArrayListIterator<V> &impl)
+    ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
@@ -262,7 +260,7 @@ class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
         }
     }
 
-    explicit BoolArrayListIterator(const BoolArrayListIterator &impl)
+    BoolArrayListIterator(const BoolArrayListIterator &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
