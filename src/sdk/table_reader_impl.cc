@@ -30,7 +30,7 @@ namespace sdk {
 
 class ScanFutureImpl : public ScanFuture {
  public:
-    explicit ScanFutureImpl(openmldb::RpcCallback<openmldb::api::ScanResponse>* callback,
+    ScanFutureImpl(openmldb::RpcCallback<openmldb::api::ScanResponse>* callback,
                             const ::google::protobuf::RepeatedField<uint32_t>& projection,
                             std::shared_ptr<::hybridse::vm::TableHandler> table_handler)
         : callback_(callback), schema_(), projection_(projection), table_handler_(table_handler) {

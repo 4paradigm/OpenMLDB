@@ -17,9 +17,6 @@
 #ifndef SRC_CODEC_CODEC_H_
 #define SRC_CODEC_CODEC_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include <map>
 #include <memory>
 #include <sstream>
@@ -27,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/endianconv.h"
 #include "base/strings.h"
 #include "proto/common.pb.h"
 

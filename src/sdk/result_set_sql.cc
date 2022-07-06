@@ -68,22 +68,18 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     const std::shared_ptr<::openmldb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
     hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
-        return std::shared_ptr<ResultSet>();
+        return {};
     }
     ::hybridse::vm::Schema schema;
     bool ok = ::hybridse::codec::SchemaCodec::Decode(response->schema(), &schema);
     if (!ok) {
-        status->code = -1;
-        status->msg = "request error, fail to decodec schema";
-        return std::shared_ptr<ResultSet>();
+        *status = {::hybridse::common::StatusCode::kCmdError, "request error, fail to decodec schema"};
+        return {};
     }
-    std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs =
-        std::make_shared<openmldb::sdk::ResultSetSQL>(schema, response->count(), response->byte_size(), cntl);
-    ok = rs->Init();
-    if (!ok) {
-        status->code = -1;
-        status->msg = "request error, ResultSetSQL init failed";
-        return std::shared_ptr<ResultSet>();
+    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, response->count(), response->byte_size(), cntl);
+    if (!rs->Init()) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "request error, ResultSetSQL init failed"};
+        return {};
     }
     return rs;
 }
@@ -93,37 +89,27 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
     std::shared_ptr<::hybridse::vm::TableHandler> table_handler, ::hybridse::sdk::Status* status) {
     if (!status || !response || !cntl) {
-        return std::shared_ptr<ResultSet>();
+        return {};
     }
+    std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs;
     auto sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
     if (projection.size() > 0) {
         ::hybridse::vm::Schema schema;
         bool ok = ::openmldb::schema::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
         if (!ok) {
-            status->code = -1;
-            status->msg = "fail to get sub schema";
+            *status = {::hybridse::common::StatusCode::kCmdError, "fail to get sub schema"};
+            return {};
         }
-
-        std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs = std::make_shared<openmldb::sdk::ResultSetSQL>(
-            *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
-        ok = rs->Init();
-        if (!ok) {
-            status->code = -1;
-            status->msg = "request error, ResultSetSQL init failed";
-            return std::shared_ptr<ResultSet>();
-        }
-        return rs;
+        rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, response->count(), response->buf_size(), cntl);
     } else {
-        std::shared_ptr<::openmldb::sdk::ResultSetSQL> rs = std::make_shared<openmldb::sdk::ResultSetSQL>(
+        rs = std::make_shared<openmldb::sdk::ResultSetSQL>(
             *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
-        bool ok = rs->Init();
-        if (!ok) {
-            status->code = -1;
-            status->msg = "request error, ResultSetSQL init failed";
-            return std::shared_ptr<ResultSet>();
-        }
-        return rs;
     }
+    if (!rs->Init()) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "request error, ResultSetSQL init failed"};
+        return {};
+    }
+    return rs;
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(

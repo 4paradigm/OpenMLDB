@@ -54,7 +54,7 @@ TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     return args;
 }
 
-TEST_F(SDKCatalogTest, sdk_smoke_test) {
+TEST_F(SDKCatalogTest, SdkSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
@@ -74,7 +74,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     std::cout << ss.str() << std::endl;*/
 }
 
-TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
+TEST_F(SDKCatalogTest, SdkWindowSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
@@ -97,7 +97,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     std::cout << ss.str() << std::endl;*/
 }
 
-TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
+TEST_F(SDKCatalogTest, SdkLastjoinSmokeTest) {
     TestArgs* args = PrepareTable("t1", "db1");
     TestArgs* args2 = PrepareTable("t2", "db1");
     std::vector<::openmldb::nameserver::TableInfo> tables;
