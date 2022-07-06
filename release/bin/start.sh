@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -16,11 +16,10 @@
 
 set -e
 
-if [[ $OSTYPE == 'darwin'* ]]; then
-  MON_BINARY='./bin/mon_mac'
-else
-  MON_BINARY='./bin/mon'
-fi
+ulimit -c unlimited
+ulimit -n 655360
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -32,6 +31,8 @@ fi
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
+RED='\E[1;31m'
+RES='\E[0m'
 
 OP=$1
 COMPONENT=$2
@@ -63,19 +64,45 @@ case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
-            if tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill -0 > /dev/null 2>&1; then
-                echo tablet already running as process "$(tr -d '\0' < "$OPENMLDB_PID_FILE")".
+            PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                echo -e "${RED}$COMPONENT already running as process $PID ${RES}"
                 exit 0
             fi
         fi
 
-        # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
-            $MON_BINARY "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
-            sleep 1
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
+            PID=$!
+            ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+            COUNT=1
+            while [ $COUNT -lt 15 ]
+            do
+                if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
+                    sleep 1
+                    (( COUNT+=1 ))
+                else
+                    echo $PID > "$OPENMLDB_PID_FILE"
+                    echo "Start ${COMPONENT} success"
+                    exit 0
+                fi
+            done
         else
-            $MON_BINARY "./bin/boot_taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
+            if [ -f "./conf/taskmanager.properties" ]; then
+                cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
+            fi
+            pushd ./taskmanager/bin/ > /dev/null
+            sh ./taskmanager.sh 2>&1 &
+            PID=$!
+            popd > /dev/null 
+            sleep 2
+            if kill -0 $PID > /dev/null 2>&1; then
+                /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                echo "Start ${COMPONENT} success"
+                exit 0
+            fi
         fi
+        echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
@@ -88,7 +115,7 @@ case $OP in
                 kill "$PID"
             fi
             rm "$OPENMLDB_PID_FILE"
-            echo STOPPED
+            echo "Stop ${COMPONENT} success"
         fi
         ;;
     restart)
