@@ -84,6 +84,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentDatasType.add(type);
             currentDatas.add(null);
             hasSet.add(false);
+            logger.debug("add col {}, {}", currentSchema.GetColumnName(idx), type);
         }
     }
 
