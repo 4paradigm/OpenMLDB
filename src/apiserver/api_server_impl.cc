@@ -114,7 +114,7 @@ void APIServerImpl::RegisterQuery() {
                        }
                        QUERY_MODE query_mode = it->second;
 
-                       auto sql = boost::to_lower_copy(req.sql);
+                       const auto& sql = req.sql;
                        LOG(INFO) << "post [" << mode << "] query on db [" << db << "], sql: " << sql;
                        // TODO(hw): if api server supports standalone, we should check if cluster mode here
 
@@ -122,7 +122,7 @@ void APIServerImpl::RegisterQuery() {
                        // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
                        //  supports ddl http api. It's useful for api server tests(We can create table when we only
                        //  connect to the api server).
-                       if (query_mode == QUERY_MODE::ONLINE || !boost::starts_with(sql, "select")) {
+                       if (query_mode == QUERY_MODE::ONLINE || !boost::istarts_with(sql, "select")) {
                            // TODO(hw): response the result set
                            auto rs = sql_router_->ExecuteSQL(db, sql, &status);
                        } else {
