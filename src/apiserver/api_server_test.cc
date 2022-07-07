@@ -40,7 +40,7 @@ class APIServerTestEnv : public testing::Environment {
         ::hybridse::vm::Engine::InitializeGlobalLLVM();
         FLAGS_zk_session_timeout = 100000;
 
-        mc = std::make_shared<sdk::MiniCluster>(2181);
+        mc = std::make_shared<sdk::MiniCluster>(6181);
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
         sdk::ClusterOptions cluster_options;
