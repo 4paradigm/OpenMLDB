@@ -48,7 +48,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 60000;
+    sql_opt.zk_session_timeout = 60000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     SetOnlineMode(router);
@@ -94,7 +94,7 @@ TEST_P(SQLSDKTest, SqlSdkBatchTest) {
         return;
     }
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = sql_case.debug() || hybridse::sqlcase::SqlCase::IsDebug();
@@ -216,7 +216,7 @@ TEST_F(SQLSDKQueryTest, ExecuteLatestWhereTest) {
         "create table latest_table(c1 string, c2 int, c3 timestamp, c4 timestamp, "
         "index(key=(c1),ts=c4,ttl_type=latest, ttl=2));";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -280,7 +280,7 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereTest) {
         "                   index(key=pay_card_no, ts=txn_time),\n"
         "                   index(key=merch_id, ts=txn_time));";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -357,7 +357,7 @@ TEST_F(SQLSDKQueryTest, ExecuteInsertLoopsTest) {
     int64_t error_cnt = 0;
     int64_t cnt = 0;
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -410,7 +410,7 @@ TEST_F(SQLSDKQueryTest, CreateNoTs) {
         "                c2 bigint,\n"
         "                index(key=c1, ttl=14400m, ttl_type=absolute));";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
@@ -454,7 +454,7 @@ TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
@@ -586,7 +586,7 @@ TEST_F(SQLSDKQueryTest, DropTableWithProcedureTest) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
@@ -791,7 +791,7 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
         "                   index(key=pay_card_no, ts=txn_time),\n"
         "                   index(key=merch_id, ts=txn_time));";
     SQLRouterOptions sql_opt;
-    sql_opt.session_timeout = 30000;
+    sql_opt.zk_session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = hybridse::sqlcase::SqlCase::IsDebug();

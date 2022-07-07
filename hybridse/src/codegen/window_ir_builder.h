@@ -58,6 +58,9 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
                                      int64_t end, ::llvm::Value** output);
     virtual bool BuildInnerRowsList(::llvm::Value* window_ptr, int64_t start,
                                     int64_t end, ::llvm::Value** output);
+
+    bool BuildInnerRowsRangeList(::llvm::Value* window_ptr, ::llvm::Value* row_key, int64_t start_rows,
+                                 int64_t end_range, ::llvm::Value** output);
     virtual bool BuildGetCol(size_t schema_idx, size_t col_idx,
                              ::llvm::Value* window_ptr, ::llvm::Value** output);
 

@@ -37,7 +37,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpProject, "PROJECT"},
         {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
         {kPhysicalOpConstProject, "CONST_PROJECT"},
-        {kPhysicalOpAggrerate, "AGGRERATE"},
+        {kPhysicalOpAggregate, "AGGREGATE"},
         {kPhysicalOpLimit, "LIMIT"},
         {kPhysicalOpRename, "RENAME"},
         {kPhysicalOpDistinct, "DISTINCT"},
@@ -322,17 +322,13 @@ Status PhysicalConstProjectNode::WithNewChildren(node::NodeManager* nm, const st
 }
 
 Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
-    SchemasContext empty_ctx;
-    CHECK_STATUS(ctx->InitFnDef(project_, &empty_ctx, true, &project_),
+    CHECK_STATUS(ctx->InitFnDef(project_, &empty_schemas_ctx_, true, &project_),
                  "Fail to initialize function def of const project node");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
-    SchemasContext empty_schemas_ctx;
-    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
-    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
-                 "Fail to initialize function def of const project node");
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx_, ctx, project_source));
     return Status::OK();
 }
 
@@ -444,7 +440,8 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
                 CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
             }
 
-            op = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
+            auto* agg_prj = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
+            op = agg_prj;
             break;
         }
         case kGroupAggregation: {
@@ -739,6 +736,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::strin
     output << "(type=" << ProjectTypeName(project_type_);
     if (exclude_current_time_) {
         output << ", EXCLUDE_CURRENT_TIME";
+    }
+    if (exclude_current_row_) {
+        output << ", EXCLUDE_CURRENT_ROW";
     }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
@@ -1199,6 +1199,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const st
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
                                                      exclude_current_time_, output_request_row_);
+    new_union_op->exclude_current_row_ = exclude_current_row_;
 
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
@@ -1227,6 +1228,12 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     }
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    if (exclude_current_row_) {
+        output << "EXCLUDE_CURRENT_ROW, ";
+    }
+    if (instance_not_in_window_) {
+        output << "INSTANCE_NOT_IN_WINDOW, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {

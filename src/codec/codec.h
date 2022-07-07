@@ -17,9 +17,6 @@
 #ifndef SRC_CODEC_CODEC_H_
 #define SRC_CODEC_CODEC_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include <map>
 #include <memory>
 #include <sstream>
@@ -27,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/endianconv.h"
 #include "base/strings.h"
 #include "proto/common.pb.h"
 
@@ -41,13 +37,9 @@ static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 
-struct RowContext;
 class RowBuilder;
 class RowView;
 class RowProject;
-
-// TODO(wangtaize) share the row codec context
-struct RowContext {};
 
 class RowProject {
  public:
@@ -221,49 +213,6 @@ inline uint32_t CalcTotalLength(uint32_t primary_size, uint32_t str_field_cnt, u
         return total_size + str_field_cnt * 4;
     }
 }
-inline int32_t AppendInt16(int8_t* buf_ptr, uint32_t buf_size, int16_t val, uint32_t field_offset) {
-    if (field_offset + 2 > buf_size) {
-        return -1;
-    }
-    *(reinterpret_cast<int16_t*>(buf_ptr + field_offset)) = val;
-    return 4;
-}
-
-inline int32_t AppendFloat(int8_t* buf_ptr, uint32_t buf_size, float val, uint32_t field_offset) {
-    if (field_offset + 4 > buf_size) {
-        return -1;
-    }
-    *(reinterpret_cast<float*>(buf_ptr + field_offset)) = val;
-    return 4;
-}
-
-inline int32_t AppendInt32(int8_t* buf_ptr, uint32_t buf_size, int32_t val, uint32_t field_offset) {
-    if (field_offset + 4 > buf_size) {
-        return -1;
-    }
-    *(reinterpret_cast<int32_t*>(buf_ptr + field_offset)) = val;
-    return 4;
-}
-
-inline int32_t AppendInt64(int8_t* buf_ptr, uint32_t buf_size, int64_t val, uint32_t field_offset) {
-    if (field_offset + 8 > buf_size) {
-        return -1;
-    }
-    *(reinterpret_cast<int64_t*>(buf_ptr + field_offset)) = val;
-    return 8;
-}
-
-inline int32_t AppendDouble(int8_t* buf_ptr, uint32_t buf_size, double val, uint32_t field_offset) {
-    if (field_offset + 8 > buf_size) {
-        return -1;
-    }
-
-    *(reinterpret_cast<double*>(buf_ptr + field_offset)) = val;
-    return 8;
-}
-
-int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, int8_t* val, uint32_t size, uint32_t str_start_offset,
-                     uint32_t str_field_offset, uint32_t str_addr_space, uint32_t str_body_offset);
 
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {

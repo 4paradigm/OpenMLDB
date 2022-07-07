@@ -26,6 +26,11 @@ project(openmldb)
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
+
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
+endif()
+
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 5)
@@ -44,12 +49,18 @@ function(get_commitid CODE_DIR COMMIT_ID)
     set("${COMMIT_ID}" ${COMMIT_ID_TMP} PARENT_SCOPE)
 endfunction()
 
+# strip the given target
+function(strip_exe TARGET_NAME)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_STRIP}
+            ARGS $<TARGET_FILE:${TARGET_NAME}>)
+endfunction()
+
 get_commitid(${PROJECT_SOURCE_DIR} OPENMLDB_COMMIT_ID)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
 )
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions('-g')
 add_definitions('-Wall')
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -83,6 +94,7 @@ option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
 option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
+option(TESTING_ENABLE_STRIP "Strip test binary that may help reduce storage space" OFF)
 
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -90,9 +102,9 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
-if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
-endif()
+set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
@@ -178,9 +190,6 @@ llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
-find_package(SWIG REQUIRED)
-include(UseSWIG)
 find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES
 set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")

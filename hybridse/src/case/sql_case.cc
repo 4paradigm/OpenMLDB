@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/ascii.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
@@ -1023,6 +1024,14 @@ bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
         }
     }
 
+    if (schema_data["plan_tree_str"]) {
+        const auto& tree = schema_data["plan_tree_str"].as<std::string>();
+        absl::string_view sv = absl::StripAsciiWhitespace(tree);
+        if (!sv.empty()) {
+            expect->plan_tree_str_ = sv;
+        }
+    }
+
     YAML::Node rows_node;
     if (expect_provider["rows"]) {
         rows_node = expect_provider["rows"];
@@ -1618,6 +1627,18 @@ std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
     } else {
         return std::set<std::string>({"0"});
     }
+}
+
+std::string SqlCase::SqlCaseBaseDir() {
+    char* value = getenv("SQL_CASE_BASE_DIR");
+    if (value != nullptr) {
+        return std::string(value);
+    }
+    value = getenv("YAML_CASE_BASE_DIR");
+    if (value != nullptr) {
+        return std::string(value);
+    }
+    return "";
 }
 }  // namespace sqlcase
 }  // namespace hybridse

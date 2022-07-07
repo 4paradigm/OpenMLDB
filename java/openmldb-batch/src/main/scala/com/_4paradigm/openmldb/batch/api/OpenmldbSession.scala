@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.DataTypeUtil
+import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.spark.{SPARK_VERSION, SparkConf}
@@ -28,7 +29,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMap, mapAsScalaMapConverter}
 
 /**
  * The class to provide SparkSession-like API.
@@ -259,17 +260,16 @@ class OpenmldbSession {
         if (offlineTableInfo != null) { // offlineTableInfo is always not null
           val path = offlineTableInfo.getPath
           val format = offlineTableInfo.getFormat
+          val options = offlineTableInfo.getOptionsMap.asScala.toMap
 
           // TODO: Ignore the register exception which occurs when switching local and yarn mode
           try {
             // default offlineTableInfo required members 'path' & 'format' won't be null
             if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
-              // Has offline table meta
+              // Has offline table meta, use the meta and table schema to read data
               val df = format.toLowerCase match {
-                case "parquet" => sparkSession.read.parquet(path)
-                case "csv" => sparkSession.read.csv(path)
+                case "parquet" | "csv" => autoLoad(sparkSession, path, format, options, tableInfo.getColumnDescList)
               }
-              // TODO: Check schema
               registerTable(dbName, tableName, df)
             } else {
               // Register empty df for table

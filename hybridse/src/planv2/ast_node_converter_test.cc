@@ -317,28 +317,26 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
         zetasql::ASTWindowFrameExpr start;
         zetasql::ASTWindowFrameExpr end;
         start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING);
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
         end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::RANGE);
         dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
-        ASSERT_TRUE(status.isOK());
+        ASSERT_TRUE(status.isOK()) << status;
     }
     {
         zetasql::ASTWindowFrame expression;
         zetasql::ASTWindowFrameExpr start;
         zetasql::ASTWindowFrameExpr end;
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_PRECEDING);
-        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
-        end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
+        start.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::CURRENT_ROW);
+        end.set_boundary_type(zetasql::ASTWindowFrameExpr::BoundaryType::UNBOUNDED_FOLLOWING);
         expression.AddChildren({&start, &end});
         expression.set_unit(zetasql::ASTWindowFrame::ROWS);
         dynamic_cast<zetasql::ASTNode*>(&expression)->InitFields();
         node::FrameNode* output = nullptr;
         base::Status status = ConvertFrameNode(&expression, &node_manager, &output);
-        ASSERT_TRUE(status.isOK());
+        ASSERT_TRUE(status.isOK()) << status;
     }
 }
 
@@ -1126,8 +1124,7 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     status = ConvertStatement(statement, manager_, &output);
     EXPECT_EQ(common::kOk, status.code) << status;
     if (status.isOK() && !sql_case.expect().node_tree_str_.empty()) {
-        EXPECT_STREQ(sql_case.expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
-            << output->GetTreeString().c_str();
+        EXPECT_EQ(sql_case.expect().node_tree_str_, output->GetTreeString()) << output->GetTreeString();
     }
 }
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
@@ -1148,6 +1145,8 @@ INSTANTIATE_TEST_SUITE_P(ASTJoinTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTHavingStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

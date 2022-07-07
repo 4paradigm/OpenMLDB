@@ -43,6 +43,7 @@ enum class AggrType {
     kMax = 3,
     kCount = 4,
     kAvg = 5,
+    kCountWhere = 6,
 };
 
 enum class WindowType {
@@ -71,18 +72,18 @@ class AggrBuffer {
     } aggr_val_;
     int64_t ts_begin_;
     int64_t ts_end_;
-    int32_t aggr_cnt_;
     uint64_t binlog_offset_;
-    int64_t non_null_cnt;
+    int64_t non_null_cnt_;
+    int32_t aggr_cnt_;
     DataType data_type_;
-    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), aggr_cnt_(0), binlog_offset_(0), non_null_cnt(0) {}
+    AggrBuffer() : aggr_val_(), ts_begin_(-1), ts_end_(0), binlog_offset_(0), non_null_cnt_(0), aggr_cnt_(0) {}
     AggrBuffer(const AggrBuffer& buffer) {
         memcpy(&aggr_val_, &buffer.aggr_val_, sizeof(aggr_val_));
         ts_begin_ = buffer.ts_begin_;
         ts_end_ = buffer.ts_end_;
         aggr_cnt_ = buffer.aggr_cnt_;
         binlog_offset_ = buffer.binlog_offset_;
-        non_null_cnt = buffer.non_null_cnt;
+        non_null_cnt_ = buffer.non_null_cnt_;
         data_type_ = buffer.data_type_;
         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
             if (buffer.aggr_val_.vstring.data != NULL) {
@@ -104,9 +105,9 @@ class AggrBuffer {
         ts_end_ = 0;
         aggr_cnt_ = 0;
         binlog_offset_ = 0;
-        non_null_cnt = 0;
+        non_null_cnt_ = 0;
     }
-    bool AggrValEmpty() const { return non_null_cnt == 0; }
+    bool AggrValEmpty() const { return non_null_cnt_ == 0; }
 };
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
@@ -143,11 +144,16 @@ class Aggregator {
 
     bool GetAggrBuffer(const std::string& key, AggrBuffer** buffer);
 
+    bool GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer);
+
+    uint32_t GetAggrTid() { return aggr_table_->GetId(); }
+
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
 
-    std::unordered_map<std::string, AggrBufferLocked> aggr_buffer_map_;
+    using FilterMap = std::unordered_map<std::string, AggrBufferLocked>;  // filter_column -> aggregator buffer
+    std::unordered_map<std::string, FilterMap> aggr_buffer_map_;          // key -> filter_map
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
@@ -158,8 +164,9 @@ class Aggregator {
     Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
-    bool FlushAggrBuffer(const std::string& key, const AggrBuffer& aggr_buffer);
-    bool UpdateFlushedBuffer(const std::string& key, const int8_t* base_row_ptr, int64_t cur_ts, uint64_t offset);
+    bool FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& aggr_buffer);
+    bool UpdateFlushedBuffer(const std::string& key, const std::string& filter_key, const int8_t* base_row_ptr,
+                             int64_t cur_ts, uint64_t offset);
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
@@ -175,6 +182,8 @@ class Aggregator {
  protected:
     int aggr_col_idx_;
     int ts_col_idx_;
+    std::string filter_col_;
+    int filter_col_idx_;
     WindowType window_type_;
 
     // for kRowsNum, window_size_ is the rows num in mini window
@@ -262,6 +271,17 @@ class CountAggregator : public Aggregator {
     bool count_all = false;
 };
 
+class CountWhereAggregator : public CountAggregator {
+ public:
+    CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
+                         std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
+                         const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                         const std::string& ts_col, WindowType window_tpye, uint32_t window_size,
+                         const std::string& filter_col);
+
+    ~CountWhereAggregator() = default;
+};
+
 class AvgAggregator : public Aggregator {
  public:
     AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
@@ -284,7 +304,8 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
                                              std::shared_ptr<Table> aggr_table,
                                              std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
-                                             const std::string& ts_col, const std::string& bucket_size);
+                                             const std::string& ts_col, const std::string& bucket_size,
+                                             const std::string& filter_col = "");
 
 using Aggrs = std::vector<std::shared_ptr<Aggregator>>;
 }  // namespace storage

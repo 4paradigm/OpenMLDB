@@ -164,7 +164,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
             uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
                                           TS_POS_LEN));
             bool has_found = false;
-            for (const auto index : indexs) {
+            for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
                 if (!ts_col) {
                     return false;

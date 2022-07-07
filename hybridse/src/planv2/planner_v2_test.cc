@@ -92,15 +92,16 @@ INSTANTIATE_TEST_SUITE_P(SQLInsert, PlannerV2Test,
 INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/cmd.yaml", FILTERS)));
 TEST_P(PlannerV2Test, PlannerSucessTest) {
-    std::string sqlstr = GetParam().sql_str();
+    const auto& param = GetParam();
+    std::string sqlstr = param.sql_str();
     std::cout << sqlstr << std::endl;
     base::Status status;
     node::PlanNodeList plan_trees;
-    EXPECT_EQ(GetParam().expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
+    EXPECT_EQ(param.expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
         << status;
-    LOG(INFO) << "logical plan:\n";
-    for (auto tree : plan_trees) {
-        LOG(INFO) << "statement : " << *tree << std::endl;
+    if (!param.expect().plan_tree_str_.empty()) {
+        // HACK: weak implementation, but usually it works
+        EXPECT_EQ(param.expect().plan_tree_str_, plan_trees.at(0)->GetTreeString());
     }
 }
 TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
@@ -115,11 +116,8 @@ TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
     }
     base::Status status;
     node::PlanNodeList plan_trees;
+    // TODO(ace): many tests defined in 'cases/plan/' do not pass, should annotated in yaml file
     plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true);
-    LOG(INFO) << "logical plan:\n";
-    for (auto tree : plan_trees) {
-        LOG(INFO) << "statement : " << *tree << std::endl;
-    }
 }
 
 TEST_F(PlannerV2Test, SimplePlannerCreatePlanTest) {
@@ -1518,7 +1516,7 @@ TEST_F(PlannerV2Test, WindowMergeOptTest) {
     auto w = project_list->GetW();
     ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
     ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-    ASSERT_EQ("range[-172800000,0],rows[-1000,0]", w->frame_node()->GetExprString());
+    ASSERT_EQ("range[172800000 PRECEDING,0 CURRENT],rows[1000 PRECEDING,0 CURRENT]", w->frame_node()->GetExprString());
 }
 TEST_F(PlannerV2Test, RowsWindowExpandTest) {
     const std::string sql =
@@ -1549,7 +1547,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
         ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-        ASSERT_EQ("rows[-1000,0]", w->frame_node()->GetExprString());
+        ASSERT_EQ("rows[1000 PRECEDING,0 CURRENT]", w->frame_node()->GetExprString());
     }
 
     // Pure RowsRange Frame won't expand
@@ -1558,7 +1556,7 @@ TEST_F(PlannerV2Test, RowsWindowExpandTest) {
         auto w = project_list->GetW();
         ASSERT_EQ("(col1)", node::ExprString(w->GetKeys()));
         ASSERT_EQ("(col5 ASC)", node::ExprString(w->GetOrders()));
-        ASSERT_EQ("range[-172800000,-21600000]", w->frame_node()->GetExprString());
+        ASSERT_EQ("range[172800000 PRECEDING,21600000 PRECEDING]", w->frame_node()->GetExprString());
     }
 }
 
@@ -1711,15 +1709,15 @@ TEST_F(PlannerV2Test, SelectIntoPlanNodeTest) {
   +-out_file: m.txt
   +- query:
   |  +-[kQueryPlan]
-  |  +-[kProjectPlan]
-  |    +-table: t0
-  |    +-project_list_vec[list]:
-  |      +-[kProjectList]
-  |        +-projects on table [list]:
-  |          +-[kProjectNode]
-  |            +-[0]c2: c2
-  |  +-[kTablePlan]
-  |    +-table: t0
+  |    +-[kProjectPlan]
+  |      +-table: t0
+  |      +-project_list_vec[list]:
+  |        +-[kProjectList]
+  |          +-projects on table [list]:
+  |            +-[kProjectNode]
+  |              +-[0]c2: c2
+  |      +-[kTablePlan]
+  |        +-table: t0
   +-options:
   |  +-key:
   |    +-expr[primary]
@@ -1822,7 +1820,10 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
     }
     base::Status status;
     node::PlanNodeList plan_trees;
-    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
+    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
+    if (!sql_case.expect_.msg_.empty()) {
+        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+    }
 }
 TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
     auto& sql_case = GetParam();
@@ -1835,7 +1836,10 @@ TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
     }
     base::Status status;
     node::PlanNodeList plan_trees;
-    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
+    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
+    if (!sql_case.expect_.msg_.empty()) {
+        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+    }
 }
 TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
     auto& sql_case = GetParam();
@@ -1847,7 +1851,10 @@ TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
     }
     base::Status status;
     node::PlanNodeList plan_trees;
-    ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
+    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
+    if (!sql_case.expect_.msg_.empty()) {
+        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+    }
 }
 
 TEST_F(PlannerV2ErrorTest, SqlSyntaxErrorTest) {

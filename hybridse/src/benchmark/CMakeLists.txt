@@ -65,8 +65,8 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
         add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
 
         add_test(${TEST_TARGET_NAME}
-            ${TEST_TARGET_NAME}
-            --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+            ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+            --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_libraries(${TEST_TARGET_NAME}
             hybridse_bm_lib hybridse_sdk hybridse_flags

@@ -65,6 +65,9 @@ object UnsafeRowUtil {
     // Copy and remove header for output row
     CoreAPI.CopyRowToUnsafeRowBytes(hybridseRow, unsafeRowWriter.getBuffer, hybridseRowWithoutHeaderSize)
 
+    // Release memory of C row
+    hybridseRow.delete()
+
     // Convert to InternalRow
     val unsafeRow = unsafeRowWriter.getRow
     unsafeRow.asInstanceOf[InternalRow]

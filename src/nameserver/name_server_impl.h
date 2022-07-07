@@ -120,9 +120,6 @@ struct ZkPath {
     std::string external_function_path_;
 };
 
-class NameServerImplTest;
-class NameServerImplRemoteTest;
-
 class NameServerImpl : public NameServer {
     // used for ut
     friend class NameServerImplTest;

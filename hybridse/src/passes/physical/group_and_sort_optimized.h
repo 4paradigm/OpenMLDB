@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -105,7 +106,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::shared_ptr<TableHandler> table_handler,
                         IndexBitMap* bitmap,
                         std::string* index_name,
-                        IndexBitMap* best_bitmap);  // NOLINT
+                        IndexBitMap* best_bitmap);
 };
 }  // namespace passes
 }  // namespace hybridse

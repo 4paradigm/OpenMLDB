@@ -1,4 +1,4 @@
-# Integration with Pulsar
+# Importing Real-Time Data Streams from Pulsar
 
 ## Introduction
 
@@ -29,7 +29,7 @@ Only OpenMLDB cluster mode can be the sink dist, and only write to online storag
 
 We recommend that you use ‘host network’ to run docker. And bind volume ‘files’ too. The sql scripts are in it.
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.0 bash
+docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.2 bash
 docker exec -it openmldb bash
 ```
 ```{note}

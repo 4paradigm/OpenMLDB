@@ -40,6 +40,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // reuse Spark output row backed array
   private val outputFieldNum =
   if (keepIndexColumn) config.outputSchemaSlices.map(_.size).sum + 1 else config.outputSchemaSlices.map(_.size).sum
+
   private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
   // native row codecs
@@ -55,6 +56,11 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // group key comparation
   private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
+  private var unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(
+    config.groupIdxs,
+    config.groupIdxs.map(index => config.inputSchema.fields(index).dataType)
+  )
+
   // native function handle
   private val fn = jit.FindFunction(config.functionName)
 
@@ -65,6 +71,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   protected var window = new WindowInterface(
     config.instanceNotInWindow,
     config.excludeCurrentTime,
+    config.excludeCurrentRow,
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
@@ -171,8 +178,6 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
 
     // TODO: Add index column if needed
-    outputHybridseRow.delete()
-
     outputInternalRowWithAppend
   }
 
@@ -209,6 +214,13 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
   }
 
+  def checkUnsafePartition(prev: UnsafeRow, cur: UnsafeRow): Unit = {
+    val groupChanged = unsafeGroupKeyComparator.apply(cur, prev)
+    if (groupChanged) {
+      resetWindow()
+    }
+  }
+
   def resetWindow(): Unit = {
     // TODO: wrap iter to hook iter end; now last window is leak
     window.delete()
@@ -218,7 +230,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
     window = new WindowInterface(
       config.instanceNotInWindow, config.excludeCurrentTime,
-      config.windowFrameTypeName,
+      config.excludeCurrentRow, config.windowFrameTypeName,
       config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
   }
 
@@ -226,43 +238,25 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     SparkRowUtil.getLongFromIndex(config.orderIdx, orderField.dataType, curRow)
   }
 
-  def delete(): Unit = {
-    encoder.delete()
-    encoder = null
-
-    decoder.delete()
-    decoder = null
-
-    window.delete()
-    window = null
+  def extractUnsafeKey(curRow: UnsafeRow): Long = {
+    // TODO(tobe): support different data types
+    SparkRowUtil.unsafeGetLongFromIndex(config.orderIdx, orderField.dataType, curRow)
   }
 
-  def printWindowCols(windowName: String, cols: Array[String]): Unit = {
-    val windowData = new java.util.ArrayList[String]()
-    if (!config.windowName.equals(windowName) || window.size() <= 0) {
-      return
+  def delete(): Unit = {
+    if (encoder != null) {
+      encoder.delete()
+      encoder = null
     }
-    windowData.add("window " + config.windowName + " data, window size = " + window.size())
-    windowData.add(config.inputSchema.toDDL + "\n")
-    val indexs = new java.util.ArrayList[Int]()
-    for (col <- cols) {
-      indexs.add(config.inputSchema.fieldIndex(col))
-    }
-    val id = config.inputSchema.fieldIndex("reqId")
-    val firstArr = new Array[Any](config.inputSchema.size)
-    encoder.decode(window.Get(0), firstArr)
 
-    for (index <- 0 until window.size().toInt) {
-      val arr = new Array[Any](config.inputSchema.size)
-      encoder.decode(window.Get(index), arr)
-      val filterArr = new Array[Any](indexs.size())
-      for (i <- 0 until indexs.size()) {
-        filterArr(i) = arr(indexs.get(i))
-      }
-      windowData.add(filterArr.mkString(","))
+    if (decoder != null) {
+      decoder.delete()
+      decoder = null
     }
-    if (windowData.size() > 0) {
-      logger.info(StringUtils.join(windowData, "\n"))
+
+    if (window != null) {
+      window.delete()
+      window = null
     }
   }
 
@@ -270,6 +264,10 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     groupKeyComparator = HybridseUtil.createGroupKeyComparator(keyIdxs)
   }
 
+  def resetUnsafeGroupKeyComparator(keyIdxs: Array[Int]): Unit = {
+    unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(
+      keyIdxs, config.groupIdxs.map(index => config.inputSchema.fields(index).dataType))
+  }
 
   def getWindow: WindowInterface = window
   def getFn: Long = fn

@@ -84,11 +84,7 @@ object SparkJobManager {
     }
 
     // TODO: Avoid using zh_CN to load openmldb jsdk so
-    launcher.setConf("spark.yarn.appMasterEnv.LANG", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.appMasterEnv.LC_ALL", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.executorEnv.LANG", "en_US.UTF-8")
-    launcher.setConf("spark.yarn.executorEnv.LC_ALL", "en_US.UTF-8")
-
+   
     if (TaskManagerConfig.SPARK_EVENTLOG_DIR.nonEmpty) {
       launcher.setConf("spark.eventLog.enabled", "true")
       launcher.setConf("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)

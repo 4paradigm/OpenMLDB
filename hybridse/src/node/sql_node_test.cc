@@ -559,9 +559,9 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     // Window with same union table and pk and orders can be merged
     {
         ASSERT_TRUE(dynamic_cast<WindowDefNode *>(
-                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                            node_manager_->MakeWindowDefNode(&unions2, pk1, orders1, rows_frame1, false, true))));
+                        node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                        ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                            &unions2, pk1, orders1, rows_frame1, false, false, true))));
     }
 
     // Window with different pks, can't be merged
@@ -584,22 +584,22 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
     // Window with different unions, can't be merged
     {
         WindowDefNode *w = dynamic_cast<WindowDefNode *>(
-            node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false));
+            node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, false));
         ASSERT_FALSE(w1->CanMergeWith(w));
     }
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                             node_manager_->MakeWindowDefNode(&unions3, pk1, orders1, rows_frame1, false, true))));
+                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                             &unions3, pk1, orders1, rows_frame1, false, false, true))));
     }
 
     {
         ASSERT_FALSE(dynamic_cast<WindowDefNode *>(
-                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, true))
-                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(
-                             node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false))));
+                         node_manager_->MakeWindowDefNode(&unions1, pk1, orders1, rows_frame1, false, false, true))
+                         ->CanMergeWith(dynamic_cast<WindowDefNode *>(node_manager_->MakeWindowDefNode(
+                             &unions1, pk1, orders1, rows_frame1, false, false, false))));
     }
 
     // Window can't be merged when their frame can't be merge
@@ -1001,6 +1001,32 @@ TEST_F(SqlNodeTest, LimitNodeTest) {
         "  +-limit_cnt: 100",
         oss.str());
 }
+
+TEST_F(SqlNodeTest, FrameExtent) {
+    // [ ( start_frame_type, star_frame_offset, end_frame_type, end_frame_offset,
+    //     start_frame_expect, end_frame_expect ) ]
+    std::initializer_list<std::tuple<BoundType, int64_t, BoundType, int64_t, int64_t, int64_t>> cases = {
+        { BoundType::kOpenFollowing, 12, BoundType::kOpenPreceding, 12, 13, -13 },
+        { BoundType::kOpenPreceding, 12, BoundType::kOpenFollowing, 12, -11, 11 },
+        { BoundType::kPreceding, 12, BoundType::kPreceding, 4, -12, -4 },
+        { BoundType::kFollowing, 4, BoundType::kFollowing, 12, 4, 12 },
+    };
+
+    auto test = [this](BoundType start_frame_type, int64_t off1, BoundType end_frame_type, int64_t off2, int64_t exp1,
+                       int64_t exp2) {
+        SqlNode* start = node_manager_->MakeFrameBound(start_frame_type, off1);
+        SqlNode* end = node_manager_->MakeFrameBound(end_frame_type, off2);
+        FrameExtent* ext = node_manager_->MakeFrameExtent(start, end);
+        EXPECT_EQ(exp1, ext->GetStartOffset());
+        EXPECT_EQ(exp2, ext->GetEndOffset());
+    };
+
+    for (auto& val : cases) {
+        test(std::get<0>(val), std::get<1>(val), std::get<2>(val), std::get<3>(val), std::get<4>(val),
+             std::get<5>(val));
+    }
+}
+
 }  // namespace node
 }  // namespace hybridse
 

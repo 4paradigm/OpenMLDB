@@ -972,12 +972,15 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
     CHECK_TRUE(nullptr != window_frame->end_expr(), common::kSqlAstError, "Un-support window frame with null end")
     CHECK_STATUS(ConvertFrameBound(window_frame->start_expr(), node_manager, &start))
     CHECK_STATUS(ConvertFrameBound(window_frame->end_expr(), node_manager, &end))
-    node::ExprNode* frame_size = nullptr;
+    node::ExprNode* frame_max_size = nullptr;
     if (nullptr != window_frame->max_size()) {
-        CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_size))
+        CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_max_size))
     }
+    auto* frame_ext = node_manager->MakeFrameExtent(start, end);
+    CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
+               "The lower bound of a window frame must be less than or equal to the upper bound");
     *output = dynamic_cast<node::FrameNode*>(
-        node_manager->MakeFrameNode(frame_type, node_manager->MakeFrameExtent(start, end), frame_size));
+        node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size));
     return base::Status::OK();
 }
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
@@ -1008,9 +1011,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     if (nullptr != window_spec->window_frame()) {
         CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node))
     }
-    // TODO(chenjing): fill the following flags
-    bool instance_is_not_in_window = window_spec->is_instance_not_in_window();
-    bool exclude_current_time = window_spec->is_exclude_current_time();
+
     node::SqlNodeList* union_tables = nullptr;
 
     if (nullptr != window_spec->union_table_references()) {
@@ -1022,7 +1023,8 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
         }
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
-        union_tables, partition_by, order_by, frame_node, exclude_current_time, instance_is_not_in_window));
+        union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
+        window_spec->is_exclude_current_row(), window_spec->is_instance_not_in_window()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }

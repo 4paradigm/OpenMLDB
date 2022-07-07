@@ -296,7 +296,7 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
     ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
 }
 
-TEST_P(NameServerImplTest, ConfigGetAndSet) {
+TEST_F(NameServerImplTest, ConfigGetAndSet) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -583,9 +583,7 @@ TEST_P(NameServerImplTest, Offline) {
     FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-TEST_P(NameServerImplTest, SetTablePartition) {
-    openmldb::common::StorageMode storage_mode = GetParam();
-
+TEST_F(NameServerImplTest, SetTablePartition) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -642,7 +640,6 @@ TEST_P(NameServerImplTest, SetTablePartition) {
     TableInfo* table_info = request.mutable_table_info();
     std::string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
-    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     TablePartition* partion = table_info->add_table_partition();
     partion->set_pid(1);
@@ -702,14 +699,6 @@ TEST_P(NameServerImplTest, SetTablePartition) {
 
     delete nameserver;
     delete tablet;
-
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_1");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_2");
-
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_2");
 }
 
 TEST_F(NameServerImplTest, CancelOP) {
@@ -847,12 +836,7 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     return;
 }
 
-TEST_P(NameServerImplTest, AddAndRemoveReplicaCluster) {
-    openmldb::common::StorageMode storage_mode = GetParam();
-
-    std::string old_ssd_root_path = FLAGS_ssd_root_path;
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-
+TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -957,7 +941,6 @@ TEST_P(NameServerImplTest, AddAndRemoveReplicaCluster) {
     table_info->set_name(name);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
-    table_info->set_storage_mode(storage_mode);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
     f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
     ASSERT_EQ(0, general_response.code());
@@ -1018,26 +1001,15 @@ TEST_P(NameServerImplTest, AddAndRemoveReplicaCluster) {
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
-
-    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
-    ::openmldb::base::RemoveDirRecursive("/tmp/ssd/test4");
-    FLAGS_ssd_root_path = old_ssd_root_path;
-    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-TEST_P(NameServerImplTest, SyncTableReplicaCluster) {
-    openmldb::common::StorageMode storage_mode = GetParam();
-
-    std::string old_ssd_root_path = FLAGS_ssd_root_path;
-    std::string old_hdd_root_path = FLAGS_hdd_root_path;
-
+TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
     Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
     Server f2_ns1_svr, f2_ns2_svr, f2_t1_svr, f2_t2_svr;
-    string m1_ns1_ep, m1_ns2_ep, m1_t1_ep,
-        m1_t2_ep;  // ep == endpoint t_ep = tablet endpoint
+    string m1_ns1_ep, m1_ns2_ep, m1_t1_ep, m1_t2_ep;  // ep == endpoint t_ep = tablet endpoint
     string f1_ns1_ep, f1_ns2_ep, f1_t1_ep, f1_t2_ep;
     string f2_ns1_ep, f2_ns2_ep, f2_t1_ep, f2_t2_ep;
     string m1_zkpath, f1_zkpath, f2_zkpath;
@@ -1131,7 +1103,6 @@ TEST_P(NameServerImplTest, SyncTableReplicaCluster) {
     TableInfo* table_info = create_table_request.mutable_table_info();
     string name = "test" + ::openmldb::test::GenRand();
     table_info->set_name(name);
-    table_info->set_storage_mode(storage_mode);
     table_info->set_partition_num(1);
     table_info->set_replica_num(1);
     ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
@@ -1186,335 +1157,9 @@ TEST_P(NameServerImplTest, SyncTableReplicaCluster) {
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
-
-    ::openmldb::base::RemoveDirRecursive("/tmp/ssd/test4");
-    ::openmldb::base::RemoveDirRecursive("/tmp/hdd/test4");
-    FLAGS_ssd_root_path = old_ssd_root_path;
-    FLAGS_hdd_root_path = old_hdd_root_path;
 }
 
-/* TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
-    std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
-    std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
-    Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
-    Server f1_ns1_svr, f1_ns2_svr, f1_t1_svr, f1_t2_svr;
-    Server f2_ns1_svr, f2_ns2_svr, f2_t1_svr, f2_t2_svr;
-    string m1_ns1_ep, m1_ns2_ep, m1_t1_ep,
-        m1_t2_ep;  // ep == endpoint t_ep = tablet endpoint
-    string f1_ns1_ep, f1_ns2_ep, f1_t1_ep, f1_t2_ep;
-    string f2_ns1_ep, f2_ns2_ep, f2_t1_ep, f2_t2_ep;
-    string m1_zkpath, f1_zkpath, f2_zkpath;
-
-    vector<Server*> svrs = {&m1_ns1_svr, &m1_ns2_svr};
-    vector<shared_ptr<NameServerImpl>*> ns_vector = {&m1_ns1, &m1_ns2};
-    vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
-    vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
-
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    int port = 9642;
-    InitNs(port, svrs, ns_vector, endpoints);
-    m1_zkpath = FLAGS_zk_root_path;
-
-    svrs = {&m1_t1_svr, &m1_t2_svr};
-    endpoints = {&m1_t1_ep, &m1_t2_ep};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
-    port++;
-
-    svrs = {&f1_ns1_svr, &f1_ns2_svr};
-    ns_vector = {&f1_ns1, &f1_ns2};
-    endpoints = {&f1_ns1_ep, &f1_ns2_ep};
-
-    InitNs(port, svrs, ns_vector, endpoints);
-    f1_zkpath = FLAGS_zk_root_path;
-
-    svrs = {&f1_t1_svr, &f1_t2_svr};
-    endpoints = {&f1_t1_ep, &f1_t2_ep};
-    tb_vector = {&f1_t1, &f1_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
-    port++;
-
-    svrs = {&f2_ns1_svr, &f2_ns2_svr};
-    ns_vector = {&f2_ns1, &f2_ns2};
-    endpoints = {&f2_ns1_ep, &f2_ns2_ep};
-
-    InitNs(port, svrs, ns_vector, endpoints);
-    f2_zkpath = FLAGS_zk_root_path;
-
-    svrs = {&f2_t1_svr, &f2_t2_svr};
-    endpoints = {&f2_t1_ep, &f2_t2_ep};
-    tb_vector = {&f2_t1, &f2_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
-    // disable autoconf
-    ConfSetRequest conf_set_request;
-    GeneralResponse general_response;
-    Pair* p = conf_set_request.mutable_conf();
-    p->set_key("auto_failover");
-    p->set_value("false");
-    std::vector<shared_ptr<NameServerImpl>> nss{m1_ns1, f1_ns1, f2_ns1};
-    MockClosure closure;
-    for (auto& i : nss) {
-        i->ConfSet(NULL, &conf_set_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-    }
-    vector<shared_ptr<NameServerImpl>> follower_nss{f1_ns1, f2_ns1};
-    {
-        CreateTableRequest create_table_request;
-        TableInfo* table_info = create_table_request.mutable_table_info();
-        string name = "test" + ::openmldb::test::GenRand();
-        table_info->set_name(name);
-        table_info->set_partition_num(1);
-        table_info->set_replica_num(2);
-        ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
-        f2_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        ShowTableRequest show_table_request;
-        ShowTableResponse show_table_response;
-        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
-        ASSERT_EQ(1, show_table_response.table_info_size());
-        show_table_response.Clear();
-        DropTableRequest drop_table_request;
-        drop_table_request.set_name(name);
-        f2_ns1->DropTable(NULL, &drop_table_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        show_table_response.Clear();
-        f2_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
-        ASSERT_EQ(0, show_table_response.table_info_size());
-        general_response.Clear();
-    }
-    SwitchModeRequest switch_mode_request;
-    switch_mode_request.set_sm(kLEADER);
-    // switch to leader mode before add replica cluster
-    m1_ns1->SwitchMode(NULL, &switch_mode_request, &general_response, &closure);
-    ASSERT_EQ(0, general_response.code());
-    general_response.Clear();
-
-    ClusterAddress cd;
-    cd.set_zk_endpoints(FLAGS_zk_cluster);
-    cd.set_alias("f1");
-    vector<string> replica_names{"f1", "f2"};
-
-    vector<string> replica_zk_path{f1_zkpath, f2_zkpath};
-    for (uint64_t i = 0; i < replica_names.size(); i++) {
-        cd.set_alias(replica_names[i]);
-        cd.set_zk_path(replica_zk_path[i]);
-        m1_ns1->AddReplicaCluster(NULL, &cd, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-    }
-
-    GeneralRequest general_request;
-    ShowReplicaClusterResponse show_replica_cluster_response;
-    m1_ns1->ShowReplicaCluster(NULL, &general_request, &show_replica_cluster_response, &closure);
-    ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
-    show_replica_cluster_response.Clear();
-
-    CreateTableRequest create_table_request;
-    string name = "test" + ::openmldb::test::GenRand();
-    TableInfo* table_info = create_table_request.mutable_table_info();
-    table_info->set_name(name);
-    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
-    TablePartition* partition = table_info->add_table_partition();
-    partition->set_pid(0);
-    PartitionMeta* meta1 = partition->add_partition_meta();
-    meta1->set_is_leader(true);
-    meta1->set_endpoint(m1_t1_ep);
-    PartitionMeta* meta2 = partition->add_partition_meta();
-    meta2->set_is_leader(false);
-    meta2->set_endpoint(m1_t2_ep);
-    m1_ns1->CreateTable(NULL, &create_table_request, &general_response, &closure);
-    ASSERT_EQ(0, general_response.code());
-    general_response.Clear();
-
-    for (auto& ns : follower_nss) {
-        ns->CreateTable(NULL, &create_table_request, &general_response, &closure);
-        ASSERT_EQ(501, general_response.code());
-        general_response.Clear();
-    }
-
-    sleep(8);
-    ShowTableRequest show_table_request;
-    ShowTableResponse show_table_response;
-
-    m1_ns1->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
-    ASSERT_EQ(1, show_table_response.table_info_size());
-    ASSERT_EQ(name, show_table_response.table_info(0).name());
-    uint32_t tid = show_table_response.table_info().begin()->tid();
-    show_table_response.Clear();
-    for (auto& ns : nss) {
-        ns->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
-        ASSERT_EQ(1, show_table_response.table_info_size());
-        ASSERT_EQ(2, show_table_response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(name, show_table_response.table_info(0).name());
-        show_table_response.Clear();
-    }
-    ::openmldb::api::PutRequest put_request;
-    ::openmldb::api::PutResponse put_response;
-    string pk = "1";
-    put_request.set_pk(pk);
-    put_request.set_time(1);
-    put_request.set_value("a");
-    put_request.set_tid(tid);
-    put_request.set_pid(0);
-    m1_t1->Put(NULL, &put_request, &put_response, &closure);
-    ASSERT_EQ(0, put_response.code());
-    sleep(4);
-    std::vector<shared_ptr<TabletImpl>> tablets{m1_t1, m1_t2, f1_t1, f1_t2};
-    std::vector<shared_ptr<TabletImpl>> f2_tablets{f2_t1, f2_t2};
-    {
-        ::openmldb::api::TraverseRequest traverse_request;
-        ::openmldb::api::TraverseResponse traverse_response;
-        traverse_request.set_pid(0);
-        traverse_request.set_tid(tid);
-        for (auto& tablet : tablets) {
-            tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
-            ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, (int64_t)traverse_response.count());
-            traverse_response.Clear();
-        }
-    }
-    {
-        ::openmldb::api::TraverseRequest traverse_request;
-        ::openmldb::api::TraverseResponse traverse_response;
-        traverse_request.set_pid(0);
-        traverse_request.set_tid(tid + 1);
-        for (auto& tablet : f2_tablets) {
-            tablet->Traverse(NULL, &traverse_request, &traverse_response, &closure);
-            ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, (int64_t)traverse_response.count());
-            traverse_response.Clear();
-        }
-    }
-    ::openmldb::api::ScanRequest scan_request;
-    scan_request.set_pk(pk);
-    scan_request.set_st(0);
-    scan_request.set_et(0);
-    scan_request.set_tid(tid);
-    scan_request.set_pid(0);
-    ::openmldb::api::ScanResponse* scan_response = new ::openmldb::api::ScanResponse();
-    sleep(4);
-    for (auto& tablet : tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-    scan_request.set_tid(tid + 1);
-    for (auto& tablet : f2_tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-    {
-        ChangeLeaderRequest change_leader_request;
-        change_leader_request.set_name(name);
-        change_leader_request.set_pid(0);
-        change_leader_request.set_candidate_leader(m1_t2_ep);
-        m1_ns1->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        sleep(6);
-        general_response.Clear();
-        RecoverTableRequest recover_table_request;
-        recover_table_request.set_name(name);
-        recover_table_request.set_pid(0);
-        recover_table_request.set_endpoint(m1_t1_ep);
-        m1_ns1->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-    }
-    sleep(6);
-    put_request.set_pk(pk);
-    put_request.set_time(2);
-    put_request.set_value("b");
-    put_request.set_tid(tid);
-    put_request.set_pid(0);
-    m1_t2->Put(NULL, &put_request, &put_response, &closure);
-    ASSERT_EQ(0, put_response.code());
-    sleep(8);
-    scan_request.set_tid(tid);
-    for (auto& tablet : tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-    scan_request.set_tid(tid + 1);
-    for (auto& tablet : f2_tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-    for (auto& i : follower_nss) {
-        i->ShowTable(NULL, &show_table_request, &show_table_response, &closure);
-        ASSERT_EQ(0, show_table_response.code());
-        ASSERT_EQ(1, show_table_response.table_info_size());
-        ASSERT_EQ(2, show_table_response.table_info(0).table_partition(0).partition_meta_size());
-        ASSERT_EQ(name, show_table_response.table_info(0).name());
-        string leader_ep, follower_ep;
-        for (auto part : show_table_response.table_info(0).table_partition(0).partition_meta()) {
-            if (part.is_leader() && part.is_alive()) {
-                leader_ep = part.endpoint();
-            } else {
-                follower_ep = part.endpoint();
-            }
-        }
-        if (leader_ep.empty() || follower_ep.empty()) {
-            PDLOG(WARNING, "endpoint is empty");
-            exit(1);
-        }
-        ChangeLeaderRequest change_leader_request;
-        change_leader_request.set_name(name);
-        change_leader_request.set_pid(0);
-        change_leader_request.set_candidate_leader(follower_ep);
-        i->ChangeLeader(NULL, &change_leader_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-        show_table_response.Clear();
-        sleep(6);
-        RecoverTableRequest recover_table_request;
-        recover_table_request.set_name(name);
-        recover_table_request.set_pid(0);
-        recover_table_request.set_endpoint(leader_ep);
-        i->RecoverTable(NULL, &recover_table_request, &general_response, &closure);
-        ASSERT_EQ(0, general_response.code());
-        general_response.Clear();
-    }
-    sleep(6);
-    put_request.set_pk(pk);
-    put_request.set_time(3);
-    put_request.set_value("c");
-    put_request.set_tid(tid);
-    put_request.set_pid(0);
-    m1_t2->Put(NULL, &put_request, &put_response, &closure);
-    ASSERT_EQ(0, put_response.code());
-    sleep(18);
-    scan_request.set_tid(tid);
-    for (auto& tablet : tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-    scan_request.set_tid(tid + 1);
-    for (auto& tablet : f2_tablets) {
-        tablet->Scan(NULL, &scan_request, scan_response, &closure);
-        ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, (int64_t)scan_response->count());
-        scan_response->Clear();
-    }
-} */
-
-TEST_P(NameServerImplTest, ShowCatalogVersion) {
-    openmldb::common::StorageMode storage_mode = GetParam();
-
+TEST_F(NameServerImplTest, ShowCatalogVersion) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
@@ -1541,7 +1186,6 @@ TEST_P(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1579,7 +1223,6 @@ TEST_P(NameServerImplTest, ShowCatalogVersion) {
         std::string name = "test" + ::openmldb::test::GenRand();
         table_info->set_name(name);
         table_info->set_db(db_name);
-        table_info->set_storage_mode(storage_mode);
         ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(0);
@@ -1607,17 +1250,10 @@ TEST_P(NameServerImplTest, ShowCatalogVersion) {
         ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
         PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
     }
-
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_1");
-
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_1");
 }
 
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, NameServerImplTest,
-                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kSSD,
-                                          ::openmldb::common::kHDD));
+                        ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace nameserver
 }  // namespace openmldb
@@ -1631,10 +1267,6 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
     FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
-    // used to check if files are removed properly.
-    // FLAGS_db_root_path = "/tmp/1";
-    // FLAGS_ssd_root_path = "/tmp/ssd/1";
-    // FLAGS_hdd_root_path = "/tmp/hdd/1";
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

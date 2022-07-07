@@ -651,6 +651,64 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[0].order_col_, "c6");
         ASSERT_EQ(window_infos[0].bucket_size_, "1000");
     }
+
+    {
+        // xxx_where 1
+        std::string query =
+            "SELECT c1, c2, count_where(c3, 2=c1) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 1);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "count_where");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[0].partition_col_, "c1");
+        ASSERT_EQ(window_infos[0].order_col_, "c6");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+        ASSERT_EQ(window_infos[0].filter_col_, "c1");
+    }
+
+    {
+        // xxx_where 2
+        std::string query =
+            "SELECT c1, c2, count_where(c3, c1=2) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(extract_status.IsOK());
+        ASSERT_EQ(window_infos.size(), 1);
+        ASSERT_EQ(window_infos[0].window_name_, "w1");
+        ASSERT_EQ(window_infos[0].aggr_func_, "count_where");
+        ASSERT_EQ(window_infos[0].aggr_col_, "c3");
+        ASSERT_EQ(window_infos[0].partition_col_, "c1");
+        ASSERT_EQ(window_infos[0].order_col_, "c6");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+        ASSERT_EQ(window_infos[0].filter_col_, "c1");
+    }
+
+    {
+        // xxx_where unsupported
+        std::string query =
+            "SELECT c1, c2, count_where(c3, c1+c2=2) OVER w1 AS w1_c3_sum FROM demo_table1 "
+            "WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 "
+            "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+        std::unordered_map<std::string, std::string> window_map;
+        window_map["w1"] = "1000";
+        openmldb::base::LongWindowInfos window_infos;
+        auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
+        ASSERT_TRUE(!extract_status.IsOK());
+    }
 }
 }  // namespace openmldb::base
 

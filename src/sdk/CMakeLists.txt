@@ -14,39 +14,39 @@
 
 if(TESTING_ENABLE)
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
-    add_dependencies(mini_cluster_bm_common openmldb_proto hybridse_proto)
+    add_dependencies(mini_cluster_bm_common openmldb_proto)
 
     add_library(base_test sql_sdk_base_test.cc ../test/base_test.cc)
-    add_dependencies(base_test openmldb_proto hybridse_proto)
+    add_dependencies(base_test hybridse_core openmldb_proto)
 
-    set(HYBRIDSE_CASE_LIBS base_test yaml-cpp)
+    set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
     add_executable(db_sdk_test db_sdk_test.cc)
-    target_link_libraries(db_sdk_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
+    target_link_libraries(db_sdk_test base_test ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(sql_router_test sql_router_test.cc)
-    target_link_libraries(sql_router_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
+    target_link_libraries(sql_router_test base_test ${BIN_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
 
     add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
-    target_link_libraries(sql_standalone_sdk_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_standalone_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
-    target_link_libraries(sql_sdk_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES} )
 
     add_executable(sql_cluster_test sql_cluster_test.cc)
-    target_link_libraries(sql_cluster_test ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(sql_cluster_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
-    target_link_libraries(sql_request_row_test ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS} ${ZETASQL_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
+    target_link_libraries(sql_request_row_test base_test ${BIN_LIBS} ${ZETASQL_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_batch_bm mini_cluster_batch_bm.cc)
-    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_request_batch_bm mini_cluster_request_batch_bm.cc)
-    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_request_bm mini_cluster_request_bm.cc)
-    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common benchmark_main benchmark ${GTEST_LIBRARIES} ${BIN_LIBS} ${HYBRIDSE_CASE_LIBS})
+    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
 endif()
 
 set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)
