@@ -19,7 +19,7 @@
 #include <iostream>
 #include <utility>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/timer.h"  // NOLINT
