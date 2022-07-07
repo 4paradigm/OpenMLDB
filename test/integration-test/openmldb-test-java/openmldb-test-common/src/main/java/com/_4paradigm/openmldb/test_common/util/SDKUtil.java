@@ -17,8 +17,6 @@
 package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBColumn;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBSchema;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
@@ -29,7 +27,6 @@ import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -37,9 +34,6 @@ import org.slf4j.Logger;
 import org.testng.collections.Lists;
 
 import java.sql.*;
-import java.sql.Date;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -159,7 +153,7 @@ public class SDKUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                String deployStr = DataUtil.convertResultSetToListDeploy(rs);
+                String deployStr = ResultUtil.convertResultSetToListDeploy(rs);
                 String[] strings = deployStr.split("\n");
                 List<String> stringList = Arrays.asList(strings);
                 OpenmldbDeployment openmldbDeployment = ResultUtil.parseDeployment(stringList);
@@ -188,7 +182,7 @@ public class SDKUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                List<List<Object>> lists = DataUtil.convertResultSetToList(rs);
+                List<List<Object>> lists = ResultUtil.toList(rs);
                 if(lists.size() == 0 ||lists.isEmpty()){
                     fesqlResult.setDeploymentCount(0);
                 }else {
@@ -223,8 +217,8 @@ public class SDKUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                String deployStr = DataUtil.convertResultSetToListDeploy(rs);
-                List<String> listDesc = DataUtil.convertResultSetToListDesc(rs);
+                String deployStr = ResultUtil.convertResultSetToListDeploy(rs);
+                List<String> listDesc = ResultUtil.convertResultSetToListDesc(rs);
                 String[] strings = deployStr.split("\n");
                 List<String> stringList = Arrays.asList(strings);
                 OpenMLDBSchema openMLDBSchema = SchemaUtil.parseSchema(stringList);
@@ -289,7 +283,7 @@ public class SDKUtil {
                     SQLResultSet rs = (SQLResultSet)resultSet;
                     ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                     fesqlResult.setOk(true);
-                    List<List<Object>> result = DataUtil.convertResultSetToList(rs);
+                    List<List<Object>> result = ResultUtil.toList(rs);
                     fesqlResult.setCount(result.size());
                     fesqlResult.setResult(result);
                 } catch (Exception e) {
@@ -413,7 +407,7 @@ public class SDKUtil {
                 return fesqlResult;
             }
             try {
-                result.addAll(DataUtil.convertResultSetToList((SQLResultSet) resultSet));
+                result.addAll(ResultUtil.toList((SQLResultSet) resultSet));
             } catch (SQLException throwables) {
                 fesqlResult.setOk(false);
                 fesqlResult.setMsg("Convert Result Set To List Fail");
@@ -491,7 +485,7 @@ public class SDKUtil {
 
             sqlResultSet = (SQLResultSet) rps.executeQuery();
             List<List<Object>> result = Lists.newArrayList();
-            result.addAll(DataUtil.convertResultSetToList(sqlResultSet));
+            result.addAll(ResultUtil.toList(sqlResultSet));
             fesqlResult.setResult(result);
             ResultUtil.setSchema(sqlResultSet.getMetaData(),fesqlResult);
             fesqlResult.setCount(result.size());
@@ -578,7 +572,7 @@ public class SDKUtil {
                     logger.error("select result:{}", fesqlResult);
                     return fesqlResult;
                 }
-                result.addAll(DataUtil.convertResultSetToList((SQLResultSet) resultSet));
+                result.addAll(ResultUtil.toList((SQLResultSet) resultSet));
                 if (needInsertRequestRow && !executor.executeInsert(insertDbName, inserts.get(i))) {
                     fesqlResult.setOk(false);
                     fesqlResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
@@ -671,7 +665,7 @@ public class SDKUtil {
                 }
             }
             List<List<Object>> result = Lists.newArrayList();
-            result.addAll(DataUtil.convertResultSetToList((SQLResultSet) sqlResultSet));
+            result.addAll(ResultUtil.toList((SQLResultSet) sqlResultSet));
             fesqlResult.setResult(result);
             ResultUtil.setSchema(sqlResultSet.getMetaData(),fesqlResult);
             fesqlResult.setCount(result.size());
@@ -798,7 +792,7 @@ public class SDKUtil {
                 SQLResultSet rs = (SQLResultSet)rawRs;
                 ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
                 fesqlResult.setOk(true);
-                List<List<Object>> result = DataUtil.convertResultSetToList(rs);
+                List<List<Object>> result = ResultUtil.toList(rs);
                 fesqlResult.setCount(result.size());
                 fesqlResult.setResult(result);
             } catch (Exception e) {
@@ -913,10 +907,7 @@ public class SDKUtil {
         return fesqlResult;
     }
 
-    public static OpenMLDBResult createAndInsertWithPrepared(SqlExecutor executor,
-                                                             String defaultDBName,
-                                                             List<InputDesc> inputs,
-                                                             boolean useFirstInputAsRequests) {
+    public static OpenMLDBResult createAndInsertWithPrepared(SqlExecutor executor, String defaultDBName, List<InputDesc> inputs, boolean useFirstInputAsRequests) {
         OpenMLDBResult fesqlResult = new OpenMLDBResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -983,6 +974,21 @@ public class SDKUtil {
             statement.execute("SET @@execute_mode='online';");
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+    public static boolean dbIsExist(Statement statement,String dbName){
+        String sql = "show databases;";
+        try {
+            ResultSet resultSet = statement.executeQuery(sql);
+            List<List<Object>> rows = ResultUtil.toList((SQLResultSet) resultSet);
+            for(List<Object> row:rows){
+                if(row.get(0).equals(dbName)){
+                    return true;
+                }
+            }
+            return false;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 }

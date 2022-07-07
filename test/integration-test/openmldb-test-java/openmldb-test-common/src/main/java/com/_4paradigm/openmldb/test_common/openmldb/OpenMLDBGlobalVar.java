@@ -27,7 +27,7 @@ public class OpenMLDBGlobalVar {
     public static String env;
     public static String level;
     public static String version;
-    public static String fedbPath;
+    public static String openMLDBPath;
     public static OpenMLDBInfo mainInfo;
     public static String dbName = "test_zw";
 }

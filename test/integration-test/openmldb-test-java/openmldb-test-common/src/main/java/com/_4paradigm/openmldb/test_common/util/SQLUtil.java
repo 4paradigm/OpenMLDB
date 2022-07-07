@@ -3,6 +3,7 @@ package com._4paradigm.openmldb.test_common.util;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.sql.SQLException;
 import java.util.HashSet;
@@ -13,6 +14,56 @@ import java.util.regex.Pattern;
 public class SQLUtil {
     private static String reg = "\\{(\\d+)\\}";
     private static Pattern pattern = Pattern.compile(reg);
+
+    public static String genInsertSQL(String tableName, List<List<Object>> dataList) {
+        if (CollectionUtils.isEmpty(dataList)) {
+            return "";
+        }
+        // insert rows
+        StringBuilder builder = new StringBuilder("insert into ").append(tableName).append(" values");
+        for (int row_id = 0; row_id < dataList.size(); row_id++) {
+            List list = dataList.get(row_id);
+            builder.append("\n(");
+            for (int i = 0; i < list.size(); i++) {
+                Object data = list.get(i);
+                if(data == null){
+                    data = "null";
+                }else if(data instanceof String){
+                    data = DataUtil.parseRules((String)data);
+                }
+                if(data instanceof String){
+                    data = "'" + data + "'";
+                }
+                builder.append(data);
+                if (i < list.size() - 1) {
+                    builder.append(",");
+                }
+            }
+            if (row_id < dataList.size() - 1) {
+                builder.append("),");
+            } else {
+                builder.append(");");
+            }
+        }
+        return builder.toString();
+    }
+
+    public static String buildInsertSQLWithPrepared(String name, List<String> columns) {
+        if (CollectionUtils.isEmpty(columns)) {
+            return "";
+        }
+        // insert rows
+        StringBuilder builder = new StringBuilder("insert into ").append(name).append(" values");
+        builder.append("\n(");
+        for (int i = 0; i < columns.size(); i++) {
+            builder.append("?");
+            if (i < columns.size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append(");");
+        return builder.toString();
+    }
 
     public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo fedbInfo) {
         Matcher matcher = pattern.matcher(sql);

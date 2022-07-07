@@ -31,6 +31,7 @@ import java.util.List;
 public class OpenMLDBResult {
     private String dbName;
     private List<String> tableNames;
+    private String sql;
     private boolean ok;
     private int count;
     private String msg = "";
@@ -44,7 +45,8 @@ public class OpenMLDBResult {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder("FesqlResult{");
+        StringBuilder builder = new StringBuilder("OpenMLDBResult{");
+        builder.append("sql=").append(sql);
         builder.append("ok=").append(ok);
         if (!ok) {
             builder.append(", msg=").append(msg);

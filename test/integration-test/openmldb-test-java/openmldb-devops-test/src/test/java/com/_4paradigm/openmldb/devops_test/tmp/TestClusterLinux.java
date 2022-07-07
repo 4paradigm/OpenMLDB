@@ -1,22 +1,48 @@
-package com._4paradigm.openmldb.devops_test.high_availability;
+package com._4paradigm.openmldb.devops_test.tmp;
 
 import com._4paradigm.openmldb.devops_test.common.ClusterTest;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
-import com._4paradigm.openmldb.test_common.util.SDKByJDBCUtil;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
-import java.io.Serializable;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-
-public class TestCluster extends ClusterTest {
+@Slf4j
+public class TestClusterLinux {
+    private SqlExecutor executor;
+    @BeforeClass
+    public void init() throws SQLException {
+        OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
+                .deployType(OpenMLDBDeployType.CLUSTER)
+                .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
+                .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+                .zk_cluster("172.24.4.55:30000")
+                .zk_root_path("/openmldb")
+                .nsNum(2).tabletNum(3)
+                .nsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
+                .tabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
+                .apiServerEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30006"))
+                .build();
+        OpenMLDBGlobalVar.env = "cluster";
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
+        log.info("executor:{}",executor);
+        Statement statement = executor.getStatement();
+        statement.execute("SET @@execute_mode='online';");
+    }
     @Test
     public void testMoreReplica(){
         SDKClient sdkClient = SDKClient.of(executor);
@@ -71,25 +97,20 @@ public class TestCluster extends ClusterTest {
         sdkClient.insertList(ssdTable,dataList);
         sdkClient.insertList(hddTable,dataList);
         // 其中一个tablet stop，leader 内存表和磁盘表可以正常访问，flower 内存表和磁盘表可以正常访问。
-        String basePath = OpenMLDBGlobalVar.mainInfo.getBasePath();
-        String stopOneTabletCommand = String.format("sh %s/openmldb-tablet-1/bin/start.sh stop tablet",basePath);
-        ExecutorUtil.run(stopOneTabletCommand);
-        Tool.sleep(5*1000);
-        String selectMemory = String.format("select c1 from %s;",memoryTable);
-        String selectSSD = String.format("select c1 from %s;",ssdTable);
-        String selectHDD = String.format("select c1 from %s;",hddTable);
-        OpenMLDBResult memoryResult = sdkClient.execute(selectMemory);
-        OpenMLDBResult ssdResult = sdkClient.execute(selectSSD);
-        OpenMLDBResult hddResult = sdkClient.execute(selectHDD);
-        String oneTabletStopMsg = "tablet1 stop tablet row count check failed.";
-        Assert.assertEquals(memoryResult.getCount(),dataCount,oneTabletStopMsg);
-        Assert.assertEquals(ssdResult.getCount(),dataCount,oneTabletStopMsg);
-        Assert.assertEquals(hddResult.getCount(),dataCount,oneTabletStopMsg);
+//        String basePath = OpenMLDBGlobalVar.mainInfo.getBasePath();
+//        String stopOneTabletCommand = String.format("sh %s/openmldb-tablet-1/bin/start.sh stop tablet",basePath);
+//        ExecutorUtil.run(stopOneTabletCommand);
+//        Tool.sleep(5*1000);
+//        String selectMemory = String.format("select c1 from %s;",memoryTable);
+//        String selectSSD = String.format("select c1 from %s;",ssdTable);
+//        String selectHDD = String.format("select c1 from %s;",hddTable);
+//        OpenMLDBResult memoryResult = sdkClient.execute(selectMemory);
+//        OpenMLDBResult ssdResult = sdkClient.execute(selectSSD);
+//        OpenMLDBResult hddResult = sdkClient.execute(selectHDD);
+//        Assert.assertEquals(memoryResult.getCount(),dataCount);
+//        Assert.assertEquals(ssdResult.getCount(),dataCount);
+//        Assert.assertEquals(hddResult.getCount(),dataCount);
         // tablet start，数据可以回复，要看磁盘表和内存表。
-        String startOneTabletCommand = String.format("sh %s/openmldb-tablet-1/bin/start.sh start tablet",basePath);
-        ExecutorUtil.run(startOneTabletCommand);
-        Tool.sleep(5*1000);
-
         //创建磁盘表和内存表，在重启tablet，数据可回复，内存表和磁盘表可以正常访问。
         //创建磁盘表和内存表，插入一些数据，然后make snapshot，在重启tablet，数据可回复。
         //tablet 依次restart，数据可回复，可以访问。

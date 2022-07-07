@@ -39,7 +39,6 @@ import java.sql.Statement;
 @Slf4j
 public class ClusterTest {
     protected static SqlExecutor executor;
-
     @BeforeTest()
     @Parameters({"env","version","openMLDBPath"})
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String openMLDBPath) throws Exception {
@@ -69,8 +68,8 @@ public class ClusterTest {
             OpenMLDBGlobalVar.env = caseEnv;
         }
         log.info("fedb global var env: {}", env);
-        OpenMLDBClient fesqlClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
-        executor = fesqlClient.getExecutor();
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
         log.info("executor:{}",executor);
         Statement statement = executor.getStatement();
         statement.execute("SET @@execute_mode='online';");
