@@ -83,9 +83,23 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
     cntl->response_attachment().append(writer.GetString());
 }
 
-enum QUERY_MODE { OFFLINE_SYNC, OFFLINE_ASYNC, ONLINE };
-std::map<std::string, QUERY_MODE> mode_map{
-    {"offsync", QUERY_MODE::OFFLINE_SYNC}, {"offasync", QUERY_MODE::OFFLINE_ASYNC}, {"online", QUERY_MODE::ONLINE}};
+class ExecContext {
+ public:
+    bool is_online = false;
+    bool is_sync = true;
+    int job_timeout = 600000;  // ms
+    ExecContext() = default;
+    ExecContext(bool online, bool sync) : is_online(online), is_sync(sync) {}
+
+    std::string ToString() const {
+        std::stringstream ss;
+        ss << (is_online ? "online" : "offline") << "-" << (is_sync ? "sync" : "async") << "-" << job_timeout << "ms";
+        return ss.str();
+    }
+};
+
+std::map<std::string, ExecContext> mode_map{
+    {"offsync", {false, true}}, {"offasync", {false, false}}, {"online", {true, false}}};
 
 void APIServerImpl::RegisterQuery() {
     provider_.post("/dbs/:db_name",
@@ -112,24 +126,17 @@ void APIServerImpl::RegisterQuery() {
                            writer << resp.Set("Invalid mode " + mode);
                            return;
                        }
-                       QUERY_MODE query_mode = it->second;
+                       ExecContext ctx = it->second;
 
                        const auto& sql = req.sql;
-                       LOG(INFO) << "post [" << mode << "] query on db [" << db << "], sql: " << sql;
+                       LOG(INFO) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
                        // TODO(hw): if api server supports standalone, we should check if cluster mode here
 
                        hybridse::sdk::Status status;
                        // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
                        //  supports ddl http api. It's useful for api server tests(We can create table when we only
                        //  connect to the api server).
-                       if (query_mode == QUERY_MODE::ONLINE || !boost::istarts_with(sql, "select")) {
-                           // TODO(hw): response the result set
-                           auto rs = sql_router_->ExecuteSQL(db, sql, &status);
-                       } else {
-                           // TODO(hw): support mutable timeout
-                           auto rs = sql_router_->ExecuteOfflineQuery(db, sql, query_mode == QUERY_MODE::OFFLINE_SYNC,
-                                                                      600000, &status);
-                       }
+                       sql_router_->ExecuteSQL(db, sql, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
                        writer << resp.Set(status.code, status.msg);
                    });
 }
