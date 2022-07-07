@@ -23,7 +23,7 @@ namespace catalog {
 
 class ClientManagerTest : public ::testing::Test {};
 
-TEST_F(ClientManagerTest, client_manager_test) {
+TEST_F(ClientManagerTest, NormalTest) {
     ::openmldb::nameserver::TableInfo table_info;
     table_info.set_name("t1");
     table_info.set_db("db1");

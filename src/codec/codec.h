@@ -17,9 +17,6 @@
 #ifndef SRC_CODEC_CODEC_H_
 #define SRC_CODEC_CODEC_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include <map>
 #include <memory>
 #include <sstream>
@@ -27,7 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/endianconv.h"
 #include "base/strings.h"
 #include "proto/common.pb.h"
 
@@ -41,13 +37,9 @@ static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
 static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 
-struct RowContext;
 class RowBuilder;
 class RowView;
 class RowProject;
-
-// TODO(wangtaize) share the row codec context
-struct RowContext {};
 
 class RowProject {
  public:
