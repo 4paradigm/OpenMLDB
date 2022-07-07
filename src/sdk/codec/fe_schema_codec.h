@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "vm/catalog.h"
+#include "sdk/fe_type.h"
 
 namespace hybridse {
 namespace codec {
