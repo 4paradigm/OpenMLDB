@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.taskmanager.server;
 
 import com._4paradigm.openmldb.taskmanager.tracker.JobTrackerService;
+import com._4paradigm.openmldb.taskmanager.util.VersionUtil;
 import com._4paradigm.openmldb.taskmanager.zk.FailoverWatcher;
 import lombok.extern.slf4j.Slf4j;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;

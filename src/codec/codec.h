@@ -193,10 +193,6 @@ class RowView {
 
 namespace v1 {
 
-static constexpr uint8_t VERSION_LENGTH = 2;
-static constexpr uint8_t SIZE_LENGTH = 4;
-// calc the total row size with primary_size, str field count and str_size
-
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;

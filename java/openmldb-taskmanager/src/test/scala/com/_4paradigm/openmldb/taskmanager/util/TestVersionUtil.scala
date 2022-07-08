@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.batchjob
+package com._4paradigm.openmldb.taskmanager.util
 
-import com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil
-import org.apache.spark.sql.SparkSession
+import org.scalatest.FunSuite
 
-object ImportOfflineData {
+class TestVersionUtil extends FunSuite {
 
-  def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
-    importOfflineData(args(0))
-  }
-
-  def importOfflineData(sqlFilePath: String): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
-    OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
+  test("Test getVersion") {
+    val version = VersionUtil.getVersion()
+    assert(version.nonEmpty)
   }
 
 }
