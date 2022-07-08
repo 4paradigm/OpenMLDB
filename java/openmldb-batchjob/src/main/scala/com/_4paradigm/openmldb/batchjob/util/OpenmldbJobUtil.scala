@@ -14,26 +14,42 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.batchjob
+package com._4paradigm.openmldb.batchjob.util
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.SparkSession
+import scala.reflect.io.File
 
-object RunBatchSql {
+object OpenmldbJobUtil {
 
-  def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
-    runBatchSql(args(0))
+  def checkOneSqlArgument(args: Array[String]): Unit = {
+    if (args.length != 1) {
+      throw new Exception(s"Require args of sql but get args: ${args.mkString(",")}")
+    }
   }
 
-  def runBatchSql(sqlFilePath: String): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
+  def getSqlFromFile(spark: SparkSession, sqlFilePath: String): String = {
+    val sparkMaster = spark.conf.get("spark.master")
+
+    val actualSqlFilePath = if (sparkMaster.equals("local")) {
+      SparkFiles.get(sqlFilePath)
+    } else {
+      sqlFilePath
+    }
+
+    if (!File(actualSqlFilePath).exists) {
+      throw new Exception("SQL file does not exist in " + actualSqlFilePath)
+    }
+
+    scala.io.Source.fromFile(actualSqlFilePath).mkString
+  }
+
+  def runOpenmldbSql(spark: SparkSession, sqlFilePath: String): Unit = {
     val sqlText = OpenmldbJobUtil.getSqlFromFile(spark, sqlFilePath)
 
     val sess = new OpenmldbSession(spark)
-    sess.sql(sqlText).show()
+    sess.sql(sqlText)
     sess.close()
   }
 
