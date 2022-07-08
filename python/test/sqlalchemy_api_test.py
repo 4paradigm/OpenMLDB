@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import logging
 import sys
 import pytest
@@ -58,4 +59,4 @@ class TestSqlalchemyAPI:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "sqlalchemy_api_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import logging
 import sys
 from datetime import date
@@ -253,4 +254,4 @@ class TestOpenMLDBClient:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "openmldb_client_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))
