@@ -362,9 +362,9 @@ class SQLClusterRouter : public SQLRouter {
                                        const std::vector<int>& str_col_idx, const std::string& null_value,
                                        const std::vector<std::string>& cols);
 
-    hybridse::sdk::Status HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node);
+    hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
 
-    hybridse::sdk::Status HandleIndex(const std::set<std::pair<std::string, std::string>>& table_pair,
+    hybridse::sdk::Status HandleIndex(const std::string& db, const std::set<std::pair<std::string, std::string>>& table_pair,
                                       const std::string& select_sql);
 
     hybridse::sdk::Status GetNewIndex(

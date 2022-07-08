@@ -2395,7 +2395,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {
-            *status = HandleDeploy(dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+            *status = HandleDeploy(db, dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (status->IsOK()) {
                 RefreshCatalog();
             }
@@ -2922,14 +2922,14 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::DeployPlanNode* deploy_node) {
+hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node) {
+    if (db.empty()) {
+        return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
+    }
     if (deploy_node == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "illegal deploy statement"};
     }
-    std::string db = GetDatabase();
-    if (db.empty()) {
-        return {::hybridse::common::StatusCode::kCmdError, "please use database first"};
-    }
+
     std::string select_sql = deploy_node->StmtStr() + ";";
     hybridse::vm::ExplainOutput explain_output;
     hybridse::base::Status sql_status;
@@ -2991,7 +2991,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    auto index_status = HandleIndex(table_pair, select_sql);
+    auto index_status = HandleIndex(db, table_pair, select_sql);
     if (!index_status.IsOK()) {
         return index_status;
     }
@@ -3013,9 +3013,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const hybridse::node::Deplo
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::set<std::pair<std::string, std::string>>& table_pair,
+hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db, const std::set<std::pair<std::string, std::string>>& table_pair,
                                                     const std::string& select_sql) {
-    std::string db = GetDatabase();
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
