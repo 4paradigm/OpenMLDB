@@ -19,7 +19,6 @@
 
 #include <map>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -237,13 +236,6 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data);
 int32_t GetStrCol(int8_t* input, int32_t str_field_offset, int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
-
-inline std::string Int64ToString(const int64_t key) {
-    std::stringstream ss;
-    ss << std::hex << key;
-    std::string key_str = ss.str();
-    return key_str;
-}
 
 }  // namespace codec
 }  // namespace openmldb
