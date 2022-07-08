@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import logging
 import sys
-
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+import os
 from openmldb.dbapi import connect
 from openmldb.dbapi import DatabaseError
+import pytest
+
+from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -76,4 +77,4 @@ class TestOpenmldbDBAPI:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "dbapi_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))

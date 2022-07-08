@@ -13,8 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
 
+import os
 import case_conf
 import time
 
@@ -25,6 +25,7 @@ from pathlib import Path
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
 from openmldb.sdk import sdk as sdk_module
+import pytest
 # fmt:on
 
 
@@ -104,4 +105,4 @@ def test_sdk_smoke():
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "sql_smoke_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))
