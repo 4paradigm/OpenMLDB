@@ -340,7 +340,7 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
                                                               hybridse::sdk::Status* status);
-    bool ExtractDBTypes(std::shared_ptr<hybridse::sdk::Schema> schema,
+    bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
 
     ::hybridse::sdk::Status SetVariable(hybridse::node::SetPlanNode* node);

@@ -111,7 +111,7 @@ namespace openmldb::client {
         }
         return {response.code(), ""};
     } else {
-        return ::openmldb::base::Status(-1, "RPC request (to TaskManager) failed");
+        return {-1, "RPC request (to TaskManager) failed"};
     }
 }
 
@@ -156,8 +156,8 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it = config.begin(); it != config.end(); ++it) {
-        (*request.mutable_conf())[it->first] = it->second;
+    for (const auto & it : config) {
+        (*request.mutable_conf())[it.first] = it.second;
     }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
@@ -186,8 +186,8 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it = config.begin(); it != config.end(); ++it) {
-        (*request.mutable_conf())[it->first] = it->second;
+    for (const auto & it : config) {
+        (*request.mutable_conf())[it.first] = it.second;
     }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
@@ -216,8 +216,8 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (auto it = config.begin(); it != config.end(); ++it) {
-        (*request.mutable_conf())[it->first] = it->second;
+    for (const auto & it : config) {
+        (*request.mutable_conf())[it.first] = it.second;
     }
 
     bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,

@@ -138,6 +138,9 @@ void APIServerImpl::RegisterQuery() {
                        //  connect to the api server).
                        sql_router_->ExecuteSQL(db, sql, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
                        writer << resp.Set(status.code, status.msg);
+                       if (!status.IsOK()) {
+                           LOG(WARNING) << "failed at: code " << status.code << ", msg " << status.msg;
+                       }
                    });
 }
 
