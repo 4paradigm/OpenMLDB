@@ -28,7 +28,7 @@ setup(
         'Programming Language :: Python :: 3',
         ],
     install_requires=[
-        "sqlalchemy < 1.4.0",
+        "sqlalchemy <= 1.4.9",
         "IPython",
         "prettytable",
         "tox",
