@@ -172,9 +172,8 @@ class SQLClusterRouter : public SQLRouter {
                                                          ::hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
-                                                                           bool is_online_mode, bool is_sync_job,
-                                                                           int offline_job_timeout,
-                                                                           hybridse::sdk::Status* status) override;
+                                                         bool is_online_mode, bool is_sync_job, int offline_job_timeout,
+                                                         hybridse::sdk::Status* status) override;
     /// Execute batch SQL with parameter row
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(const std::string& db, const std::string& sql,
                                                                       std::shared_ptr<SQLRequestRow> parameter,
@@ -344,7 +343,12 @@ class SQLClusterRouter : public SQLRouter {
 
     inline bool CheckSQLSyntax(const std::string& sql);
 
+    std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
+                                                              hybridse::sdk::Status* status);
+
+    bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
+
     ::hybridse::sdk::Status SetVariable(hybridse::node::SetPlanNode* node);
 
     ::hybridse::sdk::Status ParseNamesFromArgs(const std::string& db, const std::vector<std::string>& args,
@@ -366,7 +370,8 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
 
-    hybridse::sdk::Status HandleIndex(const std::string& db, const std::set<std::pair<std::string, std::string>>& table_pair,
+    hybridse::sdk::Status HandleIndex(const std::string& db,
+                                      const std::set<std::pair<std::string, std::string>>& table_pair,
                                       const std::string& select_sql);
 
     hybridse::sdk::Status GetNewIndex(
