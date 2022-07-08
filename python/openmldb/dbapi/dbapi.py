@@ -149,6 +149,12 @@ class ConnectionClosedException(Error):
         return repr(self.message)
 
 
+def build_sorted_holes(hole_idxes):
+    # hole idxes is in stmt order, we should use schema order to append
+    hole_pairs = [(hole_idxes[i], i) for i in range(len(hole_idxes))]
+    return sorted(hole_pairs, key=lambda elem: elem[0])
+
+
 class Cursor(object):
 
     def __init__(self, db, conn):
@@ -220,11 +226,7 @@ class Cursor(object):
         return self
 
     @classmethod
-    def __add_row_to_builder(cls, row, hole_idxes, schema, builder, append_map):
-        # hole idxes is in stmt order, we should use schema order to append
-        hole_pairs = [(hole_idxes[i], i) for i in range(len(hole_idxes))]
-        hole_pairs.sort(key=lambda elem: elem[0])
-
+    def __add_row_to_builder(cls, row, hole_pairs, schema, builder, append_map):
         for i in range(len(hole_pairs)):
             idx = hole_pairs[i][0]
             name = schema.GetColumnName(idx)
@@ -263,10 +265,11 @@ class Cursor(object):
                 schema = builder.GetSchema()
                 # holeIdxes is in stmt column order
                 hole_idxes = builder.GetHoleIdx()
+                sorted_holes = build_sorted_holes(hole_idxes)
                 append_map = self.__get_append_map(
                     builder, parameters, hole_idxes, schema)
                 self.__add_row_to_builder(
-                    parameters, hole_idxes, schema, builder, append_map)
+                    parameters, sorted_holes, schema, builder, append_map)
                 ok, error = self.connection._sdk.executeInsert(
                     self.db, command, builder)
             else:
@@ -339,13 +342,13 @@ class Cursor(object):
         }
         return append_map
 
-    def __insert_rows(self, rows: List[Union[tuple, dict]], hold_idxs, schema, rows_builder, command):
+    def __insert_rows(self, rows: List[Union[tuple, dict]], hole_idxes, sorted_holes, schema, rows_builder, command):
         for row in rows:
             tmp_builder = rows_builder.NewRow()
             append_map = self.__get_append_map(
-                tmp_builder, row, hold_idxs, schema)
+                tmp_builder, row, hole_idxes, schema)
             self.__add_row_to_builder(
-                row, hold_idxs, schema, tmp_builder, append_map)
+                row, sorted_holes, schema, tmp_builder, append_map)
         ok, error = self.connection._sdk.executeInsert(
             self.db, command, rows_builder)
         if not ok:
@@ -370,12 +373,11 @@ class Cursor(object):
             if question_mark_count > 0:
                 # Because the object obtained by getInsertBatchBuilder has no GetSchema method,
                 # use the object obtained by getInsertBatchBuilder
-                ok, builder = self.connection._sdk.getInsertBuilder(
-                    self.db, command)
+                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
-                hold_idxs = builder.GetHoleIdx()
+                hole_pairs = build_sorted_holes(builder.GetHoleIdx())
                 for i in range(0, parameters_length, batch_number):
                     rows = parameters[i: i + batch_number]
                     ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
@@ -383,7 +385,7 @@ class Cursor(object):
                     if not ok:
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(
-                        rows, hold_idxs, schema, batch_builder, command)
+                        rows, hole_pairs, schema, batch_builder, command)
             else:
                 ok, rs = self.connection._sdk.executeSQL(self.db, command)
                 if not ok:

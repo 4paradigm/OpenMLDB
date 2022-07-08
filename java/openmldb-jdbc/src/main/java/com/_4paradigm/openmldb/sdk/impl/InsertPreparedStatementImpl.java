@@ -52,6 +52,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private final List<Boolean> hasSet;
     // stmt insert idx -> real table schema idx
     private final List<Pair<Long, Integer>> schemaIdxes;
+    // used by building row
+    private final List<Pair<Long, Integer>> sortedIdxes;
 
     private boolean closed = false;
     private boolean closeOnComplete = false;
@@ -69,23 +71,24 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         // In stmt order, if no columns in stmt, in schema order
         // We'll sort it to schema order later, so needs the map <real_schema_idx, current_data_idx>
         schemaIdxes = new ArrayList<>(idxes.size());
-        for (int i = 0; i < idxes.size(); i++) {
-            schemaIdxes.add(new Pair<>(idxes.get(i), i));
-        }
-
+        // CurrentData and Type order is consistent with insert stmt. We'll do appending in schema order when build
+        // row.
         currentDatas = new ArrayList<>(idxes.size());
         currentDatasType = new ArrayList<>(idxes.size());
         hasSet = new ArrayList<>(idxes.size());
-        // CurrentDatas and Type order is consistent with insert stmt. We'll do appending in schema order when build
-        // row.
-        for (Pair<Long, Integer> pair : schemaIdxes) {
-            Long idx = pair.getKey();
-            DataType type = currentSchema.GetColumnType(idx);
+
+        for (int i = 0; i < idxes.size(); i++) {
+            Long realIdx = idxes.get(i);
+            schemaIdxes.add(new Pair<>(realIdx, i));
+            DataType type = currentSchema.GetColumnType(realIdx);
             currentDatasType.add(type);
             currentDatas.add(null);
             hasSet.add(false);
-            logger.debug("add col {}, {}", currentSchema.GetColumnName(idx), type);
+            logger.debug("add col {}, {}", currentSchema.GetColumnName(realIdx), type);
         }
+        // SQLInsertRow::AppendXXX order is the schema order(skip the no-hole columns)
+        sortedIdxes = schemaIdxes.stream().sorted(Comparator.comparing(Pair::getKey))
+                .collect(Collectors.toList());
     }
 
     private SQLInsertRow getSQLInsertRow() throws SQLException {
@@ -316,10 +319,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             throw new SQLException("init row failed");
         }
 
-        // SQLInsertRow::AppendXXX order is the schema order(skip the no-hole columns)
-        List<Pair<Long, Integer>> sortedIdxes = schemaIdxes.stream().sorted(Comparator.comparing(Pair::getKey))
-                .collect(Collectors.toList());
-
         for (Pair<Long, Integer> sortedIdx : sortedIdxes) {
             Integer currentDataIdx = sortedIdx.getValue();
             Object data = currentDatas.get(currentDataIdx);
@@ -348,7 +347,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 } else if (DataType.kTypeTimestamp.equals(curType)) {
                     ok = currentRow.AppendTimestamp((long) data);
                 } else {
-                    throw new SQLException("unkown data type");
+                    throw new SQLException("unknown data type");
                 }
             }
             if (!ok) {

@@ -103,25 +103,7 @@ class SQLInsertRow {
     // order.
     static std::vector<uint32_t> GetHoleIdxArr(const DefaultValueMap& default_map,
                                                const std::vector<uint32_t>& stmt_column_idx_in_table,
-                                               const std::shared_ptr<::hybridse::sdk::Schema>& schema) {
-        std::vector<uint32_t> hole_idx_arr;
-        if (!stmt_column_idx_in_table.empty()) {
-            // hold idx arr should in stmt column order
-            for (auto idx : stmt_column_idx_in_table) {
-                // no default value means a hole, needs to set value
-                if (default_map->find(idx) == default_map->end()) {
-                    hole_idx_arr.emplace_back(idx);
-                }
-            }
-        } else {
-            for (int i = 0; i < schema->GetColumnCnt(); ++i) {
-                if (default_map->find(i) == default_map->end()) {
-                    hole_idx_arr.push_back(i);
-                }
-            }
-        }
-        return hole_idx_arr;
-    }
+                                               const std::shared_ptr<::hybridse::sdk::Schema>& schema);
 
  private:
     bool MakeDefault();
