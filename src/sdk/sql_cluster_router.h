@@ -35,15 +35,14 @@
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
 
-namespace openmldb {
-namespace sdk {
+namespace openmldb::sdk {
 
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
 static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info) {
+    const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
     ::hybridse::vm::Schema schema;
     for (const auto& column_desc : table_info->column_desc()) {
         ::hybridse::type::ColumnDef* column_def = schema.Add();
@@ -55,35 +54,40 @@ static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
 }
 
 struct SQLCache {
-    SQLCache(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, DefaultValueMap default_map,
-             uint32_t str_length, uint32_t limit_cnt = 0)
+    // for insert row
+    SQLCache(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, DefaultValueMap default_map,
+             uint32_t str_length, std::vector<uint32_t> hole_idx_arr, uint32_t limit_cnt = 0)
         : table_info(table_info),
-          default_map(default_map),
+          default_map(std::move(default_map)),
           column_schema(),
           str_length(str_length),
+          hole_idx_arr(std::move(hole_idx_arr)),
           limit_cnt(limit_cnt) {
         column_schema = openmldb::sdk::ConvertToSchema(table_info);
     }
+
     SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema, const ::hybridse::vm::Router& input_router,
              uint32_t limit_cnt = 0)
         : table_info(),
           default_map(),
-          column_schema(column_schema),
+          column_schema(std::move(column_schema)),
           parameter_schema(),
           str_length(0),
           limit_cnt(limit_cnt),
           router(input_router) {}
+
     SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
              std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, const ::hybridse::vm::Router& input_router,
              uint32_t limit_cnt = 0)
         : table_info(),
           default_map(),
-          column_schema(column_schema),
-          parameter_schema(parameter_schema),
+          column_schema(std::move(column_schema)),
+          parameter_schema(std::move(parameter_schema)),
           str_length(0),
           limit_cnt(limit_cnt),
           router(input_router) {}
-    bool IsCompatibleCache(std::shared_ptr<::hybridse::sdk::Schema> other_parameter_schema) {
+
+    bool IsCompatibleCache(const std::shared_ptr<::hybridse::sdk::Schema>& other_parameter_schema) const {
         if (!parameter_schema && !other_parameter_schema) {
             return true;
         }
@@ -106,6 +110,7 @@ struct SQLCache {
     std::shared_ptr<::hybridse::sdk::Schema> column_schema;
     std::shared_ptr<::hybridse::sdk::Schema> parameter_schema;
     uint32_t str_length;
+    std::vector<uint32_t> hole_idx_arr;
     uint32_t limit_cnt;
     ::hybridse::vm::Router router;
 };
@@ -211,22 +216,23 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
                                                               int64_t timeout_ms, std::shared_ptr<SQLRequestRow> row,
-                                                              hybridse::sdk::Status* status);
+                                                              hybridse::sdk::Status* status) override;
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
-                                                                      const ::hybridse::vm::EngineMode engine_mode,
+                                                                      ::hybridse::vm::EngineMode engine_mode,
                                                                       const std::shared_ptr<SQLRequestRow>& row,
                                                                       hybridse::sdk::Status& status);  // NOLINT
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
-        const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
+        const std::string& db, const std::string& sql, ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row,
         hybridse::sdk::Status& status);  // NOLINT
+
     std::shared_ptr<SQLCache> GetSQLCache(const std::string& db, const std::string& sql,
-                                          const ::hybridse::vm::EngineMode engine_mode,
+                                          ::hybridse::vm::EngineMode engine_mode,
                                           const std::shared_ptr<SQLRequestRow>& parameter_row,
                                           hybridse::sdk::Status& status);  // NOLINT
 
@@ -316,21 +322,21 @@ class SQLClusterRouter : public SQLRouter {
 
     bool IsConstQuery(::hybridse::vm::PhysicalOpNode* node);
     std::shared_ptr<SQLCache> GetCache(const std::string& db, const std::string& sql,
-                                       const hybridse::vm::EngineMode engine_mode);
+                                       hybridse::vm::EngineMode engine_mode);
 
-    void SetCache(const std::string& db, const std::string& sql, const hybridse::vm::EngineMode engine_mode,
+    void SetCache(const std::string& db, const std::string& sql, hybridse::vm::EngineMode engine_mode,
                   const std::shared_ptr<SQLCache>& router_cache);
 
     bool GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm, ::hybridse::node::PlanNodeList* plan);
 
     bool GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                        std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info, DefaultValueMap* default_map,
-                       uint32_t* str_length);
+                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table);
     bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
 
-    DefaultValueMap GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+    DefaultValueMap GetDefaultMap(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
                                   uint32_t* str_length);
 
@@ -338,11 +344,7 @@ class SQLClusterRouter : public SQLRouter {
 
     inline bool CheckSQLSyntax(const std::string& sql);
 
-    std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
-                                                              hybridse::sdk::Status* status);
-    bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
                         std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
-
     ::hybridse::sdk::Status SetVariable(hybridse::node::SetPlanNode* node);
 
     ::hybridse::sdk::Status ParseNamesFromArgs(const std::string& db, const std::vector<std::string>& args,
@@ -411,6 +413,5 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::Random rand_;
 };
 
-}  // namespace sdk
-}  // namespace openmldb
+}  // namespace openmldb::sdk
 #endif  // SRC_SDK_SQL_CLUSTER_ROUTER_H_

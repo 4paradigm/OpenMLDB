@@ -91,14 +91,15 @@ SqlNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
-                                        bool open_interval_window) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, open_interval_window, false);
+                                        bool exclude_current_time) {
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, exclude_current_time, false, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders,
-                                        SqlNode *frame, bool exclude_current_time, bool instance_not_in_window) {
+                                        SqlNode *frame, bool exclude_current_time, bool exclude_current_row,
+                                        bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
         if (node::kExprOrder != orders->GetExprType()) {
@@ -110,6 +111,7 @@ SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode 
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
     node_ptr->set_exclude_current_time(exclude_current_time);
+    node_ptr->set_exclude_current_row(exclude_current_row);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -128,9 +130,9 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1, const WindowDef
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
-                                                           MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-                                                           w1->exclude_current_time(), w1->instance_not_in_window()));
+    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
+        w1->union_tables(), w1->GetPartitions(), w1->GetOrders(), MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
+        w1->exclude_current_time(), w1->exclude_current_row(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1) {
     if (nullptr == frame1) {

@@ -26,7 +26,6 @@ logging.basicConfig(level=logging.WARNING)
 
 
 class TestOpenmldbDBAPI:
-
     cursor = None
 
     @classmethod
@@ -69,6 +68,11 @@ class TestOpenmldbDBAPI:
             "select * from new_table where x = 'second';").fetchone()
         assert 'second' in result
         assert 200 in result
+
+    def test_custom_order_insert(self):
+        self.cursor.execute("insert into new_table (y, x) values(300, 'third');")
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);", (300, 'third'))
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);", {'x': 'third', 'y': 300})
 
 
 if __name__ == "__main__":

@@ -34,7 +34,6 @@ import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.data.Stat;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -377,6 +376,12 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
         return response.getLog();
+    }
+
+    public String geTaskmanagertVersion() throws Exception {
+        TaskManager.GetTaskmanagerVersionResponse response = taskManagerInterface.GetTaskmanagerVersion(
+                TaskManager.EmptyMessage.newBuilder().build());
+        return response.getVersion();
     }
 
     /**

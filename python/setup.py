@@ -31,6 +31,7 @@ setup(
         "sqlalchemy <= 1.4.9",
         "IPython",
         "prettytable",
+        "tox",
         "pytest"
     ],
     include_package_data=True,

@@ -342,20 +342,25 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRow>(cache->table_info, cache->column_schema, cache->default_map,
-                                              cache->str_length);
+                                              cache->str_length, cache->hole_idx_arr);
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
-    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length)) {
+    std::vector<uint32_t> stmt_column_idx_arr;
+    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr)) {
         status->code = 1;
         LOG(WARNING) << "get insert information failed";
         return {};
     }
-    cache = std::make_shared<SQLCache>(table_info, default_map, str_length, 0);
+    cache = std::make_shared<SQLCache>(
+        table_info, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, openmldb::sdk::ConvertToSchema(table_info)));
     SetCache(db, sql, hybridse::vm::kBatchMode, cache);
-    return std::make_shared<SQLInsertRow>(table_info, cache->column_schema, default_map, str_length);
+    return std::make_shared<SQLInsertRow>(table_info, cache->column_schema, default_map, str_length,
+                                          cache->hole_idx_arr);
 }
+
 bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::string& sql,
                                              ::hybridse::sdk::Status* status,
                                              std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
@@ -460,17 +465,19 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     }
     return true;
 }
+
 bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                      std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
-                                     DefaultValueMap* default_map, uint32_t* str_length) {
-    if (status == NULL || table_info == NULL || default_map == NULL || str_length == NULL) {
+                                     DefaultValueMap* default_map, uint32_t* str_length,
+                                     std::vector<uint32_t>* stmt_column_idx_in_table) {
+    if (status == nullptr || table_info == nullptr || default_map == nullptr || str_length == nullptr) {
         LOG(WARNING) << "insert info is null" << sql;
         return false;
     }
     ::hybridse::node::NodeManager nm;
     ::hybridse::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
-    if (!ok || plans.size() == 0) {
+    if (!ok || plans.empty()) {
         LOG(WARNING) << "fail to get sql plan with sql " << sql;
         status->msg = "fail to get sql plan with";
         return false;
@@ -483,7 +490,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
     }
     auto* iplan = dynamic_cast<::hybridse::node::InsertPlanNode*>(plan);
     const ::hybridse::node::InsertStmt* insert_stmt = iplan->GetInsertNode();
-    if (insert_stmt == NULL) {
+    if (insert_stmt == nullptr) {
         LOG(WARNING) << "insert stmt is null";
         status->msg = "insert stmt is null";
         return false;
@@ -494,6 +501,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
         LOG(WARNING) << status->msg;
         return false;
     }
+    // <table schema idx, insert stmt column idx>
     std::map<uint32_t, uint32_t> column_map;
     for (size_t j = 0; j < insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
@@ -506,6 +514,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
                     return false;
                 }
                 column_map.insert(std::make_pair(i, j));
+                stmt_column_idx_in_table->emplace_back(i);
                 find_flag = true;
                 break;
             }
@@ -526,7 +535,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
     return true;
 }
 
-DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+DefaultValueMap SQLClusterRouter::GetDefaultMap(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
                                                 const std::map<uint32_t, uint32_t>& column_map,
                                                 ::hybridse::node::ExprListNode* row, uint32_t* str_length) {
     if (row == nullptr || str_length == nullptr) {
@@ -570,7 +579,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(std::shared_ptr<::openmldb::name
         }
 
         if (hybridse::node::kExprPrimary == row->children_.at(i)->GetExprType()) {
-            ::hybridse::node::ConstNode* primary = dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
+            auto* primary = dynamic_cast<::hybridse::node::ConstNode*>(row->children_.at(i));
             std::shared_ptr<::hybridse::node::ConstNode> val;
             if (primary->IsNull()) {
                 if (column.not_null()) {
@@ -653,17 +662,21 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRows>(cache->table_info, cache->column_schema, cache->default_map,
-                                               cache->str_length);
+                                               cache->str_length, cache->hole_idx_arr);
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
-    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length)) {
+    std::vector<uint32_t> stmt_column_idx_arr;
+    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr)) {
         return {};
     }
-    cache = std::make_shared<SQLCache>(table_info, default_map, str_length);
+    cache = std::make_shared<SQLCache>(
+        table_info, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, openmldb::sdk::ConvertToSchema(table_info)));
     SetCache(db, sql, hybridse::vm::kBatchMode, cache);
-    return std::make_shared<SQLInsertRows>(table_info, cache->column_schema, default_map, str_length);
+    return std::make_shared<SQLInsertRows>(table_info, cache->column_schema, default_map, str_length,
+                                           cache->hole_idx_arr);
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) {
