@@ -10,7 +10,7 @@ OpenMLDB 在线架构的主要模块有 Apache ZooKeeper, nameserver 以及 tabl
 OpenMLDB 依赖 ZooKeeper 做服务发现和元数据存储和管理功能。ZooKeeper 和 OpenMLDB SDK，tablets, namesever 之间都会存在交互，用于分发和更新元数据。
 
 ## 3. Nameserver
-Nameserver 主要用来做 tablet 管理以及故障转移（failover）。当一个 tablet 节点宕机后，nameserver 就会触发一系列任务来执行故障转移，当节点恢复后会重新把数据加载到该节点中。同时，为了保证 nameserver 本身的高可用，nameserver 在部署时会部署多个实例，并采用primary/secondary 节点的部署模式——同一时刻只会有一个 primary 节点。多个 nameserver 通过 ZooKeeper 实现 primary 节点的抢占。因此，如果当前 primary 节点意外离线，则 secondary 节点会借助 ZooKeeper 重新选出一个 primary 节点。
+Nameserver 主要用来做 tablet 管理以及故障转移（failover）。当一个 tablet 节点宕机后，nameserver 就会触发一系列任务来执行故障转移，当节点恢复后会重新把数据加载到该节点中。同时，为了保证 nameserver 本身的高可用，nameserver 在部署时会部署多个实例，并采用primary/secondary 节点的部署模式————同一时刻只会有一个 primary 节点。多个 nameserver 通过 ZooKeeper 实现 primary 节点的抢占。因此，如果当前 primary 节点意外离线，则 secondary 节点会借助 ZooKeeper 重新选出一个 primary 节点。
 
 ## 4. Tablets
  OpenMLDB 使用Tablet模块执行SQL、存储数据。该模块是整个 OpenMLDB 功能实现的核心以及资源占用的瓶颈。从功能上看，Tablet进一步包含了 SQL engine 和 storage engine 两个模块。Tablet 也是 OpenMLDB 部署资源时可调配的最小单元。一个 tablet 不能被拆分到多个物理节点；但是一个物理节点上可以有多个 tablets。
