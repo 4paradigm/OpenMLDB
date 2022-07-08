@@ -246,7 +246,7 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
     const int inputRowSizeInBytes, const bool need_free) {
     // Create Row from input UnsafeRow bytes
-    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+    auto inputRow = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
     auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
 
@@ -326,9 +326,9 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProject(
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
     const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
     WindowInterface* window) {
-    // tobe
+
     // Create Row from input UnsafeRow bytes
-    auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
+    auto row = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                  inputRowSizeInBytes));
     return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());
