@@ -1204,7 +1204,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;
-    ::openmldb::sdk::MiniCluster mc(2181);
+    ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(1);
     sleep(1);

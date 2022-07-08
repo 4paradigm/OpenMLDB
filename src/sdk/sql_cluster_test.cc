@@ -992,7 +992,7 @@ TEST_F(SQLClusterTest, ClusterSelect) {
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
-    ::openmldb::sdk::MiniCluster mc(2181);
+    ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
