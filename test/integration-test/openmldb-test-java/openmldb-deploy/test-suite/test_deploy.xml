@@ -2,6 +2,7 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="openMLDB-deploy" parallel="false" thread-count="2">
     <test name="deploy-tmp">
+        <parameter name="version" value="tmp"/>
         <parameter name="openMLDBPath" value=""/>
         <classes>
             <class name="com._4paradigm.qa.openmldb_deploy.test.TmpDeploy">
