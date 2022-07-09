@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="openMLDB-deploy" parallel="false" thread-count="2">
-    <test name="deploy-tmp2">
-<!--        <parameter name="openMLDBPath" value="/home/zhaowei01/openmldb-auto-test/openmldb"/>-->
-<!--        <parameter name="version" value="tmp2"/>-->
+    <test name="deploy-tmp">
+        <parameter name="version" value="tmp2"/>
         <classes>
             <class name="com._4paradigm.qa.openmldb_deploy.test.TmpDeploy">
                 <methods>
-                    <include name="testCluster" />
+                    <include name="testClusterByStandalone" />
                 </methods>
             </class>
         </classes>

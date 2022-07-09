@@ -8,6 +8,7 @@ import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.testng.Assert;
 import org.testng.collections.Lists;
 
 import java.sql.ResultSet;
@@ -46,14 +47,15 @@ public class SDKClient {
         }
         return openMLDBResult;
     }
-    public boolean checkComponentStatus(String endpoint,String status){
+    public void checkComponentStatus(String endpoint,String status){
         String sql = "show components;";
-        return WaitUtil.waitCondition(()->{
+        boolean b = WaitUtil.waitCondition(()->{
             OpenMLDBResult openMLDBResult = execute(sql);
             List<List<Object>> rows = openMLDBResult.getResult();
             long count = rows.stream().filter(row -> row.get(0).equals(endpoint) && row.get(3).equals(status)).count();
             return count==1;
         });
+        Assert.assertTrue(b,"check endpoint:"+endpoint+",status:"+status+"failed.");
     }
     public void createDB(String dbName){
         String sql = String.format("create database %s",dbName);
@@ -78,6 +80,11 @@ public class SDKClient {
     public void insertList(String tableName,List<List<Object>> dataList){
         String sql = SQLUtil.genInsertSQL(tableName,dataList);
         execute(sql);
+    }
+    public int getTableRowCount(String tableName){
+        String sql = String.format("select * from %s",tableName);
+        OpenMLDBResult openMLDBResult = execute(sql);
+        return openMLDBResult.getCount();
     }
     public void close(){
         if(statement!=null){

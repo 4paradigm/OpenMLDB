@@ -34,12 +34,12 @@ import org.testng.annotations.Test;
 @Feature("Lastjoin")
 public class LastJoinTest extends FedbTest {
 
-    // @Story("batch")
-    // @Test(dataProvider = "getCase")
-    // @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
-    // public void testLastJoin(SQLCase testCase) throws Exception {
-    //     ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
-    // }
+     @Story("batch")
+     @Test(dataProvider = "getCase")
+     @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
+     public void testLastJoin(SQLCase testCase) throws Exception {
+         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+     }
     @Story("request")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})

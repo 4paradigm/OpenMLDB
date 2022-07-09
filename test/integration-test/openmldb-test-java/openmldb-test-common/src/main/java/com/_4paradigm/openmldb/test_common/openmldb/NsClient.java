@@ -1,14 +1,15 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
 import com._4paradigm.openmldb.test_common.command.CommandUtil;
-import com._4paradigm.openmldb.test_common.util.NsCliResultUtil;
+import com._4paradigm.openmldb.test_common.util.NsResultUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
 import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.testng.Assert;
 
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 public class NsClient {
@@ -27,8 +28,9 @@ public class NsClient {
         return new NsClient(openMLDBInfo);
     }
     public String genNsCommand(String openMLDBPath,String zkCluster,String zkRootPath,String dbName,String command){
-        String line = "%s --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false --database=%s --cmd='%s'";
-        line = String.format(line,openMLDBPath,zkCluster,zkRootPath,dbName,command);
+        String dbStr = StringUtils.isNotEmpty(dbName)?"--database="+dbName:"";
+        String line = "%s --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false %s --cmd='%s'";
+        line = String.format(line,openMLDBPath,zkCluster,zkRootPath,dbStr,command);
         log.info("ns command:"+line);
         return line;
     }
@@ -39,17 +41,81 @@ public class NsClient {
         String nsCommand = genNsCommand(dbName,command);
         return CommandUtil.run(nsCommand);
     }
-    public boolean checkOPStatusDone(String dbName,String tableName){
+    public void checkOPStatusDone(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showopstatus "+tableName:"showopstatus";
         String nsCommand = genNsCommand(dbName,command);
         Tool.sleep(3*1000);
-        return WaitUtil.waitCondition(()->{
+        boolean b = WaitUtil.waitCondition(()->{
             List<String> lines = CommandUtil.run(nsCommand);
-            return NsCliResultUtil.checkOPStatus(lines,"kDone");
+            return NsResultUtil.checkOPStatus(lines,"kDone");
         },()->{
             List<String> lines = CommandUtil.run(nsCommand);
-            return NsCliResultUtil.checkOPStatusAny(lines,"kFailed");
+            return NsResultUtil.checkOPStatusAny(lines,"kFailed");
         });
+        Assert.assertTrue(b,"check op done failed.");
+    }
+    public List<String> showTable(String dbName,String tableName){
+        String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
+        String nsCommand = genNsCommand(dbName,command);
+        List<String> lines = CommandUtil.run(nsCommand);
+        return lines;
+    }
+
+    public void checkTableIsAlive(String dbName,String tableName){
+        List<String> lines = showTable(dbName,tableName);
+        for(int i=2;i<lines.size();i++){
+            String line = lines.get(i);
+            String[] infos = line.split("\\s+");
+            Assert.assertEquals(infos[5],"yes");
+        }
+    }
+    public void checkTableOffSet(String dbName,String tableName){
+        List<String> lines = showTable(dbName,tableName);
+        Map<String,List<Long>> table1 = NsResultUtil.getTableOffset(lines);
+        for(List<Long> values:table1.values()){
+            for(Long offset:values){
+                Assert.assertEquals(offset,values.get(0));
+            }
+        }
+    }
+    public void makeSnapshot(String dbName,String tableName,int pid){
+        String command = String.format("makesnapshot %s %d",tableName,pid);
+        String nsCommand = genNsCommand(dbName,command);
+        List<String> lines = CommandUtil.run(nsCommand);
+        Assert.assertEquals(lines.get(0),"MakeSnapshot ok");
+        checkTableOffSet(dbName,tableName);
+    }
+    public void makeSnapshot(String dbName,String tableName){
+        List<Integer> pidList = getPid(dbName,tableName);
+        for(Integer pid:pidList) {
+            String command = String.format("makesnapshot %s %d", tableName, pid);
+            String nsCommand = genNsCommand(dbName, command);
+            List<String> lines = CommandUtil.run(nsCommand);
+            Assert.assertEquals(lines.get(0), "MakeSnapshot ok");
+            checkTableOffSet(dbName, tableName);
+        }
+    }
+    public List<Integer> getPid(String dbName,String tableName){
+        Map<String, Set<Integer>> pidMap = getPid(dbName);
+        Set<Integer> value = pidMap.get(tableName);
+        return new ArrayList<>(value);
+    }
+    public Map<String,Set<Integer>> getPid(String dbName){
+        List<String> lines = showTable(dbName,null);
+        Map<String,Set<Integer>> map = new HashMap<>();
+        for(int i=2;i<lines.size();i++){
+            String line = lines.get(i);
+            String[] infos = line.split("\\s+");
+            String key = infos[0];
+            int pid = Integer.parseInt(infos[2]);
+            Set<Integer> values = map.get(key);
+            if (values==null) {
+                values = new HashSet<>();
+            }
+            values.add(pid);
+            map.put(key,values);
+        }
+        return map;
     }
 
 

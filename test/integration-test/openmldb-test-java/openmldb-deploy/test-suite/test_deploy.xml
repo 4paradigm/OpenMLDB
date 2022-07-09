@@ -6,7 +6,7 @@
         <classes>
             <class name="com._4paradigm.qa.openmldb_deploy.test.TmpDeploy">
                 <methods>
-                    <include name="testTmp" />
+                    <include name="testCluster" />
                 </methods>
             </class>
         </classes>
