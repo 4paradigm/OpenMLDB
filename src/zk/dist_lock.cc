@@ -16,7 +16,7 @@
 
 #include "zk/dist_lock.h"
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "boost/algorithm/string/join.hpp"
 #include "boost/bind.hpp"
 extern "C" {

@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/ascii.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
@@ -1020,6 +1021,14 @@ bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
         boost::trim(tree);
         if (!tree.empty()) {
             expect->node_tree_str_ = tree;
+        }
+    }
+
+    if (schema_data["plan_tree_str"]) {
+        const auto& tree = schema_data["plan_tree_str"].as<std::string>();
+        absl::string_view sv = absl::StripAsciiWhitespace(tree);
+        if (!sv.empty()) {
+            expect->plan_tree_str_ = sv;
         }
     }
 

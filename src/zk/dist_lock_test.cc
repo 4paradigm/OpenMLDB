@@ -43,11 +43,11 @@ void OnLockedCallback() { call_invoked = true; }
 void OnLostCallback() {}
 
 TEST_F(DistLockTest, Lock) {
-    ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback),
-                  "endpoint1");
+    DistLock lock("/openmldb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback),
+                  boost::bind(&OnLostCallback), "endpoint1");
     lock.Lock();
     sleep(5);
     if (!call_invoked) {
@@ -59,13 +59,13 @@ TEST_F(DistLockTest, Lock) {
     lock.CurrentLockValue(current_lock);
     ASSERT_EQ("endpoint1", current_lock);
     call_invoked = false;
-    ZkClient client2("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client2("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock");
     ok = client2.Init();
     if (!ok) {
         lock.Stop();
         ASSERT_TRUE(false);
     }
-    DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback),
+    DistLock lock2("/openmldb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback),
                    boost::bind(&OnLostCallback), "endpoint2");
     lock2.Lock();
     sleep(5);

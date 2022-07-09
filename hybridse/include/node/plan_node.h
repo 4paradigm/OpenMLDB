@@ -250,8 +250,6 @@ class WindowPlanNode : public LeafPlanNode {
     explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
           id_(id),
-          exclude_current_time_(false),
-          instance_not_in_window_(false),
           name_(""),
           keys_(nullptr),
           orders_(nullptr) {}
@@ -275,17 +273,21 @@ class WindowPlanNode : public LeafPlanNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id_;
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
     std::string name_;
     FrameNode *frame_node_;
     ExprListNode *keys_;
     OrderByNode *orders_;
     PlanNodeList union_tables_;
+
+    bool exclude_current_time_ = false;
+    bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 
 class ProjectListNode : public LeafPlanNode {

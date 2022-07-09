@@ -24,7 +24,7 @@
 #include "base/endianconv.h"
 #include "base/slice.h"
 #include "boost/lexical_cast.hpp"
-#include "common/timer.h"  // NOLINT
+#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"

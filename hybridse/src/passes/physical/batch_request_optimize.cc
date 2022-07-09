@@ -487,7 +487,9 @@ Status CommonColumnOptimize::ProcessProject(PhysicalPlanContext* ctx,
 //    const node::ExprNode* having_condition = project_op->having_condition_.condition();
     vm::ConditionFilter having_condition;
     if (project_op->project_type_ == vm::kAggregation) {
-        having_condition = dynamic_cast<vm::PhysicalAggregationNode*>(project_op)->having_condition_;
+        auto* agg_prj = dynamic_cast<vm::PhysicalAggregationNode*>(project_op);
+        CHECK_TRUE(agg_prj != nullptr, kPlanError, "not a PhysicalAggregationNode");
+        having_condition = agg_prj->having_condition_;
     } else if (project_op->project_type_ == vm::kGroupAggregation) {
         having_condition = dynamic_cast<vm::PhysicalGroupAggrerationNode*>(project_op)->having_condition_;
     }
@@ -637,6 +639,7 @@ Status CommonColumnOptimize::ProcessRequestUnion(
         &new_request_union, request_state->common_op, new_right,
         request_union_op->window(), request_union_op->instance_not_in_window(),
         request_union_op->exclude_current_time(), false));
+    new_request_union->exclude_current_row_ = request_union_op->exclude_current_row_;
     SetAllCommon(new_request_union);
 
     for (auto& pair : request_union_op->window_unions().window_unions_) {

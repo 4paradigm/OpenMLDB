@@ -286,7 +286,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
-    // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);

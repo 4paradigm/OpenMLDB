@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-
+import os
 import openmldb
 import pytest
 import logging
@@ -79,4 +79,4 @@ class TestSQLMagicOpenMLDB:
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "sql_magic_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))

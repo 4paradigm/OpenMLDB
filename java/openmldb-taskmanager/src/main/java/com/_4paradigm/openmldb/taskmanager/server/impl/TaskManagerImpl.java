@@ -28,6 +28,7 @@ import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
+import com._4paradigm.openmldb.taskmanager.util.VersionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -312,6 +313,12 @@ public class TaskManagerImpl implements TaskManagerInterface {
             e.printStackTrace();
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
         }
+    }
+
+    @Override
+    public TaskManager.GetTaskmanagerVersionResponse GetTaskmanagerVersion(TaskManager.EmptyMessage request) {
+        String version = VersionUtil.getVersion();
+        return TaskManager.GetTaskmanagerVersionResponse.newBuilder().setVersion(version).build();
     }
 
     @Override
