@@ -47,10 +47,13 @@ public class NsClient {
         Tool.sleep(3*1000);
         boolean b = WaitUtil.waitCondition(()->{
             List<String> lines = CommandUtil.run(nsCommand);
+            if(lines.size()<=2){
+                return false;
+            }
+            if (NsResultUtil.checkOPStatusAny(lines,"kFailed")) {
+                return false;
+            }
             return NsResultUtil.checkOPStatus(lines,"kDone");
-        },()->{
-            List<String> lines = CommandUtil.run(nsCommand);
-            return NsResultUtil.checkOPStatusAny(lines,"kFailed");
         });
         Assert.assertTrue(b,"check op done failed.");
     }
