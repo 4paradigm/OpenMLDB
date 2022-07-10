@@ -33,6 +33,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/common.pb.h"
 #include "storage/snapshot.h"
+#include "tools/tablemeta_reader.h"
 
 using ::openmldb::base::ParseFileNameFromPath;
 using ::openmldb::base::Slice;
@@ -40,6 +41,14 @@ using ::openmldb::log::NewSeqFile;
 using ::openmldb::log::Reader;
 using ::openmldb::log::SequentialFile;
 using ::openmldb::log::Status;
+
+DECLARE_string(ip);
+DECLARE_string(port);
+DECLARE_string(zk_cluster);
+DECLARE_string(zk_root_path);
+DECLARE_bool(standalone);
+DECLARE_string(db_name);
+DECLARE_string(table_name);
 
 namespace openmldb {
 namespace tools {
@@ -296,7 +305,8 @@ void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_c
 
 
 int main(int argc, char** argv) {
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    //::google::ParseCommandLineFlags(&argc, &argv, true);
+
     ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(argv[1]);
 
     exporter.ReadManifest();
