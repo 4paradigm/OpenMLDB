@@ -575,7 +575,7 @@ class Connection(object):
         pass
 
     def close(self):
-        raise NotSupportedError("Unsupported in OpenMLDB")
+        self._sdk = None
 
     def cursor(self):
         return Cursor(self._db, self)
