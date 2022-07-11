@@ -576,6 +576,7 @@ ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status
         &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
         op->window().range_, op->exclude_current_time(),
         op->output_request_row(), op->func_, op->agg_col_);
+    runner->exclude_current_row_ = op->exclude_current_row_;
     Key index_key;
     if (!op->instance_not_in_window()) {
         index_key = op->window_.index_key();
@@ -2778,11 +2779,12 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     std::shared_ptr<TableHandler> window;
     if (agg_segment) {
         window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
-                                    exclude_current_time_);
+                                    exclude_current_time_, exclude_current_row_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
-                                                        output_request_row_, exclude_current_time_);
+        window =
+            RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
+                                                   output_request_row_, exclude_current_time_, exclude_current_row_);
     }
 
     if (ctx.is_debug()) {
@@ -2794,10 +2796,9 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 }
 
 std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) const {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, const bool output_request_row, const bool exclude_current_time,
+    bool exclude_current_row) const {
     // TOOD(zhanghao): for now, we only support AggUnion with 1 base table and 1 agg table
     size_t unions_cnt = union_segments.size();
     if (unions_cnt != 2) {
@@ -2836,6 +2837,10 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
+        if (exclude_current_row && max_size > 0) {
+            // 0 = window_range.end_offset_ not check because exclude current_row only true if `end_offset_ = 0`
+            max_size++;
+        }
     }
     int64_t request_key = ts_gen > 0 ? ts_gen : 0;
 
@@ -2919,8 +2924,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         cnt++;
     }
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
         LOG(WARNING) << "Base window is empty.";
@@ -3083,7 +3087,7 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         LOG(WARNING) << "ReduceRunner input is empty";
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(iter->GetValue()));
+    std::shared_ptr<RowHandler> row_handler = std::make_shared<MemRowHandler>(iter->GetValue());
 
     if (ctx.is_debug()) {
         std::ostringstream oss;

@@ -976,7 +976,7 @@ class RequestUnionRunner : public Runner {
                                                             std::vector<std::shared_ptr<TableHandler>> union_segments,
                                                             int64_t request_ts, const WindowRange& window_range,
                                                             bool output_request_row, bool exclude_current_time,
-                                                            bool exclude_current_row = false);
+                                                            bool exclude_current_row);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
@@ -1006,14 +1006,16 @@ class RequestAggUnionRunner : public Runner {
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
-    std::shared_ptr<TableHandler> RequestUnionWindow(
-        const Row& request,
-        std::vector<std::shared_ptr<TableHandler>> union_segments,
-        int64_t request_ts, const WindowRange& window_range,
-        const bool output_request_row, const bool exclude_current_time) const;
+    std::shared_ptr<TableHandler> RequestUnionWindow(const Row& request,
+                                                     std::vector<std::shared_ptr<TableHandler>> union_segments,
+                                                     int64_t request_ts, const WindowRange& window_range,
+                                                     const bool output_request_row, const bool exclude_current_time,
+                                                     bool exclude_current_row) const;
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
+
+    bool exclude_current_row_ = false;
 
  private:
     enum AggType {

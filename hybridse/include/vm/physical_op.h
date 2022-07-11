@@ -1552,6 +1552,8 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     const node::ExprNode* agg_col_;
     const SchemasContext* parent_schema_context_ = nullptr;
 
+    bool exclude_current_row_ = false;
+
  private:
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
