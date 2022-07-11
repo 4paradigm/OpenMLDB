@@ -23,14 +23,14 @@ import java.util.List;
 public class TestCluster extends ClusterTest {
     @Test
     public void testMoreReplica(){
-        SDKClient sdkClient = SDKClient.of(executor);
-        NsClient nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
-        OpenMLDBDevops openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo);
-        // 创建磁盘表和内存表。
         String dbName = "test_devops2";
         String memoryTable = "test_memory";
         String ssdTable = "test_ssd";
         String hddTable = "test_hdd";
+        SDKClient sdkClient = SDKClient.of(executor);
+        NsClient nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
+        OpenMLDBDevops openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
+        // 创建磁盘表和内存表。
         int dataCount = 100;
         sdkClient.createAndUseDB(dbName);
         String memoryTableDDL = "create table test_memory(\n" +
@@ -43,7 +43,7 @@ public class TestCluster extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=8,replicanum=3);";
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3);";
         String ssdTableDDL = "create table test_ssd(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
@@ -54,7 +54,7 @@ public class TestCluster extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=8,replicanum=3,storage_mode=\"SSD\");";
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3,storage_mode=\"SSD\");";
         String hddTableDDL = "create table test_hdd(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
@@ -65,7 +65,7 @@ public class TestCluster extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=8,replicanum=3,storage_mode=\"HDD\");";
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3,storage_mode=\"HDD\");";
         sdkClient.execute(Lists.newArrayList(memoryTableDDL,ssdTableDDL,hddTableDDL));
         // 插入一定量的数据
         List<List<Object>> dataList = new ArrayList<>();

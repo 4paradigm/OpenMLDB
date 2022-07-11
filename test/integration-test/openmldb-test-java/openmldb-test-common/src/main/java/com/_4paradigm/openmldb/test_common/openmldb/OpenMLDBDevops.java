@@ -6,18 +6,20 @@ import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 
 public class OpenMLDBDevops {
     private OpenMLDBInfo openMLDBInfo;
+    private String dbName;
     private NsClient nsClient;
     private SDKClient sdkClient;
     private String basePath;
 
-    private OpenMLDBDevops(OpenMLDBInfo openMLDBInfo){
+    private OpenMLDBDevops(OpenMLDBInfo openMLDBInfo,String dbName){
         this.openMLDBInfo = openMLDBInfo;
+        this.dbName = dbName;
         this.nsClient = NsClient.of(openMLDBInfo);
         this.sdkClient = SDKClient.of(new OpenMLDBClient(openMLDBInfo.getZk_cluster(),openMLDBInfo.getZk_root_path()).getExecutor());
         this.basePath = openMLDBInfo.getBasePath();
     }
-    public static OpenMLDBDevops of(OpenMLDBInfo openMLDBInfo){
-        return new OpenMLDBDevops(openMLDBInfo);
+    public static OpenMLDBDevops of(OpenMLDBInfo openMLDBInfo,String dbName){
+        return new OpenMLDBDevops(openMLDBInfo,dbName);
     }
     public void operateTablet(int tabletIndex,String operator){
         String command = String.format("sh %s/openmldb-tablet-%d/bin/start.sh %s tablet",basePath,tabletIndex+1,operator);
@@ -25,9 +27,9 @@ public class OpenMLDBDevops {
         Tool.sleep(5*1000);
         String checkStatus = operator.equals("stop")?"offline":"online";
         sdkClient.checkComponentStatus(openMLDBInfo.getTabletEndpoints().get(tabletIndex), checkStatus);
-        nsClient.checkOPStatusDone(null,null);
+        nsClient.checkOPStatusDone(dbName,null);
         if(!operator.equals("stop")) {
-            nsClient.checkTableIsAlive(null, null);
+            nsClient.checkTableIsAlive(dbName, null);
         }
     }
     public void operateTablet(String operator){
@@ -42,7 +44,7 @@ public class OpenMLDBDevops {
         Tool.sleep(5*1000);
         String checkStatus = operator.equals("stop")?"offline":"online";
         sdkClient.checkComponentStatus(openMLDBInfo.getNsEndpoints().get(nsIndex), checkStatus);
-        nsClient.checkOPStatusDone(null,null);
+        nsClient.checkOPStatusDone(dbName,null);
 //        if(!operator.equals("stop")) {
 //            nsClient.checkTableIsAlive(null, null);
 //        }

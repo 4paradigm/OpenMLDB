@@ -9,10 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class WaitUtil {
     public static boolean waitCondition(Condition condition) {
-        return waitCondition(condition,10,600);
+        return waitCondition(condition,10,1200);
     }
     public static boolean waitCondition(Condition condition,Condition fail) {
-        return waitCondition(condition,fail,10,600);
+        return waitCondition(condition,fail,10,1200);
     }
 
     /**
