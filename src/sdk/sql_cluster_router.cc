@@ -2056,8 +2056,7 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
 
     std::shared_ptr<openmldb::api::QueryResponse> response = std::make_shared<openmldb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    auto* callback =
-        new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
+    auto* callback = new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
 
     std::shared_ptr<openmldb::sdk::QueryFutureImpl> future = std::make_shared<openmldb::sdk::QueryFutureImpl>(callback);
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms, options_.enable_debug, callback);
@@ -2935,7 +2934,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node) {
+hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
+                                                     const hybridse::node::DeployPlanNode* deploy_node) {
     if (db.empty()) {
         return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
     }
@@ -3026,7 +3026,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db, cons
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db, const std::set<std::pair<std::string, std::string>>& table_pair,
+hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
+                                                    const std::set<std::pair<std::string, std::string>>& table_pair,
                                                     const std::string& select_sql) {
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;

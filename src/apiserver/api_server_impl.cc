@@ -16,6 +16,7 @@
 
 #include "apiserver/api_server_impl.h"
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -83,7 +84,7 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
     cntl->response_attachment().append(writer.GetString());
 }
 
-class ExecContext {
+struct ExecContext {
  public:
     bool is_online = false;
     bool is_sync = true;
@@ -129,7 +130,7 @@ void APIServerImpl::RegisterQuery() {
                        ExecContext ctx = it->second;
 
                        const auto& sql = req.sql;
-                       LOG(INFO) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
+                       VLOG(1) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
                        // TODO(hw): if api server supports standalone, we should check if cluster mode here
 
                        hybridse::sdk::Status status;

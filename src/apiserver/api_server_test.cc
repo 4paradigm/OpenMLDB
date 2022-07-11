@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <memory>
 #include <random>
 
 #include "apiserver/api_server_impl.h"
@@ -24,7 +25,6 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "json2pb/rapidjson.h"
-#include "memory"
 #include "sdk/mini_cluster.h"
 
 namespace openmldb::apiserver {
