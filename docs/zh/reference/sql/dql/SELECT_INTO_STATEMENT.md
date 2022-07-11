@@ -1,5 +1,5 @@
 # SELECT INTO
-`SELECT INTO OUTFILE`语句用户将表的查询结果导出为一个文件。
+`SELECT INTO OUTFILE`语句将表的查询结果导出为一个文件。
 ```{note}
 [LOAD DATA INFILE](../dml/LOAD_DATA_STATEMENT.md) 语句与`SELECT INTO OUTFILE`互补，它用于从指定文件创建表以及加载数据到表中。
 ```
