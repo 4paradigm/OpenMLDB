@@ -212,6 +212,7 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@--tablet=.*@#--tablet=127.0.0.1:9921@' "+testPath+ns_name+"/conf/nameserver.flags",
+                    "sed -i "+sedSeparator+" 's@--tablet_heartbeat_timeout=.*@--tablet_heartbeat_timeout=1000@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "echo '--request_timeout_ms=60000' >> " + testPath + ns_name + "/conf/nameserver.flags"
             );
             if(useName){
