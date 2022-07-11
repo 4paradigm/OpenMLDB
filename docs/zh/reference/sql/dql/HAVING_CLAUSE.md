@@ -16,10 +16,10 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ... HAVING having_conditi
 ```
 
 ## 边界说明
-
+在单机版中，所有执行模式均支持`HAVING`。集群版各[执行模式](https://openmldb.ai/docs/zh/main/tutorial/modes.html)的支持情况如下。
 | SELECT语句元素 | 状态          | 说明                                                                  |
 | :------------- | ------------- |:--------------------------------------------------------------------|
-| HAVING Clause  | Online 不支持 | Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。|
+| HAVING Clause  | 仅支持`Offline`模式，`Online`和`Request`模式均不支持| Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。|
 
 ## Example
 
