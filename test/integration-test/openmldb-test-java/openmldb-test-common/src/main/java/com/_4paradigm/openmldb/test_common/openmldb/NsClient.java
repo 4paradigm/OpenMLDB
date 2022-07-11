@@ -50,10 +50,10 @@ public class NsClient {
             if(lines.size()<=2){
                 return false;
             }
-            if (NsResultUtil.checkOPStatusAny(lines,"kFailed")) {
-                return false;
-            }
             return NsResultUtil.checkOPStatus(lines,"kDone");
+        },()->{
+            List<String> lines = CommandUtil.run(nsCommand);
+            return NsResultUtil.checkOPStatusAny(lines,"kFailed");
         });
         Assert.assertTrue(b,"check op done failed.");
     }
@@ -66,6 +66,7 @@ public class NsClient {
 
     public void checkTableIsAlive(String dbName,String tableName){
         List<String> lines = showTable(dbName,tableName);
+        Assert.assertTrue(lines.size()>2,"show table lines <= 2");
         for(int i=2;i<lines.size();i++){
             String line = lines.get(i);
             String[] infos = line.split("\\s+");
