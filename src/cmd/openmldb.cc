@@ -3750,7 +3750,7 @@ void StartNsClient() {
             buffer = FLAGS_cmd;
             if (!FLAGS_database.empty()) {
                 std::string error;
-                client->Use(db, error);
+                client->Use(FLAGS_database, error);
             }
         } else {
             char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
