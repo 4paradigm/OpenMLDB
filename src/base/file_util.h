@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 
 namespace openmldb {
 namespace base {

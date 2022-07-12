@@ -51,13 +51,13 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
     const ::hybridse::vm::IndexHint& GetIndex() override { return index_hint_; }
 
     std::unique_ptr<::hybridse::codec::RowIterator> GetIterator() override {
-        return std::move(std::unique_ptr<::hybridse::codec::RowIterator>());
+        return std::unique_ptr<::hybridse::codec::RowIterator>();
     }
 
     ::hybridse::codec::RowIterator* GetRawIterator() override { return nullptr; }
 
     std::unique_ptr<::hybridse::codec::WindowIterator> GetWindowIterator(const std::string& idx_name) override {
-        return std::move(std::unique_ptr<::hybridse::codec::WindowIterator>());
+        return std::unique_ptr<::hybridse::codec::WindowIterator>();
     }
 
     const uint64_t GetCount() override { return cnt_; }

@@ -88,11 +88,11 @@ DEFINE_uint32(query_slow_log_threshold, 50000, "config the threshold of query sl
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
 
 // thread pool config
-DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
+DEFINE_int32(put_concurrency_limit, 0, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
-DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
+DEFINE_int32(get_concurrency_limit, 0, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 20000, "request timeout");
+DEFINE_int32(request_timeout_ms, 20000, "request timeout(except the requests sent to taskmanager)");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
@@ -136,7 +136,6 @@ DEFINE_uint32(skiplist_max_height, 12, "the max height of skiplist");
 DEFINE_uint32(key_entry_max_height, 8, "the max height of key entry");
 DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist for latest table");
 DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
-DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");
 
 // rocksdb

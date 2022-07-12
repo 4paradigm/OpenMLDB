@@ -357,6 +357,18 @@ int32_t GetInnerRowsList(int8_t* input, int64_t start_rows, int64_t end_rows,
     new (data) InnerRowsList<Row>(w, start, end);
     return 0;
 }
+int32_t GetInnerRowsRangeList(int8_t* input, int64_t start_key, int64_t start_offset_rows, int64_t end_offset_range,
+                              int8_t* data) {
+    if (nullptr == input || nullptr == data) {
+        return -2;
+    }
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+
+    uint64_t start = start_offset_rows < 0 ? 0 : start_offset_rows;
+    uint64_t end = start_key + end_offset_range < 0 ? 0 : start_key + end_offset_range;
+    new (data) InnerRowsRangeList<Row>(w, start, end);
+    return 0;
+}
 }  // namespace v1
 }  // namespace codec
 }  // namespace hybridse

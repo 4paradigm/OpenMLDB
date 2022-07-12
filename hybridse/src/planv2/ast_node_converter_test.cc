@@ -1124,8 +1124,7 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     status = ConvertStatement(statement, manager_, &output);
     EXPECT_EQ(common::kOk, status.code) << status;
     if (status.isOK() && !sql_case.expect().node_tree_str_.empty()) {
-        EXPECT_STREQ(sql_case.expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
-            << output->GetTreeString().c_str();
+        EXPECT_EQ(sql_case.expect().node_tree_str_, output->GetTreeString()) << output->GetTreeString();
     }
 }
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
@@ -1146,6 +1145,8 @@ INSTANTIATE_TEST_SUITE_P(ASTJoinTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTHavingStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

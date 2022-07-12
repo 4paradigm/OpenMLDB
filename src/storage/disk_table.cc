@@ -18,7 +18,7 @@
 #include <utility>
 #include <set>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "config.h"  // NOLINT
 

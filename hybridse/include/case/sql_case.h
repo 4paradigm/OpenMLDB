@@ -55,6 +55,8 @@ class SqlCase {
         std::set<size_t> common_column_indices_;
         // SqlNode's TreeString output
         std::string node_tree_str_;
+        // PlanNode TreeString
+        std::string plan_tree_str_;
         bool success_ = true;
         int code_ = -1;
         std::string msg_;

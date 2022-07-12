@@ -36,9 +36,6 @@
 namespace openmldb {
 namespace codec {
 
-constexpr uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;  // 1M
-constexpr uint32_t HEADER_BYTE_SIZE = 3;
-
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 const std::string DEFAULT_LONG = "1";       // NOLINT
@@ -192,50 +189,6 @@ class SchemaCodec {
             default:
                 return hybridse::type::kNull;
         }
-    }
-
-    static void GetSchemaData(const std::map<std::string, std::string>& columns_map, const Schema& schema,
-                              Schema& new_schema) {  // NOLINT
-        for (int i = 0; i < schema.size(); i++) {
-            const ::openmldb::common::ColumnDesc& col = schema.Get(i);
-            const std::string& col_name = col.name();
-            auto iter = columns_map.find(col_name);
-            if (iter != columns_map.end()) {
-                ::openmldb::common::ColumnDesc* tmp = new_schema.Add();
-                tmp->CopyFrom(col);
-            }
-        }
-    }
-
-    static openmldb::base::Status GetCdColumns(
-        const Schema& schema, const std::map<std::string, std::string>& cd_columns_map,
-        ::google::protobuf::RepeatedPtrField<::openmldb::api::Columns>* cd_columns) {
-        std::map<std::string, ::openmldb::type::DataType> name_type_map;
-        for (const auto& col_desc : schema) {
-            name_type_map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
-        }
-        for (const auto& kv : cd_columns_map) {
-            auto iter = name_type_map.find(kv.first);
-            if (iter == name_type_map.end()) {
-                return openmldb::base::Status(-1, "query failed! col_name " + kv.first + " not exist");
-            }
-            ::openmldb::api::Columns* index = cd_columns->Add();
-            index->add_name(kv.first);
-            if (kv.second == NONETOKEN || kv.second == "null") {
-                continue;
-            }
-        }
-        return openmldb::base::Status();
-    }
-
- private:
-    // calc the total size of schema
-    uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
-        uint32_t byte_size = 0;
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            byte_size += (HEADER_BYTE_SIZE + columns[i].name.size());
-        }
-        return byte_size;
     }
 };
 

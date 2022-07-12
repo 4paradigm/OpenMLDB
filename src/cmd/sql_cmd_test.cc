@@ -36,7 +36,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
@@ -281,6 +280,43 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
         count++;
     }
     EXPECT_EQ(count, expect);
+    ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+}
+
+TEST_F(SqlCmdTest, TableReader) {
+    auto sr = cluster_cli.sr;
+    std::string db_name = "test" + GenRand();
+    std::string name = "table" + GenRand();
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string not null,"
+                      "col2 bigint default 112 not null,"
+                      "col4 string default 'test4' not null,"
+                      "col5 date default '2000-01-01' not null,"
+                      "col6 int default 10000 not null,"
+                      "index(key=col1, ts=col2));";
+    ProcessSQLs(sr, {"set @@execute_mode = 'online'",
+            absl::StrCat("create database ", db_name, ";"),
+            absl::StrCat("use ", db_name, ";"),
+            ddl});
+    hybridse::sdk::Status status;
+    std::string sql = "insert into " + name + " values('key1', 1, '1', '2021-01-01', 10);";
+    ASSERT_TRUE(sr->ExecuteInsert(db_name, sql, &status));
+    auto reader = sr->GetTableReader();
+    openmldb::sdk::ScanOption option;
+    option.projection = {"col1", "col2", "col6"};
+    auto result_set = reader->Scan(db_name, name, "key1", 0, 0, option, &status);
+    ASSERT_TRUE(status.IsOK());
+    result_set->Next();
+    std::string val;
+    result_set->GetString(0, &val);
+    ASSERT_EQ("key1", val);
+    int64_t val1 = 0;
+    result_set->GetInt64(1, &val1);
+    ASSERT_EQ(1, val1);
+    int32_t val2 = 0;
+    result_set->GetInt32(2, &val2);
+    ASSERT_EQ(10, val2);
     ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
 }
 

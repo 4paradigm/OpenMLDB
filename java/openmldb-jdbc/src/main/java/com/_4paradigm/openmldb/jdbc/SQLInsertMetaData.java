@@ -16,8 +16,11 @@
 
 package com._4paradigm.openmldb.jdbc;
 
+import static com._4paradigm.openmldb.sdk.impl.Util.sqlTypeToString;
+
 import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.Schema;
+import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.sdk.Common;
 
 import java.sql.ResultSetMetaData;
@@ -28,10 +31,11 @@ public class SQLInsertMetaData implements ResultSetMetaData {
 
     private final List<DataType> schema;
     private final Schema realSchema;
-    private final List<Integer> idx;
+    private final List<Pair<Long, Integer>> idx;
+
     public SQLInsertMetaData(List<DataType> schema,
                              Schema realSchema,
-                             List<Integer> idx) {
+                             List<Pair<Long, Integer>> idx) {
         this.schema = schema;
         this.realSchema = realSchema;
         this.idx = idx;
@@ -90,7 +94,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int isNullable(int i) throws SQLException {
         check(i);
-        int index = idx.get(i - 1);
+        Long index = idx.get(i - 1).getKey();
         if (realSchema.IsColumnNotNull(index)) {
             return columnNoNulls;
         } else {
@@ -119,7 +123,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public String getColumnName(int i) throws SQLException {
         check(i);
-        int index = idx.get(i - 1);
+        Long index = idx.get(i - 1).getKey();
         return realSchema.GetColumnName(index);
     }
 
@@ -156,14 +160,13 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int i) throws SQLException {
         check(i);
-        DataType dataType = schema.get(i - 1);
-        return Common.type2SqlType(dataType);
+        Long index = idx.get(i - 1).getKey();
+        return Common.type2SqlType(realSchema.GetColumnType(index));
     }
 
     @Override
-    @Deprecated
     public String getColumnTypeName(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
+        return sqlTypeToString(getColumnType(i));
     }
 
     @Override

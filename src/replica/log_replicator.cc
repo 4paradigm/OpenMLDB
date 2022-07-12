@@ -28,7 +28,7 @@
 #include <utility>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "log/log_format.h"
 #include "storage/segment.h"

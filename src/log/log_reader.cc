@@ -27,7 +27,7 @@
 #include <zlib.h>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
