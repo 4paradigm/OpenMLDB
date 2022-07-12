@@ -1194,6 +1194,11 @@ TEST_P(TableTest, AbsOrLatSetGet) {
 TEST_P(TableTest, GcAbsOrLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
+    //  RecordIdxCnt in disktable only support abs TTL and lat TTL
+    if (storageMode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
+
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1321,6 +1326,11 @@ TEST_P(TableTest, GcAbsOrLat) {
 
 TEST_P(TableTest, GcAbsAndLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
+
+    //  RecordIdxCnt in disktable only support abs TTL and lat TTL
+    if (storageMode != openmldb::common::kMemory) {
+        GTEST_SKIP();
+    }
 
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
