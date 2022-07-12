@@ -16,6 +16,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 public class SDKClient {
     private Statement statement;
@@ -57,6 +59,16 @@ public class SDKClient {
             return count==1;
         });
         Assert.assertTrue(b,"check endpoint:"+endpoint+",status:"+status+"failed.");
+    }
+    public void checkComponentNotExist(String endpoint){
+        String sql = "show components;";
+        boolean b = WaitUtil.waitCondition(()->{
+            OpenMLDBResult openMLDBResult = execute(sql);
+            List<List<Object>> rows = openMLDBResult.getResult();
+            long count = rows.stream().filter(row -> row.get(0).equals(endpoint)).count();
+            return count==0;
+        });
+        Assert.assertTrue(b,"check endpoint not exist :"+endpoint +"failed.");
     }
     public void createDB(String dbName){
         String sql = String.format("create database %s",dbName);

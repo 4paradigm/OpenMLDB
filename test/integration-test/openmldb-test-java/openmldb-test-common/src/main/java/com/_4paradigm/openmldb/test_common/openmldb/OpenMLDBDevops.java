@@ -49,9 +49,7 @@ public class OpenMLDBDevops {
         Tool.sleep(5*1000);
         String nsEndpoint = openMLDBInfo.getNsEndpoints().get(nsIndex);
         if(operator.equals("stop")){
-            OpenMLDBResult openMLDBResult = sdkClient.execute("show components;");
-            List<Object> list = openMLDBResult.getResult().stream().map(l -> l.get(0)).collect(Collectors.toList());
-            Assert.assertTrue(!list.contains(nsEndpoint),"ns stop, show components failed.");
+            sdkClient.checkComponentNotExist(nsEndpoint);
         }else {
             sdkClient.checkComponentStatus(nsEndpoint, "online");
         }
