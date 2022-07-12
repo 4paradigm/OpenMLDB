@@ -13,6 +13,7 @@ import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
@@ -21,6 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TestCluster extends ClusterTest {
+    private String dbName;
+    private SDKClient sdkClient;
+    private NsClient nsClient;
+    private OpenMLDBDevops openMLDBDevops;
+    @BeforeClass
+    public void beforeClass(){
+        dbName = "test_devops2";
+        sdkClient = SDKClient.of(executor);
+        nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
+        openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
+    }
     @Test
     public void testMoreReplica(){
         String dbName = "test_devops2";
