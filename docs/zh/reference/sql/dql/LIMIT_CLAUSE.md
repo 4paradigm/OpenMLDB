@@ -26,6 +26,6 @@ SELECT ... LIMIT ...
 ### SELECT with LIMIT
 
 ```SQL
->SELECT t1.COL1 c1 FROM t1 limit 10;
+SELECT t1.COL1 c1 FROM t1 limit 10;
 ```
 
