@@ -31,12 +31,16 @@ object OpenmldbJobUtil {
 
   def getSqlFromFile(spark: SparkSession, sqlFilePath: String): String = {
     val sparkMaster = spark.conf.get("spark.master")
+    val sparkDeployMode = spark.conf.get("spark.submit.deployMode")
 
-    val actualSqlFilePath = if (sparkMaster.equals("local")) {
-      SparkFiles.get(sqlFilePath)
+    val actualSqlFilePath = if (sparkMaster.equalsIgnoreCase("yarn") &&
+      sparkDeployMode.equalsIgnoreCase("cluster")) {
+      sqlFilePath.split("/").last
     } else {
       sqlFilePath
     }
+
+    println("tobe1: actualSqlFilePath: " + actualSqlFilePath)
 
     if (!File(actualSqlFilePath).exists) {
       throw new Exception("SQL file does not exist in " + actualSqlFilePath)
