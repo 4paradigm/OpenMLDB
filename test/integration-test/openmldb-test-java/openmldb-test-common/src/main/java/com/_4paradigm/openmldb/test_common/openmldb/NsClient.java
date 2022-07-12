@@ -75,6 +75,7 @@ public class NsClient {
     }
     public void checkTableOffSet(String dbName,String tableName){
         List<String> lines = showTable(dbName,tableName);
+        Assert.assertTrue(lines.size()>2,"show table lines <= 2");
         Map<String,List<Long>> table1 = NsResultUtil.getTableOffset(lines);
         for(List<Long> values:table1.values()){
             for(Long offset:values){

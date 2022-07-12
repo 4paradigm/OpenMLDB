@@ -42,8 +42,8 @@ public class OpenMLDBDevops {
         String command = String.format("sh %s/openmldb-ns-%d/bin/start.sh %s nameserver",basePath,nsIndex+1,operator);
         ExecutorUtil.run(command);
         Tool.sleep(5*1000);
-        String checkStatus = operator.equals("stop")?"offline":"online";
-        sdkClient.checkComponentStatus(openMLDBInfo.getNsEndpoints().get(nsIndex), checkStatus);
+//        String checkStatus = operator.equals("stop")?"offline":"online";
+//        sdkClient.checkComponentStatus(openMLDBInfo.getNsEndpoints().get(nsIndex), checkStatus);
         nsClient.checkOPStatusDone(dbName,null);
 //        if(!operator.equals("stop")) {
 //            nsClient.checkTableIsAlive(null, null);
