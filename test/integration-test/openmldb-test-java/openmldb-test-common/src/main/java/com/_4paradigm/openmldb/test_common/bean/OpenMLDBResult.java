@@ -47,7 +47,7 @@ public class OpenMLDBResult {
     public String toString() {
         StringBuilder builder = new StringBuilder("OpenMLDBResult{");
         builder.append("sql=").append(sql);
-        builder.append("ok=").append(ok);
+        builder.append(", ok=").append(ok);
         if (!ok) {
             builder.append(", msg=").append(msg);
         }

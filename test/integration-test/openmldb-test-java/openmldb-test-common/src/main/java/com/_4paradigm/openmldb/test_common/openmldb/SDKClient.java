@@ -33,12 +33,13 @@ public class SDKClient {
             openMLDBResult.setOk(ok);
             openMLDBResult.setSql(sql);
             ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
-            log.info(openMLDBResult.toString());
-            return openMLDBResult;
         } catch (SQLException e) {
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
             e.printStackTrace();
-            throw new IllegalStateException(e);
         }
+        log.info(openMLDBResult.toString());
+        return openMLDBResult;
     }
     public OpenMLDBResult execute(List<String> sqlList) {
         OpenMLDBResult openMLDBResult = null;

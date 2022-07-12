@@ -30,6 +30,7 @@ public class ResultSetHandler extends AbstractResultHandler {
                 List<List<Object>> result = ResultUtil.toList(rs);
                 openMLDBResult.setCount(result.size());
                 openMLDBResult.setResult(result);
+                openMLDBResult.setMsg("success");
             }
         } catch (SQLException e) {
             e.printStackTrace();

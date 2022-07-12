@@ -95,30 +95,38 @@ public class TestCluster extends ClusterTest {
         //tablet 依次restart，数据可回复，可以访问。
         openMLDBDevops.operateTablet("restart");
         addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,10);
-        //3个tablet stop，不能访问。
-        openMLDBDevops.operateTablet("stop");
-        OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        System.out.println(openMLDBResult.getMsg());
-        // 1个tablet启动，数据可回复，分片所在的表，可以访问。
-        openMLDBDevops.operateTablet(0,"start");
-        addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
-        //ns stop，可以正常访问。
+        //1个ns stop，可以正常访问。
         openMLDBDevops.operateNs(0,"stop");
         addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
-        //2个ns stop，不能访问。
-        openMLDBDevops.operateNs(1,"stop");
-        openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        System.out.println(openMLDBResult.getMsg());
-        //ns start 可以访问。
+        // 1个ns start 可以访问。
         openMLDBDevops.operateNs(0,"start");
         addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
-        // 单zk stop 后不能访问
-        openMLDBDevops.operateZKOne("stop");
-        openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        System.out.println(openMLDBResult.getMsg());
-        // 单zk start 后可以访问
-        openMLDBDevops.operateZKOne("start");
+        // 1个ns restart 可以访问。
+        openMLDBDevops.operateNs(0,"restart");
         addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
+        // 单zk stop 在start后 可以访问
+        openMLDBDevops.operateZKOne("stop");
+        Tool.sleep(5000);
+        openMLDBDevops.operateZKOne("start");
+        OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
+        System.out.println(openMLDBResult.getMsg());
+        // 单zk restart 后可以访问
+        openMLDBDevops.operateZKOne("restart");
+        addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
+        //3个tablet stop，不能访问。
+        openMLDBDevops.operateTablet("stop");
+        openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
+        Assert.assertTrue(openMLDBResult.getMsg().contains("no tablet available for sqlfail to get tablet"));
+
+//        // 1个tablet启动，数据可回复，分片所在的表，可以访问。
+//        openMLDBDevops.operateTablet(0,"start");
+//        addDataCheck(sdkClient,nsClient,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
+
+        //2个ns stop，不能访问。
+//        openMLDBDevops.operateNs(1,"stop");
+//        List<String> lines = nsClient.runNs(dbName, "showtable");
+//        System.out.println(openMLDBResult.getMsg());
+
         //一个 zk stop，可以正常访问
         //3个zk stop，不能正常访问。
         //一个zk start，可正常访问。
@@ -126,6 +134,8 @@ public class TestCluster extends ClusterTest {
         // 一个节点（ns leader 所在服务器）重启，leader可以正常访问，flower可以正常访问。
         //一直查询某一个表，然后重启一个机器。
     }
+    // 两个Tablet停止
+    // 三个Tablet停止
     public void addDataCheck(SDKClient sdkClient, NsClient nsClient,List<String> tableNames,int originalCount,int addCount){
         List<List<Object>> addDataList = new ArrayList<>();
         for(int i=0;i<addCount;i++){

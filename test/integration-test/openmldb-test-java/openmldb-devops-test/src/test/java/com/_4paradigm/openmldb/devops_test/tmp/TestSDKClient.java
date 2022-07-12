@@ -19,5 +19,6 @@ public class TestSDKClient extends ClusterTest {
 
         OpenMLDBComamndFacade.sql(OpenMLDBGlobalVar.mainInfo,"test_devops","select * from test_ssd;");
 
+
     }
 }
