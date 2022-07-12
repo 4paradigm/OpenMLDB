@@ -2,10 +2,7 @@ package com._4paradigm.openmldb.devops_test.high_availability;
 
 import com._4paradigm.openmldb.devops_test.common.ClusterTest;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.openmldb.NsClient;
-import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBDevops;
-import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
+import com._4paradigm.openmldb.test_common.openmldb.*;
 import com._4paradigm.openmldb.test_common.util.SDKByJDBCUtil;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
@@ -157,5 +154,12 @@ public class TestCluster extends ClusterTest {
             Assert.assertEquals(sdkClient.getTableRowCount(tableName),originalCount+addCount,msg);
         }
         nsClient.checkTableOffSet(dbName,null);
+    }
+    public void resetClient(){
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
+        sdkClient = SDKClient.of(executor);
+        nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
+        openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
     }
 }

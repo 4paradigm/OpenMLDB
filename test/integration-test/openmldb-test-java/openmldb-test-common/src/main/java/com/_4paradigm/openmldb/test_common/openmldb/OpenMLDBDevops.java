@@ -55,10 +55,7 @@ public class OpenMLDBDevops {
         }else {
             sdkClient.checkComponentStatus(nsEndpoint, "online");
         }
-        nsClient.checkOPStatusDone(dbName,null);
-//        if(!operator.equals("stop")) {
-//            nsClient.checkTableIsAlive(null, null);
-//        }
+//        nsClient.checkOPStatusDone(dbName,null);
     }
     public void operateZKOne(String operator){
         String command = String.format("sh %s/zookeeper-3.4.14/bin/zkServer.sh %s",basePath,operator);

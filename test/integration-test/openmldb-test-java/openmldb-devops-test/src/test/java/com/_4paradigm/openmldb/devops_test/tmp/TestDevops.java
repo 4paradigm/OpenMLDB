@@ -88,4 +88,8 @@ public class TestDevops extends ClusterTest {
 //        List<String> lines = nsClient.runNs(dbName, "showtable");
 //        System.out.println("lines = " + lines);
     }
+    @Test
+    public void test3(){
+        openMLDBDevops.operateNs(0,"stop");
+    }
 }
