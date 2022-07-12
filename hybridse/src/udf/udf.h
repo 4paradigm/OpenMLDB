@@ -314,6 +314,28 @@ uint32_t format_string(const V &v, char *buffer, size_t size);
 template <typename V>
 uint32_t to_string_len(const V &v);
 
+template <class V>
+struct ToHex {
+    using Args = std::tuple<V>;
+
+    void operator()(V v, StringRef *output) {
+        std::ostringstream ss;
+        if (std::is_same<V, float>::value || std::is_same<V, double>::value) {
+            double numbuf = std::round(v);
+            if (numbuf < LLONG_MIN) ss << std::hex << std::uppercase << int64_t(LLONG_MIN);
+            else if (numbuf > LLONG_MAX) ss << std::hex << std::uppercase << int64_t(LLONG_MAX);
+            else ss << std::hex << std::uppercase << static_cast<int64_t>(numbuf);
+        } else {
+            ss << std::hex << std::uppercase << v;
+        }
+        output->size_ = ss.str().size();
+        char *buffer = AllocManagedStringBuf(output->size_);
+        memcpy(buffer, ss.str().data(), output->size_);
+        output->data_ = buffer;
+    }
+};
+void hex(StringRef *str, StringRef *output);
+
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`
