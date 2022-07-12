@@ -35,13 +35,9 @@ public class TestCluster extends ClusterTest {
     }
     @Test
     public void testMoreReplica(){
-        String dbName = "test_devops2";
         String memoryTable = "test_memory";
         String ssdTable = "test_ssd";
         String hddTable = "test_hdd";
-        SDKClient sdkClient = SDKClient.of(executor);
-        NsClient nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
-        OpenMLDBDevops openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
         // 创建磁盘表和内存表。
         int dataCount = 100;
         sdkClient.createAndUseDB(dbName);
