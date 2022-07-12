@@ -22,7 +22,9 @@ SQL 引擎通过 [ZetaSQL](https://github.com/4paradigm/zetasql) 把 SQL 解析�
 ### 4.2 Storage Engine
 
 Storage engine 负责 OpenMLDB 数据的存储，以及支持相应的高可用相关的功能。
-
+:::{note}
+OpenMLDB 支持基于内存或者磁盘的两种存储引擎，本文针对自研的内存存储引擎进行介绍。磁盘存储引擎基于 RocksDB，原理上也保持一致，可以参考 [RocksDB](https://github.com/facebook/rocksdb)。
+:::
 #### 数据分布
 OpenMLDB 集群版是一个分布式的数据库，一张表的数据会进行分片，并且建立多个副本，最终分布在不同的节点中。这里展开说明两个重要的概念：副本和分片。
 
@@ -41,6 +43,3 @@ OpenMLDB 集群版是一个分布式的数据库，一张表的数据会进行�
 
 如上图所示，服务端收到 SDK 的写请求后会同时写内存和 binlog。binlog 是用来做主从同步的，数据写到 binlog 后会有一个后台线程异步的把数据从 binlog 中读出来然后同步到从节点中。从节点收到同步请求后同样进行写内存和 binlog操作。Snapshot 可以看作是内存数据的一个镜像，不过出于性能考虑，snapshot 并不是从内存 dump 出来，而是由 binlog 和上一个 snapshot 合并生成。在合并的过程中会删除掉过期的数据。OpenMLDB会记录主从同步和合并到 snapshot 中的 offset, 如果一个 binlog 文件中的数据全部被同步到从节点并且也合并到了 snapshot 中，这个 binlog 文件就会被后台线程删除。
 
-:::{note}
-从 v0.5.0 版本开始，OpenMLDB 也会支持基于磁盘的存储引擎，其持久化机制和本文描述的不一样。
-:::
