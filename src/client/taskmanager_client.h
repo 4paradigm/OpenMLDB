@@ -61,7 +61,7 @@ class TaskManagerClient : public Client {
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                               const std::string& default_db, bool sync_job, int job_timeout,
-                                              ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                              ::openmldb::taskmanager::JobInfo* job_info);  // NOLINT
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db, bool sync_job, int job_timeout,

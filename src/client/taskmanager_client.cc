@@ -149,7 +149,7 @@ namespace openmldb::client {
                                                              const std::map<std::string, std::string>& config,
                                                              const std::string& default_db, bool sync_job,
                                                              int job_timeout,
-                                                             ::openmldb::taskmanager::JobInfo& job_info) {
+                                                             ::openmldb::taskmanager::JobInfo* job_info) {
     ::openmldb::taskmanager::ImportOnlineDataRequest request;
     ::openmldb::taskmanager::ShowJobResponse response;
 
@@ -166,7 +166,7 @@ namespace openmldb::client {
     if (ok) {
         if (response.code() == 0) {
             if (response.has_job()) {
-                job_info.CopyFrom(response.job());
+                job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};

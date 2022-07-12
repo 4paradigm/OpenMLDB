@@ -2186,7 +2186,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
                                                             const std::map<std::string, std::string>& config,
                                                             const std::string& default_db, bool sync_job,
                                                             int job_timeout,
-                                                            ::openmldb::taskmanager::JobInfo& job_info) {
+                                                            ::openmldb::taskmanager::JobInfo* job_info) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};
@@ -2478,7 +2478,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
-                    base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, job_info);
+                    base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {
                     // Handle in offline mode
                     base_status = ImportOfflineData(sql, config, database, is_sync_job, offline_job_timeout, job_info);
