@@ -120,10 +120,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    //    ASSERT_EQ(0, table->GetRecordIdxCnt());
-    //    ASSERT_EQ(0, table->GetRecordCnt());
+    ASSERT_EQ(0, table->GetRecordIdxCnt());
+    ASSERT_EQ(0, table->GetRecordCnt());
 
     auto meta = ::openmldb::test::GetTableMeta({"idx0", "idx1", "idx2"});
     ::openmldb::codec::SDKCodec sdk_codec(meta);
@@ -143,9 +141,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
     bool ok = table->Put(1, value, dimensions);
     ASSERT_TRUE(ok);
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    //    ASSERT_EQ(3, table->GetRecordIdxCnt());
+    ASSERT_EQ(3, table->GetRecordIdxCnt());
 
     Ticket ticket;
     TableIterator* it = table->NewIterator(0, "yjdim0", ticket);
