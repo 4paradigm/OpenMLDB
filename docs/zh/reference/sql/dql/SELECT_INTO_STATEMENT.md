@@ -37,7 +37,7 @@ SelectInfoOptionItem
 | quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1 1.0, This is a string, with comma}。输出的文本为`#1#, #1.0#, #This is a string, with comma#。` |
 
 ````{important}
-请注意，目前OpenMLDB还不支持quote字符的转义，所以，用户需要谨慎选择quote字符，保证原始字符串内并不包含quote字符。
+请注意，目前仅有集群版支持quote字符的转义。所以，如果您使用的是单机版，请谨慎选择quote字符，保证原始字符串内并不包含quote字符。
 ````
 
 ## SQL语句模版
@@ -51,13 +51,13 @@ SELECT ... INTO OUTFILE 'file_path' OPTIONS (key = value, ...)
 - 从表`t1`查询输出到`data.csv`文件中，使用`,`作为列分隔符
 
 ```SQL
->SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',' );
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',' );
 ```
 
 - 从表`t1`查询输出到`data.csv`文件中，使用`｜`作为列分隔符，NULL值的填充值为`NA`字符串：
 
 ```SQL
->SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
 ```
 
 
