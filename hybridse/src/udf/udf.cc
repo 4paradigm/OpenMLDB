@@ -49,6 +49,19 @@ using hybridse::codec::Row;
 using openmldb::base::StringRef;
 using openmldb::base::Timestamp;
 using openmldb::base::Date;
+
+void hex(StringRef *str, StringRef *output) {
+    std::ostringstream ss;
+    for (uint32_t i=0; i < str->size_; i++) {
+        ss << std::hex << std::uppercase << int(str->data_[i]);
+    }
+    output->size_ = ss.str().size();
+    char *buffer = AllocManagedStringBuf(output->size_);
+    memcpy(buffer, ss.str().data(), output->size_);
+    output->data_ = buffer;
+}
+
+
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;
 constexpr time_t TZ_OFFSET = TZ * 3600000;
