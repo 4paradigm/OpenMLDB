@@ -48,6 +48,7 @@ public class OpenMLDBDeploy {
     private String sparkYarnJars = "";
     private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
     private String nameNodeUri = "172.27.12.215:8020";
+    private int systemTableReplicaNum = 2;
 
     public static final int SLEEP_TIME = 10*1000;
 
@@ -215,6 +216,10 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@--tablet_heartbeat_timeout=.*@--tablet_heartbeat_timeout=1000@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "echo '--request_timeout_ms=60000' >> " + testPath + ns_name + "/conf/nameserver.flags"
             );
+            // --system_table_replica_num=2
+            if(systemTableReplicaNum!=2){
+                commands.add("sed -i "+sedSeparator+" 's@--system_table_replica_num=.*@--system_table_replica_num="+systemTableReplicaNum+"@' " + testPath + ns_name + "/conf/nameserver.flags");
+            }
             if(useName){
                 commands.add("sed -i "+sedSeparator+" 's/--endpoint=.*/#&/' " + testPath + ns_name + "/conf/nameserver.flags");
                 commands.add("echo '--use_name=true' >> " + testPath + ns_name + "/conf/nameserver.flags");
