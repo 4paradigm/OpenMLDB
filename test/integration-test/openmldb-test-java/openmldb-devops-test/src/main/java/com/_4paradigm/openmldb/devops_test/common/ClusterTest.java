@@ -88,8 +88,9 @@ public class ClusterTest {
                     .zk_root_path("/openmldb")
                     .nsNum(1).tabletNum(1)
                     .nsEndpoints(Lists.newArrayList("172.24.4.55:30010"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30011"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30009"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30011"))
+                    .taskManagerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
                     .build();
             OpenMLDBGlobalVar.env = "cluster";
 
