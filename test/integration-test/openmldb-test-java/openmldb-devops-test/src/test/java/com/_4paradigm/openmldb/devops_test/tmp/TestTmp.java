@@ -11,6 +11,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -161,5 +162,7 @@ public class TestTmp extends ClusterTest {
         sdkClient = SDKClient.of(executor);
         nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
         openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB(dbName);
     }
 }

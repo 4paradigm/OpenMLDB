@@ -75,6 +75,9 @@ public class SDKClient {
         String sql = String.format("create database %s",dbName);
         execute(sql);
     }
+    public void setOnline(){
+        execute("SET @@execute_mode='online';");
+    }
     public void useDB(String dbName){
         String sql = String.format("use %s",dbName);
         execute(sql);
