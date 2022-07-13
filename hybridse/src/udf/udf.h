@@ -324,7 +324,9 @@ struct ToHex {
             double numbuf = std::round(v);
             if (numbuf < LLONG_MIN) ss << std::hex << std::uppercase << int64_t(LLONG_MIN);
             else if (numbuf > LLONG_MAX) ss << std::hex << std::uppercase << int64_t(LLONG_MAX);
-            else ss << std::hex << std::uppercase << static_cast<int64_t>(numbuf);
+            else {
+                ss << std::hex << std::uppercase << static_cast<int64_t>(numbuf);
+            }
         } else {
             ss << std::hex << std::uppercase << v;
         }
