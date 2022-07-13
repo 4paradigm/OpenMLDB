@@ -8,6 +8,7 @@ import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.testng.Assert;
 import org.testng.collections.Lists;
 

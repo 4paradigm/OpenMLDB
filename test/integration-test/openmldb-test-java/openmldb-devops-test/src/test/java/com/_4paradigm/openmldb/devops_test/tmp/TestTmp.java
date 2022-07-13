@@ -4,6 +4,7 @@ import com._4paradigm.openmldb.devops_test.common.ClusterTest;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.openmldb.*;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -145,7 +146,9 @@ public class TestTmp extends ClusterTest {
         }
         String msg = "table add data check count failed.";
         for(String tableName:tableNames){
-            sdkClient.insertList(tableName,addDataList);
+            if (CollectionUtils.isNotEmpty(addDataList)) {
+                sdkClient.insertList(tableName,addDataList);
+            }
             Assert.assertEquals(sdkClient.getTableRowCount(tableName),originalCount+addCount,msg);
         }
         nsClient.checkTableOffSet(dbName,null);
