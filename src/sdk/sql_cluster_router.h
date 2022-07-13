@@ -270,15 +270,15 @@ class SQLClusterRouter : public SQLRouter {
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                               const std::string& default_db, bool sync_job, int job_timeout,
-                                              ::openmldb::taskmanager::JobInfo* job_info);  // NOLINT
+                                              ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db, bool sync_job, int job_timeout,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ExportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db, bool sync_job, int job_timeout,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status CreatePreAggrTable(const std::string& aggr_db, const std::string& aggr_table,
                                                 const ::openmldb::base::LongWindowInfo& window_info,
@@ -306,12 +306,12 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::Status ExecuteOfflineQueryAsync(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, int job_timeout,
-                                                      ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                                      ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ExecuteOfflineQueryGetOutput(const std::string& sql,
                                                           const std::map<std::string, std::string>& config,
                                                           const std::string& default_db, int job_timeout,
-                                                          std::string& output);  // NOLINT
+                                                          std::string* output);
 
     void GetTables(::hybridse::vm::PhysicalOpNode* node, std::set<std::string>* tables);
 
