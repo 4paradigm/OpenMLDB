@@ -258,7 +258,7 @@ class SQLClusterRouter : public SQLRouter {
     bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) override;
 
     ::openmldb::base::Status ShowJobs(bool only_unfinished,
-                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos) override;
+                                      std::vector<::openmldb::taskmanager::JobInfo>* job_infos) override;
 
     ::openmldb::base::Status ShowJob(int id, ::openmldb::taskmanager::JobInfo& job_info) override;
 

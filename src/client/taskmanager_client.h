@@ -45,7 +45,7 @@ class TaskManagerClient : public Client {
     int Init() override { return client_.Init(); }
 
     ::openmldb::base::Status ShowJobs(bool only_unfinished, int job_timeout,
-                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos);  // NOLINT
+                                      std::vector<::openmldb::taskmanager::JobInfo>* job_infos);
 
     ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
 

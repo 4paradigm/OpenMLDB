@@ -2137,7 +2137,7 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 }
 
 ::openmldb::base::Status SQLClusterRouter::ShowJobs(const bool only_unfinished,
-                                                    std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+                                                    std::vector<::openmldb::taskmanager::JobInfo>* job_infos) {
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
     if (!taskmanager_client_ptr) {
         return {-1, "Fail to get TaskManager client"};

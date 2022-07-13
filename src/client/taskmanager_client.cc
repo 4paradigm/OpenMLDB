@@ -22,7 +22,7 @@
 namespace openmldb::client {
 
 ::openmldb::base::Status TaskManagerClient::ShowJobs(bool only_unfinished, int job_timeout,
-                                                     std::vector<::openmldb::taskmanager::JobInfo>& job_infos) {
+                                                     std::vector<::openmldb::taskmanager::JobInfo>* job_infos) {
     ::openmldb::taskmanager::ShowJobsRequest request;
     ::openmldb::taskmanager::ShowJobsResponse response;
 
@@ -36,7 +36,7 @@ namespace openmldb::client {
             for (int32_t i = 0; i < response.jobs_size(); i++) {
                 ::openmldb::taskmanager::JobInfo job_info;
                 job_info.CopyFrom(response.jobs(i));
-                job_infos.push_back(job_info);
+                job_infos->push_back(job_info);
             }
         }
         return {response.code(), response.msg()};
