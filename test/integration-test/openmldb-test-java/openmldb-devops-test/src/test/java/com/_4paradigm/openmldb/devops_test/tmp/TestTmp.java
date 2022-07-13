@@ -120,7 +120,7 @@ public class TestTmp extends ClusterTest {
         //3个tablet stop，不能访问。
         openMLDBDevops.operateTablet("stop");
         OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        Assert.assertTrue(openMLDBResult.getMsg().contains("no tablet available for sqlfail to get tablet"));
+        Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
 
 //        // 1个tablet启动，数据可回复，分片所在的表，可以访问。
 //        openMLDBDevops.operateTablet(0,"start");

@@ -3,18 +3,13 @@ package com._4paradigm.openmldb.devops_test.high_availability;
 import com._4paradigm.openmldb.devops_test.common.ClusterTest;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.openmldb.*;
-import com._4paradigm.openmldb.test_common.util.SDKByJDBCUtil;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
-import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -102,12 +97,14 @@ public class TestCluster extends ClusterTest {
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,10);
         //1个ns stop，可以正常访问。
         openMLDBDevops.operateNs(0,"stop");
+        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
         // 1个ns start 可以访问。
         openMLDBDevops.operateNs(0,"start");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
         // 1个ns restart 可以访问。
         openMLDBDevops.operateNs(0,"restart");
+        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
         // 单zk stop 在start后 可以访问
         openMLDBDevops.operateZKOne("stop");
@@ -121,7 +118,7 @@ public class TestCluster extends ClusterTest {
         //3个tablet stop，不能访问。
         openMLDBDevops.operateTablet("stop");
         OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        Assert.assertTrue(openMLDBResult.getMsg().contains("no tablet available for sqlfail to get tablet"));
+        Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
 
 //        // 1个tablet启动，数据可回复，分片所在的表，可以访问。
 //        openMLDBDevops.operateTablet(0,"start");
@@ -161,5 +158,7 @@ public class TestCluster extends ClusterTest {
         sdkClient = SDKClient.of(executor);
         nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
         openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB(dbName);
     }
 }
