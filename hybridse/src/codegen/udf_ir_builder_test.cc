@@ -106,7 +106,7 @@ TEST_F(UdfIRBuilderTest, int64_to_hexstring_test) {
     CheckUdf<StringRef, int64_t>("hex", StringRef("8000000000000000"), LLONG_MIN);
     CheckUdf<StringRef, int64_t>("hex", StringRef("7FFFFFFFFFFFFFFF"), LLONG_MAX);
 }
-hex(double) normal check
+// hex(double) normal check
 TEST_F(UdfIRBuilderTest, double_to_hexstring_test) {
     CheckUdf<StringRef, float>("hex", StringRef("11"), 17.0);
     CheckUdf<StringRef, double>("hex", StringRef("11"), 17.4);
@@ -116,7 +116,7 @@ TEST_F(UdfIRBuilderTest, double_to_hexstring_test) {
     CheckUdf<StringRef, double>("hex", StringRef("8000000000000000"), -9999999999999999999999999.0);
     CheckUdf<StringRef, double>("hex", StringRef("7FFFFFFFFFFFFFFF"), 9999999999999999999999999.0);
 }
-hex(string) normal check
+// hex(string) normal check
 TEST_F(UdfIRBuilderTest, string_to_hexstring_test) {
     CheckUdf<StringRef, StringRef>("hex", StringRef("537061726B2053514C"), StringRef("Spark SQL"));
 }
