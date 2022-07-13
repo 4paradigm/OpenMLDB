@@ -114,11 +114,12 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start ns";
+        if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add ns";
             return false;
         }
         if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+            LOG(WARNING) << "fail to start ns";
             return false;
         }
         sleep(2);
@@ -184,11 +185,12 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start tablet";
+        if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add tablet";
             return false;
         }
         if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            LOG(WARNING) << "fail to start tablet";
             return false;
         }
         ok = tablet->RegisterZK();
@@ -255,11 +257,12 @@ class StandaloneEnv {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start ns";
+        if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add ns";
             return false;
         }
         if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+            LOG(WARNING) << "fail to start ns";
             return false;
         }
         sleep(2);
@@ -302,11 +305,12 @@ class StandaloneEnv {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start tablet";
+        if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add tablet";
             return false;
         }
         if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            LOG(WARNING) << "fail to start tablet";
             return false;
         }
         sleep(2);
