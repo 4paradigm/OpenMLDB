@@ -910,7 +910,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
 std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, const std::string& sql,
                                                         const ::hybridse::vm::EngineMode engine_mode,
                                                         const std::shared_ptr<SQLRequestRow>& parameter,
-                                                        hybridse::sdk::Status& status) {  // NOLINT
+                                                        hybridse::sdk::Status* status) {
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
@@ -919,8 +919,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
             if (!openmldb::schema::SchemaAdapter::ConvertType(parameter->GetSchema()->GetColumnType(i),
                                                               &hybridse_type)) {
                 LOG(WARNING) << "Invalid parameter type ";
-                status.msg = "Invalid parameter type";
-                status.code = -1;
+                status->msg = "Invalid parameter type";
+                status->code = -1;
                 return {};
             }
             column->set_type(hybridse_type);
@@ -951,9 +951,9 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
             cache = std::make_shared<SQLCache>(schema, parameter_schema, explain.router, explain.limit_cnt);
             SetCache(db, sql, engine_mode, cache);
         } else {
-            status.msg = base_status.GetMsg();
-            status.trace = base_status.GetTraces();
-            status.code = -1;
+            status->msg = base_status.GetMsg();
+            status->trace = base_status.GetTraces();
+            status->code = -1;
             return {};
         }
     }
@@ -968,7 +968,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
     const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter,
     hybridse::sdk::Status& status) {
-    auto cache = GetSQLCache(db, sql, engine_mode, parameter, status);
+    auto cache = GetSQLCache(db, sql, engine_mode, parameter, &status);
     if (0 != status.code) {
         return {};
     }
@@ -1007,7 +1007,7 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     if (status == nullptr) {
         return {};
     }
-    auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, *status);
+    auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, status);
     if (0 != status->code) {
         return {};
     }
@@ -1132,7 +1132,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     ::hybridse::sdk::Status* status) {
     std::vector<openmldb::type::DataType> parameter_types;
-    if (parameter && !ExtractDBTypes(parameter->GetSchema(), parameter_types)) {
+    if (parameter && !ExtractDBTypes(parameter->GetSchema(), &parameter_types)) {
         status->msg = "convert parameter types error";
         status->code = -1;
         return {};
@@ -2003,7 +2003,7 @@ bool SQLClusterRouter::CheckSQLSyntax(const std::string& sql) {
 }
 
 bool SQLClusterRouter::ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
-                                      std::vector<openmldb::type::DataType>& db_types) {  // NOLINT
+                                      std::vector<openmldb::type::DataType>* db_types) {
     if (schema) {
         for (int i = 0; i < schema->GetColumnCnt(); i++) {
             openmldb::type::DataType casted_type;
@@ -2011,7 +2011,7 @@ bool SQLClusterRouter::ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schem
                 LOG(WARNING) << "Invalid parameter type " << schema->GetColumnType(i);
                 return false;
             }
-            db_types.push_back(casted_type);
+            db_types->push_back(casted_type);
         }
     }
     return true;

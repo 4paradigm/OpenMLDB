@@ -233,7 +233,7 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<SQLCache> GetSQLCache(const std::string& db, const std::string& sql,
                                           ::hybridse::vm::EngineMode engine_mode,
                                           const std::shared_ptr<SQLRequestRow>& parameter_row,
-                                          hybridse::sdk::Status& status);  // NOLINT
+                                          hybridse::sdk::Status* status);
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClientForBatchQuery(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& parameter_row,
@@ -347,7 +347,7 @@ class SQLClusterRouter : public SQLRouter {
                                                               hybridse::sdk::Status* status);
 
     bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
-                        std::vector<openmldb::type::DataType>& parameter_types);  // NOLINT
+                        std::vector<openmldb::type::DataType>* parameter_types);
 
     ::hybridse::sdk::Status SetVariable(hybridse::node::SetPlanNode* node);
 
