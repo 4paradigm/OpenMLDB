@@ -678,7 +678,7 @@ TEST_F(APIServerTest, getDBs) {
         ASSERT_TRUE(document.HasMember("dbs"));
         auto& exists_dbs = document["dbs"];
         ASSERT_TRUE(exists_dbs.IsArray());
-        for (int i = 0; i < exists_dbs.Size(); ++i) {
+        for (decltype(exists_dbs.Size()) i = 0; i < exists_dbs.Size(); ++i) {
             auto db = exists_dbs[i].GetString();
             if (test_dbs.find(db) != test_dbs.end()) {
                 FAIL() << "can't have test db " << db;
