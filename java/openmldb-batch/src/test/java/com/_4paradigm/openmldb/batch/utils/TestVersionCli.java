@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.taskmanager.util
+package com._4paradigm.openmldb.batch.utils;
 
-import org.scalatest.FunSuite
+import org.testng.annotations.Test;
 
-class TestVersionUtil extends FunSuite {
+public class TestVersionCli {
 
-  test("Test getTaskManagerVersion") {
-    val version = VersionUtil.getTaskManagerVersion()
-    assert(version.nonEmpty)
-  }
+    @Test
+    public void testGetVersion() {
+        try {
+            String version = VersionCli.getVersion();
+            assert !version.isEmpty();
+        } catch (Exception e) {
+            e.printStackTrace();
+            assert false;
+        }
+    }
 
 }
