@@ -260,9 +260,9 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::Status ShowJobs(bool only_unfinished,
                                       std::vector<::openmldb::taskmanager::JobInfo>* job_infos) override;
 
-    ::openmldb::base::Status ShowJob(int id, ::openmldb::taskmanager::JobInfo& job_info) override;
+    ::openmldb::base::Status ShowJob(int id, ::openmldb::taskmanager::JobInfo* job_info) override;
 
-    ::openmldb::base::Status StopJob(int id, ::openmldb::taskmanager::JobInfo& job_info) override;
+    ::openmldb::base::Status StopJob(int id, ::openmldb::taskmanager::JobInfo* job_info) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteOfflineQuery(const std::string& db, const std::string& sql,
                                                                   bool is_sync_job, int job_timeout,

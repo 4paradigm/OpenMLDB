@@ -47,9 +47,9 @@ class TaskManagerClient : public Client {
     ::openmldb::base::Status ShowJobs(bool only_unfinished, int job_timeout,
                                       std::vector<::openmldb::taskmanager::JobInfo>* job_infos);
 
-    ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
-    ::openmldb::base::Status StopJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status StopJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status RunBatchSql(const std::string& sql, const std::map<std::string, std::string>& config,
                                          const std::string& default_db, int job_timeout,
