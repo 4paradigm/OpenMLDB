@@ -98,12 +98,14 @@ public class TestTmp extends ClusterTest {
 //        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,10);
         //1个ns stop，可以正常访问。
         openMLDBDevops.operateNs(0,"stop");
+        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
         // 1个ns start 可以访问。
         openMLDBDevops.operateNs(0,"start");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
         // 1个ns restart 可以访问。
         openMLDBDevops.operateNs(0,"restart");
+        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
         // 单zk stop 在start后 可以访问
         openMLDBDevops.operateZKOne("stop");
