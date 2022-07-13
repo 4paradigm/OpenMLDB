@@ -88,16 +88,14 @@ public class NsClient {
         String nsCommand = genNsCommand(dbName,command);
         List<String> lines = CommandUtil.run(nsCommand);
         Assert.assertEquals(lines.get(0),"MakeSnapshot ok");
+        Tool.sleep(3*1000);
         checkTableOffSet(dbName,tableName);
+        checkOPStatusDone(dbName,tableName);
     }
     public void makeSnapshot(String dbName,String tableName){
         List<Integer> pidList = getPid(dbName,tableName);
         for(Integer pid:pidList) {
-            String command = String.format("makesnapshot %s %d", tableName, pid);
-            String nsCommand = genNsCommand(dbName, command);
-            List<String> lines = CommandUtil.run(nsCommand);
-            Assert.assertEquals(lines.get(0), "MakeSnapshot ok");
-            checkTableOffSet(dbName, tableName);
+            makeSnapshot(dbName,tableName,pid);
         }
     }
     public List<Integer> getPid(String dbName,String tableName){
