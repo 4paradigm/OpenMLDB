@@ -224,11 +224,11 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
                                                                       ::hybridse::vm::EngineMode engine_mode,
                                                                       const std::shared_ptr<SQLRequestRow>& row,
-                                                                      hybridse::sdk::Status& status);  // NOLINT
+                                                                      hybridse::sdk::Status* status);
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, ::hybridse::vm::EngineMode engine_mode,
         const std::shared_ptr<SQLRequestRow>& row, const std::shared_ptr<SQLRequestRow>& parameter_row,
-        hybridse::sdk::Status& status);  // NOLINT
+        hybridse::sdk::Status* status);
 
     std::shared_ptr<SQLCache> GetSQLCache(const std::string& db, const std::string& sql,
                                           ::hybridse::vm::EngineMode engine_mode,
