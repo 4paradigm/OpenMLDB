@@ -138,6 +138,84 @@ public class TestCluster extends ClusterTest {
     }
     // 两个Tablet停止
     // 三个Tablet停止
+
+    @Test
+    public void testSingle(){
+        String memoryTable = "test_memory";
+        String ssdTable = "test_ssd";
+        String hddTable = "test_hdd";
+        // 创建磁盘表和内存表。
+        int dataCount = 100;
+        sdkClient.createAndUseDB(dbName);
+        String memoryTableDDL = "create table test_memory(\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1);";
+        String ssdTableDDL = "create table test_ssd(\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1,storage_mode=\"SSD\");";
+        String hddTableDDL = "create table test_hdd(\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1,storage_mode=\"HDD\");";
+        sdkClient.execute(Lists.newArrayList(memoryTableDDL,ssdTableDDL,hddTableDDL));
+        // 插入一定量的数据
+        List<List<Object>> dataList = new ArrayList<>();
+        for(int i=0;i<dataCount;i++){
+            List<Object> list = Lists.newArrayList("aa" + i, 1, 2, 3, 1.1, 2.1, 1590738989000L, "2020-05-01", true);
+            dataList.add(list);
+        }
+        sdkClient.insertList(memoryTable,dataList);
+        sdkClient.insertList(ssdTable,dataList);
+        sdkClient.insertList(hddTable,dataList);
+        // tablet stop，不能访问
+        openMLDBDevops.operateTablet(0,"stop");
+        OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
+        Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
+        // tablet start，数据可以回复，要看磁盘表和内存表。
+        openMLDBDevops.operateTablet(0,"start");
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,10);
+        //make snapshot，在重启tablet，数据可回复。
+        nsClient.makeSnapshot(dbName,memoryTable);
+        nsClient.makeSnapshot(dbName,ssdTable);
+        nsClient.makeSnapshot(dbName,hddTable);
+        //重启tablet，数据可回复，内存表和磁盘表可以正常访问。
+        openMLDBDevops.operateTablet(0,"restart");
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+10,10);
+        //ns stop start 可以正常访问。
+        openMLDBDevops.operateNs(0,"stop");
+        resetClient();
+        //ns start 可以访问。
+        openMLDBDevops.operateNs(0,"start");
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,0);
+        //ns restart 可以访问。
+        openMLDBDevops.operateNs(0,"restart");
+        resetClient();
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,0);
+    }
+
     public void addDataCheck(SDKClient sdkClient, NsClient nsClient,String dbName,List<String> tableNames,int originalCount,int addCount){
         List<List<Object>> addDataList = new ArrayList<>();
         for(int i=0;i<addCount;i++){

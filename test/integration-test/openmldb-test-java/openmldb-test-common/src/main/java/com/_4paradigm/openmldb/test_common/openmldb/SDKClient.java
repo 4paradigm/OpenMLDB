@@ -32,9 +32,9 @@ public class SDKClient {
     public OpenMLDBResult execute(String sql) {
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         try {
+            openMLDBResult.setSql(sql);
             boolean ok = statement.execute(sql);
             openMLDBResult.setOk(ok);
-            openMLDBResult.setSql(sql);
             ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
         } catch (SQLException e) {
             openMLDBResult.setOk(false);
@@ -85,9 +85,9 @@ public class SDKClient {
     public void createAndUseDB(String dbName){
         List<String> sqlList = new ArrayList<>();
         if (!SDKUtil.dbIsExist(statement,dbName)) {
-            sqlList.add(String.format("create database %s", dbName));
+            sqlList.add(String.format("create database %s;", dbName));
         }
-        sqlList.add(String.format("use %s", dbName));
+        sqlList.add(String.format("use %s;", dbName));
         execute(sqlList);
     }
     public void insert(String tableName,List<Object> list){

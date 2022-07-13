@@ -105,22 +105,22 @@ public class TestTmp extends ClusterTest {
         openMLDBDevops.operateNs(0,"start");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
         // 1个ns restart 可以访问。
-        openMLDBDevops.operateNs(0,"restart");
-        resetClient();
-        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
-        // 单zk stop 在start后 可以访问
-        openMLDBDevops.operateZKOne("stop");
-        Tool.sleep(3000);
-        openMLDBDevops.operateZKOne("start");
-        Tool.sleep(3000);
-        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
-        // 单zk restart 后可以访问
-        openMLDBDevops.operateZKOne("restart");
-        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
-        //3个tablet stop，不能访问。
-        openMLDBDevops.operateTablet("stop");
-        OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
-        Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
+//        openMLDBDevops.operateNs(0,"restart");
+//        resetClient();
+//        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
+//        // 单zk stop 在start后 可以访问
+//        openMLDBDevops.operateZKOne("stop");
+//        Tool.sleep(3000);
+//        openMLDBDevops.operateZKOne("start");
+//        Tool.sleep(3000);
+//        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
+//        // 单zk restart 后可以访问
+//        openMLDBDevops.operateZKOne("restart");
+//        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
+//        //3个tablet stop，不能访问。
+//        openMLDBDevops.operateTablet("stop");
+//        OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
+//        Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
 
 //        // 1个tablet启动，数据可回复，分片所在的表，可以访问。
 //        openMLDBDevops.operateTablet(0,"start");
