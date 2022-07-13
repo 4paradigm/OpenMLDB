@@ -212,7 +212,9 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
         req_union_op->output_request_row(), aggr_op->GetFnDef(),
         aggr_op->GetChild(0));
-    request_aggr_union->exclude_current_row_ = req_union_op->exclude_current_row_;
+    if (req_union_op->exclude_current_row_) {
+        request_aggr_union->set_out_request_row(false);
+    }
     if (!status.isOK()) {
         LOG(ERROR) << "Fail to create PhysicalRequestAggUnionNode: " << status;
         return false;
