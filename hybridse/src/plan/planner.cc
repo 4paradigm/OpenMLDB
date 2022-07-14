@@ -458,33 +458,29 @@ bool Planner::IsTable(node::PlanNode *node, node::PlanNode** output) {
     }
     return false;
 }
-/**
- * Validate online serving op with given plan tree
- * - Support Ops:
- *   - TABLE
- *   - SELECT
- *   - JOIN
- *   - WINDOW
- * - UnSupport Ops::
- *   - CREATE TABLE
- *   - INSERT TABLE
- *   - GROUP BY
- *   - HAVING clause
- *   - FILTER
- *   -
- * @param node
- * @return
- */
+
+// Validate online serving op with given plan tree
+// - Support Ops:
+//   - TABLE
+//   - SELECT
+//   - JOIN
+//   - WINDOW
+// - UnSupport Ops::
+//   - CREATE TABLE
+//   - INSERT TABLE
+//   - GROUP BY
+//   - HAVING clause
+//   - FILTER
+//
+// - Not Impl
+//   - Order By
 base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
     CHECK_TRUE(nullptr != node, common::kNullInputPointer,
                "Fail to validate request table: input node is "
                "null")
     switch (node->type_) {
-        case node::kPlanTypeTable: {
-            break;
-        }
         case node::kPlanTypeProject: {
-            auto project_node = dynamic_cast<node::ProjectPlanNode*>(node);
+            auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);
 
             for (auto &each : project_node->project_list_vec_) {
                 node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
@@ -493,15 +489,15 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
                 CHECK_TRUE(!(nullptr == project_list->GetW() && project_list->HasAggProject()), common::kPlanError,
                            "Aggregate over a table cannot be supported in online serving")
             }
+
+            break;
         }
+        case node::kPlanTypeTable:
         case node::kPlanTypeRename:
         case node::kPlanTypeLimit:
         case node::kPlanTypeWindow:
         case node::kPlanTypeQuery:
         case node::kPlanTypeJoin: {
-            for (auto *child : node->GetChildren()) {
-                CHECK_STATUS(ValidateOnlineServingOp(child));
-            }
             break;
         }
         default: {
@@ -509,52 +505,62 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
             break;
         }
     }
+
+    for (auto *child : node->GetChildren()) {
+        CHECK_STATUS(ValidateOnlineServingOp(child));
+    }
+
     return base::Status::OK();
 }
-/**
- * Get the limit count of given SQL query
- * @param node
- * @return
- */
+
+// Get the limit count of given SQL query
 int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
     if (nullptr == node) {
         return 0;
     }
+
     int limit_cnt = 0;
     switch (node->type_) {
         case node::kPlanTypeTable: {
             return 0;
         }
         case node::kPlanTypeLimit: {
-            auto limit_node = dynamic_cast<node::LimitPlanNode*>(node);
+            auto limit_node = dynamic_cast<node::LimitPlanNode *>(node);
             limit_cnt = limit_node->GetLimitCnt();
-        }
-        default: {
-            if (node->GetChildrenSize() > 0) {
-                int cnt = GetPlanTreeLimitCount(node->GetChildren()[0]);
-                if (cnt > 0) {
-                    if (limit_cnt == 0) {
-                        limit_cnt = cnt;
-                    } else {
-                        limit_cnt = std::min(cnt, limit_cnt);
-                    }
-                }
-            }
             break;
         }
+        default:
+            break;
     }
+
+    if (node->GetChildrenSize() > 0) {
+        int cnt = GetPlanTreeLimitCount(node->GetChildren()[0]);
+        if (cnt > 0) {
+            if (limit_cnt == 0) {
+                limit_cnt = cnt;
+            } else {
+                limit_cnt = std::min(cnt, limit_cnt);
+            }
+        }
+    }
+
     return limit_cnt;
 }
+
+// Un-support Ops:
+// - GROUP BY
+// - HAVING
+// - WINDOW
+//
+// Not Impl:
+// - Order By
 base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
     if (node == nullptr) {
         return base::Status::OK();
     }
     switch (node->type_) {
-        case node::kPlanTypeTable: {
-            break;
-        }
         case node::kPlanTypeProject: {
-            auto project_node = dynamic_cast<node::ProjectPlanNode*>(node);
+            auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);
 
             for (auto &each : project_node->project_list_vec_) {
                 node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
@@ -565,15 +571,14 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
                 CHECK_TRUE(!project_list->HasAggProject(), common::kPlanError,
                            "Aggregate over a table cannot be supported in cluster online training")
             }
+            break;
         }
+        case node::kPlanTypeTable:
         case node::kPlanTypeLoadData:
         case node::kPlanTypeRename:
         case node::kPlanTypeLimit:
         case node::kPlanTypeFilter:
         case node::kPlanTypeQuery: {
-            for (auto *child : node->GetChildren()) {
-                CHECK_STATUS(ValidateClusterOnlineTrainingOp(child));
-            }
             break;
         }
         default: {
@@ -581,6 +586,11 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
             break;
         }
     }
+
+    for (auto *child : node->GetChildren()) {
+        CHECK_STATUS(ValidateClusterOnlineTrainingOp(child));
+    }
+
     return base::Status::OK();
 }
 /**
