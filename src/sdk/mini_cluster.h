@@ -75,10 +75,6 @@ class MiniCluster {
         if (ns_client_) {
             delete ns_client_;
         }
-
-        for (auto & t : tablets_) {
-            delete t.second;
-        }
         base::RemoveDirRecursive(db_root_path_);
     }
 
