@@ -94,13 +94,14 @@ object SparkJobManager {
       launcher.setConf("spark.yarn.maxAppAttempts", TaskManagerConfig.SPARK_YARN_MAXAPPATTEMPTS.toString)
     }
 
-    // TODO: Support escape delimiter
     // Set default Spark conf by TaskManager configuration file
-    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(",")
+    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(";")
     defaultSparkConfs.map(sparkConf => {
       if (sparkConf.nonEmpty) {
         val kvList = sparkConf.split("=")
-        launcher.setConf(kvList(0), kvList(1))
+        val key = kvList(0)
+        val value = kvList.drop(1).mkString("=")
+        launcher.setConf(key, value)
       }
     })
 
