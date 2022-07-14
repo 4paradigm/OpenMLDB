@@ -16,11 +16,13 @@
 
 package com._4paradigm.openmldb.batch.utils;
 
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 public class TestVersionCli {
 
-    @Test
+    // TODO(tobe): Make sure to run this case in CICD
+    @Ignore
     public void testGetVersion() {
         try {
             String version = VersionCli.getVersion();
