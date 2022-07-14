@@ -3122,13 +3122,15 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
             PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
-            if (!::openmldb::base::Rename(snapshot_dir, data_path)) {
-                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
-                break;
-            }
-            if (unlink(manifest_file.c_str()) < 0) {
-                PDLOG(WARNING, "remove manifest failed. tid %u pid %u path %s", tid, pid, manifest_file.c_str());
-                break;
+            if (::openmldb::base::IsExists(snapshot_dir)) {
+                if (!::openmldb::base::Rename(snapshot_dir, data_path)) {
+                    PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
+                    break;
+                }
+                if (unlink(manifest_file.c_str()) < 0) {
+                    PDLOG(WARNING, "remove manifest failed. tid %u pid %u path %s", tid, pid, manifest_file.c_str());
+                    break;
+                }
             }
             snapshot_offset = manifest.offset();
         }
