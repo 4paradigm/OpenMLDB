@@ -316,9 +316,11 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
-    public TaskManager.GetTaskmanagerVersionResponse GetTaskmanagerVersion(TaskManager.EmptyMessage request) {
-        String version = VersionUtil.getVersion();
-        return TaskManager.GetTaskmanagerVersionResponse.newBuilder().setVersion(version).build();
+    public TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request) {
+        String taskmanagerVersion = VersionUtil.getTaskManagerVersion();
+        String batchVersion = VersionUtil.getBatchVersion();
+        return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
+                .setBatchVersion(batchVersion).build();
     }
 
     @Override
