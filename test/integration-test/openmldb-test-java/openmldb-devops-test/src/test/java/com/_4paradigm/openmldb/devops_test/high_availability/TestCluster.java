@@ -115,8 +115,12 @@ public class TestCluster extends ClusterTest {
         // 单zk restart 后可以访问
         openMLDBDevops.operateZKOne("restart");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
+        // 2个tablet stop 可以访问
+        openMLDBDevops.operateTablet(0,"stop");
+        openMLDBDevops.operateTablet(1,"stop");
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+30,0);
         //3个tablet stop，不能访问。
-        openMLDBDevops.operateTablet("stop");
+        openMLDBDevops.operateTablet(2,"stop");
         OpenMLDBResult openMLDBResult = sdkClient.execute(String.format("select * from %s",memoryTable));
         Assert.assertTrue(openMLDBResult.getMsg().contains("fail"));
 

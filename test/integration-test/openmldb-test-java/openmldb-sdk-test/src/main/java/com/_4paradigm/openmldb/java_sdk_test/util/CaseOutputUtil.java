@@ -136,6 +136,6 @@ public class CaseOutputUtil {
 
 
     public static void main(String[] args) {
-        fromYmlToCsv("/Users/zhaowei/code/4paradigm/OpenMLDB/cases/function","./out_excel");
+        fromYmlToCsv("/Users/zhaowei/code/4paradigm/OpenMLDB/cases/function","./out");
     }
 }
