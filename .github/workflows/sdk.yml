@@ -144,6 +144,7 @@ jobs:
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
     runs-on: macos-latest
+    if: github.event_name == 'push'
     needs:
       - java-sdk
     env:
@@ -294,7 +295,6 @@ jobs:
 
   python-sdk-mac:
     runs-on: macos-11
-    if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
