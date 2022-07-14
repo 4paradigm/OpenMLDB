@@ -1,13 +1,3 @@
-* [Operator](#operator)
-   * [OperatorPrecedence](#operator precedence)
-   * [VariousOperations](#various operations)
-      * [1. Comparison Operation](#1-ComparisonOperation)
-      * [2. Logic Operation](#2-LogicOperation)
-      * [3. Arithmetic Operations](#3-ArithmeticOperations)
-      * [4. Bit Operation](#4-BitOperation)
-      * [5. Type Operations and Functions](#5-TypeOperationsandFunctions)
-   * [Assignment Operator](#AssignmentOperator)
-
 # Operator
 
 ## Operator Precedence
