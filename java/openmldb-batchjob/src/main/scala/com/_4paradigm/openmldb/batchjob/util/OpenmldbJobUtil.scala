@@ -40,8 +40,6 @@ object OpenmldbJobUtil {
       sqlFilePath
     }
 
-    println("tobe1: actualSqlFilePath: " + actualSqlFilePath)
-
     if (!File(actualSqlFilePath).exists) {
       throw new Exception("SQL file does not exist in " + actualSqlFilePath)
     }
