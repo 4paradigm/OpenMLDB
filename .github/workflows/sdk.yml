@@ -146,7 +146,6 @@ jobs:
     runs-on: macos-latest
     needs:
       - java-sdk
-    if: github.event_name == 'push'
     env:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
@@ -294,7 +293,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   python-sdk-mac:
-    runs-on: macos-latest
+    runs-on: macos-11
     if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
