@@ -3121,8 +3121,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         std::string manifest_file = snapshot_path + "MANIFEST";
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
-            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
             if (::openmldb::base::IsExists(snapshot_dir)) {
+                PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
                 if (!::openmldb::base::Rename(snapshot_dir, data_path)) {
                     PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
                     break;
@@ -3131,8 +3131,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                     PDLOG(WARNING, "remove manifest failed. tid %u pid %u path %s", tid, pid, manifest_file.c_str());
                     break;
                 }
+                snapshot_offset = manifest.offset();
             }
-            snapshot_offset = manifest.offset();
         }
         std::string msg;
         if (CreateTableInternal(&table_meta, msg) < 0) {
@@ -3193,6 +3193,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                 task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
                 return 0;
             }
+            PDLOG(INFO, "Recover table with tid %u and pid %u from binlog offset %u to %u", tid, pid, snapshot_offset,
+                  latest_offset);
         } else {
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
