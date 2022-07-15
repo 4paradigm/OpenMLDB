@@ -2838,13 +2838,16 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
+        if (request->has_db() && op_data->op_info_.db() != request->db()) {
+            continue;
+        }
         if (request->has_name() && op_data->op_info_.name() != request->name()) {
             continue;
         }
         if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
             continue;
         }
-        op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        op_map.emplace(op_data->op_info_.op_id(), op_data);
     }
     for (const auto& op_list : task_vec_) {
         if (op_list.empty()) {
@@ -2860,7 +2863,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
             if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
                 continue;
             }
-            op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+            op_map.emplace(op_data->op_info_.op_id(), op_data);
         }
     }
     for (const auto& kv : op_map) {
