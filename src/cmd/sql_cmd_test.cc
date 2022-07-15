@@ -36,7 +36,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DECLARE_bool(interactive);
 DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
@@ -281,6 +280,43 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
         count++;
     }
     EXPECT_EQ(count, expect);
+    ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+}
+
+TEST_F(SqlCmdTest, TableReader) {
+    auto sr = cluster_cli.sr;
+    std::string db_name = "test" + GenRand();
+    std::string name = "table" + GenRand();
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string not null,"
+                      "col2 bigint default 112 not null,"
+                      "col4 string default 'test4' not null,"
+                      "col5 date default '2000-01-01' not null,"
+                      "col6 int default 10000 not null,"
+                      "index(key=col1, ts=col2));";
+    ProcessSQLs(sr, {"set @@execute_mode = 'online'",
+            absl::StrCat("create database ", db_name, ";"),
+            absl::StrCat("use ", db_name, ";"),
+            ddl});
+    hybridse::sdk::Status status;
+    std::string sql = "insert into " + name + " values('key1', 1, '1', '2021-01-01', 10);";
+    ASSERT_TRUE(sr->ExecuteInsert(db_name, sql, &status));
+    auto reader = sr->GetTableReader();
+    openmldb::sdk::ScanOption option;
+    option.projection = {"col1", "col2", "col6"};
+    auto result_set = reader->Scan(db_name, name, "key1", 0, 0, option, &status);
+    ASSERT_TRUE(status.IsOK());
+    result_set->Next();
+    std::string val;
+    result_set->GetString(0, &val);
+    ASSERT_EQ("key1", val);
+    int64_t val1 = 0;
+    result_set->GetInt64(1, &val1);
+    ASSERT_EQ(1, val1);
+    int32_t val2 = 0;
+    result_set->GetInt32(2, &val2);
+    ASSERT_EQ(10, val2);
     ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
 }
 
@@ -745,6 +781,60 @@ TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsWithExcludeCurrentRow) {
+    auto& cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND 0 PRECEDING EXCLUDE CURRENT_ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11 + 10 + 9 + 8 + 7 + 6;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    }
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -2178,7 +2268,7 @@ TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
         env.EnableDeployStats();
         absl::SleepFor(absl::Seconds(2));
 
-        for (int i =0; i < 5; ++i) {
+        for (int i = 0; i < 5; ++i) {
             env.CallProcedure();
         }
 

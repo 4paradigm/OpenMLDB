@@ -14,19 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import logging
 import sys
-
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+import os
 from openmldb.dbapi import connect
 from openmldb.dbapi import DatabaseError
+import pytest
+
+from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 
 
 class TestOpenmldbDBAPI:
-
     cursor = None
 
     @classmethod
@@ -70,6 +70,11 @@ class TestOpenmldbDBAPI:
         assert 'second' in result
         assert 200 in result
 
+    def test_custom_order_insert(self):
+        self.cursor.execute("insert into new_table (y, x) values(300, 'third');")
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);", (300, 'third'))
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);", {'x': 'third', 'y': 300})
+
 
 if __name__ == "__main__":
-    sys.exit(pytest.main(["-vv", "dbapi_test.py"]))
+    sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))

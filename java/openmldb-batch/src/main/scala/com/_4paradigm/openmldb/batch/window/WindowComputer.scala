@@ -71,6 +71,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   protected var window = new WindowInterface(
     config.instanceNotInWindow,
     config.excludeCurrentTime,
+    config.excludeCurrentRow,
     config.windowFrameTypeName,
     config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
 
@@ -229,7 +230,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     }
     window = new WindowInterface(
       config.instanceNotInWindow, config.excludeCurrentTime,
-      config.windowFrameTypeName,
+      config.excludeCurrentRow, config.windowFrameTypeName,
       config.startOffset, config.endOffset, config.rowPreceding, config.maxSize)
   }
 

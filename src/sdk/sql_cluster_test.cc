@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <sched.h>
 #include <unistd.h>
 
 #include <memory>
@@ -22,10 +21,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "base/file_util.h"
-#include "base/glog_wapper.h"
 #include "codec/fe_row_codec.h"
-#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -34,10 +30,9 @@
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
 
-namespace openmldb {
-namespace sdk {
+namespace openmldb::sdk {
 
-static void SetOnlineMode(std::shared_ptr<SQLRouter> router) {
+static void SetOnlineMode(const std::shared_ptr<SQLRouter>& router) {
     ::hybridse::sdk::Status status;
     router->ExecuteSQL("SET @@execute_mode='online';", &status);
 }
@@ -47,22 +42,22 @@ std::shared_ptr<SQLRouter> router_;
 
 class SQLClusterTest : public ::testing::Test {
  public:
-    SQLClusterTest() {}
-    ~SQLClusterTest() {}
-    void SetUp() {}
-    void TearDown() {}
+    SQLClusterTest() = default;
+    ~SQLClusterTest() override = default;
+    void SetUp() override {}
+    void TearDown() override {}
 };
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
-    MockClosure() {}
-    ~MockClosure() {}
-    void Run() {}
+    MockClosure() = default;
+    ~MockClosure() override = default;
+    void Run() override {}
 };
 
 class SQLClusterDDLTest : public SQLClusterTest {
  public:
-    void SetUp() {
+    void SetUp() override {
         SQLRouterOptions sql_opt;
         sql_opt.zk_cluster = mc_->GetZkCluster();
         sql_opt.zk_path = mc_->GetZkPath();
@@ -74,7 +69,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
         ASSERT_TRUE(router->CreateDB(db, &status));
     }
 
-    void TearDown() {
+    void TearDown() override {
         ::hybridse::sdk::Status status;
         ASSERT_TRUE(router->DropDB(db, &status));
         router.reset();
@@ -416,7 +411,8 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         ASSERT_TRUE(request_row->Build());
         auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
         hybridse::sdk::Status sdk_status;
-        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, sdk_status);
+        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode,
+                                                          request_row, &sdk_status);
         int pid = ::openmldb::base::hash64(pk) % 2;
         // only assert leader paritition
         for (int i = 0; i < 3; i++) {
@@ -992,8 +988,7 @@ TEST_F(SQLClusterTest, ClusterSelect) {
     ASSERT_TRUE(ok);
 }
 
-}  // namespace sdk
-}  // namespace openmldb
+}  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
@@ -1004,11 +999,11 @@ int main(int argc, char** argv) {
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
+    srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
-        LOG(ERROR) << "Fail Test with NULL SQL router";
+        LOG(ERROR) << "Test failed with NULL SQL router";
         return -1;
     }
     ok = RUN_ALL_TESTS();

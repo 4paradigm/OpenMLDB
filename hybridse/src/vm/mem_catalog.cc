@@ -117,9 +117,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
 std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
-    std::unique_ptr<MemTimeTableIterator> it(
-        new MemTimeTableIterator(&table_, schema_));
-    return std::move(it);
+    return std::make_unique<MemTimeTableIterator>(&table_, schema_);
 }
 std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
     const std::string& idx_name) {

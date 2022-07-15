@@ -38,10 +38,9 @@ typedef int8_t* ByteArrayPtr;
 
 class WindowInterface {
  public:
-    WindowInterface(bool instance_not_in_window, bool exclude_current_time,
-                    const std::string& frame_type_str, int64_t start_offset,
-                    int64_t end_offset, uint64_t rows_preceding,
-                    uint64_t max_size);
+    WindowInterface(bool instance_not_in_window, bool exclude_current_time, bool execlude_current_row,
+                    const std::string& frame_type_str, int64_t start_offset, int64_t end_offset,
+                    uint64_t rows_preceding, uint64_t max_size);
 
     bool BufferData(uint64_t key, const Row& row);
 
@@ -127,8 +126,8 @@ class CoreAPI {
     static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);
 
     static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
-                                           const hybridse::codec::Row row,
-                                           const hybridse::codec::Row parameter,
+                                           const hybridse::codec::Row& row,
+                                           const hybridse::codec::Row& parameter,
                                            const bool need_free = false);
     static hybridse::codec::Row RowConstProject(
         const hybridse::vm::RawPtrHandle fn, const hybridse::codec::Row parameter,
@@ -145,7 +144,7 @@ class CoreAPI {
                                         const int length);
 
     static hybridse::codec::Row WindowProject(
-        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,
         const bool is_instance, size_t append_slices, WindowInterface* window);
 
     // Window project API with Spark UnsafeRow optimization
@@ -156,7 +155,7 @@ class CoreAPI {
         size_t append_slices, WindowInterface* window);
 
     static hybridse::codec::Row WindowProject(
-        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,
         WindowInterface* window);
 
     static hybridse::codec::Row GroupbyProject(

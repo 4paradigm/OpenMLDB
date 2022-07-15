@@ -1,5 +1,5 @@
-#! /bin/bash
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ulimit -c unlimited
-ulimit -n 655360
+from sqlalchemy.testing.suite import *
 
-cd "$(dirname "$0")/../" || exit
+from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
-if [ -f "./conf/taskmanager.properties" ]; then
-  cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
-fi
+# class IntegerTest(_IntegerTest):
 
-pushd ./taskmanager/bin/ > /dev/null || exit
-  sh ./taskmanager.sh
-popd > /dev/null || exit
+#     @testing.skip("access")
+#     def test_huge_int(self):
+#         # bypass this test because Access ODBC fails with
+#         # [ODBC Microsoft Access Driver] Optional feature not implemented.
+#         return

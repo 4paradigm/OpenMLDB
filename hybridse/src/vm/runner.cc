@@ -200,11 +200,15 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kAggregation: {
                     AggRunner* runner = nullptr;
+                    auto agg_node = dynamic_cast<const PhysicalAggregationNode*>(node);
+                    if (agg_node == nullptr) {
+                        status.msg = "fail to build AggRunner: input node is not PhysicalAggregationNode";
+                        status.code = common::kExecutionPlanError;
+                        return fail;
+                    }
                     CreateRunner<AggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                                            dynamic_cast<const PhysicalAggregationNode*>(node)->having_condition_,
-                                            op->project().fn_info());
-                    return RegisterTask(node,
-                                        UnaryInheritTask(cluster_task, runner));
+                                            agg_node->having_condition_, op->project().fn_info());
+                    return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
                 }
                 case kGroupAggregation: {
                     if (support_cluster_optimized_) {
@@ -237,11 +241,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         dynamic_cast<const PhysicalWindowAggrerationNode*>(
                             node);
                     WindowAggRunner* runner = nullptr;
-                    CreateRunner<WindowAggRunner>(
-                        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->window_, op->project().fn_info(),
-                        op->instance_not_in_window(),
-                        op->exclude_current_time(), op->need_append_input());
+                    CreateRunner<WindowAggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->window_,
+                                                  op->project().fn_info(), op->instance_not_in_window(),
+                                                  op->exclude_current_time(), op->exclude_current_row(),
+                                                  op->need_append_input());
                     size_t input_slices =
                         input->output_schemas()->GetSchemaSourceSize();
                     if (!op->window_unions_.Empty()) {
@@ -311,6 +314,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
                 op->window().range_, op->exclude_current_time(),
                 op->output_request_row());
+            runner->exclude_current_row_ = op->exclude_current_row_;
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -962,6 +966,8 @@ bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
     return key;
 }
 
+// cache the row into window and
+// if `is_instance`, compute window project for current row
 Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
                           const Row row,
                           const codec::Row& parameter,
@@ -1511,6 +1517,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
+    window.set_exclude_current_row(exclude_current_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
@@ -1518,6 +1525,8 @@ void WindowAggRunner::RunWindowAggOnKey(
         }
         const Row& instance_row = instance_segment_iter->GetValue();
         const uint64_t instance_order = instance_segment_iter->GetKey();
+
+        // construct the window
         while (min_union_pos >= 0 &&
                union_segment_status[min_union_pos].key_ <= instance_order) {
             Row row = union_segment_iters[min_union_pos]->GetValue();
@@ -1539,6 +1548,7 @@ void WindowAggRunner::RunWindowAggOnKey(
             // Pick new mininum union pos
             min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
         }
+
         if (windows_join_gen_.Valid()) {
             Row row = windows_join_gen_.Join(instance_row, join_right_tables, parameter);
             output_table->AddRow(
@@ -2764,15 +2774,16 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         }
     }
 
-    // build window with start and end offset
     std::shared_ptr<TableHandler> window;
     if (agg_segment) {
         window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
                                     exclude_current_time_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
-                                                        output_request_row_, exclude_current_time_);
+        // NOTE: normal request union should always `output_request_row`, while the `output_request_row_`
+        // here indicate whether `EXCLUDE CURRENT_ROW`
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, true,
+                                                        exclude_current_time_, !output_request_row_);
     }
 
     if (ctx.is_debug()) {
@@ -2784,10 +2795,8 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 }
 
 std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) const {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, const bool output_request_row, const bool exclude_current_time) const {
     // TOOD(zhanghao): for now, we only support AggUnion with 1 base table and 1 agg table
     size_t unions_cnt = union_segments.size();
     if (unions_cnt != 2) {
@@ -2888,7 +2897,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     };
 
-    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
+    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser](const Row& row) {
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
@@ -2909,8 +2918,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         cnt++;
     }
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
         LOG(WARNING) << "Base window is empty.";
@@ -3073,7 +3081,7 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         LOG(WARNING) << "ReduceRunner input is empty";
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(iter->GetValue()));
+    std::shared_ptr<RowHandler> row_handler = std::make_shared<MemRowHandler>(iter->GetValue());
 
     if (ctx.is_debug()) {
         std::ostringstream oss;
@@ -3111,13 +3119,11 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     // build window with start and end offset
     return RequestUnionWindow(request, union_segments, ts_gen,
                               range_gen_.window_range_, output_request_row_,
-                              exclude_current_time_);
+                              exclude_current_time_, exclude_current_row_);
 }
 std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
     uint64_t start = 0;
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
@@ -3135,11 +3141,21 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
+
+        // HACK: window ... maxsize sz exclude current_row
+        // due to the implementation, current row should always present in the returned table
+        // because `AggRunner` requires that current row to be the first two parameters to udf call
+        // so we make the return one size more if original maxsize is set.
+        // the proper window list will generated for exclude current_row in codegen
+        //
+        // see `Runner::GroupbyProject` when `exclude_current_row` is true
+        if (exclude_current_row && max_size > 0) {
+            max_size++;
+        }
     }
     uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
 
     size_t unions_cnt = union_segments.size();
     // Prepare Union Segment Iterators
@@ -3259,8 +3275,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(
     if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(
-        agg_gen_.Gen(parameter, table)));
+    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(agg_gen_.Gen(parameter, table)));
     return row_handler;
 }
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
@@ -3787,8 +3802,8 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     if (!iter->Valid()) {
         return Row();
     }
-    auto& row = iter->GetValue();
-    auto& row_key = iter->GetKey();
+    const auto& row = iter->GetValue();
+    const auto& row_key = iter->GetKey();
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));

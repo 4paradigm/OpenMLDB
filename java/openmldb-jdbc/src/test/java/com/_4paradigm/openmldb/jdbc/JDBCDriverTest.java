@@ -23,6 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -183,7 +184,7 @@ public class JDBCDriverTest {
         String tableName = "kafka_test";
         stmt = connection.createStatement();
         try {
-            stmt.execute(String.format("create table if not exists %s(c1 int, c2 string)", tableName));
+            stmt.execute(String.format("create table if not exists %s(c1 int, c2 string, c3 timestamp)", tableName));
         } catch (Exception e) {
             Assert.fail();
         }
@@ -198,6 +199,15 @@ public class JDBCDriverTest {
         pstmt.setFetchSize(100);
 
         pstmt.addBatch();
+        insertSql = "INSERT INTO " +
+                tableName +
+                "(`c3`,`c2`) VALUES(?,?)";
+        pstmt = connection.prepareStatement(insertSql);
+        Assert.assertEquals(pstmt.getMetaData().getColumnCount(), 2);
+        // index starts from 1
+        Assert.assertEquals(pstmt.getMetaData().getColumnType(2), Types.VARCHAR);
+        Assert.assertEquals(pstmt.getMetaData().getColumnName(2), "c2");
+
 
         try {
             stmt = connection.prepareStatement("DELETE FROM " + tableName + " WHERE c1=1");

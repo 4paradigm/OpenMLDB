@@ -1,5 +1,5 @@
-#! /bin/bash
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMPONENT=$1
+from sqlalchemy.dialects import registry
+import pytest
 
-ulimit -c unlimited
-ulimit -n 655360
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
-./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true
+# registry.register("openmldb", "openmldb.sqlalchemy_openmldb.openmldb_dialect", "OpenmldbDialect")
+
+# pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
+
+# from sqlalchemy.testing.plugin.pytestplugin import *

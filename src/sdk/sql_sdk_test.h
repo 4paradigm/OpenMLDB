@@ -144,6 +144,9 @@ INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindow, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestWindowAttributes, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/window_attributes.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowExcludeCurrentTime, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
 INSTANTIATE_TEST_SUITE_P(
