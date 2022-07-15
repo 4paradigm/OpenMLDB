@@ -146,6 +146,7 @@ jobs:
     runs-on: macos-latest
     needs:
       - java-sdk
+    if: github.event_name == 'push'
     env:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
