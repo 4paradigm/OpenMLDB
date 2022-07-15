@@ -141,8 +141,9 @@ message DropFunctionResponse {
     optional string msg = 2;
 };
 
-message GetTaskmanagerVersionResponse {
-    required string version = 1;
+message GetVersionResponse {
+    required string taskmanager_version = 1;
+    required string batch_version = 2;
 };
 
 message EmptyMessage {};
@@ -167,5 +168,5 @@ service TaskManagerServer {
     rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
 
     // Other APIs
-    rpc GetTaskmanagerVersion(EmptyMessage) returns (GetTaskmanagerVersionResponse);
+    rpc GetVersion(EmptyMessage) returns (GetVersionResponse);
 };

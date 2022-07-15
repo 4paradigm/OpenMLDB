@@ -789,6 +789,60 @@ TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     ASSERT_TRUE(ok);
 }
 
+TEST_P(DBSDKTest, DeployLongWindowsWithExcludeCurrentRow) {
+    auto& cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND 0 PRECEDING EXCLUDE CURRENT_ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11 + 10 + 9 + 8 + 7 + 6;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    }
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
 TEST_P(DBSDKTest, DeployLongWindowsExecuteSum) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -2214,7 +2268,7 @@ TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
         env.EnableDeployStats();
         absl::SleepFor(absl::Seconds(2));
 
-        for (int i =0; i < 5; ++i) {
+        for (int i = 0; i < 5; ++i) {
             env.CallProcedure();
         }
 

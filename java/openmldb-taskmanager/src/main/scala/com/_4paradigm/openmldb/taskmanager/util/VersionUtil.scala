@@ -16,12 +16,17 @@
 
 package com._4paradigm.openmldb.taskmanager.util
 
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import org.apache.commons.io.IOUtils
+import org.slf4j.LoggerFactory
+import java.nio.file.Paths
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 
 object VersionUtil {
 
-  def getVersion(): String = {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
+  def getTaskManagerVersion(): String = {
 
     // Read local git properties file
     val stream = this.getClass.getClassLoader.getResourceAsStream("git.properties")
@@ -43,6 +48,24 @@ object VersionUtil {
     }
 
     s"$version-$gitCommit"
+  }
+
+  def getBatchVersion(): String = {
+    val sparkJarsPath = Paths.get(TaskManagerConfig.SPARK_HOME, "jars").toString
+    val batchJarPath = BatchJobUtil.findOpenmldbBatchJar(sparkJarsPath)
+    if (batchJarPath == null) {
+      logger.error("Fail to find batch jar file and the version is unknown")
+      return "unknown"
+    }
+
+    // Use Java command to get version from jar file
+    val ps = Runtime.getRuntime.exec(Array[String]("java", "-cp", batchJarPath,
+      "com._4paradigm.openmldb.batch.utils.VersionCli"))
+    ps.waitFor
+    val inputStream = ps.getInputStream
+    val bytes = new Array[Byte](inputStream.available)
+    inputStream.read(bytes, 0, bytes.length)
+    new String(bytes)
   }
 
 }

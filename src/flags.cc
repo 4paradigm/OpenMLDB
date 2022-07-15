@@ -92,7 +92,7 @@ DEFINE_int32(put_concurrency_limit, 0, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 0, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 20000, "request timeout");
+DEFINE_int32(request_timeout_ms, 20000, "request timeout(except the requests sent to taskmanager)");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
