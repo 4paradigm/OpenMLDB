@@ -32,10 +32,11 @@ logger = logging.getLogger("OpenMLDB_sdk")
 
 
 class OpenMLDBClusterSdkOptions(object):
-    def __init__(self, zk_cluster, zk_path, session_timeout=3000):
+    def __init__(self, zk_cluster, zk_path, session_timeout=3000, spark_conf_path=""):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         self.zk_session_timeout = session_timeout
+        self.spark_conf_path = spark_conf_path
 
 
 class OpenMLDBStandaloneSdkOptions(object):
