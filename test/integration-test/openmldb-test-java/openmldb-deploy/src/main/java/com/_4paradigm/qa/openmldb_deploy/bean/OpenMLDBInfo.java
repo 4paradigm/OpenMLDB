@@ -34,6 +34,7 @@ public class OpenMLDBInfo {
     private int port;
     private String basePath;
     private String openMLDBPath;
+    private String openMLDBDirectoryName;
     private String zk_cluster;
     private String zk_root_path;
     private int nsNum;

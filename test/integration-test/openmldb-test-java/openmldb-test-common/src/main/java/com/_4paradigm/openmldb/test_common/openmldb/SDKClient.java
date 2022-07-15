@@ -30,9 +30,10 @@ public class SDKClient {
         return new SDKClient(executor);
     }
     public OpenMLDBResult execute(String sql) {
+        log.info("execute sql:{}",sql);
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        openMLDBResult.setSql(sql);
         try {
-            openMLDBResult.setSql(sql);
             boolean ok = statement.execute(sql);
             openMLDBResult.setOk(ok);
             ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);

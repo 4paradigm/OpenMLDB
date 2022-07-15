@@ -39,10 +39,14 @@ import java.sql.Statement;
 @Slf4j
 public class ClusterTest {
     protected static SqlExecutor executor;
+    protected String version;
+    protected String openMLDBPath;
     @BeforeTest()
     @Parameters({"env","version","openMLDBPath"})
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String openMLDBPath) throws Exception {
         OpenMLDBGlobalVar.env = env;
+        this.version = version;
+        this.openMLDBPath = openMLDBPath;
         if(env.equalsIgnoreCase("cluster")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);

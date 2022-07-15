@@ -4,6 +4,7 @@ import com._4paradigm.openmldb.devops_test.common.ClusterTest;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.openmldb.*;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -210,14 +211,21 @@ public class TestCluster extends ClusterTest {
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+10,10);
         //ns stop start 可以正常访问。
         openMLDBDevops.operateNs(0,"stop");
-        resetClient();
+//        resetClient();
         //ns start 可以访问。
         openMLDBDevops.operateNs(0,"start");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,0);
         //ns restart 可以访问。
         openMLDBDevops.operateNs(0,"restart");
-        resetClient();
+//        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,0);
+        // stop tablet ns 后 在重启 ns tablet 可以访问
+        openMLDBDevops.operateTablet(0,"stop");
+        openMLDBDevops.operateNs(0,"stop");
+//        resetClient();
+        openMLDBDevops.operateNs(0,"start");
+        openMLDBDevops.operateTablet(0,"start");
+        addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,10);
     }
 
     public void addDataCheck(SDKClient sdkClient, NsClient nsClient,String dbName,List<String> tableNames,int originalCount,int addCount){
@@ -229,7 +237,9 @@ public class TestCluster extends ClusterTest {
         }
         String msg = "table add data check count failed.";
         for(String tableName:tableNames){
-            sdkClient.insertList(tableName,addDataList);
+            if (CollectionUtils.isNotEmpty(addDataList)) {
+                sdkClient.insertList(tableName,addDataList);
+            }
             Assert.assertEquals(sdkClient.getTableRowCount(tableName),originalCount+addCount,msg);
         }
         nsClient.checkTableOffSet(dbName,null);
