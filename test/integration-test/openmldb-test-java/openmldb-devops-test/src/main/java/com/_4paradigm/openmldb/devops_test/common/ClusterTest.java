@@ -71,32 +71,32 @@ public class ClusterTest {
 //                    .build();
 //            OpenMLDBGlobalVar.env = "cluster";
 
-            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
-                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:30000")
-                    .zk_root_path("/openmldb")
-                    .nsNum(2).tabletNum(3)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
-                    .build();
-            OpenMLDBGlobalVar.env = "cluster";
-
 //            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
 //                    .deployType(OpenMLDBDeployType.CLUSTER)
-//                    .basePath("/home/zhaowei01/openmldb-auto-test/single")
-//                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/single/openmldb-ns-1/bin/openmldb")
-//                    .zk_cluster("172.24.4.55:30008")
+//                    .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
+//                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
+//                    .zk_cluster("172.24.4.55:30000")
 //                    .zk_root_path("/openmldb")
-//                    .nsNum(1).tabletNum(1)
-//                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30010"))
-//                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30009"))
-//                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30011"))
-//                    .taskManagerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
+//                    .nsNum(2).tabletNum(3)
+//                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
+//                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
+//                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
 //                    .build();
 //            OpenMLDBGlobalVar.env = "cluster";
+
+            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
+                    .deployType(OpenMLDBDeployType.CLUSTER)
+                    .basePath("/home/zhaowei01/openmldb-auto-test/single")
+                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/single/openmldb-ns-1/bin/openmldb")
+                    .zk_cluster("172.24.4.55:30008")
+                    .zk_root_path("/openmldb")
+                    .nsNum(1).tabletNum(1)
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30010"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30009"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30011"))
+                    .taskManagerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
+                    .build();
+            OpenMLDBGlobalVar.env = "cluster";
 
         }
         String caseEnv = System.getProperty("caseEnv");
