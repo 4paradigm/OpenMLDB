@@ -3125,7 +3125,9 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
     const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
     uint64_t start = 0;
-    uint64_t end = UINT64_MAX;
+    // end is empty means end value < 0, that there is no effective window range
+    // this happend when `ts_gen` is 0 and exclude current_time needed
+    std::optional<uint64_t> end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
     if (ts_gen >= 0) {
@@ -3133,7 +3135,11 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
                     ? 0
                     : (ts_gen + window_range.start_offset_);
         if (exclude_current_time && 0 == window_range.end_offset_) {
-            end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
+            if (ts_gen == 0) {
+                end = {};
+            } else {
+                end = ts_gen - 1;
+            }
         } else {
             end = (ts_gen + window_range.end_offset_) < 0
                       ? 0
@@ -3172,7 +3178,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
             union_segment_status[i] = IteratorStatus();
             continue;
         }
-        union_segment_iters[i]->Seek(end);
+        union_segment_iters[i]->Seek(end.value_or(0));
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
             continue;

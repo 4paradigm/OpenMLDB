@@ -18,10 +18,12 @@ cases:
         indexs:
           - idx:g:ts
         data: |
-          1,  99000, 111, 21
-          2, 100000, 111, 22
-          3, 101000, 111, 23
-          4, 100000, 114, 56
+          0,      0, 111, 0
+          1,      0, 111, 0
+          2,  99000, 111, 21
+          3, 100000, 111, 22
+          4, 101000, 111, 23
+          5, 100000, 114, 56
     sql: |
        select
           id,
@@ -58,10 +60,12 @@ cases:
         - l1 int
       order: id
       data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 0, NULL, NULL, NULL
+         0, 0, NULL, NULL, NULL
+         1, 1,  0,  0,     0
+         2, 0, NULL, NULL, 0
+         3, 1, 21, 21, 21
+         4, 2, 22, 21, 22
+         5, 0, NULL, NULL, NULL
   - id: 1
     desc: |
       ROWS window with exclude_current_row, '0 PRECEDING EXCLUDE CURRENT_ROW' actually is the same as '0 OPEN PRECEDING'
@@ -89,7 +93,6 @@ cases:
        from t1 window w as(
           partition by `g` order by `ts`
           ROWS between 2 PRECEDING and 0 preceding EXCLUDE CURRENT_ROW);
-    # batch_plan: |
     expect:
       columns:
         - id int
@@ -478,3 +481,53 @@ cases:
          4, 3, 23, 21, 23
          5, 0, NULL, NULL, NULL
          6, 1, 56, 56, 56
+  - id: 9
+    desc: |
+      ROWS Window with exclude current_row and exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 0,      114, 0
+          6, 0,      114, 99
+          7, 100000, 114, 56
+          8, 102000, 114, 52
+          9, 104000, 114, 33
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 3, 23, 21, 23
+         5, 0, NULL, NULL, NULL
+         6, 0, NULL, NULL, NULL
+         7, 2, 99, 0, 99
+         8, 3, 99, 0, 56
+         9, 3, 99, 52, 52

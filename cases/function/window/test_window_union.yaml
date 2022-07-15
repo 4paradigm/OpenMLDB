@@ -733,8 +733,11 @@ cases:
         indexs:
           - idx:g:ts
         data: |
-          1, 100, 111, 21
-          2, 100, 111, 5
+          0, 0,   111, 19
+          1, 0,   111, 18
+          2, 100, 111, 21
+          3, 100, 111, 5
+          4, 101, 111, 100
       - name: t2
         columns:
           - id int
@@ -747,6 +750,15 @@ cases:
           1,  99, 111, 233
           1, 100, 111, 200
           1, 101, 111, 17
+    # raw union window (before filter)
+    # 0, 0,   111, 19
+    # 1, 0,   111, 18
+    # 1,  99, 111, 233 (t2)
+    # 1, 100, 111, 200 (t2)
+    # 2, 100, 111, 21
+    # 3, 100, 111, 5
+    # 1, 101, 111, 17  (t2)
+    # 4, 101, 111, 100
     sql: |
        select
           id, count(val) over w as cnt,
@@ -766,8 +778,11 @@ cases:
         - l1 int
       order: id
       data: |
-        1, 2, 233, 21, 233
-        2, 2, 233, 5,  233
+        0, 1, 19,  19, NULL
+        1, 1, 18,  18, NULL
+        2, 4, 233, 18, 233
+        3, 4, 233, 5,  233
+        4, 7, 233, 5,  5
 
   - id: 18-5
     desc: |
@@ -1230,7 +1245,7 @@ cases:
         3, 2, 233, 200, 200
         4, 3, 233, 17,  17
 
-  # rows_range union  window with exclude current_row, single window
+  # rows_range union window with exclude current_row, single window
   - id: 24
     desc: |
       rows_range union window with exclude_current_row
@@ -1314,6 +1329,9 @@ cases:
           2, 100, 111, 5
           3, 101, 111, 0
           4, 102, 111, 0
+          5, 0,   114, 7
+          6, 0,   114, 8
+          7, 100, 114, 9
       - name: t2
         columns:
           - id int
@@ -1363,6 +1381,9 @@ cases:
         2, 1, 233, 233
         3, 4, 233, 5
         4, 6, 233, 0
+        5, 0, NULL, NULL
+        6, 0, NULL, NULL
+        7, 2, 8, 7
   - id: 26
     desc: |
       rows_range union window with exclude_current_row and instance_not_in_window
@@ -1647,6 +1668,10 @@ cases:
           2, 100, 111, 5
           3, 101, 111, 0
           4, 102, 111, 0
+          5, 0,   114, 9
+          6, 0,   114, 17
+          7, 100, 114, 11
+          8, 101, 114, 14
       - name: t2
         columns:
           - id int
@@ -1697,3 +1722,7 @@ cases:
         2, 1, 233, 233
         3, 2, 21,  5
         4, 2, 17,  0
+        5, 0, NULL, NULL
+        6, 0, NULL, NULL
+        7, 2, 17, 9
+        8, 2, 17, 11
