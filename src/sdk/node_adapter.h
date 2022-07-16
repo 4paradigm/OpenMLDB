@@ -45,6 +45,9 @@ class NodeAdapter {
 
     static std::shared_ptr<hybridse::node::ConstNode> StringToData(const std::string& str,
                                                                    openmldb::type::DataType data_type);
+
+    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+            std::map<std::string, std::string>* condition_map);
 };
 
 }  // namespace sdk

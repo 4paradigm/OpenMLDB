@@ -514,4 +514,33 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
     return std::shared_ptr<hybridse::node::ConstNode>();
 }
 
+hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+            std::map<std::string, std::string>* condition_map) {
+    auto op_type = expr_node->GetOp();
+    if (op_type == hybridse::node::FnOperator::kFnOpAnd) {
+        for (size_t idx = 0; idx < expr_node->GetChildNum(); idx++) {
+            auto node = dynamic_cast<const hybridse::node::BinaryExpr*>(expr_node->GetChild(idx));
+            if (node == nullptr) {
+                return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
+            }
+            auto status = ParseExprNode(node, condition_map);
+            if (!status.IsOK()) {
+                return status;
+            }
+        }
+    } else if (op_type == hybridse::node::FnOperator::kFnOpEq) {
+        if (expr_node->GetChild(0)->GetExprType() != hybridse::node::ExprType::kExprColumnRef ||
+                expr_node->GetChild(1)->GetExprType() != hybridse::node::ExprType::kExprPrimary) {
+            return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
+        }
+        auto column_node = dynamic_cast<const hybridse::node::ColumnRefNode*>(expr_node->GetChild(0));
+        auto value_node = dynamic_cast<const hybridse::node::ConstNode*>(expr_node->GetChild(1));
+        condition_map->emplace(column_node->GetColumnName(), value_node->GetAsString());
+    } else {
+        return {::hybridse::common::StatusCode::kCmdError,
+            "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+    }
+    return {};
+}
+
 }  // namespace openmldb::sdk

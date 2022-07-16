@@ -492,6 +492,24 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     }
 }
 
+TEST_F(ASTNodeConverterTest, ConvertDeleteNodeTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTDeleteStatement>());
+
+        const auto delete_stmt = statement->GetAsOrDie<zetasql::ASTDeleteStatement>();
+        node::SqlNode* delete_node = nullptr;
+        auto s = ConvertStatement(delete_stmt, &node_manager, &delete_node);
+        EXPECT_EQ(common::kOk, s.code);
+    };
+    expect_converted("delete from t1");
+    expect_converted("delete from t1 where c1 = 'aa'");
+    expect_converted("delete from t2 where c1 > 'aa' and c2 = 123");
+}
+
 TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {
     node::NodeManager node_manager;
     auto expect_converted = [&](const std::string& sql) -> void {

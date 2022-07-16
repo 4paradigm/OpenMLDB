@@ -2503,7 +2503,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             return {};
         }
         case hybridse::node::kPlanTypeDelete: {
-            *status = {::hybridse::common::StatusCode::kCmdError, "delete is not supported yet"};
+            auto plan = dynamic_cast<hybridse::node::DeletePlanNode*>(node);
+            std::string database = plan->GetDatabase().empty() ? db : plan->GetDatabase();
+            if (database.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
+                return {};
+            }
+            *status = HandleDelete(database, plan->GetTableName(), plan->GetCondition());
             return {};
         }
         default: {
@@ -2878,6 +2884,64 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
     }
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
         return {::hybridse::common::StatusCode::kCmdError, "insert row failed"};
+    }
+    return {};
+}
+
+hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, const std::string& table_name,
+        const hybridse::node::ExprNode* condition) {
+    if (db.empty() || table_name.empty()) {
+        return {::hybridse::common::StatusCode::kCmdError, "database or table is empty"};
+    }
+    if (condition == nullptr) {
+        return {::hybridse::common::StatusCode::kCmdError, "has not where condition"};
+    }
+    std::map<std::string, std::string> condition_map;
+    auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
+    auto status = NodeAdapter::ParseExprNode(binary_node, &condition_map);
+    if (!status.IsOK()) {
+        return status;
+    }
+    auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
+    if (!table_info) {
+        return {::hybridse::common::StatusCode::kCmdError, "table " + table_name + " in db " + db + " does not exist"};
+    }
+    std::string index_name;
+    std::string pk;
+    for (const auto& column_key : table_info->column_key()) {
+        if (column_key.flag() != 0) {
+            continue;
+        }
+        pk.clear();
+        bool found = true;
+        for (const auto& col : column_key.col_name()) {
+            auto iter = condition_map.find(col);
+            if (iter == condition_map.end()) {
+                found = false;
+                break;
+            }
+            if (!pk.empty()) {
+                pk.append("|");
+            }
+            pk.append(iter->second);
+        }
+        if (found) {
+            index_name = column_key.index_name();
+            break;
+        }
+    }
+    uint32_t pid = ::openmldb::base::hash64(pk) % table_info->table_partition_size();
+    auto tablet = cluster_sdk_->GetTablet(db, table_name, pk);
+    if (!tablet) {
+        return {::hybridse::common::StatusCode::kCmdError, "cannot connect tablet"};
+    }
+    auto tablet_client = tablet->GetClient();
+    if (!tablet_client) {
+        return {::hybridse::common::StatusCode::kCmdError, "tablet client is null"};
+    }
+    std::string msg;
+    if (!tablet_client->Delete(table_info->tid(), pid, pk, index_name, msg)) {
+        return {::hybridse::common::StatusCode::kCmdError, msg};
     }
     return {};
 }

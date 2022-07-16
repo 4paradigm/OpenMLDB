@@ -2596,6 +2596,9 @@ std::string DeleteTargetString(DeleteTarget target) {
         case DeleteTarget::JOB: {
             return "JOB";
         }
+        case DeleteTarget::TABLE: {
+            return "TABLE";
+        }
     }
     return "unknown";
 }

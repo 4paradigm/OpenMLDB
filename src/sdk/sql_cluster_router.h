@@ -370,6 +370,9 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
 
+    hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
+            const hybridse::node::ExprNode* condition);
+
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
                                       const std::string& select_sql);
