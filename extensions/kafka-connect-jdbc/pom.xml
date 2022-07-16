@@ -76,6 +76,10 @@
             <name>Confluent</name>
             <url>http://packages.confluent.io/maven/</url>
         </repository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -128,13 +132,13 @@
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>${openmldb-jdbc.version}</version>
+            <version>${openmldb-jdbc.version}-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
-            <version>${openmldb-jdbc.version}-allinone</version>
+            <version>${openmldb-jdbc.version}-allinone-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>
 
