@@ -945,6 +945,36 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @since 0.4.0
         )r");
+    RegisterExternal("regexp_like")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
+                udf::v1::regexp_like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as REGEXP_LIKE predicate
+
+                @param target: string to match
+
+                @param regular expression: the regular expression match pattern 
+
+                @param flags: specifies the matching behavior of the regular expression function
+        )r");
+    RegisterExternal("regexp_like")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(
+                udf::v1::regexp_like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as REGEXP_LIKE predicate
+
+                @param target: string to match
+
+                @param regular expression: the regular expression match pattern 
+                
+                @param flags: specifies the matching behavior of the regular expression function
+        )r");
     RegisterExternal("ucase")
         .args<StringRef>(
             reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::ucase)))

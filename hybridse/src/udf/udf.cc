@@ -19,6 +19,7 @@
 #include <time.h>
 #include <map>
 #include <set>
+#include <regex>
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
@@ -446,6 +447,40 @@ void ilike(StringRef *name, StringRef *pattern, StringRef *escape, bool *out, bo
 void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
     static StringRef default_esc(1, "\\");
     ilike(name, pattern, &default_esc,  out, is_null);
+}
+
+
+/*
+https://en.cppreference.com/w/cpp/regex
+https://en.cppreference.com/w/cpp/regex/basic_regex
+Constants
+Value	Effect(s)
+icase	Character matching should be performed without regard to case.
+nosubs	When performing matches, all marked sub-expressions (expr) are treated as non-marking sub-expressions (?:expr). No matches are stored in the supplied std::regex_match structure and mark_count() is zero.
+optimize	Instructs the regular expression engine to make matching faster, with the potential cost of making construction slower. For example, this might mean converting a non-deterministic FSA to a deterministic FSA.
+collate	Character ranges of the form "[a-b]" will be locale sensitive.
+multiline (C++17)	Specifies that ^ shall match the beginning of a line and $ shall match the end of a line, if the ECMAScript engine is selected.
+ECMAScript	Use the Modified ECMAScript regular expression grammar.
+basic	Use the basic POSIX regular expression grammar (grammar documentation).
+extended	Use the extended POSIX regular expression grammar (grammar documentation).
+awk	Use the regular expression grammar used by the awk utility in POSIX (grammar documentation).
+grep	Use the regular expression grammar used by the grep utility in POSIX. This is effectively the same as the basic option with the addition of newline '\n' as an alternation separator.
+egrep	Use the regular expression grammar used by the grep utility, with the -E option, in POSIX. This is effectively the same as the extended option with the addition of newline '\n' as an alternation separator in addition to '|'.
+*/
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
+    // std::string_view name_view(name->data_, name->size_);
+    // std::string_view pattern_view(pattern->data_, pattern->size_);
+    // std::string_view flags_view(flags->data_, flags->size_);
+    // todo
+    *out = std::regex_match (name->data_, std::regex(pattern->data_));
+}
+
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null) {
+    // std::string_view name_view(name->data_, name->size_);
+    // std::string_view pattern_view(pattern->data_, pattern->size_);
+    // std::string_view flags_view(flags->data_, flags->size_);
+    // todo
+    *out = std::regex_match (name->data_, std::regex(pattern->data_));
 }
 
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {
