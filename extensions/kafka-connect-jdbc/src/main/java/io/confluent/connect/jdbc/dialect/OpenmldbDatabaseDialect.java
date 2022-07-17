@@ -168,14 +168,6 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
     throw new UnsupportedOperationException("update is unsupported");
   }
 
-  @Override
-  public final String buildDeleteStatement(
-      TableId table,
-      Collection<ColumnId> keyColumns
-  ) {
-    throw new UnsupportedOperationException("delete is unsupported");
-  }
-
   // type is useless, just a placeholder
   protected Integer getSqlTypeForSchema(Schema schema) {
     return 0;

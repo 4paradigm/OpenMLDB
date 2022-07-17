@@ -178,13 +178,38 @@ public class BufferedRecords {
       // no value schema, value is a map, must convert to Struct
       if (!(record.value() instanceof HashMap)) {
         log.warn("auto schema convertToStruct only support hashmap to struct");
+        throw new SQLException("auto schema convertToStruct only support hashmap to struct");
       }
-      Object structValue = convertToStruct(valueSchema, record.value());
-      record = new SinkRecord(record.topic(), record.kafkaPartition(),
-          record.keySchema(), record.key(),
-          valueSchema, structValue,
-          record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
+      HashMap<String, Object> valueMap = (HashMap) record.value();
+      List<HashMap<String, Object>> list = (List<HashMap<String, Object>> )valueMap.get("data");
+      boolean isDelete = false;
+      if (((String)valueMap.get("type")).toLowerCase().equals("delete")) {
+        isDelete = true;
+      }
+      final List<SinkRecord> flushed = new ArrayList<>();
+      for (HashMap<String, Object> value : list) {
+        Object structValue = convertToStruct(valueSchema, value);
+        if (isDelete) {
+          HashMap<String, Object> fieldMap = (HashMap<String, Object>)structValue;
+          record = new SinkRecord(record.topic(), record.kafkaPartition(),
+                  record.keySchema(), fieldMap.get(JdbcSinkConfig.PK_FIELDS),
+                  valueSchema, null,
+                  record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
+        } else {
+          record = new SinkRecord(record.topic(), record.kafkaPartition(),
+                  record.keySchema(), record.key(),
+                  valueSchema, structValue,
+                  record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
+
+        }
+        flushed.addAll(addSingleRecord(record));
+      }
+      return flushed;
     }
+    return addSingleRecord(record);
+  }
+
+  public List<SinkRecord> addSingleRecord(SinkRecord record) throws SQLException, TableAlterOrCreateException {
 
     recordValidator.validate(record);
     final List<SinkRecord> flushed = new ArrayList<>();
