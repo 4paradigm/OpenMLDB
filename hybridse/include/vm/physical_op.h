@@ -1533,11 +1533,10 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     const bool Valid() { return true; }
     static PhysicalRequestAggUnionNode *CastFrom(PhysicalOpNode *node);
 
-    const bool instance_not_in_window() const {
-        return instance_not_in_window_;
-    }
+    const bool instance_not_in_window() const { return instance_not_in_window_; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     const bool output_request_row() const { return output_request_row_; }
+    void set_out_request_row(bool flag) { output_request_row_ = flag; }
     const RequestWindowOp &window() const { return window_; }
 
     base::Status WithNewChildren(node::NodeManager *nm,
@@ -1555,7 +1554,14 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
  private:
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
-    const bool output_request_row_;
+
+    // Exclude the request row from request union results
+    //
+    // The option is different from `output_request_row_` in `PhysicalRequestUnionNode`.
+    // Here it is only `false` when the SQL Window clause has attribute `EXCLUDE CURRENT_ROW`,
+    // whereas in `PhysicalRequestUnionNode`, it is about common column optimized and not related to
+    // `EXCLUDE CURRENT_ROW`
+    bool output_request_row_;
 
     void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
         AddProducer(request);

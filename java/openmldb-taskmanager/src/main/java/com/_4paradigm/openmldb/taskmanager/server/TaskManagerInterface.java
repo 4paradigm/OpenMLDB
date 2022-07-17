@@ -62,6 +62,6 @@ public interface TaskManagerInterface {
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetJobLog")
     TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request);
 
-    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetTaskmanagerVersion")
-    TaskManager.GetTaskmanagerVersionResponse GetTaskmanagerVersion(TaskManager.EmptyMessage request);
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetVersion")
+    TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request);
 }
