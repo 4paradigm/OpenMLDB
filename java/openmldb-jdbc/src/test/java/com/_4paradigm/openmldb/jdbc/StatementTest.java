@@ -2,6 +2,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.impl.DeletePreparedStatementImpl;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -94,6 +95,82 @@ public class StatementTest {
             ret = state.execute("drop table trans");
             Assert.assertFalse(ret);
             ret = state.execute("drop database testxx");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            try {
+                state.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void testDelete() {
+        java.sql.Statement state = router.getStatement();
+        try {
+            // execute success -> result != null -> true
+            boolean ret = state.execute("SET @@execute_mode='online';");
+            Assert.assertFalse(ret);
+            ret = state.execute("create database if not exists test");
+            Assert.assertFalse(ret);
+            ret = state.execute("use test");
+            Assert.assertFalse(ret);
+            ret = state.execute("create table t1(col1 bigint, col2 string, index(key=col2, " +
+                    "ts=col1));");
+            Assert.assertFalse(ret);
+            state.executeUpdate("insert into t1 values(1000, 'key1');");
+            state.executeUpdate("insert into t1 values(1002, 'key1');");
+            state.executeUpdate("insert into t1 values(1001, 'key2');");
+            state.executeUpdate("insert into t1 values(1003, 'key3');");
+            state.executeUpdate("insert into t1 values(1004, 'key4');");
+            state.executeUpdate("insert into t1 values(1001, 'key5');");
+            state.execute("select * from t1");
+            java.sql.ResultSet rs = state.getResultSet();
+            int cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(6, cnt);
+            String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+            state.execute(sql);
+            state.execute("select * from t1");
+            rs = state.getResultSet();
+            cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(4, cnt);
+            sql = "DELETE FROM t1 WHERE col2 = ?;";
+            java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+            p1.setString(1, "key2");
+            p1.executeUpdate();
+            state.execute("select * from t1");
+            rs = state.getResultSet();
+            cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(3, cnt);
+            p1.setString(1, "key3");
+            p1.addBatch();
+            p1.setString(1, "key4");
+            p1.addBatch();
+            p1.setString(1, "key2");
+            p1.addBatch();
+            p1.executeBatch();
+            state.execute("select * from t1");
+            rs = state.getResultSet();
+            cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+
+            ret = state.execute("drop table t1");
+            Assert.assertFalse(ret);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();

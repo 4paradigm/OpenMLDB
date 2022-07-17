@@ -179,6 +179,11 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public PreparedStatement getDeletePreparedStmt(String db, String sql) throws SQLException {
+        return new DeletePreparedStatementImpl(db, sql, this.sqlRouter);
+    }
+
+    @Override
     public PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException {
         return new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
     }
