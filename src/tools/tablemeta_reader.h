@@ -19,6 +19,9 @@
 #define SRC_TOOLS_TABLEMETA_READER_H_
 
 #include <string>
+#include <vector>
+#include <unordered_map>
+#include <filesystem>
 
 #include "sdk/sql_cluster_router.h"
 #include "sdk/db_sdk.h"
@@ -32,58 +35,61 @@ namespace tools {
 
 class TablemetaReader {
  public:
-    // TablemetaReader(std::string db_name, std::string table_name) : db_name_(db_name), table_name_(table_name) {}
+    TablemetaReader(const std::string &db_name, const std::string &table_name) : db_name_(db_name), table_name_(table_name),
+            tmp_path_(std::filesystem::temp_directory_path() / std::filesystem::current_path()) {}
 
-    virtual ~TablemetaReader() { }
+    virtual ~TablemetaReader() {}
 
     virtual bool IsClusterMode() const = 0;
 
-    void SetDBName(std::string db_name) { db_name_ = db_name; }
+    void ReadConfigYaml(const std::string &);
 
-    std::string GetDBName() { return  db_name_; }
+    virtual void ReadTableMeta() = 0;
 
-    void SetTableName(std::string table_name) { table_name_ = table_name; }
+    std::filesystem::path GetTmpPath() { return tmp_path_; }
 
-    std::string GetTableName() { return  table_name_; }
-
-    virtual void ReadTableMeta(const std::string&, const std::string&) = 0;
-
-    virtual void ReadDBRootPath(const std::string&) = 0;
+    Schema getSchema() { return schema_; }
 
  protected:
-    std::string db_root_path_;
+    virtual std::string ReadDBRootPath(const std::string&) = 0;
+
     std::string db_name_;
     std::string table_name_;
+    std::unordered_map<std::string, std::string> ns_map_;
+    std::unordered_map<std::string, std::string> tablet_map_;
     Schema schema_;
     uint32_t tid_;
+    std::filesystem::path tmp_path_; // = std::filesystem::temp_directory_path() / std::filesystem::current_path();
 };
 
-class ClusterTableMetaReader : public TablemetaReader {
+class ClusterTablemetaReader : public TablemetaReader {
  public:
-    explicit ClusterTableMetaReader(const ClusterOptions& options) : options_(options) {}
+    ClusterTablemetaReader(const std::string &db_name, const std::string &table_name, const ClusterOptions& options) :
+            TablemetaReader(db_name, table_name), options_(options) {}
 
     bool IsClusterMode() const override { return true; }
 
-    void ReadTableMeta(const std::string&, const std::string&) override;
+    void ReadTableMeta() override;
 
-    void ReadDBRootPath(const std::string&) override;
+private:
+    std::string ReadDBRootPath(const std::string&) override;
 
- private:
     ClusterOptions options_;
 };
 
 
 class StandaloneTablemetaReader : public TablemetaReader {
  public:
-    StandaloneTablemetaReader(std::string host, int port) : host_(host), port_(port) {}
+    StandaloneTablemetaReader(const std::string &db_name, const std::string &table_name, const std::string &host, int port) :
+            TablemetaReader(db_name, table_name), host_(host), port_(port) {}
 
     bool IsClusterMode() const override { return false; }
 
-    void ReadTableMeta(const std::string&, const std::string&) override;
-
-    void ReadDBRootPath(const std::string&) override;
+    void ReadTableMeta() override;
 
  private:
+    std::string ReadDBRootPath(const std::string&) override;
+
     std::string host_;
     uint32_t port_;
 };

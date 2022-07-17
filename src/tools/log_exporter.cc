@@ -16,7 +16,6 @@
 
 #include "tools/log_exporter.h"
 
-#include <gflags/gflags.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -41,14 +40,6 @@ using ::openmldb::log::NewSeqFile;
 using ::openmldb::log::Reader;
 using ::openmldb::log::SequentialFile;
 using ::openmldb::log::Status;
-
-DECLARE_string(ip);
-DECLARE_string(port);
-DECLARE_string(zk_cluster);
-DECLARE_string(zk_root_path);
-DECLARE_bool(standalone);
-DECLARE_string(db_name);
-DECLARE_string(table_name);
 
 namespace openmldb {
 namespace tools {
@@ -79,7 +70,6 @@ void Exporter::ExportTable() {
         std::string log = log_dir + ptr->d_name;
         file_path.emplace_back(log);
     }
-
     std::ofstream my_cout(table_dir_path_ + "_result.csv");
     for (int i = 0; i < schema_.size(); ++i) {
         my_cout << schema_.Get(i).name() << ",";
@@ -302,43 +292,3 @@ void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_c
 
 }  // namespace tools
 }  // namespace openmldb
-
-
-int main(int argc, char** argv) {
-    //::google::ParseCommandLineFlags(&argc, &argv, true);
-
-    ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(argv[1]);
-
-    exporter.ReadManifest();
-
-    ::openmldb::codec::Schema schema;
-    // TODO(xiaopanz): Create schema for common cases
-    // Currently only works on the data from the quickstart.
-    ::openmldb::common::ColumnDesc* col = schema.Add();
-    col->set_name("c1");
-    col->set_data_type(::openmldb::type::kString);
-    col = schema.Add();
-    col->set_name("c2");
-    col->set_data_type(::openmldb::type::kInt);
-    col = schema.Add();
-    col->set_name("c3");
-    col->set_data_type(::openmldb::type::kBigInt);
-    col = schema.Add();
-    col->set_name("c4");
-    col->set_data_type(::openmldb::type::kFloat);
-    col = schema.Add();
-    col->set_name("c5");
-    col->set_data_type(::openmldb::type::kDouble);
-    col = schema.Add();
-    col->set_name("c6");
-    col->set_data_type(::openmldb::type::kTimestamp);
-    col = schema.Add();
-    col->set_name("c7");
-    col->set_data_type(::openmldb::type::kDate);
-    exporter.SetSchema(schema);
-
-    printf("--------start ExportData--------\n");
-    exporter.ExportTable();
-    printf("--------end ExportData--------\n");
-    return 0;
-}

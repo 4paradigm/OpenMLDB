@@ -35,7 +35,7 @@ namespace tools {
 
 class Exporter {
  public:
-    explicit Exporter(std::string file_path) : table_dir_path_(file_path) {}
+    explicit Exporter(const std::string &file_path) : table_dir_path_(file_path) {}
 
     ~Exporter() {}
 
@@ -43,7 +43,7 @@ class Exporter {
 
     void ReadManifest();
 
-    void SetSchema(Schema schema) { schema_ = schema; }
+    void SetSchema(const Schema &schema) { schema_ = schema; }
 
     Schema GetSchema() { return schema_; }
 
