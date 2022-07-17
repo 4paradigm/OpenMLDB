@@ -192,7 +192,7 @@ public class BufferedRecords {
         if (isDelete) {
           HashMap<String, Object> fieldMap = (HashMap<String, Object>)structValue;
           record = new SinkRecord(record.topic(), record.kafkaPartition(),
-                  record.keySchema(), fieldMap.get(JdbcSinkConfig.PK_FIELDS),
+                  record.keySchema(), fieldMap.get(config.pkFields.get(0)),
                   valueSchema, null,
                   record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
         } else {
