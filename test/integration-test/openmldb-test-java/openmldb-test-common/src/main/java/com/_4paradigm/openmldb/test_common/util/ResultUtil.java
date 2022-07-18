@@ -7,10 +7,7 @@ import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,6 +15,27 @@ import java.util.List;
 
 @Slf4j
 public class ResultUtil {
+    public static void parseResultSet(Statement statement,OpenMLDBResult openMLDBResult){
+        try {
+            ResultSet resultSet = statement.getResultSet();
+            if (resultSet == null) {
+                openMLDBResult.setOk(false);
+                openMLDBResult.setMsg("executeSQL fail, result is null");
+            } else if  (resultSet instanceof SQLResultSet){
+                SQLResultSet rs = (SQLResultSet)resultSet;
+                ResultUtil.setSchema(rs.getMetaData(),openMLDBResult);
+                List<List<Object>> result = ResultUtil.toList(rs);
+                openMLDBResult.setCount(result.size());
+                openMLDBResult.setResult(result);
+                openMLDBResult.setMsg("success");
+                openMLDBResult.setOk(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
+        }
+    }
     public static OpenmldbDeployment parseDeployment(List<String> lines){
         OpenmldbDeployment deployment = new OpenmldbDeployment();
         List<String> inColumns = new ArrayList<>();

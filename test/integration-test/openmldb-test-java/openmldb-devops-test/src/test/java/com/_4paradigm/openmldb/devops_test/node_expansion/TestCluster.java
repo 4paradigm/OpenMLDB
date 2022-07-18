@@ -7,6 +7,7 @@ import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBDevops;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
+import com._4paradigm.qa.openmldb_deploy.util.Tool;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -90,6 +91,7 @@ public class TestCluster extends ClusterTest {
         String ip = LinuxUtil.hostnameI();
         int port = deploy.deployTablet(basePath, ip, 4, zk_cluster, null);
         String addTabletEndpoint = ip+":"+port;
+        sdkClient.checkComponentStatus(addTabletEndpoint, "online");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,0);
         // 可以创建四个副本的表，可以成功。
         String memoryTable4 = "test_memory4";
@@ -135,6 +137,7 @@ public class TestCluster extends ClusterTest {
         sdkClient.insertList(memoryTable4,dataList);
         sdkClient.insertList(ssdTable4,dataList);
         sdkClient.insertList(hddTable4,dataList);
+        Tool.sleep(5*1000);
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable4,ssdTable4,hddTable4),dataCount,0);
         // 创建表制定分片到新的tablet上，可以成功。
         String memoryTable5 = "test_memory5";
@@ -176,10 +179,13 @@ public class TestCluster extends ClusterTest {
         OpenMLDBResult memory5Result = sdkClient.execute(memoryTableDDL5);
         String addTabletMsg = "create table to new tablet failed.";
         Assert.assertTrue(memory5Result.isOk(),addTabletMsg);
+        Assert.assertTrue(sdkClient.tableIsExist(memoryTable5),addTabletMsg);
         OpenMLDBResult ssd5Result = sdkClient.execute(ssdTableDDL5);
         Assert.assertTrue(ssd5Result.isOk(),addTabletMsg);
+        Assert.assertTrue(sdkClient.tableIsExist(ssdTable5),addTabletMsg);
         OpenMLDBResult hdd5Result = sdkClient.execute(hddTableDDL5);
         Assert.assertTrue(hdd5Result.isOk(),addTabletMsg);
+        Assert.assertTrue(sdkClient.tableIsExist(hddTable5),addTabletMsg);
         // 副本迁移，迁移后，原来的数据删除，新的tablet上增加数据。
         List<String> tabletEndpoints = OpenMLDBGlobalVar.mainInfo.getTabletEndpoints();
         nsClient.migrate(dbName,memoryTable,tabletEndpoints.get(0),0,addTabletEndpoint);

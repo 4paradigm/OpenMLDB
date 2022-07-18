@@ -32,6 +32,7 @@ public class OpenMLDBResult {
     private String dbName;
     private List<String> tableNames;
     private String sql;
+    private boolean haveResult;
     private boolean ok;
     private int count;
     private String msg = "";

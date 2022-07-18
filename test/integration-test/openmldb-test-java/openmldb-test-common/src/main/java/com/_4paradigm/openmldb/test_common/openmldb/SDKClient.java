@@ -1,9 +1,11 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.bean.SQLType;
 import com._4paradigm.openmldb.test_common.chain.result.ResultChainManager;
+import com._4paradigm.openmldb.test_common.util.ResultUtil;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.openmldb.test_common.util.WaitUtil;
@@ -35,8 +37,11 @@ public class SDKClient {
         openMLDBResult.setSql(sql);
         try {
             boolean ok = statement.execute(sql);
-            openMLDBResult.setOk(ok);
-            ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
+            openMLDBResult.setHaveResult(ok);
+            if(ok){
+                ResultUtil.parseResultSet(statement,openMLDBResult);
+            }
+//            ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
         } catch (SQLException e) {
             openMLDBResult.setOk(false);
             openMLDBResult.setMsg(e.getMessage());
@@ -75,6 +80,16 @@ public class SDKClient {
     public void createDB(String dbName){
         String sql = String.format("create database %s",dbName);
         execute(sql);
+    }
+    public List<String> showTables(){
+        String sql = String.format("show tables;");
+        OpenMLDBResult openMLDBResult = execute(sql);
+        List<String> tableNames = openMLDBResult.getResult().stream().map(l -> String.valueOf(l.get(0))).collect(Collectors.toList());
+        return tableNames;
+    }
+    public boolean tableIsExist(String tableName){
+        List<String> tableNames = showTables();
+        return tableNames.contains(tableName);
     }
     public void setOnline(){
         execute("SET @@execute_mode='online';");
