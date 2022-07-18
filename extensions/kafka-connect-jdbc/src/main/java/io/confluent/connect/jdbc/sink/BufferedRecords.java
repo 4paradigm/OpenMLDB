@@ -38,14 +38,12 @@ import org.slf4j.LoggerFactory;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -206,14 +204,15 @@ public class BufferedRecords {
           record = new SinkRecord(record.topic(), record.kafkaPartition(),
                   keySchema, keyStructValue,
                   valueSchema, null,
-                  record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
+                  record.kafkaOffset(), record.timestamp(),
+                  record.timestampType(), record.headers());
         } else {
           Object structValue = convertToStruct(valueSchema, value);
           record = new SinkRecord(record.topic(), record.kafkaPartition(),
                   keySchema, keyStructValue,
                   valueSchema, structValue,
-                  record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
-
+                  record.kafkaOffset(), record.timestamp(),
+                  record.timestampType(), record.headers());
         }
         flushed.addAll(addSingleRecord(record));
       }
@@ -222,7 +221,8 @@ public class BufferedRecords {
     return addSingleRecord(record);
   }
 
-  public List<SinkRecord> addSingleRecord(SinkRecord record) throws SQLException, TableAlterOrCreateException {
+  public List<SinkRecord> addSingleRecord(SinkRecord record) throws SQLException,
+          TableAlterOrCreateException {
 
     recordValidator.validate(record);
     final List<SinkRecord> flushed = new ArrayList<>();

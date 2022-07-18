@@ -159,10 +159,12 @@ public class JdbcSinkConfig extends AbstractConfig {
           + "``insert``\n"
           + "    Use standard SQL ``INSERT`` statements.\n"
           + "``upsert``\n"
-          + "    Use the appropriate upsert semantics for the target database if it is supported by "
+          + "    Use the appropriate upsert semantics for the target database "
+          +    "if it is supported by "
           + "the connector, e.g. ``INSERT OR IGNORE``.\n"
           + "``update``\n"
-          + "    Use the appropriate update semantics for the target database if it is supported by "
+          + "    Use the appropriate update semantics for the target database "
+          +    "if it is supported by "
           + "the connector, e.g. ``UPDATE``.";
   private static final String INSERT_MODE_DISPLAY = "Insert Mode";
 
@@ -177,10 +179,12 @@ public class JdbcSinkConfig extends AbstractConfig {
           + "    Must be a trio representing the Kafka coordinates, defaults to ``"
           + StringUtils.join(DEFAULT_KAFKA_PK_NAMES, ",") + "`` if empty.\n"
           + "``record_key``\n"
-          + "    If empty, all fields from the key struct will be used, otherwise used to extract the"
+          + "    If empty, all fields from the key struct will be used, "
+          +    "otherwise used to extract the"
           + " desired fields - for primitive key only a single field name must be configured.\n"
           + "``record_value``\n"
-          + "    If empty, all fields from the value struct will be used, otherwise used to extract "
+          + "    If empty, all fields from the value struct will be used,"
+          +    " otherwise used to extract "
           + "the desired fields.";
   private static final String PK_FIELDS_DISPLAY = "Primary Key Fields";
 
@@ -564,8 +568,8 @@ public class JdbcSinkConfig extends AbstractConfig {
     autoSchema = getBoolean(AUTO_SCHEMA_CONFIG);
     if (autoSchema && autoCreate) {
       throw new ConfigException(
-          "Auto create must be false when auto schema is enabled, " +
-              "cuz we'll get schema from jdbc table");
+          "Auto create must be false when auto schema is enabled, "
+           +   "cuz we'll get schema from jdbc table");
     }
   }
 
