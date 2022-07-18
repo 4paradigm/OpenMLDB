@@ -181,6 +181,12 @@ public class BufferedRecords {
         throw new SQLException("auto schema convertToStruct only support hashmap to struct");
       }
       HashMap<String, Object> valueMap = (HashMap) record.value();
+      if (!valueMap.containsKey("data")) {
+        throw new SQLException("no data filed");
+      }
+      if (!valueMap.containsKey("type")) {
+        throw new SQLException("no type filed");
+      }
       List<HashMap<String, Object>> list = (List<HashMap<String, Object>> )valueMap.get("data");
       boolean isDelete = false;
       if (((String)valueMap.get("type")).toLowerCase().equals("delete")) {

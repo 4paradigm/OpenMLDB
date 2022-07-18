@@ -31,8 +31,8 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
-            tableName = matcher.group(1);
-            primaryKey = matcher.group(2);
+            tableName = matcher.group(1).trim();
+            primaryKey = matcher.group(2).trim();
         }
         sqlPrefix = "DELETE FROM " + tableName + " WHERE " + primaryKey + " = ";
         deleteSqlList = new ArrayList<>();
@@ -51,7 +51,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
         if (status.getCode() != 0) {
             String msg = status.getMsg();
             status.delete();
-            throw new SQLException("delete failed, " + msg);
+            throw new SQLException(msg);
         }
         status.delete();
         return 0;
