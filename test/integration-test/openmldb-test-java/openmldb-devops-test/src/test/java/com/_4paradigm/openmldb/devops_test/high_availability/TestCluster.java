@@ -219,7 +219,7 @@ public class TestCluster extends ClusterTest {
         openMLDBDevops.operateNs(0,"restart");
 //        resetClient();
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,0);
-        // stop tablet ns 后 在重启 ns tablet 可以访问
+        // stop tablet ns 后 在启动 ns tablet 可以访问
         openMLDBDevops.operateTablet(0,"stop");
         openMLDBDevops.operateNs(0,"stop");
 //        resetClient();

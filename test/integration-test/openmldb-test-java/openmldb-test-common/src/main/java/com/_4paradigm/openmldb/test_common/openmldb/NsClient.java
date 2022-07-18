@@ -121,6 +121,40 @@ public class NsClient {
         return map;
     }
 
-
+    public void migrate(String dbName,String srcEndpoint,String tableName,int pid,String desEndpoint){
+        List<String> srcEndPoint = getTableEndPoint(dbName, tableName, pid);
+        Assert.assertTrue(srcEndPoint.contains(srcEndpoint));
+        String command = String.format("migrate %s %s %s %s",srcEndpoint,tableName,pid,desEndpoint);
+        String nsCommand = genNsCommand(dbName,command);
+        List<String> lines = CommandUtil.run(nsCommand);
+        Assert.assertEquals(lines.get(0),"partition migrate ok");
+        Tool.sleep(3*1000);
+        checkOPStatusDone(dbName,tableName);
+        List<String> desEndPoint = getTableEndPoint(dbName, tableName, pid);
+        Assert.assertTrue(desEndPoint.contains(desEndPoint),"migrate check endpoint failed.");
+        checkTableOffSet(dbName,tableName);
+    }
+    public List<String> getTableEndPoint(String dbName,String tableName,int pid){
+        Map<Integer, List<String>> tableEndPointMap = getTableEndPoint(dbName, tableName);
+        return tableEndPointMap.get(pid);
+    }
+    public Map<Integer,List<String>> getTableEndPoint(String dbName,String tableName){
+        Map<Integer,List<String>> map = new HashMap<>();
+        List<String> lines = showTable(dbName,tableName);
+        Assert.assertTrue(lines.size()>2,"show table lines <= 2");
+        for(int i=2;i<lines.size();i++){
+            String line = lines.get(i);
+            String[] infos = line.split("\\s+");
+            int pid = Integer.parseInt(infos[2]);
+            String endpoint = infos[3];
+            List<String> values = map.get(pid);
+            if(values == null){
+                values = new ArrayList<>();
+            }
+            values.add(endpoint);
+            map.put(pid,values);
+        }
+        return map;
+    }
 
 }
