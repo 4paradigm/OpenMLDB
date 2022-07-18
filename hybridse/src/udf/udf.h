@@ -209,9 +209,9 @@ int32_t month(Timestamp *ts);
 int32_t year(int64_t ts);
 int32_t year(Timestamp *ts);
 
-int32_t dayofyear(int64_t ts);
-int32_t dayofyear(Timestamp *ts);
-int32_t dayofyear(Date *ts);
+void dayofyear(int64_t ts, int32_t* out, bool* is_null);
+void dayofyear(Timestamp *ts, int32_t* out, bool* is_null);
+void dayofyear(Date *ts, int32_t* out, bool* is_null);
 
 int32_t dayofmonth(int64_t ts);
 int32_t dayofmonth(Timestamp *ts);
