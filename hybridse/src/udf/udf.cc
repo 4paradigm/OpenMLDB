@@ -22,6 +22,7 @@
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
+#include "absl/time/civil_time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -70,11 +71,20 @@ bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 void trivial_fun() {}
 
-int32_t dayofyear(int64_t ts) {
+void dayofyear(int64_t ts, int32_t* out, bool* is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        *out = 0;
+        return;
+    }
+
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
-    return t.tm_yday + 1;
+
+    *out = t.tm_yday + 1;
+    *is_null = false;
 }
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -112,24 +122,27 @@ int32_t year(int64_t ts) {
     return t.tm_year + 1900;
 }
 
-int32_t dayofyear(Timestamp *ts) { return dayofyear(ts->ts_); }
-int32_t dayofyear(Date *date) {
+void dayofyear(Timestamp *ts, int32_t *out, bool *is_null) { dayofyear(ts->ts_, out, is_null); }
+void dayofyear(Date *date, int32_t* out, bool* is_null) {
     int32_t day, month, year;
     if (!Date::Decode(date->date_, &year, &month, &day)) {
-        return 0;
+        *out = 0;
+        *is_null = true;
+        return;
     }
-    try {
-        if (month <= 0 || month > 12) {
-            return 0;
-        } else if (day <= 0 || day > 31) {
-            return 0;
-        }
-        boost::gregorian::date d(year, month, day);
-        return d.day_of_year();
-    } catch (...) {
-        return 0;
+
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        // CivilTime normalize it because of invalid input
+        *out = 0;
+        *is_null = true;
+        return;
     }
+
+    *out = absl::GetYearDay(civil_day);
+    *is_null = false;
 }
+
 int32_t dayofmonth(Timestamp *ts) { return dayofmonth(ts->ts_); }
 int32_t weekofyear(Timestamp *ts) { return weekofyear(ts->ts_); }
 int32_t month(Timestamp *ts) { return month(ts->ts_); }
