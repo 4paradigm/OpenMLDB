@@ -95,11 +95,18 @@ public class BufferedRecords {
       } catch (SQLException e) {
         throw new RuntimeException(e);
       }
-      SchemaBuilder builder = SchemaBuilder.struct();
+      SchemaBuilder keyBuilder = SchemaBuilder.struct();
+      ColumnDefinition keyColDef = tableDefn.definitionForColumn(config.pkFields.get(0));
+      dbDialect.addFieldToSchema(keyColDef, keyBuilder);
+      keySchema = keyBuilder.build();
+      SchemaBuilder valueBuilder = SchemaBuilder.struct();
       for (ColumnDefinition colDefn : tableDefn.definitionsForColumns()) {
-        dbDialect.addFieldToSchema(colDefn, builder);
+        if (colDefn.id() == keyColDef.id()) {
+          continue;
+        }
+        dbDialect.addFieldToSchema(colDefn, valueBuilder);
       }
-      valueSchema = builder.build();
+      valueSchema = valueBuilder.build();
     }
   }
 
@@ -194,16 +201,16 @@ public class BufferedRecords {
       }
       final List<SinkRecord> flushed = new ArrayList<>();
       for (HashMap<String, Object> value : list) {
-        Object structValue = convertToStruct(valueSchema, value);
+        Object keyStructValue = convertToStruct(keySchema, value);
         if (isDelete) {
-          HashMap<String, Object> fieldMap = (HashMap<String, Object>)structValue;
           record = new SinkRecord(record.topic(), record.kafkaPartition(),
-                  record.keySchema(), fieldMap.get(config.pkFields.get(0)),
+                  keySchema, keyStructValue,
                   valueSchema, null,
                   record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
         } else {
+          Object structValue = convertToStruct(valueSchema, value);
           record = new SinkRecord(record.topic(), record.kafkaPartition(),
-                  record.keySchema(), record.key(),
+                  keySchema, keyStructValue,
                   valueSchema, structValue,
                   record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
 
