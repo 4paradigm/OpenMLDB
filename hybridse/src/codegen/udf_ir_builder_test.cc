@@ -99,27 +99,27 @@ void CheckUdfFail(const std::string &name, T expect, Args... args) {
     ASSERT_FALSE(function.valid());
 }
 // hex(int) normal check
-TEST_F(UdfIRBuilderTest, hex_int_udf_test) {
-    CheckUdf<StringRef, int16_t>("hex", StringRef("11"), static_cast<int16_t>(17));
-    CheckUdf<StringRef, int16_t>("hex", StringRef("0"), static_cast<int16_t>(0));
-    CheckUdf<StringRef, int32_t>("hex", StringRef("76ADF1"), static_cast<int32_t>(7777777));
-    CheckUdf<StringRef, int64_t>("hex", StringRef("8000000000000000"), LLONG_MIN);
-    CheckUdf<StringRef, int64_t>("hex", StringRef("7FFFFFFFFFFFFFFF"), LLONG_MAX);
+TEST_F(UdfIRBuilderTest, HexIntUdfTest) {
+    CheckUdf<StringRef, int16_t>("hex", "11", static_cast<int16_t>(17));
+    CheckUdf<StringRef, int16_t>("hex", "0", static_cast<int16_t>(0));
+    CheckUdf<StringRef, int32_t>("hex", "76ADF1", static_cast<int32_t>(7777777));
+    CheckUdf<StringRef, int64_t>("hex", "8000000000000000", LLONG_MIN);
+    CheckUdf<StringRef, int64_t>("hex", "7FFFFFFFFFFFFFFF", LLONG_MAX);
 }
 // hex(double) normal check
-TEST_F(UdfIRBuilderTest, hex_double_udf_test) {
-    CheckUdf<StringRef, double>("hex", StringRef("11"), 17.4);
-    CheckUdf<StringRef, double>("hex", StringRef("12"), 17.5);
-    CheckUdf<StringRef, double>("hex", StringRef("FFFFFFFFFFFFFFEE"), -17.5);
-    CheckUdf<StringRef, double>("hex", StringRef("FFFFFFFFFFFFFFEF"), -17.4);
+TEST_F(UdfIRBuilderTest, HexDoubleUdfTest) {
+    CheckUdf<StringRef, double>("hex", "11", 17.4);
+    CheckUdf<StringRef, double>("hex", "12", 17.5);
+    CheckUdf<StringRef, double>("hex", "FFFFFFFFFFFFFFEE", -17.5);
+    CheckUdf<StringRef, double>("hex", "FFFFFFFFFFFFFFEF", -17.4);
 }
 // hex(float) normal check
-TEST_F(UdfIRBuilderTest, hex_float_udf_test) {
-    CheckUdf<StringRef, float>("hex", StringRef("11"), 17.0);
+TEST_F(UdfIRBuilderTest, HexFloatUdfTest) {
+    CheckUdf<StringRef, float>("hex", "11", 17.0);
 }
 // hex(string) normal check
-TEST_F(UdfIRBuilderTest, hex_string_udf_test) {
-    CheckUdf<StringRef, StringRef>("hex", StringRef("537061726B2053514C"), StringRef("Spark SQL"));
+TEST_F(UdfIRBuilderTest, HexStringUdfTest) {
+    CheckUdf<StringRef, StringRef>("hex", "537061726B2053514C", StringRef("Spark SQL"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("hex", nullptr, nullptr);
 }
 
