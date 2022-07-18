@@ -3122,15 +3122,15 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
             if (::openmldb::base::IsExists(snapshot_dir)) {
-                PDLOG(INFO, "hardlink dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
+                PDLOG(INFO, "hardlink dir %s to %s (tid %u pid %u)", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
                 if (::openmldb::base::HardLinkDir(snapshot_dir, data_path)) {
-                    PDLOG(WARNING, "hardlink snapshot dir to data dir failed. tid %u pid %u path %s", tid, pid,
-                          snapshot_dir.c_str());
+                    PDLOG(WARNING, "hardlink snapshot dir %s to data dir failed (tid %u pid %u)", snapshot_dir.c_str(),
+                          tid, pid);
                     break;
                 }
                 snapshot_offset = manifest.offset();
             } else {
-                LOG(WARNING) << snapshot_dir << " is not exists";
+                PDLOG(WARNING, "snapshot_dir %s with tid %u pid %u not exists", snapshot_dir.c_str(), tid, pid);
             }
         }
         std::string msg;
