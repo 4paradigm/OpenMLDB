@@ -53,7 +53,7 @@ using openmldb::base::Date;
 void hex(StringRef *str, StringRef *output) {
     std::ostringstream ss;
     for (uint32_t i=0; i < str->size_; i++) {
-        ss << std::hex << std::uppercase << int(str->data_[i]);
+        ss << std::hex << std::uppercase << static_cast<int>(str->data_[i]);
     }
     output->size_ = ss.str().size();
     char *buffer = AllocManagedStringBuf(output->size_);

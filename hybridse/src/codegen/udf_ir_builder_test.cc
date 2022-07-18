@@ -99,7 +99,7 @@ void CheckUdfFail(const std::string &name, T expect, Args... args) {
     ASSERT_FALSE(function.valid());
 }
 // hex(int) normal check
-TEST_F(UdfIRBuilderTest, int64_to_hexstring_test) {
+TEST_F(UdfIRBuilderTest, hex_int_udf_test) {
     CheckUdf<StringRef, int16_t>("hex", StringRef("11"), static_cast<int16_t>(17));
     CheckUdf<StringRef, int16_t>("hex", StringRef("0"), static_cast<int16_t>(0));
     CheckUdf<StringRef, int32_t>("hex", StringRef("76ADF1"), static_cast<int32_t>(7777777));
@@ -107,18 +107,20 @@ TEST_F(UdfIRBuilderTest, int64_to_hexstring_test) {
     CheckUdf<StringRef, int64_t>("hex", StringRef("7FFFFFFFFFFFFFFF"), LLONG_MAX);
 }
 // hex(double) normal check
-TEST_F(UdfIRBuilderTest, double_to_hexstring_test) {
-    CheckUdf<StringRef, float>("hex", StringRef("11"), 17.0);
+TEST_F(UdfIRBuilderTest, hex_double_udf_test) {
     CheckUdf<StringRef, double>("hex", StringRef("11"), 17.4);
     CheckUdf<StringRef, double>("hex", StringRef("12"), 17.5);
     CheckUdf<StringRef, double>("hex", StringRef("FFFFFFFFFFFFFFEE"), -17.5);
     CheckUdf<StringRef, double>("hex", StringRef("FFFFFFFFFFFFFFEF"), -17.4);
-    CheckUdf<StringRef, double>("hex", StringRef("8000000000000000"), -9999999999999999999999999.0);
-    CheckUdf<StringRef, double>("hex", StringRef("7FFFFFFFFFFFFFFF"), 9999999999999999999999999.0);
+}
+// hex(float) normal check
+TEST_F(UdfIRBuilderTest, hex_float_udf_test) {
+    CheckUdf<StringRef, float>("hex", StringRef("11"), 17.0);
 }
 // hex(string) normal check
-TEST_F(UdfIRBuilderTest, string_to_hexstring_test) {
+TEST_F(UdfIRBuilderTest, hex_string_udf_test) {
     CheckUdf<StringRef, StringRef>("hex", StringRef("537061726B2053514C"), StringRef("Spark SQL"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("hex", nullptr, nullptr);
 }
 
 TEST_F(UdfIRBuilderTest, dayofmonth_date_udf_test) {

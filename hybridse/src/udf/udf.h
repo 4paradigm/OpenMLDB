@@ -321,18 +321,15 @@ struct ToHex {
     void operator()(V v, StringRef *output) {
         std::ostringstream ss;
         if (std::is_same<V, float>::value || std::is_same<V, double>::value) {
-            double numbuf = std::round(v);
-            if (numbuf < LLONG_MIN) ss << std::hex << std::uppercase << int64_t(LLONG_MIN);
-            else if (numbuf > LLONG_MAX) ss << std::hex << std::uppercase << int64_t(LLONG_MAX);
-            else {
-                ss << std::hex << std::uppercase << static_cast<int64_t>(numbuf);
-            }
+            int64_t numbuf = std::llround(v);
+            ss << std::hex << std::uppercase << numbuf;
         } else {
             ss << std::hex << std::uppercase << v;
         }
-        output->size_ = ss.str().size();
+        std::string hexstr = ss.str();
+        output->size_ = hexstr.size();
         char *buffer = AllocManagedStringBuf(output->size_);
-        memcpy(buffer, ss.str().data(), output->size_);
+        memcpy(buffer, hexstr.data(), output->size_);
         output->data_ = buffer;
     }
 };
