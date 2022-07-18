@@ -14,10 +14,10 @@ DROP DATABASE database_name
 
 ```sql
 CREATE DATABASE db1;
-SUCCEED
+-- SUCCEED
 
 CREATE DATABASE db2;
-SUCCEED
+-- SUCCEED
 ```
 
 查看数据库列表：
