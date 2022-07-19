@@ -38,6 +38,8 @@ public class SDKClient {
         try {
             boolean ok = statement.execute(sql);
             openMLDBResult.setHaveResult(ok);
+            openMLDBResult.setMsg("success");
+            openMLDBResult.setOk(true);
             if(ok){
                 ResultUtil.parseResultSet(statement,openMLDBResult);
             }

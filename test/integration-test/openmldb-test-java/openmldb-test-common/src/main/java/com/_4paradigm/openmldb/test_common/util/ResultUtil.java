@@ -27,8 +27,8 @@ public class ResultUtil {
                 List<List<Object>> result = ResultUtil.toList(rs);
                 openMLDBResult.setCount(result.size());
                 openMLDBResult.setResult(result);
-                openMLDBResult.setMsg("success");
-                openMLDBResult.setOk(true);
+//                openMLDBResult.setMsg("success");
+//                openMLDBResult.setOk(true);
             }
         } catch (SQLException e) {
             e.printStackTrace();
