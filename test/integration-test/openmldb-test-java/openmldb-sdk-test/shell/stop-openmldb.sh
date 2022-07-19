@@ -19,6 +19,7 @@ sh openmldb-ns-2/bin/start.sh stop nameserver
 sh openmldb-tablet-1/bin/start.sh stop tablet
 sh openmldb-tablet-2/bin/start.sh stop tablet
 sh openmldb-tablet-3/bin/start.sh stop tablet
+sh openmldb-tablet-4/bin/start.sh stop tablet
 sh openmldb-apiserver-1/bin/start.sh stop apiserver
 sh openmldb-task_manager-1/bin/start.sh stop taskmanager
 sh zookeeper-3.4.14/bin/zkServer.sh stop

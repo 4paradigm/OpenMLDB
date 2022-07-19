@@ -150,11 +150,16 @@ public class NsClient {
             String[] infos = line.split("\\s+");
             int pid = Integer.parseInt(infos[2]);
             String endpoint = infos[3];
+            String role = infos[4];
             List<String> values = map.get(pid);
             if(values == null){
                 values = new ArrayList<>();
             }
-            values.add(endpoint);
+            if(role.equals("leader")){
+                values.add(0,endpoint);
+            }else {
+                values.add(endpoint);
+            }
             map.put(pid,values);
         }
         return map;
