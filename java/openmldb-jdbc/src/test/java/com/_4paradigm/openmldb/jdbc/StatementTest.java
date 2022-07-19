@@ -147,6 +147,8 @@ public class StatementTest {
             java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
             p1.setString(1, "key2");
             p1.executeUpdate();
+            p1.setString(1, "keynoexist");
+            p1.executeUpdate();
             state.execute("select * from t1");
             rs = state.getResultSet();
             cnt = 0;

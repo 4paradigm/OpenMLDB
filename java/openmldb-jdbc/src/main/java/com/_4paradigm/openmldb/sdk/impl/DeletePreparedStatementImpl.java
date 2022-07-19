@@ -48,7 +48,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
     public int executeUpdate() throws SQLException {
         Status status = new Status();
         router.ExecuteSQL(db, deleteSql, status);
-        if (status.getCode() != 0) {
+        if (!status.IsOK()) {
             String msg = status.getMsg();
             status.delete();
             throw new SQLException(msg);
@@ -460,11 +460,12 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
         for (String sql : deleteSqlList) {
             Status status = new Status();
             router.ExecuteSQL(db, deleteSqlList.get(idx), status);
-            if (status.getCode() != 0) {
-                result[idx] = Statement.EXECUTE_FAILED;
-            } else {
+            if (status.IsOK()) {
                 result[idx] = 0;
+            } else {
+                result[idx] = EXECUTE_FAILED;
             }
+            status.delete();
         }
         clearBatch();
         return result;

@@ -838,7 +838,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     if (response.has_msg()) {
         msg = response.msg();
     }
-    if (!ok || response.code() != 0) {
+    if (!ok || (response.code() != 0 && reponse.code() != ::openmldb::base::ReturnCode::kDeleteFailed) {
         return false;
     }
     return true;
