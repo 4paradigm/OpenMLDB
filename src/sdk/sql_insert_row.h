@@ -35,30 +35,6 @@ namespace openmldb::sdk {
 
 typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>> DefaultValueMap;
 
-static inline ::hybridse::sdk::DataType ConvertType(::openmldb::type::DataType type) {
-    switch (type) {
-        case openmldb::type::kBool:
-            return ::hybridse::sdk::kTypeBool;
-        case openmldb::type::kSmallInt:
-            return ::hybridse::sdk::kTypeInt16;
-        case openmldb::type::kInt:
-            return ::hybridse::sdk::kTypeInt32;
-        case openmldb::type::kBigInt:
-            return ::hybridse::sdk::kTypeInt64;
-        case openmldb::type::kFloat:
-            return ::hybridse::sdk::kTypeFloat;
-        case openmldb::type::kDouble:
-            return ::hybridse::sdk::kTypeDouble;
-        case openmldb::type::kTimestamp:
-            return ::hybridse::sdk::kTypeTimestamp;
-        case openmldb::type::kString:
-        case openmldb::type::kVarchar:
-            return ::hybridse::sdk::kTypeString;
-        default:
-            return ::hybridse::sdk::kTypeUnknow;
-    }
-}
-
 class SQLInsertRow {
  public:
     SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
