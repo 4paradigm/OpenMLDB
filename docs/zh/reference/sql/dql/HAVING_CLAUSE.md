@@ -19,25 +19,25 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ... HAVING having_conditi
 在单机版中，所有执行模式均支持`HAVING`。集群版各[执行模式](https://openmldb.ai/docs/zh/main/tutorial/modes.html)的支持情况如下。
 | SELECT语句元素 | 状态          | 说明                                                                  |
 | :------------- | ------------- |:--------------------------------------------------------------------|
-| HAVING Clause  | 仅支持`Offline`模式，`Online`和`Request`模式均不支持| Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。|
+| HAVING Clause  | 仅支持离线模式，在线预览和在线请求模式均不支持| Having 子句与 Where 子句作用类似。Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。|
 
 ## Example
 
 ### 1. 分组后按聚合结果过滤
 
 ```SQL
->SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1 HAVING SUM(COL2) > 1000;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1 HAVING SUM(COL2) > 1000;
 ```
 
 ### 2. 两列分组后按聚合结果过滤
 
 ```sql
->SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0 HAVING SUM(COL2) > 1000;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0 HAVING SUM(COL2) > 1000;
 ```
 
 ### 3. 分组后按分组列过滤
 
 ```sql
->SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1 HAVING COL1 ='a';
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1 HAVING COL1 ='a';
 ```
 
