@@ -294,7 +294,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   python-sdk-mac:
-    runs-on: macos-latest
+    runs-on: macos-12
     if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
