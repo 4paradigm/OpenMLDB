@@ -124,10 +124,19 @@ public class NsClient {
         List<String> lines = runNs(null,command);
         Assert.assertTrue(lines.get(0).contains("ok"));
     }
-
+    public void migrate(String dbName,String tableName,String desEndpoint){
+        Map<Integer, List<String>> tableEndPointMap = getTableEndPoint(dbName, tableName);
+        for(int pid:tableEndPointMap.keySet()){
+            List<String> srcEndpointList = tableEndPointMap.get(pid);
+            if(srcEndpointList.size()<=1){
+                throw new IllegalStateException("only have leader not migrate");
+            }
+            int index = new Random().nextInt(srcEndpointList.size()-1)+1;
+            String srcEndpoint = srcEndpointList.get(index);
+            migrate(dbName,srcEndpoint,tableName,pid,desEndpoint);
+        }
+    }
     public void migrate(String dbName,String srcEndpoint,String tableName,int pid,String desEndpoint){
-        List<String> srcEndpointList = getTableEndPoint(dbName, tableName, pid);
-        Assert.assertTrue(srcEndpointList.contains(srcEndpoint));
         String command = String.format("migrate %s %s %s %s",srcEndpoint,tableName,pid,desEndpoint);
         List<String> lines = runNs(dbName,command);
         Assert.assertEquals(lines.get(0),"partition migrate ok");

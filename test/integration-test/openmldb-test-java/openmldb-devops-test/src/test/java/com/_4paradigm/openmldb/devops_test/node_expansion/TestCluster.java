@@ -188,9 +188,9 @@ public class TestCluster extends ClusterTest {
         Assert.assertTrue(sdkClient.tableIsExist(hddTable5),addTabletMsg);
         // 副本迁移，迁移后，原来的数据删除，新的tablet上增加数据。
         nsClient.confset("auto_failover","false");
-        List<String> tabletEndpoints = OpenMLDBGlobalVar.mainInfo.getTabletEndpoints();
-        nsClient.migrate(dbName,tabletEndpoints.get(1),memoryTable,0,addTabletEndpoint);
-        nsClient.migrate(dbName,tabletEndpoints.get(2),memoryTable,1,addTabletEndpoint);
+        nsClient.migrate(dbName,memoryTable,addTabletEndpoint);
+        nsClient.migrate(dbName,ssdTable,addTabletEndpoint);
+        nsClient.migrate(dbName,hddTable,addTabletEndpoint);
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount,10);
     }
 
