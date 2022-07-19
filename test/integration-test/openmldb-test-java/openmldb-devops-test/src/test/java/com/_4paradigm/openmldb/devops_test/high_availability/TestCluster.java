@@ -224,6 +224,7 @@ public class TestCluster extends ClusterTest {
         openMLDBDevops.operateNs(0,"stop");
 //        resetClient();
         openMLDBDevops.operateNs(0,"start");
+        Tool.sleep(10*1000);
         openMLDBDevops.operateTablet(0,"start");
         addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTable,ssdTable,hddTable),dataCount+20,10);
     }
