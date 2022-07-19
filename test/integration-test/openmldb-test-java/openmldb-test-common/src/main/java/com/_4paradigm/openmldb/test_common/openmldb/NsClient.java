@@ -126,15 +126,15 @@ public class NsClient {
     }
 
     public void migrate(String dbName,String srcEndpoint,String tableName,int pid,String desEndpoint){
-        List<String> srcEndPoint = getTableEndPoint(dbName, tableName, pid);
-        Assert.assertTrue(srcEndPoint.contains(srcEndpoint));
+        List<String> srcEndpointList = getTableEndPoint(dbName, tableName, pid);
+        Assert.assertTrue(srcEndpointList.contains(srcEndpoint));
         String command = String.format("migrate %s %s %s %s",srcEndpoint,tableName,pid,desEndpoint);
         List<String> lines = runNs(dbName,command);
         Assert.assertEquals(lines.get(0),"partition migrate ok");
         Tool.sleep(3*1000);
         checkOPStatusDone(dbName,tableName);
-        List<String> desEndPoint = getTableEndPoint(dbName, tableName, pid);
-        Assert.assertTrue(desEndPoint.contains(desEndPoint),"migrate check endpoint failed.");
+        List<String> desEndpointList = getTableEndPoint(dbName, tableName, pid);
+        Assert.assertTrue(desEndpointList.contains(desEndpoint),"migrate check endpoint failed.");
         checkTableOffSet(dbName,tableName);
     }
     public List<String> getTableEndPoint(String dbName,String tableName,int pid){
