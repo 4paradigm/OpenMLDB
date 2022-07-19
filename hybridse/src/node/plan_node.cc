@@ -87,7 +87,7 @@ void UnaryPlanNode::Print(std::ostream &output,
 }
 void UnaryPlanNode::PrintChildren(std::ostream &output,
                                   const std::string &tab) const {
-    PrintPlanNode(output, tab, children_[0], "", true);
+    PrintPlanNode(output, tab + INDENT, children_[0], "", true);
 }
 bool UnaryPlanNode::Equals(const PlanNode *that) const {
     return PlanNode::Equals(that);
@@ -225,6 +225,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeSet";
         case kPlanTypeDelete:
             return "kPlanTypeDelete";
+        case kPlanTypeCreateFunction:
+            return "kPlanTypeCreateFunction";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -277,18 +279,15 @@ void ProjectListNode::Print(std::ostream &output,
     PlanNode::Print(output, org_tab);
     if (nullptr == w_ptr_) {
         output << "\n";
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on table ", nullptr == this->having_condition_);
+        PrintPlanVector(output, org_tab + INDENT, projects_, "projects on table ", nullptr == this->having_condition_);
         if (nullptr != this->having_condition_) {
-            PrintSqlNode(output, org_tab + INDENT, having_condition_,
-                            "having condition: ", true);
+            PrintSqlNode(output, org_tab + INDENT, having_condition_, "having condition: ", true);
         }
     } else {
         output << "\n";
         PrintPlanNode(output, org_tab + INDENT, (w_ptr_), "", false);
         output << "\n";
-        PrintPlanVector(output, org_tab + INDENT, projects,
-                        "projects on window ", true);
+        PrintPlanVector(output, org_tab + INDENT, projects_, "projects on window ", true);
     }
 }
 
@@ -345,7 +344,7 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
         return false;
     }
     const ProjectListNode *that = dynamic_cast<const ProjectListNode *>(node);
-    if (this->projects.size() != that->projects.size()) {
+    if (this->projects_.size() != that->projects_.size()) {
         return false;
     }
 
@@ -353,17 +352,17 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
            this->has_agg_project_ == that->has_agg_project_ &&
            node::ExprEquals(this->having_condition_, that->having_condition_) &&
            node::PlanEquals(this->w_ptr_, that->w_ptr_) &&
-           PlanListEquals(this->projects, that->projects) &&
+           PlanListEquals(this->projects_, that->projects_) &&
            LeafPlanNode::Equals(node);
 }
 bool ProjectListNode::IsSimpleProjectList() {
     if (has_agg_project_) {
         return false;
     }
-    if (projects.empty()) {
+    if (projects_.empty()) {
         return false;
     }
-    for (auto item : projects) {
+    for (auto item : projects_) {
         auto expr = dynamic_cast<ProjectNode *>(item)->GetExpression();
         if (!node::ExprIsSimple(expr)) {
             return false;
@@ -528,7 +527,7 @@ void WindowPlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab, name, "window_name", true);
+    PrintValue(output, org_tab, name_, "window_name", true);
 }
 bool WindowPlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
@@ -543,12 +542,11 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
-    return this->name == that->name &&
-           this->instance_not_in_window() == that->instance_not_in_window() &&
+    return this->name_ == that->name_ && this->instance_not_in_window() == that->instance_not_in_window() &&
+           this->exclude_current_row() == this->exclude_current_row() &&
            this->exclude_current_time() == that->exclude_current_time() &&
-           SqlEquals(this->frame_node_, that->frame_node_) &&
-           this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
-           PlanListEquals(this->union_tables_, that->union_tables_) &&
+           SqlEquals(this->frame_node_, that->frame_node_) && this->orders_ == that->orders_ &&
+           this->keys_ == that->keys_ && PlanListEquals(this->union_tables_, that->union_tables_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -694,11 +692,7 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
-    output << "\n";
-    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
-    output << "\n";
-    PrintSqlVector(output, tab, distribution_list_, "distribution", false);
+    PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
     PlanNode::Print(output, tab);
@@ -727,6 +721,21 @@ void LoadDataPlanNode::Print(std::ostream &output, const std::string &org_tab) c
     PrintValue(output, tab, Options().get(), "options", false);
     output << "\n";
     PrintValue(output, tab, ConfigOptions().get(), "config_options", true);
+}
+
+void CreateFunctionPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    PlanNode::Print(output, org_tab);
+    const std::string new_tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, new_tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, new_tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, new_tab, args_type_, "args_type", false);
+    output << "\n";
+    PrintValue(output, new_tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, new_tab, Options().get(), "options", true);
 }
 
 void SelectIntoPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -768,5 +777,14 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     PrintValue(output, next_tab, GetJobId(), "job_id", true);
 }
 
+bool CmdPlanNode::Equals(const PlanNode *that) const {
+    if (!LeafPlanNode::Equals(that)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdPlanNode*>(that);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
 }  // namespace node
 }  // namespace hybridse

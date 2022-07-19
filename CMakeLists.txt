@@ -26,6 +26,11 @@ project(openmldb)
 if (CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif ()
+
+if (NOT DEFINED CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
+endif()
+
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 5)
@@ -44,12 +49,18 @@ function(get_commitid CODE_DIR COMMIT_ID)
     set("${COMMIT_ID}" ${COMMIT_ID_TMP} PARENT_SCOPE)
 endfunction()
 
+# strip the given target
+function(strip_exe TARGET_NAME)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_STRIP}
+            ARGS $<TARGET_FILE:${TARGET_NAME}>)
+endfunction()
+
 get_commitid(${PROJECT_SOURCE_DIR} OPENMLDB_COMMIT_ID)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
 )
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions('-g')
 add_definitions('-Wall')
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -80,6 +91,10 @@ option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
+# add_library can reply on this variable
+# see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
+option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
+option(TESTING_ENABLE_STRIP "Strip test binary that may help reduce storage space" OFF)
 
 message (STATUS "MAC_TABLET_ENABLE: ${MAC_TABLET_ENABLE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -87,13 +102,17 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
-if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/.deps/usr)
-endif()
+set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
-find_library(PROTOBUF_LIBRARY protobuf)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+find_package(Protobuf 3.6 EXACT REQUIRED)
+message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
+
 find_library(GLOG_LIBRARY glog)
 find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
@@ -101,22 +120,30 @@ find_library(LEVELDB_LIBRARY leveldb)
 find_library(Z_LIBRARY z)
 find_library(SNAPPY_LIBRARY snappy)
 
+find_package(RocksDB)
+if (RocksDB_FOUND)
+    set(RocksDB_LIB RocksDB::rocksdb)
+else()
+    find_library(RocksDB_LIBRARY rocksdb)
+    set(RocksDB_LIB ${RocksDB_LIBRARY})
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
-            ${CMAKE_THREAD_LIBS_INIT}
-            "-framework CoreFoundation"
-            "-framework CoreGraphics"
-            "-framework CoreData"
-            "-framework CoreText"
-            "-framework Security"
-            "-framework Foundation"
-            "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
-            "-Wl,-U,_ProfilerStart"
-            "-Wl,-U,_ProfilerStop")
-          set(BRPC_LIBS ${BRPC_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+        ${CMAKE_THREAD_LIBS_INIT}
+        "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework CoreData"
+        "-framework CoreText"
+        "-framework Security"
+        "-framework Foundation"
+        "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
+        "-Wl,-U,_ProfilerStart"
+        "-Wl,-U,_ProfilerStop")
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 endif ()
 
 if (SANITIZER_ENABLE)
@@ -154,7 +181,7 @@ set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 
-set(VM_LIBS hybridse_core hybridse_sdk hybridse_flags ${Boost_LIBRARIES})
+set(VM_LIBS hybridse_sdk hybridse_core ${Boost_LIBRARIES})
 set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -163,17 +190,12 @@ llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
-find_package(SWIG REQUIRED)
-include(UseSWIG)
 find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES
 set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$<PLATFORM_ID:Darwin>:-framework CoreFoundation>")
 
 find_package(GTest REQUIRED)
 
-#set(Protobuf_USE_STATIC_LIBS ON)
-#find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND
         ABSL_LIBS
@@ -196,7 +218,7 @@ list(
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)
-    message(STATUS "ICU package Not Found")
+    message(STATUS "ICU find_package failed, try to use `find_library()` to find")
     find_library(ICU_I18N icui18n)
     find_library(ICU_IO icuio)
     find_library(ICU_UC icuuc)
@@ -236,6 +258,7 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
 include_directories(
+  ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/hybridse/include
   ${CMAKE_BINARY_DIR}/hybridse/src
   ${LLVM_INCLUDE_DIRS}
@@ -251,9 +274,9 @@ link_directories(
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  # FIXME(aceforeverd): api_server_test & tablet_impl_test failed to run on debug mode, skip temporarily
+  # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
   SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test|tablet_impl_test"
+    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
     DEPENDENCIES ${test_list})
 endif ()
 
@@ -265,8 +288,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-add_subdirectory(monitoring)
 
 FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")

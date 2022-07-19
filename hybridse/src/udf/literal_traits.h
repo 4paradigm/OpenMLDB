@@ -27,6 +27,8 @@
 #include <vector>
 
 #include "base/fe_status.h"
+#include "base/string_ref.h"
+#include "base/type.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
@@ -34,7 +36,7 @@
 namespace hybridse {
 namespace udf {
 
-using hybridse::codec::StringRef;
+using openmldb::base::StringRef;
 using hybridse::node::ExprNode;
 
 template <typename T>
@@ -65,12 +67,21 @@ struct Nullable {
     bool is_null() const { return is_null_; }
     T* ptr() { return &data_; }
 
+    // teach gtest print values
+    friend std::ostream& operator<<(std::ostream& os, const Nullable<T>& val) {
+        if (val.is_null_) {
+            return os << "Nullable{null, type=" << DataTypeTrait<T>::to_string() << "}";
+        }
+
+        return os << "Nullable{value=" << val.data_ << ", type=" << DataTypeTrait<T>::to_string() << "}";
+    }
+
     T data_;
     bool is_null_;
 };
 template <>
 struct Nullable<StringRef> {
-    Nullable(std::nullptr_t) : data_(""), is_null_(true) {}      // NOLINT
+    Nullable(std::nullptr_t) : data_(nullptr), is_null_(true) {}      // NOLINT
     Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable(const char* buf) : data_(buf), is_null_(false) {}    // NOLINT
     Nullable() : is_null_(false) {}
@@ -78,6 +89,14 @@ struct Nullable<StringRef> {
     const StringRef& value() const { return data_; }
     bool is_null() const { return is_null_; }
     StringRef* ptr() { return &data_; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Nullable<StringRef>& val) {
+        if (val.is_null_) {
+            return os << "Nullable{null, type=StringRef}";
+        }
+
+        return os << "Nullable{value=" << val.data_.DebugString() << ", type=StringRef}";
+    }
 
     StringRef data_;
     bool is_null_;
@@ -253,27 +272,27 @@ struct DataTypeTrait<double> {
 };
 
 template <>
-struct DataTypeTrait<codec::Timestamp> {
+struct DataTypeTrait<openmldb::base::Timestamp> {
     static std::string to_string() { return "timestamp"; }
     static node::DataType to_type_enum() { return node::kTimestamp; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kTimestamp);
     }
     static node::ExprNode* to_const(node::NodeManager* nm,
-                                    const codec::Timestamp& v) {
+                                    const openmldb::base::Timestamp& v) {
         return nm->MakeConstNode(v.ts_, node::kTimestamp);
     }
     static int32_t codec_type_enum() { return hybridse::type::kTimestamp; }
-    static codec::Timestamp minimum_value() { return codec::Timestamp(0); }
-    static codec::Timestamp maximum_value() {
-        return codec::Timestamp(std::numeric_limits<int64_t>::max());
+    static openmldb::base::Timestamp minimum_value() { return openmldb::base::Timestamp(0); }
+    static openmldb::base::Timestamp maximum_value() {
+        return openmldb::base::Timestamp(std::numeric_limits<int64_t>::max());
     }
-    static codec::Timestamp zero_value() { return codec::Timestamp(0); }
-    using CCallArgType = codec::Timestamp*;
+    static openmldb::base::Timestamp zero_value() { return openmldb::base::Timestamp(0); }
+    using CCallArgType = openmldb::base::Timestamp*;
 };
 
 template <>
-struct DataTypeTrait<codec::Date> {
+struct DataTypeTrait<openmldb::base::Date> {
     static std::string to_string() { return "date"; }
     static node::DataType to_type_enum() { return node::kDate; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
@@ -281,15 +300,15 @@ struct DataTypeTrait<codec::Date> {
     }
     static int32_t codec_type_enum() { return hybridse::type::kDate; }
     static node::ExprNode* to_const(node::NodeManager* nm,
-                                    const codec::Date& v) {
+                                    const openmldb::base::Date& v) {
         return nm->MakeConstNode(v.date_, node::kDate);
     }
-    static codec::Date minimum_value() { return codec::Date(0); }
-    static codec::Date maximum_value() {
-        return codec::Date(std::numeric_limits<int32_t>::max());
+    static openmldb::base::Date minimum_value() { return openmldb::base::Date(0); }
+    static openmldb::base::Date maximum_value() {
+        return openmldb::base::Date(std::numeric_limits<int32_t>::max());
     }
-    static codec::Date zero_value() { return codec::Date(0); }
-    using CCallArgType = codec::Date*;
+    static openmldb::base::Date zero_value() { return openmldb::base::Date(0); }
+    using CCallArgType = openmldb::base::Date*;
 };
 
 template <>
@@ -398,12 +417,12 @@ struct CCallDataTypeTrait<V*> {
     using LiteralTag = Opaque<V>;
 };
 template <>
-struct CCallDataTypeTrait<codec::Timestamp*> {
-    using LiteralTag = codec::Timestamp;
+struct CCallDataTypeTrait<openmldb::base::Timestamp*> {
+    using LiteralTag = openmldb::base::Timestamp;
 };
 template <>
-struct CCallDataTypeTrait<codec::Date*> {
-    using LiteralTag = codec::Date;
+struct CCallDataTypeTrait<openmldb::base::Date*> {
+    using LiteralTag = openmldb::base::Date;
 };
 template <>
 struct CCallDataTypeTrait<codec::StringRef*> {
@@ -415,11 +434,11 @@ struct CCallDataTypeTrait<codec::ListRef<V>*> {
 };
 
 template <>
-struct CCallDataTypeTrait<codec::Timestamp> {
+struct CCallDataTypeTrait<openmldb::base::Timestamp> {
     using LiteralTag = AnyArg;
 };
 template <>
-struct CCallDataTypeTrait<codec::Date> {
+struct CCallDataTypeTrait<openmldb::base::Date> {
     using LiteralTag = AnyArg;
 };
 template <>

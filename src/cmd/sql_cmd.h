@@ -16,9 +16,6 @@
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
-#include <algorithm>
-#include <fstream>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -27,22 +24,28 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+#include "absl/strings/strip.h"
 #include "base/linenoise.h"
-#include "boost/regex.hpp"
 #include "base/texttable.h"
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
 #include "version.h"  // NOLINT
+
 DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
+DECLARE_string(cmd);
+
+// cluster mode
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
-DECLARE_string(cmd);
+DECLARE_int32(zk_session_timeout);
+DECLARE_uint32(zk_log_level);
+DECLARE_string(zk_log_file);
+
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
-DECLARE_int32(request_timeout_ms);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -56,11 +59,32 @@ const std::string LOGO =  // NOLINT
     "        |_|                                                 \n";
 
 const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
+                            std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "-" +
                             OPENMLDB_COMMIT_ID;
 
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
+
+// strip any whitespace characters begining of the last unfinished statement from `input` (string after last semicolon)
+// final SQL strings are appended into `output`
+//
+// this help handle SQL strings that has space trailing but do not expected to be a statement after semicolon
+void StripStartingSpaceOfLastStmt(absl::string_view input, std::string* output) {
+    auto last_semicolon_pos = input.find_last_of(';');
+    if (last_semicolon_pos != std::string::npos && input.back() != ';') {
+        absl::string_view last_stmt = input;
+        last_stmt.remove_prefix(last_semicolon_pos + 1);
+        while (!last_stmt.empty() && std::isspace(static_cast<unsigned char>(last_stmt.front()))) {
+            last_stmt.remove_prefix(1);
+        }
+        output->append(input.begin(), input.begin() + last_semicolon_pos + 1);
+        if (!last_stmt.empty()) {
+            output->append(last_stmt);
+        }
+    } else {
+        output->append(input);
+    }
+}
 
 void HandleSQL(const std::string& sql) {
     hybridse::sdk::Status status;
@@ -77,8 +101,7 @@ void HandleSQL(const std::string& sql) {
             } else {
                 ::hybridse::base::TextTable t('-', ' ', ' ');
                 for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
-                    std::string name = schema->GetColumnName(idx);
-                    t.add(name);
+                    t.add(schema->GetColumnName(idx));
                 }
                 t.end_of_row();
                 while (result_set->Next()) {
@@ -90,6 +113,7 @@ void HandleSQL(const std::string& sql) {
                     t.end_of_row();
                 }
                 std::cout << t;
+                std::cout << std::endl << result_set->Size() << " rows in set" << std::endl;
             }
         } else {
             if (status.msg != "ok") {
@@ -151,7 +175,10 @@ void Shell() {
                 continue;
             }
         }
-        sql.append(buffer);
+        // todo: should support multiple sql.
+        // trim space after last semicolon in sql
+        StripStartingSpaceOfLastStmt(buffer, &sql);
+
         if (sql.length() == 4 || sql.length() == 5) {
             if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
                 absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
@@ -175,26 +202,35 @@ void Shell() {
     }
 }
 
-void ClusterSQLClient() {
+bool InitClusterSDK() {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = FLAGS_zk_cluster;
     copt.zk_path = FLAGS_zk_root_path;
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
+    copt.zk_log_level = FLAGS_zk_log_level;
+    copt.zk_log_file = FLAGS_zk_log_file;
     cs = new ::openmldb::sdk::ClusterSDK(copt);
-    bool ok = cs->Init();
-    if (!ok) {
+    if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
-        return;
+        return false;
     }
     sr = new ::openmldb::sdk::SQLClusterRouter(cs);
     if (!sr->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
-        return;
+        return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+    return true;
+}
+
+void ClusterSQLClient() {
+    if (!InitClusterSDK()) {
+        return;
+    }
     Shell();
 }
 
-bool StandAloneInit() {
+bool InitStandAloneSDK() {
     // connect to nameserver
     if (FLAGS_host.empty() || FLAGS_port == 0) {
         std::cout << "ERROR: Host or port is missing" << std::endl;
@@ -216,7 +252,7 @@ bool StandAloneInit() {
 }
 
 void StandAloneSQLClient() {
-    if (!StandAloneInit()) {
+    if (!InitStandAloneSDK()) {
         return;
     }
     Shell();

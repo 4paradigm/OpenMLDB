@@ -23,7 +23,6 @@
 
 #include "base/glog_wapper.h"
 #include "base/hash.h"
-#include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"

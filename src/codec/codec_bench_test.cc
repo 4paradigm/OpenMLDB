@@ -191,12 +191,12 @@ TEST_F(CodecBenchmarkTest, Decode) {
         offset += (4 + 8 + 400);
     }
 
-    ::openmldb::api::ScanResponse response;
-    response.set_pairs(buffer, 412 * 1000);
+    auto response = std::make_shared<::openmldb::api::ScanResponse>();
+    response->set_pairs(buffer, 412 * 1000);
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::openmldb::base::KvIterator it(&response, false);
+        ::openmldb::base::ScanKvIterator it("", response);
         while (it.Valid()) {
             it.Next();
             std::string value = it.GetValue().ToString();

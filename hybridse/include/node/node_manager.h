@@ -57,8 +57,7 @@ class NodeManager {
     PlanNode *MakeMultiPlanNode(const PlanType &type);
     PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
-    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w,
-                                             const bool need_agg);
+    ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
                                        const ExprNode *condition);
 
@@ -119,16 +118,15 @@ class NodeManager {
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SqlNode *frame);
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
-                               SqlNode *frame, bool opt_open_interval_window);
-    SqlNode *MakeWindowDefNode(SqlNodeList *union_tables,
-                               ExprListNode *partitions, ExprNode *orders,
-                               SqlNode *frame, bool opt_open_interval_window,
+                               SqlNode *frame, bool exclude_current_time);
+    SqlNode *MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
+                               bool exclude_current_time, bool exclude_current_row,
                                bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);
     OrderByNode *MakeOrderByNode(const ExprListNode *order_expressions);
-    SqlNode *MakeFrameExtent(SqlNode *start, SqlNode *end);
+    FrameExtent *MakeFrameExtent(SqlNode *start, SqlNode *end);
     SqlNode *MakeFrameBound(BoundType bound_type);
     SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
     SqlNode *MakeFrameBound(BoundType bound_type, int64_t offset);
@@ -273,6 +271,9 @@ class NodeManager {
     LoadDataPlanNode *MakeLoadDataPlanNode(const std::string &file_name, const std::string &db,
                                            const std::string &table, const std::shared_ptr<OptionsMap> options,
                                            const std::shared_ptr<OptionsMap> config_option);
+    CreateFunctionPlanNode *MakeCreateFunctionPlanNode(const std::string &function_name, const TypeNode* return_type,
+                                                       const NodePointVector& args_type, bool is_aggregate,
+                                                       std::shared_ptr<OptionsMap> options);
     SelectIntoNode *MakeSelectIntoNode(const QueryNode *query, const std::string &query_str,
                                        const std::string &out_file, const std::shared_ptr<OptionsMap> options,
                                        const std::shared_ptr<OptionsMap> config_option);
@@ -306,11 +307,9 @@ class NodeManager {
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
-    CreatePlanNode *MakeCreateTablePlanNode(
-        const std::string& db_name,
-        const std::string &table_name, int replica_num, int partition_num,
-        const NodePointVector &column_list,
-        const NodePointVector &partition_meta_list);
+    CreatePlanNode *MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
+                                            const NodePointVector &column_list,
+                                            const NodePointVector &table_option_list, const bool if_not_exist);
 
     CreateProcedurePlanNode *MakeCreateProcedurePlanNode(
         const std::string &sp_name, const NodePointVector &input_parameter_list,
@@ -320,6 +319,9 @@ class NodeManager {
     SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
                                               SqlNodeList *input_parameter_list,
                                               SqlNodeList *inner_node_list);
+
+    SqlNode *MakeCreateFunctionNode(const std::string function_name, DataType return_type,
+            const std::vector<DataType>& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options);
 
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
@@ -347,6 +349,14 @@ class NodeManager {
         const std::vector<int> &arg_nullable, int variadic_pos,
         bool return_by_arg);
 
+    DynamicUdfFnDefNode *MakeDynamicUdfFnDefNode(
+        const std::string &function_name, void *function_ptr,
+        const node::TypeNode *ret_type, bool ret_nullable,
+        const std::vector<const node::TypeNode *> &arg_types,
+        const std::vector<int> &arg_nullable,
+        bool return_by_arg,
+        ExternalFnDefNode *init_node);
+
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
         const std::string &function_name);
 
@@ -369,6 +379,8 @@ class NodeManager {
                                    const std::string &endpoint);
 
     SqlNode *MakeReplicaNumNode(int num);
+
+    SqlNode *MakeStorageModeNode(StorageMode storage_mode);
 
     SqlNode *MakePartitionNumNode(int num);
 

@@ -23,6 +23,7 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
+#include "codec/row.h"
 #include "node/sql_node.h"
 
 namespace hybridse {
@@ -272,6 +273,35 @@ class SchemasContext {
     // owned schema object
     codec::Schema owned_concat_output_schema_;
 };
+
+class RowParser {
+ public:
+    using Row = codec::Row;
+
+    explicit RowParser(const SchemasContext* schema_ctx);
+    int32_t GetValue(const Row& row, const node::ColumnRefNode& col, type::Type type,
+                     void* val) const;
+    int32_t GetValue(const Row& row, const node::ColumnRefNode& col, void* val) const;
+    int32_t GetValue(const Row& row, const std::string& col, type::Type type, void* val) const;
+    int32_t GetValue(const Row& row, const std::string& col, void* val) const;
+    int32_t GetString(const Row& row, const std::string& col, std::string* val) const;
+    int32_t GetString(const Row& row, const node::ColumnRefNode& col, std::string* val) const;
+
+    type::Type GetType(const node::ColumnRefNode& col) const;
+    type::Type GetType(const std::string& col) const;
+
+    bool IsNull(const Row& row, const node::ColumnRefNode& col) const;
+    bool IsNull(const Row& row, const std::string& col) const;
+
+    const SchemasContext* schema_ctx() const {
+        return schema_ctx_;
+    }
+
+ private:
+    const SchemasContext* schema_ctx_ = nullptr;
+    std::vector<codec::RowView> row_view_list_;
+};
+
 }  // namespace vm
 }  // namespace hybridse
 

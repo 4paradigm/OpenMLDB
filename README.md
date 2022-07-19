@@ -1,5 +1,4 @@
-
-<div align=center><img src="./images/openmldb_logo.png" width="400" /></div>
+![openmldb_logo](docs/en/about/images/openmldb_logo.png)
 
 [![build status](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml/badge.svg?branch=openmldb)](https://github.com/4paradigm/openmldb/actions/workflows/cicd.yaml)
 [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/openmldb.svg)](https://hub.docker.com/r/4pdosc/openmldb)
@@ -13,109 +12,124 @@
 [![maven central](https://img.shields.io/maven-central/v/com.4paradigm.openmldb/openmldb-jdbc)](https://mvnrepository.com/artifact/com.4paradigm.openmldb/openmldb-jdbc)
 [![pypi](https://img.shields.io/pypi/v/openmldb)](https://pypi.org/project/openmldb/)
 
-**English version | [中文版](README_cn.md)**
+**English | [中文](README_cn.md)**
 
-### OpenMLDB is an open-source machine learning database that provides a full-stack FeatureOps solution for production.
+## Content
+
+1. [Our Philosophy](#1-our-philosophy)
+2. [A Feature Platform for ML Applications](#2-a-feature-platform-for-ml-applications)
+3. [Highlights](#3-highlights)
+4. [FAQ](#4-faq)
+5. [Build and Install](#5-build-and-install)
+6. [QuickStart](#6-quickstart)
+7. [Use Cases](#7-use-cases)
+8. [Documentation](#8-documentation)
+9. [Roadmap](#9-roadmap)
+10. [Contributors](#10-contributors)
+11. [Community](#11-community)
+12. [Publications](#12-publications)
+13. [The User List](#13-the-user-list)
+
+### OpenMLDB is an open-source machine learning database that provides a feature platform enabling consistent features for training and inference.
 
 ## 1. Our Philosophy
 
-In the process of artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data processing, data verification and other data related workloads. In order to tackle this problem, 1% tech giants will spend thousands of hours on building in-house data platforms to address AI engineering challenges such as online-offline consistency, data correctness, and data processing efficiency. The other 99% small and medium-sized enterprise purchase expensive SaaS tools and data governance services. 
+For the artificial intelligence (AI) engineering, 95% of the time and effort is consumed by data related workloads. In order to tackle this challenge, tech giants spend thousands of hours on building in-house data and feature platforms to address engineering issues such as data leakage, feature backfilling, and efficiency. The other small and medium-sized enterprises have to purchase expensive SaaS tools and data governance services. 
 
-OpenMLDB is an open-source machine learning database that is committed to solving the data governance challenge of AI engineering in a closed loop. OpenMLDB has been deployed in hundreds of real-world enterprise applications. OpenMLDB gives priority to open-source the capability of feature engineering using SQL, which provides a production-ready full-stack feature engineering solution (aka FeatureOps).
+OpenMLDB is an open-source machine learning database that is committed to solving the data and feature challenges. OpenMLDB has been deployed in hundreds of real-world enterprise applications. It prioritizes the capability of feature engineering using SQL for open-source, which offers a feature platform enabling consistent features for training and inference.
 
-## 2. A Full-Stack FeatureOps Solution for Production
+## 2. A Feature Platform for ML Applications
 
-MLOps provides a set of practices to develop, deploy, and maintain machine learning models in production efficiently and reliably. As a key link, FeatureOps is responsible for feature engineering, bridging the DataOps and ModelOps. A closed-loop FeatureOps solution should cover all aspects of feature engineering, including functionalities (such as feature store, feature extraction, feature serving, feature sharing) and production (such as low latency, high throughput, fault recovery, high availability, monitoring). OpenMLDB provides a full-stack FeatureOps solution for production with great ease of use, so that feature engineering development returns to its essence: focusing on the development of high-quality feature extraction scripts only and be no longer bound by engineering challenges.
+Real-time features are essential for many machine learning applications, such as real-time personalized recommendation and risk analytics. However, a feature engineering script developed by data scientists (Python scripts in most cases) cannot be directly deployed into production for online inference because it usually cannot meet the engineering requirements, such as low latency, high throughput and high availability. Therefore, a engineering team needs to be involved to refactor and optimize the source code using database or C++ to ensure its efficiency and robustness. As there are two teams and two toolchains involved for the development and deployment life cycle, the verification for consistency is essential, which usually costs a lot of time and human power. 
 
-<p align="center">
- <img src="images/workflow.png" alt="image-20211103103052253" width=800 />
-</p>
+OpenMLDB is particularly designed as a feature platform for ML applications to accomplish the mission of **Development as Deployment**, to significantly reduce the cost from the offline training to online inference. Based on OpenMLDB, there are three steps only for the entire life cycle:
 
-The figure above shows the workflow of FeatureOps based on OpenMLDB. From offline feature development to online serving, it only consists of three steps:
+- Step 1: Offline development of feature engineering script based on SQL
+- Step 2: SQL online deployment using just one command
+- Step 3: Online data source configuration to import real-time data
 
-1. The offline development of feature extraction using SQL
-2. The deployment of SQL scripts with one click only, switching the system from the offline to online mode
-3. Online feature extraction and serving by connecting with real-time data streams
+With those three steps done, the system is ready to serve real-time features, and highly optimized to achieve low latency and high throughput for production.
+
+![workflow](docs/en/about/images/workflow.png)
+
+In order to achieve the goal of Development as Deployment, OpenMLDB is designed to provide consistent features for training and inference. The figure above shows the high-level architecture of OpenMLDB, which consists of four key components: (1) SQL as the unified programming language; (2) The real-time SQL engine for for extra-low latency services; (3) The batch SQL engine based on [a tailored Spark distribution](https://github.com/4paradigm/spark); (4) The unified execution plan generator to bridge the batch and real-time SQL engines to guarantee the consistency.
 
 ## 3. Highlights
 
-**The Unified Online-Offline Execution Engine:** Offline and real-time online feature extraction use a unified execution engine, thus online-offline consistency is inherently guaranteed.
+**Consistent Features for Training and Inference:** Based on the unified execution plan generator, correct and consistent features are produced for offline training and online inference, providing hassle-free time travel without data leakage.
 
-**SQL-Centric Development and Management**: Feature extraction script development, deployment, and maintenance are all based on SQL with great ease of use.
+**Real-Time Features with Ultra-Low Latency**: The real-time SQL engine is built from scratch and particularly optimized for time series data. It can achieve the response time of a few milliseconds only to produce real-time features, which significantly outperforms other commercial in-memory database systems (Figures 9 & 10, [the VLDB 2021 paper](http://vldb.org/pvldb/vol14/p799-chen.pdf)).
 
-**Customized Optimization for Feature Extraction**: Offline feature extraction is performed based on [a tailored Spark version](https://github.com/4paradigm/spark) that is particularly optimized for batch-based feature processing. Online feature extraction provides tens of milliseconds latency under high throughput pressure, which fully meets the online performance requirements.
+**Define Features as SQL**: SQL is used as the unified programming language to define and manage features. SQL is further enhanced for feature engineering, such as the extended syntax `LAST JOIN` and `WINDOW UNION`.
 
-**Production-Ready**: OpenMLDB has been implementing important production features for large-scale applications, including fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
+**Production-Ready for ML Applications**: Production features are seamlessly integrated to support enterprise-grade ML applications, including distributed storage and computing, fault recovery, high availability, seamless scale-out, smooth upgrade, monitoring, heterogeneous memory support, and so on.
 
 ## 4. FAQ
 
 1. **What are use cases of OpenMLDB?**
    
-   At present, it is mainly positioned as a full-stack FeatureOps solution for machine learning applications. Its pipeline consists of offline and online feature extraction, feature storage, feature serving, feature sharing, and so on. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
+   At present, it is mainly positioned as a feature platform for ML applications, with the strength of low-latency real-time features. It provides the capability of Development as Deployment to significantly reduce the cost for machine learning applications. On the other hand, OpenMLDB contains an efficient and fully functional time-series database, which is used in finance, IoT and other fields.
    
 2. **How does OpenMLDB evolve?**
    
-   OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). In 2021, the core team has abstracted, enhanced and developed community-friendly features based on the commercial product; and then makes it publicly available as an open-source project to benefit more enterprises to achieve successful digital transformations at low cost. Before OpenMLDB was open-source, it had been successfully deployed in hundreds of real-world applications together with 4Paradigm's other commercial products.
+   OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). In 2021, the core team has abstracted, enhanced and developed community-friendly features based on the commercial product; and then makes it publicly available as an open-source project to benefit more enterprises to achieve successful digital transformations at low cost. Before the open-source, it had been successfully deployed in hundreds of real-world ML applications together with 4Paradigm's other commercial products.
    
 3. **Is OpenMLDB a feature store?**
    
-   OpenMLDB covers all the functions of a feature store, but provides a more complete full-stack FeatureOps solution, which includes feature store, development using SQL, [a tailored Spark distribution](https://github.com/4paradigm/spark) for offline feature extraction, highly optimized indexing for real-time online feature extraction, feature serving, and other production features (such as monitoring, high-availability, fault recovery and so on). Furthermore, OpenMLDB is also used as a high performance time-series database besides FeatureOps. 
+   OpenMLDB is more than a feature store to provide features for ML applications. OpenMLDB is capable of producing real-time features in a few milliseconds. Nowadays, most feature stores in the market serve online features by syncing features pre-computed at offline. But they are unable to produce low latency real-time features. By comparison, OpenMLDB is taking advantage of its optimized online SQL engine, to efficiently produce real-time features in a few milliseconds.
    
-4. **Why does OpenMLDB choose SQL as the programming language for users?**
+4. **Why does OpenMLDB choose SQL to define and manage features?**
    
-   SQL has the elegant syntax but yet powerful expression ability. SQL based programming experience flattens the learning curve of using OpenMLDB, and further makes it easier for collaboration and sharing. In addition, based on the experience of developing and deploying hundreds of real-world applications using OpenMLDB, it shows that SQL has complete functions in the expression of feature extraction and has withstood the test of practice for a long time.
+   SQL (with extension) has the elegant syntax but yet powerful expression ability. SQL based programming experience flattens the learning curve of using OpenMLDB, and further makes it easier for collaboration and sharing.
 
-## 5. Build & Install
+## 5. Build and Install
 
-:point_right: [Read more](docs/en/compile.md)
+:point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
 
 ## 6. QuickStart
 
 **Cluster and Standalone Versions**
 
-OpenMLDB has introduced two deployment versions, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications, which provides the scalability and high-availability. On the other hand, the lightweight standalone version running on a single node is ideal for small businesses and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://docs.openmldb.ai/v/0.4/content-2/standalone_vs_cluster)  for details. 
+OpenMLDB has two versions with different deployment options, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications and ready for production. On the other hand, the lightweight standalone version running on a single node is ideal for evaluation and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/en/main/tutorial/standalone_vs_cluster.html)  for details. 
 
 **Getting Started with OpenMLDB**
 
-:point_right: [OpenMLDB QuickStart](https://docs.openmldb.ai/v/0.4/content-1/openmldb_quickstart)
+:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/en/main/quickstart/openmldb_quickstart.html)
 
 ## 7. Use Cases
 
-We are making efforts to build a list of real-world use cases based on OpenMLDB to demonstrate how it can fit into your business. Please stay tuned.
+We are building a list of real-world use cases based on OpenMLDB to demonstrate how it can fit into your business. 
 
-| Application                                                  | Tools              | Brief Introduction                                           |
-| ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| [New York City Taxi Trip Duration](https://docs.openmldb.ai/use_case/taxi_tour_duration_prediction) | OpenMLDB, LightGBM | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| Use Cases                                                    | Tools                                                        | Brief Introduction                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [New York City Taxi Trip Duration](https://openmldb.ai/docs/en/main/use_case/lightgbm_demo.html) | OpenMLDB, LightGBM                                           | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
+| [Importing real-time data streams from Pulsar](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://pulsar.apache.org/docs/next/io-connectors/#jdbc-openmldb) | Apache Pulsar is a cloud-native streaming platform. Based on the OpenMLDB-Kafka connector , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| [Importing real-time data streams from Kafka](https://openmldb.ai/docs/en/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka is a distributed event streaming platform. With the OpenMLDB-Kafka connector, the real-time data streams can be imported from Kafka as the online data sources for OpenMLDB. |
+| [Building an end-to-end ML pipeline in DolphinScheduler](https://openmldb.ai/docs/en/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | We demonstrate to build an end-to-end machine learning pipeline based on OpenMLDB and DolphinScheduler (an open-source workflow scheduler platform). It consists of feature engineering, model training, and deployment. |
 
 ## 8. Documentation
 
-We have released the Chinese version of the full documentation, you can find it here:
-
-- The main site: [https://docs.openmldb.ai/](https://docs.openmldb.ai/)
-- The mirror site in China: [http://docs-cn.openmldb.ai/](http://docs-cn.openmldb.ai/)
-
-We are working on the English documentation, and it will be released very soon.
+- Chinese documentations: [https://openmldb.ai/docs/zh](https://openmldb.ai/docs/zh/)
+- English documentations: [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 
 ## 9. Roadmap
 
-| Version | Est. release date | Highlight features                                           |
-| ------- | ----------------- | ------------------------------------------------------------ |
-| 0.5.0   | 2022 Q1           | - Monitoring APIs and tools for online serving <br />- Efficient queries over a fairly long period of time by window functions <br />- Kafka/Pulsar connector support for online data sources <br />- The online storage engine supports external storage devices. |
+Please refer to our [public Roadmap page](https://github.com/4paradigm/OpenMLDB/projects/10).
 
 Furthermore, there are a few important features on the development roadmap but have not been scheduled yet. We appreciate any feedbacks on those features.
 
 - A cloud-native OpenMLDB
-- Adaptors to open-source machine learning lifecycle management platforms, such as MLflow and Airflow
-- Fast recovery based on Intel® Optane™ Persistent Memory
 - Automatic feature extraction
-- Lightweight OpenMLDB for edge computing
+- Optimization based on heterogeneous storage and computing resources
+- A lightweight OpenMLDB for edge computing
 
 ## 10. Contributors
 
 We really appreciate the contribution from our community.
 
 - If you are interested to contribute, please read our [Contribution Guideline](CONTRIBUTING.md) for more details. 
-- If you are a new contributor, you may get start with [the list of good-first-issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+- If you are a new contributor, you may get start with [the list of issues labeled with `good first issue`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+- If you have experience of OpenMLDB development, or want to tackle a challenge that may take 1-2 weeks, you may find [the list of issues labeled with `call-for-contributions`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions).
 
 Let's clap hands for our community contributors :clap:
 
@@ -125,27 +139,29 @@ Let's clap hands for our community contributors :clap:
 
 ## 11. Community
 
-- **Website**: [https://openmldb.ai/](https://openmldb.ai) (coming soon)
+- Website: [https://openmldb.ai/en](https://openmldb.ai/en)
 
-- **Email**: [contact@openmldb.ai](mailto:contact@openmldb.ai)
+- Email: [contact@openmldb.ai](mailto:contact@openmldb.ai)
 
-- **[Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)** 
+- [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg) 
 
-- **[GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)** and **[GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)**: If you are a serious developer, you are most welcome to join our discussion on GitHub. The GitHub Issues is used to report bugs and collect new requirements. The GitHub Discussions is mostly used by our project maintainers to publish and comment RFCs.
+- [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues) and [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions): The GitHub Issues is used to report bugs and collect new feature requirements. The GitHub Discussions is open to any discussions related to OpenMLDB.
 
-- [**Blogs (Chinese)**](https://www.zhihu.com/column/c_1417199590352916480)
+- [Blogs (English)](https://openmldb.medium.com/)
 
-- **WeChat Groups (Chinese)**:
+- [Blogs (Chinese)](https://www.zhihu.com/column/c_1417199590352916480)
 
-  <img src="images/wechat.png" alt="img" width=120 />  
+- Public drives maintained by the PMC: [English](https://drive.google.com/drive/folders/1T5myyLVe--I9b77Vg0Y8VCYH29DRujUL) |  [中文](https://openmldb.feishu.cn/wiki/space/7101318128021307396)
 
-## 12. Publications & Blogs
+- [Mailing list for developers](https://groups.google.com/g/openmldb-developers)
+
+- WeChat Groups (Chinese):
+
+  ![wechat](docs/en/about/images/wechat.png)  
+
+## 12. Publications
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
-- [In-Depth Interpretation of the Latest VLDB 2021 Paper: Artificial Intelligence Driven Real-Time Decision System Database and Optimization Based on Persistent Memory](https://medium.com/@fengxindai0/in-depth-interpretation-of-the-latest-vldb-2021-paper-artificial-intelligence-driven-real-time-f2a818bcf2b2)
-- [Predictive maintenance — 5 minutes demo of an end to end machine learning project](https://towardsdatascience.com/predictive-maintenance-5minutes-demo-of-an-end-to-end-machine-learning-project-60941f1c9793)
-- [Compared to Native Spark 3.0, We Have Achieved Significant Optimization Effects in the AI Application Field](https://towardsdatascience.com/we-have-achieved-significant-optimization-effects-in-the-ai-application-field-compared-to-native-2a055e47250f)
-- [MLOp Practice: Using OpenMLDB in the Real-Time Anti-Fraud Model for the Bank’s Online Transaction](https://towardsdatascience.com/practice-of-openmldbs-transaction-real-time-anti-fraud-model-in-the-bank-s-online-event-40ab41fec6d4)
 
 ## 13. [The User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 

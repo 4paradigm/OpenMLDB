@@ -64,8 +64,7 @@ struct TestString {
 };
 
 void AssertStrEq(std::string exp, int8_t* ptr) {
-    ::hybridse::codec::StringRef* ts =
-        reinterpret_cast<::hybridse::codec::StringRef*>(ptr);
+    openmldb::base::StringRef* ts = reinterpret_cast<openmldb::base::StringRef*>(ptr);
     ASSERT_EQ(exp.size(), ts->size_);
     std::string str(ts->data_, ts->size_);
     ASSERT_EQ(str, exp);
@@ -579,7 +578,7 @@ TEST_F(ListIRBuilderTest, ListTimestampIteratorSumTest) {
     std::vector<Row> rows;
     type::TableDef table;
     BuildWindow(table, rows, &window.list);
-    codec::Timestamp ts(1590115420000L + 1590115430000 + 1590115440000 +
+    openmldb::base::Timestamp ts(1590115420000L + 1590115430000 + 1590115440000 +
                         1590115450000 + 1590115460000);
     RunListIteratorSumCase(ts, table, "std_ts", window);
     free(window.list);
@@ -635,7 +634,7 @@ TEST_F(ListIRBuilderTest, ListTimestampIteratorNextTest) {
     std::vector<Row> rows;
     type::TableDef table;
     BuildWindow(table, rows, &window.list);
-    codec::Timestamp ts(1590115420000L);
+    openmldb::base::Timestamp ts(1590115420000L);
     RunListIteratorNextCase(ts, table, "std_ts", window);
     free(window.list);
 }
@@ -644,7 +643,7 @@ TEST_F(ListIRBuilderTest, ListStringIteratorNextTest) {
     std::vector<Row> rows;
     type::TableDef table;
     BuildWindow(table, rows, &window.list);
-    codec::StringRef str(strlen("1"), strdup("1"));
+    openmldb::base::StringRef str(strlen("1"), strdup("1"));
     RunListIteratorNextCase(str, table, "col6", window);
     free(window.list);
 }

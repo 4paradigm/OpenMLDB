@@ -32,7 +32,7 @@
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
 
 ::openmldb::sdk::MiniCluster* mc;
@@ -48,7 +48,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     table_info.set_name(name);
     table_info.set_db(db);
     table_info.set_partition_num(1);
-    RtiDBSchema* schema = table_info.mutable_column_desc();
+    PBSchema* schema = table_info.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::openmldb::type::kVarchar);
@@ -70,7 +70,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     key1->set_index_name("index0");
     key1->add_col_name("col1");
     key1->set_ts_name("col2");
-    ok = ns_client->CreateTable(table_info, error);
+    ok = ns_client->CreateTable(table_info, false, error);
 
     ::hybridse::vm::Schema fe_schema;
     ::openmldb::schema::SchemaAdapter::ConvertSchema(table_info.column_desc(), &fe_schema);
@@ -97,7 +97,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     uint32_t tid = sdk.GetTableId(db, name);
     {
         for (int32_t i = 0; i < 1000; i++) {
-            ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value, 1);
+            ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value);
         }
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";

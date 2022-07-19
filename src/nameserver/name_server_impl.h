@@ -38,6 +38,7 @@
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
+#include "sdk/sql_cluster_router.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
 
@@ -100,6 +101,7 @@ struct OPData {
 };
 
 struct ZkPath {
+    std::string zk_cluster_;
     std::string root_path_;
     std::string db_path_;
     std::string table_index_node_;
@@ -114,10 +116,9 @@ struct ZkPath {
     std::string op_index_node_;
     std::string op_data_path_;
     std::string op_sync_path_;
+    std::string globalvar_changed_notify_node_;
+    std::string external_function_path_;
 };
-
-class NameServerImplTest;
-class NameServerImplRemoteTest;
 
 class NameServerImpl : public NameServer {
     // used for ut
@@ -184,6 +185,15 @@ class NameServerImpl : public NameServer {
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request, ShowTableResponse* response,
                    Closure* done);
+
+    void CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                        CreateFunctionResponse* response, Closure* done);
+
+    void DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                        DropFunctionResponse* response, Closure* done);
+
+    void ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                        ShowFunctionResponse* response, Closure* done);
 
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
@@ -353,9 +363,17 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
-    base::Status CreateSystemTable(const std::string& table_name, SystemTableType table_type);
-
  private:
+    base::Status InitGlobalVarTable();
+
+    // create the database if not exists, exit on fail
+    void CreateDatabaseOrExit(const std::string& db_name);
+
+    // create table if not exists, exit on fail
+    void CreateSystemTableOrExit(SystemTableType type);
+
+    base::Status CreateSystemTable(SystemTableType table_type);
+
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
     // 2.recover table status from all tablets
@@ -465,7 +483,8 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                               ::openmldb::api::OPType op_type, const std::string& name, uint32_t tid,
-                                              uint32_t pid, uint32_t seg_cnt, bool is_leader);
+                                              uint32_t pid, uint32_t seg_cnt, bool is_leader,
+                                              ::openmldb::common::StorageMode storage_mode);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
@@ -655,7 +674,8 @@ class NameServerImpl : public NameServer {
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
                           uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
-    void NotifyTableChanged();
+    // kTable for normal table and kGlobalVar for global var table
+    void NotifyTableChanged(::openmldb::type::NotifyType type);
     void DeleteDoneOP();
     void UpdateTableStatus();
     int DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info);
@@ -746,11 +766,24 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
 
+    std::vector<std::shared_ptr<TabletInfo>> GetAllHealthTablet();
+
     bool AllocateTableId(uint32_t* id);
 
-    base::Status CreateDatabase(const std::string& db_name);
+    base::Status CreateDatabase(const std::string& db_name, bool if_not_exists = false);
 
     uint64_t GetTerm() const;
+
+    // write deploy statistics into table
+    void SyncDeployStats();
+
+    void ScheduleSyncDeployStats();
+
+    bool GetSdkConnection();
+
+    void FreeSdkConnection();
+
+    bool RecoverExternalFunction();
 
  private:
     std::mutex mu_;
@@ -767,7 +800,7 @@ class NameServerImpl : public NameServer {
     uint32_t table_index_ = 0;
     uint64_t term_ = 0;
     uint64_t op_index_;
-    std::atomic<bool> running_;
+    std::atomic<bool> running_;  // whether the current ns is the master
     std::list<std::shared_ptr<OPData>> done_op_list_;
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
@@ -783,6 +816,7 @@ class NameServerImpl : public NameServer {
     std::map<std::string, std::string> real_ep_map_;
     std::map<std::string, std::string> remote_real_ep_map_;
     std::map<std::string, std::string> sdk_endpoint_map_;
+    std::map<std::string, std::shared_ptr<::openmldb::common::ExternalFun>> external_fun_;
     // database
     //    -> procedure
     //       -> (db_name, table_name)
@@ -796,6 +830,9 @@ class NameServerImpl : public NameServer {
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
     ::openmldb::type::StartupMode startup_mode_;
+
+    // sr_ could be a real instance or nothing, remember always use atomic_* function to access it
+    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
 };
 
 }  // namespace nameserver

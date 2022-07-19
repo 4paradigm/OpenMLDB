@@ -16,23 +16,19 @@
 
 package com._4paradigm.openmldb.batchjob
 
-import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil
 import org.apache.spark.sql.SparkSession
 
 object ImportOnlineData {
 
   def main(args: Array[String]): Unit = {
-    if (args.length < 1) {
-      throw new Exception(s"Require args: sql but get args: ${args.mkString(",")}")
-    }
-
+    OpenmldbJobUtil.checkOneSqlArgument(args)
     importOnlineData(args(0))
   }
 
-  def importOnlineData(sql: String): Unit = {
-    val sess = new OpenmldbSession(SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate())
-    sess.sql(sql)
-    sess.close()
+  def importOnlineData(sqlFilePath: String): Unit = {
+    val spark = SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate()
+    OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
   }
 
 }

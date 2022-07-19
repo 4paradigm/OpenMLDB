@@ -18,6 +18,7 @@
 
 #include <set>
 
+#include "absl/container/flat_hash_map.h"
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -26,6 +27,54 @@ namespace vm {
 using hybridse::base::Status;
 
 const char INDENT[] = "  ";
+
+static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTypeNamesMap() {
+    absl::flat_hash_map<PhysicalOpType, absl::string_view> map = {
+        {kPhysicalOpDataProvider, "DATA_PROVIDER"},
+        {kPhysicalOpGroupBy, "GROUP_BY"},
+        {kPhysicalOpSortBy, "SORT_BY"},
+        {kPhysicalOpFilter, "FILTER_BY"},
+        {kPhysicalOpProject, "PROJECT"},
+        {kPhysicalOpSimpleProject, "SIMPLE_PROJECT"},
+        {kPhysicalOpConstProject, "CONST_PROJECT"},
+        {kPhysicalOpAggregate, "AGGREGATE"},
+        {kPhysicalOpLimit, "LIMIT"},
+        {kPhysicalOpRename, "RENAME"},
+        {kPhysicalOpDistinct, "DISTINCT"},
+        {kPhysicalOpWindow, "WINDOW"},
+        {kPhysicalOpJoin, "JOIN"},
+        {kPhysicalOpUnion, "UNION"},
+        {kPhysicalOpPostRequestUnion, "POST_REQUEST_UNION"},
+        {kPhysicalOpRequestUnion, "REQUEST_UNION"},
+        {kPhysicalOpRequestAggUnion, "REQUEST_AGG_UNION"},
+        {kPhysicalOpRequestJoin, "REQUEST_JOIN"},
+        {kPhysicalOpIndexSeek, "INDEX_SEEK"},
+        {kPhysicalOpLoadData, "LOAD_DATA"},
+        {kPhysicalOpDelete, "DELETE"},
+        {kPhysicalOpSelectInto, "SELECT_INTO"},
+        {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
+        {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
+        {kPhysicalOpInsert, "INSERT"},
+    };
+    for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
+        DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());
+    }
+    return map;
+}
+
+static const absl::flat_hash_map<PhysicalOpType, absl::string_view>& GetPhysicalOpNamesMap() {
+  static const absl::flat_hash_map<PhysicalOpType, std::string_view>& map = *new auto(CreatePhysicalOpTypeNamesMap());
+  return map;
+}
+
+absl::string_view PhysicalOpTypeName(PhysicalOpType type) {
+    auto& map = GetPhysicalOpNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return it->second;
+    }
+    return "UNKNOWN";
+}
 
 void printOptionsMap(std::ostream &output, const node::OptionsMap* value, const std::string_view item_name) {
     output << ", " << item_name << "=";
@@ -273,17 +322,13 @@ Status PhysicalConstProjectNode::WithNewChildren(node::NodeManager* nm, const st
 }
 
 Status PhysicalConstProjectNode::InitSchema(PhysicalPlanContext* ctx) {
-    SchemasContext empty_ctx;
-    CHECK_STATUS(ctx->InitFnDef(project_, &empty_ctx, true, &project_),
+    CHECK_STATUS(ctx->InitFnDef(project_, &empty_schemas_ctx_, true, &project_),
                  "Fail to initialize function def of const project node");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
     SchemaSource* project_source = schemas_ctx_.AddSource();
 
-    SchemasContext empty_schemas_ctx;
-    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx, ctx, project_source));
-    CHECK_STATUS(ctx->InitFnDef(project_, &schemas_ctx_, true, &project_),
-                 "Fail to initialize function def of const project node");
+    CHECK_STATUS(InitProjectSchemaSource(project_, &empty_schemas_ctx_, ctx, project_source));
     return Status::OK();
 }
 
@@ -384,7 +429,7 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
             ConditionFilter new_having_condition;
             {
                 auto& having_condition =
-                    dynamic_cast<PhysicalAggrerationNode*>(this)->having_condition_;
+                    dynamic_cast<PhysicalAggregationNode*>(this)->having_condition_;
                 std::vector<const node::ExprNode*> having_condition_depend_columns;
                 having_condition.ResolvedRelatedColumns(&having_condition_depend_columns);
                 passes::ExprReplacer having_replacer;
@@ -395,7 +440,8 @@ Status PhysicalProjectNode::WithNewChildren(node::NodeManager* nm, const std::ve
                 CHECK_STATUS(having_condition.ReplaceExpr(having_replacer, nm, &new_having_condition));
             }
 
-            op = new PhysicalAggrerationNode(children[0], new_projects, new_having_condition.condition());
+            auto* agg_prj = new PhysicalAggregationNode(children[0], new_projects, new_having_condition.condition());
+            op = agg_prj;
             break;
         }
         case kGroupAggregation: {
@@ -516,7 +562,7 @@ PhysicalWindowAggrerationNode* PhysicalWindowAggrerationNode::CastFrom(PhysicalO
 }
 
 
-void PhysicalAggrerationNode::Print(std::ostream& output,
+void PhysicalAggregationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
@@ -530,6 +576,44 @@ void PhysicalAggrerationNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
+Status PhysicalReduceAggregationNode::InitSchema(PhysicalPlanContext* ctx) {
+    // init reduce project schema
+    schemas_ctx_.Clear();
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    SchemaSource* project_source = schemas_ctx_.AddSource();
+    project_source->SetSchema(orig_aggr_->GetOutputSchema());
+    for (size_t i = 0; i < project_.size(); i++) {
+        auto column_id = ctx->GetNewColumnID();
+        project_source->SetColumnID(i, column_id);
+        project_source->SetNonSource(i);
+    }
+    return Status();
+}
+
+void PhysicalReduceAggregationNode::Print(std::ostream& output,
+                                          const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(type=" << ProjectTypeName(project_type_);
+    output << ": ";
+    for (size_t i = 0; i < project_.size(); i++) {
+        output << project_.GetExpr(i)->GetExprString();
+        if (project_.GetFrame(i)) {
+            output << " (" << project_.GetFrame(i)->GetExprString() << ")";
+        }
+        if (i < project_.size() - 1) output << ", ";
+    }
+    if (having_condition_.ValidCondition()) {
+        output << ", having_" << having_condition_.ToString();
+    }
+    if (limit_cnt_ > 0) {
+        output << ", limit=" << limit_cnt_;
+    }
+    output << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
 void PhysicalGroupAggrerationNode::Print(std::ostream& output,
                                          const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -652,6 +736,9 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::strin
     output << "(type=" << ProjectTypeName(project_type_);
     if (exclude_current_time_) {
         output << ", EXCLUDE_CURRENT_TIME";
+    }
+    if (exclude_current_row_) {
+        output << ", EXCLUDE_CURRENT_ROW";
     }
     if (instance_not_in_window_) {
         output << ", INSTANCE_NOT_IN_WINDOW";
@@ -1112,6 +1199,7 @@ Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const st
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
                                                      exclude_current_time_, output_request_row_);
+    new_union_op->exclude_current_row_ = exclude_current_row_;
 
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
@@ -1140,6 +1228,12 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     }
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    if (exclude_current_row_) {
+        output << "EXCLUDE_CURRENT_ROW, ";
+    }
+    if (instance_not_in_window_) {
+        output << "INSTANCE_NOT_IN_WINDOW, ";
     }
     output << window_.ToString() << ")";
     if (!window_unions_.Empty()) {
@@ -1172,6 +1266,57 @@ base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
         schemas_ctx_.Merge(0, producers_[1]->schemas_ctx());
     }
     return Status::OK();
+}
+
+void PhysicalRequestAggUnionNode::Print(std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(";
+    if (!output_request_row_) {
+        output << "EXCLUDE_REQUEST_ROW, ";
+    }
+    if (exclude_current_time_) {
+        output << "EXCLUDE_CURRENT_TIME, ";
+    }
+    output << window_.ToString() << ")";
+    output << "\n";
+    PrintChildren(output, tab);
+}
+
+void PhysicalRequestAggUnionNode::PrintChildren(std::ostream& output, const std::string& tab) const {
+    if (3 != producers_.size() || nullptr == producers_[0] || nullptr == producers_[1] || nullptr == producers_[2]) {
+        LOG(WARNING) << "fail to print PhysicalRequestAggUnionNode children";
+        return;
+    }
+    producers_[0]->Print(output, tab + INDENT);
+    for (size_t i = 1; i < producers_.size(); i++) {
+        output << "\n";
+        producers_[i]->Print(output, tab + INDENT);
+    }
+}
+
+base::Status PhysicalRequestAggUnionNode::InitSchema(PhysicalPlanContext* ctx) {
+    CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
+    schemas_ctx_.Clear();
+    agg_schema_.Clear();
+
+    schemas_ctx_.SetDefaultDBName(ctx->db());
+    auto source = schemas_ctx_.AddSource();
+    if (parent_schema_context_) {
+        source->SetSchema(parent_schema_context_->GetOutputSchema());
+    } else {
+        auto column = agg_schema_.Add();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("agg_val");
+        source->SetSchema(&agg_schema_);
+    }
+
+    source->SetColumnID(0, ctx->GetNewColumnID());
+    source->SetNonSource(0);
+    return Status::OK();
+}
+
+PhysicalRequestAggUnionNode* PhysicalRequestAggUnionNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestAggUnionNode*>(node);
 }
 
 base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
@@ -1308,6 +1453,12 @@ void PhysicalLoadDataNode::Print(std::ostream& output, const std::string& tab) c
 void PhysicalDeleteNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(target=" << node::DeleteTargetString(GetTarget()) << ", job_id=" << GetJobId() << ")";
+}
+
+void PhysicalInsertNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(db=" << GetInsertStmt()->db_name_ << ", table=" << GetInsertStmt()->table_name_
+           << ", is_all=" << (GetInsertStmt()->is_all_ ? "true" : "false") << ")";
 }
 
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {

@@ -29,7 +29,7 @@ set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install di
 # By default, thirdparty dependencies was fetched/build into the same directory with OpenMLDB
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
-option(WITH_ZETASQL "Download or build zetasql" ON)
+option(WITH_ZETASQL "Download and build zetasql" ON)
 
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
@@ -51,6 +51,7 @@ option(BUILD_BUNDLED_ZOOKEEPER "Build zookeeper from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_BOOST "Build boost from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_ROCKSDB "Build rocksdb from source" ${BUILD_BUNDLED})
 
 # '-O3 -fPIC' reserved for thirdparty compilation
 set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
@@ -67,6 +68,7 @@ set(MAKEOPTS "$ENV{MAKEOPTS}" CACHE STRING "Extra options to make")
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
 set(HYBRIDSQL_ASSERTS_HOME https://github.com/4paradigm/hybridsql-asserts)
+set(HYBRIDSQL_ASSERTS_VERSION 0.5.0)
 
 function(get_linux_lsb_release_information)
   execute_process(COMMAND bash ${CMAKE_SOURCE_DIR}/get-lsb-release.sh
@@ -82,22 +84,23 @@ function(init_hybridsql_thirdparty_urls)
     get_linux_lsb_release_information()
 
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+      # NOTE(#1138): pre-compiled thirdparty is out-of-date
       set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz" PARENT_SCOPE)
       set(HYBRIDSQL_ASSERTS_HASH 128e2147903c6b4f5649284326c60ba048ff369f2925f9957f2973a515c65d75 PARENT_SCOPE)
     else()
       if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
-        set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-        set(HYBRIDSQL_ASSERTS_HASH d23968d0762d906587088aa861d470f75b6fb4c0c3e5f007fb064c7e700cba86 PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_HASH 959ba9e41f1faaae474484c7233b335a4e677ca87f408c04e0e43b012576d997 PARENT_SCOPE)
       elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
-        set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-        set(HYBRIDSQL_ASSERTS_HASH ed35a0813106aa5f3642715eae6d6464184021817314999c034e1ed2749999b4 PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
+        set(HYBRIDSQL_ASSERTS_HASH 885cc2a955b6c0610c7d68b8ca3b54d3f410f32d4eaaee0a82a1dbfc88a22f54 PARENT_SCOPE)
       else()
         message(FATAL_ERROR "no pre-compiled thirdparty for your operation system, try compile thirdparty from source with '-DBUILD_BUNDLED=ON'")
       endif()
     endif()
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.3/thirdparty-2021-12-28-darwin-i386.tar.gz" PARENT_SCOPE)
-    set(HYBRIDSQL_ASSERTS_HASH 546da9dedbf93e811381dea44fb0c8f88b61430b5a450ff1969ee40bd00ffc97 PARENT_SCOPE)
+    set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-darwin-i386.tar.gz" PARENT_SCOPE)
+    set(HYBRIDSQL_ASSERTS_HASH 0e964e82f664cb7f1c124e29a01ea8de25711549c8d1a0c5da07ed24edb1b264 PARENT_SCOPE)
   endif()
 endfunction()
 
@@ -203,4 +206,8 @@ endif()
 
 if (BUILD_BUNDLED_COMMON)
   include(FetchBaiduCommon)
+endif()
+
+if (BUILD_BUNDLED_ROCKSDB)
+  include(FetchRocksDB)
 endif()

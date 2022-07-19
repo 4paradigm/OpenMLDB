@@ -17,21 +17,22 @@
 package com._4paradigm.openmldb.batchjob
 
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil
 import org.apache.spark.sql.SparkSession
 
 object RunBatchAndShow {
 
   def main(args: Array[String]): Unit = {
-    if (args.length < 1) {
-      throw new Exception(s"Require args: sql but get args: ${args.mkString(",")}")
-    }
-
+    OpenmldbJobUtil.checkOneSqlArgument(args)
     runBatchSql(args(0))
   }
 
-  def runBatchSql(sql: String): Unit = {
-    val sess = new OpenmldbSession(SparkSession.builder().getOrCreate())
-    sess.sql(sql).show()
+  def runBatchSql(sqlFilePath: String): Unit = {
+    val spark = SparkSession.builder().getOrCreate()
+    val sqlText = OpenmldbJobUtil.getSqlFromFile(spark, sqlFilePath)
+
+    val sess = new OpenmldbSession(spark)
+    sess.sql(sqlText).show()
     sess.close()
   }
 

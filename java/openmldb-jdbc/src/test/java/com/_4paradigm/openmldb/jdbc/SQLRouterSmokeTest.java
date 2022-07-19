@@ -26,22 +26,27 @@ import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
 
     private final Random random = new Random(System.currentTimeMillis());
-    public static SqlExecutor router;
+    public static SqlExecutor clusterExecutor;
+    public static SqlExecutor standaloneExecutor;
 
     static {
         try {
@@ -49,17 +54,29 @@ public class SQLRouterSmokeTest {
             option.setZkPath(TestConfig.ZK_PATH);
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
-            router = new SqlClusterExecutor(option);
-            java.sql.Statement state = router.getStatement();
+            clusterExecutor = new SqlClusterExecutor(option);
+            java.sql.Statement state = clusterExecutor.getStatement();
             state.execute("SET @@execute_mode='online';");
             state.close();
+            // create standalone router
+            SdkOption standaloneOption = new SdkOption();
+            standaloneOption.setHost(TestConfig.HOST);
+            standaloneOption.setPort(TestConfig.PORT);
+            standaloneOption.setClusterMode(false);
+            standaloneOption.setSessionTimeout(20000);
+            standaloneExecutor = new SqlClusterExecutor(standaloneOption);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @Test
-    public void testSmoke() {
+    @DataProvider(name = "executor")
+    public Object[] executor() {
+        return new Object[]{clusterExecutor, standaloneExecutor};
+    }
+
+    @Test(dataProvider = "executor")
+    public void testSmoke(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
             // create db
@@ -104,50 +121,44 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
             Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(1).toString());
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("hello", rs1.getString(2));
-            Assert.assertEquals(1000, rs1.getLong(1));
 
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("world", rs1.getString(2));
-            Assert.assertEquals(1001, rs1.getLong(1));
+            List<Long> col1Insert = new ArrayList<>();
+            List<String> col2Insert = new ArrayList<>();
+            while (rs1.next()) {
+                col1Insert.add(rs1.getLong(1));
+                col2Insert.add(rs1.getString(2));
+            }
+            Collections.sort(col1Insert);
+            Collections.sort(col2Insert);
 
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("hi", rs1.getString(2));
-            Assert.assertEquals(1002, rs1.getLong(1));
-
-            Assert.assertTrue(rs1.next());
-            Assert.assertEquals("word", rs1.getString(2));
-            Assert.assertEquals(1003, rs1.getLong(1));
+            Assert.assertEquals(col1Insert, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
+            Assert.assertEquals(col2Insert, Arrays.asList("hello", "hi", "word", "world"));
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1000, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1001, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1002, rs2.getLong(1));
-            Assert.assertTrue(rs2.next());
-            Assert.assertEquals(1003, rs2.getLong(1));
+
+            List<Long> col1InsertRes = new ArrayList<>();
+            while (rs2.next()) {
+                col1InsertRes.add(rs2.getLong(1));
+            }
+            Collections.sort(col1InsertRes);
+            Assert.assertEquals(col1InsertRes, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
             rs2.close();
 
             String select3 = "select col2 from tsql1010;";
-
             com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select3);
             Assert.assertEquals(1, rs3.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("hello", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("world", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("hi", rs3.getString(1));
-            Assert.assertTrue(rs3.next());
-            Assert.assertEquals("word", rs3.getString(1));
+
+            List<String> col2InsertRes = new ArrayList<>();
+            while (rs3.next()) {
+                col2InsertRes.add(rs3.getString(1));
+            }
+            Collections.sort(col2InsertRes);
+            Assert.assertEquals(col2InsertRes, Arrays.asList("hello", "hi", "word", "world"));
             rs3.close();
 
             // parameterized query
@@ -233,8 +244,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test
-    public void testParameterizedQueryFail() {
+    @Test(dataProvider = "executor")
+    public void testParameterizedQueryFail(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
             // create db
@@ -260,8 +271,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test
-    public void testInsertMeta() {
+    @Test(dataProvider = "executor")
+    public void testInsertMeta(SqlExecutor router) {
         String dbname = "db" + random.nextInt(100000);
         // create db
         router.dropDB(dbname);
@@ -301,15 +312,16 @@ public class SQLRouterSmokeTest {
 
     }
 
-    @Test
-    public void testInsertPreparedState() {
+    @Test(dataProvider = "executor")
+    public void testInsertPreparedState(SqlExecutor router) {
         try {
             String dbname = "db" + random.nextInt(100000);
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1));";
+            String ddl = "create table tsql1010 ( col1 bigint, col2 date, col3 string, col4 string, col5 int," +
+                    " index(key=col3, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -324,11 +336,11 @@ public class SQLRouterSmokeTest {
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
             Object[][] datas = new Object[][]{
-                    {1000l, d1, "guangdong", "广州", 1},
-                    {1001l, d2, "jiangsu", "nanjing", 2},
-                    {1002l, d3, "sandong", "jinan", 3},
-                    {1003l, d4, "zhejiang", "hangzhou", 4},
-                    {1004l, d5, "henan", "zhenzhou", 5},
+                    {1000L, d1, "guangdong", "广州", 1},
+                    {1001L, d2, "jiangsu", "nanjing", 2},
+                    {1002L, d3, "sandong", "jinan", 3},
+                    {1003L, d4, "zhejiang", "hangzhou", 4},
+                    {1004L, d5, "henan", "zhenzhou", 5},
             };
             // insert placeholder
             String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth() + 1, d2.getDate());
@@ -342,15 +354,22 @@ public class SQLRouterSmokeTest {
             }
             ok = impl.execute();
             Assert.assertTrue(ok);
-            insert = "insert into tsql1010 values(1002, ?, ?, 'jinan', 3);";
+
+            // custom insert order
+            insert = "insert into tsql1010 (col1, col3, col2, col4, col5) values (1002, ?, ?, 'jinan', 3);";
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, insert);
+            ResultSetMetaData metaData = impl2.getMetaData();
+            Assert.assertEquals(metaData.getColumnCount(), 2);
+            Assert.assertEquals(metaData.getColumnName(1), "col3");
+            Assert.assertEquals(metaData.getColumnType(1), Types.VARCHAR);
+            Assert.assertEquals(metaData.getColumnTypeName(1), "string");
             try {
-                impl2.setString(1, "c");
+                impl2.setString(2, "c");
             } catch (Exception e) {
-                Assert.assertEquals("data type not match", e.getMessage());
+                Assert.assertTrue(e.getMessage().contains("data type not match"));
             }
-            impl2.setDate(1, d3);
-            impl2.setString(2, "sandong");
+            impl2.setString(1, "sandong");
+            impl2.setDate(2, d3);
             ok = impl2.execute();
             Assert.assertTrue(ok);
 
@@ -370,7 +389,7 @@ public class SQLRouterSmokeTest {
             try {
                 impl3.execute();
             } catch (Exception e) {
-                Assert.assertEquals("preparedstatement closed", e.getMessage());
+                Assert.assertEquals("InsertPreparedStatement closed", e.getMessage());
             }
             insert = "insert into tsql1010 values(?, ?, ?, 'zhenzhou', 5);";
             PreparedStatement impl4 = router.getInsertPreparedStmt(dbname, insert);
@@ -428,8 +447,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test
-    public void testInsertPreparedStateBatch() {
+    @Test(dataProvider = "executor")
+    public void testInsertPreparedStateBatch(SqlExecutor router) {
         Object[][] batchData = new Object[][]{
                 {
                         "insert into tsql1010 values(?, ?, 'zhao', 1.0, null, 'z');",
@@ -467,15 +486,17 @@ public class SQLRouterSmokeTest {
                 try {
                     impl.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals("data type not match", e.getMessage());
+                    Assert.assertTrue(e.getMessage().contains("data type not match"));
                 }
                 try {
+                    // set failed, so the row is uncompleted, appending row will be failed
                     impl.execute();
                 } catch (Exception e) {
-                    if (j > 1) {
-                        Assert.assertEquals("please use executeBatch", e.getMessage());
+                    if (j > 0) {
+                        // j > 0, addBatch has been called
+                        Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals("build insert row failed", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "append failed");
                     }
                 }
                 impl.setLong(1, (Long) datas1[j][0]);
@@ -485,7 +506,7 @@ public class SQLRouterSmokeTest {
             try {
                 ok = impl.execute();
             } catch (Exception e) {
-                Assert.assertEquals("please use executeBatch", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "please use executeBatch");
             }
             impl.executeBatch();
             Assert.assertTrue(ok);
@@ -496,42 +517,45 @@ public class SQLRouterSmokeTest {
             i++;
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
             datas1 = (Object[][]) batchData[i][1];
+            // value setting error won't break anything
             for (int j = 0; j < datas1.length; j++) {
                 try {
                     impl2.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertEquals("data type not match", e.getMessage());
+                    Assert.assertTrue(e.getMessage().contains("data type not match"));
                 }
                 try {
                     impl2.execute();
                 } catch (Exception e) {
-                    if (j > 1) {
-                        Assert.assertEquals("please use executeBatch", e.getMessage());
+                    if (j > 0) {
+                        Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals("build insert row failed", e.getMessage());
+                        Assert.assertEquals(e.getMessage(), "append failed");
                     }
                 }
                 impl2.setLong(1, (Long) datas1[j][0]);
                 impl2.setLong(2, (Long) datas1[j][1]);
                 impl2.addBatch();
             }
+
             try {
                 ok = impl2.execute();
             } catch (Exception e) {
-                Assert.assertEquals("please use executeBatch", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "please use executeBatch");
             }
             i++;
-            Object[] datas2 = (Object[]) batchData[i];
+            // can't use addBatch(String sql)
+            Object[] datas2 = batchData[i];
             try {
                 impl2.addBatch((String) datas2[0]);
             } catch (Exception e) {
-                Assert.assertEquals("this sql need data", e.getMessage());
+                Assert.assertEquals(e.getMessage(), "cannot take arguments in PreparedStatement");
             }
-            for (int j = 1; i < datas2.length; i++) {
-                impl2.addBatch((String) datas2[j]);
-            }
-            impl.executeBatch();
-            Assert.assertTrue(ok);
+
+            int[] result = impl.executeBatch();
+            int[] expected = new int[result.length];
+            Assert.assertEquals(result, expected);
+
             String select2 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
             Assert.assertEquals(6, rs2.GetInternalSchema().GetColumnCnt());
@@ -539,7 +563,7 @@ public class SQLRouterSmokeTest {
             while (rs2.next()) {
                 recordCnt++;
             }
-            Assert.assertEquals(datas1.length + datas2.length, recordCnt);
+            Assert.assertEquals(datas1.length, recordCnt);
             rs2.close();
             // drop table
             String drop = "drop table tsql1010;";
@@ -557,8 +581,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test
-    public void testDDLParseMethods() throws SQLException {
+    @Test(dataProvider = "executor")
+    public void testDDLParseMethods(SqlExecutor router) throws SQLException {
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
         Map<String, Schema> dbSchema = new HashMap<>();

@@ -6,22 +6,24 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
     tags:
       - v*
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 env:
@@ -34,7 +36,7 @@ jobs:
   java-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
@@ -91,7 +93,7 @@ jobs:
         run: |
           sh steps/ut_zookeeper.sh start
           sh steps/download_openmldb_spark.sh $SPARK_HOME
-          cd onebox && sh start_onebox.sh && cd - || exit
+          cd onebox && sh start_onebox.sh && sh start_onebox.sh standalone && cd - || exit
 
       - name: run java modules smoke test
         working-directory: java
@@ -117,6 +119,20 @@ jobs:
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+      - name: maven coverage
+        working-directory: java
+        run: |
+            ./mvnw --batch-mode prepare-package
+            ./mvnw --batch-mode scoverage:report
+
+      - name: upload maven coverage
+        uses: codecov/codecov-action@v2
+        with:
+          files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
+          name: coverage
+          fail_ci_if_error: true
+          verbose: true
+
       - name: stop services
         run: |
           cd onebox && sh stop_all.sh && cd - || exit
@@ -136,10 +152,10 @@ jobs:
       OPENMLDB_BUILD_TARGET: 'cp_native_so openmldb'
       NPROC: 3
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Cache local Maven repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
@@ -147,7 +163,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Cache thirdparty
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             .deps/
@@ -223,7 +239,7 @@ jobs:
   python-sdk:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
@@ -247,7 +263,7 @@ jobs:
           pip install setuptools wheel twine
           yum install -y net-tools
 
-      - name: test sqlalchemy
+      - name: test sqlalchemy and generate coverage report
         run: |
           bash steps/test_python.sh
 
@@ -256,6 +272,70 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: linux-ut-result-python-${{ github.sha }}
+          path: |
+            python/openmldb/test/pytest.xml
+
+      - name: upload python coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: coverage
+          files: python/test/coverage.xml
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: upload to pypi
+        if: >
+          github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cp python/dist/openmldb*.whl .
+          twine upload openmldb-*.whl
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+
+  python-sdk-mac:
+    runs-on: macos-12
+    if: github.event_name == 'push'
+    env:
+      SQL_PYSDK_ENABLE: ON
+      OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache thirdparty
+        uses: actions/cache@v3
+        with:
+          path: |
+            .deps/
+            thirdsrc
+          key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
+
+      - name: prepare release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
+
+      - name: build pysdk and sqlalchemy
+        run: |
+          make build
+
+      - name: prepare python deps
+        run: |
+          curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+          python3 get-pip.py
+          pip install setuptools wheel twine
+
+      - name: test sqlalchemy
+        run: |
+          bash steps/test_python.sh
+
+      - name: upload python ut results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb/test/pytest.xml
 
@@ -285,6 +365,8 @@ jobs:
       - name: Publish Linux UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          files: linux-ut-result-*/**/*.xml
+          files: |
+            linux-ut-result-*/**/*.xml
+            mac-ut-result-*/**/*.xml
           check_name: SDK Test Report
           comment_title: SDK Test Report

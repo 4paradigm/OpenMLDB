@@ -18,6 +18,13 @@
 
 #include <algorithm>
 #include <set>
+
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
+#include "absl/strings/numbers.h"
+#include "absl/time/time.h"
+#include "nameserver/system_table.h"
+#include "statistics/query_response_time/deploy_query_response_time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -34,6 +41,7 @@
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
+#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -59,7 +67,7 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
-DECLARE_bool(enable_timeseries_table);
+DECLARE_uint32(sync_deploy_stats_timeout);
 
 using ::openmldb::api::OPType::kAddIndexOP;
 using ::openmldb::base::ReturnCode;
@@ -586,6 +594,12 @@ bool NameServerImpl::Recover() {
             }
         }
         value.clear();
+        if (!zk_client_->GetNodeValue(zk_path_.globalvar_changed_notify_node_, value)) {
+            if (!zk_client_->CreateNode(zk_path_.globalvar_changed_notify_node_, "1")) {
+                PDLOG(WARNING, "create globalvar changed notify node failed");
+                return false;
+            }
+        }
         if (!zk_client_->GetNodeValue(zk_path_.auto_failover_node_, value)) {
             auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
             if (!zk_client_->CreateNode(zk_path_.auto_failover_node_, value)) {
@@ -627,6 +641,38 @@ bool NameServerImpl::Recover() {
         UpdateRemoteRealEpMap();
     }
     UpdateTaskStatus(true);
+    if (!RecoverExternalFunction()) {
+        return false;
+    }
+    return true;
+}
+
+bool NameServerImpl::RecoverExternalFunction() {
+    std::vector<std::string> functions;
+    if (zk_client_->IsExistNode(zk_path_.external_function_path_) == 0) {
+        if (!zk_client_->GetChildren(zk_path_.external_function_path_, functions)) {
+            LOG(WARNING) << "fail to get function list with path " << zk_path_.external_function_path_;
+            return false;
+        }
+    }
+    external_fun_.clear();
+    if (functions.empty()) {
+        return true;
+    }
+    for (const auto& name : functions) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(zk_path_.external_function_path_ + "/" + name, value)) {
+            LOG(WARNING) << "fail to get function data. function: " << name;
+            continue;
+        }
+        auto fun = std::make_shared<::openmldb::common::ExternalFun>();
+        if (!fun->ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse external function. function: " << name << " value: " << value;
+            continue;
+        }
+        external_fun_.emplace(name, fun);
+        LOG(INFO) << "recover function " << name;
+    }
     return true;
 }
 
@@ -1094,7 +1140,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             tablets_.insert(std::make_pair(*it, tablet));
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         } else {
             if (tit->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
                 if (FLAGS_use_name) {
@@ -1278,6 +1324,24 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     for (const auto& kv : db_table_info_) {
         RecoverEndpointDBInternal(endpoint, need_restore, concurrency, kv.second);
     }
+    // recover global variable after tablet restart
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfoUnlock(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
+        PDLOG(WARNING, "global variable table is not exist!");
+        return;
+    }
+    bool exist_globalvar = false;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                exist_globalvar = true;
+                break;
+            }
+        }
+    }
+    if (!exist_globalvar) {
+        NotifyTableChanged(::openmldb::type::NotifyType::kGlobalVar);
+    }
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletRequest* request,
@@ -1319,6 +1383,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     running_.store(false, std::memory_order_release);
     if (!zk_cluster.empty()) {
         startup_mode_ = ::openmldb::type::StartupMode::kCluster;
+        zk_path_.zk_cluster_ = zk_cluster;
         zk_path_.root_path_ = zk_path;
         std::string zk_table_path = zk_path + "/table";
         std::string zk_sp_path = zk_path + "/store_procedure";
@@ -1337,6 +1402,8 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zk_path_.zone_data_path_ = zk_path + "/cluster";
         zk_path_.auto_failover_node_ = zk_config_path + "/auto_failover";
         zk_path_.table_changed_notify_node_ = zk_table_path + "/notify";
+        zk_path_.globalvar_changed_notify_node_ = zk_path + "/notify/global_variable";
+        zk_path_.external_function_path_ = zk_path + "/data/function";
         zone_info_.set_mode(kNORMAL);
         zone_info_.set_zone_name(endpoint + zk_path);
         zone_info_.set_replica_alias("");
@@ -1359,6 +1426,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         if (!ok) {
             PDLOG(WARNING, "fail to watch nodes");
             return false;
+        }
+        if (zk_client_->IsExistNode(zk_path_.external_function_path_) != 0) {
+            if (!zk_client_->CreateNode(zk_path_.external_function_path_, "")) {
+                LOG(WARNING) << "fail to create function node " << zk_path_.external_function_path_;
+                return false;
+            }
         }
         session_term_ = zk_client_->GetSessionTerm();
 
@@ -1395,6 +1468,8 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+    task_thread_pool_.DelayTask(FLAGS_sync_deploy_stats_timeout,
+                                boost::bind(&NameServerImpl::ScheduleSyncDeployStats, this));
     return true;
 }
 
@@ -2079,10 +2154,20 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
         return;
     }
     if (request->offset() > 0) {
-        thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(),
-                                         request->offset(), table_info));
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        return;
+        if (table_info->storage_mode() != common::kMemory) {
+            PDLOG(WARNING,
+                  "table[%s] is not memory table, can't do snapshot with end "
+                  "offset",
+                  request->name().c_str());
+            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+            response->set_msg("table is not memory table, can't do snapshot with end offset");
+            return;
+        } else {
+            thread_pool_.AddTask(boost::bind(&NameServerImpl::MakeTablePartitionSnapshot, this, request->pid(),
+                                            request->offset(), table_info));
+            response->set_code(::openmldb::base::ReturnCode::kOk);
+            return;
+        }
     }
     std::shared_ptr<OPData> op_data;
     std::string value;
@@ -2223,6 +2308,8 @@ int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::namese
     table_meta.set_seg_cnt(static_cast<::google::protobuf::int32>(table_info->seg_cnt()));
     table_meta.set_compress_type(compress_type);
     table_meta.set_format_version(table_info->format_version());
+    table_meta.set_storage_mode(table_info->storage_mode());
+    table_meta.set_base_table_tid(table_info->base_table_tid());
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
@@ -2751,13 +2838,16 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
+        if (request->has_db() && op_data->op_info_.db() != request->db()) {
+            continue;
+        }
         if (request->has_name() && op_data->op_info_.name() != request->name()) {
             continue;
         }
         if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
             continue;
         }
-        op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        op_map.emplace(op_data->op_info_.op_id(), op_data);
     }
     for (const auto& op_list : task_vec_) {
         if (op_list.empty()) {
@@ -2773,7 +2863,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
             if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
                 continue;
             }
-            op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+            op_map.emplace(op_data->op_info_.op_id(), op_data);
         }
     }
     for (const auto& kv : op_map) {
@@ -2917,7 +3007,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
         }
     }
     {
-        // if table is associated with procedure, drop it fail
+        // if table is associated with deployment, drop it fail
         if (!request->db().empty()) {
             std::lock_guard<std::mutex> lock(mu_);
             auto db_iter = db_table_sp_map_.find(request->db());
@@ -2928,7 +3018,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
                     const auto& sp_vec = table_iter->second;
                     if (!sp_vec.empty()) {
                         std::stringstream ss;
-                        ss << "table has associated procedure: ";
+                        ss << "table has associated deployment: ";
                         for (uint32_t i = 0; i < sp_vec.size(); i++) {
                             ss << sp_vec[i].first << "." << sp_vec[i].second;
                             if (i != sp_vec.size() - 1) {
@@ -3052,7 +3142,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         }
     }
     if (IsClusterMode()) {
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
 }
 
@@ -3195,7 +3285,7 @@ void NameServerImpl::AddTableField(RpcController* controller, const AddTableFiel
         added_column_desc->CopyFrom(request->column_desc());
         openmldb::common::VersionPair* added_version_pair = table_info->add_schema_versions();
         added_version_pair->CopyFrom(new_pair);
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     response->set_code(ReturnCode::kOk);
     response->set_msg("ok");
@@ -3571,7 +3661,7 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_table_info_[table_info->db()].insert(std::make_pair(table_info->name(), table_info));
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         }
     } else {
         if (!zk_client_->CreateNode(zk_path_.table_data_path_ + "/" + table_info->name(), table_value)) {
@@ -3585,7 +3675,7 @@ bool NameServerImpl::SetTableInfo(std::shared_ptr<::openmldb::nameserver::TableI
         {
             std::lock_guard<std::mutex> lock(mu_);
             table_info_.insert(std::make_pair(table_info->name(), table_info));
-            NotifyTableChanged();
+            NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         }
     }
     return true;
@@ -3628,14 +3718,23 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
             } else {
                 auto table_infos = db_table_info_[table_info->db()];
                 if (table_infos.find(table_info->name()) != table_infos.end()) {
-                    base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-                    PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    if (request->create_if_not_exist()) {
+                        base::SetResponseOK(response);
+                    } else {
+                        base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists",
+                                                response);
+                        PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+                    }
                     return;
                 }
             }
         } else if (table_info_.find(table_info->name()) != table_info_.end()) {
-            base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
-            PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            if (request->create_if_not_exist()) {
+                base::SetResponseOK(response);
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kTableAlreadyExists, "table already exists", response);
+                PDLOG(WARNING, "table[%s] already exists", table_info->name().c_str());
+            }
             return;
         }
     }
@@ -4332,7 +4431,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, ::openmldb::api::OPType::kAddReplicaOP, request.name(),
-                               tid, pid, seg_cnt, false);
+                               tid, pid, seg_cnt, false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -4583,7 +4682,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, name, tid, pid,
-                               table_info->seg_cnt(), false);
+                               table_info->seg_cnt(), false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, des_endpoint.c_str());
         return -1;
@@ -5445,53 +5544,36 @@ void NameServerImpl::OnLocked() {
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
+    CreateDatabaseOrExit(INTERNAL_DB);
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
-        if (databases_.find(INTERNAL_DB) == databases_.end()) {
-            auto status = CreateDatabase(INTERNAL_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create internal database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INTERNAL_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(JOB_INFO_NAME, SystemTableType::kJobInfo).OK()) {
-                LOG(FATAL) << "create system table" << JOB_INFO_NAME << "failed";
-                exit(1);
-            }
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(PRE_AGG_META_NAME, SystemTableType::KPreAggMetaInfo).OK()) {
-                LOG(FATAL) << "create system table" << PRE_AGG_META_NAME << "failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(PRE_AGG_DB) == databases_.end()) {
-            auto status = CreateDatabase(PRE_AGG_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create pre-agg database failed";
-                exit(1);
-            }
-        }
-        if (databases_.find(INFORMATION_SCHEMA_DB) == databases_.end()) {
-            auto status = CreateDatabase(INFORMATION_SCHEMA_DB);
-            if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-                LOG(FATAL) << "create information schema database failed";
-                exit(1);
-            }
-        }
-        if (db_table_info_[INFORMATION_SCHEMA_DB].empty()) {
-            if (FLAGS_system_table_replica_num > 0 &&
-                !CreateSystemTable(GLOBAL_VARIABLES, SystemTableType::kGlobalVariable).OK()) {
-                LOG(FATAL) << "create system table" << GLOBAL_VARIABLES << "failed";
-                exit(1);
-            }
+
+        if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
     }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kPreAggMetaInfo);
+    }
+
+    CreateDatabaseOrExit(PRE_AGG_DB);
+
+    CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
+
+    // TODO(ace): create table if not exists
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
+        InitGlobalVarTable();
+    }
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+    }
+
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval,
                                 boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
@@ -5617,6 +5699,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
     std::shared_ptr<TabletInfo> leader_tablet_ptr;
     std::shared_ptr<TabletInfo> tablet_ptr;
     bool has_follower = true;
+    common::StorageMode storage_mode = common::kMemory;
     {
         std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -5626,6 +5709,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
             return;
         }
         tid = table_info->tid();
+        storage_mode = table_info->storage_mode();
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
             if (table_info->table_partition(idx).pid() != pid) {
                 continue;
@@ -5700,7 +5784,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
     bool is_leader = false;
     uint64_t term = 0;
     uint64_t offset = 0;
-    if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
+    if (!tablet_ptr->client_->GetTermPair(tid, pid, storage_mode, term, offset, has_table, is_leader)) {
         PDLOG(WARNING,
               "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
               "op_id[%lu]",
@@ -5735,7 +5819,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
               endpoint.c_str());
     }
     if (!has_table) {
-        if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
+        if (!tablet_ptr->client_->DeleteBinlog(tid, pid, storage_mode)) {
             PDLOG(WARNING,
                   "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
                   "op_id[%lu]",
@@ -5754,7 +5838,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, const std::st
         return;
     }
     ::openmldb::api::Manifest manifest;
-    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
+    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, storage_mode, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u] op_id[%lu]", name.c_str(), tid, pid,
               task_info->op_id());
         task_info->set_status(::openmldb::api::TaskStatus::kFailed);
@@ -5855,7 +5939,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, name, tid, pid, seg_cnt,
-                               false);
+                               false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -5979,7 +6063,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, name, tid, pid,
-                               seg_cnt, false);
+                               seg_cnt, false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6094,7 +6178,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid,
-                               seg_cnt, false);
+                               seg_cnt, false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6459,8 +6543,9 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = table_info->tid();
     uint32_t seg_cnt = table_info->seg_cnt();
-    std::shared_ptr<Task> task = CreateLoadTableTask(
-        endpoint, op_data->op_info_.op_id(), ::openmldb::api::OPType::kReLoadTableOP, name, tid, pid, seg_cnt, true);
+    std::shared_ptr<Task> task =
+        CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), ::openmldb::api::OPType::kReLoadTableOP, name, tid,
+                            pid, seg_cnt, true, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6750,8 +6835,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::openmldb::na
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
                                                           ::openmldb::api::OPType op_type, const std::string& name,
-                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt,
-                                                          bool is_leader) {
+                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt, bool is_leader,
+                                                          ::openmldb::common::StorageMode storage_mode) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
@@ -6768,6 +6853,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_seg_cnt(seg_cnt);
+    table_meta.set_storage_mode(storage_mode);
     if (is_leader) {
         table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     } else {
@@ -7473,7 +7559,7 @@ int NameServerImpl::UpdateEndpointTableAlive(const std::string& endpoint, bool i
             return ret;
         }
     }
-    NotifyTableChanged();
+    NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     return 0;
 }
 
@@ -7840,16 +7926,25 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::openmldb::api::TaskInfo>
     task_info->set_status(::openmldb::api::TaskStatus::kFailed);
 }
 
-void NameServerImpl::NotifyTableChanged() {
+void NameServerImpl::NotifyTableChanged(::openmldb::type::NotifyType type) {
     if (!IsClusterMode()) {
         return;
     }
-    bool ok = zk_client_->Increment(zk_path_.table_changed_notify_node_);
-    if (!ok) {
-        PDLOG(WARNING, "increment failed. node is %s", zk_path_.table_changed_notify_node_.c_str());
-        return;
+    if (type == ::openmldb::type::NotifyType::kTable) {
+        if (!zk_client_->Increment(zk_path_.table_changed_notify_node_)) {
+            PDLOG(WARNING, "increment failed. node is %s", zk_path_.table_changed_notify_node_.c_str());
+            return;
+        }
+        PDLOG(INFO, "notify table changed ok");
+    } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
+        if (!zk_client_->Increment(zk_path_.globalvar_changed_notify_node_)) {
+            PDLOG(WARNING, "increment failed, node is %s", zk_path_.globalvar_changed_notify_node_.c_str());
+            return;
+        }
+        PDLOG(INFO, "notify globalvar changed ok");
+    } else {
+        PDLOG(ERROR, "unsupport notify type");
     }
-    PDLOG(INFO, "notify table changed ok");
 }
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name, const std::string& db_name,
@@ -8827,7 +8922,10 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
 
 bool NameServerImpl::UpdateZkTableNode(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
     if (IsClusterMode() && UpdateZkTableNodeWithoutNotify(table_info.get())) {
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
+        if (table_info->db() == INFORMATION_SCHEMA_DB && table_info->name() == GLOBAL_VARIABLES) {
+            NotifyTableChanged(::openmldb::type::NotifyType::kGlobalVar);
+        }
         return true;
     }
     return false;
@@ -8945,6 +9043,12 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         LOG(WARNING) << "table[" << name << "] is not exist!";
         return;
     }
+    if (table_info->storage_mode() != ::openmldb::common::kMemory) {
+        response->set_code(ReturnCode::kOperatorNotSupport);
+        response->set_msg("only memory support addindex");
+        LOG(WARNING) << "cannot add index. table " << name;
+        return;
+    }
     if (table_info->column_key_size() == 0) {
         base::SetResponseStatus(ReturnCode::kHasNotColumnKey, "table has no column key", response);
         LOG(WARNING) << "table " << name << " has no column key";
@@ -9058,10 +9162,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
             }
         }
     } else {
+        std::shared_ptr<TabletInfo> tablet_ptr = nullptr;
         for (const auto& partition : table_info->table_partition()) {
             uint32_t pid = partition.pid();
             for (const auto& meta : partition.partition_meta()) {
-                auto tablet_ptr = GetTablet(meta.endpoint());
+                tablet_ptr = GetTablet(meta.endpoint());
                 if (!tablet_ptr) {
                     PDLOG(WARNING, "endpoint[%s] can not find client", meta.endpoint().c_str());
                     base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet is not exist", response);
@@ -9072,6 +9177,12 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                     return;
                 }
             }
+        }
+        std::vector<::openmldb::common::ColumnKey> column_keys = {request->column_key()};
+        if (!tablet_ptr->client_->ExtractMultiIndexData(
+                table_info->tid(), 0, (uint32_t)table_info->table_partition_size(), column_keys)) {
+            base::SetResponseStatus(ReturnCode::kAddIndexFailed, "extract multi index failed", response);
+            return;
         }
         AddIndexToTableInfo(name, db, request->column_key(), table_info->column_key_size());
     }
@@ -9467,11 +9578,11 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    auto status = CreateDatabase(request->db());
+    auto status = CreateDatabase(request->db(), request->if_not_exists());
     SetResponseStatus(status, response);
 }
 
-base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
+base::Status NameServerImpl::CreateDatabase(const std::string& db_name, bool if_not_exists) {
     bool is_exists = true;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9481,6 +9592,9 @@ base::Status NameServerImpl::CreateDatabase(const std::string& db_name) {
         }
     }
     if (is_exists) {
+        if (if_not_exists) {
+            return {};
+        }
         PDLOG(INFO, "database %s already exists", db_name.c_str());
         return {::openmldb::base::ReturnCode::kDatabaseAlreadyExists, "database already exists"};
     } else {
@@ -9676,7 +9790,7 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
     {
         std::lock_guard<std::mutex> lock(mu_);
         sdk_endpoint_map_.swap(tmp_map);
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s", server_name.c_str(), sdk_endpoint.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -9887,7 +10001,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller, const api::Creat
             }
             db_sp_info_map_[sp_db_name][sp_name] = sp_info;
         }
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         PDLOG(INFO, "create db store procedure success! db_name [%s] sp_name [%s] sql [%s]", sp_db_name.c_str(),
               sp_name.c_str(), sp_info->sql().c_str());
         response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -9945,14 +10059,69 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
             tb_client_vec.push_back(kv.second->client_);
         }
     }
+
+    bool is_deployment_procedure = false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = db_sp_info_map_.find(db_name);
+        if (it != db_sp_info_map_.end()) {
+            auto iit = it->second.find(sp_name);
+            is_deployment_procedure = iit != it->second.end() && iit->second->type() == type::kReqDeployment;
+        }
+    }
+    std::shared_ptr<TableInfo> info;
+    auto success = GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
+    // NOTE: deploy stats records will delete even when global setting deploy_stats is turned off while there are
+    // records for previous deploy query (during deploy_stats = 'on')
+    bool drop_deploy_stats = is_deployment_procedure && success && info != nullptr;
+
     for (auto tb_client : tb_client_vec) {
         if (!tb_client->DropProcedure(db_name, sp_name)) {
             PDLOG(WARNING, "drop procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
                   sp_name.c_str(), tb_client->GetEndpoint().c_str());
             continue;
         }
+
         PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
               sp_name.c_str(), tb_client->GetEndpoint().c_str());
+    }
+
+    if (drop_deploy_stats && info->table_partition_size() > 0) {
+        std::string endpoint;
+        for (auto& meta : info->table_partition()[0].partition_meta()) {
+            if (meta.is_leader()) {
+                endpoint = meta.endpoint();
+            }
+        }
+        auto tablet_info = GetTablet(endpoint);
+        if (tablet_info == nullptr) {
+            PDLOG(ERROR, "no leader exists for system table %s", DEPLOY_RESPONSE_TIME);
+            return;
+        }
+
+        auto tb_client = tablet_info->client_;
+
+        auto deploy_name = absl::StrCat(db_name, ".", sp_name);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
+        auto time = absl::Microseconds(1);
+        int cnt = 0;
+        std::string msg;
+        while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
+            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsStr(time, statistics::TimeUnit::SECOND));
+            if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+                // NOTE: some warning appears but is expected, just ingore:
+                // 1. when you create a deploy query but not call it any time before delete it
+                // 2. deploy_stats is always turned off
+                PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
+                      tb_client->GetEndpoint(), key, msg);
+            }
+            time *= 10;
+        }
+        auto key = absl::StrCat(deploy_name, "|", MAX_STRING);
+        if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
+            PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
+                  tb_client->GetEndpoint(), key, msg);
+        }
     }
 }
 
@@ -10016,7 +10185,7 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
         if (db_sp_info_map_[db_name].empty()) {
             db_sp_info_map_.erase(db_name);
         }
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -10177,10 +10346,27 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
     return tablet_ptr;
 }
 
-base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, SystemTableType table_type) {
-    auto table_info = SystemTable::GetTableInfo(table_name, table_type);
+void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
+    auto status = CreateDatabase(db, true);
+    if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
+        LOG(FATAL) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+void NameServerImpl::CreateSystemTableOrExit(SystemTableType type) {
+    auto status = CreateSystemTable(type);
+    if (!status.OK()) {
+        LOG(FATAL) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
+                   << ", msg=" << status.GetMsg();
+        exit(1);
+    }
+}
+
+base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
+    auto table_info = SystemTable::GetTableInfo(table_type);
     if (!table_info) {
-        LOG(WARNING) << "fail to get table info. name is " << table_name;
+        LOG(WARNING) << "fail to get table info. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "nullptr"};
     }
     uint32_t tid = 0;
@@ -10189,7 +10375,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     }
     table_info->set_tid(tid);
     if (SetPartitionInfo(*table_info) < 0) {
-        LOG(WARNING) << "set partition info failed. name is " << table_name;
+        LOG(WARNING) << "set partition info failed. name is " << GetSystemTableName(table_type);
         return {base::ReturnCode::kError, "set partition info failed"};
     }
     uint64_t cur_term = GetTerm();
@@ -10198,7 +10384,7 @@ base::Status NameServerImpl::CreateSystemTable(const std::string& table_name, Sy
     if (response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }
-    LOG(INFO) << "create system table ok. name is " << table_name;
+    LOG(INFO) << "create system table ok. name is " << GetSystemTableName(table_type);
     return {};
 }
 
@@ -10259,9 +10445,377 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         }
         // update in this
         table_infos[table_name] = new_info;
-        NotifyTableChanged();
+        NotifyTableChanged(::openmldb::type::NotifyType::kTable);
     }
     LOG(INFO) << "[" << db_name << "." << table_name << "] update offline table info succeed";
+}
+
+std::vector<std::shared_ptr<TabletInfo>> NameServerImpl::GetAllHealthTablet() {
+    std::vector<std::shared_ptr<TabletInfo>> tablets;
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto& kv : tablets_) {
+        if (!kv.second->Health()) {
+            continue;
+        }
+        tablets.push_back(kv.second);
+    }
+    return tablets;
+}
+
+void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
+                                    CreateFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (external_fun_.find(request->fun().name()) != external_fun_.end()) {
+            PDLOG(WARNING, "create function failed. function %s is exist", request->fun().name().c_str());
+            response->set_msg("function is exist");
+            return;
+        }
+    }
+    auto tablets = GetAllHealthTablet();
+    std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
+    for (const auto& tablet : tablets) {
+        std::string msg;
+        if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
+            PDLOG(WARNING, "create function failed. endpoint %s, msg %s",
+                    tablet->client_->GetEndpoint().c_str(), msg.c_str());
+            response->set_msg(msg);
+            break;
+        }
+        succ_tablets.emplace_back(tablet);
+    }
+    if (succ_tablets.size() < tablets.size()) {
+        for (const auto& tablet : succ_tablets) {
+            std::string msg;
+            if (!tablet->client_->DropFunction(request->fun(), &msg)) {
+                PDLOG(WARNING, "drop function failed. endpoint %s", tablet->client_->GetEndpoint().c_str());
+            }
+            PDLOG(INFO, "drop function on endpoint %s", tablet->client_->GetEndpoint().c_str());
+        }
+        return;
+    }
+    auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
+    if (IsClusterMode()) {
+        std::string value;
+        fun->SerializeToString(&value);
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->CreateNode(fun_node, value)) {
+            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
+                  fun_node.c_str(), value.c_str(), value.length());
+            return;
+        }
+    }
+    PDLOG(INFO, "create function %s success", fun->name().c_str());
+    base::SetResponseOK(response);
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.emplace(fun->name(), fun);
+}
+
+void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionRequest* request,
+                                    DropFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    response->set_code(base::kRPCRunError);
+    std::shared_ptr<::openmldb::common::ExternalFun> fun;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            fun = iter->second;
+        }
+    }
+    if (!fun) {
+        if (request->if_exists()) {
+            base::SetResponseOK(response);
+        } else {
+            response->set_msg("fun is not exist");
+            LOG(WARNING) << request->name() << " is not exist";
+        }
+        return;
+    }
+    auto tablets = GetAllHealthTablet();
+    for (const auto& tablet : tablets) {
+        std::string msg;
+        if (!tablet->client_->DropFunction(*fun, &msg)) {
+            response->set_msg(msg);
+            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
+            return;
+        }
+    }
+    if (IsClusterMode()) {
+        std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
+        if (!zk_client_->DeleteNode(fun_node)) {
+            PDLOG(WARNING, "delete function node[%s] failed", fun_node.c_str());
+            response->set_msg("delete function node failed");
+            return;
+        }
+    }
+    base::SetResponseOK(response);
+    LOG(INFO) << "drop function " << request->name() << " success";
+    std::lock_guard<std::mutex> lock(mu_);
+    external_fun_.erase(request->name());
+}
+
+void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
+                                    ShowFunctionResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    if (request->has_name() && !request->name().empty()) {
+        auto iter = external_fun_.find(request->name());
+        if (iter != external_fun_.end()) {
+            response->add_fun()->CopyFrom(*(iter->second));
+        }
+    } else {
+        for (const auto& kv : external_fun_) {
+            response->add_fun()->CopyFrom(*(kv.second));
+        }
+    }
+    base::SetResponseOK(response);
+}
+
+base::Status NameServerImpl::InitGlobalVarTable() {
+    std::map<std::string, std::string> default_value = {
+        {"execute_mode", "offline"},
+        {"enable_trace", "false"},
+        {"sync_job", "false"},
+        {"job_timeout", "20000"}
+    };
+    // get table_info
+    std::string db = INFORMATION_SCHEMA_DB;
+    std::string table = GLOBAL_VARIABLES;
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(table, db, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "table is not exist"};
+    }
+    // encode row && dimensions
+    std::vector<std::string> rows;
+    std::vector<std::vector<std::pair<std::string, uint32_t>>> rows_dimensions;
+    for (auto iter = default_value.begin(); iter != default_value.end(); iter++) {
+        std::string row;
+        std::vector<std::string> vec;
+        vec.push_back(iter->first);
+        vec.push_back(iter->second);
+        codec::RowCodec::EncodeRow(vec, table_info->column_desc(), 1, row);
+        rows.push_back(row);
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
+        // only one index in system table
+        dimensions.push_back(std::make_pair(iter->first, 0));
+        rows_dimensions.push_back(dimensions);
+    }
+    // insert value
+    uint32_t tid = table_info->tid();
+    uint32_t pid_num = table_info->table_partition_size();
+    for (size_t i = 0; i < default_value.size(); i++) {
+        std::string row = rows[i];
+        std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
+        uint32_t pid = 0;
+        if (pid_num > 0) {
+            pid = (uint32_t)(::openmldb::base::hash64(dimensions[0].first) % pid_num);
+        }
+        // system table only have one partition, so table_partition(0) can be used
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(0).partition_meta(meta_idx).is_leader() &&
+                table_info->table_partition(0).partition_meta(meta_idx).is_alive()) {
+                uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+                std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
+                auto table_ptr = GetTablet(endpoint);
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                    return {ReturnCode::kPutFailed, "fail to make a put request to table"};
+                }
+                break;
+            }
+        }
+    }
+    return {};
+}
+
+static const std::string& QueryDeployStats() {
+    static const std::string query_deploy_stats =
+        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
+    return query_deploy_stats;
+}
+
+static const std::string& QueryDeployStatsIsOn() {
+    static const std::string query_deploy_stats_is_on =
+        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::GLOBAL_VARIABLES,
+                     " where Variable_name = 'deploy_stats'");
+    return query_deploy_stats_is_on;
+}
+
+void NameServerImpl::SyncDeployStats() {
+    // Step one: check condition for deploy stats. only all of those meet:
+    // 1. current ns is master
+    // 2. deploy_stats global variable is set to 'on' or 'true'
+    if (startup_mode_ == type::kStandalone && running_.load(std::memory_order_acquire)) {
+        DLOG(INFO) << "sync deploy stats skipped for non-leader ns on cluster";
+        FreeSdkConnection();
+        return;
+    }
+
+    if (!GetSdkConnection()) {
+        LOG(ERROR) << "failed to get sdk connection";
+        return;
+    }
+    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
+    if (sr == nullptr) {
+        LOG(ERROR) << "sdk connection is null";
+        return;
+    }
+    ::hybridse::sdk::Status s;
+    auto rs = sr->ExecuteSQLParameterized("", QueryDeployStatsIsOn(), {}, &s);
+    if (!s.IsOK()) {
+        LOG(ERROR) << "[ERROR] query global variable deploy_stats: " << s.msg;
+        return;
+    }
+
+    bool sync_stats = false;
+    while (rs->Next()) {
+        auto val = rs->GetStringUnsafe(1);
+        sync_stats = (val == "on" || val == "true");
+    }
+
+    if (!sync_stats) {
+        DLOG(INFO) << "sync deploy stats skipped when deploy_stats is off";
+        return;
+    }
+
+    // Step two: Fetch And Flush deploy stats from each tablet
+    std::unordered_map<absl::string_view, std::shared_ptr<TabletClient>> active_tablets;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& kv : tablets_) {
+            if (kv.second->Health()) {
+                active_tablets.emplace(kv.first, kv.second->client_);
+            }
+        }
+    }
+    statistics::DeployResponseTimeRowReducer reducer;
+    for (auto& client : active_tablets) {
+        ::openmldb::api::DeployStatsResponse res;
+        if (!client.second->GetAndFlushDeployStats(&res)) {
+            LOG(ERROR) << "GetAndFlushDeployStats from " << client.first << " failed ";
+            continue;
+        }
+
+        for (auto& r : res.rows()) {
+            reducer.Reduce(r.deploy_name(),
+                           statistics::ParseDurationFromStr(r.time(), statistics::TimeUnit::MICRO_SECOND), r.count(),
+                           statistics::ParseDurationFromStr(r.total(), statistics::TimeUnit::MICRO_SECOND));
+        }
+    }
+
+    // Step three: Query old deploy response time from table
+    rs = sr->ExecuteSQLParameterized("", QueryDeployStats(), {}, &s);
+    if (!s.IsOK()) {
+        LOG(ERROR) << "[ERROR] querying DEPLOY_RESPONSE_TIME" << s.msg;
+        return;
+    }
+
+    // old reducer help find those rows already in table and but there is
+    // no new incremental stats reduced from all tablets
+    statistics::DeployResponseTimeRowReducer old_reducer;
+    while (rs->Next()) {
+        auto name = rs->GetAsStringUnsafe(0);
+        auto time = rs->GetAsStringUnsafe(1);
+        int32_t cnt = rs->GetInt32Unsafe(2);
+        auto total = rs->GetAsStringUnsafe(3);
+
+        auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
+        auto tt = statistics::ParseDurationFromStr(total, statistics::TimeUnit::SECOND);
+
+        reducer.Reduce(name, ts, cnt, tt);
+        old_reducer.Reduce(name, ts, cnt, tt);
+    }
+
+    // Step four: update DEPLOY_RESPONSE_TIME table by the new rows
+    // only for rows that meet any of conditiions below:
+    // 1. the incremental count and total is bigger than 0
+    // 2. original table do not have row for that (deploy_name + time) key yet
+    std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
+                                                  nameserver::DEPLOY_RESPONSE_TIME, " values ");
+    for (auto& row : reducer.Rows()) {
+        auto old_it = old_reducer.Find(row->deploy_name_, row->time_);
+        if (old_it != nullptr && row->count_ == old_it->count_) {
+            // don't update table only if there is no incremental data, and there is record already in table
+            continue;
+        }
+
+        std::string time = row->GetTimeAsStr(statistics::TimeUnit::SECOND);
+        auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row->deploy_name_, "', '",
+                                       time, "', ", row->count_,
+                                       ",'", row->GetTotalAsStr(statistics::TimeUnit::SECOND), "' )");
+
+        hybridse::sdk::Status st;
+        DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
+        sr->ExecuteInsert("", insert_sql, &st);
+        if (!st.IsOK()) {
+            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
+        }
+    }
+    // TODO(ace): add logs for summary how many rows affected and time cost
+}
+
+void NameServerImpl::ScheduleSyncDeployStats() {
+    SyncDeployStats();
+    task_thread_pool_.DelayTask(FLAGS_sync_deploy_stats_timeout,
+                                boost::bind(&NameServerImpl::ScheduleSyncDeployStats, this));
+}
+
+/// \beirf create a SQLClusterRouter instance for use like monitoring statistics collecting
+///    the actual instance is stored in `sr_` member
+///
+/// \return true if action success, false if any error happens
+bool NameServerImpl::GetSdkConnection() {
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) == nullptr) {
+        sdk::DBSDK* cs = nullptr;
+        PDLOG(INFO, "Init ClusterSDK in name server");
+        if (IsClusterMode()) {
+            ::openmldb::sdk::ClusterOptions copt;
+            copt.zk_cluster = zk_path_.zk_cluster_;
+            copt.zk_path = zk_path_.root_path_;
+            cs = new ::openmldb::sdk::ClusterSDK(copt);
+        } else {
+            std::vector<std::string> list = absl::StrSplit(endpoint_, ":");
+            if (list.size() != 2) {
+                PDLOG(ERROR, "fail to split endpoint_");
+                return false;
+            }
+
+            int port = 0;
+            if (!absl::SimpleAtoi(list.at(1), &port)) {
+                PDLOG(ERROR, "fail to port string: %s", list.at(1));
+                return false;
+            }
+            cs = new ::openmldb::sdk::StandAloneSDK(list.at(0), port);
+        }
+        bool ok = cs->Init();
+        if (!ok) {
+            PDLOG(ERROR, "ERROR: Failed to init DBSDK");
+            if (cs != nullptr) {
+                delete cs;
+            }
+            return false;
+        }
+        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cs);
+        if (!sr->Init()) {
+            PDLOG(ERROR, "fail to init SQLClusterRouter");
+            if (cs != nullptr) {
+                delete cs;
+            }
+            return false;
+        }
+
+        std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
+    }
+
+    return true;
+}
+
+void NameServerImpl::FreeSdkConnection() {
+    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) != nullptr) {
+        std::atomic_store_explicit(&sr_, {}, std::memory_order_release);
+    }
 }
 
 }  // namespace nameserver

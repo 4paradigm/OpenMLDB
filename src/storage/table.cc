@@ -21,20 +21,23 @@
 
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
+#include "storage/mem_table.h"
+#include "storage/disk_table.h"
 
 namespace openmldb {
 namespace storage {
 
 Table::Table() {}
 
-Table::Table(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool is_leader, uint64_t ttl_offset,
-             const std::map<std::string, uint32_t>& mapping, ::openmldb::type::TTLType ttl_type,
-             ::openmldb::type::CompressType compress_type)
-    : name_(name),
+Table::Table(::openmldb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid,
+             uint64_t ttl, bool is_leader, uint64_t ttl_offset, const std::map<std::string, uint32_t>& mapping,
+             ::openmldb::type::TTLType ttl_type, ::openmldb::type::CompressType compress_type)
+    : storage_mode_(storage_mode),
+      name_(name),
       id_(id),
       pid_(pid),
-      ttl_offset_(ttl_offset),
       is_leader_(is_leader),
+      ttl_offset_(ttl_offset),
       compress_type_(compress_type),
       version_schema_(),
       update_ttl_(std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>()) {
@@ -120,6 +123,17 @@ void Table::SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta) {
         new_ttl = std::make_shared<std::vector<::openmldb::storage::UpdateTTLMeta>>(*old_ttl);
         new_ttl->push_back(ttl_meta);
     } while (!atomic_compare_exchange_weak(&update_ttl_, &old_ttl, new_ttl));
+    auto table_meta = GetTableMeta();
+    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
+    for (int idx = 0; idx < new_table_meta->column_key_size(); idx++) {
+        auto column_key = new_table_meta->mutable_column_key(idx);
+        if (ttl_meta.index_name.empty() || column_key->index_name() == ttl_meta.index_name) {
+            auto cur_ttl = column_key->mutable_ttl();
+            cur_ttl->set_abs_ttl(ttl_meta.ttl.abs_ttl / (60 * 1000));
+            cur_ttl->set_lat_ttl(ttl_meta.ttl.lat_ttl);
+        }
+    }
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
 }
 
 void Table::UpdateTTL() {
@@ -149,14 +163,6 @@ void Table::UpdateTTL() {
             }
         }
     }
-    auto table_meta = std::atomic_load_explicit(&table_meta_, std::memory_order_acquire);
-    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
-    new_table_meta->clear_column_key();
-    for (auto& index : indexs) {
-        auto column_key = new_table_meta->add_column_key();
-        column_key->CopyFrom(index->GenColumnKey());
-    }
-    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
 }
 
 bool Table::InitFromMeta() {

@@ -21,6 +21,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <queue>
+#include <functional>
 
 #include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
@@ -30,9 +32,9 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 
-using hybridse::codec::Date;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::Date;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 using hybridse::codegen::CodeGenContext;
 using hybridse::codegen::NativeValue;
 using hybridse::common::kCodegenError;
@@ -40,8 +42,16 @@ using hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
-// static instance
-DefaultUdfLibrary DefaultUdfLibrary::inst_;
+DefaultUdfLibrary* DefaultUdfLibrary::MakeDefaultUdf() {
+    LOG(INFO) << "Creating DefaultUdfLibrary";
+    return new DefaultUdfLibrary();
+}
+
+DefaultUdfLibrary* DefaultUdfLibrary::get() {
+    // construct on first use to avoid problem like static initialization order fiasco
+    static DefaultUdfLibrary& inst = *MakeDefaultUdf();
+    return &inst;
+}
 
 template <typename T>
 struct BuildGetHourUdf {
@@ -97,17 +107,29 @@ struct BuildGetSecondUdf {
 template <typename T>
 struct SumUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>()
-            .const_init(T(0))
-            .update([](UdfResolveContext* ctx, ExprNode* cur_sum,
-                       ExprNode* input) {
-                auto nm = ctx->node_manager();
-                auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                auto new_sum =
-                    nm->MakeBinaryExprNode(cur_sum, input, node::kFnOpAdd);
-                return nm->MakeCondExpr(is_null, cur_sum, new_sum);
+        helper.templates<T, Tuple<bool, T>, T>()
+            .const_init(MakeTuple(true, T(0)))
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
+                auto* nm = ctx->node_manager();
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode(
+                        "make_tuple",
+                        {nm->MakeConstNode(false), nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                        nullptr));
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
@@ -228,27 +250,24 @@ struct AvgUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
             .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
-            .update(
-                [](UdfResolveContext* ctx, ExprNode* state, ExprNode* input) {
-                    auto nm = ctx->node_manager();
-                    ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                    ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                    ExprNode* is_null =
-                        nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-                    cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
-                                                 node::kFnOpAdd);
-                    sum = nm->MakeBinaryExprNode(sum, input, node::kFnOpAdd);
-                    auto new_state =
-                        nm->MakeFuncNode("make_tuple", {cnt, sum}, nullptr);
-                    return nm->MakeCondExpr(is_null, state, new_state);
-                })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* avg =
-                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
-                return avg;
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    nm->MakeUnaryExprNode(elem, node::FnOperator::kFnOpIsNull), acc,
+                    nm->MakeFuncNode("make_tuple",
+                                     {nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::FnOperator::kFnOpAdd),
+                                      nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd)},
+                                     nullptr));
+            })
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto nm = ctx->node_manager();
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
+                                        nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
+                                        nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
     }
 };
@@ -294,22 +313,108 @@ struct DistinctCountDef {
 };
 
 template <typename T>
+struct MedianDef {
+    using ArgT = typename DataTypeTrait<T>::CCallArgType;
+    using MaxHeapT = std::priority_queue<T, std::vector<T>, std::less<>>;
+    using MinHeapT = std::priority_queue<T, std::vector<T>, std::greater<>>;
+    using ContainerT = std::tuple<MaxHeapT, MinHeapT>;
+
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_vector_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("median_init" + suffix, MedianDef::Init)
+            .update("median_update" + suffix, MedianDef::Update)
+            .output("meadin_output" + suffix, reinterpret_cast<void*>(MedianDef::Output), true);
+    }
+
+    static void Init(ContainerT* addr) { new (addr) ContainerT(); }
+
+    static void Push(ContainerT* container, T value) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        // invariant:
+        // max_heap.size() <= min_heap.size() &&
+        // max_head.top() <= median && median < min_head.top()
+        if (max_heap.empty() || value <= max_heap.top()) {
+            max_heap.push(value);
+            if (max_heap.size() > min_heap.size() + 1) {
+                min_heap.push(max_heap.top());
+                max_heap.pop();
+            }
+        } else {
+            min_heap.push(value);
+            if (min_heap.size() > max_heap.size()) {
+                max_heap.push(min_heap.top());
+                min_heap.pop();
+            }
+        }
+    }
+
+    static ContainerT* Update(ContainerT* container, T value, bool is_null) {
+        if (!is_null) {
+            Push(container, value);
+        }
+        return container;
+    }
+
+    static void Output(ContainerT* container, double* ret, bool* is_null) {
+        auto &max_heap = std::get<0>(*container);
+        auto &min_heap = std::get<1>(*container);
+
+        if (min_heap.empty() && max_heap.empty()) {
+            *is_null = true;
+        } else {
+            *is_null = false;
+            if (min_heap.size() == max_heap.size()) {
+                *ret = (min_heap.top() + max_heap.top()) / 2.0;
+            } else {
+                *ret = max_heap.top();
+            }
+        }
+
+        container->~ContainerT();
+    }
+};
+
+template <typename T>
 struct SumWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T, bool>()
-            .const_init(0.0)
-            .update([](UdfResolveContext* ctx, ExprNode* sum, ExprNode* elem,
-                       ExprNode* cond) {
-                auto nm = ctx->node_manager();
+        helper
+            .templates<T, Tuple<bool, T>, T, bool>()
+            // accumulator is a pair of ( is_null, current_sum)
+            // whenever there is a value not null, `is_null` turns to false and output sum
+            // otherwise result is null
+            .const_init(MakeTuple(true, T(0)))
+            // the update logic is the same as sum but give the cond check at very beginning
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
+                // update (flag, acc) elem =
+                //   if cond ->
+                //      if elem is null -> (flag, acc)
+                //      otherwise       -> (true, acc + elem)
+                //   otherwise  -> (flag, acc)
+                auto* nm = ctx->node_manager();
+                auto* old_sum = nm->MakeGetFieldExpr(acc, 1);
+
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
-                auto new_sum =
-                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
-                ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
-                return update;
+
+                auto new_sum = nm->MakeBinaryExprNode(old_sum, elem, node::kFnOpAdd);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
+                                        nm->MakeFuncNode("make_tuple", {nm->MakeConstNode(false), new_sum}, nullptr),
+                                        acc);
             })
-            .output("identity");
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
+                auto* nm = ctx->node_manager();
+                auto* flag = nm->MakeGetFieldExpr(acc, 0);
+                auto* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(
+                    flag,
+                    nm->MakeCastNode(DataTypeTrait<T>::to_type_enum(),
+                                     nm->MakeConstNode()),
+                    sum);
+            });
     }
 };
 
@@ -338,37 +443,29 @@ struct AvgWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T, bool>()
             .const_init(MakeTuple(static_cast<int64_t>(0), 0.0))
-            .update([](UdfResolveContext* ctx, ExprNode* state, ExprNode* elem,
-                       ExprNode* cond) {
+            .update([](UdfResolveContext* ctx, ExprNode* acc, ExprNode* elem, ExprNode* cond) {
+                // update (count, sum) elem =
+                //   if cond ->
+                //     if elem is null -> (count, sum)
+                //     otherwise       -> (count + 1, sum + elem)
+                //   otherwise -> (count, sum)
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* is_null =
-                    nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
 
-                ExprNode* new_cnt = nm->MakeBinaryExprNode(
-                    cnt, nm->MakeConstNode(1), node::kFnOpAdd);
-                new_cnt = nm->MakeCondExpr(is_null, cnt, new_cnt);
+                ExprNode* new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::kFnOpAdd);
+                ExprNode* new_sum = nm->MakeBinaryExprNode(sum, elem, node::FnOperator::kFnOpAdd);
 
-                if (elem->GetOutputType()->base() == node::kTimestamp) {
-                    elem = nm->MakeCastNode(node::kInt64, elem);
-                }
-
-                ExprNode* new_sum =
-                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
-                new_sum = nm->MakeCondExpr(is_null, sum, new_sum);
-
-                ExprNode* new_state =
-                    nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
-                return nm->MakeCondExpr(cond, new_state, state);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(elem, cond, node::FnOperator::kFnOpAnd),
+                                        nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr), acc);
             })
-            .output([](UdfResolveContext* ctx, ExprNode* state) {
+            .output([](UdfResolveContext* ctx, ExprNode* acc) {
                 auto nm = ctx->node_manager();
-                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
-                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
-                ExprNode* avg =
-                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
-                return avg;
+                ExprNode* cnt = nm->MakeGetFieldExpr(acc, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(acc, 1);
+                return nm->MakeCondExpr(nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(0), node::FnOperator::kFnOpEq),
+                                        nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
+                                        nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
     }
 };
@@ -474,7 +571,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
 
     RegisterExternal("string")
-        .args<bool>(static_cast<void (*)(bool, codec::StringRef*)>(
+        .args<bool>(static_cast<void (*)(bool, StringRef*)>(
                         udf::v1::bool_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -492,7 +589,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
     RegisterExternal("string")
         .args<Timestamp>(
-            static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
+            static_cast<void (*)(Timestamp*, StringRef*)>(
                 udf::v1::timestamp_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -507,7 +604,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
 
     RegisterExternal("string")
-        .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
+        .args<Date>(static_cast<void (*)(Date*, StringRef*)>(
                         udf::v1::date_to_string))
         .return_by_arg(true)
         .doc(R"(
@@ -573,15 +670,15 @@ void DefaultUdfLibrary::InitStringUdf() {
                 Example:
 
                 @code{.sql}
-                    select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                    select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
                     -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
                 @endcode
                 @since 0.1.0)");
 
     RegisterExternal("substring")
         .args<StringRef, int32_t>(
-            static_cast<void (*)(codec::StringRef*, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string))
+            static_cast<void (*)(StringRef*, int32_t,
+                                 StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
             @brief Return a substring from string `str` starting at position `pos `.
@@ -609,8 +706,8 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterExternal("substring")
         .args<StringRef, int32_t, int32_t>(
-            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string))
+            static_cast<void (*)(StringRef*, int32_t, int32_t,
+                                 StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true)
         .doc(R"(
             @brief Return a substring `len` characters long from string str, starting at position `pos`.
@@ -639,7 +736,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterExternal("strcmp")
         .args<StringRef, StringRef>(
-            static_cast<int32_t (*)(codec::StringRef*, codec::StringRef*)>(
+            static_cast<int32_t (*)(StringRef*, StringRef*)>(
                 udf::v1::strcmp))
         .doc(R"(
             @brief Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
@@ -660,8 +757,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
-            static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
-                                 codec::StringRef*)>(udf::v1::date_format))
+            static_cast<void (*)(Timestamp*, StringRef*,
+                                 StringRef*)>(udf::v1::date_format))
         .return_by_arg(true)
         .doc(R"(
             @brief Formats the datetime value according to the format string.
@@ -674,8 +771,8 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode)");
     RegisterExternal("date_format")
         .args<Date, StringRef>(
-            static_cast<void (*)(codec::Date*, codec::StringRef*,
-                                 codec::StringRef*)>(udf::v1::date_format))
+            static_cast<void (*)(Date*, StringRef*,
+                                 StringRef*)>(udf::v1::date_format))
         .return_by_arg(true)
         .doc(R"(
             @brief Formats the date value according to the format string.
@@ -690,7 +787,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("like_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
                 udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -737,7 +834,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         )r");
     RegisterExternal("like_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::like)))
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(udf::v1::like)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
@@ -770,7 +867,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     /// if escape is null, we will deal with it. Regarding it as an empty string. See more details in udf::v1::ilike
     RegisterExternal("ilike_match")
         .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, codec::StringRef*, bool*, bool*)>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
                 udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
@@ -818,7 +915,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         )r");
     RegisterExternal("ilike_match")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*, bool*)>(udf::v1::ilike)))
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(udf::v1::ilike)))
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
@@ -849,10 +946,10 @@ void DefaultUdfLibrary::InitStringUdf() {
                 @since 0.4.0
         )r");
     RegisterExternal("ucase")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::ucase)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::ucase)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Convert all the characters to uppercase. Note that characters values > 127 are simply returned.
 
@@ -864,10 +961,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.4.0)");
     RegisterExternal("lcase")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>(udf::v1::lcase)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::lcase)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Convert all the characters to lowercase. Note that characters with values > 127 are simply returned.
 
@@ -879,11 +976,10 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.5.0)");
     RegisterExternal("reverse")
-        .args<codec::StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(codec::StringRef*, codec::StringRef*, bool*)>
-                                    (udf::v1::reverse)))
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::reverse)))
         .return_by_arg(true)
-        .returns<Nullable<codec::StringRef>>()
+        .returns<Nullable<StringRef>>()
         .doc(R"(
             @brief Returns the reversed given string.
 
@@ -896,6 +992,72 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.4.0)");
     RegisterAlias("lower", "lcase");
     RegisterAlias("upper", "ucase");
+    RegisterExternal("char")
+        .args<int32_t>(
+            static_cast<void (*)(int32_t, StringRef*)>(udf::v1::int_to_char))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256).
+
+            Example:
+
+            @code{.sql}
+                SELECT char(65);
+                --output "A"
+            @endcode
+            @since 0.6.0)");
+    RegisterExternal("char_length")
+        .args<StringRef>(static_cast<int32_t (*)(StringRef*)>(udf::v1::char_length))
+        .doc(R"(
+            @brief Returns the length of the string. It is measured in characters and multibyte character string is not supported.
+
+            Example:
+
+            @code{.sql}
+                SELECT CHAR_LENGTH('Spark SQL ');
+                --output 10
+            @endcode
+            @since 0.6.0)");
+    RegisterAlias("character_length", "char_length");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc", "ABC")
+                -- output "ABCABC"
+             @endcode
+
+             @since 0.5.2
+             )r");
+
+    RegisterExternal("replace")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*)>(udf::v1::replace)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"r(
+             @brief replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`
+
+             if replace is not given or is empty string, matched `search`s removed from final string
+
+             Example:
+
+             @code{.sql}
+                select replace("ABCabc", "abc")
+                -- output "ABC"
+             @endcode
+             @since 0.5.2
+             )r");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {
@@ -1269,6 +1431,37 @@ void DefaultUdfLibrary::InitMathUdf() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("truncate", {cast}, nullptr);
         });
+
+    RegisterExternal("degrees")
+        .args<double>(static_cast<double (*)(double)>(v1::Degrees))
+        .doc(R"(
+            @brief Convert radians to degrees.
+
+            Example:
+
+            @code{.sql}
+
+                SELECT degrees(3.141592653589793);
+                -- output  180.0
+
+            @endcode
+
+            @param expr
+
+            @since 0.5.0)");
+    RegisterExternal("RADIANS")
+        .args<double>(
+            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+        .doc(R"(
+            @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
+
+            Example:
+
+            @code{.sql}
+                SELECT RADIANS(90);
+                --output 1.570796326794896619231
+            @endcode
+            @since 0.6.0)");
     InitTrigonometricUdf();
 }
 
@@ -1556,7 +1749,7 @@ void DefaultUdfLibrary::InitLogicalUdf() {
 
 void DefaultUdfLibrary::InitTypeUdf() {
     RegisterExternal("double")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, double*, bool*)>(
                 v1::string_to_double)))
         .return_by_arg(true)
@@ -1572,7 +1765,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("float")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, float*, bool*)>(
                 v1::string_to_float)))
         .return_by_arg(true)
@@ -1588,7 +1781,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("int32")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int32_t*, bool*)>(
                 v1::string_to_int)))
         .return_by_arg(true)
@@ -1604,7 +1797,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("int64")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int64_t*, bool*)>(
                 v1::string_to_bigint)))
         .return_by_arg(true)
@@ -1621,7 +1814,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @since 0.1.0
         )");
     RegisterExternal("int16")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int16_t*, bool*)>(
                 v1::string_to_smallint)))
         .return_by_arg(true)
@@ -1638,7 +1831,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @since 0.1.0
         )");
     RegisterExternal("bool")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, bool*, bool*)>(
                 v1::string_to_bool)))
         .return_by_arg(true)
@@ -1656,7 +1849,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         )");
 
     RegisterExternal("date")
-        .args<codec::Timestamp>(reinterpret_cast<void*>(
+        .args<Timestamp>(reinterpret_cast<void*>(
             static_cast<void (*)(Timestamp*, Date*, bool*)>(
                 v1::timestamp_to_date)))
         .return_by_arg(true)
@@ -1674,14 +1867,14 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("date")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Date*, bool*)>(
                 v1::string_to_date)))
         .return_by_arg(true)
         .returns<Nullable<Date>>();
 
     RegisterExternal("timestamp")
-        .args<codec::Date>(reinterpret_cast<void*>(
+        .args<Date>(reinterpret_cast<void*>(
             static_cast<void (*)(Date*, Timestamp*, bool*)>(
                 v1::date_to_timestamp)))
         .return_by_arg(true)
@@ -1708,7 +1901,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("timestamp")
-        .args<codec::StringRef>(reinterpret_cast<void*>(
+        .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
                 v1::string_to_timestamp)))
         .return_by_arg(true)
@@ -1826,11 +2019,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.4.0
         )");
 
-    RegisterExternal("dayofyear")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
-        .doc(R"(
+    const std::string dayofyear_doc =
+        R"(
             @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 
             Example:
@@ -1848,7 +2038,25 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 -- output 0
             @endcode
             @since 0.1.0
-        )");
+        )";
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
@@ -1977,7 +2185,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 }
 
 void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule(this->node_manager());
+    udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
     InitTimeAndDateUdf();
     InitTypeUdf();
@@ -1987,6 +2195,9 @@ void DefaultUdfLibrary::Init() {
     InitWindowFunctions();
     InitUdaf();
     InitFeatureZero();
+
+    AddExternalFunction("init_udfcontext.opaque",
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitUdaf() {
@@ -2204,7 +2415,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @since 0.1.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef>();
+                 StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
         .doc(R"(
@@ -2304,6 +2515,29 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterUdafTemplate<MedianDef>("median")
+        .doc(R"(
+            @brief Compute the median of values.
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+            
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT median(value) OVER w;
+                -- output 2.5
+            @endcode
+            @since 0.6.0
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
 
     InitAggByCateUdafs();
 }

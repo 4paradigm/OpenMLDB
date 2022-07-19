@@ -46,6 +46,12 @@ public class SqlEngine implements AutoCloseable {
     private CompileInfo compileInfo;
     private PhysicalOpNode plan;
 
+
+    public SqlEngine(List<TypeOuterClass.Database> databases, EngineOptions engineOptions) {
+        // TODO(tobe): This is only used for SparkPlanner
+        initilizeEngine(databases, engineOptions);
+    }
+
     /**
      * Construct SQL engine for specific sql and database.
      *
@@ -116,6 +122,11 @@ public class SqlEngine implements AutoCloseable {
     public void initilize(String sql, List<TypeOuterClass.Database> databases, EngineOptions engineOptions,
                           String defaultDbName)
             throws UnsupportedHybridSeException {
+        initilizeEngine(databases, engineOptions);
+        compileSql(sql, defaultDbName);
+    }
+
+    public void initilizeEngine(List<TypeOuterClass.Database> databases, EngineOptions engineOptions) {
         options = engineOptions;
         catalog = new SimpleCatalog();
         session = new BatchRunSession();
@@ -123,15 +134,17 @@ public class SqlEngine implements AutoCloseable {
             catalog.AddDatabase(database);
         }
         engine = new Engine(catalog, options);
+    }
 
+    public void compileSql(String sql, String defaultDbName) throws UnsupportedHybridSeException {
         BaseStatus status = new BaseStatus();
         boolean ok = engine.Get(sql, Objects.isNull(defaultDbName) ? "" : defaultDbName, session, status);
         if (!(ok && status.getMsg().equals("ok"))) {
             throw new UnsupportedHybridSeException("SQL parse error: " + status.GetMsg() + "\n" + status.GetTraces());
         }
         status.delete();
-        compileInfo = session.GetCompileInfo();
-        plan = compileInfo.GetPhysicalPlan();
+        this.compileInfo = session.GetCompileInfo();
+        this.plan = compileInfo.GetPhysicalPlan();
     }
 
     /**
@@ -152,24 +165,41 @@ public class SqlEngine implements AutoCloseable {
         return buffer;
     }
 
+    public Engine getEngine() {
+        return engine;
+    }
+
     @Override
      public synchronized void close() throws Exception {
-        engine.delete();
-        engine = null;
+        if (engine != null) {
+            engine.delete();
+            engine = null;
+        }
 
-        compileInfo.delete();
-        compileInfo = null;
+        if (compileInfo != null) {
+            compileInfo.delete();
+            compileInfo = null;
+        }
 
-        options.delete();
-        options = null;
+        if (options != null) {
+            options.delete();
+            options = null;
+        }
 
-        plan.delete();
-        plan = null;
+        if (plan != null) {
+            plan.delete();
+            plan = null;
+        }
 
-        session.delete();
-        session = null;
+        if (session != null) {
+            session.delete();
+            session = null;
+        }
 
-        catalog.delete();
-        catalog = null;
+        if (catalog != null) {
+            catalog.delete();
+            catalog = null;
+        }
     }
+
 }

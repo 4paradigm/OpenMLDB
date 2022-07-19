@@ -26,7 +26,6 @@
 #include "gflags/gflags.h"
 #include "storage/record.h"
 
-DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
@@ -41,8 +40,8 @@ static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::openmldb::type::TTLType ttl_type)
-    : Table(name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping, ttl_type,
-            ::openmldb::type::CompressType::kNoCompress),
+    : Table(::openmldb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
+            ttl_type, ::openmldb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, NULL),
       enable_gc_(true),
@@ -51,7 +50,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       record_byte_size_(0) {}
 
 MemTable::MemTable(const ::openmldb::api::TableMeta& table_meta)
-    : Table(table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
+    : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::openmldb::type::TTLType::kAbsoluteTime,
             ::openmldb::type::CompressType::kNoCompress),
       segments_(MAX_INDEX_NUM, NULL) {
@@ -671,7 +670,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
 
-TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
+TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
@@ -832,8 +831,7 @@ void MemTableKeyIterator::Seek(const std::string& key) {
 }
 
 bool MemTableKeyIterator::Valid() {
-    bool valid = pk_it_ != NULL && pk_it_->Valid();
-    return valid;
+    return pk_it_ != NULL && pk_it_->Valid();
 }
 
 void MemTableKeyIterator::Next() { NextPK(); }
@@ -854,19 +852,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
 }
 
 std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
-    TimeEntries::Iterator* it = NULL;
-    if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-        it = entry->entries.NewIterator();
-        ticket_.Push(entry);
-    } else {
-        it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                 ->entries.NewIterator();
-        ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-    }
-    it->SeekToFirst();
-    std::unique_ptr<MemTableWindowIterator> wit(new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_));
-    return std::move(wit);
+    return std::unique_ptr<::hybridse::vm::RowIterator>(GetRawValue());
 }
 
 const hybridse::codec::Row MemTableKeyIterator::GetKey() {
@@ -1007,7 +993,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;

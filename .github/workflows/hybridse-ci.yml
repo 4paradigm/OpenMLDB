@@ -6,17 +6,18 @@ on:
       - main
     paths:
       - .github/workflows/hybridse-ci.yml
-      - cases/**/*
-      - hybridse/**/*
+      - 'cases/**'
+      - 'hybridse/**'
+      - 'include/**'
   pull_request:
     paths:
       - .github/workflows/hybridse-ci.yml
-      - cases/**/*
-      - hybridse/**/*
+      - 'cases/**'
+      - 'hybridse/**'
+      - 'include/**'
   workflow_dispatch:
 
 env:
-  HYBRIDSE_PATH: hybridse
   CTEST_PARALLEL_LEVEL: 2 # parallel test level for ctest (make test)
   CTEST_OUTPUT_ON_FAILURE: ON
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
@@ -25,16 +26,13 @@ jobs:
   linux-build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
-      OS: linux
-      ARCH: x86_64
+      TESTING_ENABLE_STRIP: ON
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
 
-      - name: Build Core
+      - name: Build HybridSE
         run: |
           make hybridse-build
 
@@ -48,14 +46,12 @@ jobs:
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
-            ${{ env.HYBRIDSE_PATH }}/build/*.xml
+            build/hybridse/**/*.xml
 
   macos-build:
     name: Build in MacOS
     runs-on: macos-latest
     env:
-      OS: darwin
-      ARCH: x86_64
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
     steps:
@@ -87,7 +83,7 @@ jobs:
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
-            ${{ env.HYBRIDSE_PATH }}/build/*.xml
+            build/hybridse/**/*.xml
 
   publish-test-results:
     runs-on: ubuntu-latest

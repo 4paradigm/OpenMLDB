@@ -16,7 +16,7 @@
 
 #include "zk/dist_lock.h"
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "boost/algorithm/string/join.hpp"
 #include "boost/bind.hpp"
 extern "C" {
@@ -58,6 +58,7 @@ void DistLock::InternalLock() {
         if (lock_state_.load(std::memory_order_relaxed) == kLostLock || cur_session_term != client_session_term_) {
             std::lock_guard<std::mutex> lock(mu_);
             zk_client_->CancelWatchChildren(root_path_);
+            // ZOO_SEQUENCE: node path is assigned_path_, may != supplied path
             bool ok = zk_client_->CreateNode(root_path_ + "/lock_request", lock_value_, ZOO_EPHEMERAL | ZOO_SEQUENCE,
                                              assigned_path_);
             if (!ok) {
@@ -72,13 +73,13 @@ void DistLock::InternalLock() {
             }
             lock_state_.store(kTryLock, std::memory_order_relaxed);
             client_session_term_ = cur_session_term;
-            HandleChildrenChangedLocked(children);
-            zk_client_->WatchChildren(root_path_, boost::bind(&DistLock::HandleChildrenChanged, this, _1));
+            HandleChildrenChanged(children);
+            zk_client_->WatchChildren(root_path_, boost::bind(&DistLock::HandleChildrenChangedLocked, this, _1));
         }
     }
 }
 
-void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& children) {
+void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
     if (!running_.load(std::memory_order_relaxed)) {
         return;
     }
@@ -119,9 +120,9 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
     PDLOG(INFO, "all child: %s", boost::algorithm::join(children, ", ").c_str());
 }
 
-void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
+void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& children) {
     std::lock_guard<std::mutex> lock(mu_);
-    HandleChildrenChangedLocked(children);
+    HandleChildrenChanged(children);
 }
 
 bool DistLock::IsLocked() { return lock_state_.load(std::memory_order_relaxed) == kLocked; }

@@ -23,10 +23,10 @@
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
 
-using hybridse::codec::Date;
+using openmldb::base::Date;
 using hybridse::codec::ListRef;
-using hybridse::codec::StringRef;
-using hybridse::codec::Timestamp;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
 
 namespace hybridse {
 namespace udf {
@@ -39,7 +39,7 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
         *v = V(DataTypeTrait<V>::zero_value());
         return;
     }
-    auto list = (codec::ListV<V>*)(list_ref->list);
+    auto list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
     auto column = dynamic_cast<codec::WrapListImpl<V, codec::Row>*>(list);
     if (column != nullptr) {
         auto row = column->root()->At(pos);
@@ -70,7 +70,7 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
     if (default_val != nullptr) {
         auto default_type = default_val->GetOutputType();
         if (default_type->base() != node::kNull) {
-            if (node::TypeEquals(default_type, input_type->GetGenericType(0))) {
+            if (!node::TypeEquals(default_type, input_type->GetGenericType(0))) {
                 ctx->SetError(
                     "Default value type must be same with input element "
                     "type: " +
@@ -95,22 +95,29 @@ template <typename V>
 void RegisterBaseListAt(UdfLibrary* lib) {
     lib->RegisterExternal("at")
         .doc(R"(
-            @brief Returns the value of expression from the offset-th row of the ordered partition.
+            @brief Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row
 
-            @param offset The number of rows forward from the current row from which to obtain the value.
+            @param offset The number of rows forwarded from the current row, must not negative
 
             Example:
 
-            |value|
-            |--|
-            |0|
-            |1|
-            |2|
-            |3|
-            |4|
+            |c1|c2|
+            |--|--|
+            |0 | 1|
+            |1 | 1|
+            |2 | 2|
+            |3 | 2|
+            |4 | 2|
             @code{.sql}
-                SELECT at(value, 3) OVER w;
-                -- output 3
+                SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+                -- output
+                -- | co |
+                -- |----|
+                -- |NULL|
+                -- |0   |
+                -- |NULL|
+                -- |2   |
+                -- |3   |
             @endcode
         )")
         .args<codec::ListRef<V>, int64_t>(reinterpret_cast<void*>(AtList<V>))

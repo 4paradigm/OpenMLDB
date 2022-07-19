@@ -36,7 +36,7 @@ public interface TaskManagerInterface {
     TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
-    TaskManager.ShowJobResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
+    TaskManager.RunBatchSqlResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchAndShow")
     TaskManager.ShowJobResponse RunBatchAndShow(TaskManager.RunBatchAndShowRequest request);
@@ -53,6 +53,15 @@ public interface TaskManagerInterface {
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "DropOfflineTable")
     TaskManager.DropOfflineTableResponse DropOfflineTable(TaskManager.DropOfflineTableRequest request);
 
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "CreateFunction")
+    TaskManager.CreateFunctionResponse CreateFunction(TaskManager.CreateFunctionRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "DropFunction")
+    TaskManager.DropFunctionResponse DropFunction(TaskManager.DropFunctionRequest request);
+
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetJobLog")
     TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request);
+
+    @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "GetVersion")
+    TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request);
 }

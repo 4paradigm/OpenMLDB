@@ -15,7 +15,11 @@
  */
 
 #include "vm/mem_catalog.h"
+
 #include <algorithm>
+
+#include "absl/strings/substitute.h"
+
 namespace hybridse {
 namespace vm {
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
@@ -113,9 +117,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
 std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
-    std::unique_ptr<MemTimeTableIterator> it(
-        new MemTimeTableIterator(&table_, schema_));
-    return std::move(it);
+    return std::make_unique<MemTimeTableIterator>(&table_, schema_);
 }
 std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
     const std::string& idx_name) {
@@ -123,11 +125,11 @@ std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
 }
 
 void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
-    table_.emplace_back(std::make_pair(key, row));
+    table_.emplace_back(key, row);
 }
 
 void MemTimeTableHandler::AddFrontRow(const uint64_t key, const Row& row) {
-    table_.emplace_front(std::make_pair(key, row));
+    table_.emplace_front(key, row);
 }
 void MemTimeTableHandler::PopBackRow() { table_.pop_back(); }
 

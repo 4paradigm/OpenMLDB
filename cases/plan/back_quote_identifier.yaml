@@ -31,9 +31,7 @@ cases:
           +-table: aa-bb.xx-yy
           +-IF NOT EXIST: 0
           +-column_desc_list: []
-          +-replica_num: 1
-          +-partition_num: 1
-          +-distribution_list: []
+          +-table_option_list: []
   - id: 4
     desc: DESC table aa-bb
     sql: DESC `aa-bb`;
@@ -148,21 +146,28 @@ cases:
           |      +-ttl_type: absolute
           |      +-version_column: column-5
           |      +-version_count: 3
-          +-replica_num: 3
-          +-partition_num: 3
-          +-distribution_list[list]:
+          +-table_option_list[list]:
             +-0:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: leader1
-            |    +-role_type: leader
+            |  +-node[kReplicaNum]
+            |    +-replica_num: 3
             +-1:
-            |  +-node[kPartitionMeta]
-            |    +-endpoint: fo1
-            |    +-role_type: follower
+            |  +-node[kPartitionNum]
+            |    +-partition_num: 3
             +-2:
-              +-node[kPartitionMeta]
-                +-endpoint: fo2
-                +-role_type: follower
+              +-node[kDistributions]
+                +-distribution_list[list]:
+                  +-0:
+                  |  +-node[kPartitionMeta]
+                  |    +-endpoint: leader1
+                  |    +-role_type: leader
+                  +-1:
+                  |  +-node[kPartitionMeta]
+                  |    +-endpoint: fo1
+                  |    +-role_type: follower
+                  +-2:
+                    +-node[kPartitionMeta]
+                      +-endpoint: fo2
+                      +-role_type: follower
   - id: 23
     desc: create index with back quote item name
     sql: |

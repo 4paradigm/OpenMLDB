@@ -45,9 +45,9 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
-set(TOYDB_DEPS_LIBS hybridse_core hybridse_sdk hybridse_flags toydb_flags sqlite3
-    ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB})
-add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST})
+set(TOYDB_DEPS_LIBS toydb_flags hybridse_sdk hybridse_core hybridse_flags sqlite3
+    ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB} ${GTEST_LIBRARIES})
+add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST} )
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
 
 # toydb unittests
@@ -67,10 +67,13 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
 
         add_test(${TEST_TARGET_NAME}
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
-                --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+                --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk hybridse_flags sqlite3
                 ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
+        if (TESTING_ENABLE_STRIP)
+            strip_exe(${TEST_TARGET_NAME})
+        endif()
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -85,9 +88,9 @@ endif()
 
 # toydb bin
 add_executable(toydb cmd/toydb.cc)
-target_link_libraries(toydb toydb_lib toydb_sdk hybridse_sdk hybridse_core hybridse_flags )
+target_link_libraries(toydb toydb_sdk toydb_lib hybridse_sdk hybridse_core hybridse_flags hybridse_test_base)
 # engine execution
 add_executable(toydb_run_engine cmd/toydb_run_engine.cc)
-target_link_libraries(toydb_run_engine toydb_lib toydb_sdk toydb_flags hybridse_flags hybridse_test_base ${GTEST_LIBRARIES} sqlite3)
+target_link_libraries(toydb_run_engine toydb_lib toydb_flags hybridse_flags hybridse_test_base ${GTEST_LIBRARIES} sqlite3)
 
 set(test_list ${test_list} PARENT_SCOPE)

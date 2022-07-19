@@ -16,6 +16,7 @@
 
 #include "node/sql_node.h"
 
+#include <algorithm>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -23,6 +24,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
@@ -68,6 +70,8 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowSessionVariables, "show session variables"},
         {CmdType::kCmdShowComponents, "show components"},
         {CmdType::kCmdShowTableStatus, "show table status"},
+        {CmdType::kCmdDropFunction, "drop function"},
+        {CmdType::kCmdShowFunctions, "show functions"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
@@ -226,6 +230,27 @@ void PrintValue(std::ostream &output, const std::string &org_tab, const OptionsM
         output << "\n";
         PrintSqlNode(output, new_tab, it->second, it->first, std::next(it) == value->end());
     }
+}
+
+Status ValidateArgs(const std::string& function_name, const std::vector<const TypeNode *> &actual_types,
+        const std::vector<const node::TypeNode *>& arg_types, int variadic_pos) {
+    size_t actual_arg_num = actual_types.size();
+    CHECK_TRUE(actual_arg_num >= arg_types.size(), kTypeError, function_name, " take at least ", arg_types.size(),
+               " arguments, but get ", actual_arg_num);
+    if (arg_types.size() < actual_arg_num) {
+        CHECK_TRUE(variadic_pos >= 0 && static_cast<size_t>(variadic_pos) == arg_types.size(), kTypeError,
+                   function_name, " take explicit ", arg_types.size(), " arguments, but get ", actual_arg_num);
+    }
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        auto actual_ty = actual_types[i];
+        if (actual_ty == nullptr) {
+            continue;
+        }
+        CHECK_TRUE(arg_types[i] != nullptr, kTypeError, i, "th argument is not inferred");
+        CHECK_TRUE(arg_types[i]->Equals(actual_ty), kTypeError, function_name, "'s ", i,
+                   "th actual argument mismatch: get ", actual_ty->GetName(), " but expect ", arg_types[i]->GetName());
+    }
+    return Status::OK();
 }
 
 bool SqlNode::Equals(const SqlNode *that) const {
@@ -606,6 +631,33 @@ bool FrameExtent::Equals(const SqlNode *node) const {
     const FrameExtent *that = dynamic_cast<const FrameExtent *>(node);
     return SqlEquals(this->start_, that->start_) && SqlEquals(this->end_, that->end_);
 }
+
+std::string FrameExtent::GetExprString() const {
+    std::string str = "[";
+    if (nullptr == start_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(start_->GetExprString());
+    }
+    str.append(",");
+    if (nullptr == end_) {
+        str.append("UNBOUND");
+    } else {
+        str.append(end_->GetExprString());
+    }
+
+    str.append("]");
+    return str;
+}
+
+bool FrameExtent::Valid() const {
+    return GetStartOffset() <= GetEndOffset();
+}
+
+FrameExtent* FrameExtent::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeFrameExtent(start(), end());
+}
+
 bool FrameNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;
@@ -629,6 +681,11 @@ const std::string FrameNode::GetExprString() const {
     }
     return str;
 }
+
+FrameNode *FrameNode::ShadowCopy(NodeManager *nm) const {
+    return dynamic_cast<FrameNode *>(nm->MakeFrameNode(frame_type(), frame_range(), frame_rows(), frame_maxsize()));
+}
+
 bool FrameNode::CanMergeWith(const FrameNode *that, const bool enbale_merge_with_maxsize) const {
     if (Equals(that)) {
         return true;
@@ -659,7 +716,7 @@ bool FrameNode::CanMergeWith(const FrameNode *that, const bool enbale_merge_with
         return false;
     }
 
-    // Handle RowsRange-like frame with MAXSIZE  and RowsFrame
+    // Handle RowsRange-like frame with MAXSIZE and RowsFrame
     if (this->IsRowsRangeLikeMaxSizeFrame() && kFrameRows == that->frame_type_) {
         // Pure History RowRangeLike Frame with maxsize can't be merged with
         // Rows frame
@@ -833,14 +890,6 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
         output << "\n";
         PrintSqlVector(output, tab, union_tables_->GetList(), "union_tables", false);
     }
-    if (exclude_current_time_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "exclude_current_time", false);
-    }
-    if (instance_not_in_window_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "instance_not_in_window", false);
-    }
     output << "\n";
     PrintValue(output, tab, ExprString(partitions_), "partitions", false);
 
@@ -848,9 +897,35 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintValue(output, tab, ExprString(orders_), "orders", false);
 
     output << "\n";
-    PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+
+    std::vector<std::string_view> attrs;
+    if (exclude_current_time_) {
+        attrs.emplace_back("exclude_current_time");
+    }
+    if (exclude_current_row_) {
+        attrs.emplace_back("exclude_current_row");
+    }
+    if (instance_not_in_window_) {
+        attrs.emplace_back("instance_not_in_window");
+    }
+    if (attrs.empty()) {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+    } else {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", false);
+        output << "\n";
+        PrintValue(output, tab, absl::StrJoin(attrs, ", "), "attributes", true);
+    }
 }
 
+// test if two window can be merged into single one
+// besides the two windows is the same one, two can also merged when all of those condition meet:
+// - union table equal
+// - exclude current time equal
+// - exclude current row equal
+// - instance not in window equal
+// - order equal
+// - partion equal
+// - window frame can be merged
 bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
@@ -860,16 +935,25 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     }
     return SqlListEquals(this->union_tables_, that->union_tables_) &&
            this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
+           this->instance_not_in_window_ == that->instance_not_in_window_ &&
+           this->exclude_current_row() == that->exclude_current_row() && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
            this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
 }
+
+WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
+    return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
+                                                               exclude_current_time_, exclude_current_row_,
+                                                               instance_not_in_window_));
+}
+
 bool WindowDefNode::Equals(const SqlNode *node) const {
     if (!SqlNode::Equals(node)) {
         return false;
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
+           this->exclude_current_row_ == that->exclude_current_row_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
@@ -1085,6 +1169,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kPartitionNum:
             output = "kPartitionNum";
             break;
+        case kStorageMode:
+            output = "kStorageMode";
+            break;
         case kFn:
             output = "kFn";
             break;
@@ -1114,6 +1201,15 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
             break;
         case kDeleteStmt:
             output = "kDeleteStmt";
+            break;
+        case kCreateFunctionStmt:
+            output = "kCreateFunctionStmt";
+            break;
+        case kDynamicUdfFnDef:
+            output = "kDynamicUdfFnDef";
+            break;
+        case kDynamicUdafFnDef:
+            output = "kDynamicUdafFnDef";
             break;
         case kUnknow:
             output = "kUnknow";
@@ -1191,6 +1287,7 @@ bool IsAggregationExpression(const udf::UdfLibrary *lib, const ExprNode *node_pt
     }
     return false;
 }
+
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
     // try to resolved window ptr from expression like: call(args...) over
@@ -1199,6 +1296,7 @@ bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &wind
         CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
         if (nullptr != func_node_ptr->GetOver()) {
             if (func_node_ptr->GetOver()->GetName().empty()) {
+                // anonymous over
                 *output = func_node_ptr->GetOver();
             } else {
                 auto iter = windows.find(func_node_ptr->GetOver()->GetName());
@@ -1323,11 +1421,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
-    output << "\n";
-    PrintValue(output, tab, std::to_string(partition_num_), "partition_num", false);
-    output << "\n";
-    PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
+    PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1342,6 +1436,74 @@ void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     if (default_value_) {
         output << "\n";
         PrintSqlNode(output, tab, default_value_, "default_value", true);
+    }
+}
+
+void ColumnIndexNode::SetTTL(ExprListNode *ttl_node_list) {
+    if (nullptr == ttl_node_list) {
+        abs_ttl_ = -1;
+        lat_ttl_ = -1;
+        return;
+    } else {
+        uint32_t node_num = ttl_node_list->GetChildNum();
+        if (node_num > 2) {
+            abs_ttl_ = -1;
+            lat_ttl_ = -1;
+            return;
+        }
+        for (uint32_t i = 0; i < node_num; i++) {
+            auto ttl_node = ttl_node_list->GetChild(i);
+            if (ttl_node == nullptr) {
+                abs_ttl_ = -1;
+                lat_ttl_ = -1;
+                return;
+            }
+            switch (ttl_node->GetExprType()) {
+                case kExprPrimary: {
+                    const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
+                    switch (ttl->GetDataType()) {
+                        case hybridse::node::kInt32:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            } else {
+                                lat_ttl_ = ttl->GetInt();
+                            }
+                            break;
+                        case hybridse::node::kInt64:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            } else {
+                                lat_ttl_ = ttl->GetLong();
+                            }
+                            break;
+                        case hybridse::node::kDay:
+                        case hybridse::node::kHour:
+                        case hybridse::node::kMinute:
+                        case hybridse::node::kSecond:
+                            if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
+                                abs_ttl_ = ttl->GetMillis();
+                            } else {
+                                abs_ttl_ = -1;
+                                lat_ttl_ = -1;
+                                return;
+                            }
+                            break;
+                        default: {
+                            return;
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
+                    return;
+                }
+            }
+        }
     }
 }
 
@@ -1369,8 +1531,42 @@ void CmdNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, std::string(CmdTypeName(cmd_type_)), "cmd_type", false);
     output << "\n";
+    if (IsIfNotExists()) {
+        PrintValue(output, tab, "true", "if_not_exists", false);
+        output << "\n";
+    }
+    if (IsIfExists()) {
+        PrintValue(output, tab, "true", "if_exists", false);
+        output << "\n";
+    }
     PrintValue(output, tab, args_, "args", true);
 }
+
+bool CmdNode::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+    auto* cnode = dynamic_cast<const CmdNode*>(node);
+    return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
+           std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
+                      std::end(cnode->GetArgs()));
+}
+
+void CreateFunctionNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, function_name_, "function_name", false);
+    output << "\n";
+    PrintSqlNode(output, tab, return_type_, "return_type", false);
+    output << "\n";
+    PrintSqlVector(output, tab, args_type_, "args_type", false);
+    output << "\n";
+    PrintValue(output, tab, IsAggregate() ? "true" : "false", "is_aggregate", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", true);
+}
+
 void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1838,6 +2034,20 @@ bool QueryRefNode::Equals(const SqlNode *node) const {
     const QueryRefNode *that = dynamic_cast<const QueryRefNode *>(node);
     return SqlEquals(this->query_, that->query_);
 }
+
+void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT;
+    output << "\n";
+    PrintValue(output, tab, BoundTypeName(bound_type_), "bound", false);
+
+    if (kPrecedingUnbound != bound_type_ && kFollowingUnbound != bound_type_) {
+        // unbound information is enough from `bound:` field
+        output << "\n";
+        PrintValue(output, tab, std::to_string(offset_), "offset", true);
+    }
+}
+
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (SqlEquals(bound1, bound2)) {
         return 0;
@@ -1850,8 +2060,9 @@ int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (nullptr == bound2) {
         return 1;
     }
-    int64_t offset1 = bound1->GetSignedOffset();
-    int64_t offset2 = bound2->GetSignedOffset();
+    // FromeBound itself do not know it is start or end frame, just assume same for the two
+    int64_t offset1 = bound1->GetSignedOffset(true);
+    int64_t offset2 = bound2->GetSignedOffset(true);
     return offset1 == offset2 ? 0 : offset1 > offset2 ? 1 : -1;
 }
 bool FrameBound::Equals(const SqlNode *node) const {
@@ -2037,23 +2248,47 @@ bool ExternalFnDefNode::Equals(const SqlNode *node) const {
 }
 
 Status ExternalFnDefNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
-    size_t actual_arg_num = actual_types.size();
-    CHECK_TRUE(actual_arg_num >= arg_types_.size(), kTypeError, function_name(), " take at least ", arg_types_.size(),
-               " arguments, but get ", actual_arg_num);
-    if (arg_types_.size() < actual_arg_num) {
-        CHECK_TRUE(variadic_pos_ >= 0 && static_cast<size_t>(variadic_pos_) == arg_types_.size(), kTypeError,
-                   function_name(), " take explicit ", arg_types_.size(), " arguments, but get ", actual_arg_num);
-    }
-    for (size_t i = 0; i < arg_types_.size(); ++i) {
-        auto actual_ty = actual_types[i];
-        if (actual_ty == nullptr) {
-            continue;
+    return ValidateArgs(function_name_, actual_types, arg_types_, variadic_pos_);
+}
+
+void DynamicUdfFnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
+    if (!IsResolved()) {
+        output << org_tab << "[Unresolved](" << function_name_ << ")";
+    } else {
+        output << org_tab << "[kDynamicUdfFnDef] ";
+        if (GetReturnType() == nullptr) {
+            output << "?";
+        } else {
+            output << GetReturnType()->GetName();
         }
-        CHECK_TRUE(arg_types_[i] != nullptr, kTypeError, i, "th argument is not inferred");
-        CHECK_TRUE(arg_types_[i]->Equals(actual_ty), kTypeError, function_name(), "'s ", i,
-                   "th actual argument mismatch: get ", actual_ty->GetName(), " but expect ", arg_types_[i]->GetName());
+        output << " " << function_name_ << "(";
+        for (size_t i = 0; i < GetArgSize(); ++i) {
+            auto arg_ty = GetArgType(i);
+            if (arg_ty == nullptr) {
+                output << "?";
+            } else {
+                output << arg_ty->GetName();
+            }
+            if (i < GetArgSize() - 1) {
+                output << ", ";
+            }
+        }
+        output << ")";
+        if (return_by_arg_) {
+            output << "\n";
+            const std::string tab = org_tab + INDENT;
+            PrintValue(output, tab, "true", "return_by_arg", true);
+        }
     }
-    return Status::OK();
+}
+
+bool DynamicUdfFnDefNode::Equals(const SqlNode *node) const {
+    auto other = dynamic_cast<const DynamicUdfFnDefNode*>(node);
+    return other != nullptr && other->GetName() == GetName();
+}
+
+Status DynamicUdfFnDefNode::Validate(const std::vector<const TypeNode *> &actual_types) const {
+    return ValidateArgs(function_name_, actual_types, arg_types_, -1);
 }
 
 void UdfDefNode::Print(std::ostream &output, const std::string &tab) const {
@@ -2302,6 +2537,13 @@ void ReplicaNumNode::Print(std::ostream &output, const std::string &org_tab) con
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
+}
+
+void StorageModeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", true);
 }
 
 void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {

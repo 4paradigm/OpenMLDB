@@ -180,7 +180,7 @@ TEST_F(PlanNodeTest, UnaryPlanNodeTest) {
     std::cout << oss.str();
     ASSERT_EQ(
         "+-[kUnknow]\n"
-        "+-[kUnknow]",
+        "  +-[kUnknow]",
         oss.str());
 }
 
@@ -238,14 +238,15 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     index_items->PushBack(manager_->MakeIndexTsNode("col5"));
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(manager_->MakeColumnIndexNode(index_items));
     index_node->SetName("index1");
-    CreatePlanNode *node =
-        manager_->MakeCreateTablePlanNode("", "t1", 3, 8,
-                                          {manager_->MakeColumnDescNode("col1", node::kInt32, true),
-                                           manager_->MakeColumnDescNode("col2", node::kInt32, true),
-                                           manager_->MakeColumnDescNode("col3", node::kFloat, true),
-                                           manager_->MakeColumnDescNode("col4", node::kVarchar, true),
-                                           manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
-                                          {});
+    CreatePlanNode *node = manager_->MakeCreateTablePlanNode(
+        "", "t1",
+        {manager_->MakeColumnDescNode("col1", node::kInt32, true),
+         manager_->MakeColumnDescNode("col2", node::kInt32, true),
+         manager_->MakeColumnDescNode("col3", node::kFloat, true),
+         manager_->MakeColumnDescNode("col4", node::kVarchar, true),
+         manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
+        {manager_->MakeReplicaNumNode(3), manager_->MakePartitionNumNode(8), manager_->MakeStorageModeNode(kMemory)},
+        false);
     ASSERT_TRUE(nullptr != node);
     std::vector<std::string> columns;
     std::vector<std::string> indexes;
@@ -253,6 +254,16 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     ASSERT_EQ(std::vector<std::string>({"col1 int32", "col2 int32", "col3 float", "col4 string", "col5 timestamp"}),
               columns);
     ASSERT_EQ(std::vector<std::string>({"index1:col4:col5"}), indexes);
+    auto table_option_list = node->GetTableOptionList();
+    for (auto table_option : table_option_list) {
+        if (table_option->GetType() == kReplicaNum) {
+            ASSERT_EQ(3, dynamic_cast<ReplicaNumNode *>(table_option)->GetReplicaNum());
+        } else if (table_option->GetType() == kPartitionNum) {
+            ASSERT_EQ(8, dynamic_cast<PartitionNumNode *>(table_option)->GetPartitionNum());
+        } else if (table_option->GetType() == kStorageMode) {
+            ASSERT_EQ(kMemory, dynamic_cast<StorageModeNode *>(table_option)->GetStorageMode());
+        }
+    }
 }
 }  // namespace node
 }  // namespace hybridse

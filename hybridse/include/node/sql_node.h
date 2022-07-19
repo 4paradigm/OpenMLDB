@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
@@ -386,6 +387,31 @@ inline const std::string FnNodeName(const SqlNodeType &type) {
     }
 }
 
+inline const std::string StorageModeName(StorageMode mode) {
+    switch (mode) {
+        case kMemory:
+            return "memory";
+        case kHDD:
+            return "hdd";
+        case kSSD:
+            return "ssd";
+        default:
+            return "unknown";
+    }
+}
+
+inline const StorageMode NameToStorageMode(const std::string& name) {
+    if (boost::iequals(name, "memory")) {
+        return kMemory;
+    } else if (boost::iequals(name, "hdd")) {
+        return kHDD;
+    } else if (boost::iequals(name, "ssd")) {
+        return kSSD;
+    } else {
+        return kUnknown;
+    }
+}
+
 inline const std::string RoleTypeName(RoleType type) {
     switch (type) {
         case kLeader:
@@ -429,7 +455,7 @@ class SqlNodeList : public SqlNode {
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
     const std::vector<SqlNode *> &GetList() const { return list_; }
-    void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     virtual bool Equals(const SqlNodeList *that) const;
 
  private:
@@ -1090,48 +1116,48 @@ class FrameBound : public SqlNode {
 
     ~FrameBound() {}
 
-    void Print(std::ostream &output, const std::string &org_tab) const {
-        SqlNode::Print(output, org_tab);
-        const std::string tab = org_tab + INDENT + SPACE_ED;
-        std::string space = org_tab + INDENT + INDENT;
-        output << "\n";
-        output << tab << SPACE_ST << "bound: " << BoundTypeName(bound_type_) << "\n";
+    void Print(std::ostream &output, const std::string &org_tab) const override;
 
-        if (kFollowing == bound_type_ || kPreceding == bound_type_) {
-            output << space << offset_;
-        }
-    }
     const std::string GetExprString() const {
-        switch (bound_type_) {
-            case node::kCurrent:
-                return "0";
-            case node::kOpenFollowing:
-            case node::kOpenPreceding:
-            case node::kFollowing:
-            case node::kPreceding:
-                return std::to_string(GetSignedOffset());
-            case node::kPrecedingUnbound:
-            case node::kFollowingUnbound:
-                return "UNBOUND";
-        }
-        return "";
+        return absl::StrCat(offset_, " ", BoundTypeName(bound_type_));
     }
 
     BoundType bound_type() const { return bound_type_; }
+    void set_bound_type(BoundType type) { bound_type_ = type; }
     const bool is_time_offset() const { return is_time_offset_; }
     int64_t GetOffset() const { return offset_; }
-    int64_t GetSignedOffset() const {
+    void SetOffset(int64_t v) { offset_ = v; }
+
+
+    /// \brief get the inclusive frame bound offset value that has signed symbol
+    ///
+    /// usually, `offset_` is non-negative (think about the offset expr in SQL window frame:
+    ///         'ROWS BETWEEN 2 PRECEDING AND 0 OPEN PRECEDING')
+    /// * for 'PRECEDING' bound, output is negative
+    /// * for 'FOLLOWING' bound, output is positive
+    /// * for 'OPEN [ PRECEDING | FOLLOWING ]', output is one increasing or decreasing, based on
+    ///   whether it is start bound or end bound
+    ///
+    /// \param is_start_frame whether this bound is start or end of window frame
+    ///
+    /// by convention, start frame is the one has the lower signed offset value
+    /// and should be the first frame in SQL string
+    ///
+    /// e.g
+    /// 2s PRECEDING AND 0s PRECEDING -> (true, false)
+    /// 2s following and 1s following -> (true, false)
+    int64_t GetSignedOffset(bool is_start_frame) const {
         switch (bound_type_) {
             case node::kCurrent:
                 return 0;
             case node::kFollowing:
                 return offset_;
             case node::kOpenFollowing:
-                return offset_ - 1;
+                return is_start_frame ? offset_ + 1 : offset_ - 1;
             case node::kPreceding:
                 return -1 * offset_;
             case node::kOpenPreceding:
-                return -1 * (offset_ - 1);
+                return is_start_frame ? -1 * ( offset_  - 1 ) : -1 * (offset_ + 1);
             case node::kPrecedingUnbound:
                 return INT64_MIN;
             case node::kFollowingUnbound:
@@ -1154,29 +1180,34 @@ class FrameExtent : public SqlNode {
 
     FrameExtent(FrameBound *start, FrameBound *end) : SqlNode(kFrameExtent, 0, 0), start_(start), end_(end) {}
 
-    ~FrameExtent() {}
+    ~FrameExtent() override {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
+
     FrameBound *start() const { return start_; }
     FrameBound *end() const { return end_; }
-    const std::string GetExprString() const {
-        std::string str = "[";
-        if (nullptr == start_) {
-            str.append("UNBOUND");
-        } else {
-            str.append(start_->GetExprString());
-        }
-        str.append(",");
-        if (nullptr == end_) {
-            str.append("UNBOUND");
-        } else {
-            str.append(end_->GetExprString());
-        }
+    void SetStart(FrameBound* start) { start_ = start; }
+    void SetEnd(FrameBound* end) { end_ = end; }
 
-        str.append("]");
-        return str;
+    std::string GetExprString() const;
+
+    // get the inclusive frome bound offset value for start and end
+    inline int64_t GetStartOffset() const {
+        return start_->GetSignedOffset(true);
     }
+
+    inline int64_t GetEndOffset() const {
+        return end_->GetSignedOffset(false);
+    }
+
+    /// \brief check if current FrameExtent is valid
+    ///
+    /// rules:
+    /// * start offset <= end offset
+    bool Valid() const;
+
+    FrameExtent* ShadowCopy(NodeManager* nm) const override;
 
  private:
     FrameBound *start_;
@@ -1195,25 +1226,29 @@ class FrameNode : public SqlNode {
     void set_frame_type(FrameType frame_type) { frame_type_ = frame_type; }
     FrameExtent *frame_range() const { return frame_range_; }
     FrameExtent *frame_rows() const { return frame_rows_; }
+    void SetFrameRange(FrameExtent* ext) { frame_range_ = ext; }
+    void SetFrameRows(FrameExtent* ext) { frame_rows_ = ext; }
+
     int64_t frame_maxsize() const { return frame_maxsize_; }
+    void set_frame_maxsize(int64_t s) { frame_maxsize_ = s; }
     int64_t GetHistoryRangeStart() const {
         if (nullptr == frame_rows_ && nullptr == frame_range_) {
             return INT64_MIN;
         }
         if (nullptr == frame_rows_) {
             return nullptr == frame_range_ || nullptr == frame_range_->start() ? INT64_MIN
-                   : frame_range_->start()->GetSignedOffset() > 0              ? 0
-                                                                  : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->GetStartOffset() > 0                        ? 0
+                                                                               : frame_range_->GetStartOffset();
         } else {
             return nullptr == frame_range_ || nullptr == frame_range_->start() ? 0
-                   : frame_range_->start()->GetSignedOffset() > 0              ? 0
-                                                                  : frame_range_->start()->GetSignedOffset();
+                   : frame_range_->GetStartOffset() > 0                        ? 0
+                                                                               : frame_range_->GetStartOffset();
         }
     }
     int64_t GetHistoryRangeEnd() const {
         return nullptr == frame_range_ || nullptr == frame_range_->end() ? 0
-               : frame_range_->end()->GetSignedOffset() > 0              ? 0
-                                                                         : frame_range_->end()->GetSignedOffset();
+               : frame_range_->GetEndOffset() > 0                        ? 0
+                                                                         : frame_range_->GetEndOffset();
     }
 
     int64_t GetHistoryRowsStartPreceding() const { return -1 * GetHistoryRowsStart(); }
@@ -1223,12 +1258,12 @@ class FrameNode : public SqlNode {
         }
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? INT64_MIN
-                   : frame_rows_->start()->GetSignedOffset() > 0             ? 0
-                                                                             : frame_rows_->start()->GetSignedOffset();
+                   : frame_rows_->GetStartOffset() > 0                       ? 0
+                                                                             : frame_rows_->GetStartOffset();
         } else {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->start()->GetSignedOffset() > 0             ? 0
-                                                                             : frame_rows_->start()->GetSignedOffset();
+                   : frame_rows_->GetStartOffset() > 0                       ? 0
+                                                                             : frame_rows_->GetStartOffset();
         }
     }
     int64_t GetHistoryRowsEnd() const {
@@ -1237,29 +1272,14 @@ class FrameNode : public SqlNode {
         }
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? INT64_MIN
-                                                                             : frame_rows_->end()->GetSignedOffset();
+                                                                             : frame_rows_->GetEndOffset();
         } else {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->end()->GetSignedOffset() > 0               ? 0
-                                                                             : frame_rows_->end()->GetSignedOffset();
+                   : frame_rows_->GetEndOffset() > 0                         ? 0
+                                                                             : frame_rows_->GetEndOffset();
         }
     }
-    inline const bool IsHistoryFrame() const {
-        switch (frame_type_) {
-            case kFrameRows:
-                return GetHistoryRowsEnd() < 0;
-            case kFrameRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsMergeRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-        }
-        return false;
-    }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
     const std::string GetExprString() const;
@@ -1269,6 +1289,10 @@ class FrameNode : public SqlNode {
     }
     inline bool IsRowsRangeLikeMaxSizeFrame() const { return IsRowsRangeLikeFrame() && frame_maxsize_ > 0; }
     bool IsPureHistoryFrame() const {
+        if (exclude_current_row_) {
+            return true;
+        }
+
         switch (frame_type_) {
             case kFrameRows: {
                 return GetHistoryRowsEnd() < 0;
@@ -1286,6 +1310,12 @@ class FrameNode : public SqlNode {
         return false;
     }
 
+    FrameNode* ShadowCopy(node::NodeManager* nm) const override;
+
+    // HACK: kind mess but we only turn this flag to turn for specific condition
+    // in physical plan transformation. In case this flag affect other cases
+    mutable bool exclude_current_row_ = false;
+
  private:
     FrameType frame_type_;
     FrameExtent *frame_range_;
@@ -1296,8 +1326,6 @@ class WindowDefNode : public SqlNode {
  public:
     WindowDefNode()
         : SqlNode(kWindowDef, 0, 0),
-          exclude_current_time_(false),
-          instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
           union_tables_(nullptr),
@@ -1327,18 +1355,26 @@ class WindowDefNode : public SqlNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SqlNode *that) const;
+    bool Equals(const SqlNode *that) const override;
     bool CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged = true) const;
 
+    // shadow copy all fields except window_name_
+    WindowDefNode* ShadowCopy(NodeManager* nm) const override;
+
  private:
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */
     SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
+
+    bool exclude_current_time_ = false;
+    bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 
 class AllNode : public ExprNode {
@@ -1496,6 +1532,10 @@ class BinaryExpr : public ExprNode {
     BinaryExpr *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+
+    static BinaryExpr *CastFrom(ExprNode *node) {
+        return dynamic_cast<BinaryExpr *>(node);
+    }
 
  private:
     FnOperator op_;
@@ -1791,23 +1831,37 @@ class InsertStmt : public SqlNode {
     const std::vector<ExprNode *> values_;
     const bool is_all_;
 };
+
+class StorageModeNode : public SqlNode {
+ public:
+    StorageModeNode() : SqlNode(kStorageMode, 0, 0), storage_mode_(kMemory) {}
+
+    explicit StorageModeNode(StorageMode storage_mode)
+        : SqlNode(kStorageMode, 0, 0), storage_mode_(storage_mode) {}
+
+    ~StorageModeNode() {}
+
+    StorageMode GetStorageMode() const { return storage_mode_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    StorageMode storage_mode_;
+};
+
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
-        : SqlNode(kCreateStmt, 0, 0), table_name_(""), op_if_not_exist_(false), replica_num_(1), partition_num_(1) {}
-
-    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist, int replica_num,
-               int partition_num)
         : SqlNode(kCreateStmt, 0, 0),
-          db_name_(db_name),
-          table_name_(table_name),
-          op_if_not_exist_(op_if_not_exist),
-          replica_num_(replica_num),
-          partition_num_(partition_num) {}
+          table_name_(""),
+          op_if_not_exist_(false) {}
+
+    CreateStmt(const std::string &db_name, const std::string &table_name, bool op_if_not_exist)
+        : SqlNode(kCreateStmt, 0, 0), db_name_(db_name), table_name_(table_name), op_if_not_exist_(op_if_not_exist) {}
 
     ~CreateStmt() {}
 
-    NodePointVector &GetColumnDefList() { return column_desc_list_; }
+    NodePointVector* MutableColumnDefList() { return &column_desc_list_; }
     const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
 
     std::string GetTableName() const { return table_name_; }
@@ -1815,23 +1869,17 @@ class CreateStmt : public SqlNode {
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
-    int GetReplicaNum() const { return replica_num_; }
-
-    int GetPartitionNum() const { return partition_num_; }
-
-    NodePointVector &GetDistributionList() { return distribution_list_; }
-    const NodePointVector &GetDistributionList() const { return distribution_list_; }
+    NodePointVector* MutableTableOptionList() { return &table_option_list_; }
+    const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string db_name_;
     std::string table_name_;
-    bool op_if_not_exist_;
     NodePointVector column_desc_list_;
-    int replica_num_;
-    int partition_num_;
-    NodePointVector distribution_list_;
+    NodePointVector table_option_list_;
+    bool op_if_not_exist_;
 };
 class IndexKeyNode : public SqlNode {
  public:
@@ -1929,73 +1977,7 @@ class ColumnIndexNode : public SqlNode {
     int64_t GetAbsTTL() const { return abs_ttl_; }
     int64_t GetLatTTL() const { return lat_ttl_; }
 
-    void SetTTL(ExprListNode *ttl_node_list) {
-        if (nullptr == ttl_node_list) {
-            abs_ttl_ = -1;
-            lat_ttl_ = -1;
-            return;
-        } else {
-            uint32_t node_num = ttl_node_list->GetChildNum();
-            if (node_num > 2) {
-                abs_ttl_ = -1;
-                lat_ttl_ = -1;
-                return;
-            }
-            for (uint32_t i = 0; i < node_num; i++) {
-                auto ttl_node = ttl_node_list->GetChild(i);
-                if (ttl_node == nullptr) {
-                    abs_ttl_ = -1;
-                    lat_ttl_ = -1;
-                    return;
-                }
-                switch (ttl_node->GetExprType()) {
-                    case kExprPrimary: {
-                        const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
-                        switch (ttl->GetDataType()) {
-                            case hybridse::node::kInt32:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetInt();
-                                }
-                                break;
-                            case hybridse::node::kInt64:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                } else {
-                                    lat_ttl_ = ttl->GetLong();
-                                }
-                                break;
-                            case hybridse::node::kDay:
-                            case hybridse::node::kHour:
-                            case hybridse::node::kMinute:
-                            case hybridse::node::kSecond:
-                                if (ttl->GetTTLType() == hybridse::node::kAbsolute) {
-                                    abs_ttl_ = ttl->GetMillis();
-                                } else {
-                                    abs_ttl_ = -1;
-                                    lat_ttl_ = -1;
-                                    return;
-                                }
-                                break;
-                            default: {
-                                return;
-                            }
-                        }
-                        break;
-                    }
-                    default: {
-                        LOG(WARNING) << "can't set ttl with expr type " << ExprTypeName(ttl_node->GetExprType());
-                        return;
-                    }
-                }
-            }
-        }
-    }
+    void SetTTL(ExprListNode *ttl_node_list);
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -2017,13 +1999,33 @@ class CmdNode : public SqlNode {
 
     void AddArg(const std::string &arg) { args_.push_back(arg); }
     const std::vector<std::string> &GetArgs() const { return args_; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
 
     const node::CmdType GetCmdType() const { return cmd_type_; }
+
+    bool IsIfNotExists() const {
+        return if_not_exist_;
+    }
+
+    void SetIfNotExists(bool b) {
+        if_not_exist_ = b;
+    }
+
+    bool IsIfExists() const {
+        return if_exist_;
+    }
+
+    void SetIfExists(bool b) {
+        if_exist_ = b;
+    }
 
  private:
     node::CmdType cmd_type_;
     std::vector<std::string> args_;
+    bool if_not_exist_ = false;
+    bool if_exist_ = false;
 };
 
 enum class DeleteTarget {
@@ -2078,9 +2080,33 @@ class SelectIntoNode : public SqlNode {
     const std::shared_ptr<OptionsMap> config_options_ = nullptr;
 };
 
+class CreateFunctionNode : public SqlNode {
+ public:
+     CreateFunctionNode(const std::string& function_name, const TypeNode* return_type,
+             const NodePointVector& args_type, bool is_aggregate, std::shared_ptr<OptionsMap> options)
+        : SqlNode(kCreateFunctionStmt, 0, 0),
+          function_name_(function_name),
+          return_type_(return_type),
+          args_type_(args_type),
+          is_aggregate_(is_aggregate),
+          options_(options) {}
+    const std::string& Name() const { return function_name_; }
+    const TypeNode* GetReturnType() const { return return_type_; }
+    const NodePointVector& GetArgsType() const { return args_type_; }
+    bool IsAggregate() const { return is_aggregate_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+    void Print(std::ostream& output, const std::string& org_tab) const override;
+ private:
+    const std::string function_name_;
+    const TypeNode* return_type_;
+    const NodePointVector args_type_;
+    const bool is_aggregate_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class LoadDataNode : public SqlNode {
  public:
-    explicit LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
+    LoadDataNode(const std::string &f, const std::string &db, const std::string &table,
                           const std::shared_ptr<OptionsMap>&& op, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kLoadDataStmt, 0, 0), file_(f), db_(db), table_(table), options_(op), config_options_(op2) {}
     ~LoadDataNode() {}
@@ -2383,6 +2409,65 @@ class ExternalFnDefNode : public FnDefNode {
     bool return_by_arg_;
 };
 
+class DynamicUdfFnDefNode : public FnDefNode {
+ public:
+    DynamicUdfFnDefNode(const std::string &name, void *fn_ptr, const node::TypeNode *ret_type, bool ret_nullable,
+                      const std::vector<const node::TypeNode *> &arg_types, const std::vector<int> &arg_nullable,
+                      bool return_by_arg, ExternalFnDefNode *init_node)
+        : FnDefNode(kDynamicUdfFnDef),
+          function_name_(name),
+          function_ptr_(fn_ptr),
+          ret_type_(ret_type),
+          ret_nullable_(ret_nullable),
+          arg_types_(arg_types),
+          arg_nullable_(arg_nullable),
+          return_by_arg_(return_by_arg),
+          init_context_node_(init_node) {}
+
+    const std::string GetName() const override { return function_name_; }
+
+    void *function_ptr() const { return function_ptr_; }
+    const node::TypeNode *ret_type() const { return ret_type_; }
+    const std::vector<const node::TypeNode *> &arg_types() const { return arg_types_; }
+    bool return_by_arg() const { return return_by_arg_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SqlNode *node) const override;
+
+    void SetReturnType(const node::TypeNode *dtype) { this->ret_type_ = dtype; }
+    void SetReturnNullable(bool flag) { this->ret_nullable_ = flag; }
+
+    void SetReturnByArg(bool flag) { this->return_by_arg_ = flag; }
+
+    bool IsResolved() const { return ret_type_ != nullptr; }
+
+    base::Status Validate(const std::vector<const TypeNode *> &arg_types) const override;
+
+    const TypeNode *GetReturnType() const override { return ret_type_; }
+    size_t GetArgSize() const override { return arg_types_.size(); }
+    const TypeNode *GetArgType(size_t i) const override { return arg_types_[i]; }
+    bool IsArgNullable(size_t i) const override { return arg_nullable_[i] > 0; }
+    bool IsReturnNullable() const override { return ret_nullable_; }
+
+    // bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
+    bool IsListReturn(ExprAnalysisContext *ctx) const override { return false; };
+
+    DynamicUdfFnDefNode *ShadowCopy(NodeManager *) const override;
+    DynamicUdfFnDefNode *DeepCopy(NodeManager *) const override;
+
+    const ExternalFnDefNode *GetInitContextNode() const { return init_context_node_; }
+
+ private:
+    std::string function_name_;
+    void *function_ptr_;
+    const node::TypeNode *ret_type_;
+    bool ret_nullable_;
+    std::vector<const node::TypeNode *> arg_types_;
+    std::vector<int> arg_nullable_;
+    bool return_by_arg_;
+    ExternalFnDefNode *init_context_node_;
+};
+
 class UdfDefNode : public FnDefNode {
  public:
     explicit UdfDefNode(FnNodeFnDef *def) : FnDefNode(kUdfDef), def_(def) {}
@@ -2678,8 +2763,13 @@ bool SqlListEquals(const SqlNodeList *left, const SqlNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
+
+// retrieve the `WindowDefNode` for the `ExprNode`, which is either from
+//  `ExprNode` itself inside if it is an anonymous window e.g `fn() over (window)`
+//  or find in `windows` map by window name
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *>& windows, ExprNode *node_ptr,
                         const WindowDefNode **output);
+
 bool IsAggregationExpression(const udf::UdfLibrary* lib, const node::ExprNode* node_ptr);
 void ColumnOfExpression(const ExprNode *node_ptr,
                         std::vector<const node::ExprNode *> *columns);  // NOLINT

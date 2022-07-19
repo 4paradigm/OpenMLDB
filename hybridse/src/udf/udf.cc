@@ -21,6 +21,8 @@
 #include <set>
 #include <utility>
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_replace.h"
+#include "absl/time/civil_time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -45,18 +47,31 @@ using hybridse::codec::IteratorRef;
 using hybridse::codec::ListRef;
 using hybridse::codec::ListV;
 using hybridse::codec::Row;
-using hybridse::codec::StringRef;
+using openmldb::base::StringRef;
+using openmldb::base::Timestamp;
+using openmldb::base::Date;
 // TODO(chenjing): 时区统一配置
-const int32_t TZ = 8;
-const time_t TZ_OFFSET = TZ * 3600000;
-const int MAX_ALLOC_SIZE = 2048;
+constexpr int32_t TZ = 8;
+constexpr time_t TZ_OFFSET = TZ * 3600000;
+constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
 bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
-int32_t dayofyear(int64_t ts) {
+void trivial_fun() {}
+
+void dayofyear(int64_t ts, int32_t* out, bool* is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        *out = 0;
+        return;
+    }
+
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
-    return t.tm_yday + 1;
+
+    *out = t.tm_yday + 1;
+    *is_null = false;
 }
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -94,32 +109,35 @@ int32_t year(int64_t ts) {
     return t.tm_year + 1900;
 }
 
-int32_t dayofyear(codec::Timestamp *ts) { return dayofyear(ts->ts_); }
-int32_t dayofyear(codec::Date *date) {
+void dayofyear(Timestamp *ts, int32_t *out, bool *is_null) { dayofyear(ts->ts_, out, is_null); }
+void dayofyear(Date *date, int32_t* out, bool* is_null) {
     int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
-        return 0;
+    if (!Date::Decode(date->date_, &year, &month, &day)) {
+        *out = 0;
+        *is_null = true;
+        return;
     }
-    try {
-        if (month <= 0 || month > 12) {
-            return 0;
-        } else if (day <= 0 || day > 31) {
-            return 0;
-        }
-        boost::gregorian::date d(year, month, day);
-        return d.day_of_year();
-    } catch (...) {
-        return 0;
+
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        // CivilTime normalize it because of invalid input
+        *out = 0;
+        *is_null = true;
+        return;
     }
+
+    *out = absl::GetYearDay(civil_day);
+    *is_null = false;
 }
-int32_t dayofmonth(codec::Timestamp *ts) { return dayofmonth(ts->ts_); }
-int32_t weekofyear(codec::Timestamp *ts) { return weekofyear(ts->ts_); }
-int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
-int32_t year(codec::Timestamp *ts) { return year(ts->ts_); }
-int32_t dayofweek(codec::Timestamp *ts) { return dayofweek(ts->ts_); }
-int32_t dayofweek(codec::Date *date) {
+
+int32_t dayofmonth(Timestamp *ts) { return dayofmonth(ts->ts_); }
+int32_t weekofyear(Timestamp *ts) { return weekofyear(ts->ts_); }
+int32_t month(Timestamp *ts) { return month(ts->ts_); }
+int32_t year(Timestamp *ts) { return year(ts->ts_); }
+int32_t dayofweek(Timestamp *ts) { return dayofweek(ts->ts_); }
+int32_t dayofweek(Date *date) {
     int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+    if (!Date::Decode(date->date_, &year, &month, &day)) {
         return 0;
     }
     try {
@@ -135,9 +153,9 @@ int32_t dayofweek(codec::Date *date) {
     }
 }
 // Return the iso 8601 week number 1..53
-int32_t weekofyear(codec::Date *date) {
+int32_t weekofyear(Date *date) {
     int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+    if (!Date::Decode(date->date_, &year, &month, &day)) {
         return 0;
     }
     try {
@@ -153,25 +171,47 @@ int32_t weekofyear(codec::Date *date) {
     }
 }
 
+void int_to_char(int32_t val, StringRef* output) {
+    val = val % 256;
+    char v = static_cast<char>(val);
+    char *buffer = AllocManagedStringBuf(1);
+    output->size_ = 1;
+    memcpy(buffer, &v, output->size_);
+    output->data_ = buffer;
+}
+int32_t char_length(StringRef *str) {
+    if (nullptr == str) {
+        return 0;
+    }
+    int32_t res = str->size_;
+    return res;
+}
+
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-void date_format(codec::Timestamp *timestamp,
-                 hybridse::codec::StringRef *format,
-                 hybridse::codec::StringRef *output) {
+double degree_to_radius(double degree) {
+    return degree/180.0L*M_PI;
+}
+
+double Degrees(double x) { return x * (180 / M_PI); }
+
+void date_format(Timestamp *timestamp,
+                 StringRef *format,
+                 StringRef *output) {
     if (nullptr == format) {
         return;
     }
     date_format(timestamp, format->ToString(), output);
 }
-void date_format(const codec::Timestamp *timestamp, const char *format,
+void date_format(const Timestamp *timestamp, const char *format,
                  char *buffer, size_t size) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     gmtime_r(&time, &t);
     strftime(buffer, size, format, &t);
 }
-void date_format(codec::Timestamp *timestamp, const std::string &format,
-                 hybridse::codec::StringRef *output) {
+void date_format(Timestamp *timestamp, const std::string &format,
+                 StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -188,18 +228,18 @@ void date_format(codec::Timestamp *timestamp, const std::string &format,
     output->data_ = target;
 }
 
-void date_format(codec::Date *date, hybridse::codec::StringRef *format,
-                 hybridse::codec::StringRef *output) {
+void date_format(Date *date, StringRef *format,
+                 StringRef *output) {
     if (nullptr == format) {
         return;
     }
     date_format(date, format->ToString(), output);
 }
 
-bool date_format(const codec::Date *date, const char *format, char *buffer,
+bool date_format(const Date *date, const char *format, char *buffer,
                  size_t size) {
     int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+    if (!Date::Decode(date->date_, &year, &month, &day)) {
         return false;
     }
     try {
@@ -220,8 +260,8 @@ bool date_format(const codec::Date *date, const char *format, char *buffer,
     }
 }
 
-void date_format(codec::Date *date, const std::string &format,
-                 hybridse::codec::StringRef *output) {
+void date_format(Date *date, const std::string &format,
+                 StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -242,11 +282,11 @@ void date_format(codec::Date *date, const std::string &format,
     output->data_ = target;
 }
 
-void timestamp_to_string(codec::Timestamp *v,
-                         hybridse::codec::StringRef *output) {
+void timestamp_to_string(Timestamp *v,
+                         StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
-void bool_to_string(bool v, hybridse::codec::StringRef *output) {
+void bool_to_string(bool v, StringRef *output) {
     if (v) {
         char *buffer = AllocManagedStringBuf(4);
         output->size_ = 4;
@@ -260,20 +300,20 @@ void bool_to_string(bool v, hybridse::codec::StringRef *output) {
     }
 }
 
-void timestamp_to_date(codec::Timestamp *timestamp,
-                       hybridse::codec::Date *output, bool *is_null) {
+void timestamp_to_date(Timestamp *timestamp,
+                       Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     if (nullptr == gmtime_r(&time, &t)) {
         *is_null = true;
         return;
     }
-    *output = codec::Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+    *output = Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
     *is_null = false;
     return;
 }
 
-void date_to_string(codec::Date *date, hybridse::codec::StringRef *output) {
+void date_to_string(Date *date, StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
 }
 
@@ -373,7 +413,7 @@ bool like_internal(std::string_view name, std::string_view pattern, const char *
 * - any of (name, pattern, escape) is null, return null
 */
 template <typename EQUAL>
-void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, EQUAL &&equal,
+void like_internal(StringRef *name, StringRef *pattern, StringRef *escape, EQUAL &&equal,
                    bool *out, bool *is_null) {
     if (name == nullptr || pattern == nullptr || escape == nullptr) {
         out = nullptr;
@@ -396,18 +436,18 @@ void like_internal(codec::StringRef *name, codec::StringRef *pattern, codec::Str
     *out = like_internal(name_view, pattern_view, esc, std::forward<EQUAL>(equal));
 }
 
-void like(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out,
+void like(StringRef *name, StringRef *pattern, StringRef *escape, bool *out,
           bool *is_null) {
     like_internal(
         name, pattern, escape, [](char lhs, char rhs) { return lhs == rhs; }, out, is_null);
 }
 
-void like(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
-    static codec::StringRef default_esc(1, "\\");
+void like(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
+    static StringRef default_esc(1, "\\");
     like(name, pattern, &default_esc, out, is_null);
 }
 
-void ilike(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *escape, bool *out, bool *is_null) {
+void ilike(StringRef *name, StringRef *pattern, StringRef *escape, bool *out, bool *is_null) {
     like_internal(
         name, pattern, escape,
         [](char lhs, char rhs) {
@@ -416,12 +456,12 @@ void ilike(codec::StringRef *name, codec::StringRef *pattern, codec::StringRef *
         out, is_null);
 }
 
-void ilike(codec::StringRef* name, codec::StringRef* pattern, bool* out, bool* is_null) {
-    static codec::StringRef default_esc(1, "\\");
+void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
+    static StringRef default_esc(1, "\\");
     ilike(name, pattern, &default_esc,  out, is_null);
 }
 
-void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
+void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {
     if (nullptr == str) {
         *out = false;
         *is_null_ptr = true;
@@ -449,7 +489,7 @@ void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
+void string_to_int(StringRef *str, int32_t *out, bool *is_null_ptr) {
     // init
     *out = 0;
     *is_null_ptr = true;
@@ -484,7 +524,7 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_smallint(codec::StringRef *str, int16_t *out,
+void string_to_smallint(StringRef *str, int16_t *out,
                         bool *is_null_ptr) {
     // init
     *out = 0;
@@ -519,7 +559,7 @@ void string_to_smallint(codec::StringRef *str, int16_t *out,
     }
     return;
 }
-void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
+void string_to_bigint(StringRef *str, int64_t *out, bool *is_null_ptr) {
     // init
     *out = 0;
     *is_null_ptr = true;
@@ -554,7 +594,7 @@ void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_float(codec::StringRef *str, float *out, bool *is_null_ptr) {
+void string_to_float(StringRef *str, float *out, bool *is_null_ptr) {
     // init
     *out = 0;
     *is_null_ptr = true;
@@ -589,7 +629,7 @@ void string_to_float(codec::StringRef *str, float *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
+void string_to_double(StringRef *str, double *out, bool *is_null_ptr) {
     // init
     *out = 0;
     *is_null_ptr = true;
@@ -624,7 +664,7 @@ void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
+void string_to_date(StringRef *str, Date *output,
                     bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
@@ -637,7 +677,7 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = hybridse::codec::Date(
+            *output = Date(
                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
             *is_null = false;
             return;
@@ -650,7 +690,7 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = hybridse::codec::Date(ymd.year, ymd.month, ymd.day);
+            *output = Date(ymd.year, ymd.month, ymd.day);
             *is_null = false;
         } catch (...) {
             *is_null = true;
@@ -665,7 +705,7 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
                 *is_null = true;
                 return;
             }
-            *output = hybridse::codec::Date(ymd.year, ymd.month, ymd.day);
+            *output = Date(ymd.year, ymd.month, ymd.day);
             *is_null = false;
         } catch (...) {
             *is_null = true;
@@ -678,8 +718,8 @@ void string_to_date(codec::StringRef *str, hybridse::codec::Date *output,
     return;
 }
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
-void string_to_timestamp(codec::StringRef *str,
-                         hybridse::codec::Timestamp *output, bool *is_null) {
+void string_to_timestamp(StringRef *str,
+                         Timestamp *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
         if (nullptr ==
@@ -731,10 +771,10 @@ void string_to_timestamp(codec::StringRef *str,
     }
     return;
 }
-void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
+void date_to_timestamp(Date *date, Timestamp *output,
                        bool *is_null) {
     int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+    if (!Date::Decode(date->date_, &year, &month, &day)) {
         *is_null = true;
         return;
     }
@@ -760,8 +800,8 @@ void date_to_timestamp(codec::Date *date, hybridse::codec::Timestamp *output,
         return;
     }
 }
-void sub_string(hybridse::codec::StringRef *str, int32_t from,
-                hybridse::codec::StringRef *output) {
+void sub_string(StringRef *str, int32_t from,
+                StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -773,8 +813,8 @@ void sub_string(hybridse::codec::StringRef *str, int32_t from,
     return sub_string(str, from, str->size_, output);
 }
 // set output as empty string if from == 0
-void sub_string(hybridse::codec::StringRef *str, int32_t from, int32_t len,
-                hybridse::codec::StringRef *output) {
+void sub_string(StringRef *str, int32_t from, int32_t len,
+                StringRef *output) {
     if (nullptr == output) {
         return;
     }
@@ -810,7 +850,7 @@ void sub_string(hybridse::codec::StringRef *str, int32_t from, int32_t len,
     output->size_ = static_cast<uint32_t>(len);
     return;
 }
-int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
+int32_t strcmp(StringRef *s1, StringRef *s2) {
     if (s1 == s2) {
         return 0;
     }
@@ -820,14 +860,18 @@ int32_t strcmp(hybridse::codec::StringRef *s1, hybridse::codec::StringRef *s2) {
     if (nullptr == s2) {
         return 1;
     }
-    return hybridse::codec::StringRef::compare(*s1, *s2);
+    return StringRef::compare(*s1, *s2);
 }
 
-void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
+void ucase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = absl::ascii_toupper(static_cast<unsigned char>(str->data_[i]));
     }
@@ -836,7 +880,35 @@ void ucase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
     *is_null_ptr = false;
 }
 
-void reverse(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
+void replace(StringRef *str, StringRef *search, StringRef *replace, StringRef *output, bool *is_null_ptr) {
+    if (str == nullptr || search == nullptr || replace == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+
+    absl::string_view str_view(str->data_, str->size_);
+    absl::string_view search_view(search->data_, search->size_);
+    absl::string_view replace_view(replace->data_, replace->size_);
+    std::string out = absl::StrReplaceAll(str_view, {{search_view, replace_view}});
+
+    char *buf = AllocManagedStringBuf(out.size());
+    if (buf == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
+    memcpy(buf, out.data(), out.size());
+
+    output->data_ = buf;
+    output->size_ = out.size();
+    *is_null_ptr = false;
+}
+
+void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null_ptr) {
+    StringRef rep(0, "");
+    replace(str, search, &rep, output, is_null_ptr);
+}
+
+void reverse(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || output == nullptr || is_null_ptr == nullptr) {
         return;
     }
@@ -846,6 +918,10 @@ void reverse(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr)
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = str->data_[str->size_ - i - 1];
     }
@@ -854,17 +930,26 @@ void reverse(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr)
     *is_null_ptr = false;
 }
 
-void lcase(codec::StringRef *str, codec::StringRef *output, bool *is_null_ptr) {
+void lcase(StringRef *str, StringRef *output, bool *is_null_ptr) {
     if (str == nullptr || str->size_ == 0 || output == nullptr || is_null_ptr == nullptr) {
         return;
     }
     char *buffer = AllocManagedStringBuf(str->size_);
+    if (buffer == nullptr) {
+        *is_null_ptr = true;
+        return;
+    }
     for (uint32_t i = 0; i < str->size_; i++) {
         buffer[i] = absl::ascii_tolower(static_cast<unsigned char>(str->data_[i]));
     }
     output->size_ = str->size_;
     output->data_ = buffer;
     *is_null_ptr = false;
+}
+
+void init_udfcontext(UDFContext* context) {
+    context->pool = vm::JitRuntime::get()->GetMemPool();
+    context->ptr = nullptr;
 }
 
 //
@@ -895,13 +980,13 @@ uint32_t to_string_len<double>(const double &v) {
 }
 
 template <>
-uint32_t to_string_len<codec::Date>(const codec::Date &v) {
+uint32_t to_string_len<Date>(const Date &v) {
     const uint32_t len = 10;  // 1990-01-01
     return len;
 }
 
 template <>
-uint32_t to_string_len<codec::Timestamp>(const codec::Timestamp &v) {
+uint32_t to_string_len<Timestamp>(const Timestamp &v) {
     const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
     return len;
 }
@@ -912,7 +997,7 @@ uint32_t to_string_len<std::string>(const std::string &v) {
 }
 
 template <>
-uint32_t to_string_len<codec::StringRef>(const codec::StringRef &v) {
+uint32_t to_string_len<StringRef>(const StringRef &v) {
     return v.size_;
 }
 
@@ -944,7 +1029,7 @@ uint32_t format_string<double>(const double &v, char *buffer, size_t size) {
 }
 
 template <>
-uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
+uint32_t format_string<Date>(const Date &v, char *buffer,
                                     size_t size) {
     const uint32_t len = 10;  // 1990-01-01
     if (buffer == nullptr) return len;
@@ -955,7 +1040,7 @@ uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
 }
 
 template <>
-uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
+uint32_t format_string<Timestamp>(const Timestamp &v,
                                          char *buffer, size_t size) {
     const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
     if (buffer == nullptr) return len;
@@ -973,7 +1058,7 @@ uint32_t format_string<std::string>(const std::string &v, char *buffer,
 }
 
 template <>
-uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
+uint32_t format_string<StringRef>(const StringRef &v,
                                          char *buffer, size_t size) {
     if (buffer == nullptr) return v.size_;
     if (v.size_ < size) {
@@ -992,6 +1077,7 @@ char *AllocManagedStringBuf(int32_t bytes) {
         return nullptr;
     }
     if (bytes > MAX_ALLOC_SIZE) {
+        LOG(ERROR) << "alloc string buf size " << bytes << " is larger than " << MAX_ALLOC_SIZE;
         return nullptr;
     }
     return reinterpret_cast<char *>(vm::JitRuntime::get()->AllocManaged(bytes));
@@ -1082,9 +1168,8 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 
-bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
-                    std::initializer_list<hybridse::node::TypeNode *> args,
-                    void *fn_ptr) {
+bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,
+                    std::initializer_list<hybridse::node::TypeNode *> args, void *fn_ptr) {
     node::NodeManager nm;
     base::Status status;
     auto fn_args = nm.MakeFnListNode();
@@ -1093,13 +1178,14 @@ bool RegisterMethod(const std::string &fn_name, hybridse::node::TypeNode *ret,
     }
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-    DefaultUdfLibrary::get()->AddExternalFunction(header->GeIRFunctionName(),
+    lib->AddExternalFunction(header->GeIRFunctionName(),
                                                   fn_ptr);
     return true;
 }
 
-void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm) {
+void RegisterNativeUdfToModule(UdfLibrary* lib) {
     base::Status status;
+    hybridse::node::NodeManager* nm = lib->node_manager();
 
     auto bool_ty = nm->MakeTypeNode(node::kBool);
     auto i32_ty = nm->MakeTypeNode(node::kInt32);
@@ -1134,121 +1220,125 @@ void RegisterNativeUdfToModule(hybridse::node::NodeManager* nm) {
     auto iter_string_ty = nm->MakeTypeNode(node::kIterator, string_ty);
     auto iter_row_ty = nm->MakeTypeNode(node::kIterator, row_ty);
 
-    RegisterMethod("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
+    auto RegisterMethodInternal = [&lib](const std::string &fn_name, hybridse::node::TypeNode *ret,
+                                      std::initializer_list<hybridse::node::TypeNode *> args,
+                                      void *fn_ptr) { RegisterMethod(lib, fn_name, ret, args, fn_ptr); };
+
+    RegisterMethodInternal("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
-    RegisterMethod("iterator", bool_ty, {list_i32_ty, iter_i32_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_i32_ty, iter_i32_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int32_t>));
-    RegisterMethod("iterator", bool_ty, {list_i64_ty, iter_i64_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_i64_ty, iter_i64_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int64_t>));
-    RegisterMethod("iterator", bool_ty, {list_bool_ty, iter_bool_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_bool_ty, iter_bool_ty},
                    reinterpret_cast<void *>(v1::iterator_list<bool>));
-    RegisterMethod("iterator", bool_ty, {list_float_ty, iter_float_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_float_ty, iter_float_ty},
                    reinterpret_cast<void *>(v1::iterator_list<float>));
-    RegisterMethod("iterator", bool_ty, {list_double_ty, iter_double_ty},
+    RegisterMethodInternal("iterator", bool_ty, {list_double_ty, iter_double_ty},
                    reinterpret_cast<void *>(v1::iterator_list<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "iterator", bool_ty, {list_time_ty, iter_time_ty},
-        reinterpret_cast<void *>(v1::iterator_list<codec::Timestamp>));
-    RegisterMethod("iterator", bool_ty, {list_date_ty, iter_date_ty},
-                   reinterpret_cast<void *>(v1::iterator_list<codec::Date>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::iterator_list<Timestamp>));
+    RegisterMethodInternal("iterator", bool_ty, {list_date_ty, iter_date_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<Date>));
+    RegisterMethodInternal(
         "iterator", bool_ty, {list_string_ty, iter_string_ty},
-        reinterpret_cast<void *>(v1::iterator_list<codec::StringRef>));
-    RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
+        reinterpret_cast<void *>(v1::iterator_list<StringRef>));
+    RegisterMethodInternal("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod("next", i16_ty, {iter_i16_ty},
+    RegisterMethodInternal("next", i16_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
-    RegisterMethod("next", i32_ty, {iter_i32_ty},
+    RegisterMethodInternal("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
-    RegisterMethod("next", i64_ty, {iter_i64_ty},
+    RegisterMethodInternal("next", i64_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int64_t>));
-    RegisterMethod("next", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_iterator<bool>));
-    RegisterMethod("next", float_ty, {iter_float_ty},
+    RegisterMethodInternal("next", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_iterator<float>));
-    RegisterMethod("next", double_ty, {iter_double_ty},
+    RegisterMethodInternal("next", double_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::next_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next", bool_ty, {iter_time_ty, time_ty},
-        reinterpret_cast<void *>(v1::next_struct_iterator<codec::Timestamp>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::next_struct_iterator<Timestamp>));
+    RegisterMethodInternal(
         "next", bool_ty, {iter_date_ty, date_ty},
-        reinterpret_cast<void *>(v1::next_struct_iterator<codec::Date>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::next_struct_iterator<Date>));
+    RegisterMethodInternal(
         "next", bool_ty, {iter_string_ty, string_ty},
-        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
-    RegisterMethod("next", row_ty, {iter_row_ty},
+        reinterpret_cast<void *>(v1::next_struct_iterator<StringRef>));
+    RegisterMethodInternal("next", row_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::next_row_iterator));
 
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i16_ty, {iter_i16_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int16_t>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i32_ty, {iter_i32_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int32_t>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", i64_ty, {iter_i64_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<int64_t>));
-    RegisterMethod("next_nullable", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("next_nullable", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<bool>));
-    RegisterMethod("next_nullable", float_ty, {iter_float_ty},
+    RegisterMethodInternal("next_nullable", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<float>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", double_ty, {iter_double_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_time_ty},
-        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Timestamp>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::next_nullable_iterator<Timestamp>));
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_date_ty},
-        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Date>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::next_nullable_iterator<Date>));
+    RegisterMethodInternal(
         "next_nullable", bool_ty, {iter_string_ty},
-        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::StringRef>));
+        reinterpret_cast<void *>(v1::next_nullable_iterator<StringRef>));
 
-    RegisterMethod("has_next", bool_ty, {iter_i16_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));
-    RegisterMethod("has_next", bool_ty, {iter_i32_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::has_next<int32_t>));
-    RegisterMethod("has_next", bool_ty, {iter_i64_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::has_next<int64_t>));
-    RegisterMethod("has_next", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::has_next<bool>));
-    RegisterMethod("has_next", bool_ty, {iter_float_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::has_next<float>));
-    RegisterMethod("has_next", bool_ty, {iter_double_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::has_next<double>));
-    RegisterMethod("has_next", bool_ty, {iter_time_ty},
-                   reinterpret_cast<void *>(v1::has_next<codec::Timestamp>));
-    RegisterMethod("has_next", bool_ty, {iter_date_ty},
-                   reinterpret_cast<void *>(v1::has_next<codec::Date>));
-    RegisterMethod("has_next", bool_ty, {iter_string_ty},
-                   reinterpret_cast<void *>(v1::has_next<codec::StringRef>));
-    RegisterMethod("has_next", bool_ty, {iter_row_ty},
+    RegisterMethodInternal("has_next", bool_ty, {iter_time_ty},
+                   reinterpret_cast<void *>(v1::has_next<Timestamp>));
+    RegisterMethodInternal("has_next", bool_ty, {iter_date_ty},
+                   reinterpret_cast<void *>(v1::has_next<Date>));
+    RegisterMethodInternal("has_next", bool_ty, {iter_string_ty},
+                   reinterpret_cast<void *>(v1::has_next<StringRef>));
+    RegisterMethodInternal("has_next", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::Row>));
 
-    RegisterMethod("delete_iterator", bool_ty, {iter_i16_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int16_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_i32_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int32_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_i64_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int64_t>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_bool_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<bool>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_float_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<float>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_double_ty},
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<double>));
-    RegisterMethod(
+    RegisterMethodInternal(
         "delete_iterator", bool_ty, {iter_time_ty},
-        reinterpret_cast<void *>(v1::delete_iterator<codec::Timestamp>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_date_ty},
-                   reinterpret_cast<void *>(v1::delete_iterator<codec::Date>));
-    RegisterMethod(
+        reinterpret_cast<void *>(v1::delete_iterator<Timestamp>));
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_date_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<Date>));
+    RegisterMethodInternal(
         "delete_iterator", bool_ty, {iter_string_ty},
-        reinterpret_cast<void *>(v1::delete_iterator<codec::StringRef>));
-    RegisterMethod("delete_iterator", bool_ty, {iter_row_ty},
+        reinterpret_cast<void *>(v1::delete_iterator<StringRef>));
+    RegisterMethodInternal("delete_iterator", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
 }
 

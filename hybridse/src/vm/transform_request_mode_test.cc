@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
@@ -63,7 +64,9 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SqlCase> {
 };
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TransformRequestModeTest);
-void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql, std::string exp) {
+void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql, std::string exp,
+                       const std::vector<passes::PhysicalPlanPassType>& extra_passes = {},
+                       const std::unordered_map<std::string, std::string>* options = nullptr) {
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
 
     boost::to_lower(sql);
@@ -73,17 +76,26 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     ::hybridse::node::PlanNodeList plan_trees;
     ::hybridse::base::Status base_status;
     {
-        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, base_status, false))
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &manager, base_status, false, false, false,
+                                                            options))
             << base_status;
         std::cout.flush();
     }
+    std::stringstream logical_plan_ss;
+    plan_trees[0]->Print(logical_plan_ss, "\t");
+    LOG(WARNING) << "Logical plan: " << logical_plan_ss.str();
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::hybridse::udf::DefaultUdfLibrary::get();
-    RequestModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false);
+    RequestModeTransformer transform(&manager, "db", catalog, nullptr, m.get(), lib, {}, false, false, false, true,
+                                     options);
 
+    for (auto pass : extra_passes) {
+        transform.AddPass(pass);
+    }
     transform.AddDefaultPasses();
+
     PhysicalOpNode* physical_plan = nullptr;
     auto s = transform.TransformPhysicalPlan(plan_trees, &physical_plan);
     ASSERT_TRUE(s.isOK()) << s;
@@ -92,14 +104,14 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
     physical_plan->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, *physical_plan->GetOutputSchema());
+    PrintAllSchema(ss, physical_plan);
     LOG(INFO) << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, TransformRequestModeTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, TransformRequestModeTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlJoinPlan, TransformRequestModeTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
@@ -175,8 +187,6 @@ void CheckTransformPhysicalPlan(const SqlCase& sql_case, bool is_cluster_optimiz
     table_def4.set_name("t4");
     table_def5.set_name("t5");
     table_def6.set_name("t6");
-
-
 
     hybridse::type::Database db;
     db.set_name("db");
@@ -296,7 +306,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
                                    "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
-                                   "range=(col5, -3, 0), index_keys=(col1))\n"
+                                   "range=(col5, 3 PRECEDING, 0 CURRENT), index_keys=(col1))\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
                     std::make_pair("SELECT "
@@ -309,7 +319,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "LIMIT(limit=10, optimized)\n"
                                    "  PROJECT(type=Aggregation, limit=10)\n"
                                    "    REQUEST_UNION(partition_keys=(), orders=(ASC), "
-                                   "range=(col5, -3, 0), index_keys=(col2,col1))\n"
+                                   "range=(col5, 3 PRECEDING, 0 CURRENT), index_keys=(col1,col2))\n"
                                    "      DATA_PROVIDER(request=t1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
@@ -338,7 +348,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    "left_keys=(), "
                                    "right_keys=(), index_keys=(t1.col1))\n"
                                    "      REQUEST_UNION(partition_keys=(), orders=(ASC), "
-                                   "range=(t1.col5, -3, 0), index_keys=(t1.col1))\n"
+                                   "range=(t1.col5, 3 PRECEDING, 0 CURRENT), index_keys=(t1.col1))\n"
                                    "        DATA_PROVIDER(request=t1)\n"
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)"),
@@ -356,52 +366,58 @@ INSTANTIATE_TEST_SUITE_P(
                                    "left_keys=(), "
                                    "right_keys=(), index_keys=(t1.col1))\n"
                                    "      REQUEST_UNION(partition_keys=(), orders=(ASC), "
-                                   "range=(t1.col5, -3, 0), index_keys=(t1.col1,t1.col2))\n"
+                                   "range=(t1.col5, 3 PRECEDING, 0 CURRENT), index_keys=(t1.col1,t1.col2))\n"
                                    "        DATA_PROVIDER(request=t1)\n"
                                    "        DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
                                    "      DATA_PROVIDER(type=Partition, table=t2, index=index1_t2)")));
 
-INSTANTIATE_TEST_SUITE_P(RequestWindowUnionOptimized, TransformRequestModePassOptimizedTest,
-                        testing::Values(
-                            // 0
-        std::make_pair("SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-                       "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
-                       "ROWS_RANGE "
-                       "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-                       "LIMIT(limit=10, optimized)\n"
-                       "  PROJECT(type=Aggregation, limit=10)\n"
-                       "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1))\n"
-                       "      +-UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1))\n"
-                       "          RENAME(name=t1)\n"
-                       "            DATA_PROVIDER(type=Partition, table=t3, index=index1_t3)\n"
-                       "      DATA_PROVIDER(request=t1)\n"
-                       "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
+INSTANTIATE_TEST_SUITE_P(
+    RequestWindowUnionOptimized, TransformRequestModePassOptimizedTest,
+    testing::Values(
+        // 0
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
+            "ROWS_RANGE "
+            "BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+            "index_keys=(col1))\n"
+            "      +-UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), index_keys=(col1))\n"
+            "          RENAME(name=t1)\n"
+            "            DATA_PROVIDER(type=Partition, table=t3, index=index1_t3)\n"
+            "      DATA_PROVIDER(request=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t1, index=index1)"),
         // 1
         std::make_pair("SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-                                           "      WINDOW w1 AS (UNION t3 PARTITION BY col1,col2 ORDER BY col5 "
-                                           "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
-                                           "LIMIT(limit=10, optimized)\n"
-                                           "  PROJECT(type=Aggregation, limit=10)\n"
-                                           "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, "
-                                           "-3, 0), index_keys=(col1,col2))\n"
-                                           "      +-UNION(partition_keys=(col1), orders=(ASC), range=(col5, "
-                                           "-3, 0), index_keys=(col2))\n"
-                                           "          RENAME(name=t1)\n"
-                                           "            DATA_PROVIDER(type=Partition, table=t3, "
-                                           "index=index2_t3)\n"
-                                           "      DATA_PROVIDER(request=t1)\n"
-                                           "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
-        std::make_pair("SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
-                       "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
+                       "      WINDOW w1 AS (UNION t3 PARTITION BY col1,col2 ORDER BY col5 "
                        "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
                        "LIMIT(limit=10, optimized)\n"
                        "  PROJECT(type=Aggregation, limit=10)\n"
-                       "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1))\n"
-                       "      +-UNION(partition_keys=(), orders=(ASC), range=(col5, -3, 0), index_keys=(col1))\n"
+                       "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+                       "index_keys=(col1,col2))\n"
+                       "      +-UNION(partition_keys=(col1), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+                       "index_keys=(col2))\n"
                        "          RENAME(name=t1)\n"
-                       "            DATA_PROVIDER(type=Partition, table=t3, index=index1_t3)\n"
+                       "            DATA_PROVIDER(type=Partition, table=t3, "
+                       "index=index2_t3)\n"
                        "      DATA_PROVIDER(request=t1)\n"
-                       "      DATA_PROVIDER(type=Partition, table=t1, index=index1)")));
+                       "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
+        std::make_pair(
+            "SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1\n"
+            "      WINDOW w1 AS (UNION t3 PARTITION BY col1 ORDER BY col5 "
+            "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            "LIMIT(limit=10, optimized)\n"
+            "  PROJECT(type=Aggregation, limit=10)\n"
+            "    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+            "index_keys=(col1))\n"
+            "      +-UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), index_keys=(col1))\n"
+            "          RENAME(name=t1)\n"
+            "            DATA_PROVIDER(type=Partition, table=t3, index=index1_t3)\n"
+            "      DATA_PROVIDER(request=t1)\n"
+            "      DATA_PROVIDER(type=Partition, table=t1, index=index1)")));
+
 TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     auto in_out = GetParam();
     hybridse::type::TableDef table_def;
@@ -464,6 +480,170 @@ TEST_P(TransformRequestModePassOptimizedTest, PassPassOptimizedTest) {
     }
     catalog->AddDatabase(db2);
     PhysicalPlanCheck(catalog, in_out.first, in_out.second);
+}
+
+TEST_F(TransformRequestModePassOptimizedTest, SplitAggregationOptimizedTest) {
+    const std::string sql =
+        "SELECT col1, sum(col2) OVER w1, col2+1, add(col2, col1), count(col2) OVER w1, "
+        "sum(col2) over w2 as w1_col2_sum , sum(col2) over w3 FROM t1\n"
+        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3m PRECEDING AND CURRENT ROW),"
+        "w2 AS (PARTITION BY col1,col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),"
+        "w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);";
+
+    const std::string expected =
+        "SIMPLE_PROJECT(sources=(col1, sum(col2)over w1, col2 + 1, add(col2, col1), count(col2)over w1, w1_col2_sum, "
+        "sum(col2)over w3))\n"
+        "  REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "    REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "      REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "        PROJECT(type=RowProject)\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "        SIMPLE_PROJECT(sources=(sum(col2)over w1, count(col2)over w1))\n"
+        "          REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "            PROJECT(type=Aggregation)\n"
+        "              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 180000 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "            PROJECT(type=Aggregation)\n"
+        "              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 180000 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "      PROJECT(type=Aggregation)\n"
+        "        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1,col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
+        "    PROJECT(type=Aggregation)\n"
+        "      REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=Partition, table=t1, index=index1)";
+
+    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+    hybridse::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    {
+        hybridse::type::TableDef table_def;
+        BuildAggTableDef(table_def, "aggr_t1", "aggr_db");
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1_t2");
+        index->add_first_keys("key");
+        index->set_second_key("ts_start");
+        hybridse::type::Database db;
+        db.set_name("aggr_db");
+        AddTable(db, table_def);
+        catalog->AddDatabase(db);
+    }
+
+    std::unordered_map<std::string, std::string> options;
+    options[LONG_WINDOWS] = "w1:1000, w2";
+    std::vector<passes::PhysicalPlanPassType> extra_passes = {passes::kPassSplitAggregationOptimized};
+    PhysicalPlanCheck(catalog, sql, expected, extra_passes, &options);
+}
+
+TEST_F(TransformRequestModePassOptimizedTest, LongWindowOptimizedTest) {
+    const std::string sql =
+        "SELECT col1, sum(col2) OVER w1, col2+1, add(col2, col1), count(col2) OVER w1, "
+        "sum(col2) over w2 as w1_col2_sum , sum(col2) over w3 FROM t1\n"
+        "WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3m PRECEDING AND CURRENT ROW),"
+        "w2 AS (PARTITION BY col1,col2 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW),"
+        "w3 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);";
+
+    const std::string expected =
+        "SIMPLE_PROJECT(sources=(col1, sum(col2)over w1, col2 + 1, add(col2, col1), count(col2)over w1, w1_col2_sum, "
+        "sum(col2)over w3))\n"
+        "  REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "    REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "      REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "        PROJECT(type=RowProject)\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "        SIMPLE_PROJECT(sources=(sum(col2)over w1, count(col2)over w1))\n"
+        "          REQUEST_JOIN(type=kJoinTypeConcat)\n"
+        "            PROJECT(type=ReduceAggregation: sum(col2)over w1 (range[180000 PRECEDING,0 CURRENT]))\n"
+        "              REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, 180000 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "                DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)\n"
+        "            PROJECT(type=ReduceAggregation: count(col2)over w1 (range[180000 PRECEDING,0 CURRENT]))\n"
+        "              REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, 180000 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "                DATA_PROVIDER(request=t1)\n"
+        "                DATA_PROVIDER(type=Partition, table=t1, index=index1)\n"
+        "                DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)\n"
+        "      PROJECT(type=ReduceAggregation: sum(col2)over w2 (range[3 PRECEDING,0 CURRENT]))\n"
+        "        REQUEST_AGG_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1,col2))\n"
+        "          DATA_PROVIDER(request=t1)\n"
+        "          DATA_PROVIDER(type=Partition, table=t1, index=index12)\n"
+        "          DATA_PROVIDER(type=Partition, table=aggr_t1, index=index1_t2)\n"
+        "    PROJECT(type=Aggregation)\n"
+        "      REQUEST_UNION(partition_keys=(), orders=(ASC), range=(col5, 3 PRECEDING, 0 CURRENT), "
+        "index_keys=(col1))\n"
+        "        DATA_PROVIDER(request=t1)\n"
+        "        DATA_PROVIDER(type=Partition, table=t1, index=index1)";
+
+    std::shared_ptr<SimpleCatalog> catalog(new SimpleCatalog(true));
+    hybridse::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index12");
+        index->add_first_keys("col1");
+        index->add_first_keys("col2");
+        index->set_second_key("col5");
+    }
+    {
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1");
+        index->add_first_keys("col1");
+        index->set_second_key("col5");
+    }
+    hybridse::type::Database db;
+    db.set_name("db");
+    AddTable(db, table_def);
+    catalog->AddDatabase(db);
+
+    {
+        hybridse::type::TableDef table_def;
+        BuildAggTableDef(table_def, "aggr_t1", "aggr_db");
+        ::hybridse::type::IndexDef* index = table_def.add_indexes();
+        index->set_name("index1_t2");
+        index->add_first_keys("key");
+        index->set_second_key("ts_start");
+        hybridse::type::Database db;
+        db.set_name("aggr_db");
+        AddTable(db, table_def);
+        catalog->AddDatabase(db);
+    }
+
+    std::unordered_map<std::string, std::string> options;
+    options[LONG_WINDOWS] = "w1:1000, w2";
+    std::vector<passes::PhysicalPlanPassType> extra_passes = {passes::kPassSplitAggregationOptimized,
+                                                              passes::kPassLongWindowOptimized};
+    PhysicalPlanCheck(catalog, sql, expected, extra_passes, &options);
 }
 
 }  // namespace vm

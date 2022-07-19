@@ -16,9 +16,8 @@
 
 package com._4paradigm.openmldb.batch
 
-import com._4paradigm.hybridse.HybridSeLibrary
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
-import com._4paradigm.hybridse.node.JoinType
+import com._4paradigm.hybridse.node.{DataType, JoinType}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalDataProviderNode,
   PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode,
@@ -28,14 +27,17 @@ import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
   JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SelectIntoPlan, SimpleProjectPlan, SortByPlan,
   WindowAggPlan}
-import com._4paradigm.openmldb.batch.utils.{GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
+import com._4paradigm.std.VectorDataType
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.SparkFiles
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
 import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.mutable
+import scala.reflect.io.File
 
 class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppName: String) {
 
@@ -46,6 +48,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
   // Ensure native initialized
   SqlClusterExecutor.initJavaSdkLibrary(config.openmldbJsdkLibraryPath)
   Engine.InitializeGlobalLLVM()
+  Engine.InitializeUnsafeRowOptFlag(config.enableUnsafeRowOptimization)
 
   def this(session: SparkSession, sparkAppName: String) = {
     this(session, OpenmldbBatchConfig.fromSparkSession(session), sparkAppName)
@@ -323,8 +326,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
 
   private def withSQLEngine[T](sql: String, dbs: List[Database],
                                config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
-    var engine: SqlEngine = null
-
+    var sqlEngine: SqlEngine = null
     val engineOptions = SqlEngine.createDefaultEngineOptions()
 
     if (config.enableWindowParallelization) {
@@ -334,17 +336,51 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
     }
 
-    if (config.enableUnsafeRowOptimization) {
-      engineOptions.SetEnableSparkUnsaferowFormat(true)
-    }
-
     try {
-      engine = new SqlEngine(sql, dbs, engineOptions, config.defaultDb)
-      val res = body(engine)
+      sqlEngine = new SqlEngine(dbs, engineOptions)
+      val engine = sqlEngine.getEngine
+
+      // TODO(tobe): If use SparkPlanner instead of OpenmldbSession, these will be null
+      if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty
+        && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
+        val externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
+        for ((functionName, functionProto) <- externalFunMap){
+          logger.info("Register the external function: " + functionProto)
+          val returnDataType = DataTypeUtil.protoTypeToOpenmldbType(functionProto.getReturnType)
+          val argsDataType = new VectorDataType()
+          functionProto.getArgTypeList.forEach(dataType => {
+            argsDataType.add(DataTypeUtil.protoTypeToOpenmldbType(dataType))
+          })
+
+          // Get the correct file name which is submitted by spark-submit
+          // TODO(tobe): Only work for spark-submit jobs and can not load local library file when running in IDE
+          val soFileName = functionProto.getFile.split("/").last
+          // For local mode, spark does not copy the fail in driver, refer to
+          // https://stackoverflow.com/questions/34900023/read-files-sent-with-spark-submit-by-the-driver
+          val soFilePath = SparkFiles.get(soFileName)
+          if (File(soFilePath).exists) {
+            engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+              soFilePath)
+          } else {
+            logger.warn("The dynamic library file does not exit in " + soFilePath)
+          }
+
+        }
+      }
+
+      sqlEngine.compileSql(sql, config.defaultDb)
+
+      val res = body(sqlEngine)
       res
+    } catch {
+      case e: UnsupportedHybridSeException => throw e
+      case e: Exception =>
+        println("Get exception: " + e.getMessage)
+        e.printStackTrace()
+        body(sqlEngine)
     } finally {
-      if (engine != null) {
-        engine.close()
+      if (sqlEngine != null) {
+        sqlEngine.close()
       }
     }
   }

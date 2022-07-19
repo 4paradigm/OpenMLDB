@@ -6,21 +6,24 @@ on:
     branches:
       - main
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
     tags:
       - v*
   pull_request:
     paths-ignore:
-      - docs/
-      - demo/
-      - image/
-      - release/
-      - tools/
-      - "*.md"
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
   workflow_dispatch:
 
 env:
@@ -34,7 +37,7 @@ jobs:
     runs-on: self-hosted
     if: github.repository == '4paradigm/OpenMLDB'
     container:
-      image: ghcr.io/4paradigm/hybridsql:0.4.1
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       OS: linux
       SQL_PYSDK_ENABLE: OFF
@@ -77,6 +80,11 @@ jobs:
         run: |
           make test
 
+      - name: run sql_router_test
+        id: sql_router_test
+        run: |
+          bash steps/ut.sh sql_router_test 0
+          
       - name: run sql_sdk_test
         id: sql_sdk_test
         run: |
@@ -138,10 +146,66 @@ jobs:
           check_name: Linux Test Report
           comment_title: Linux Test Report
 
+  macos-cpp:
+    runs-on: macos-latest
+    if: github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
+    env:
+      OS: darwin
+      ARCH: x86_64
+      NPROC: 3
+      CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: prepare release
+        run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
+          fi
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-darwin" >> $GITHUB_ENV
+
+      - name: enable java on release
+        if: github.event_name == 'push'
+        run: |
+          echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
+
+      - name: configure
+        env:
+          SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+
+      - name: build
+        run: |
+          make build
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory($ROOT/.deps/) to save disk space
+          # make thirdpartybuild-clean
+
+      - name: install
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          make install
+
+      - name: package
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+
+      - name: upload artifacts
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: release-artifacts
+
   release:
     runs-on: ubuntu-latest
     # if test failed, shouldn't release
-    needs: [ "cpp" ]
+    needs: [ "cpp", "macos-cpp" ]
     if: >
       success() && startsWith(github.ref, 'refs/tags/v')
     steps:

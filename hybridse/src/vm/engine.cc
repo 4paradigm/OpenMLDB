@@ -27,6 +27,7 @@
 #include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
+#include "udf/default_udf_library.h"
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
@@ -49,16 +50,7 @@ EngineOptions::EngineOptions()
       enable_expr_optimize_(true),
       enable_batch_window_parallelization_(false),
       enable_window_column_pruning_(false),
-      max_sql_cache_size_(50),
-      enable_spark_unsaferow_format_(false) {
-    // TODO(chendihao): Pass the parameter to avoid global gflag
-    FLAGS_enable_spark_unsaferow_format = enable_spark_unsaferow_format_;
-}
-
-EngineOptions* EngineOptions::SetEnableSparkUnsaferowFormat(bool flag) {
-    enable_spark_unsaferow_format_ = flag;
-    FLAGS_enable_spark_unsaferow_format = flag;
-    return this;
+      max_sql_cache_size_(50) {
 }
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog), options_(), mu_(), lru_cache_() {}
@@ -70,6 +62,10 @@ void Engine::InitializeGlobalLLVM() {
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
     LLVM_IS_INITIALIZED = true;
+}
+
+void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
+    FLAGS_enable_spark_unsaferow_format = isUnsafeRowOpt;
 }
 
 bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,
@@ -231,6 +227,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_window_column_pruning = options_.IsEnableWindowColumnPruning();
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
+    sql_context.options = session.GetOptions();
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
     } else if (session.engine_mode() == kBatchRequestMode) {
@@ -265,6 +262,21 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
+}
+
+base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
+                                         const std::vector<node::DataType>& arg_types, bool is_aggregate,
+                                         const std::string& file) {
+    if (name.empty()) {
+        return {common::kExternalUDFError, "function name is empty"};
+    }
+    auto lib = udf::DefaultUdfLibrary::get();
+    return lib->RegisterDynamicUdf(name, return_type, arg_types, is_aggregate, file);
+}
+
+base::Status Engine::RemoveExternalFunction(const std::string& name,
+        const std::vector<node::DataType>& arg_types, const std::string& file) {
+    return udf::DefaultUdfLibrary::get()->RemoveDynamicUdf(name, arg_types, file);
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode engine_mode,
@@ -358,6 +370,10 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
 
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
+    if (db.empty()) {
+        lru_cache_.clear();
+        return;
+    }
     for (auto& cache : lru_cache_) {
         auto& mode_cache = cache.second;
         mode_cache.erase(db);
@@ -489,7 +505,7 @@ int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, u
         DLOG(INFO) << "Run batch plan output is empty";
         return 0;
     }
-    switch (output->GetHanlderType()) {
+    switch (output->GetHandlerType()) {
         case kTableHandler: {
             auto iter = std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
             if (!iter) {

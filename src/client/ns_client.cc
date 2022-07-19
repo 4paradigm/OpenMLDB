@@ -19,7 +19,6 @@
 #include <utility>
 
 #include "base/strings.h"
-#include "glog/logging.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace openmldb {
@@ -48,13 +47,14 @@ bool NsClient::Use(const std::string& db, std::string& msg) {
     return false;
 }
 
-bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
+bool NsClient::CreateDatabase(const std::string& db, std::string& msg, bool if_not_exists) {
     if (db.empty()) {
         return false;
     }
     ::openmldb::nameserver::CreateDatabaseRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
+    request.set_if_not_exists(if_not_exists);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateDatabase, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -190,9 +190,9 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint
 bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response, const std::string& name,
                             uint32_t pid, std::string& msg) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
+    request.set_db(GetDb());
     if (!name.empty()) {
         request.set_name(name);
-        request.set_db(GetDb());
     }
     if (pid != INVALID_PID) {
         request.set_pid(pid);
@@ -250,9 +250,11 @@ base::Status NsClient::CreateProcedure(const ::openmldb::api::ProcedureInfo& sp_
     return {};
 }
 
-bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, std::string& msg) {
+bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, const bool create_if_not_exist,
+                           std::string& msg) {
     ::openmldb::nameserver::CreateTableRequest request;
     ::openmldb::nameserver::GeneralResponse response;
+    request.set_create_if_not_exist(create_if_not_exist);
     ::openmldb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
     table_info_r->CopyFrom(table_info);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateTable, &request, &response,
@@ -974,15 +976,61 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
     return false;
 }
 
-bool NsClient::UpdateOfflineTableInfo(const nameserver::TableInfo& table_info) {
+base::Status NsClient::UpdateOfflineTableInfo(const nameserver::TableInfo& table_info) {
     nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&nameserver::NameServer_Stub::UpdateOfflineTableInfo, &table_info, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
-        return true;
+        return {};
     }
-    LOG(WARNING) << "update offline table info failed: " << response.msg();
-    return false;
+    return base::Status(base::ReturnCode::kError, response.msg());
+}
+
+base::Status NsClient::CreateFunction(const ::openmldb::common::ExternalFun& fun) {
+    nameserver::CreateFunctionRequest request;
+    nameserver::CreateFunctionResponse response;
+    request.mutable_fun()->CopyFrom(fun);
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CreateFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    return {};
+}
+
+base::Status NsClient::DropFunction(const std::string& name, bool if_exists) {
+    nameserver::DropFunctionRequest request;
+    request.set_name(name);
+    request.set_if_exists(if_exists);
+    nameserver::DropFunctionResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    return {};
+}
+
+base::Status NsClient::ShowFunction(const std::string& name,
+        std::vector<::openmldb::common::ExternalFun>* fun_vec) {
+    if (fun_vec == nullptr) {
+        return base::Status(base::ReturnCode::kError, "nullptr");
+    }
+    fun_vec->clear();
+    nameserver::ShowFunctionRequest request;
+    if (!name.empty()) {
+        request.set_name(name);
+    }
+    nameserver::ShowFunctionResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowFunction, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    for (int i = 0; i < response.fun_size(); i++) {
+        fun_vec->emplace_back(response.fun(i));
+    }
+    return {};
 }
 
 }  // namespace client

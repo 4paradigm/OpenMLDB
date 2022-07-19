@@ -33,7 +33,7 @@ class TestTimestampUdf extends SparkTestSuite {
     spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
   }
 
-  test("Test udf of month for project") {
+  test("Test udf of timestamp for project") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -45,7 +45,7 @@ class TestTimestampUdf extends SparkTestSuite {
       StructField("col1", TimestampType)))
 
     val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
-    t1.registerTempTable("t1")
+    t1.createOrReplaceTempView("t1")
     sess.registerTable("t1", t1)
 
     val sqlText = "SELECT col1, year(col1), month(col1), day(col1) FROM t1"
@@ -55,7 +55,7 @@ class TestTimestampUdf extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
-  test("Test udf of month for window") {
+  test("Test udf of timestamp for window") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -69,7 +69,7 @@ class TestTimestampUdf extends SparkTestSuite {
     ))
 
     val t1 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
-    t1.registerTempTable("t1")
+    t1.createOrReplaceTempView("t1")
     sess.registerTable("t1", t1)
 
     val sqlText ="""

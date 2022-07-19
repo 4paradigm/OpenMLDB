@@ -174,3 +174,5 @@ using hybridse::node::DataType;
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
 %include "vm/mem_catalog.h"
+
+%template(VectorDataType) std::vector<hybridse::node::DataType>;

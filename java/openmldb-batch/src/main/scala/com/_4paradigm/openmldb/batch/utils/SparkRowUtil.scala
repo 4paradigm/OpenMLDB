@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.batch.utils
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.proto.Type
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
   ShortType, StringType, StructType, TimestampType}
 
@@ -73,6 +74,25 @@ object SparkRowUtil {
         case LongType => row.getLong(keyIdx)
         case TimestampType => row.getTimestamp(keyIdx).getTime
         case DateType => row.getDate(keyIdx).getTime
+        case _ =>
+          throw new HybridSeException(s"Illegal window key type: $colType")
+      }
+    }
+  }
+
+  def unsafeGetLongFromIndex(keyIdx: Int, colType: DataType, row: UnsafeRow): java.lang.Long = {
+
+    if (row.isNullAt(keyIdx)) {
+      null
+    } else {
+      colType match {
+        case ShortType => row.getShort(keyIdx).toLong
+        case IntegerType => row.getInt(keyIdx).toLong
+        case LongType => row.getLong(keyIdx)
+        // TODO(tobe): Support getting timestamp
+        case TimestampType => row.getLong(keyIdx)
+        // TODO(tobe): Support getting date
+        case DateType => row.getLong(keyIdx)
         case _ =>
           throw new HybridSeException(s"Illegal window key type: $colType")
       }

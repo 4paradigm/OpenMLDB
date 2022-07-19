@@ -40,7 +40,16 @@ using openmldb::catalog::Procedures;
 struct ClusterOptions {
     std::string zk_cluster;
     std::string zk_path;
-    int32_t session_timeout = 2000;
+    int32_t zk_session_timeout = 2000;
+    int32_t zk_log_level = 3;
+    std::string zk_log_file;
+    std::string to_string() {
+        std::stringstream ss;
+        ss << "zk options [cluster:" << zk_cluster << ", path:" << zk_path
+           << ", zk_session_timeout:" << zk_session_timeout
+           << ", log_level:" << zk_log_level << ", log_file:" << zk_log_file << "]";
+        return ss.str();
+    }
 };
 
 class DBSDK {
@@ -64,46 +73,9 @@ class DBSDK {
     }
     inline ::hybridse::vm::Engine* GetEngine() { return engine_; }
 
-    std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
-        auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
-        if (ns_client) return ns_client;
+    std::shared_ptr<::openmldb::client::NsClient> GetNsClient();
 
-        std::string endpoint, real_endpoint;
-        if (!GetNsAddress(&endpoint, &real_endpoint)) {
-            DLOG(ERROR) << "fail to get ns address";
-            return {};
-        }
-        ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
-        int ret = ns_client->Init();
-        if (ret != 0) {
-            // We GetNsClient and use it without checking not null. It's intolerable.
-            LOG(DFATAL) << "fail to init ns client with endpoint " << endpoint;
-            return {};
-        }
-        LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
-        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
-        return ns_client;
-    }
-
-    std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient() {
-        auto taskmanager_client = std::atomic_load_explicit(&taskmanager_client_, std::memory_order_relaxed);
-        if (taskmanager_client) return taskmanager_client;
-
-        std::string endpoint, real_endpoint;
-        if (!GetTaskManagerAddress(&endpoint, &real_endpoint)) {
-            LOG(ERROR) << "fail to get TaskManager address";
-            return {};
-        }
-        taskmanager_client = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint);
-        int ret = taskmanager_client->Init();
-        if (ret != 0) {
-            LOG(DFATAL) << "fail to init TaskManager client with endpoint " << endpoint;
-            return {};
-        }
-        LOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
-        std::atomic_store_explicit(&taskmanager_client_, taskmanager_client, std::memory_order_relaxed);
-        return taskmanager_client;
-    }
+    std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient();
 
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);
@@ -111,6 +83,7 @@ class DBSDK {
     std::vector<std::string> GetAllTables();
     std::vector<std::string> GetTableNames(const std::string& db);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet();
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> GetAllTablet();
     bool GetTablet(const std::string& db, const std::string& name,
                    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name);
@@ -122,10 +95,12 @@ class DBSDK {
     std::shared_ptr<hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db, const std::string& sp_name,
                                                                    std::string* msg);
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
-    virtual bool TriggerNotify() const = 0;
-    virtual bool GlobalVarNotify() const = 0;
+    virtual bool TriggerNotify(::openmldb::type::NotifyType type) const = 0;
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
+
+    bool RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun);
+    bool RemoveExternalFun(const std::string& name);
 
  protected:
     virtual bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) = 0;
@@ -133,6 +108,9 @@ class DBSDK {
     virtual bool BuildCatalog() = 0;
 
     DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
+
+    static std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
+    bool InitExternalFun();
 
  protected:
     std::atomic<uint64_t> cluster_version_{0};
@@ -144,8 +122,8 @@ class DBSDK {
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> table_to_tablets_;
 
     ::hybridse::vm::Engine* engine_ = nullptr;
+    std::map<std::string, std::shared_ptr<openmldb::common::ExternalFun>> external_fun_;
 
- private:
     // get/set op should be atomic(actually no reset now)
     std::shared_ptr<::openmldb::client::NsClient> ns_client_;
     std::shared_ptr<::openmldb::client::TaskManagerClient> taskmanager_client_;
@@ -158,13 +136,14 @@ class ClusterSDK : public DBSDK {
     ~ClusterSDK() override;
     bool Init() override;
     bool IsClusterMode() const override { return true; }
-    bool TriggerNotify() const override;
-    bool GlobalVarNotify() const override;
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
     const ClusterOptions& GetClusterOptions() const { return options_; }
 
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
+
+    void RefreshExternalFun(const std::vector<std::string>& funs);
 
  protected:
     bool BuildCatalog() override;
@@ -176,6 +155,8 @@ class ClusterSDK : public DBSDK {
     bool InitTabletClient();
     void WatchNotify();
     void CheckZk();
+    void RefreshNsClient(const std::vector<std::string>& leader_children);
+    void RefreshTaskManagerClient();
 
  private:
     ClusterOptions options_;
@@ -184,6 +165,9 @@ class ClusterSDK : public DBSDK {
     std::string sp_root_path_;
     std::string notify_path_;
     std::string globalvar_changed_notify_path_;
+    std::string leader_path_;
+    std::string taskmanager_leader_path_;
+
     ::openmldb::zk::ZkClient* zk_client_;
     ::baidu::common::ThreadPool pool_;
 };
@@ -198,14 +182,20 @@ class StandAloneSDK : public DBSDK {
     zk::ZkClient* GetZkClient() override { return nullptr; }
 
     bool IsClusterMode() const override { return false; }
-
-    bool TriggerNotify() const override { return false; }
+    // kTable for normal table and kGlobalVar for global var table, return true directly in standalone
+    bool TriggerNotify(::openmldb::type::NotifyType type) const override {
+        if (type == ::openmldb::type::kTable) {
+            return true;
+        } else if (type == ::openmldb::type::kGlobalVar) {
+            return true;
+        }
+        DLOG(ERROR) << "unsupport notify type";
+        return false;
+    }
 
     const std::string& GetHost() const { return host_; }
 
     int GetPort() const { return port_; }
-
-    bool GlobalVarNotify() const override { return true; }
 
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
@@ -218,7 +208,6 @@ class StandAloneSDK : public DBSDK {
     }
 
  protected:
-
     bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) override {
         // Standalone mode does not provide TaskManager service
         return false;

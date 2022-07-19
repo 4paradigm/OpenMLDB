@@ -139,7 +139,11 @@ public class JobInfo {
     }
 
     public boolean isYarnJob() {
-        return cluster.toLowerCase().equals("yarn");
+        return cluster.toLowerCase().startsWith("yarn");
+    }
+
+    public boolean isYarnClusterJob() {
+        return cluster.equalsIgnoreCase("yarn") || cluster.equalsIgnoreCase("yarn-cluster");
     }
 
     public void sync() {

@@ -17,20 +17,27 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
-import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
-import com._4paradigm.hybridse.node.{ConstNode, DataType => InnerDataType}
+import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef}
+import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
-import org.apache.spark.sql.types.{
-  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, StructField, StructType, TimestampType
-}
-import org.apache.spark.sql.{DataFrame, Row}
+import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
+import com._4paradigm.openmldb.proto
+import com._4paradigm.openmldb.proto.Common
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
+import org.apache.spark.sql.functions.{col, first}
+import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
+import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.collection.mutable
 
 
 object HybridseUtil {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   def getOutputSchemaSlices(node: PhysicalOpNode, enableUnsafeRowOpt: Boolean): Array[StructType] = {
     if (enableUnsafeRowOpt) {
       // If enabling UnsafeRowOpt, return row with one slice
@@ -65,7 +72,7 @@ object HybridseUtil {
       tblBulder.addColumns(ColumnDef.newBuilder()
         .setName(field.name)
         .setIsNotNull(!field.nullable)
-        .setType(getHybridseType(field.dataType))
+        .setType(DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType))
         .build()
       )
     })
@@ -79,99 +86,19 @@ object HybridseUtil {
       list.add(ColumnDef.newBuilder()
         .setName(field.name)
         .setIsNotNull(!field.nullable)
-        .setType(getHybridseType(field.dataType)).build())
+        .setType(DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType)).build())
     })
     list
   }
 
   def getSparkSchema(columns: java.util.List[ColumnDef]): StructType = {
     StructType(columns.asScala.map(col => {
-      StructField(col.getName, getSparkType(col.getType), !col.getIsNotNull)
+      StructField(col.getName, DataTypeUtil.hybridseProtoTypeToSparkType(col.getType), !col.getIsNotNull)
     }))
   }
 
-  def getSparkType(dtype: Type): DataType = {
-    dtype match {
-      case Type.kInt16 => ShortType
-      case Type.kInt32 => IntegerType
-      case Type.kInt64 => LongType
-      case Type.kFloat => FloatType
-      case Type.kDouble => DoubleType
-      case Type.kBool => BooleanType
-      case Type.kVarchar => StringType
-      case Type.kDate => DateType
-      case Type.kTimestamp => TimestampType
-      case _ => throw new IllegalArgumentException(
-        s"HybridSE type $dtype not supported")
-    }
-  }
-
-  def protoTypeToSparkType(dtype: com._4paradigm.openmldb.proto.Type.DataType): DataType = {
-    dtype match {
-      case com._4paradigm.openmldb.proto.Type.DataType.kSmallInt => ShortType
-      case com._4paradigm.openmldb.proto.Type.DataType.kInt => IntegerType
-      case com._4paradigm.openmldb.proto.Type.DataType.kBigInt => LongType
-      case com._4paradigm.openmldb.proto.Type.DataType.kFloat => FloatType
-      case com._4paradigm.openmldb.proto.Type.DataType.kDouble => DoubleType
-      case com._4paradigm.openmldb.proto.Type.DataType.kBool => BooleanType
-      case com._4paradigm.openmldb.proto.Type.DataType.kString => StringType
-      case com._4paradigm.openmldb.proto.Type.DataType.kVarchar => StringType
-      case com._4paradigm.openmldb.proto.Type.DataType.kDate => DateType
-      case com._4paradigm.openmldb.proto.Type.DataType.kTimestamp => TimestampType
-      case _ => throw new IllegalArgumentException(
-        s"HybridSE proto data type $dtype not supported")
-    }
-  }
-
-  def getHybridseType(dtype: DataType): Type = {
-    dtype match {
-      case ShortType => Type.kInt16
-      case IntegerType => Type.kInt32
-      case LongType => Type.kInt64
-      case FloatType => Type.kFloat
-      case DoubleType => Type.kDouble
-      case BooleanType => Type.kBool
-      case StringType => Type.kVarchar
-      case DateType => Type.kDate
-      case TimestampType => Type.kTimestamp
-      case _ => throw new IllegalArgumentException(
-        s"Spark type $dtype not supported")
-    }
-  }
-
-  def getSchemaTypeFromInnerType(dtype: InnerDataType): Type = {
-    dtype match {
-      case InnerDataType.kInt16 => Type.kInt16
-      case InnerDataType.kInt32 => Type.kInt32
-      case InnerDataType.kInt64 => Type.kInt64
-      case InnerDataType.kFloat => Type.kFloat
-      case InnerDataType.kDouble => Type.kDouble
-      case InnerDataType.kBool => Type.kBool
-      case InnerDataType.kVarchar => Type.kVarchar
-      case InnerDataType.kDate => Type.kDate
-      case InnerDataType.kTimestamp => Type.kTimestamp
-      case _ => throw new IllegalArgumentException(
-        s"Inner type $dtype not supported")
-    }
-  }
-
-  def getInnerTypeFromSchemaType(dtype: Type): InnerDataType = {
-    dtype match {
-      case Type.kInt16 => InnerDataType.kInt16
-      case Type.kInt32 => InnerDataType.kInt32
-      case Type.kInt64 => InnerDataType.kInt64
-      case Type.kFloat => InnerDataType.kFloat
-      case Type.kDouble => InnerDataType.kDouble
-      case Type.kBool => InnerDataType.kBool
-      case Type.kVarchar => InnerDataType.kVarchar
-      case Type.kDate => InnerDataType.kDate
-      case Type.kTimestamp => InnerDataType.kTimestamp
-      case _ => throw new IllegalArgumentException(
-        s"Schema type $dtype not supported")
-    }
-  }
-
   def createGroupKeyComparator(keyIdxs: Array[Int]): (Row, Row) => Boolean = {
+
     if (keyIdxs.length == 1) {
       val idx = keyIdxs(0)
       (row1, row2) => {
@@ -182,6 +109,40 @@ object HybridseUtil {
         keyIdxs.exists(i => row1.get(i) != row2.get(i))
       }
     }
+  }
+
+  def createComparator(idx: Int, dataType: DataType, row1: UnsafeRow, row2: UnsafeRow): Boolean = {
+    dataType match {
+      case ShortType => row1.getShort(idx) != row2.getShort(idx)
+      case IntegerType => row1.getInt(idx) != row2.getInt(idx)
+      case LongType => row1.getLong(idx) != row2.getLong(idx)
+      case FloatType => row1.getFloat(idx) != row2.getFloat(idx)
+      case DoubleType => row1.getDouble(idx) != row2.getDouble(idx)
+      case BooleanType => row1.getBoolean(idx) != row2.getBoolean(idx)
+      case TimestampType => row1.getLong(idx) != row2.getLong(idx)
+      // TODO(tobe): check for date type
+      case DateType => row1.getLong(idx) != row2.getLong(idx)
+      case StringType => !row1.getString(idx).equals(row2.getString(idx))
+    }
+  }
+
+  def createUnsafeGroupKeyComparator(keyIdxs: Array[Int], dataTypes: Array[DataType]):
+    (UnsafeRow, UnsafeRow) => Boolean = {
+    // TODO(tobe): check for different data types
+
+    if (keyIdxs.length == 1) {
+      val idx = keyIdxs(0)
+      val dataType = dataTypes(0)
+      (row1, row2) => createComparator(idx, dataType, row1, row2)
+    } else {
+      (row1, row2) => {
+        keyIdxs.exists(i => {
+          val dataType = dataTypes(i)
+          createComparator(i, dataType, row1, row2)
+        })
+      }
+    }
+
   }
 
   def parseOption(node: ConstNode, default: String, f: (ConstNode, String) => String): String = {
@@ -263,5 +224,98 @@ object HybridseUtil {
       deepCopy = Option(parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault).toBoolean)
     }
     (format, options.toMap, mode, deepCopy)
+  }
+
+  // result 'readSchema' & 'tsCols' is only for csv format, may not be used
+  def extractOriginAndReadSchema(columns: util.List[Common.ColumnDesc]): (StructType, StructType, List[String]) = {
+    var oriSchema = new StructType
+    var readSchema = new StructType
+    val tsCols = mutable.ArrayBuffer[String]()
+    columns.foreach(col => {
+      var ty = col.getDataType
+      oriSchema = oriSchema.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
+        .getNotNull)
+      if (ty.equals(proto.Type.DataType.kTimestamp)) {
+        tsCols += col.getName
+        // use string to parse ts column, to avoid getting null(parse wrong format), can't distinguish between the
+        // parsed null and the real `null`.
+        ty = proto.Type.DataType.kString
+      }
+      readSchema = readSchema.add(col.getName, SparkRowUtil.protoTypeToScalaType(ty), !col
+        .getNotNull)
+    }
+    )
+    (oriSchema, readSchema, tsCols.toList)
+  }
+
+  def parseLongTsCols(reader: DataFrameReader, readSchema: StructType, tsCols: List[String], file: String)
+  : List[String] = {
+    val longTsCols = mutable.ArrayBuffer[String]()
+    if (tsCols.nonEmpty) {
+      // normal timestamp format is TimestampType(Y-M-D H:M:S...)
+      // and we support one more timestamp format LongType(ms)
+      // read one row to auto detect the format, if int64, use LongType to read file, then convert it to TimestampType
+      // P.S. don't use inferSchema, cuz we just need to read the first non-null row, not all
+      val df = reader.schema(readSchema).load(file)
+      // check timestamp cols
+      for (col <- tsCols) {
+        val i = readSchema.fieldIndex(col)
+        var ty: DataType = LongType
+        try {
+          // value is string, try to parse to long
+          df.select(first(df.col(col), ignoreNulls = true)).first().getString(0).toLong
+          longTsCols.append(col)
+        } catch {
+          case e: Any =>
+            logger.debug(s"col '$col' parse long failed, use TimestampType to read", e)
+            ty = TimestampType
+        }
+
+        val newField = StructField(readSchema.fields(i).name, ty, readSchema.fields(i).nullable)
+        readSchema.fields(i) = newField
+      }
+    }
+    longTsCols.toList
+  }
+
+  // We want df with oriSchema, but if the file format is csv:
+  // 1. we support two format of timestamp
+  // 2. spark read may change the df schema to all nullable
+  // So we should fix it.
+  def autoLoad(spark: SparkSession, file: String, format: String, options: Map[String, String], columns: util
+  .List[Common.ColumnDesc]): DataFrame = {
+    val reader = spark.read.options(options)
+    val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
+    if (format != "csv") {
+      return reader.schema(oriSchema).format(format).load(file)
+    }
+    // csv should auto detect the timestamp format
+
+    logger.info(s"set file format: $format")
+    reader.format(format)
+    // use string to read, then infer the format by the first non-null value of the ts column
+    val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
+    logger.info(s"read schema: $readSchema, file $file")
+    var df = reader.schema(readSchema).load(file)
+    if (longTsCols.nonEmpty) {
+      // convert long type to timestamp type
+      for (tsCol <- longTsCols) {
+        df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
+      }
+    }
+
+    // if we read non-streaming files, the df schema fields will be set as all nullable.
+    // so we need to set it right
+    logger.info(s"after read schema: ${df.schema}")
+    if (!df.schema.equals(oriSchema)) {
+      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
+    }
+
+    require(df.schema == oriSchema, "df schema must == table schema")
+    if (logger.isDebugEnabled()) {
+      logger.debug("read dataframe count: {}", df.count())
+      df.show(10)
+    }
+    df
   }
 }

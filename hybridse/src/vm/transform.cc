@@ -33,7 +33,9 @@
 #include "passes/physical/group_and_sort_optimized.h"
 #include "passes/physical/left_join_optimized.h"
 #include "passes/physical/limit_optimized.h"
+#include "passes/physical/long_window_optimized.h"
 #include "passes/physical/simple_project_optimized.h"
+#include "passes/physical/split_aggregation_optimized.h"
 #include "passes/physical/window_column_pruning.h"
 
 namespace hybridse {
@@ -51,6 +53,8 @@ using hybridse::passes::LimitOptimized;
 using hybridse::passes::PhysicalPlanPassType;
 using hybridse::passes::SimpleProjectOptimized;
 using hybridse::passes::WindowColumnPruning;
+using hybridse::passes::LongWindowOptimized;
+using hybridse::passes::SplitAggregationOptimized;
 
 std::ostream& operator<<(std::ostream& output,
                          const hybridse::vm::LogicalOp& thiz) {
@@ -63,7 +67,8 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
                                            const codec::Schema* parameter_types, ::llvm::Module* module,
                                            const udf::UdfLibrary* library, bool cluster_optimized_mode,
                                            bool enable_expr_opt, bool enable_window_parallelization,
-                                           bool enable_window_column_pruning)
+                                           bool enable_window_column_pruning,
+                                           const std::unordered_map<std::string, std::string>* options)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
@@ -73,7 +78,7 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
       enable_batch_window_parallelization_(enable_window_parallelization),
       enable_batch_window_column_pruning_(enable_window_column_pruning),
       library_(library),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt) {}
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -208,7 +213,7 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
                 }
                 case kAggregation: {
                     // Code generation for having condition
-                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggrerationNode*>(node))->having_condition_,
+                    CHECK_STATUS(GenHavingFilter(&(dynamic_cast<PhysicalAggregationNode*>(node))->having_condition_,
                                                     project_op->producers()[0]->schemas_ctx()));
                     break;
                 }
@@ -270,6 +275,15 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
             CHECK_STATUS(
                 GenRequestWindowUnionList(&request_union_op->window_unions_,
                                           request_union_op->producers()[0]));
+            break;
+        }
+        case kPhysicalOpRequestAggUnion: {
+            auto request_union_op =
+                dynamic_cast<PhysicalRequestAggUnionNode*>(node);
+            CHECK_STATUS(GenRequestWindow(&request_union_op->window_,
+                                          node->producers()[0]));
+            CHECK_STATUS(GenRequestWindow(&request_union_op->agg_window_,
+                                          node->producers()[2]));
             break;
         }
         case kPhysicalOpPostRequestUnion: {
@@ -440,7 +454,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         dynamic_cast<hybridse::node::ProjectListNode*>(
             node->project_list_vec_[0]);
     auto project_list = node_manager_->MakeProjectListPlanNode(
-        first_project_list->w_ptr_, first_project_list->has_agg_project_);
+        first_project_list->GetW(), first_project_list->HasAggProject());
     uint32_t pos = 0;
     for (auto iter = node->pos_mapping_.cbegin();
          iter != node->pos_mapping_.cend(); iter++) {
@@ -538,11 +552,26 @@ Status BatchModeTransformer::CreateRequestUnionNode(
     }
     PhysicalRequestUnionNode* request_union_op = nullptr;
     if (partition != nullptr) {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, partition));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, partition));
     } else {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, window_plan));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, window_plan));
+        if (window_plan->exclude_current_row()) {
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                window_plan->frame_node()->GetHistoryRangeEnd() == 0) {
+                // flag in request union node needed for request union runner
+                request_union_op->exclude_current_row_ = true;
+                // flag in frame node needed for codegen build correct InnerRowsRangeList
+                request_union_op->window().range().frame()->exclude_current_row_ = true;
+            }
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                window_plan->frame_node()->GetHistoryRowsEnd() == 0) {
+                // ROWS .. 0 PRECEDING EXCLUDE CURRENT_ROW is same as
+                // ROWS .. 0 OPEN PRECEDING
+                request_union_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                    node::BoundType::kOpenPreceding);
+                request_union_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+            }
+        }
     }
     *output = request_union_op;
     return Status::OK();
@@ -888,6 +917,7 @@ Status BatchModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* n
 }
 
 bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
+    DLOG(INFO) << "AddPass " << passes::PhysicalPlanPassTypeName(type);
     passes.push_back(type);
     return true;
 }
@@ -1168,8 +1198,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             break;
         }
         case kAggregation: {
-            PhysicalAggrerationNode* agg_op = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalAggrerationNode>(&agg_op, depend,
+            PhysicalAggregationNode* agg_op = nullptr;
+            CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend,
                                                            column_projects, having_condition));
             *output = agg_op;
             break;
@@ -1190,14 +1220,29 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
             CHECK_TRUE(nullptr == having_condition, kPlanError,
                        "Can't support having clause and window clause simultaneously")
             CHECK_STATUS(CreateOp<PhysicalWindowAggrerationNode>(
-                &window_agg_op, depend, column_projects,
-                WindowOp(project_list->w_ptr_),
-                project_list->w_ptr_->instance_not_in_window(), append_input,
-                project_list->w_ptr_->exclude_current_time()));
-            if (!project_list->w_ptr_->union_tables().empty()) {
-                for (auto iter = project_list->w_ptr_->union_tables().cbegin();
-                     iter != project_list->w_ptr_->union_tables().cend();
-                     iter++) {
+                &window_agg_op, depend, column_projects, WindowOp(project_list->GetW()),
+                project_list->GetW()->instance_not_in_window(), append_input,
+                project_list->GetW()->exclude_current_time()));
+
+            if (project_list->GetW()->exclude_current_row()) {
+                // there is only special handling for ROWS_RANGE Current History Window
+                // - for pure history windows, exclude current_row do not matter since current row already excluded by
+                //   end frame bound
+                // - for current history ROWS window, exclude current_row is same as OPEN end frame bound
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                    project_list->GetW()->frame_node()->GetHistoryRangeEnd() == 0) {
+                    window_agg_op->set_exclude_current_row(true);
+                }
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                    project_list->GetW()->frame_node()->GetHistoryRowsEnd() == 0) {
+                    window_agg_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                        node::BoundType::kOpenPreceding);
+                    window_agg_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+                }
+            }
+            if (!project_list->GetW()->union_tables().empty()) {
+                for (auto iter = project_list->GetW()->union_tables().cbegin();
+                     iter != project_list->GetW()->union_tables().cend(); iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
                     PhysicalRenameNode* rename_union_op = nullptr;
@@ -1246,7 +1291,7 @@ Status BatchModeTransformer::TransformProjectOp(node::ProjectListNode* project_l
             if (project_list->HasAggProject()) {
                 if (project_list->IsWindowProject()) {
                     CHECK_STATUS(
-                        CheckWindow(project_list->w_ptr_, depend->schemas_ctx()));
+                        CheckWindow(project_list->GetW(), depend->schemas_ctx()));
                     return CreatePhysicalProjectNode(kWindowAggregation, depend,
                                                      project_list, append_input,
                                                      output);
@@ -1307,6 +1352,16 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
             }
             case PhysicalPlanPassType::kPassLimitOptimized: {
                 LimitOptimized pass(&plan_ctx_);
+                transformed = pass.Apply(cur_op, &new_op);
+                break;
+            }
+            case PhysicalPlanPassType::kPassSplitAggregationOptimized: {
+                SplitAggregationOptimized split_pass(&plan_ctx_);
+                transformed = split_pass.Apply(cur_op, &new_op);
+                break;
+            }
+            case PhysicalPlanPassType::kPassLongWindowOptimized: {
+                LongWindowOptimized pass(&plan_ctx_);
                 transformed = pass.Apply(cur_op, &new_op);
                 break;
             }
@@ -1700,6 +1755,13 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             case ::hybridse::node::kPlanTypeDelete: {
                 return TransformPlanOp(node, output);
             }
+            case ::hybridse::node::kPlanTypeInsert: {
+                auto* insert_plan_node = dynamic_cast<const ::hybridse::node::InsertPlanNode*>(node);
+                PhysicalInsertNode* insert_node = nullptr;
+                CHECK_STATUS(CreateOp(&insert_node, insert_plan_node->GetInsertNode()));
+                *output = insert_node;
+                return Status::OK();
+            }
             default: {
                 return {kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType())};
             }
@@ -2024,9 +2086,10 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
                                                const codec::Schema* parameter_types, ::llvm::Module* module,
                                                udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
                                                const bool cluster_optimized, const bool enable_batch_request_opt,
-                                               bool enable_expr_opt, bool performance_sensitive)
+                                               bool enable_expr_opt, bool performance_sensitive,
+                                               const std::unordered_map<std::string, std::string>* options)
     : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, cluster_optimized,
-                           enable_expr_opt, true, false),
+                           enable_expr_opt, true, false, options),
       enable_batch_request_opt_(enable_batch_request_opt), performance_sensitive_(performance_sensitive) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
@@ -2169,6 +2232,7 @@ Status RequestModeTransformer::ValidateRequestTable(
         case vm::kPhysicalOpUnion:
         case vm::kPhysicalOpPostRequestUnion:
         case vm::kPhysicalOpRequestUnion:
+        case vm::kPhysicalOpRequestAggUnion:
         case vm::kPhysicalOpRequestJoin: {
             vm::PhysicalOpNode* left_primary_source = nullptr;
             CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), &left_primary_source))
@@ -2219,13 +2283,13 @@ Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {
     PhysicalOpNode* new_depend = depend;
-    if (nullptr != project_list->w_ptr_) {
+    if (nullptr != project_list->GetW()) {
         CHECK_STATUS(
-            TransformWindowOp(depend, project_list->w_ptr_, &new_depend));
+            TransformWindowOp(depend, project_list->GetW(), &new_depend));
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:
-            CHECK_TRUE(!project_list->has_agg_project_, kPlanError, "Non-support aggregation project on request row")
+            CHECK_TRUE(!project_list->HasAggProject(), kPlanError, "Non-support aggregation project on request row")
             return CreatePhysicalProjectNode(
                 kRowProject, new_depend, project_list, append_input, output);
         case kSchemaTypeGroup:
@@ -2233,7 +2297,7 @@ Status RequestModeTransformer::TransformProjectOp(
                                              project_list, append_input,
                                              output);
         case kSchemaTypeTable:
-            if (project_list->has_agg_project_) {
+            if (project_list->HasAggProject()) {
                 return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, append_input,
                                                  output);

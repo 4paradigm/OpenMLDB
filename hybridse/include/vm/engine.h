@@ -24,6 +24,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/fe_row_codec.h"
@@ -39,6 +40,8 @@ namespace hybridse {
 namespace vm {
 
 using ::hybridse::codec::Row;
+
+inline constexpr const char* LONG_WINDOWS = "long_windows";
 
 class Engine;
 /// \brief An options class for controlling engine behaviour.
@@ -117,13 +120,6 @@ class EngineOptions {
     /// Return the maximum number of entries we can hold for compiling cache.
     inline uint32_t GetMaxSqlCacheSize() const { return max_sql_cache_size_; }
 
-    /// Set `true` to enable spark unsafe row format, default `false`.
-    EngineOptions* SetEnableSparkUnsaferowFormat(bool flag);
-    /// Return if the engine can support can support spark unsafe row format.
-    inline bool IsEnableSparkUnsaferowFormat() const {
-        return enable_spark_unsaferow_format_;
-    }
-
     /// Return JitOptions
     inline hybridse::vm::JitOptions& jit_options() { return jit_options_; }
 
@@ -137,7 +133,6 @@ class EngineOptions {
     bool enable_batch_window_parallelization_;
     bool enable_window_column_pruning_;
     uint32_t max_sql_cache_size_;
-    bool enable_spark_unsaferow_format_;
     JitOptions jit_options_;
 };
 
@@ -180,11 +175,20 @@ class RunSession {
     /// Return the engine mode of this run session
     EngineMode engine_mode() const { return engine_mode_; }
 
+    const std::shared_ptr<const std::unordered_map<std::string, std::string>>& GetOptions() const {
+        return options_;
+    }
+
+    void SetOptions(const std::shared_ptr<const std::unordered_map<std::string, std::string>>& options) {
+        options_ = options;
+    }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
+    std::shared_ptr<const std::unordered_map<std::string, std::string>> options_ = nullptr;
     friend Engine;
 };
 
@@ -355,6 +359,8 @@ class Engine {
     /// \brief Initialize LLVM environments
     static void InitializeGlobalLLVM();
 
+    static void InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt);
+
     ~Engine();
 
     /// \brief Compile sql in db and stored the results in the session
@@ -386,6 +392,14 @@ class Engine {
                  EngineMode engine_mode, const codec::Schema& parameter_schema,
                  ExplainOutput* explain_output,
                  base::Status* status);
+
+    base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
+                                     const std::vector<node::DataType>& arg_types, bool is_aggregate,
+                                     const std::string& file);
+
+    base::Status RemoveExternalFunction(const std::string& name,
+                                     const std::vector<node::DataType>& arg_types,
+                                     const std::string& file);
 
     /// \brief Same as above, but allowing compiling with configuring common column indices.
     ///

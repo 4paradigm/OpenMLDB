@@ -31,8 +31,12 @@
 #include "base/spinlock.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
+#include "nameserver/system_table.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "storage/aggregator.h"
+#include "sdk/sql_cluster_router.h"
+#include "statistics/query_response_time/deploy_query_response_time.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/bulk_load_mgr.h"
@@ -41,8 +45,6 @@
 #include "tablet/sp_cache.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
-#include "sdk/sql_cluster_router.h"
-#include "nameserver/system_table.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -50,6 +52,8 @@ using ::google::protobuf::RpcController;
 using ::openmldb::base::SpinMutex;
 using ::openmldb::replica::LogReplicator;
 using ::openmldb::replica::ReplicatorRole;
+using ::openmldb::storage::Aggregator;
+using ::openmldb::storage::Aggrs;
 using ::openmldb::storage::IndexDef;
 using ::openmldb::storage::MemTable;
 using ::openmldb::storage::Snapshot;
@@ -65,6 +69,7 @@ namespace tablet {
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>> Snapshots;
+typedef std::map<uint64_t, std::shared_ptr<Aggrs>> Aggregators;
 
 class TabletImpl : public ::openmldb::api::TabletServer {
  public:
@@ -217,6 +222,12 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void Query(RpcController* controller, const openmldb::api::QueryRequest* request,
                openmldb::api::QueryResponse* response, Closure* done);
 
+    void CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
+               openmldb::api::CreateFunctionResponse* response, Closure* done);
+
+    void DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
+               openmldb::api::DropFunctionResponse* response, Closure* done);
+
     void SubQuery(RpcController* controller, const openmldb::api::QueryRequest* request,
                   openmldb::api::QueryResponse* response, Closure* done);
 
@@ -238,11 +249,11 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     // scan specified ttl type index
     int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
                       const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      std::string* pairs, uint32_t* count);
+                      std::string* pairs, uint32_t* count, bool* is_finish);
 
     int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
                       const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      butil::IOBuf* buf, uint32_t* count);
+                      butil::IOBuf* buf, uint32_t* count, bool* is_finish);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt, ::openmldb::storage::TTLType ttl_type,
                        ::openmldb::storage::TableIterator* it, const ::openmldb::api::CountRequest* request,
@@ -262,18 +273,30 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
                   ::openmldb::api::GeneralResponse* response, Closure* done);
 
+    void CreateAggregator(RpcController* controller, const ::openmldb::api::CreateAggregatorRequest* request,
+                          ::openmldb::api::CreateAggregatorResponse* response, Closure* done);
+
+    std::shared_ptr<Aggrs> GetAggregators(uint32_t tid, uint32_t pid);
+
+    void GetAndFlushDeployStats(::google::protobuf::RpcController* controller,
+                                const ::openmldb::api::GAFDeployStatsRequest* request,
+                                ::openmldb::api::DeployStatsResponse* response,
+                                ::google::protobuf::Closure* done) override;
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
-    // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<Aggrs> GetAggregatorsUnLock(uint32_t tid, uint32_t pid);
 
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
@@ -282,8 +305,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
                        std::string& msg);  // NOLINT
 
-    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta,
-                            std::string& msg);  // NOLINT
+    int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
                               std::shared_ptr<::openmldb::api::TaskInfo> task);
@@ -321,9 +343,15 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool RefreshSingleTable(uint32_t tid);
 
+    void RecoverExternalFunction();
+
+    base::Status CreateFunctionInternal(const ::openmldb::common::ExternalFun& fun);
+
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
+    int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openmldb::api::TableMeta& table_meta,
+                                      std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path, const ::openmldb::api::TableMeta* table_meta);
 
     int UpdateTableMeta(const std::string& path, ::openmldb::api::TableMeta* table_meta, bool for_add_column);
@@ -356,19 +384,20 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool CheckGetDone(::openmldb::api::GetType type, uint64_t ts, uint64_t target_ts);
 
-    bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
+    bool ChooseDBRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
                           std::string& path);  // NOLINT
 
-    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
+    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
                                   std::string& path);  // NOLINT
 
-    bool ChooseTableRootPath(uint32_t tid, uint32_t pid,
+    bool ChooseTableRootPath(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
                              std::string& path);  // NOLINT
 
-    bool GetTableRootSize(uint32_t tid, uint32_t pid,
+    bool GetTableRootSize(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
                           uint64_t& size);  // NOLINT
 
     int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
+                              ::openmldb::common::StorageMode storageMode,
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
@@ -384,25 +413,40 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                   openmldb::api::SQLBatchRequestQueryResponse* response,
                                   butil::IOBuf& buf);  // NOLINT
 
+    bool UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& value,
+                     const ::openmldb::storage::Dimensions& dimensions, uint64_t log_offset);
+
+    bool CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request,
+                                  std::string& msg); //NOLINT
+
     inline bool IsClusterMode() const {
         return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
     }
 
     std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
 
- private:
+    bool IsCollectDeployStatsEnabled() const;
+
+    // collect deploy statistics into memory
+    void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
+
     void RunRequestQuery(RpcController* controller, const openmldb::api::QueryRequest& request,
                          ::hybridse::vm::RequestRunSession& session,                  // NOLINT
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
 
+    // refresh the pre-aggr tables info
+    bool RefreshAggrCatalog();
+
+ private:
     Tables tables_;
     std::mutex mu_;
     SpinMutex spin_mutex_;
     ThreadPool gc_pool_;
     Replicators replicators_;
     Snapshots snapshots_;
+    Aggregators aggregators_;
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
@@ -412,8 +456,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     BulkLoadMgr bulk_load_mgr_;
-    std::vector<std::string> mode_root_paths_;
-    std::vector<std::string> mode_recycle_root_paths_;
+    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
+        mode_root_paths_;
+    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
+        mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
@@ -430,8 +476,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::string globalvar_changed_notify_path_;
     ::openmldb::type::StartupMode startup_mode_;
 
-    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
+
+    std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
 };
 
 }  // namespace tablet

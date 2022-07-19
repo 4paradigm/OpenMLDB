@@ -55,6 +55,8 @@ class SqlCase {
         std::set<size_t> common_column_indices_;
         // SqlNode's TreeString output
         std::string node_tree_str_;
+        // PlanNode TreeString
+        std::string plan_tree_str_;
         bool success_ = true;
         int code_ = -1;
         std::string msg_;
@@ -210,18 +212,9 @@ class SqlCase {
         return false;
     }
     static std::set<std::string> HYBRIDSE_LEVEL();
-    static std::string SqlCaseBaseDir() {
-        const char* env_name = "SQL_CASE_BASE_DIR";
-        char* value = getenv(env_name);
-        if (value != nullptr) {
-            return std::string(value);
-        }
-        value = getenv("YAML_CASE_BASE_DIR");
-        if (value != nullptr) {
-            return std::string(value);
-        }
-        return "";
-    }
+
+    static std::string SqlCaseBaseDir();
+
     static bool IsDebug() {
         const char* env_name = "HYBRIDSE_DEV";
         char* value = getenv(env_name);

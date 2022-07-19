@@ -47,9 +47,8 @@ option(BENCHMARK_ENABLE "Enable Benchmark" OFF)
 option(EXAMPLES_ENABLE "Enable examples" ON)
 option(LLVM_EXT_ENABLE "Enable llvm ext sources" OFF)
 
-set(DEPS_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/.deps/usr" CACHE PATH "Path prefix for finding dependencies")
 if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH ${DEPS_PREFIX})
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
 endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -62,7 +61,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 # llvm dependency
 if (NOT DEFINED LLVM_DIR)
     set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
@@ -88,7 +86,11 @@ set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_library(BRPC_LIBRARY brpc)
-find_library(PROTOBUF_LIBRARY protobuf)
+
+set(Protobuf_USE_STATIC_LIBS ON)
+find_package(Protobuf 3.6 EXACT REQUIRED)
+message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
+
 find_library(GLOG_LIBRARY glog)
 find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
@@ -100,7 +102,7 @@ message(STATUS "Boost libraries ${Boost_LIBRARIES}")
 message(STATUS "OpenSSL libraries ${OPENSSL_LIBRARIES}")
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
@@ -114,7 +116,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
+    set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 endif ()
 
@@ -158,10 +160,19 @@ set(yaml_libs yaml-cpp)
 
 add_definitions('-g')
 add_definitions(${LLVM_DEFINITIONS})
-find_package(SWIG REQUIRED)
-include(UseSWIG)
+
+# parent project may already found swig, skip if so.
+# the check is added because the find may failed on cmake < 3.20
+if (NOT SWIG_FOUND)
+    set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
+    find_package(SWIG REQUIRED)
+    include(UseSWIG)
+else()
+    message(STATUS "SWIG already found: ${SWIG_EXECUTABLE}:${SWIG_VERSION}")
+endif()
 
 include_directories(
+    ${PROJECT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
@@ -179,8 +190,6 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
-set(Protobuf_USE_STATIC_LIBS ON)
-find_package(Protobuf 3.6 EXACT REQUIRED)
 list(
         APPEND
         ABSL_LIBS
@@ -200,6 +209,7 @@ list(
         absl::synchronization
         absl::time
         absl::status
+        absl::statusor
 )
 
 find_package(ICU COMPONENTS i18n io uc data)

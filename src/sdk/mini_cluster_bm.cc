@@ -27,11 +27,8 @@
 #include "test/base_test.h"
 #include "vm/catalog.h"
 
-DECLARE_bool(enable_distsql);
-DECLARE_bool(enable_localtablet);
 
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 // batch request rows size == 1
 void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                      ::openmldb::sdk::MiniCluster* mc) {                             // NOLINT

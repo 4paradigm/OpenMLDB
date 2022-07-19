@@ -70,7 +70,7 @@ class DBSDKTest : public ::testing::Test {
         SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col2", ::openmldb::type::kBigInt);
         SchemaCodec::SetIndex(table_info.add_column_key(), "index0", "col1", "col2", ::openmldb::type::kAbsoluteTime, 0,
                               0);
-        ASSERT_TRUE(ns_client->CreateTable(table_info, error));
+        ASSERT_TRUE(ns_client->CreateTable(table_info, false, error));
     }
 
  public:
@@ -97,6 +97,7 @@ TEST_F(DBSDKTest, smokeTest) {
     CreateTable();
     sleep(5);  // let sdk find the new table
 
+    ASSERT_EQ(2u, sdk.GetAllTablet().size());
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
     ASSERT_TRUE(sdk.GetTablet(db_name_, table_name_, &tablet));
     ASSERT_EQ(8u, tablet.size());

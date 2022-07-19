@@ -17,7 +17,8 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
-import com._4paradigm.openmldb.batch.utils.HybridseUtil
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
+import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
 import org.apache.spark.{SPARK_VERSION, SparkConf}
@@ -26,8 +27,9 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
-import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMap, mapAsScalaMapConverter}
 
 /**
  * The class to provide SparkSession-like API.
@@ -158,7 +160,7 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
-    if (config.disableOpenmldb) {
+    if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
 
@@ -203,12 +205,14 @@ class OpenmldbSession {
    */
   def version(): String = {
     // Read OpenMLDB git properties which is added by maven plugin
-    val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb_git.properties")
-    if (stream == null) {
-      logger.error("OpenMLDB git properties is missing")
-      SPARK_VERSION
-    } else {
-      s"$SPARK_VERSION\n${IOUtils.toString(stream, "UTF-8")}"
+    try {
+      val openmldbBatchVersion = VersionCli.getVersion()
+      s"$SPARK_VERSION\n$openmldbBatchVersion"
+    } catch {
+      case e: Exception => {
+        logger.error("Fail to load OpenMLDB git properties " + e.getMessage)
+        SPARK_VERSION
+      }
     }
   }
 
@@ -258,17 +262,16 @@ class OpenmldbSession {
         if (offlineTableInfo != null) { // offlineTableInfo is always not null
           val path = offlineTableInfo.getPath
           val format = offlineTableInfo.getFormat
+          val options = offlineTableInfo.getOptionsMap.asScala.toMap
 
           // TODO: Ignore the register exception which occurs when switching local and yarn mode
           try {
             // default offlineTableInfo required members 'path' & 'format' won't be null
             if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
-              // Has offline table meta
+              // Has offline table meta, use the meta and table schema to read data
               val df = format.toLowerCase match {
-                case "parquet" => sparkSession.read.parquet(path)
-                case "csv" => sparkSession.read.csv(path)
+                case "parquet" | "csv" => autoLoad(sparkSession, path, format, options, tableInfo.getColumnDescList)
               }
-              // TODO: Check schema
               registerTable(dbName, tableName, df)
             } else {
               // Register empty df for table
@@ -276,7 +279,7 @@ class OpenmldbSession {
               val columnDescList = tableInfo.getColumnDescList
 
               val schema = new StructType(columnDescList.asScala.map(colDesc => {
-                StructField(colDesc.getName, HybridseUtil.protoTypeToSparkType(colDesc.getDataType),
+                StructField(colDesc.getName, DataTypeUtil.protoTypeToSparkType(colDesc.getDataType),
                   !colDesc.getNotNull)
               }).toArray)
 

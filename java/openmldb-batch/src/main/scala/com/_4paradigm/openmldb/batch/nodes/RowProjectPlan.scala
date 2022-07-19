@@ -19,12 +19,14 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil,
+  UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
+import com._4paradigm.openmldb.common.codec.CodecUtil
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.types.{LongType, StructType, TimestampType}
+import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -82,7 +84,7 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer)
+        JitManager.initJitModule(tag, buffer, isUnsafeRowOpt)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
@@ -101,12 +103,32 @@ object RowProjectPlan {
           }
         }
 
+        val inputDateColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until inputSchema.size) {
+          if (inputSchema(i).dataType == DateType) {
+            inputDateColIndexes.append(i)
+          }
+        }
+
+        val outputDateColIndexes = mutable.ArrayBuffer[Int]()
+        for (i <- 0 until outputSchema.size) {
+          if (outputSchema(i).dataType == DateType) {
+            outputDateColIndexes.append(i)
+          }
+        }
+
         partitionIter.map(internalRow => {
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
-          for (tsColIdx <- inputTimestampColIndexes) {
-            if(!internalRow.isNullAt(tsColIdx)) {
-              internalRow.setLong(tsColIdx, internalRow.getLong(tsColIdx) / 1000)
+          for (colIdx <- inputTimestampColIndexes) {
+            if(!internalRow.isNullAt(colIdx)) {
+              internalRow.setLong(colIdx, internalRow.getLong(colIdx) / 1000)
+            }
+          }
+
+          for (colIdx <- inputDateColIndexes) {
+            if(!internalRow.isNullAt(colIdx)) {
+              internalRow.setInt(colIdx, CodecUtil.daysToDateInt(internalRow.getInt(colIdx)))
             }
           }
 
@@ -127,8 +149,13 @@ object RowProjectPlan {
             }
           }
 
+          for (colIdx <- outputDateColIndexes) {
+            if(!outputInternalRow.isNullAt(colIdx)) {
+              outputInternalRow.setInt(colIdx, CodecUtil.dateIntToDays(outputInternalRow.getInt(colIdx)))
+            }
+          }
+
           // TODO: Add index column if needed
-          outputHybridseRow.delete()
           outputInternalRow
         })
 
@@ -143,7 +170,7 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer.getBuffer)
+        JitManager.initJitModule(tag, buffer.getBuffer, isUnsafeRowOpt)
 
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

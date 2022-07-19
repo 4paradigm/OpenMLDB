@@ -60,22 +60,16 @@ endif ()
 
 add_library(hybridse_flags STATIC ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
 target_link_libraries(hybridse_flags ${GFLAGS_LIBRARY})
-# hybridse core library
-add_library(hybridse_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
+
+# hybridse core library, enable BUILD_SHARED_LIBS to build shared lib
+add_library(hybridse_core ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
-        ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_library(hybridse_core_shared SHARED ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
-    target_link_libraries(hybridse_core_shared
-            ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
-    set(HYBRIDSE_CORE_LIBS hybridse_core_shared)
-else ()
-    set(HYBRIDSE_CORE_LIBS hybridse_core)
-endif ()
+    ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
+set(HYBRIDSE_CORE_LIBS hybridse_core)
+
 add_subdirectory(testing)
 # hybridse core unittests
 if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
-
     get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
     string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
     set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -90,9 +84,14 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
                 ${yaml_libs} ${ZETASQL_LIBS} ${BRPC_LIBS})
         add_test(${TEST_TARGET_NAME}
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
-                --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+                --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
 
         target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
+
+        if (TESTING_ENABLE_STRIP)
+            strip_exe(${TEST_TARGET_NAME})
+        endif()
+
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach ()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

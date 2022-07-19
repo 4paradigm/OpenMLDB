@@ -40,6 +40,10 @@ class JitRuntime {
      */
     int8_t* AllocManaged(size_t bytes);
 
+    openmldb::base::ByteMemoryPool* GetMemPool() {
+        return &mem_pool_;
+    }
+
     /**
      * Register object to be managed by runtime.
      * All managed objects will be released by `ReleaseRunStep()`.
@@ -57,7 +61,7 @@ class JitRuntime {
     void ReleaseRunStep();
 
  private:
-    base::ByteMemoryPool mem_pool_;
+    openmldb::base::ByteMemoryPool mem_pool_;
     std::list<base::FeBaseObject*> allocated_obj_pool_;
 
     static thread_local JitRuntime tls_runtime_inst_;

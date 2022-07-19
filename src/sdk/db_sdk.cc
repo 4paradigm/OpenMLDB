@@ -22,6 +22,7 @@
 #include <snappy.h>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -31,8 +32,145 @@
 #include "base/hash.h"
 #include "base/strings.h"
 #include "glog/logging.h"
+#include "schema/schema_adapter.h"
 
 namespace openmldb::sdk {
+
+std::shared_ptr<::openmldb::client::NsClient> DBSDK::GetNsClient() {
+    auto ns_client = std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
+    if (ns_client) return ns_client;
+
+    std::string endpoint, real_endpoint;
+    if (!GetNsAddress(&endpoint, &real_endpoint)) {
+        DLOG(ERROR) << "fail to get ns address";
+        return {};
+    }
+    ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+    int ret = ns_client->Init();
+    if (ret != 0) {
+        // We GetNsClient and use it without checking not null. It's intolerable.
+        LOG(DFATAL) << "fail to init ns client with endpoint " << endpoint;
+        return {};
+    }
+    LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
+    std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
+    return ns_client;
+}
+
+std::shared_ptr<::openmldb::client::TaskManagerClient> DBSDK::GetTaskManagerClient() {
+    auto taskmanager_client = std::atomic_load_explicit(&taskmanager_client_, std::memory_order_relaxed);
+    if (taskmanager_client) return taskmanager_client;
+
+    std::string endpoint, real_endpoint;
+    if (!GetTaskManagerAddress(&endpoint, &real_endpoint)) {
+        LOG(ERROR) << "fail to get TaskManager address";
+        return {};
+    }
+    taskmanager_client = std::make_shared<::openmldb::client::TaskManagerClient>(endpoint, real_endpoint);
+    int ret = taskmanager_client->Init();
+    if (ret != 0) {
+        LOG(DFATAL) << "fail to init TaskManager client with endpoint " << endpoint;
+        return {};
+    }
+    DLOG(INFO) << "init TaskManager client with endpoint " << endpoint << " done";
+    std::atomic_store_explicit(&taskmanager_client_, taskmanager_client, std::memory_order_relaxed);
+    return taskmanager_client;
+}
+
+std::string DBSDK::GetFunSignature(const ::openmldb::common::ExternalFun& fun) {
+    std::string signature = fun.name();
+    for (int idx = 0; idx < fun.arg_type_size(); idx++) {
+        signature.append(".");
+        signature.append(DataType_Name(fun.arg_type(idx)));
+    }
+    return signature;
+}
+
+bool DBSDK::InitExternalFun() {
+    auto ns_client = GetNsClient();
+    if (!ns_client) {
+        return false;
+    }
+    std::vector<::openmldb::common::ExternalFun> fun_vec;
+    if (!ns_client->ShowFunction("", &fun_vec).OK()) {
+        return false;
+    }
+    std::vector<std::string> remove_funs;
+    std::vector<std::shared_ptr<openmldb::common::ExternalFun>> add_funs;
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        for (const auto& kv : external_fun_) {
+            bool not_in = true;
+            for (const auto& fun : fun_vec) {
+                if (fun.name() == kv.first) {
+                    not_in = false;
+                    break;
+                }
+            }
+            if (not_in) {
+                remove_funs.emplace_back(kv.first);
+            }
+        }
+        for (const auto& fun : fun_vec) {
+            auto iter = external_fun_.find(fun.name());
+            if (iter == external_fun_.end()) {
+                add_funs.emplace_back(std::make_shared<openmldb::common::ExternalFun>(fun));
+            } else if (GetFunSignature(*iter->second) != GetFunSignature(fun)) {
+                remove_funs.emplace_back(fun.name());
+                add_funs.emplace_back(std::make_shared<openmldb::common::ExternalFun>(fun));
+            }
+        }
+    }
+    for (const auto& name : remove_funs) {
+        RemoveExternalFun(name);
+    }
+    for (const auto& fun : add_funs) {
+        RegisterExternalFun(fun);
+    }
+    return true;
+}
+
+bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun) {
+    if (!fun) {
+        return false;
+    }
+    ::hybridse::node::DataType return_type;
+    ::openmldb::schema::SchemaAdapter::ConvertType(fun->return_type(), &return_type);
+    std::vector<::hybridse::node::DataType> arg_types;
+    for (int i = 0; i < fun->arg_type_size(); i++) {
+        ::hybridse::node::DataType data_type;
+        ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), "").isOK()) {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        external_fun_.emplace(fun->name(), fun);
+        return true;
+    }
+    return false;
+}
+
+bool DBSDK::RemoveExternalFun(const std::string& name) {
+    std::shared_ptr<::openmldb::common::ExternalFun> fun;
+    {
+        std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+        auto iter = external_fun_.find(name);
+        if (iter == external_fun_.end()) {
+            return false;
+        }
+        fun = iter->second;
+    }
+    std::vector<::hybridse::node::DataType> arg_types;
+    for (int i = 0; i < fun->arg_type_size(); i++) {
+        ::hybridse::node::DataType data_type;
+        ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
+        arg_types.emplace_back(data_type);
+    }
+    engine_->RemoveExternalFunction(fun->name(), arg_types, "");
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    external_fun_.erase(name);
+    return true;
+}
 
 ClusterSDK::ClusterSDK(const ClusterOptions& options)
     : options_(options),
@@ -41,6 +179,8 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       sp_root_path_(options.zk_path + "/store_procedure/db_sp_data"),
       notify_path_(options.zk_path + "/table/notify"),
       globalvar_changed_notify_path_(options.zk_path + "/notify/global_variable"),
+      leader_path_(options.zk_path + "/leader"),
+      taskmanager_leader_path_(options.zk_path + "/taskmanager/leader"),
       zk_client_(nullptr),
       pool_(1) {}
 
@@ -64,15 +204,16 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "", options_.session_timeout, "", options_.zk_path);
-    bool ok = zk_client_->Init();
+    zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "",
+                                              options_.zk_session_timeout, "",
+                                              options_.zk_path);
+
+    bool ok = zk_client_->Init(options_.zk_log_level, options_.zk_log_file);
     if (!ok) {
-        LOG(WARNING) << "fail to init zk client with zk cluster " << options_.zk_cluster << " , zk path "
-                     << options_.zk_path << " and session timeout " << options_.session_timeout;
+        LOG(WARNING) << "fail to init zk client with " << options_.to_string();
         return false;
     }
-    LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
-              << ",session timeout " << options_.session_timeout << " and session id " << zk_client_->GetSessionTerm();
+    LOG(INFO) << "init zk client with " << options_.to_string() << " and session id " << zk_client_->GetSessionTerm();
 
     ::hybridse::vm::EngineOptions eopt;
     eopt.SetCompileOnly(true);
@@ -82,35 +223,55 @@ bool ClusterSDK::Init() {
     ok = BuildCatalog();
     if (!ok) return false;
     CheckZk();
+    if (!InitExternalFun()) {
+        return false;
+    }
     return true;
 }
 
 void ClusterSDK::WatchNotify() {
-    LOG(INFO) << "start to watch table notify";
+    LOG(INFO) << "start to watch notify on table, function, ns leader, taskamanger leader";
     session_id_ = zk_client_->GetSessionTerm();
     zk_client_->CancelWatchItem(notify_path_);
     zk_client_->WatchItem(notify_path_, [this] { Refresh(); });
+    zk_client_->WatchChildren(options_.zk_path + "/data/function",
+                              [this](auto&& PH1) { RefreshExternalFun(std::forward<decltype(PH1)>(PH1)); });
+
+    zk_client_->WatchChildren(leader_path_, [this](auto&& PH1) { RefreshNsClient(std::forward<decltype(PH1)>(PH1)); });
+    zk_client_->WatchItem(taskmanager_leader_path_, [this] { RefreshTaskManagerClient(); });
 }
 
-bool ClusterSDK::TriggerNotify() const {
-    LOG(INFO) << "Trigger table notify node";
-    return zk_client_->Increment(notify_path_);
+void ClusterSDK::RefreshExternalFun(const std::vector<std::string>& funs) { InitExternalFun(); }
+
+void ClusterSDK::RefreshNsClient(const std::vector<std::string>& leader_children) {
+    // just reset ns client, lazy get
+    std::atomic_store_explicit(&ns_client_, {}, std::memory_order_relaxed);
 }
 
-bool ClusterSDK::GlobalVarNotify() const {
-    LOG(INFO) << "Global variable changed trigger notify node";
-    return zk_client_->Increment(globalvar_changed_notify_path_);
+void ClusterSDK::RefreshTaskManagerClient() {
+    // just reset taskmanager client, lazy get
+    std::atomic_store_explicit(&taskmanager_client_, {}, std::memory_order_relaxed);
+}
+
+bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
+    if (type == ::openmldb::type::NotifyType::kTable) {
+        LOG(INFO) << "Trigger table notify node";
+        return zk_client_->Increment(notify_path_);
+    } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
+        return zk_client_->Increment(globalvar_changed_notify_path_);
+    }
+    LOG(ERROR) << "unsupport notify type";
+    return false;
 }
 
 bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint) {
-    std::string ns_node = options_.zk_path + "/leader";
     std::vector<std::string> children;
-    if (!zk_client_->GetChildren(ns_node, children) || children.empty()) {
+    if (!zk_client_->GetChildren(leader_path_, children) || children.empty()) {
         LOG(WARNING) << "no nameserver exists";
         return false;
     }
     std::sort(children.begin(), children.end());
-    std::string real_path = ns_node + "/" + children[0];
+    std::string real_path = leader_path_ + "/" + children[0];
 
     if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
         LOG(WARNING) << "fail to get zk value with path " << real_path;
@@ -125,13 +286,11 @@ bool ClusterSDK::GetNsAddress(std::string* endpoint, std::string* real_endpoint)
 }
 
 bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) {
-    std::string real_path = options_.zk_path + "/taskmanager/leader";
-
-    if (!zk_client_->GetNodeValue(real_path, *endpoint)) {
-        LOG(WARNING) << "fail to get zk value with path " << real_path;
+    if (!zk_client_->GetNodeValue(taskmanager_leader_path_, *endpoint)) {
+        LOG(WARNING) << "fail to get zk value with path " << taskmanager_leader_path_;
         return false;
     }
-    DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+    DLOG(INFO) << "leader path " << taskmanager_leader_path_ << " with value " << endpoint;
 
     // TODO(tobe): Maybe allow users to set backup TaskManager endpoint
     *real_endpoint = "";
@@ -148,7 +307,7 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
         std::string value;
         bool ok = zk_client_->GetNodeValue(table_root_path_ + "/" + table_data, value);
         if (!ok) {
-            LOG(WARNING) << "fail to get table data";
+            LOG(WARNING) << "fail to get table data " << table_root_path_ << "/" << table_data;
             continue;
         }
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info(new ::openmldb::nameserver::TableInfo());
@@ -355,6 +514,10 @@ bool ClusterSDK::GetRealEndpointFromZk(const std::string& endpoint, std::string*
 
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet() { return GetCatalog()->GetTablet(); }
 
+std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetAllTablet() {
+    return GetCatalog()->GetAllTablet();
+}
+
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
@@ -455,6 +618,9 @@ bool StandAloneSDK::Init() {
     opt.SetCompileOnly(true);
     opt.SetPlanOnly(true);
     engine_ = new ::hybridse::vm::Engine(catalog_, opt);
+    if (!InitExternalFun()) {
+        return false;
+    }
     return PeriodicRefresh();
 }
 

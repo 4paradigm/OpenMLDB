@@ -18,7 +18,6 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
-
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "client/ns_client.h"
@@ -29,9 +28,11 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -47,23 +48,6 @@ using ::openmldb::zk::ZkClient;
 namespace openmldb {
 namespace nameserver {
 
-void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
-                      ::openmldb::nameserver::TableInfo* table_meta) {
-    auto column_desc = table_meta->add_column_desc();
-    column_desc->set_name("idx0");
-    column_desc->set_data_type(::openmldb::type::kString);
-    auto column_desc1 = table_meta->add_column_desc();
-    column_desc1->set_name("value");
-    column_desc1->set_data_type(::openmldb::type::kString);
-    auto column_key = table_meta->add_column_key();
-    column_key->set_index_name("idx0");
-    column_key->add_col_name("idx0");
-    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
-    ttl_st->set_abs_ttl(abs_ttl);
-    ttl_st->set_lat_ttl(lat_ttl);
-    ttl_st->set_ttl_type(ttl_type);
-}
-
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -74,7 +58,7 @@ class MockClosure : public ::google::protobuf::Closure {
     ~MockClosure() {}
     void Run() {}
 };
-class NameServerImplRemoteTest : public ::testing::Test {
+class NameServerImplRemoteTest : public ::testing::TestWithParam<::openmldb::common::StorageMode> {
  public:
     NameServerImplRemoteTest() {}
     ~NameServerImplRemoteTest() {}
@@ -91,12 +75,12 @@ class NameServerImplRemoteTest : public ::testing::Test {
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
-        std::string db);
+        const std::string& db);
     void CreateAndDropTableRemoteFunc(
         NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,  // NOLINT
         ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,  // NOLINT
-        std::string db);
+        const std::string& db);
 };
 
 void StartNameServer(brpc::Server& server,          // NOLINT
@@ -154,7 +138,7 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
     NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
-    std::string db) {  // NOLINT
+    const std::string& db) {
     bool ok = false;
     std::string name = "test" + GenRand();
     {
@@ -165,7 +149,7 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
         table_info->set_db(db);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         PartitionMeta* meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9931");
         meta->set_is_leader(true);
@@ -324,8 +308,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     StartTablet(&server3);
 
     // test remote without db
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
-                                             "");
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+            name_server_client_1, name_server_client_2, "");
 }
 
 TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
@@ -377,14 +361,15 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
         ASSERT_EQ(0, response.code());
     }
     // use db create table
-    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2,
-                                             db);
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+            name_server_client_1, name_server_client_2, db);
 }
 
 void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
     NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_1,
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2, std::string db) {
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
+    const std::string& db) {
     bool ok = false;
     {
         ::openmldb::nameserver::SwitchModeRequest request;
@@ -413,7 +398,7 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
-        AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
+        openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, table_info);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -851,7 +836,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     brpc::Server server7;
     StartTablet(&server7);
-
     name = "test" + GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;

@@ -24,13 +24,14 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.*;
 import java.util.*;
 
 public class PreparedStatement implements java.sql.PreparedStatement {
-    public static final Charset CHARSET = Charset.forName("utf-8");
+    public static final Charset CHARSET = StandardCharsets.UTF_8;
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
@@ -117,6 +118,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
         setNull(parameterIndex, Util.sqlTypeToDataType(sqlType));
     }
+
     private void setNull(int i, DataType type) throws SQLException {
         checkIdx(i);
         types.put(i, type);
@@ -148,7 +150,6 @@ public class PreparedStatement implements java.sql.PreparedStatement {
         checkIdx(i);
         types.put(i, DataType.kTypeInt32);
         currentDatas.put(i, i1);
-
     }
 
     @Override
@@ -186,7 +187,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
             return;
         }
         types.put(i, DataType.kTypeString);
-        byte bytes[] = s.getBytes(CHARSET);
+        byte[] bytes = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         currentDatas.put(i, bytes);
     }
@@ -264,18 +265,18 @@ public class PreparedStatement implements java.sql.PreparedStatement {
         // types has been updated
         if (null == this.currentRow || orgTypes != types) {
             if (types.firstKey() != 1 || types.lastKey() != types.size()) {
-                throw new SQLException("data not enough, indexes are " + currentDatas.keySet().toString());
+                throw new SQLException("data not enough, indexes are " + currentDatas.keySet());
             }
             ColumnTypes columnTypes = new ColumnTypes();
-            for(int i = 0 ; i < types.size(); i++) {
-                columnTypes.AddColumnType(types.get(i+1));
+            for (int i = 0; i < types.size(); i++) {
+                columnTypes.AddColumnType(types.get(i + 1));
             }
             this.currentRow = SQLRequestRow.CreateSQLRequestRowFromColumnTypes(columnTypes);
+            if (this.currentRow == null) {
+        	throw new SQLException("fail to create sql request row from column types");
+            }
             this.currentSchema = this.currentRow.GetSchema();
             this.orgTypes = this.types;
-        }
-        if (this.currentRow == null) {
-            throw new SQLException("fail to build data with null row");
         }
         if (this.currentSchema == null) {
             throw new SQLException("fail to build data with null schema");
@@ -290,7 +291,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
         }
         for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
             DataType dataType = this.currentSchema.GetColumnType(i);
-            Object data = this.currentDatas.get(i+1);
+            Object data = this.currentDatas.get(i + 1);
             if (data == null) {
                 ok = this.currentRow.AppendNULL();
             } else {
@@ -310,7 +311,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
                 } else if (DataType.kTypeInt64.equals(dataType)) {
                     ok = this.currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(dataType)) {
-                    byte[] bdata = (byte[])data;
+                    byte[] bdata = (byte[]) data;
                     ok = this.currentRow.AppendString(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(dataType)) {
                     ok = this.currentRow.AppendTimestamp((long) data);
@@ -337,6 +338,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     @Override
     @Deprecated
     public boolean execute() throws SQLException {
+
         throw new SQLException("current do not support this method");
     }
 
@@ -667,9 +669,8 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
+        // ResultSet we got is full, this config is unused. But do not throw exception.
     }
 
     @Override

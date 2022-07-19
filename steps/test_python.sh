@@ -25,7 +25,11 @@ test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg "$THIRDSRC/zookeeper-3.4.14/conf"
 cd "$THIRDSRC/zookeeper-3.4.14"
 # TODO(hw): macos no -p
-netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+  lsof -ni | grep 6181 | awk '{print $2}'| xargs -I{} kill -9 {}
+elif [[ "$OSTYPE" =~ ^linux ]]; then
+  netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs -I{} kill -9 {}
+fi
 ./bin/zkServer.sh start && cd "$ROOT_DIR"
 echo "zk started"
 sleep 5
@@ -39,9 +43,9 @@ cd "${ROOT_DIR}"/python/dist/
 whl_name=$(ls openmldb*.whl)
 echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}" -i https://pypi.tuna.tsinghua.edu.cn/simple
+python3 -m pip install pytest-cov
 
-# needs: easy_install nose (sqlalchemy is openmldb required)
-cd "${ROOT_DIR}"/python/openmldb/test
-pytest --junit-xml=pytest.xml
+cd "${ROOT_DIR}"/python/test
+pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"
