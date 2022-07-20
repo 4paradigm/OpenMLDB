@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 @Data
 public class CaseFile {
     private String db;
+    private String version;
     private List<String> debugs;
     private List<SQLCase> cases;
     // ANSISQL  HybridSQL  SQLITE3 MYSQL

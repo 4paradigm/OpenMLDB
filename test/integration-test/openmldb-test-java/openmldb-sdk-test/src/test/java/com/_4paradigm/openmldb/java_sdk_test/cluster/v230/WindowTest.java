@@ -44,9 +44,7 @@ public class WindowTest extends FedbTest {
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/",
-            "function/cluster/",
-            "function/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"function/window/test_current_time.yaml"})
     public void testWindowRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
