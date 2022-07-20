@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.3] - 2022-07-21
+
+### Bug Fixes
+- Fail to get SQL file in Yarn-Client mode (#2151 @tobegit3hub)
+- Fail to load SQL file in Yarn-Cluster mode (#1993 @tobegit3hub)
+
 ## [0.5.2] - 2022-06-10
 
 ### Features
