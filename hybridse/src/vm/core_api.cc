@@ -214,29 +214,53 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
                                          const hybridse::codec::Row& row,
                                          const hybridse::codec::Row& parameter,
                                          const bool need_free) {
+
+
+    LOG(WARNING) << "tobe1";
+
     if (row.empty()) {
         return hybridse::codec::Row();
     }
+
+    LOG(WARNING) << "tobe2";
+
     // Init current run step runtime
     JitRuntime::get()->InitRunStep();
+
+    LOG(WARNING) << "tobe3";
 
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
 
+    LOG(WARNING) << "tobe4";
+
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+
+    LOG(WARNING) << "tobe5";
+
     // TODO(tobe): do not need to pass parameter row for offline
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
+
+    LOG(WARNING) << "tobe6";
+
     int8_t* buf = nullptr;
     uint32_t ret = udf(0, row_ptr, nullptr, parameter_ptr, &buf);
 
+    LOG(WARNING) << "tobe7";
+
     // Release current run step resources
     JitRuntime::get()->ReleaseRunStep();
+
+    LOG(WARNING) << "tobe8";
 
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return hybridse::codec::Row();
     }
+
+    LOG(WARNING) << "tobe9";
+
     return Row(base::RefCountedSlice::CreateManaged(
         buf, hybridse::codec::RowView::GetSize(buf)));
 }
