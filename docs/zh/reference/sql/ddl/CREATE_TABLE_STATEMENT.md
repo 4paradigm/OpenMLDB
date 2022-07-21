@@ -445,7 +445,7 @@ StorageMode
 （`deploy`命令会自动添加需要的索引，所以对于磁盘表，如果创建的时候缺失对应的索引，则`deploy`会失败）
 
 ##### Example
-创建一张带表，配置分片数为8，副本数为3，存储模式为HDD
+创建一张表，配置分片数为8，副本数为3，存储模式为HDD
 ```sql
 USE db1;
 --SUCCEED: Database changed    
