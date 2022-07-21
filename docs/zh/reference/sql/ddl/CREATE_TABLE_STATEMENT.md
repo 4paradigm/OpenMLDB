@@ -6,16 +6,13 @@
 CreateTableStmt ::=
     'CREATE' 'TABLE' IfNotExists TableName ( 
       TableElementList CreateTableSelectOpt | LikeTableWithOrWithoutParen ) OnCommitOpt
-
 IfNotExists ::=
     ('IF' 'NOT' 'EXISTS')?
-
 TableName ::=
     Identifier ('.' Identifier)?
     
 TableElementList ::=
     TableElement ( ',' TableElement )*
-
 TableElement ::=
     ColumnDef | ColumnIndex
 ```
@@ -31,7 +28,6 @@ TableElement ::=
 ```SQL
 ColumnDef ::=
     ColumnName ( ColumnType ) [ColumnOptionList]
-
 ColumnName ::=
     Identifier ( '.' Identifier ( '.' Identifier )? )?      
          
@@ -62,22 +58,19 @@ DefaultValueExpr ::=
   - `NOT NULL`: 该列的取值不允许为空。
   - `DEFAULT`: 设置该列的默认值。`NOT NULL`的属性推荐同时配置`DEFAULT`默认值，在插入数据时，若没有定义该列的值，会插入默认值。若设置了`NOT NULL`属性但没有配置`DEFAULT`值，插入语句中未定义该列值时，OpenMLDB会抛出错误。
 
-##### Example: 创建一张表
+##### Example
+ **示例1：创建一张表**
 
 将当前数据库设为`db1`，在当前数据库中创建一张表`t1`，包含列`col0`，列类型为STRING
 
 ```sql
 CREATE DATABASE db1;
 -- SUCCEED
-
 USE db1;
 -- SUCCEED: Database changed
-
 CREATE TABLE t1(col0 STRING);
 -- SUCCEED
-
 ```
-
 假如当前会话不在数据库`db1`下，但是仍要在`db1`中创建一张表`t2`，包含列`col0`，列类型为STRING；列`col1`，列类型为int。
 
 ```sql
@@ -108,7 +101,7 @@ desc t2;
 ```
 
 
-##### Example: 在同一个数据库下重复创建同名表
+**示例2：在同一个数据库下重复创建同名表**
 
 ```sql
 CREATE TABLE t1 (col0 STRING NOT NULL, col1 int);
@@ -120,10 +113,11 @@ CREATE TABLE t1 (col0 STRING NOT NULL, col1 string);
 ```
 
 
-##### Example: 创建一张表，配置列不允许为空（NOT NULL）
+**示例3：创建一张表，配置列不允许为空（NOT NULL）**
 
 ```sql
 USE db1;
+-- SUCCEED: Database changed
 CREATE TABLE t3 (col0 STRING NOT NULL, col1 int);
 -- SUCCEED
 ```
@@ -148,15 +142,14 @@ desc t3;
  --------------
 ```
 
-##### Example: 创建一张表，设置列默认值
+
+**示例4：创建一张表，设置列默认值**
 
 ```sql
 USE db1;
+--SUCCEED: Database changed
 CREATE TABLE t4 (col0 STRING DEFAULT "NA", col1 int);
 -- SUCCEED
-```
-
-```sql
 desc t4;
  --- ------- --------- ------ ---------
   #   Field   Type      Null   Default
@@ -184,26 +177,25 @@ ColumnIndex ::=
     'INDEX' IndexName '(' IndexOptionList ')' 
  
 IndexOptionList ::= 
-    IndexOption ( ',' IndexOption )*
-    
+    IndexKeyOption ( ',' IndexOption )*
+ 
+IndexKeyOption ::= 
+    'KEY' '=' ColumnNameList     
 ColumnNameList ::= 
     '(' ColumnName (',' ColumnName)* ')'    
     
 IndexOption ::= 
-    'KEY' '=' ColumnNameList
-    |'TS' '=' ColumnName
+    'TS' '=' ColumnName
     | 'TTL' '=' IndexTtlOption
     | 'TTL_TYPE' '=' TTLType
   
 IndexTtlOption := 
     int_literal | interval_literal | '(' interval_literal ',' int_literal ')'
-
 interval_literal ::= 
     int_literal 'S'|'D'|'M'|'H'    
     
 TTLType ::= 
     'ABSOLUTE'| 'LATEST'| 'ABSORLAT'| 'ABSANDLAT'
-
 ```
 
 索引可以被数据库搜索引擎用来加速数据的检索。 简单说来，索引就是指向表中数据的指针。配置一个列索引一般需要配置索引`KEY`，索引时间列`TS`, 最大存活时间/条数`TTL`和淘汰规则`TTL_TYPE`。其中`KEY`是必须配置的，其他配置项都为可选项。下表介绍了各索引配置项的含义及用法：
@@ -224,13 +216,14 @@ TTL和TTL_TYPE的配置细则：
 | `ABSORLAT`  | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当且仅当记录过期**或**记录超过最大条数时，才会淘汰。 | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`。当记录超过100条，**或者**当记录过期时，会被淘汰 |
 | `ABSANDLAT` | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当记录过期**且**记录超过最大条数时，记录会被淘汰。   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`。当记录超过100条，**而且**记录过期时，会被淘汰 |
 
-##### Example: 创建一张带单列索引的表
+##### Example
+**示例1：创建一张带单列索引的表**
 
 ```sql
 USE db1;
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -246,14 +239,13 @@ desc t1;
  --- -------------------- ------ ---- ------ --------------- 
 ```
 
-##### Example: 创建一张带联合列索引的表
+**示例2：创建一张带联合列索引的表**
 
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=(col0, col1)));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -267,17 +259,15 @@ desc t1;
  --- -------------------- ----------- ---- ------ --------------- 
   1   INDEX_0_1639524576   col0|col1   -    0min   kAbsoluteTime  
  --- -------------------- ----------- ---- ------ --------------- 
-
 ```
 
-##### Example: 创建一张带单列索引+时间列的表
+**示例3：创建一张带单列索引+时间列的表**
 
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -293,14 +283,14 @@ desc t1;
  --- -------------------- ------ ---------- ------ --------------- 
 ```
 
-##### Example: 创建一张带单列索引+时间列的TTL type为abusolute表，并配置ttl为30天
+
+**示例4：创建一张带单列索引+时间列的TTL type为abusolute表，并配置ttl为30天**
 
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -316,14 +306,12 @@ desc t1;
  --- -------------------- ------ ---------- ---------- --------------- 
 ```
 
-##### Example: 创建一张带单列索引+时间列的TTL type为latest表，并配置ttl为1
-
+**示例5：创建一张带单列索引+时间列的TTL type为latest表，并配置ttl为1**
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=latest, TTL=1));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -339,14 +327,13 @@ desc t1;
  --- -------------------- ------ ---------- ----- ------------- 
 ```
 
-##### Example: 创建一张带单列索引+时间列的TTL type为absANDlat表，并配置过期时间为30天，最大留存条数为10条
+**示例6：创建一张带单列索引+时间列的TTL type为absANDlat表，并配置过期时间为30天，最大留存条数为10条**
 
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absandlat, TTL=(30d,10)));
--- SUCCEED: Create successfully
-
+-- SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -360,17 +347,15 @@ desc t1;
  --- -------------------- ------ ---------- -------------- ------------ 
   1   INDEX_0_1639525038   col1   std_time   43200min&&10   kAbsAndLat  
  --- -------------------- ------ ---------- -------------- ------------ 
-
 ```
 
-##### Example: 创建一张带单列索引+时间列的TTL type为absORlat表，并配置过期时间为30天，最大留存条数为10条
+**示例7：创建一张带单列索引+时间列的TTL type为absORlat表，并配置过期时间为30天，最大留存条数为10条**
 
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absorlat, TTL=(30d,10)));
---SUCCEED: Create successfully
-
+--SUCCEED
 desc t1;
  --- ---------- ----------- ------ --------- 
   #   Field      Type        Null   Default  
@@ -386,13 +371,12 @@ desc t1;
  --- -------------------- ------ ---------- -------------- ----------- 
 ```
 
-##### Example: 创建一张多索引的表
+**示例8：创建一张多索引的表**
 ```sql
 USE db1;
-
+--SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col0, TS=std_time), INDEX(KEY=col1, TS=std_time));
---SUCCEED: Create successfully
-
+--SUCCEED
 desc t1;
  --- ---------- ----------- ------ ---------
   #   Field      Type        Null   Default
@@ -414,7 +398,6 @@ desc t1;
 ```sql
 TableOptions
 						::= 'OPTIONS' '(' TableOptionItem (',' TableOptionItem)* ')'
-
 TableOptionItem
 						::= PartitionNumOption
 						    | ReplicaNumOption
@@ -438,10 +421,8 @@ FollowerEndpointList
 						::= '[' Endpoint (',' Endpoint)* ']'
 Endpoint
 				::= string_literals
-
 StorageModeOption
 						::= 'STORAGE_MODE' '=' StorageMode
-
 StorageMode
 						::= 'Memory'
 						    | 'HDD'
@@ -463,14 +444,13 @@ StorageMode
 - 磁盘表不支持`addindex`和`deleteindex`操作，所以创建磁盘表的时候需要定义好所有需要的索引
 （`deploy`命令会自动添加需要的索引，所以对于磁盘表，如果创建的时候缺失对应的索引，则`deploy`会失败）
 
-##### Example: 创建一张带表，配置分片数为8，副本数为3，存储模式为HDD
-
+##### Example
+创建一张带表，配置分片数为8，副本数为3，存储模式为HDD
 ```sql
 USE db1;
-
+--SUCCEED: Database changed    
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time)) OPTIONS(partitionnum=8, replicanum=3, storage_mode='HDD');
---SUCCEED: Create successfully
-
+--SUCCEED
 DESC t1;
 --- ---------- ----------- ------ ----------
 #   Field      Type        Null   Default
@@ -496,6 +476,3 @@ DESC t1;
 [CREATE DATABASE](../ddl/CREATE_DATABASE_STATEMENT.md)
 
 [USE DATABASE](../ddl/USE_DATABASE_STATEMENT.md)
-
-
-
