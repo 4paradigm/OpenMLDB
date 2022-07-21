@@ -15,8 +15,8 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
 
-        <openmldb.jdbc.version>0.5.2</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.5.2-macos</openmldb.navtive.version>
+        <openmldb.jdbc.version>0.5.0-SNAPSHOT</openmldb.jdbc.version>
+        <openmldb.navtive.version>0.5.0-macos-SNAPSHOT</openmldb.navtive.version>
     </properties>
 
     <dependencies>
