@@ -211,8 +211,8 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
 }
 
 hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
-                                         const hybridse::codec::Row& row,
-                                         const hybridse::codec::Row& parameter,
+                                         const hybridse::codec::Row row,
+                                         const hybridse::codec::Row parameter,
                                          const bool need_free) {
 
 
