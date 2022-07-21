@@ -38,12 +38,14 @@ import org.slf4j.LoggerFactory;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -93,18 +95,11 @@ public class BufferedRecords {
       } catch (SQLException e) {
         throw new RuntimeException(e);
       }
-      SchemaBuilder keyBuilder = SchemaBuilder.struct();
-      ColumnDefinition keyColDef = tableDefn.definitionForColumn(config.pkFields.get(0));
-      dbDialect.addFieldToSchema(keyColDef, keyBuilder);
-      keySchema = keyBuilder.build();
-      SchemaBuilder valueBuilder = SchemaBuilder.struct();
+      SchemaBuilder builder = SchemaBuilder.struct();
       for (ColumnDefinition colDefn : tableDefn.definitionsForColumns()) {
-        if (colDefn.id() == keyColDef.id()) {
-          continue;
-        }
-        dbDialect.addFieldToSchema(colDefn, valueBuilder);
+        dbDialect.addFieldToSchema(colDefn, builder);
       }
-      valueSchema = valueBuilder.build();
+      valueSchema = builder.build();
     }
   }
 
@@ -183,46 +178,13 @@ public class BufferedRecords {
       // no value schema, value is a map, must convert to Struct
       if (!(record.value() instanceof HashMap)) {
         log.warn("auto schema convertToStruct only support hashmap to struct");
-        throw new SQLException("auto schema convertToStruct only support hashmap to struct");
       }
-      HashMap<String, Object> valueMap = (HashMap) record.value();
-      if (!valueMap.containsKey("data")) {
-        throw new SQLException("no data filed");
-      }
-      if (!valueMap.containsKey("type")) {
-        throw new SQLException("no type filed");
-      }
-      List<HashMap<String, Object>> list = (List<HashMap<String, Object>> )valueMap.get("data");
-      boolean isDelete = false;
-      if (((String)valueMap.get("type")).toLowerCase().equals("delete")) {
-        isDelete = true;
-      }
-      final List<SinkRecord> flushed = new ArrayList<>();
-      for (HashMap<String, Object> value : list) {
-        Object keyStructValue = convertToStruct(keySchema, value);
-        if (isDelete) {
-          record = new SinkRecord(record.topic(), record.kafkaPartition(),
-                  keySchema, keyStructValue,
-                  valueSchema, null,
-                  record.kafkaOffset(), record.timestamp(),
-                  record.timestampType(), record.headers());
-        } else {
-          Object structValue = convertToStruct(valueSchema, value);
-          record = new SinkRecord(record.topic(), record.kafkaPartition(),
-                  keySchema, keyStructValue,
-                  valueSchema, structValue,
-                  record.kafkaOffset(), record.timestamp(),
-                  record.timestampType(), record.headers());
-        }
-        flushed.addAll(addSingleRecord(record));
-      }
-      return flushed;
+      Object structValue = convertToStruct(valueSchema, record.value());
+      record = new SinkRecord(record.topic(), record.kafkaPartition(),
+          record.keySchema(), record.key(),
+          valueSchema, structValue,
+          record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
     }
-    return addSingleRecord(record);
-  }
-
-  public List<SinkRecord> addSingleRecord(SinkRecord record) throws SQLException,
-          TableAlterOrCreateException {
 
     recordValidator.validate(record);
     final List<SinkRecord> flushed = new ArrayList<>();

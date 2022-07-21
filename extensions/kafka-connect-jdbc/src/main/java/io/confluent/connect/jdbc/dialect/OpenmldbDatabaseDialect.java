@@ -168,6 +168,14 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
     throw new UnsupportedOperationException("update is unsupported");
   }
 
+  @Override
+  public final String buildDeleteStatement(
+      TableId table,
+      Collection<ColumnId> keyColumns
+  ) {
+    throw new UnsupportedOperationException("delete is unsupported");
+  }
+
   // type is useless, just a placeholder
   protected Integer getSqlTypeForSchema(Schema schema) {
     return 0;
@@ -217,8 +225,8 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
       }
     }
     if (schemaBuilder == null) {
-      log.debug("openmldb schema builder for sqlType {} is null, "
-          + "use GenericDatabaseDialect method", sqlType);
+      log.warn("openmldb schema builder for sqlType {} is null, " +
+          "use GenericDatabaseDialect method", sqlType);
       return super.addFieldToSchema(columnDefn, builder, fieldName, sqlType, optional);
     }
     builder.field(fieldName, optional ? schemaBuilder.optional().build() : schemaBuilder.build());
