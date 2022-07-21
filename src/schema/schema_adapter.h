@@ -17,6 +17,7 @@
 #ifndef SRC_SCHEMA_SCHEMA_ADAPTER_H_
 #define SRC_SCHEMA_SCHEMA_ADAPTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "base/status.h"
@@ -41,6 +42,8 @@ class SchemaAdapter {
             hybridse::vm::Schema* output);
 
     static bool ConvertSchema(const PBSchema& schema, ::hybridse::vm::Schema* output);
+
+    static std::shared_ptr<::hybridse::sdk::Schema> ConvertSchema(const PBSchema& schema);
 
     static bool ConvertSchema(const ::hybridse::vm::Schema& hybridse_schema, PBSchema* schema);
 

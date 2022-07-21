@@ -508,6 +508,9 @@ TEST_F(ASTNodeConverterTest, ConvertDeleteNodeTest) {
     expect_converted("delete from t1");
     expect_converted("delete from t1 where c1 = 'aa'");
     expect_converted("delete from t2 where c1 > 'aa' and c2 = 123");
+    expect_converted("delete from t1 where c1 = 'aa' and c2 = ?");
+    expect_converted("delete from t1 where c1 = ?");
+    expect_converted("delete from t1 where c1 = ? or c2 = ?");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {

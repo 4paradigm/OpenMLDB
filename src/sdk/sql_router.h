@@ -28,6 +28,7 @@
 
 #include "sdk/base.h"
 #include "sdk/result_set.h"
+#include "sdk/sql_delete_row.h"
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/table_reader.h"
@@ -114,6 +115,9 @@ class SQLRouter {
 
     virtual std::shared_ptr<openmldb::sdk::SQLInsertRows> GetInsertRows(const std::string& db, const std::string& sql,
                                                                         ::hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<openmldb::sdk::SQLDeleteRow> GetDeleteRow(const std::string& db, const std::string& sql,
+                                                                      ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> row,

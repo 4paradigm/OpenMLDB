@@ -330,7 +330,7 @@ void APIServerImpl::RegisterPut() {
             }
         }
 
-        auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
+        sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
         writer << resp.Set(status.code, status.msg);
     });
 }
