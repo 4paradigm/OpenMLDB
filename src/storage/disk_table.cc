@@ -31,9 +31,6 @@ DECLARE_uint32(write_buffer_mb);
 DECLARE_uint32(block_cache_shardbits);
 DECLARE_bool(verify_compression);
 
-DECLARE_uint32(bloom_filter_bitset_size);
-DECLARE_uint32(bloom_filter_hash_seed);
-
 namespace openmldb {
 namespace storage {
 
@@ -392,13 +389,13 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
 
 void DiskTable::SchedGc() {
-    ClearRecord();
+    ResetRecordCnt();
     GcHead();
     GcTTL();
     UpdateTTL();
 }
 
-void DiskTable::ClearRecord() {
+void DiskTable::ResetRecordCnt() {
     auto indexs = table_index_.GetAllIndex();
     for (const auto& index : indexs) {
         idx_cnt_vec_[index->GetId()]->store(0, std::memory_order_relaxed);
@@ -426,7 +423,7 @@ void DiskTable::GcHead() {
         if (indexs.size() > 1) {
             std::map<uint32_t, uint64_t> ttl_map;
             std::map<uint32_t, uint32_t> idx_map;
-            std::set<uint32_t> other_TTL_set;
+            std::set<uint32_t> other_ttl_set;
             for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
@@ -436,7 +433,7 @@ void DiskTable::GcHead() {
                     }
                     auto TTL_type = index->GetTTLType();
                     if (TTL_type != openmldb::storage::TTLType::kLatestTime) {
-                        other_TTL_set.insert(ts_col->GetId());
+                        other_ttl_set.insert(ts_col->GetId());
                     }
                     idx_map.emplace(ts_col->GetId(), index->GetId());
                 }
@@ -449,7 +446,7 @@ void DiskTable::GcHead() {
                 uint64_t ts = 0;
                 uint32_t ts_idx = 0;
                 ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
-                if (other_TTL_set.find(ts_idx) != other_TTL_set.end()) {
+                if (other_ttl_set.find(ts_idx) != other_ttl_set.end()) {
                     it->Next();
                     continue;
                 }
@@ -1335,7 +1332,7 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     return 0;
 }
 
-uint32_t BloomFilter::hash(const char* str, uint32_t seed) {
+uint32_t BloomFilter::Hash(const char* str, uint32_t seed) {
     uint a = 63689;
     uint hash = 0;
 
@@ -1347,14 +1344,14 @@ uint32_t BloomFilter::hash(const char* str, uint32_t seed) {
     return (hash & 0x7FFFFFFF);
 }
 
-void BloomFilter::setBit(uint32_t bit) {
+void BloomFilter::SetBit(uint32_t bit) {
     uint32_t bits_num = bit / 64;
     uint32_t bits_left = bit % 64;
 
     bits_[bits_num]->fetch_or((uint64_t)1 << bits_left, std::memory_order_relaxed);
 }
 
-bool BloomFilter::getBit(uint32_t bit) {
+bool BloomFilter::GetBit(uint32_t bit) {
     uint32_t bits_num = bit / 64;
     uint32_t bits_left = bit % 64;
 
@@ -1362,16 +1359,16 @@ bool BloomFilter::getBit(uint32_t bit) {
 }
 
 void BloomFilter::Set(const char* str) {
-    for (uint32_t i = 0; i < FLAGS_bloom_filter_hash_seed; ++i) {
-        uint32_t p = hash(str, base_[i]) % FLAGS_bloom_filter_bitset_size;
-        setBit(p);
+    for (uint32_t i = 0; i < FLAGS_disk_stat_bloom_filter_hash_seed; ++i) {
+        uint32_t p = Hash(str, base_[i]) % FLAGS_disk_stat_bloom_filter_bitset_size;
+        SetBit(p);
     }
 }
 
 bool BloomFilter::Valid(const char* str) {
-    for (uint32_t i = 0; i < FLAGS_bloom_filter_hash_seed; ++i) {
-        uint32_t p = hash(str, base_[i]) % FLAGS_bloom_filter_bitset_size;
-        if (!getBit(p)) {
+    for (uint32_t i = 0; i < FLAGS_disk_stat_bloom_filter_hash_seed; ++i) {
+        uint32_t p = Hash(str, base_[i]) % FLAGS_disk_stat_bloom_filter_bitset_size;
+        if (!GetBit(p)) {
             return false;
         }
     }

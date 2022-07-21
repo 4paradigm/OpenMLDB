@@ -41,8 +41,8 @@
 #include "storage/table.h"
 #include "base/glog_wapper.h"  // NOLINT
 
-DECLARE_uint32(bloom_filter_bitset_size);
-DECLARE_uint32(bloom_filter_hash_seed);
+DECLARE_uint32(disk_stat_bloom_filter_bitset_size);
+DECLARE_uint32(disk_stat_bloom_filter_hash_seed);
 
 namespace openmldb {
 namespace storage {
@@ -133,7 +133,7 @@ class KeyTSComparator : public rocksdb::Comparator {
 class BloomFilter {
  public:
     BloomFilter() {
-        for (uint32_t i = 0; i < FLAGS_bloom_filter_bitset_size; i++) {
+        for (uint32_t i = 0; i < FLAGS_disk_stat_bloom_filter_bitset_size; i++) {
             bits_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
         }
     }
@@ -144,9 +144,9 @@ class BloomFilter {
     void Reset();
 
  private:
-    uint32_t hash(const char* str, uint32_t seed);
-    void setBit(uint32_t bit);
-    bool getBit(uint32_t bit);
+    uint32_t Hash(const char* str, uint32_t seed);
+    void SetBit(uint32_t bit);
+    bool GetBit(uint32_t bit);
 
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> bits_;
     uint32_t base_[7] = {5, 7, 11, 13, 31, 37, 61};
@@ -520,7 +520,7 @@ class DiskTable : public Table {
 
     void SchedGc() override;
 
-    void ClearRecord();
+    void ResetRecordCnt();
     void GcHead();
     void GcTTL();
     void GcTTLAndHead();
