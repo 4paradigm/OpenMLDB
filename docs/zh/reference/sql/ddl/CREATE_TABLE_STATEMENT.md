@@ -184,16 +184,14 @@ ColumnIndex ::=
     'INDEX' IndexName '(' IndexOptionList ')' 
  
 IndexOptionList ::= 
-    IndexKeyOption ( ',' IndexOption )*
- 
-IndexKeyOption ::= 
-    'KEY' '=' ColumnNameList     
-
+    IndexOption ( ',' IndexOption )*
+    
 ColumnNameList ::= 
     '(' ColumnName (',' ColumnName)* ')'    
     
 IndexOption ::= 
-    'TS' '=' ColumnName
+    'KEY' '=' ColumnNameList
+    |'TS' '=' ColumnName
     | 'TTL' '=' IndexTtlOption
     | 'TTL_TYPE' '=' TTLType
   
