@@ -670,7 +670,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 Example:
 
                 @code{.sql}
-                    select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                    select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
                     -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
                 @endcode
                 @since 0.1.0)");
@@ -2019,11 +2019,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.4.0
         )");
 
-    RegisterExternal("dayofyear")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
-        .doc(R"(
+    const std::string dayofyear_doc =
+        R"(
             @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 
             Example:
@@ -2041,7 +2038,25 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 -- output 0
             @endcode
             @since 0.1.0
-        )");
+        )";
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
