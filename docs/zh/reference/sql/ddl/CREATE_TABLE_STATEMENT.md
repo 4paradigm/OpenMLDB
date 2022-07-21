@@ -177,13 +177,8 @@ ColumnIndex ::=
     'INDEX' <OptionalIndexName> '(' IndexOptionList ')' 
  
 IndexOptionList ::= 
-    IndexKeyOption ( ',' IndexOption )*
- 
-IndexKeyOption ::= 
-    'KEY' '=' ColumnNameList     
-ColumnNameList ::= 
-    '(' ColumnName (',' ColumnName)* ')'    
-    
+    IndexOption ( ',' IndexOption )*
+   
 IndexOption ::= 
     IndexOptionName '=' expr
 ```
