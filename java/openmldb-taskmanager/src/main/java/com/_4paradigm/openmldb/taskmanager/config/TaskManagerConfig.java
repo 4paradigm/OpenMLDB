@@ -180,11 +180,11 @@ public class TaskManagerConfig {
 
         SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
         if (!SPARK_DEFAULT_CONF.isEmpty()) {
-            String[] defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(",");
+            String[] defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(";");
             for (String sparkConfMap: defaultSparkConfs) {
                 if (!sparkConfMap.isEmpty()) {
                     String[] kv = sparkConfMap.split("=");
-                    if (kv.length != 2) {
+                    if (kv.length < 2) {
                         throw new ConfigException("spark.default.conf", String.format("error format of %s", sparkConfMap));
                     } else if (!kv[0].startsWith("spark")) {
                         throw new ConfigException("spark.default.conf", String.format("config key should start with 'spark' but get %s", kv[0]));

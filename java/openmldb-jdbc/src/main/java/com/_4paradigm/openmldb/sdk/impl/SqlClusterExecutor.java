@@ -69,6 +69,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlOpt.setZk_path(option.getZkPath());
             sqlOpt.setEnable_debug(option.getEnableDebug());
             sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            sqlOpt.setSpark_conf_path(option.getSparkConfPath());
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
         } else {

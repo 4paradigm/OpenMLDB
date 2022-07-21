@@ -47,6 +47,7 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_cluster;
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
+    std::string spark_conf_path;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
