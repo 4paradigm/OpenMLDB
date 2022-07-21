@@ -88,29 +88,31 @@ class RouterSQLCache : public SQLCache {
     std::shared_ptr<::hybridse::sdk::Schema> GetParameterSchema() const { return parameter_schema_; }
     const ::hybridse::vm::Router& GetRouter() const { return router_; }
 
-    bool IsCompatibleCache(const std::shared_ptr<::hybridse::sdk::Schema>& other_parameter_schema) const {
-        if (!parameter_schema_ && !other_parameter_schema) {
-            return true;
-        }
-        if (!parameter_schema_ || !other_parameter_schema) {
-            return false;
-        }
-        if (parameter_schema_->GetColumnCnt() != other_parameter_schema->GetColumnCnt()) {
-            return false;
-        }
-
-        for (int i = 0; i < parameter_schema_->GetColumnCnt(); i++) {
-            if (parameter_schema_->GetColumnType(i) != other_parameter_schema->GetColumnType(i)) {
-                return false;
-            }
-        }
-        return true;
-    }
+    bool IsCompatibleCache(const std::shared_ptr<::hybridse::sdk::Schema>& other_parameter_schema) const;
 
  private:
     std::shared_ptr<::hybridse::sdk::Schema> column_schema_;
     std::shared_ptr<::hybridse::sdk::Schema> parameter_schema_;
     ::hybridse::vm::Router router_;
+};
+
+class DeleteSQLCache : public SQLCache {
+ public:
+    DeleteSQLCache(const std::string& db, uint32_t tid, const std::string& table_name,
+            const openmldb::common::ColumnKey& column_key,
+            const std::map<std::string, std::string>& default_value,
+            const std::map<std::string, int>& parameter_map);
+
+    const std::string& GetIndexName() const { return index_name_; }
+    const std::vector<std::string>& GetColNames() const { return col_names_; }
+    const std::map<int, std::string>& GetHoleMap() const { return hole_column_map_; }
+    const std::map<std::string, std::string>& GetDefaultValue() const {return default_value_; }
+
+ private:
+    const std::string index_name_;
+    std::vector<std::string> col_names_;
+    const std::map<std::string, std::string> default_value_;
+    std::map<int, std::string> hole_column_map_;
 };
 
 }  // namespace sdk

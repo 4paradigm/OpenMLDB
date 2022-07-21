@@ -343,38 +343,87 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const 
     return GetRequestRow(db, sql, status);
 }
 
-std::shared_ptr<SQLDeleteRow> SQLClusterRouter::GetDeleteRow(const std::string& db, const std::string& sql,
-                                                             ::hybridse::sdk::Status* status) {
+std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
+        const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return {};
     }
-    return {};
-    /*std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
+    std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
     if (cache) {
-        status->code = 0;
-        return std::make_shared<SQLDeletetRow>(cache->table_info, cache->column_schema, cache->default_map,
-                                              cache->str_length, cache->hole_idx_arr);
-    } else {
-        ::hybridse::node::NodeManager nm;
-        ::hybridse::plan::PlanNodeList plans;
-        bool ok = GetSQLPlan(sql, &nm, &plans);
-        if (!ok || plans.empty()) {
-            *status = {::hybridse::common::StatusCode::kCmdError, "fail to get sql plan " + sql};
-            return {}
+        auto delete_cache = std::dynamic_pointer_cast<DeleteSQLCache>(cache);
+        if (delete_cache) {
+            status->code = 0;
+            return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
+                    delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
+                    delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
         }
-        ::hybridse::node::PlanNode* plan = plans[0];
-        if (plan->GetType() != hybridse::node::kPlanTypeDelete) {
-            *status = {::hybridse::common::StatusCode::kCmdError, "invalid sql node expect delete"};
-            return {};
-        }
-        auto* delete_plan = dynamic_cast<::hybridse::node::DeletePlanNode*>(plan);
-        cache = std::make_shared<SQLCache>(
-            table_info, default_map, str_length,
-            SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, openmldb::sdk::ConvertToSchema(table_info)));
-        SetCache(db, sql, hybridse::vm::kBatchMode, cache);
     }
-    return std::make_shared<SQLDeleteRow>(table_info, cache->column_schema, default_map, str_length,
-                                          cache->hole_idx_arr);*/
+    ::hybridse::node::NodeManager nm;
+    ::hybridse::plan::PlanNodeList plans;
+    bool ok = GetSQLPlan(sql, &nm, &plans);
+    if (!ok || plans.empty()) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "fail to get sql plan " + sql};
+        return {};
+    }
+    ::hybridse::node::PlanNode* plan = plans[0];
+    if (plan->GetType() != hybridse::node::kPlanTypeDelete) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "invalid sql node expect delete"};
+        return {};
+    }
+    auto delete_plan = dynamic_cast<::hybridse::node::DeletePlanNode*>(plan);
+    auto condition = delete_plan->GetCondition();
+    if (!condition) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "no condition in delete sql"};
+        return {};
+    }
+    std::map<std::string, std::string> condition_map;
+    std::map<std::string, int> parameter_map;
+    auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
+    *status = NodeAdapter::ParseExprNode(binary_node, &condition_map, &parameter_map);
+    if (!status->IsOK()) {
+        return {};
+    }
+    std::string database = delete_plan->GetDatabase().empty() ? db : delete_plan->GetDatabase();
+    if (database.empty()) {
+        *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
+        return {};
+    }
+    const auto& table_name = delete_plan->GetTableName();
+    auto table_info = cluster_sdk_->GetTableInfo(database, table_name);
+    if (!table_info) {
+        *status = {::hybridse::common::StatusCode::kCmdError,
+            absl::StrCat("table ", table_name, " in db", database, " does not exist")};
+        return {};
+    }
+    int index_pos = 0;
+    bool found = true;
+    for (; index_pos < table_info->column_key_size(); index_pos++) {
+        const auto& column_key = table_info->column_key(index_pos);
+        if (column_key.flag() != 0) {
+            continue;
+        }
+        for (const auto& col : column_key.col_name()) {
+            if (condition_map.count(col) == 0 && parameter_map.count(col) == 0) {
+                found = false;
+                break;
+            }
+        }
+        if (found) {
+            break;
+        }
+    }
+    if (!found) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "no index col in sql"};
+        return {};
+    }
+    auto delete_cache = std::make_shared<DeleteSQLCache>(db, table_info->tid(), table_name,
+            table_info->column_key(index_pos), condition_map, parameter_map);
+
+    SetCache(db, sql, hybridse::vm::kBatchMode, delete_cache);
+    *status = {};
+    return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
+            delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
+            delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& db, const std::string& sql,
@@ -3011,6 +3060,39 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
         return {::hybridse::common::StatusCode::kCmdError, msg};
     }
     return {};
+}
+
+bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) {
+    if (!row || !status) {
+        return false;
+    }
+    const auto& db = row->GetDatabase();
+    const auto& table_name = row->GetTableName();
+    auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
+    if (!table_info) {
+        *status = {::hybridse::common::StatusCode::kCmdError,
+            "table " + table_name + " in db " + db + " does not exist"};
+        return false;
+    }
+    const auto& pk = row->GetValue();
+    const auto& index_name = row->GetIndexName();
+    uint32_t pid = ::openmldb::base::hash64(pk) % table_info->table_partition_size();
+    auto tablet = cluster_sdk_->GetTablet(db, table_name, pk);
+    if (!tablet) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "cannot connect tablet"};
+        return false;
+    }
+    auto tablet_client = tablet->GetClient();
+    if (!tablet_client) {
+        *status = {::hybridse::common::StatusCode::kCmdError, "tablet client is null"};
+    }
+    std::string msg;
+    if (!tablet_client->Delete(table_info->tid(), pid, pk, index_name, msg)) {
+        *status = {::hybridse::common::StatusCode::kCmdError, msg};
+        return false;
+    }
+    *status = {};
+    return true;
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node) {
