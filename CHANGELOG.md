@@ -3,8 +3,8 @@
 ## [0.5.3] - 2022-07-21
 
 ### Bug Fixes
-- Fail to get SQL file in Yarn-Client mode (#2151 @tobegit3hub)
-- Fail to load SQL file in Yarn-Cluster mode (#1993 @tobegit3hub)
+- The SQL file cannot be successfully loaded in the Yarn-Client mode. (#2151 @tobegit3hub)
+- The SQL file cannot be successfully loaded in the Yarn-Cluster mode. (#1993 @tobegit3hub)
 
 ## [0.5.2] - 2022-06-10
 
@@ -265,6 +265,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.5.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.4...v0.5.0
