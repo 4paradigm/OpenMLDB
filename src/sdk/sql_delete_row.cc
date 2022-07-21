@@ -24,7 +24,7 @@ void SQLDeleteRow::Reset() {
 }
 
 bool SQLDeleteRow::SetString(int pos, const std::string& val) {
-    if (pos >= static_cast<int>(col_names_.size())) {
+    if (pos > static_cast<int>(col_names_.size())) {
         return false;
     }
     if (col_names_.size() == 1) {
