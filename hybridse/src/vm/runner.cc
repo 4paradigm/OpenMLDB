@@ -575,7 +575,7 @@ ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status
     CreateRunner<RequestAggUnionRunner>(
         &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
         op->window().range_, op->exclude_current_time(),
-        op->output_request_row(), op->func_, op->agg_col_);
+        op->output_request_row(), op->func_, op->agg_cols_);
     Key index_key;
     if (!op->instance_not_in_window()) {
         index_key = op->window_.index_key();
@@ -2690,7 +2690,7 @@ bool RequestAggUnionRunner::InitAggregator() {
     if (agg_col_->GetExprType() == node::kExprColumnRef) {
         agg_col_type_ = producers_[1]->row_parser()->GetType(agg_col_name_);
     } else if (agg_col_->GetExprType() == node::kExprAll) {
-        if (agg_type_ != kCount) {
+        if (agg_type_ != kCount && agg_type_ != kCountWhere) {
             LOG(ERROR) << "only support " << ExprTypeName(agg_col_->GetExprType()) << "on count op";
             return false;
         }
@@ -2714,6 +2714,8 @@ std::unique_ptr<BaseAggregator> RequestAggUnionRunner::CreateAggregator() const 
             return MakeSameTypeAggregator<MinAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMax:
             return MakeSameTypeAggregator<MaxAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
+        case kCountWhere:
+            return std::make_unique<CountWhereAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         default:
             LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
             return nullptr;

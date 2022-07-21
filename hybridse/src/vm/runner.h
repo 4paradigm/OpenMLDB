@@ -24,6 +24,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
@@ -1021,7 +1023,8 @@ class RequestAggUnionRunner : public Runner {
         kCount,
         kAvg,
         kMin,
-        kMax
+        kMax,
+        kCountWhere,
     };
 
     RequestWindowUnionGenerator windows_union_gen_;
@@ -1039,8 +1042,9 @@ class RequestAggUnionRunner : public Runner {
     type::Type agg_col_type_;
 
     std::unique_ptr<BaseAggregator> CreateAggregator() const;
-    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
+
+    static inline const absl::flat_hash_map<absl::string_view, AggType> agg_type_map_ = {
+        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax}, {"count_where", kCountWhere},
     };
 };
 

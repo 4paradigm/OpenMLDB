@@ -19,6 +19,8 @@
 #include <set>
 #include <string>
 #include <vector>
+
+#include "absl/status/status.h"
 #include "passes/physical/transform_up_physical_pass.h"
 
 namespace hybridse {
@@ -33,7 +35,11 @@ class LongWindowOptimized : public TransformUpPysicalPass {
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output) override;
     bool VerifySingleAggregation(vm::PhysicalProjectNode* op);
     bool OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, int idx, PhysicalOpNode** output);
+
     static std::string ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter = ",");
+
+    // Check supported ExprNode, return false if the call expr type is not implemented
+    static absl::Status CheckExprNode(const node::CallExprNode* call);
 
     std::set<std::string> long_windows_;
 };

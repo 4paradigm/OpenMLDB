@@ -15,11 +15,11 @@
  */
 #include "passes/physical/long_window_optimized.h"
 
-#include <absl/strings/str_cat.h>
-
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 
@@ -104,9 +104,9 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
-    auto expr_type = aggr_op->GetChild(0)->GetExprType();
-    if (aggr_op->GetChildNum() != 1 || (expr_type != node::kExprColumnRef && expr_type != node::kExprAll)) {
-        LOG(ERROR) << "Not support aggregation over multiple cols: " << ConcatExprList(aggr_op->children_);
+    auto s = CheckExprNode(aggr_op);
+    if (!s.ok()) {
+        LOG(ERROR) << s;
         return false;
     }
 
@@ -211,7 +211,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
         req_union_op->output_request_row(), aggr_op->GetFnDef(),
-        aggr_op->GetChild(0));
+        aggr_op->children_);
     if (req_union_op->exclude_current_row_) {
         request_aggr_union->set_out_request_row(false);
     }
@@ -240,9 +240,9 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
         LOG(ERROR) << "Fail to create PhysicalReduceAggregationNode: " << status;
         return false;
     }
-    LOG(INFO) << "[LongWindowOptimized] Before transform sql:\n" << (*output)->GetTreeString();
+    DLOG(INFO) << "[LongWindowOptimized] Before transform sql:\n" << (*output)->GetTreeString();
     *output = reduce_aggr;
-    LOG(INFO) << "[LongWindowOptimized] After transform sql:\n" << (*output)->GetTreeString();
+    DLOG(INFO) << "[LongWindowOptimized] After transform sql:\n" << (*output)->GetTreeString();
     return true;
 }
 
@@ -267,6 +267,107 @@ std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exp
         }
     }
     return str;
+}
+
+
+// type check of count_where condition node
+// left -> column ref
+// right -> constant
+absl::Status CheckCountWhereCond(const node::ExprNode* lhs, const node::ExprNode* rhs) {
+    if (lhs->GetExprType() != node::ExprType::kExprColumnRef) {
+        return absl::UnimplementedError(absl::StrCat("expect left as column reference but get ", lhs->GetExprString()));
+    }
+    if (rhs->GetExprType() != node::ExprType::kExprPrimary) {
+        return absl::UnimplementedError(absl::StrCat("expect right as constant but get ", rhs->GetExprString()));
+    }
+
+    return absl::OkStatus();
+}
+
+// left  -> * or column name
+// right -> BinaryExpr of
+//       lhs column name and rhs constant, or versa
+//       op -> (eq, ne, gt, lt, ge, le)
+absl::Status CheckCountWhereArgs(const node::ExprNode* left, const node::ExprNode* right) {
+    if (right->GetExprType() != node::ExprType::kExprBinary) {
+        return absl::UnimplementedError(absl::StrCat("[Long Window] ExprType ",
+                                                     node::ExprTypeName(right->GetExprType()),
+                                                     " not implemented as count_where condition"));
+    }
+    auto* bin_expr = dynamic_cast<const node::BinaryExpr*>(right);
+    if (bin_expr == nullptr) {
+        return absl::UnknownError("[Long Window] right can't cast to binary expr");
+    }
+
+    if (left->GetExprType() != node::ExprType::kExprAll && left->GetExprType() != node::ExprType::kExprColumnRef) {
+        return absl::UnimplementedError(
+            absl::StrCat("[Long Window] count_where column ", left->GetExprString(), " not supported"));
+    }
+
+    auto s1 = CheckCountWhereCond(right->GetChild(0), right->GetChild(1));
+    auto s2 = CheckCountWhereCond(right->GetChild(1), right->GetChild(0));
+    if (!s1.ok() && !s2.ok()) {
+        return absl::UnimplementedError(
+            absl::StrCat("[Long Window] cond as ", right->GetExprString(), " not support: ", s1.message()));
+    }
+
+    switch (bin_expr->GetOp()) {
+        case node::FnOperator::kFnOpLe:
+        case node::FnOperator::kFnOpLt:
+        case node::FnOperator::kFnOpGt:
+        case node::FnOperator::kFnOpGe:
+        case node::FnOperator::kFnOpNeq:
+        case node::FnOperator::kFnOpEq:
+            break;
+        default:
+            return absl::UnimplementedError(
+                absl::StrCat("[Long Window] filter cond operator ", node::ExprOpTypeName(bin_expr->GetOp())));
+    }
+
+    return absl::OkStatus();
+}
+
+// Supported:
+// - count(col) or count(*)
+// - sum(col)
+// - min(col)
+// - max(col)
+// - avg(col)
+// - count_where(col, simple_expr)
+// - count_where(*, simple_expr)
+//
+// simple_expr can be
+// - BinaryExpr
+//   - operand nodes of the expr can only be column ref and const node
+//   - with operator:
+//     - eq
+//     - neq
+//     - lt
+//     - gt
+//     - le
+//     - ge
+absl::Status LongWindowOptimized::CheckExprNode(const node::CallExprNode* call) {
+    if (call->GetChildNum() == 1) {
+        // count/sum/min/max/avg
+        auto expr_type = call->GetChild(0)->GetExprType();
+
+        if (expr_type != node::kExprColumnRef && expr_type != node::kExprAll) {
+            return absl::UnimplementedError(
+                absl::StrCat("Not support aggregation over multiple cols:", ConcatExprList(call->children_)));
+        }
+
+        return absl::OkStatus();
+    } else if (call->GetChildNum() == 2) {
+        if (call->GetFnDef()->GetName() != "count_where") {
+            return absl::UnimplementedError(absl::StrCat(call->GetFnDef()->GetName(), " not implemented"));
+        }
+
+        // count_where
+        return CheckCountWhereArgs(call->GetChild(0), call->GetChild(1));
+    }
+
+    return absl::UnimplementedError(
+        absl::StrCat("expect call function with argument number 1 or 2, but got ", ConcatExprList(call->children_)));
 }
 
 }  // namespace passes

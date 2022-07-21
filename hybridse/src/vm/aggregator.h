@@ -236,7 +236,28 @@ class CountAggregator : public Aggregator<int64_t> {
         : Aggregator<int64_t>(type, output_schema, 0) {}
 
     // val is assumed to be not null
-    void UpdateValue(const int64_t& val = 1) override {
+    void UpdateValue(const int64_t& val) override {
+        this->val_ += val;
+        this->counter_++;
+        DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", count = " << this->val_;
+    }
+
+    bool IsNull() const override {
+        return false;
+    }
+
+    type::Type GetRepType() const override {
+        return type::kInt64;
+    }
+};
+
+class CountWhereAggregator : public Aggregator<int64_t> {
+ public:
+    CountWhereAggregator(type::Type type, const Schema& output_schema)
+        : Aggregator<int64_t>(type, output_schema, 0) {}
+
+    // val is assumed to be not null
+    void UpdateValue(const int64_t& val) override {
         this->val_ += val;
         this->counter_++;
         DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", count = " << this->val_;
