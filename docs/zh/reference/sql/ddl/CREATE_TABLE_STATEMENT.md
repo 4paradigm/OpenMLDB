@@ -174,7 +174,7 @@ desc t4;
 
 ```sql
 ColumnIndex ::= 
-    'INDEX' IndexName '(' IndexOptionList ')' 
+    'INDEX' <OptionalIndexName> '(' IndexOptionList ')' 
  
 IndexOptionList ::= 
     IndexKeyOption ( ',' IndexOption )*
@@ -185,27 +185,17 @@ ColumnNameList ::=
     '(' ColumnName (',' ColumnName)* ')'    
     
 IndexOption ::= 
-    'TS' '=' ColumnName
-    | 'TTL' '=' IndexTtlOption
-    | 'TTL_TYPE' '=' TTLType
-  
-IndexTtlOption := 
-    int_literal | interval_literal | '(' interval_literal ',' int_literal ')'
-interval_literal ::= 
-    int_literal 'S'|'D'|'M'|'H'    
-    
-TTLType ::= 
-    'ABSOLUTE'| 'LATEST'| 'ABSORLAT'| 'ABSANDLAT'
+    IndexOptionName '=' expr
 ```
 
-索引可以被数据库搜索引擎用来加速数据的检索。 简单说来，索引就是指向表中数据的指针。配置一个列索引一般需要配置索引`KEY`，索引时间列`TS`, 最大存活时间/条数`TTL`和淘汰规则`TTL_TYPE`。其中`KEY`是必须配置的，其他配置项都为可选项。下表介绍了各索引配置项的含义及用法：
+索引可以被数据库搜索引擎用来加速数据的检索。 简单说来，索引就是指向表中数据的指针。OpenMLDB 支持的索引配置项（`IndexOptionName`）有索引`KEY`，索引时间列`TS`, 最大存活时间/条数`TTL`和淘汰规则`TTL_TYPE`。其中`KEY`是必须配置的，其他配置项都为可选项。下表介绍了各索引配置项的含义、支持的表达式(`expr`)以及用法示例：
 
-| 配置项     | 描述                                                                                                  | 用法示例                                                           |
-| ---------- |-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| `KEY`      | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。    | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`     |
-| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。                                         | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。 |
-| `TTL_TYPE` | 淘汰规则（可选）。包括四种类型：`ABSOLUTE`, `LATEST`, `ABSORLAT`, `ABSANDLAT`。当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。 | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                  |
-| `TTL`      | 最大存活时间/条数（可选）。根据不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。                 |                                                                |
+| 配置项        | 描述                                                                                                      | expr                                                                                                           | 用法示例                                                                                   |
+|------------|---------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| `KEY`      | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。        | 支持单列索引：`ColumnName`<br/>或联合索引：<br/>`(ColumnName (, ColumnName)* ) `                                            | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`                             |
+| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
+| `TTL_TYPE` | 淘汰规则（可选）。包括四种类型，当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。                                                   | 支持的expr如下：`ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                           | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                                          |
+| `TTL`      | 最大存活时间/条数（可选）。依赖于`TTL_TYPE`，不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。 | 支持数值：`int_literal`<br/>  或数值带时间单位(`S,M,H,D`)：`interval_literal`<br/>或元组形式：`( interval_literal , int_literal )` |具体用法可以参考下文“TTL和TTL_TYPE的配置细则” |
 
 TTL和TTL_TYPE的配置细则：
 
