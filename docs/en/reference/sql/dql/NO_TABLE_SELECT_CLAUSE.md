@@ -1,6 +1,6 @@
-# No Table SELECT
+# No-table SELECT
 
-The no table Select statement computes the constant expression, and the computing does not depend on tables and columns.
+The no-table Select statement computes the constant expression, and the computing does not depend on tables and columns.
 
 ## Syntax
 
@@ -23,9 +23,9 @@ SELECT const_expr [, const_expr ...];
 ## 2. SELECT Statement Elements
 
 
-| `SELECT` Statement Elements                  | Offline Mode | Online Preview Mode | Online Request Mode | Illustrate |
-|:---------------------------------------------|--------------|---------------------|---------------------|:-----------|
-| No table SELECT statement |**``✓``**                |**``✓``**                       |                     |The no table Select statement computes the constant expression operation list, and the expression computation does not depend on tables and columns            |
+| `SELECT` Statement Elements | Offline Mode | Online Preview Mode | Online Request Mode | Illustrate                                                                                                                             |
+|:----------------------------|--------------|---------------------|---------------------|:---------------------------------------------------------------------------------------------------------------------------------------|
+| No-table SELECT statement   |**``✓``**                |**``✓``**                       |                     | The no-table SELECT statement computes the constant expression operation list, and the computation does not depend on tables or columns |
 
 #### Examples
 
