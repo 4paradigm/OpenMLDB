@@ -210,8 +210,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     status = plan_ctx_->CreateOp<vm::PhysicalRequestAggUnionNode>(
         &request_aggr_union, request, raw, aggr, req_union_op->window(), aggr_window,
         req_union_op->instance_not_in_window(), req_union_op->exclude_current_time(),
-        req_union_op->output_request_row(), aggr_op->GetFnDef(),
-        aggr_op->children_);
+        req_union_op->output_request_row(), aggr_op);
     if (req_union_op->exclude_current_row_) {
         request_aggr_union->set_out_request_row(false);
     }

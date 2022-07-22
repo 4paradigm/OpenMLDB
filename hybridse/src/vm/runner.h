@@ -992,18 +992,21 @@ class RequestUnionRunner : public Runner {
 class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
-                          bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ExprNode* agg_col)
+                          bool exclude_current_time, bool output_request_row, const node::CallExprNode* project)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
-          func_(func),
-          agg_col_(agg_col) {
-    if (agg_col_->GetExprType() == node::kExprColumnRef) {
-        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+          func_(project->GetFnDef()),
+          agg_col_(project->GetChild(0)) {
+        if (agg_col_->GetExprType() == node::kExprColumnRef) {
+            agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+        }
+
+        if (project->GetFnDef()->GetName() == "count_where") {
+            cond_ = project->GetChild(1);
+        }
     }
-}
 
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
@@ -1040,6 +1043,10 @@ class RequestAggUnionRunner : public Runner {
     const node::ExprNode* agg_col_ = nullptr;
     std::string agg_col_name_;
     type::Type agg_col_type_;
+
+    // the filter condition for count_where
+    // simple compassion binary expr like col < 0 is supported
+    node::ExprNode* cond_ = nullptr;
 
     std::unique_ptr<BaseAggregator> CreateAggregator() const;
 

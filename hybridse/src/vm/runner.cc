@@ -572,10 +572,8 @@ ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status
     }
     auto op = dynamic_cast<const PhysicalRequestAggUnionNode*>(node);
     RequestAggUnionRunner* runner = nullptr;
-    CreateRunner<RequestAggUnionRunner>(
-        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-        op->window().range_, op->exclude_current_time(),
-        op->output_request_row(), op->func_, op->agg_cols_);
+    CreateRunner<RequestAggUnionRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->window().range_,
+                                        op->exclude_current_time(), op->output_request_row(), op->project_);
     Key index_key;
     if (!op->instance_not_in_window()) {
         index_key = op->window_.index_key();
