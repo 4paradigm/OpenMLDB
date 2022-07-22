@@ -26,7 +26,6 @@ SELECT ... LIMIT ...
 ### SELECT with LIMIT
 
 ```SQL
--- desc: SELECT Limit
   SELECT t1.COL1 c1 FROM t1 limit 10;
 ```
 
