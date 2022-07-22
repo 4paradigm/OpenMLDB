@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.5.3 Release Notes
+
+### Bug Fixes
+- The SQL file cannot be successfully loaded in the Yarn-Client mode. (#2151 @tobegit3hub)
+- The SQL file cannot be successfully loaded in the Yarn-Cluster mode. (#1993 @tobegit3hub)
+
 ## v0.5.2 Release Notes
 
 ### Features
