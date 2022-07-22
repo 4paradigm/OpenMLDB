@@ -16,13 +16,11 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ... HAVING having_conditi
 ```
 
 ## Boundary Description
+For the standalone version, `HAVING` is supported in all conditions. For the cluster version, the execution modes which support this clause is shown below.
 
-| SELECT statement elements | state          | directions                                                         |
-| :------------- | ------------- | :----------------------------------------------------------- |
-| HAVING Clause  | Online not supported | Having clause is similar to the Where clause. The Having clause allows you to filter various data after GroupBy, and the Where clause is used to filter records before aggregation. |
-
-
-| [`HAVING` Clause](../dql/HAVING_CLAUSE.md) | **``✓``** | | | Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。 |
+| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                               |
+|:-----------------------------------------------------------|--------------|---------------------|---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| HAVING Clause                | **``✓``**    |                     |                     | The Having clause is similar to the Where clause. The Having clause filters data after GroupBy, and the Where clause is used to filter records before aggregation. |                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Example
 
