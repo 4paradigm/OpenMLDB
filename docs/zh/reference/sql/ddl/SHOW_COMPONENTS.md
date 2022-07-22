@@ -7,13 +7,13 @@ SHOW COMPONENTS;
 
 Column Information
 
-| Column       | Description                                                                        |
-| ------------ |------------------------------------------------------------------------------------|
-| Endpoint     | 组件端点，同 `--endpoint` flag                                               |
-| Role         | 组件角色。有 `tablet`,`nameserver`,`taskmanager`,`apiserver`, 同 `--role` flag |
-| Connect_time | 组件连接时间，以毫秒时间戳形式展示                                                                  |
-| Status       | 组件状态， `online`, `offline`or `NULL`                                                 |
-| Ns_role      | Namserver 的角色，`master`or `standby`                                                 |
+| Column       | Description                                                             |
+| ------------ |-------------------------------------------------------------------------|
+| Endpoint     | 组件端点，同 `--endpoint` flag                                                |
+| Role         | 组件角色，有 `tablet`、`nameserver`、`taskmanager`、`apiserver`， 同 `--role` flag |
+| Connect_time | 组件连接时间，以毫秒时间戳形式展示                                                       |
+| Status       | 组件状态， `online`、 `offline`或`NULL`                                        |
+| Ns_role      | Namserver 的角色，`master`或 `standby`                                       |
 
 
 ```{note}
@@ -25,7 +25,7 @@ Column Information
 # Example
 
 ```sql
-> SHOW COMPONENTS;
+SHOW COMPONENTS;
  ---------------- ------------ --------------- -------- --------- 
   Endpoint         Role         Connect_time    Status   Ns_role  
  ---------------- ------------ --------------- -------- --------- 
