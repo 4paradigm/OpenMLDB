@@ -143,7 +143,7 @@ jobs:
     # mac job for java sdk. steps are almost same with job 'java-sdk'
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
-    runs-on: macos-latest
+    runs-on: macos-12
     needs:
       - java-sdk
     if: github.event_name == 'push'
