@@ -26,12 +26,12 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ...
 ### 1. 按列分组后聚合
 
 ```SQL
->SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1;
 ```
 
 ### 2. 按两列分组后聚合
 
 ```SQL
->SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0;
 ```
 
