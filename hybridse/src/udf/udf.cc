@@ -468,19 +468,39 @@ grep	Use the regular expression grammar used by the grep utility in POSIX. This 
 egrep	Use the regular expression grammar used by the grep utility, with the -E option, in POSIX. This is effectively the same as the extended option with the addition of newline '\n' as an alternation separator in addition to '|'.
 */
 void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
-    // std::string_view name_view(name->data_, name->size_);
-    // std::string_view pattern_view(pattern->data_, pattern->size_);
-    // std::string_view flags_view(flags->data_, flags->size_);
-    // todo
-    *out = std::regex_match (name->data_, std::regex(pattern->data_));
+    std::string_view flags_view(flags->data_, flags->size_);
+    auto options = std::regex_constants::ECMAScript;
+
+    if (name == nullptr || pattern == nullptr) {
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+
+    for(auto &flag: flags_view) {
+        switch(flag) {
+            case 'c':
+            break;
+            case 'i':
+                options |= std::regex_constants::icase;
+            break;
+            case 'm':
+                // options |= std::regex_constants::multiline;
+            break;
+            case 'e':
+            // Extracts sub-matches; applies only to REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_SUBSTR_ALL, and the aliases for these functions.
+            break;
+            case 's':
+            break;
+        }
+    }
+
+    *out = std::regex_match(name->data_, std::regex(pattern->data_, options));
 }
 
 void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null) {
-    // std::string_view name_view(name->data_, name->size_);
-    // std::string_view pattern_view(pattern->data_, pattern->size_);
-    // std::string_view flags_view(flags->data_, flags->size_);
-    // todo
-    *out = std::regex_match (name->data_, std::regex(pattern->data_));
+    StringRef flags("c");
+    regexp_like(name, pattern, &flags, out, is_null);
 }
 
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {
