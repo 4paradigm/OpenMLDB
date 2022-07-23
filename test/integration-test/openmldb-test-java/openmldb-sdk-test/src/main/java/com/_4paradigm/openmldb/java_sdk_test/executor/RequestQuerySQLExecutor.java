@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -149,7 +149,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
             logger.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
             return false;
         }
-        if (FedbConfig.isCluster() &&
+        if (OpenMLDBConfig.isCluster() &&
                 null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
             logger.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
             return false;

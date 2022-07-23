@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.temp;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -34,7 +34,7 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("DebugTest")
-public class DebugTest extends FedbTest {
+public class DebugTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")

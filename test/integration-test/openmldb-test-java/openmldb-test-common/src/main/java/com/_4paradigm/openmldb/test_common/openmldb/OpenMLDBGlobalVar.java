@@ -30,4 +30,5 @@ public class OpenMLDBGlobalVar {
     public static String openMLDBPath;
     public static OpenMLDBInfo mainInfo;
     public static String dbName = "test_zw";
+    public static String tableStorageMode = "memory";
 }

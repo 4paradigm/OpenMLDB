@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -26,7 +26,7 @@ import io.qameta.allure.Story;
 import org.testng.annotations.Test;
 
 @Feature("BatchTest")
-public class BatchRequestTest extends FedbTest {
+public class BatchRequestTest extends OpenMLDBTest {
     @Story("BatchRequest")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/test_batch_request.yaml")

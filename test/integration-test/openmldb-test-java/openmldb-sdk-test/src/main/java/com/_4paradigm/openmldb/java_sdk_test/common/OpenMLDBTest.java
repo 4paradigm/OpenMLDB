@@ -37,7 +37,7 @@ import java.sql.Statement;
  * @date 2020/6/11 2:02 PM
  */
 @Slf4j
-public class FedbTest extends BaseTest {
+public class OpenMLDBTest extends BaseTest {
     protected static SqlExecutor executor;
 
     @BeforeTest()
@@ -77,8 +77,6 @@ public class FedbTest extends BaseTest {
         OpenMLDBClient fesqlClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
         executor = fesqlClient.getExecutor();
         log.info("executor:{}",executor);
-        //todo
-
         Statement statement = executor.getStatement();
         statement.execute("SET @@execute_mode='online';");
     }

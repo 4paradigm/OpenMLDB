@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -32,29 +32,29 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("Lastjoin")
-public class LastJoinTest extends FedbTest {
+public class LastJoinTest extends OpenMLDBTest {
 
      @Story("batch")
      @Test(dataProvider = "getCase")
-     @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
+     @Yaml(filePaths = {"function/join/"})
      public void testLastJoin(SQLCase testCase) throws Exception {
          ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
      }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
+    @Yaml(filePaths = {"function/join/"})
     public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
-    // @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
+     @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/"})
     public void testLastJoinRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
-    // @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/test_lastjoin_simple.yaml"})
+     @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/"})
     public void testLastJoinRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

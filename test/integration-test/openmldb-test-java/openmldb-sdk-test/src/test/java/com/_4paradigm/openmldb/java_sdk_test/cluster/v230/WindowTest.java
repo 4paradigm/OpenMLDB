@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -32,7 +32,7 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("Window")
-public class WindowTest extends FedbTest {
+public class WindowTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
@@ -44,7 +44,9 @@ public class WindowTest extends FedbTest {
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/test_current_row.yaml"})
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
     public void testWindowRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
@@ -89,7 +91,7 @@ public class WindowTest extends FedbTest {
 
     //暂时不支持
     @Story("requestWithSp")
-    @Test(dataProvider = "getCase")
+//    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/window/test_window_union_cluster.yaml"})
     public void testWindowCLI(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kClusterCLI).run();

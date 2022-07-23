@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.cluster.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -33,7 +33,7 @@ import org.testng.annotations.Test;
  */
 @Slf4j
 @Feature("MultiDBTest")
-public class MultiDBTest extends FedbTest {
+public class MultiDBTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")

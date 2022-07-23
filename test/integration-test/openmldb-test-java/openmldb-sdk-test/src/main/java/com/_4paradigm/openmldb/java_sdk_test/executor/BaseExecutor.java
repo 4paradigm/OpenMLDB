@@ -44,7 +44,7 @@ public abstract class BaseExecutor implements IExecutor{
     public void run() {
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
-        System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
+        System.out.println(className+"."+methodName+":"+fesqlCase.getCaseFileName()+":"+fesqlCase.getDesc() + " Begin!");
         logger.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {

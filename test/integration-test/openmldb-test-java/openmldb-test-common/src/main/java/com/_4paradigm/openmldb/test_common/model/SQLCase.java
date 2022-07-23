@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -27,6 +28,7 @@ import java.util.Map;
 
 @Data
 public class SQLCase implements Serializable{
+    private String caseFileName;
     private int level = 0;
     private String id;
     private String desc;
@@ -82,6 +84,23 @@ public class SQLCase implements Serializable{
 
     public static String genAutoName() {
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
+    }
+
+    public boolean isSupportDiskTable(){
+        if(CollectionUtils.isEmpty(inputs)){
+            return false;
+        }
+        for(InputDesc input:inputs){
+            if (CollectionUtils.isNotEmpty(input.getColumns())&&CollectionUtils.isNotEmpty(input.getIndexs())&& StringUtils.isEmpty(input.getCreate())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public void setStorage(String storageMode){
+        if(CollectionUtils.isNotEmpty(inputs)) {
+            inputs.forEach(t -> t.setStorage(storageMode));
+        }
     }
 
     public String getProcedure(String sql) {

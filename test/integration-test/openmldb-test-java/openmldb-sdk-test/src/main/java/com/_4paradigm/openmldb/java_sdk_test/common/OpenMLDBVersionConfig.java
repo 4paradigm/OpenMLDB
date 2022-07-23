@@ -27,7 +27,7 @@ import java.util.Properties;
  * @date 2020/6/11 11:34 AM
  */
 @Slf4j
-public class FedbVersionConfig {
+public class OpenMLDBVersionConfig {
 
     public static final Properties CONFIG = Tool.getProperties("fesql_version.properties");
 

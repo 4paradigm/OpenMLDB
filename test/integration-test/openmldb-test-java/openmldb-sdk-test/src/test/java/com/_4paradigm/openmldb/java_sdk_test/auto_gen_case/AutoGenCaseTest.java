@@ -16,10 +16,10 @@
 
 package com._4paradigm.openmldb.java_sdk_test.auto_gen_case;
 
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -42,15 +42,15 @@ import java.util.Map;
  */
 @Slf4j
 @Feature("AutoCase")
-public class AutoGenCaseTest extends FedbTest {
+public class AutoGenCaseTest extends OpenMLDBTest {
 
     private Map<String, SqlExecutor> executorMap = new HashMap<>();
     private Map<String, OpenMLDBInfo> fedbInfoMap = new HashMap<>();
 
     @BeforeClass
     public void beforeClass(){
-        if(FedbConfig.INIT_VERSION_ENV) {
-            FedbConfig.VERSIONS.forEach(version -> {
+        if(OpenMLDBConfig.INIT_VERSION_ENV) {
+            OpenMLDBConfig.VERSIONS.forEach(version -> {
                 OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
                 openMLDBDeploy.setCluster("cluster".equals(OpenMLDBGlobalVar.env));
                 OpenMLDBInfo fedbInfo = openMLDBDeploy.deployCluster(2, 3);

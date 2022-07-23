@@ -18,7 +18,8 @@ package com._4paradigm.openmldb.java_sdk_test.entity;
 
 
 import com._4paradigm.openmldb.java_sdk_test.common.BaseTest;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
+import com._4paradigm.openmldb.test_common.model.CaseFile;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.util.Tool;
 import org.apache.commons.lang3.StringUtils;
@@ -28,24 +29,24 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FesqlDataProviderList {
-    private List<FesqlDataProvider> dataProviderList = new ArrayList<FesqlDataProvider>();
+public class OpenMLDBCaseFileList {
+    private List<CaseFile> dataProviderList = new ArrayList<CaseFile>();
 
     public List<SQLCase> getCases() {
         List<SQLCase> cases = new ArrayList<SQLCase>();
 
-        for (FesqlDataProvider dataProvider : dataProviderList) {
-            for (SQLCase sqlCase : dataProvider.getCases(FedbConfig.FESQL_CASE_LEVELS)) {
-                if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_NAME) &&
-                        !FedbConfig.FESQL_CASE_NAME.equals(BaseTest.CaseNameFormat(sqlCase))) {
+        for (CaseFile dataProvider : dataProviderList) {
+            for (SQLCase sqlCase : dataProvider.getCases(OpenMLDBConfig.FESQL_CASE_LEVELS)) {
+                if (!StringUtils.isEmpty(OpenMLDBConfig.FESQL_CASE_NAME) &&
+                        !OpenMLDBConfig.FESQL_CASE_NAME.equals(BaseTest.CaseNameFormat(sqlCase))) {
                     continue;
                 }
-                if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_ID)
-                        && !FedbConfig.FESQL_CASE_ID.equals(sqlCase.getId())) {
+                if (!StringUtils.isEmpty(OpenMLDBConfig.FESQL_CASE_ID)
+                        && !OpenMLDBConfig.FESQL_CASE_ID.equals(sqlCase.getId())) {
                     continue;
                 }
-                if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_DESC)
-                        && !FedbConfig.FESQL_CASE_DESC.equals(sqlCase.getDesc())) {
+                if (!StringUtils.isEmpty(OpenMLDBConfig.FESQL_CASE_DESC)
+                        && !OpenMLDBConfig.FESQL_CASE_DESC.equals(sqlCase.getDesc())) {
                     continue;
                 }
                 cases.add(sqlCase);
@@ -54,25 +55,25 @@ public class FesqlDataProviderList {
         return cases;
     }
 
-    public static FesqlDataProviderList dataProviderGenerator(String[] caseFiles) throws FileNotFoundException {
+    public static OpenMLDBCaseFileList dataProviderGenerator(String[] caseFiles) throws FileNotFoundException {
 
-        FesqlDataProviderList fesqlDataProviderList = new FesqlDataProviderList();
+        OpenMLDBCaseFileList fesqlDataProviderList = new OpenMLDBCaseFileList();
         for (String caseFile : caseFiles) {
-            if (!StringUtils.isEmpty(FedbConfig.FESQL_CASE_PATH)
-                    && !FedbConfig.FESQL_CASE_PATH.equals(caseFile)) {
+            if (!StringUtils.isEmpty(OpenMLDBConfig.FESQL_CASE_PATH)
+                    && !OpenMLDBConfig.FESQL_CASE_PATH.equals(caseFile)) {
                 continue;
             }
-            String casePath = Tool.getCasePath(FedbConfig.YAML_CASE_BASE_DIR, caseFile);
+            String casePath = Tool.getCasePath(OpenMLDBConfig.YAML_CASE_BASE_DIR, caseFile);
             File file = new File(casePath);
             if (!file.exists()) {
                 continue;
             }
             if (file.isFile()) {
-                fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(casePath));
+                fesqlDataProviderList.dataProviderList.add(CaseFile.parseCaseFile(casePath));
             } else {
                 File[] files = file.listFiles(f -> f.getName().endsWith(".yaml"));
                 for (File f : files) {
-                    fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(f.getAbsolutePath()));
+                    fesqlDataProviderList.dataProviderList.add(CaseFile.parseCaseFile(f.getAbsolutePath()));
                 }
             }
         }

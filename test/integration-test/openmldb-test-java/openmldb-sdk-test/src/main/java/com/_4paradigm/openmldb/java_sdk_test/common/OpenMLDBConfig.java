@@ -32,12 +32,8 @@ import java.util.stream.Collectors;
  * @date 2020/6/11 11:34 AM
  */
 @Slf4j
-public class FedbConfig {
-    // public static final String ZK_CLUSTER;
-    // public static final String ZK_ROOT_PATH;
+public class OpenMLDBConfig {
     public static final List<String> VERSIONS;
-    // public static final FEDBInfo mainInfo;
-    public static final String BASE_PATH;
     public static boolean INIT_VERSION_ENV = true;
     public static final List<Integer> FESQL_CASE_LEVELS;
     public static final String FESQL_CASE_PATH;
@@ -46,13 +42,11 @@ public class FedbConfig {
     public static final String FESQL_CASE_DESC;
     public static final String YAML_CASE_BASE_DIR;
     public static final boolean ADD_REPORT_LOG;
-    public static final String ZK_URL;
 
-    public static final Properties CONFIG = Tool.getProperties("fesql.properties");
+
+    public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 
     static {
-        // ZK_CLUSTER = CONFIG.getProperty(FedbGlobalVar.env + "_zk_cluster");
-        // ZK_ROOT_PATH = CONFIG.getProperty(FedbGlobalVar.env + "_zk_root_path");
         String levelStr = System.getProperty("caseLevel");
         levelStr = StringUtils.isEmpty(levelStr) ? "0" : levelStr;
         FESQL_CASE_LEVELS = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
@@ -78,10 +72,6 @@ public class FedbConfig {
             log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
         }
 
-        BASE_PATH = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_base_path");
-        // String tb_endpoint_0 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_0");
-        // String tb_endpoint_1 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_1");
-        // String tb_endpoint_2 = CONFIG.getProperty(FedbGlobalVar.env + "_tb_endpoint_2");
         String versionStr = System.getProperty("fedbVersion");
         if (StringUtils.isEmpty(versionStr)) {
             versionStr = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_versions");
@@ -92,7 +82,6 @@ public class FedbConfig {
             VERSIONS = Lists.newArrayList();
         }
         log.info("HybridSEConfig: versions: {}", VERSIONS);
-        ZK_URL = CONFIG.getProperty("zk_url");
         String reportLogStr = System.getProperty("reportLog");
         if(StringUtils.isNotEmpty(reportLogStr)){
             ADD_REPORT_LOG = Boolean.parseBoolean(reportLogStr);
@@ -102,6 +91,10 @@ public class FedbConfig {
         String init_env = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_init_version_env");
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);
+        }
+        String tableStorageMode = CONFIG.getProperty("table_storage_mode");
+        if(StringUtils.isNotEmpty(tableStorageMode)){
+            OpenMLDBGlobalVar.tableStorageMode = tableStorageMode;
         }
     }
 

@@ -1,6 +1,6 @@
 package com._4paradigm.openmldb.java_sdk_test.cluster.v050;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
 @Slf4j
-public class LongWindowTest extends FedbTest{
+public class LongWindowTest extends OpenMLDBTest {
 
 
     @Test(dataProvider = "getCase")

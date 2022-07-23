@@ -1,7 +1,7 @@
 package com._4paradigm.openmldb.java_sdk_test.cluster.v030;
 
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.test_common.util.TypeUtil;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.Column;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Feature("SchemaTest")
-public class SchemaTest extends FedbTest {
+public class SchemaTest extends OpenMLDBTest {
     @Story("schema-sdk")
     // @Test
     public void testHaveIndexAndOption() throws SQLException {

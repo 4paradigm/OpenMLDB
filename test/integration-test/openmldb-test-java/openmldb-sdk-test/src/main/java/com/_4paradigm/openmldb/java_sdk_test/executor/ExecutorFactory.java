@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -106,11 +107,11 @@ public class ExecutorFactory {
         return executor;
     }
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, SQLCaseType type) {
-//        if (FedbConfig.isCluster()) {
-//            log.info("cluster unsupport batch query mode");
-//            reportLog.info("cluster unsupport batch query mode");
-//            return new NullExecutor(sqlExecutor, fesqlCase, type);
-//        }
+        if (OpenMLDBConfig.isCluster()) {
+            log.info("cluster unsupport batch query mode");
+            reportLog.info("cluster unsupport batch query mode");
+            return new NullExecutor(sqlExecutor, fesqlCase, type);
+        }
         BaseSQLExecutor executor = null;
         executor = new BatchSQLExecutor(sqlExecutor, fesqlCase, type);
         return executor;

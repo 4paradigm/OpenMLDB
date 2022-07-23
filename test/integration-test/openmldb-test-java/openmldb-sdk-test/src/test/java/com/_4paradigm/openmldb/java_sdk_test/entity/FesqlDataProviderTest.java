@@ -17,8 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.entity;
 
 
+import com._4paradigm.openmldb.test_common.model.CaseFile;
 import com._4paradigm.openmldb.test_common.util.DataUtil;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import org.testng.Assert;
@@ -33,7 +33,7 @@ public class FesqlDataProviderTest {
 
     @Test
     public void getDataProviderTest() throws FileNotFoundException {
-        FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo.yaml");
+        CaseFile provider = CaseFile.parseCaseFile("/yaml/rtidb_demo.yaml");
         Assert.assertNotNull(provider);
         Assert.assertEquals(3, provider.getCases().size());
 
@@ -43,7 +43,7 @@ public class FesqlDataProviderTest {
 
     @Test
     public void getInsertTest() throws FileNotFoundException {
-        FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo2.yaml");
+        CaseFile provider = CaseFile.parseCaseFile("/yaml/rtidb_demo2.yaml");
         Assert.assertNotNull(provider);
         Assert.assertEquals(1, provider.getCases().size());
         SQLCase sqlCase = provider.getCases().get(0);
@@ -57,7 +57,7 @@ public class FesqlDataProviderTest {
 
     @Test
     public void getInserstTest() throws FileNotFoundException {
-        FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo2.yaml");
+        CaseFile provider = CaseFile.parseCaseFile("/yaml/rtidb_demo2.yaml");
         Assert.assertNotNull(provider);
         Assert.assertEquals(1, provider.getCases().size());
         SQLCase sqlCase = provider.getCases().get(0);
@@ -74,7 +74,7 @@ public class FesqlDataProviderTest {
 
     @Test
     public void getCreateTest() throws FileNotFoundException {
-        FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo2.yaml");
+        CaseFile provider = CaseFile.parseCaseFile("/yaml/rtidb_demo2.yaml");
         Assert.assertNotNull(provider);
         Assert.assertEquals(1, provider.getCases().size());
         SQLCase sqlCase = provider.getCases().get(0);
@@ -92,7 +92,7 @@ public class FesqlDataProviderTest {
 
     @Test
     public void converRowsTest() throws ParseException, FileNotFoundException {
-        FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo.yaml");
+        CaseFile provider = CaseFile.parseCaseFile("/yaml/rtidb_demo.yaml");
         Assert.assertNotNull(provider);
         Assert.assertEquals(3, provider.getCases().size());
         SQLCase sqlCase = provider.getCases().get(0);

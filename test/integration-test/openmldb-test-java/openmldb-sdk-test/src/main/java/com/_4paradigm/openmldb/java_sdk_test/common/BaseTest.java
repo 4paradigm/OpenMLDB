@@ -16,10 +16,10 @@
 package com._4paradigm.openmldb.java_sdk_test.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProvider;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
+import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
+import com._4paradigm.openmldb.test_common.model.CaseFile;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
@@ -44,8 +44,8 @@ public class BaseTest implements ITest {
     private int testNum = 0;
 
     public static String CaseNameFormat(SQLCase sqlCase) {
-        return String.format("%s_%s_%s",
-                OpenMLDBGlobalVar.env, sqlCase.getId(), sqlCase.getDesc());
+        return String.format("%s_%s_%s_%s",
+                OpenMLDBGlobalVar.env,sqlCase.getCaseFileName(), sqlCase.getId(), sqlCase.getDesc());
     }
 
     @DataProvider(name = "getCase")
@@ -54,7 +54,7 @@ public class BaseTest implements ITest {
         if(casePaths==null||casePaths.length==0){
             throw new RuntimeException("please add @Yaml");
         }
-        FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(casePaths);
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList.dataProviderGenerator(casePaths);
         Object[] caseArray = dp.getCases().toArray();
         logger.info("caseArray.length:{}",caseArray.length);
         return caseArray;
@@ -68,7 +68,7 @@ public class BaseTest implements ITest {
                 testData[0], "fail to run fesql test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
-            Assert.assertNotEquals(FesqlDataProvider.FAIL_SQL_CASE,
+            Assert.assertNotEquals(CaseFile.FAIL_SQL_CASE,
                     sqlCase.getDesc(), "fail to run fesql test with FAIL DATA PROVIDER SQLCase: check yaml case");
             testName.set(String.format("[%d]%s.%s", testNum, method.getName(), CaseNameFormat(sqlCase)));
         } else {
