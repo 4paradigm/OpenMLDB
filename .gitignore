@@ -105,3 +105,5 @@ logs
 !/python/openmldb/native/__init__.pyt
 /python/test/*.xml
 
+# go sdk
+!go.mod
