@@ -5,8 +5,6 @@
 SHOW COMPONENTS;
 ```
 
-Column Information
-
 | Column       | Description                                                             |
 | ------------ |-------------------------------------------------------------------------|
 | Endpoint     | 组件端点，同 `--endpoint` flag                                                |
