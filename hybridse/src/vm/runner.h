@@ -1003,7 +1003,9 @@ class RequestAggUnionRunner : public Runner {
             agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
         }
 
-        if (project->GetFnDef()->GetName() == "count_where") {
+        if (project->GetChildNum() >= 2) {
+            // assume second kid of project as filter condition
+            // function support check happens in compile
             cond_ = project->GetChild(1);
         }
     }
@@ -1021,6 +1023,17 @@ class RequestAggUnionRunner : public Runner {
     }
 
  private:
+    // evaluate the condition expr node
+    //
+    // implementation is limited
+    // * only assume `cond` as `BinaryExprNode`, and supports six basic compassion operators
+    // * no smart type convert happens before compare, constant type always convert to column type
+    //
+    // returns compassion result
+    // * true -> true
+    // * false or NULL -> false
+    bool EvalCond(const RowParser* parser, const Row& row, const node::ExprNode* cond) const;
+
     enum AggType {
         kSum,
         kCount,
