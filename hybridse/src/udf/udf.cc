@@ -19,7 +19,6 @@
 #include <time.h>
 #include <map>
 #include <set>
-#include <regex>
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
@@ -27,6 +26,7 @@
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "re2/re2.h"
 
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
@@ -450,26 +450,32 @@ void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
 }
 
 
-/*
-https://en.cppreference.com/w/cpp/regex
-https://en.cppreference.com/w/cpp/regex/basic_regex
-Constants
-Value	Effect(s)
-icase	Character matching should be performed without regard to case.
-nosubs	When performing matches, all marked sub-expressions (expr) are treated as non-marking sub-expressions (?:expr). No matches are stored in the supplied std::regex_match structure and mark_count() is zero.
-optimize	Instructs the regular expression engine to make matching faster, with the potential cost of making construction slower. For example, this might mean converting a non-deterministic FSA to a deterministic FSA.
-collate	Character ranges of the form "[a-b]" will be locale sensitive.
-multiline (C++17)	Specifies that ^ shall match the beginning of a line and $ shall match the end of a line, if the ECMAScript engine is selected.
-ECMAScript	Use the Modified ECMAScript regular expression grammar.
-basic	Use the basic POSIX regular expression grammar (grammar documentation).
-extended	Use the extended POSIX regular expression grammar (grammar documentation).
-awk	Use the regular expression grammar used by the awk utility in POSIX (grammar documentation).
-grep	Use the regular expression grammar used by the grep utility in POSIX. This is effectively the same as the basic option with the addition of newline '\n' as an alternation separator.
-egrep	Use the regular expression grammar used by the grep utility, with the -E option, in POSIX. This is effectively the same as the extended option with the addition of newline '\n' as an alternation separator in addition to '|'.
-*/
+// The options are (defaults in parentheses):
+//
+//   utf8             (true)  text and pattern are UTF-8; otherwise Latin-1
+//   posix_syntax     (false) restrict regexps to POSIX egrep syntax
+//   longest_match    (false) search for longest match, not first match
+//   log_errors       (true)  log syntax and execution errors to ERROR
+//   max_mem          (see below)  approx. max memory footprint of RE2
+//   literal          (false) interpret string as literal, not regexp
+//   never_nl         (false) never match \n, even if it is in regexp
+//   dot_nl           (false) dot matches everything including new line
+//   never_capture    (false) parse all parens as non-capturing
+//   case_sensitive   (true)  match is case-sensitive (regexp can override
+//                              with (?i) unless in posix_syntax mode)
+//
+// The following options are only consulted when posix_syntax == true.
+// When posix_syntax == false, these features are always enabled and
+// cannot be turned off; to perform multi-line matching in that case,
+// begin the regexp with (?m).
+//   perl_classes     (false) allow Perl's \d \s \w \D \S \W
+//   word_boundary    (false) allow Perl's \b \B (word boundary and not)
+//   one_line         (false) ^ and $ only match beginning and end of text
 void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
     std::string_view flags_view(flags->data_, flags->size_);
-    auto options = std::regex_constants::ECMAScript;
+    std::string_view pattern_view(pattern->data_, pattern->size_);
+    std::string_view name_view(name->data_, name->size_);
+    RE2::Options opts;
 
     if (name == nullptr || pattern == nullptr) {
         out = nullptr;
@@ -477,25 +483,29 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
         return;
     }
 
+    opts.set_posix_syntax(true);
+    opts.set_one_line(true);
+
     for(auto &flag: flags_view) {
         switch(flag) {
             case 'c':
             break;
             case 'i':
-                options |= std::regex_constants::icase;
+                opts.set_case_sensitive(false);
             break;
             case 'm':
-                // options |= std::regex_constants::multiline;
+                opts.set_one_line(false);
             break;
             case 'e':
-            // Extracts sub-matches; applies only to REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_SUBSTR_ALL, and the aliases for these functions.
             break;
             case 's':
+                opts.set_dot_nl(true);
             break;
         }
     }
 
-    *out = std::regex_match(name->data_, std::regex(pattern->data_, options));
+    RE2 re(pattern_view, opts);
+    *out = RE2::FullMatch(name_view, re);
 }
 
 void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null) {
