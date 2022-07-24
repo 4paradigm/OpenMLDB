@@ -644,6 +644,12 @@ void CreateDBTableForLongWindow(const std::string& base_db, const std::string& b
     ASSERT_EQ(tables.size(), 1) << msg;
 }
 
+// -----------------------------------------------------------------------------------
+// col1 col2 col3 i64_col i16_col i32_col f_col d_col t_col  s_col  date_col   filter
+// str1 str2  i     i       i       i       i     i     i      i    1900-01-i  i % 2
+//
+// where i in [i .. 11]
+// -----------------------------------------------------------------------------------
 void PrepareDataForLongWindow(const std::string& base_db, const std::string& base_table) {
     ::hybridse::sdk::Status status;
     for (int i = 1; i <= 11; i++) {
@@ -680,6 +686,8 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
     ASSERT_TRUE(req->AppendTimestamp(11));
     ASSERT_TRUE(req->AppendString("11"));
     ASSERT_TRUE(req->AppendDate(11));
+    // filter = null
+    req->AppendNULL();
     ASSERT_TRUE(req->Build());
 }
 
@@ -1450,22 +1458,22 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
         LOG(WARNING) << "Before CallProcedure";
         auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
         LOG(WARNING) << "After CallProcedure";
-        ASSERT_TRUE(status.IsOK());
-        ASSERT_EQ(1, res->Size());
-        ASSERT_TRUE(res->Next());
-        ASSERT_EQ("str1", res->GetStringUnsafe(0));
-        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        EXPECT_TRUE(status.IsOK());
+        EXPECT_EQ(1, res->Size());
+        EXPECT_TRUE(res->Next());
+        EXPECT_EQ("str1", res->GetStringUnsafe(0));
+        EXPECT_EQ("str2", res->GetStringUnsafe(1));
         int64_t exp = 7;
-        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(3));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(4));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(5));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(6));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(7));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(8));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(9));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(10));
-        ASSERT_EQ(exp, res->GetInt64Unsafe(11));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(2));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(3));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(4));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(5));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(6));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(7));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(8));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(9));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(10));
+        EXPECT_EQ(exp, res->GetInt64Unsafe(11));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
@@ -1514,22 +1522,26 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     std::string msg;
     CreateDBTableForLongWindow(base_db, base_table);
 
-    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
-        " count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,"
-        " count_where(i64_col, col1='str1') over w1 as w1_count_where_i64_col_col1,"
-        " count_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,"
-        " count_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,"
-        " count_where(f_col, 0=filter) over w1 as w1_count_where_f_col,"
-        " count_where(d_col, 1=filter) over w1 as w1_count_where_d_col,"
-        " count_where(t_col, 1>=filter) over w1 as w1_count_where_t_col,"
-        " count_where(s_col, 2<filter) over w1 as w1_count_where_s_col,"
-        " count_where(date_col, 2>filter) over w1 as w1_count_where_date_col,"
-        " count_where(col3, 0>=filter) over w2 as w2_count_where_col3"
-        " from " + base_table +
-        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
-        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW), "
-        " w2 AS (PARTITION BY col1,col2 ORDER BY i64_col"
-        " ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);";
+    std::string deploy_sql =
+        R"(DEPLOY test_aggr options(long_windows='w1:2')
+    SELECT
+        col1, col2,
+        count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,
+        count_where(i64_col, col1='str1') over w1 as w1_count_where_i64_col_col1,
+        count_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,
+        count_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,
+        count_where(f_col, 0=filter) over w1 as w1_count_where_f_col,
+        count_where(d_col, 1=filter) over w1 as w1_count_where_d_col,
+        count_where(t_col, 1>=filter) over w1 as w1_count_where_t_col,
+        count_where(s_col, 2<filter) over w1 as w1_count_where_s_col,
+        count_where(date_col, 2>filter) over w1 as w1_count_where_date_col,
+        count_where(col3, 0>=filter) over w2 as w2_count_where_col3 from )" +
+        base_table +
+        R"(
+    WINDOW
+        w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW),
+        w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)";
+
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL(base_db, deploy_sql, &status);
@@ -1592,6 +1604,30 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     result_sql = "select * from " + pre_aggr_table +";";
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(4, rs->Size());
+
+    // 11, 11, 10, 9, 8, 7, 6
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        DLOG(INFO) << "Before CallProcedure";
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        DLOG(INFO) << "After CallProcedure";
+        EXPECT_TRUE(status.IsOK());
+        EXPECT_EQ(1, res->Size());
+        EXPECT_TRUE(res->Next());
+        EXPECT_EQ("str1", res->GetStringUnsafe(0));
+        EXPECT_EQ("str2", res->GetStringUnsafe(1));
+        EXPECT_EQ(3, res->GetInt64Unsafe(2));
+        EXPECT_EQ(7, res->GetInt64Unsafe(3));
+        EXPECT_EQ(0, res->GetInt64Unsafe(4));
+        EXPECT_EQ(0, res->GetInt64Unsafe(5));
+        EXPECT_EQ(3, res->GetInt64Unsafe(6));
+        EXPECT_EQ(3, res->GetInt64Unsafe(7));
+        EXPECT_EQ(6, res->GetInt64Unsafe(8));
+        EXPECT_EQ(0, res->GetInt64Unsafe(9));
+        EXPECT_EQ(6, res->GetInt64Unsafe(10));
+        EXPECT_EQ(3, res->GetInt64Unsafe(11));
+    }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
     pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_filter";
