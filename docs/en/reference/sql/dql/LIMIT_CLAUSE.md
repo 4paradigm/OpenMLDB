@@ -16,7 +16,7 @@ SELECT ... LIMIT ...
 ```
 
 ## Boundary Description
-For the standalone version, `LIMIT` is supported in all conditions. For the cluster version, the execution modes which support this clause is shown below.
+For the standalone version, `LIMIT` is supported in all conditions. For the cluster version, the execution modes, which support this clause, are shown below.
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                          |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------|
