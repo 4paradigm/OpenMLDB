@@ -51,7 +51,9 @@ WindowInstanceNotInWindow
 				:: = 'INSTANCE_NOT_IN_WINDOW'
 ```
 
-*Window call function* implements functionality similar to aggregate functions. The difference is that the window call function does not need to pack the query results into a single line of output—in the query output, each line is separated. However, the window caller can scan all rows that may be part of the current row's group, depending on the grouping specification of the window caller (the `PARTITION BY` column). The syntax for calling a function from a window is one of the following:
+*Window call function* is similar to aggregate functions. The difference is that the window call function does not need to pack the query results into a single line when output the results. Instead, each line is separated when using WINDOW clause. 
+However, the window caller can scan all rows that may be part of the current row's group, depending on the grouping specification of the window caller (the `PARTITION BY` on columns).
+The syntax for calling a function over a window is shown bellow:
 
 ```
 function_name ([expression [, expression ... ]]) OVER ( window_definition )
@@ -77,9 +79,9 @@ SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_nam
 
 ## Boundary Description
 
-| SELECT statement elements | state                   | illustrate                                                         |
-| :------------- | ---------------------- | :----------------------------------------------------------- |
-| WINDOW Clause  | Online Training not supported | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform some analytical calculations (```sql agg_func() over window_name```). <br />OpenMLDB currently only supports historical windows, not future windows (ie, does not support window boundaries of type `FOLLOWING`). <br />OpenMLDB windows only support `PARTITION BY` columns, not `PARTITION BY` operations or function expressions. <br />OpenMLDB windows only support `ORDER BY` columns, not `ORDER BY` operations or function expressions. <br />In Online Serving, you need to follow [3.2 Window usage specification under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-serving window usage specification) |
+| `SELECT` Statement Elements                            | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
+|:-------------------------------------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| WINDOW Clause                                          | **``✓``**    |                     | **``✓``**           | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). During Online Serving, please follow [Online Serving下Window的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
 
 ## Basic WINDOW SPEC Syntax Elements
 
@@ -128,24 +130,28 @@ WindowFrameBound
            | 'CURRENT' 'ROW'
 ```
 
- **WindowFrameExtent**定义了窗口的上界和下界。框架类型可以用 `ROWS`或`ROWS_RANGE`声明；
+ **WindowFrameExtent** defines the upper and lower bounds of a window. The window type can be defined by `ROWS` or `ROWS_RANGE`.
 
-- CURRENT ROW: 表示当前行
-- UNBOUNDED PRECEDING: 表示无限制上界
-- `expr` PRECEDING
-  - 窗口类型为ROWS时，`expr`必须为一个正整数。它表示边界为当前行往前`expr`行。
-  - 窗口类型为ROWS_RANGE时,`expr`一般为时间区间（例如`10s`, `10m`,`10h`, `10d`)，它表示边界为当前行往前移expr时间段（例如，10秒，10分钟，10小时，10天）
-- OpenMLDB支持默认边界是闭合的。但支持OPEN关键字来修饰边界开区间
-- 请注意：标准SQL中，还支持FOLLOWING的边界，当OpenMLDB并不支持。
+- `CURRENT ROW` is the row currently being computed.
+- `UNBOUNDED PRECEDING` indicates the upper bound of this window is unlimited.
+- `expr PRECEDING`
+  - When the window is `ROWS` type, `expr` must be a positive integer, which indicates the upper boundary is the `expr`th row before current row.
+  - When the window type is `ROWS_RANGE`,`expr` should be a time interval, like `10s`, `10m`,`10h`, `10d`. The upper bound is the `expr` ahead of the time of current row.
+- By default, OpenMLDB uses closed interval. To change this, you can use keyword `OPEN`.
 
-#### **Example: 有名窗口（Named Window）**
+```{Note}
+Standard SQL also supports `FOLLOWING` boundary, but OpenMLDB doesn't support it currently.
+````
+
+#### Example
+**1. Named Window**
 
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW)
 ```
 
-#### **Example: 匿名窗口**
+**2. Anonymous Window**
 
 ```SQL
 SELECT id, pk1, col1, std_ts,
@@ -153,33 +159,34 @@ sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CU
 from t1;
 ```
 
-#### **Example: ROWS窗口**
+**3. ROWS Window**
 
+The following `WINDOW` clause defines a `ROWS` window containing preceding 1000 rows and current row. The window will contain a maximum of 1001 rows.
 ```SQL
--- ROWS example
--- desc: window ROWS, 前1000条到当前条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
-#### **Example: ROWS RANGE窗口**
 
+
+**4. ROWS RANGE Window**
+
+The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row.
 ```SQL
--- ROWS example
--- desc: window ROWS_RANGE, 前10s到当前条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
 
-## OpenMLDB特有的WINDOW SPEC元素
+## WindowSpec Elements specifically designed by OpenMLDB
 
-### Window With Union
+### **Window With Union**
 
 ```sql
 WindowUnionClause
 				 :: = ( 'UNION' TableRefs)
 ```
 
-#### **Example: Window with union 一张副表**
+#### Example
+**1. Window With `UNION` On 2 Tables**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -188,7 +195,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 2: window union one table](../dql/images/window_union_1_table.png)
 
-#### **Example: Window with union 多张副表**
+**2. Window With `UNION` on Multiple Tables**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -197,7 +204,7 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
-#### **Example: Window with union 样本表不进入窗口**
+**3. Window With `UNION` but Exclude Instance Table**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -206,7 +213,8 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 4: window union one table with instance_not_in_window](../dql/images/window_union_1_table_instance_not_in_window.png)
 
-#### **Example: Window with union 列筛选子查询**
+
+**4. Window With `UNION` Composed Of Subquery**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -216,27 +224,26 @@ WINDOW w1 AS
 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
 
-### Window Exclude Current Time
+### **Window Exclude Current Time**
 
 ```
 WindowExcludeCurrentTime 
 				::= 'EXCLUDE' 'CURRENT_TIME'  
 ```
 
-#### **Example: ROWS窗口EXCLUDE CURRENT TIME**
+#### Example
+**1. ROWS WINDOW with EXCLUDE CURRENT TIME**
 
+The following `WINDOW` clause defines a `ROWS` window containing preceding 1000 rows and current row. Any other rows in the window will not have the same time as the `CURRENT ROW`.
 ```SQL
--- ROWS example
--- desc: window ROWS, 前1000条到当前条, 除了current row以外窗口内不包含当前时刻的其他数据
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
 
-#### **Example: ROW RANGE窗口EXCLUDE CURRENT TIME**
+**2.ROW RANGE WINDOW with EXCLUDE CURRENT TIME**
 
+The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. Any other rows in the window will not have the same time as the `CURRENT ROW`.
 ```SQL
--- ROWS example
--- desc: window ROWS, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
@@ -245,8 +252,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ### Window Frame Max Size
 
-OpenMLDB在定义了元素，来限定窗口内条数。具体来说，可以在窗口定义里使用**MAXSIZE**关键字，来限制window内允许的有效窗口内最大数据条数。
-
+The keyword `MAXSIZE` is used to limit the number of rows in the window.
 ```sql
 WindowFrameMaxSize
 				:: = MAXSIZE NumLiteral
@@ -254,15 +260,16 @@ WindowFrameMaxSize
 
 ![Figure 6: window config max size](../dql/images/window_max_size.png)
 
-#### **Example: ROW RANGE 窗口MAXSIZE**
+####Example
+**1. ROWS RANGE WINDOW with MAXSIZE**
 
+The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. There are at most 3 rows in the window.
 ```sql
--- ROWS example
 -- desc: window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW MAXSIZE 3);
 ```
 
 ```{seealso}
-Aggregate functions that can be used in window calculation, refer to [Built-in Functions](../functions_and_operators/Files/udfs_8h.md)
+Aggregate functions that can be used in window computation, refer to [Built-in Functions](../functions_and_operators/Files/udfs_8h.md)
 ````
