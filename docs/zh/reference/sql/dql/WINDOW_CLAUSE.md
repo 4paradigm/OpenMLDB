@@ -226,7 +226,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CU
 ```
 
 #### **Example: ROW RANGE窗口EXCLUDE CURRENT TIME**
-window ROWS, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
+window ROWS_RANGE, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
@@ -236,7 +236,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ### Window Frame Max Size
 
-OpenMLDB在定义了元素，来限定窗口内条数。具体来说，可以在窗口定义里使用**MAXSIZE**关键字，来限制window内允许的有效窗口内最大数据条数。
+OpenMLDB在定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 
 ```sql
 WindowFrameMaxSize
