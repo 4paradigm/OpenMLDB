@@ -1994,12 +1994,15 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
 
     node::SqlNode* index_key_node = node_manager->MakeIndexKeyNode(keys);
     index_node_list->PushBack(index_key_node);
-    for (const auto option : root->options_list()->options_entries()) {
-        node::SqlNode* node = nullptr;
-        CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
-        if (node != nullptr) {
-            // NOTE: unhandled option will return OK, but node is not set
-            index_node_list->PushBack(node);
+    if (root->options_list() != nullptr) {
+        CHECK_TRUE(!root->options_list()->options_entries().empty(), common::kSqlAstError, "no item in options")
+        for (const auto option : root->options_list()->options_entries()) {
+            node::SqlNode* node = nullptr;
+            CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
+            if (node != nullptr) {
+                // NOTE: unhandled option will return OK, but node is not set
+                index_node_list->PushBack(node);
+            }
         }
     }
     node::ColumnIndexNode* column_index_node =

@@ -717,6 +717,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
         OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
         )sql";
     expect_converted(sql2);
+    expect_converted("CREATE INDEX index1 ON db1.t1 (col1);");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexFailTest) {
