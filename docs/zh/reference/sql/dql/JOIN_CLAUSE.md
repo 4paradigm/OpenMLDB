@@ -31,7 +31,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref;
 
 ### LAST JOIN without ORDER BY
 
-#### Example1: **LAST JOIN无排序拼接**
+#### Example1: LAST JOIN无排序拼接
 
 `LAST JOIN`无排序拼接时，拼接最后一条命中的数据行。
 
@@ -133,6 +133,9 @@ SUCCEED
 ```{note}
 `LAST JOIN`使用了索引优化：使用`LAST JOIN` 的 condition 和 order by 列寻找最匹配的表索引；如果有index就会使用该index的ts项作为未排序last join隐式使用的order；反之没有index，就使用表的存储顺序。没有索引的表的底层存储顺序是不可预测的。请注意，在建表时若没有显示指出索引的ts项，OpenMLDB会使用该条数据被插入时的时间戳作为ts。
 ```
+
+
+
 ### LAST JOIN with ORDER BY
 
 #### Example2: LAST JOIN排序拼接 
