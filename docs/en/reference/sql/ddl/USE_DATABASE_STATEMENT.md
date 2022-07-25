@@ -24,10 +24,10 @@ Create a database `db1`:
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 CREATE DATABASE db2;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
 Then select `db1` as the current database:
@@ -41,21 +41,23 @@ Create two tables:
 
 ```sql
 CREATE TABLE t1(col0 string);
--- SUCCEED: Create successfully
+-- SUCCEED
 
-CREATE TABLE t1(col0 string);
--- SUCCEED: Create successfully
+CREATE TABLE t2(col0 string);
+-- SUCCEED
 
 SHOW TABLES;
- -------- 
-  Tables  
- -------- 
-  t1      
-  t2      
- -------- 
+ --------
+  Tables
+ --------
+  t1
+  t2
+ --------
+
+2 rows in set
 ```
 
-Then select `db2` as the current database and view the tables under the current library:
+Then select `db2` as the current database and view the tables in `db2`:
 
 ```sql
 USE db2;
@@ -72,6 +74,6 @@ SHOW TABLES;
 
 [DROP DATABASE](./DROP_DATABASE_STATEMENT.md)
 
-[SHOW DATABASES](./SHOW_STATEMENT.md#show-databases)
+[SHOW DATABASES](./SHOW_DATABASES_STATEMENT.md)
 
-[SHOW TABLES](./SHOW_STATEMENT.md#show-tables)
+[SHOW TABLES](./SHOW_TABLES_STATEMENT.md)
