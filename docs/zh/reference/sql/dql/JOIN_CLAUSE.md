@@ -24,9 +24,10 @@ SELECT ... FROM table_ref LAST JOIN table_ref;
 
 ## 边界说明
 
-| SELECT语句元素 | 状态            | 说明                                                         |
-| :------------- | --------------- | :----------------------------------------------------------- |
-| JOIN Clause    | 仅支持LAST JOIN | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在Online Serving时，需要遵循[Online Serving下LAST JOIN的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-serving下last-join的使用规范) |
+| SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                                              |
+| :--------------------------------------------- | --------- | ------------ | ------------ |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JOIN Clause| **``✓``** | **``✓``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在Online Serving时，需要遵循[Online Serving下LAST JOIN的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servinglast-join)|
+
 
 ### LAST JOIN without ORDER BY
 

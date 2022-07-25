@@ -23,9 +23,9 @@ SELECT ... FROM table_ref LAST JOIN tab le_ref;
 
 ## Boundary Description
 
-| SELECT statement elements | state            | direction                                                         |
-| :------------- | --------------- | :----------------------------------------------------------- |
-| JOIN Clause    | Only LAST JOIN is supported | Indicates that the data source multiple tables JOIN. OpenMLDB currently only supports LAST JOIN. During Online Serving, you need to follow [The usage specification of LAST JOIN under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-serving usage specification of last-join) |
+| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
+|:-----------------------------------------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. During Online Serving, please follow [the specification of LAST JOIN under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join)                                                      |
 
 ### LAST JOIN without ORDER BY
 
