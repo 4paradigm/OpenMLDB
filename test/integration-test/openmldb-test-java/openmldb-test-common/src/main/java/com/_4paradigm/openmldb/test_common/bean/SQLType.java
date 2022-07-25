@@ -16,25 +16,28 @@ public enum SQLType {
     CREATE,
     DROP,
     USE,
-    SET
+    SET,
+    DESC
     ;
     public static final Set<SQLType> RESULT_SET = Sets.newHashSet(SELECT, SHOW, DEPLOY);
 //    public static final List<SQLType> VOID = Lists.newArrayList(CREATE,DROP,USE,INSERT);
     public static SQLType parseSQLType(String sql){
-        if(sql.toLowerCase().startsWith("select")){
+        if(sql.toLowerCase().startsWith("select ")){
             return SELECT;
-        }else if (sql.toLowerCase().startsWith("insert into")) {
+        }else if (sql.toLowerCase().startsWith("insert into ")) {
             return INSERT;
-        }else if (sql.toLowerCase().startsWith("show")) {
+        }else if (sql.toLowerCase().startsWith("show ")) {
             return SHOW;
-        }else if (sql.toLowerCase().startsWith("create")) {
+        }else if (sql.toLowerCase().startsWith("create ")) {
             return CREATE;
-        }else if (sql.toLowerCase().startsWith("drop")) {
+        }else if (sql.toLowerCase().startsWith("drop ")) {
             return DROP;
-        }else if (sql.toLowerCase().startsWith("use")) {
+        }else if (sql.toLowerCase().startsWith("use ")) {
             return USE;
-        }else if (sql.toLowerCase().startsWith("set")) {
+        }else if (sql.toLowerCase().startsWith("set ")) {
             return SET;
+        }else if (sql.toLowerCase().startsWith("desc ")) {
+            return DESC;
         }
         throw new IllegalArgumentException("no match sql type,sql:"+sql);
     }

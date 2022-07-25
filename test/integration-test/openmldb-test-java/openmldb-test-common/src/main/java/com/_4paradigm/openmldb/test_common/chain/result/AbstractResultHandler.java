@@ -29,15 +29,19 @@ public abstract class AbstractResultHandler {
 
     public abstract boolean preHandle(SQLType sqlType);
 
-    public abstract void onHandle(Statement statement, OpenMLDBResult openMLDBResult);
+    public abstract void onHandle(OpenMLDBResult openMLDBResult);
 
-    public void doHandle(Statement statement, OpenMLDBResult openMLDBResult){
-        SQLType sqlType = SQLType.parseSQLType(openMLDBResult.getSql());
+    public void doHandle(OpenMLDBResult openMLDBResult){
+        String sql = openMLDBResult.getSql();
+        SQLType sqlType = SQLType.parseSQLType(sql);
         if(preHandle(sqlType)){
-            onHandle(statement,openMLDBResult);
+            onHandle(openMLDBResult);
+            return;
         }
         if(nextHandler!=null){
-            nextHandler.doHandle(statement,openMLDBResult);
+            nextHandler.doHandle(openMLDBResult);
+            return;
         }
+        throw new IllegalArgumentException("result parse failed,not support sql type,sql:"+sql);
     }
 }

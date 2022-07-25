@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -40,11 +40,36 @@ public class DDLTest extends OpenMLDBTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
+    @Yaml(filePaths = "function/ddl/test_create.yaml")//7 表名为非保留关键字 没过
+    @Story("create")
+    @Test(dataProvider = "getCase",enabled = false)
+    public void testCreateByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/ddl/test_ttl.yaml")
     @Story("ttl")
     public void testTTL(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTLByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndex(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndexByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
     @Test(dataProvider = "getCase")
@@ -52,27 +77,6 @@ public class DDLTest extends OpenMLDBTest {
     @Story("options")
     public void testOptions(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
-    }
-
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
-    @Story("create_index")
-    public void testCreateIndex(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
-    }
-
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_create.yaml")//7 表名为非保留关键字 没过
-    @Story("create")
-    public void testCreateByCli(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
-    }
-
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
-    @Story("ttl")
-    public void testTTLByCli(SQLCase testCase){
-        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
     @Test(dataProvider = "getCase",enabled = false)

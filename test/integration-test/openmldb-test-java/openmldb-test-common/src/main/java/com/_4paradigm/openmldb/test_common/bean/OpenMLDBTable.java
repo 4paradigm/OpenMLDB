@@ -20,7 +20,8 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class OpenMLDBSchema {
+public class OpenMLDBTable {
     private List<OpenMLDBColumn> columns;
     private List<OpenMLDBIndex> indexs;
+    private String storageMode;
 }

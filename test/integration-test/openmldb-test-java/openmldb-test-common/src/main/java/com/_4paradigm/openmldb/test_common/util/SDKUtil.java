@@ -17,11 +17,11 @@
 package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBSchema;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.chain.result.ResultParserManager;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
@@ -206,30 +206,29 @@ public class SDKUtil {
             return null;
         }
         logger.info("desc:{}",descSql);
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        openMLDBResult.setSql(descSql);
         ResultSet rawRs = executor.executeSQL(dbName, descSql);
 
         if (rawRs == null) {
-            fesqlResult.setOk(false);
-            fesqlResult.setMsg("executeSQL fail, result is null");
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg("executeSQL fail, result is null");
         } else if  (rawRs instanceof SQLResultSet){
             try {
                 SQLResultSet rs = (SQLResultSet)rawRs;
-                ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
-                fesqlResult.setOk(true);
-                String deployStr = ResultUtil.convertResultSetToListDeploy(rs);
-                List<String> listDesc = ResultUtil.convertResultSetToListDesc(rs);
-                String[] strings = deployStr.split("\n");
-                List<String> stringList = Arrays.asList(strings);
-                OpenMLDBSchema openMLDBSchema = SchemaUtil.parseSchema(stringList);
-                fesqlResult.setSchema(openMLDBSchema);
+                ResultUtil.setSchema(rs.getMetaData(),openMLDBResult);
+                openMLDBResult.setOk(true);
+                List<List<Object>> result = ResultUtil.toList(rs);
+                openMLDBResult.setResult(result);
+                ResultParserManager.of().parseResult(openMLDBResult);
             } catch (Exception e) {
-                fesqlResult.setOk(false);
-                fesqlResult.setMsg(e.getMessage());
+                e.printStackTrace();
+                openMLDBResult.setOk(false);
+                openMLDBResult.setMsg(e.getMessage());
             }
         }
-
-        return fesqlResult;
+        logger.info("create index result:{}", openMLDBResult);
+        return openMLDBResult;
     }
 
 
@@ -238,17 +237,19 @@ public class SDKUtil {
             return null;
         }
         logger.info("ddl sql:{}", sql);
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         boolean createOk = false;
         try {
             createOk = executor.getStatement().execute(sql);
+            openMLDBResult.setOk(true);
             Thread.sleep(10000);
         } catch (Exception e) {
             e.printStackTrace();
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
         }
-        fesqlResult.setOk(createOk);
-        logger.info("ddl result:{}", fesqlResult);
-        return fesqlResult;
+        logger.info("create index result:{}", openMLDBResult);
+        return openMLDBResult;
     }
 
 

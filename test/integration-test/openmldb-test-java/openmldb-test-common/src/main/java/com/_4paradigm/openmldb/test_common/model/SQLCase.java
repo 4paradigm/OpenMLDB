@@ -56,6 +56,8 @@ public class SQLCase implements Serializable{
 
     private Map<Integer, ExpectDesc> expectProvider;
     private List<String> tearDown;
+    private List<String> excludes;
+    private String only;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);

@@ -86,16 +86,20 @@ public class CaseFile {
         }
         List<SQLCase> testCaseList = new ArrayList<>();
         List<String> debugs = getDebugs();
-        cases = cases.stream().filter(c->c.isSupportDiskTable()).peek(c->c.setStorage(OpenMLDBGlobalVar.tableStorageMode)).collect(Collectors.toList());
+        if (!OpenMLDBGlobalVar.tableStorageMode.equals("memory")) {
+            cases = cases.stream().filter(c->c.isSupportDiskTable()).peek(c->c.setStorage(OpenMLDBGlobalVar.tableStorageMode)).collect(Collectors.toList());
+        }
         for (SQLCase tmpCase : cases) {
             tmpCase.setCaseFileName(fileName);
-            // TODO 排除 create case
 //            List<InputDesc> inputs = tmpCase.getInputs();
 //            if(CollectionUtils.isNotEmpty(inputs)) {
 //                inputs.forEach(t -> t.setStorage(OpenMLDBGlobalVar.tableStorageMode));
 //            }
-            if (null == tmpCase.getDb()) {
+            if (StringUtils.isEmpty(tmpCase.getDb())) {
                 tmpCase.setDb(getDb());
+            }
+            if (StringUtils.isEmpty(tmpCase.getVersion())) {
+                tmpCase.setVersion(this.getVersion());
             }
             if(CollectionUtils.isEmpty(tmpCase.getSqlDialect())){
                 tmpCase.setSqlDialect(sqlDialect);

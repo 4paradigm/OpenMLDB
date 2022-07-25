@@ -39,7 +39,7 @@ public class OpenMLDBResult {
     private List<List<Object>> result;
     private List<String> columnNames;
     private List<String> columnTypes;
-    private OpenMLDBSchema schema;
+    private OpenMLDBTable schema;
     private OpenmldbDeployment deployment;
     private List<OpenmldbDeployment> deployments;
     private Integer deploymentCount;

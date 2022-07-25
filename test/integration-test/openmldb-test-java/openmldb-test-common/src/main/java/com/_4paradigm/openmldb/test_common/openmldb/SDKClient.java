@@ -1,20 +1,14 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.bean.SQLType;
-import com._4paradigm.openmldb.test_common.chain.result.ResultChainManager;
 import com._4paradigm.openmldb.test_common.util.ResultUtil;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.testng.Assert;
-import org.testng.collections.Lists;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;

@@ -2,7 +2,7 @@ package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBColumn;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBSchema;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,8 +18,8 @@ public class SchemaUtil {
         }
         return -1;
     }
-    public static OpenMLDBSchema parseSchema(List<String> lines){
-        OpenMLDBSchema schema = new OpenMLDBSchema();
+    public static OpenMLDBTable parseSchemaBySDK(List<String> lines){
+        OpenMLDBTable schema = new OpenMLDBTable();
         List<OpenMLDBColumn> cols = new ArrayList<>();
         List<OpenMLDBIndex> indexs = new ArrayList<>();
         Iterator<String> it = lines.iterator();

@@ -41,17 +41,17 @@ public class OpenMLDBTest extends BaseTest {
     protected static SqlExecutor executor;
 
     @BeforeTest()
-    @Parameters({"env","version","fedbPath"})
-    public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
+    @Parameters({"env","version","openMLDBPath"})
+    public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String openMLDBPath) throws Exception {
         OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
-            openMLDBDeploy.setOpenMLDBPath(fedbPath);
+            openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(true);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("standalone")){
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
-            openMLDBDeploy.setOpenMLDBPath(fedbPath);
+            openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(false);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else{

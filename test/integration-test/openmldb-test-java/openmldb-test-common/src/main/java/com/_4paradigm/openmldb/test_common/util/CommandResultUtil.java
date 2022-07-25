@@ -2,7 +2,7 @@ package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBColumn;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBSchema;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBTable;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
 import org.apache.commons.collections4.CollectionUtils;
@@ -32,8 +32,8 @@ public class CommandResultUtil {
                 ||tmp.contains("distribution element is not")||tmp.contains("is not currently supported")
                 ||tmp.contains("wrong type")||tmp.contains("not a supported object type")||tmp.contains("is not");
     }
-    public static OpenMLDBSchema parseSchema(List<String> lines){
-        OpenMLDBSchema schema = new OpenMLDBSchema();
+    public static OpenMLDBTable parseSchema(List<String> lines){
+        OpenMLDBTable schema = new OpenMLDBTable();
         List<OpenMLDBColumn> cols = new ArrayList<>();
         List<OpenMLDBIndex> indexs = new ArrayList<>();
         Iterator<String> it = lines.iterator();
