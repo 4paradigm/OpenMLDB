@@ -1,11 +1,11 @@
 # JOIN Clause
 
-OpenMLDB currently supports only one **JoinType** of `LAST JOIN`.
+OpenMLDB currently only supports `LAST JOIN`.
 
-LAST JOIN can be seen as a special kind of LEFT JOIN. On the premise that the JOIN condition is met, each row of the left table is spelled with a last row that meets the condition. LAST JOIN is divided into unsorted splicing and sorted splicing.
+LAST JOIN can be seen as a special kind of `LEFT JOIN`. On the premise that the JOIN condition is met, each row of the left table is joined with the last row of the right table that meets the condition. There are two types of `LAST JOIN`: unsorted join and sorted join.
 
-- Unsorted splicing refers to the direct splicing without sorting the right table.
-- Sorting and splicing refers to sorting the right table first, and then splicing.
+- Unsorted join will join two tables directly without sorting the right table.
+- Sorted join will sort the right table first, and then join two tables.
 
 ## Syntax
 
@@ -18,7 +18,7 @@ JoinType ::= 'LAST'
 ## SQL Statement Template
 
 ```sql
-SELECT ... FROM table_ref LAST JOIN table_ref;
+SELECT ... FROM table_ref LAST JOIN tab le_ref;
 ```
 
 ## Boundary Description
@@ -29,7 +29,8 @@ SELECT ... FROM table_ref LAST JOIN table_ref;
 
 ### LAST JOIN without ORDER BY
 
-#### Example: **LAST JOIN Unsorted Concatenation**
+#### Example: 
+**LAST JOIN Unsorted Concatenation**
 
 ```sql
 -- desc: simple spelling query without ORDER BY
@@ -37,7 +38,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref;
 SELECT t1.col1 as t1_col1, t2.col1 as t2_col2 from t1 LAST JOIN t2 ON t1.col1 = t2.col1
 ```
 
-When `LAST JOIN` is spliced ​​without sorting, the first hit data row is spliced
+When `LAST JOIN` is spliced without sorting, the first hit data row is spliced
 
 ![Figure 7: last join without order](../dql/images/last_join_without_order.png)
 
@@ -50,7 +51,8 @@ The final result is shown in the figure above.
 
 ### LAST JOIN with ORDER BY
 
-#### Example: LAST JOIN Sorting And Splicing
+#### Example:
+LAST JOIN Sorting And Splicing
 
 ```SQL
 -- desc: Simple spelling query with ORDER BY
