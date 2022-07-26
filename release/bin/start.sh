@@ -98,7 +98,7 @@ case $OP in
             sh ./taskmanager.sh 2>&1 &
             PID=$!
             popd > /dev/null 
-            sleep 2
+            sleep 10
             if kill -0 $PID > /dev/null 2>&1; then
                 /bin/echo $PID > "$OPENMLDB_PID_FILE"
                 echo "Start ${COMPONENT} success"
