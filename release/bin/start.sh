@@ -86,6 +86,8 @@ case $OP in
                     echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
                     exit 0
+                else
+                    break
                 fi
             done
         else
