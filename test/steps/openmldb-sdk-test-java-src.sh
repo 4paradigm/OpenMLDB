@@ -70,11 +70,15 @@ SERVER_URL=$(more ${deployConfigPath} | grep "${OPENMLDB_SERVER_VERSION}")
 echo "SERVER_URL:${SERVER_URL}"
 if [[ "${SERVER_URL}" == "" ]]; then
   echo "AAA"
-  echo "${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz" >> ${deployConfigPath}
+  echo "\n${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz" >> ${deployConfigPath}
+  echo "CCCC"
+  cat ${deployConfigPath}
 else
   echo "BBBB"
   sed -i "s#${OPENMLDB_SERVER_VERSION}=.*#${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz#" ${deployConfigPath}
 fi
+echo "DDDD"
+cat ${deployConfigPath}
 JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 JAVA_NATIVE_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 sh test/steps/build-java-sdk.sh
