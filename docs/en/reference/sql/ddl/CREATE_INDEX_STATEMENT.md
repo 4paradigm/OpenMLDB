@@ -46,7 +46,7 @@ The `CREATE INDEX` statement is used to create a new index on OpenMLDB. If there
 CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
-**Note**: If `OPTIONS` is not specified, the created index cannot be use in the SQL to serving online as deployment.
+**Note**: If `OPTIONS` is not specified, the created index cannot be used in the SQL to serving online as deployment.
 
 We can also set ts column as below:
 ```SQL
