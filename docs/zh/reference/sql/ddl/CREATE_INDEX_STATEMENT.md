@@ -3,7 +3,7 @@
 ## 语法
 
 ```sql
-CreateIndextmt ::=
+CreateIndexstmt ::=
     'CREATE' 'INDEX' IndexName ON TableName IndexColumn OptOptionsList
 
 IndexName ::= Identifier
@@ -46,6 +46,7 @@ OptionEntry ::=
 CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
+**注**: 如果不指定Options, 创建的索引就没有指定ts列，所以不能用在需要上线的SQL中。
 
 我们可以通过如下格式在创建索引时指定ts列:
 ```SQL

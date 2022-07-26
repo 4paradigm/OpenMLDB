@@ -1,9 +1,9 @@
-# CREATE INDEX
+# DROP INDEX
 
 ## 语法
 
 ```sql
-CreateIndextmt ::=
+DROPIndexstmt ::=
     'DROP' 'INDEX' TableName.IndexName
 ```
 
