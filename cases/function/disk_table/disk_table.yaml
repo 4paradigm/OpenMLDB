@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["创建磁盘表，ttl_type=latest,ttl=4,insert 10"]
+debugs: []
 version: 0.5.0
 cases:
   -
@@ -336,6 +336,7 @@ cases:
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["aa", 2, 3, 1590738989000]
+          - ["aa", 2, 3, 1590738989000]
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -375,7 +376,7 @@ cases:
     expect:
       success: false
 
-  - id: 14
+  - id: 15
     desc: 创建磁盘表，ttl_type=latest,ttl=4,insert 10
     inputs:
       -
@@ -383,26 +384,26 @@ cases:
         indexs: ["index1:c1:c4:4:latest"]
         storage: SSD
         rows:
-          - ["bb", 2, 3, "{currentTime}-600001"]
-          - ["bb", 4, 5, "{currentTime}-600002"]
-          - ["bb", 6, 7, "{currentTime}-600003"]
-          - ["bb", 8, 9, "{currentTime}-600004"]
-          - ["bb", 10, 11, "{currentTime}-600005"]
-          - ["bb", 12, 13, "{currentTime}-600006"]
-          - ["bb", 14, 15, "{currentTime}-600007"]
-          - ["bb", 16, 17, "{currentTime}-600008"]
-          - ["bb", 18, 19, "{currentTime}-600009"]
-          - ["bb", 20, 21, "{currentTime}-600010"]
+          - ["bb", 2, 3, 1590738989000]
+          - ["bb", 4, 5, 1590738990000]
+          - ["bb", 6, 7, 1590738991000]
+          - ["bb", 8, 9, 1590738992000]
+          - ["bb", 10, 11, 1590738993000]
+          - ["bb", 12, 13, 1590738994000]
+          - ["bb", 14, 15, 1590738995000]
+          - ["bb", 16, 17, 1590738996000]
+          - ["bb", 18, 19, 1590738997000]
+          - ["bb", 20, 21, 1590738998000]
     sql: select c1,c2,c3 from {0};
     expect:
       columns: ["c1 string","c2 int","c3 bigint"]
       rows:
-        - ["bb", 2, 3]
-        - ["bb", 4, 5]
-        - ["bb", 6, 7]
-        - ["bb", 8, 9]
+        - ["bb", 20, 21]
+        - ["bb", 18, 19]
+        - ["bb", 16, 17]
+        - ["bb", 14, 15]
 
-  - id: 15
+  - id: 16
     desc: 创建磁盘表，ttl_type=absolute，ttl=10m, insert 10
     inputs:
       -
@@ -428,7 +429,7 @@ cases:
         - ["bb", 4, 5]
         - ["bb", 6, 7]
 
-  - id: 16
+  - id: 17
     desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10
     inputs:
       -
@@ -455,7 +456,7 @@ cases:
         - ["bb", 2, 5]
         - ["bb", 2, 9]
 
-  - id: 17
+  - id: 18
     desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10 ,where条件
     inputs:
       -

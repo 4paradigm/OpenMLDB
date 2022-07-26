@@ -34,6 +34,10 @@ sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\
 echo "test suite xml:"
 cat test_suite/"${CASE_XML}"
 # modify pom
+cd "${ROOT_DIR}"
+cd test/integration-test/openmldb-test-java/openmldb-test-common || exit
 sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${OPENMLDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
 sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml
+echo "pom xml:"
+cat pom.xml
 cd "${ROOT_DIR}" || exit
