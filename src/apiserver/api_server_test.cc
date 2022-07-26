@@ -150,8 +150,6 @@ TEST_F(APIServerTest, query) {
 
     std::string ddl = "create table demo (c1 int, c2 string);";
     hybridse::sdk::Status status;
-    env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status);
-    ASSERT_TRUE(env->cluster_sdk->Refresh());
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
 
     std::string insert_sql = "insert into demo values (1, \"bb\");";
@@ -163,7 +161,7 @@ TEST_F(APIServerTest, query) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
         cntl.request_attachment().append(R"({
-            "sql": "select c1, c2 from demo;", "mode": "offsync"
+            "sql": "select c1, c2 from demo;", "mode": "online"
         })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
@@ -177,10 +175,10 @@ TEST_F(APIServerTest, query) {
         }
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(0, document["data"].Size());
+        ASSERT_EQ(1, document["data"].Size());
         ASSERT_EQ(2, document["data"][0].Size());
-        ASSERT_EQ(1, document["data"][0][0]);
-        ASSERT_STREQ("bb", document["data"][0][1]);
+        ASSERT_EQ(1, document["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
