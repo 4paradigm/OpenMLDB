@@ -3268,7 +3268,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
         return get_index_status;
     }
 
-    auto add_index_status = AddNewIndex(table_map, new_index_map);
+    auto add_index_status = AddNewIndex(db, table_map, new_index_map);
     if (!add_index_status.IsOK()) {
         return add_index_status;
     }
@@ -3392,16 +3392,16 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
+hybridse::sdk::Status SQLClusterRouter::AddNewIndex(const std::string& db,
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     if (cluster_sdk_->IsClusterMode()) {
         for (auto& kv : new_index_map) {
-            auto status = ns->AddMultiIndex(kv.first, kv.second);
+            auto status = ns->AddMultiIndex(db, kv.first, kv.second);
             if (!status.OK()) {
                 return {::hybridse::common::StatusCode::kCmdError,
-                        "table " + kv.first + " add index failed. " + status.msg};
+                        "table [" + db + "." + kv.first + "] add index failed. " + status.msg};
             }
         }
     } else {

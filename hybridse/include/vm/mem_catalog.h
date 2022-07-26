@@ -329,13 +329,13 @@ class WindowRange {
         bool out_of_rows, bool before_window, bool exceed_window) const {
         switch (frame_type_) {
             case Window::WindowFrameType::kFrameRows:
-                return out_of_rows ? kExceedWindow : kInWindow;
+                return out_of_rows ? kExceedWindow : (before_window ? kBeforeWindow : kInWindow);
             case Window::WindowFrameType::kFrameRowsMergeRowsRange: {
                 return out_of_rows
                            ? (before_window
                                   ? kBeforeWindow
                                   : exceed_window ? kExceedWindow : kInWindow)
-                           : kInWindow;
+                           : before_window ? kBeforeWindow : kInWindow;
             }
             case Window::WindowFrameType::kFrameRowsRange:
                 return exceed_window
@@ -373,7 +373,7 @@ class HistoryWindow : public Window {
         }
     }
 
-    virtual void PopEffectiveData() {
+    virtual void PopEffectiveDataIfAny() {
         if (!table_.empty()) {
             PopFrontRow();
         }
@@ -388,7 +388,7 @@ class HistoryWindow : public Window {
         auto cur_size = table_.size();
         if (cur_size < window_range_.start_row_) {
             // current in the ROWS window
-            int64_t sub = (key + window_range_.start_offset_);
+            int64_t sub = key + window_range_.start_offset_;
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             if (0 == window_range_.end_offset_) {
                 return BufferCurrentTimeBuffer(key, row, start_ts);
@@ -419,12 +419,27 @@ class HistoryWindow : public Window {
 
     // sliding rows data from `current_history_buffer_` into effective window
     // by giving the new start_ts and end_ts.
-    // Resulting the new effective window data whose bound is [start_ts, end_ts]
+    // Resulting the new effective window data whose bound is [start_ts, end_ts],
+    // NOTE
+    // - window bounds should be greater or equal to 0, < 0 is not supported yet,
+    // - values greater than int64_max is not considered as well
+    // - start_ts_inclusive > end_ts_inclusive is expected for rows window, e.g.
+    //   `(rows between .. and current_row exclude current_time)`.
+    //   Absolutely confusing design though, should refactored later
+    // TODO(ace): note above
     //
     // - elements in `current_history_buffer_` that `ele.first <= end_ts` goes out of
     //   `current_history_buffer_` and pushed into effective window
     // - elements in effective window where `ele.first < start_ts` goes out of effective window
-    void SlideWindow(uint64_t start_ts_inclusive, uint64_t end_ts_inclusive) {
+    //
+    // `start_ts_inclusive` and `end_ts_inclusive` can be empty, which effectively means less than 0.
+    // if `start_ts_inclusive` is empty, no rows goes out of effective window
+    // if `end_ts_inclusive` is empty, no rows goes out of history buffer and into effective window
+    void SlideWindow(std::optional<uint64_t> start_ts_inclusive, std::optional<uint64_t> end_ts_inclusive) {
+        if (!end_ts_inclusive.has_value()) {
+            return;
+        }
+
         while (!current_history_buffer_.empty() && current_history_buffer_.back().first <= end_ts_inclusive) {
             auto& back = current_history_buffer_.back();
 
@@ -436,7 +451,9 @@ class HistoryWindow : public Window {
     // push the row to the start of window
     // - pop last elements in window if exceed max window size
     // - also pop last elements in window if there ts less than `start_ts`
-    bool BufferEffectiveWindow(uint64_t key, const Row& row, uint64_t start_ts) {
+    //
+    // if `start_ts` is empty, no rows eliminated from window
+    bool BufferEffectiveWindow(uint64_t key, const Row& row, std::optional<uint64_t> start_ts) {
         AddFrontRow(key, row);
         auto cur_size = table_.size();
         while (window_range_.max_size_ > 0 &&
@@ -445,19 +462,18 @@ class HistoryWindow : public Window {
             --cur_size;
         }
 
-        // Slide window when window size >= rows_preceding
+        // Slide window if window start bound >= rows/range preceding
         while (cur_size > 0) {
             const auto& pair = GetBackRow();
-            if ((kFrameRows == window_range_.frame_type_ ||
-                 kFrameRowsMergeRowsRange == window_range_.frame_type_) &&
+            if ((kFrameRows == window_range_.frame_type_ || kFrameRowsMergeRowsRange == window_range_.frame_type_) &&
                 cur_size <= window_range_.start_row_ + 1) {
+                // note it is always current rows window
                 break;
             }
             if (kFrameRows == window_range_.frame_type_ ||
                 pair.first < start_ts) {
                 PopBackRow();
                 --cur_size;
-
             } else {
                 break;
             }
@@ -470,7 +486,11 @@ class HistoryWindow : public Window {
             // slide window first so current row kept in `current_history_buffer_`
             // and will go into window in next action
             if (exclude_current_time_) {
-                SlideWindow(start_ts, key - 1);
+                if (key == 0) {
+                    SlideWindow(start_ts, {});
+                } else {
+                    SlideWindow(start_ts, key - 1);
+                }
             } else {
                 SlideWindow(start_ts, key);
             }
@@ -482,9 +502,13 @@ class HistoryWindow : public Window {
             // except `exclude current_row`, the current row is always added to the effective window
             // but for next buffer action, previous current row already buffered in `current_history_buffer_`
             // so the previous current row need eliminated for this next buf action
-            PopEffectiveData();
+            PopEffectiveDataIfAny();
+            if (key == 0) {
+                SlideWindow(start_ts, {});
+            } else {
+                SlideWindow(start_ts, key - 1);
+            }
             current_history_buffer_.emplace_front(key, row);
-            SlideWindow(start_ts, key - 1);
         }
 
         // in queue the current row
