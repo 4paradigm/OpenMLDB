@@ -69,7 +69,7 @@ OPENMLDB_SERVER_VERSION="SRC"
 SERVER_URL=$(more ${deployConfigPath} | grep "${OPENMLDB_SERVER_VERSION}")
 echo "SERVER_URL:${SERVER_URL}"
 if [[ "${SERVER_URL}" == "" ]]; then
-  echo -e "\n${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz" >> ${deployConfigPath}
+  echo -e "\n${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz\n" >> ${deployConfigPath}
   cat ${deployConfigPath}
 else
   sed -i "s#${OPENMLDB_SERVER_VERSION}=.*#${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz#" ${deployConfigPath}
@@ -96,4 +96,4 @@ mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
-mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"
+mvn clean test -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"
