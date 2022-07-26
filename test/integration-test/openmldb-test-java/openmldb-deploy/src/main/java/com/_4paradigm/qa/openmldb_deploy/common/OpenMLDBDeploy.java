@@ -426,7 +426,7 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "sed -i "+sedSeparator+" 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + testPath + standaloneName + "/conf/standalone_tablet.flags",
-                    "echo '--hdd_root_path=./db_hdd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
+                    "echo -e '\n--hdd_root_path=./db_hdd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--recycle_bin_hdd_root_path=./recycle_hdd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--ssd_root_path=./db_ssd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
                     "echo '--recycle_bin_ssd_root_path=./recycle_ssd' >> "+testPath+standaloneName+"/conf/standalone_tablet.flags",
