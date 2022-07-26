@@ -64,6 +64,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
 #echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
 # 从源码编译
+#deployConfigPath="test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/deploy.properties"
 deployConfigPath="test/integration-test/openmldb-test-java/openmldb-deploy/src/main/resources/deploy.properties"
 OPENMLDB_SERVER_VERSION="SRC"
 SERVER_URL=$(more ${deployConfigPath} | grep "${OPENMLDB_SERVER_VERSION}")
