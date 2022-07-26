@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
@@ -1027,12 +1028,12 @@ class RequestAggUnionRunner : public Runner {
     //
     // implementation is limited
     // * only assume `cond` as `BinaryExprNode`, and supports six basic compassion operators
-    // * no smart type convert happens before compare, constant type always convert to column type
     //
     // returns compassion result
-    // * true -> true
-    // * false or NULL -> false
-    bool EvalCond(const RowParser* parser, const Row& row, const node::ExprNode* cond) const;
+    // * true/false/NULL
+    // * invalid input -> InvalidStatus
+    absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const Row& row,
+                                                 const node::ExprNode* cond) const;
 
     enum AggType {
         kSum,

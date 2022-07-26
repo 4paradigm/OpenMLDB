@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -1072,6 +1073,40 @@ class ConstNode : public ExprNode {
                 return "";
             }
         }
+    }
+
+    // include 'udf/literal_traits.h' for Nullable lead to recursive include
+    // so `optional` is used for nullable info
+    template <typename T>
+    absl::StatusOr<std::optional<T>> GetAs() const {
+        if (IsNull()) {
+            return absl::StatusOr<std::optional<T>>(std::make_optional<T>());
+        }
+        if (std::is_same_v<T, bool>) {
+            return absl::StatusOr<std::optional<T>>(GetBool());
+        }
+        if (std::is_same_v<T, int16_t>) {
+            return absl::StatusOr<std::optional<T>>(GetAsInt16());
+        }
+        if (std::is_same_v<T, int32_t>) {
+            return absl::StatusOr<std::optional<T>>(GetAsInt32());
+        }
+        if (std::is_same_v<T, int64_t>) {
+            return absl::StatusOr<std::optional<T>>(GetAsInt64());
+        }
+        if (std::is_same_v<T, float>) {
+            return absl::StatusOr<std::optional<T>>(GetAsFloat());
+        }
+        if (std::is_same_v<T, double>) {
+            return absl::StatusOr<std::optional<T>>(GetAsDouble());
+        }
+
+        if (std::is_same_v<T, std::string>) {
+            return absl::StatusOr<std::optional<T>>(GetAsString());
+        }
+
+        // TODO: use DataTypeTrait
+        return absl::InvalidArgumentError("can't cast T");
     }
 
     Status InferAttr(ExprAnalysisContext *ctx) override;

@@ -25,13 +25,48 @@
 #ifndef HYBRIDSE_SRC_VM_INTERNAL_EVAL_H_
 #define HYBRIDSE_SRC_VM_INTERNAL_EVAL_H_
 
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "codec/row.h"
+#include "node/expr_node.h"
 #include "node/node_enum.h"
+#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace vm {
 
+// extract value from expr node
+// limited implementation since it only expect node one of
+// * ColumnRefNode
+// * ConstNode
 template <typename T>
-bool EvalSimpleBinaryExpr(node::FnOperator op, const T& lhs, const T& rhs) {
+absl::StatusOr<std::optional<T>> ExtractValue(const RowParser* parser, const codec::Row& row,
+                                              const node::ExprNode* node) {
+    if (node->GetExprType() == node::ExprType::kExprPrimary) {
+        const auto* const_node = dynamic_cast<const node::ConstNode*>(node);
+        return const_node->GetAs<T>();
+    }
+
+    if (node->GetExprType() == node::ExprType::kExprColumnRef) {
+        const auto* column_ref = dynamic_cast<const node::ColumnRefNode*>(node);
+        if (parser->IsNull(row, *column_ref)) {
+            return std::make_optional<T>();
+        }
+        T data = {};
+        parser->GetValue(row, *column_ref, &data);
+        return std::make_optional<T>(data);
+    }
+
+    return absl::UnimplementedError(absl::StrCat("invalid node: ", node->GetExprString()));
+}
+
+template <typename T>
+std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optional<T>& lhs,
+                                         const std::optional<T>& rhs) {
+    if (!lhs.has_value() || !rhs.has_value()) {
+        return {};
+    }
+
     switch (op) {
         case node::FnOperator::kFnOpLt:
             return lhs < rhs;
@@ -49,7 +84,23 @@ bool EvalSimpleBinaryExpr(node::FnOperator op, const T& lhs, const T& rhs) {
             break;
     }
 
-    return false;
+    return {};
+}
+
+template <typename T>
+absl::StatusOr<std::optional<bool>> EvalBinaryExpr(const RowParser* parser, const codec::Row& row,
+                                                         node::FnOperator op, const node::ExprNode* lhs,
+                                                         const node::ExprNode* rhs) {
+    absl::Status ret = absl::OkStatus();
+    auto ls = ExtractValue<T>(parser, row, lhs);
+    auto rs = ExtractValue<T>(parser, row, rhs);
+    ret.Update(ls.status());
+    ret.Update(rs.status());
+    if (ret.ok()) {
+        return EvalSimpleBinaryExpr<T>(op, ls->value(), rs->value());
+    }
+
+    return ret;
 }
 
 }  // namespace vm

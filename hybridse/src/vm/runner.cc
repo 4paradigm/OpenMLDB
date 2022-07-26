@@ -21,13 +21,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "base/texttable.h"
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
-#include "vm/jit_runtime.h"
 #include "vm/internal/eval.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
@@ -2845,11 +2846,11 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
 
         if (cond_ != nullptr) {
-            // for those condition exists and evaluated to fase
+            // for those condition exists and evaluated to NULL/false
             // will apply to functions `*_where`
             // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
-            bool matches = EvalCond(row_parser, row, cond_);
-            if (!matches) {
+            auto matches = EvalCond(row_parser, row, cond_);
+            if (!matches.ok() || !matches->has_value()) {
                 return;
             }
         }
@@ -3058,7 +3059,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     return window_table;
 }
 
-bool RequestAggUnionRunner::EvalCond(const RowParser* parser, const Row& row, const node::ExprNode* cond) const {
+absl::StatusOr<std::optional<bool>> RequestAggUnionRunner::EvalCond(const RowParser* parser, const Row& row,
+                                                                    const node::ExprNode* cond) const {
     const auto* bin_expr = dynamic_cast<const node::BinaryExpr*>(cond);
     if (bin_expr == nullptr) {
         return false;
@@ -3067,101 +3069,42 @@ bool RequestAggUnionRunner::EvalCond(const RowParser* parser, const Row& row, co
     const auto* left = bin_expr->GetChild(0);
     const auto* right = bin_expr->GetChild(1);
 
-    if (left->GetExprType() == node::kExprColumnRef && right->GetExprType() == node::kExprPrimary) {
-        const auto* lhs = dynamic_cast<const node::ColumnRefNode*>(left);
-        const auto* rhs = dynamic_cast<const node::ConstNode*>(right);
-        if (parser->IsNull(row, *lhs) || rhs->IsNull()) {
-            return false;
-        }
-
-        switch (parser->GetType(*lhs)) {
-            case type::Type::kInt16: {
-                int16_t val = 0;
-                parser->GetValue(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<int16_t>(bin_expr->GetOp(), val, rhs->GetAsInt16());
-            }
-            case type::Type::kDate:
-            case type::Type::kInt32: {
-                int32_t val = 0;
-                parser->GetValue(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<int32_t>(bin_expr->GetOp(), val, rhs->GetAsInt32());
-            }
-            case type::Type::kTimestamp:
-            case type::Type::kInt64: {
-                int64_t val = 0;
-                parser->GetValue(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<int64_t>(bin_expr->GetOp(), val, rhs->GetAsInt64());
-            }
-            case type::Type::kFloat: {
-                float val = 0;
-                parser->GetValue(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<float>(bin_expr->GetOp(), val, rhs->GetFloat());
-            }
-            case type::Type::kDouble: {
-                double val = 0;
-                parser->GetValue(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<double>(bin_expr->GetOp(), val, rhs->GetDouble());
-            }
-            case type::Type::kVarchar: {
-                std::string val;
-                parser->GetString(row, *lhs, &val);
-                return EvalSimpleBinaryExpr<std::string>(bin_expr->GetOp(), val, rhs->GetAsString());
-                break;
-            }
-            default:
-                LOG(ERROR) << "Not support type: " << Type_Name(parser->GetType(*lhs));
-                break;
-        }
-    } else if (right->GetExprType() == node::kExprColumnRef && left->GetExprType() == node::kExprPrimary) {
-        const auto* lhs = dynamic_cast<const node::ConstNode*>(left);
-        const auto* rhs = dynamic_cast<const node::ColumnRefNode*>(right);
-        if (parser->IsNull(row, *rhs) || lhs->IsNull()) {
-            return false;
-        }
-
-        switch (parser->GetType(*rhs)) {
-            case type::Type::kInt16: {
-                int16_t val = 0;
-                parser->GetValue(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<int16_t>(bin_expr->GetOp(), lhs->GetAsInt16(), val);
-            }
-            case type::Type::kDate:
-            case type::Type::kInt32: {
-                int32_t val = 0;
-                parser->GetValue(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<int32_t>(bin_expr->GetOp(), lhs->GetAsInt32(), val);
-            }
-            case type::Type::kTimestamp:
-            case type::Type::kInt64: {
-                int64_t val = 0;
-                parser->GetValue(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<int64_t>(bin_expr->GetOp(), lhs->GetAsInt64(), val);
-            }
-            case type::Type::kFloat: {
-                float val = 0;
-                parser->GetValue(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<float>(bin_expr->GetOp(), lhs->GetFloat(), val);
-            }
-            case type::Type::kDouble: {
-                double val = 0;
-                parser->GetValue(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<double>(bin_expr->GetOp(), lhs->GetDouble(), val);
-            }
-            case type::Type::kVarchar: {
-                std::string val;
-                parser->GetString(row, *rhs, &val);
-                return EvalSimpleBinaryExpr<std::string>(bin_expr->GetOp(), lhs->GetAsString(), val);
-                break;
-            }
-            default:
-                LOG(ERROR) << "Not support type: " << Type_Name(parser->GetType(*rhs));
-                break;
-        }
-    } else {
-        LOG(ERROR) << "Unsupported Op: " << cond->GetExprString();
+    node::NodeManager nm;
+    const node::TypeNode* compare_type = nullptr;
+    auto s = node::ExprNode::InferNumberCastTypes(&nm, left->GetOutputType(), right->GetOutputType(), &compare_type);
+    if (!s.isOK()) {
+        return absl::InvalidArgumentError(s.GetMsg());
     }
 
-    return false;
+    switch (compare_type->base()) {
+        case node::DataType::kBool: {
+            return EvalBinaryExpr<bool>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kInt16: {
+            return EvalBinaryExpr<int16_t>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kInt32:
+        case node::DataType::kDate: {
+            return EvalBinaryExpr<int32_t>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kTimestamp:
+        case node::DataType::kInt64: {
+            return EvalBinaryExpr<int64_t>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kFloat: {
+            return EvalBinaryExpr<float>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kDouble: {
+            return EvalBinaryExpr<double>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        case node::DataType::kVarchar: {
+            return EvalBinaryExpr<std::string>(parser, row, bin_expr->GetOp(), left, right);
+        }
+        default:
+            break;
+    }
+
+    return absl::UnimplementedError(cond->GetExprString());
 }
 
 std::shared_ptr<DataHandler> ReduceRunner::Run(
