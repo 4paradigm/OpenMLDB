@@ -87,6 +87,63 @@ Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+template <>
+absl::StatusOr<std::optional<bool>> ConstNode::GetAs<bool>() const {
+    if (IsNull()) {
+        return std::make_optional<bool>();
+    }
+    return GetBool();
+}
+
+template <>
+absl::StatusOr<std::optional<int16_t>> ConstNode::GetAs<int16_t>() const {
+    if (IsNull()) {
+        return std::make_optional<int16_t>();
+    }
+    return GetAsInt16();
+}
+
+template <>
+absl::StatusOr<std::optional<int32_t>> ConstNode::GetAs<int32_t>() const {
+    if (IsNull()) {
+        return std::make_optional<int32_t>();
+    }
+    return GetAsInt32();
+}
+
+template <>
+absl::StatusOr<std::optional<int64_t>> ConstNode::GetAs<int64_t>() const {
+    if (IsNull()) {
+        return std::make_optional<int64_t>();
+    }
+    return GetAsInt64();
+}
+
+template <>
+absl::StatusOr<std::optional<float>> ConstNode::GetAs<float>() const {
+    if (IsNull()) {
+        return std::make_optional<float>();
+    }
+    return GetAsFloat();
+}
+
+template <>
+absl::StatusOr<std::optional<double>> ConstNode::GetAs<double>() const {
+    if (IsNull()) {
+        return std::make_optional<double>();
+    }
+    return GetAsDouble();
+}
+
+template <>
+absl::StatusOr<std::optional<std::string>> ConstNode::GetAs<std::string>() const {
+    if (IsNull()) {
+        return std::make_optional<std::string>();
+    }
+    return GetAsString();
+}
+
+
 Status CallExprNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(GetFnDef()->GetReturnType());
     return Status::OK();
