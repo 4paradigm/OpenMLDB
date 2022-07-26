@@ -13,7 +13,8 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ['创建磁盘表，有两个索引，分别为latest和absolute，insert=10 ,where条件']
+debugs: ["创建磁盘表，ttl_type=latest,ttl=4,insert 10"]
+version: 0.5.0
 cases:
   -
     id: 0
@@ -57,7 +58,6 @@ cases:
   -
     id: 2
     desc: ssd和内存表，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -70,6 +70,7 @@ cases:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
+        storage: memory
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
@@ -84,7 +85,6 @@ cases:
   -
     id: 3
     desc: hdd和内存表，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -97,6 +97,7 @@ cases:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
+        storage: memory
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
@@ -111,11 +112,11 @@ cases:
   -
     id: 4
     desc: 内存表和ssd，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
+        storage: memory
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
@@ -138,11 +139,11 @@ cases:
   -
     id: 5
     desc: 内存表和hdd，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
+        storage: memory
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
@@ -165,7 +166,6 @@ cases:
   -
     id: 6
     desc: hdd和ssd，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -193,11 +193,11 @@ cases:
   -
     id: 7
     desc: hdd和ssd，join
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
+        storage: memory
         rows:
           - ["aa", 2, 3, 1590738989000]
           - ["bb", 21, 31, 1590738990000]
@@ -238,6 +238,7 @@ cases:
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
+        storage: memory
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -262,6 +263,7 @@ cases:
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
+        storage: memory
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -279,6 +281,7 @@ cases:
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
+        storage: memory
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
@@ -303,6 +306,7 @@ cases:
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
+        storage: memory
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
@@ -329,17 +333,15 @@ cases:
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
         storage: SSD
-#        rows:
-#          - ["aa", 2, 3, 1590738989000]
-    sqls:
-      - insert into {0} values("aa", 2, 3, 1590738989000)
-      - insert into {0} values("aa", 2, 3, 1590738989000)
-      - select * from {0};
+        rows:
+          - ["aa", 2, 3, 1590738989000]
+          - ["aa", 2, 3, 1590738989000]
+    sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa", 2, 3, 1590738989000]
-  - id: 12
+  - id: 13
     desc: HDD 插入索引和ts 一样的数据
     inputs:
       -
@@ -354,19 +356,24 @@ cases:
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa", 2, 3, 1590738989000]
-  - id: 13
+  - id: 14
     desc: storage_mode=其他字符
-    inputs:
-      -
-        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        storage: hdp
+#    inputs:
+#      -
+#        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+#        indexs: ["index1:c1:c4"]
+#        storage: hdp
 #        rows:
 #          - ["aa", 2, 3, 1590738989000]
-    sql: select * from {0};
+    sql: |
+      create table auto_MDYewbTv(
+      c1 string,
+      c2 int,
+      c3 bigint,
+      c4 timestamp,
+      index(key=(c1),ts=c4))options(partitionnum=1,replicanum=1,storage_mode="hdp");
     expect:
       success: false
-
 
   - id: 14
     desc: 创建磁盘表，ttl_type=latest,ttl=4,insert 10
@@ -475,15 +482,3 @@ cases:
         - ["bb", 2, 5]
         - ["bb", 2, 9]
         - ["bb", 2, 11]
-
-# - id: 16
-#   desc: 数据过期类型长时间
-#   inputs:
-#     -
-#       columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-#       indexs: ["index1:c1:c4:10000h"]
-#       storage: hdp
-#       rows:
-#         - ["aa", 2, 3, 1590738989000]
-#   sql: select * from {0};
-#   expect:

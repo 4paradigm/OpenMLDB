@@ -40,7 +40,10 @@ public class OpenMLDBDeployConfig {
     }
 
     public static String getUrl(String version){
-        return CONFIG.getProperty(version, DeployUtil.getOpenMLDBUrl(version));
+        System.out.println("CONFIG = " + CONFIG);
+        String openMLDBPkgUrl = CONFIG.getProperty(version, DeployUtil.getOpenMLDBUrl(version));
+        System.out.println("openMLDBPkgUrl = " + openMLDBPkgUrl);
+        return openMLDBPkgUrl;
     }
     public static String getZKUrl(String version){
         return CONFIG.getProperty(version+"_zk_url", ZK_URL);

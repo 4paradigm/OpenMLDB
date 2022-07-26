@@ -101,7 +101,11 @@ public class SQLCase implements Serializable{
     }
     public void setStorage(String storageMode){
         if(CollectionUtils.isNotEmpty(inputs)) {
-            inputs.forEach(t -> t.setStorage(storageMode));
+            inputs.forEach(t -> {
+                if(StringUtils.isEmpty(t.getStorage())){
+                    t.setStorage(storageMode);
+                }
+            });
         }
     }
 

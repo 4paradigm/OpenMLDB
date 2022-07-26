@@ -10,6 +10,20 @@ import java.util.ArrayList;
 import java.util.List;
 @Slf4j
 public class DataUtil {
+
+    public static Object parseTime(Object data){
+        String dataStr = String.valueOf(data);
+        if(dataStr.equals("{currentTime}")){
+            return System.currentTimeMillis();
+        }else if(dataStr.startsWith("{currentTime}-")){
+            long t = Long.parseLong(dataStr.substring(14));
+            return System.currentTimeMillis()-t;
+        }else if(dataStr.startsWith("{currentTime}+")){
+            long t = Long.parseLong(dataStr.substring(14));
+           return System.currentTimeMillis()+t;
+        }
+        return data;
+    }
     public static Object parseRules(String data){
         Object obj = null;
         if(data.equals("{currentTime}")){
@@ -91,6 +105,7 @@ public class DataUtil {
                 requestPs.setNull(i + 1, 0);
                 continue;
             }
+            obj = DataUtil.parseTime(obj);
             int columnType = metaData.getColumnType(i + 1);
             if (columnType == Types.BOOLEAN) {
                 requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));

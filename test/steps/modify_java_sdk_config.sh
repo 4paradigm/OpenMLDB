@@ -31,6 +31,8 @@ sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\
 #if [[ "${BUILD_MODE}" == "SRC" ]]; then
 #    sed -i "s#<parameter name=\"openMLDBPath\" value=\".*\"/>#<parameter name=\"openMLDBPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
 #fi
+echo "test suite xml:"
+cat test_suite/"${CASE_XML}"
 # modify pom
 sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${OPENMLDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
 sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml

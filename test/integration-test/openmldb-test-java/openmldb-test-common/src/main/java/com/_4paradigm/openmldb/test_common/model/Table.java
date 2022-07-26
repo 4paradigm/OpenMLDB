@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.util.DataUtil;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import lombok.Data;
@@ -116,8 +117,7 @@ public class Table implements Serializable{
         for (List<Object> row : getRows()) {
             List<List<Object>> rows = Lists.newArrayList();
             rows.add(row);
-            inserts.add(buildInsertSQLFromRows(name, getColumns(),
-                    rows));
+            inserts.add(buildInsertSQLFromRows(name, getColumns(), rows));
         }
         return inserts;
     }

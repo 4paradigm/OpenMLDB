@@ -75,15 +75,15 @@ public class SQLUtil {
         return sql;
     }
 
-    public static String formatSql(String sql, OpenMLDBInfo fedbInfo) {
+    public static String formatSql(String sql, OpenMLDBInfo openMLDBInfo) {
         if(sql.contains("{tb_endpoint_0}")){
-            sql = sql.replace("{tb_endpoint_0}", fedbInfo.getTabletEndpoints().get(0));
+            sql = sql.replace("{tb_endpoint_0}", openMLDBInfo.getTabletEndpoints().get(0));
         }
         if(sql.contains("{tb_endpoint_1}")){
-            sql = sql.replace("{tb_endpoint_1}", fedbInfo.getTabletEndpoints().get(1));
+            sql = sql.replace("{tb_endpoint_1}", openMLDBInfo.getTabletEndpoints().get(1));
         }
         if(sql.contains("{tb_endpoint_2}")){
-            sql = sql.replace("{tb_endpoint_2}", fedbInfo.getTabletEndpoints().get(2));
+            sql = sql.replace("{tb_endpoint_2}", openMLDBInfo.getTabletEndpoints().get(2));
         }
         return sql;
     }
