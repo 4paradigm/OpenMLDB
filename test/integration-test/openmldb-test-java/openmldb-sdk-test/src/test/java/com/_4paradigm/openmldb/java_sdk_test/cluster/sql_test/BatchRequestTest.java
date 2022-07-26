@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+
+package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -21,19 +22,27 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
-import io.qameta.allure.Step;
 import io.qameta.allure.Story;
-import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
-@Slf4j
-@Feature("ParameterQueryTest")
-public class ParameterQueryTest extends OpenMLDBTest {
-    @Story("batch")
+@Feature("BatchTest")
+public class BatchRequestTest extends OpenMLDBTest {
+    @Story("BatchRequest")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"query/parameterized_query.yaml"})
-    @Step("{testCase.desc}")
-    public void testSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kSelectPrepared).run();
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testBatchRequest(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequest).run();
+    }
+    @Story("SPBatchRequest")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testSPBatchRequest(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSp).run();
+    }
+    @Story("SPBatchRequestAsyn")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/test_batch_request.yaml")
+    public void testSPBatchRequestAsyn(SQLCase testCase) {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSpAsync).run();
     }
 }

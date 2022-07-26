@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v030;
+package com._4paradigm.openmldb.java_sdk_test.cluster.fz;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -22,42 +22,40 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
-import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
 /**
- * @author zhaowei
- * @date 2020/6/11 2:53 PM
+ * @author chenjing
+ * @date 2021/2/2
  */
 @Slf4j
-@Feature("MultiDBTest")
-public class MultiDBTest extends OpenMLDBTest {
+@Feature("FZCase")
+public class FZCaseTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
-    @Step("{testCase.desc}")
-    public void testMultiDB(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "getCase", enabled = false)
+    @Yaml(filePaths = "function/fz_ddl/")
+    public void testFZCaseBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testMultiDBRequestMode(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "getCase", enabled = false)
+    @Yaml(filePaths = "function/fz_ddl/")
+    public void testFZCaseRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testMultiDBRequestModeWithSp(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "getCase", enabled = false)
+    @Yaml(filePaths = "function/fz_ddl/")
+    public void testFZCaseRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
-    public void testMultiDBRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+    @Test(dataProvider = "getCase", enabled = false)
+    @Yaml(filePaths = "function/fz_ddl/")
+    public void testFZCaseRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
 }
