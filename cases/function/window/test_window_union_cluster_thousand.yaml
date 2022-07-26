@@ -16,6 +16,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: 正常union

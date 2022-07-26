@@ -154,6 +154,7 @@ public class OpenMLDBDeploy {
     private String downloadOpenMLDB(String testPath){
         try {
             String command;
+            log.info("openMLDBUrl:{}",openMLDBUrl);
             if(openMLDBUrl.startsWith("http")) {
                 command = "wget -P " + testPath + " -q " + openMLDBUrl;
             }else{

@@ -87,6 +87,8 @@ public class ResultChecker extends BaseChecker {
                     );
 
                 } else if (actual_val != null && actual_val instanceof Double) {
+                    System.out.println("expect_val = " + expect_val);
+                    System.out.println("actual_val = " + actual_val);
                     Assert.assertTrue(expect_val != null && expect_val instanceof Double);
                     Assert.assertEquals(
                             (Double) actual_val, (Double) expect_val, 1e-4,

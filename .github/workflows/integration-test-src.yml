@@ -1,6 +1,12 @@
 name: INTEGRATION-TEST-SRC
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron:  '* 1 * * *'
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:
@@ -74,6 +80,8 @@ jobs:
           make configure CMAKE_INSTALL_PREFIX=openmldb-linux
           make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
           tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b SRC -c test_cluster.xml -d cluster -l "0"
       - name: TEST Results

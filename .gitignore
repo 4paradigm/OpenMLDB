@@ -98,6 +98,7 @@ java/hybridse-proto/src
 # test
 logs/
 out/
+allure-results/
 
 # python builds
 /python/dist/

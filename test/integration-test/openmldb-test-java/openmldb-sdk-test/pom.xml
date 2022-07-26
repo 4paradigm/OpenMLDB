@@ -114,8 +114,8 @@
                             <value>${caseLevel}</value>
                         </property>
                         <property>
-                            <name>fedbVersion</name>
-                            <value>${fedbVersion}</value>
+                            <name>diffVersion</name>
+                            <value>${diffVersion}</value>
                         </property>
                         <property>
                             <name>reportLog</name>

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 sqlDialect: ["HybridSQL"]
-debugs: ["Where条件未命中索引示例2"]
+debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: Where条件命中索引

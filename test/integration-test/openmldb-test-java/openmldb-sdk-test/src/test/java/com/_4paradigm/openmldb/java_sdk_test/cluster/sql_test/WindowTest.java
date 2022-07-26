@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v040;
+package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -31,31 +31,46 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("Express")
-public class ExpressTest extends OpenMLDBTest {
+@Feature("Window")
+public class WindowTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/v040/test_like.yaml")
-    public void testExpress(SQLCase testCase) throws Exception {
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/v040/test_like.yaml")
-    public void testExpressRequestMode(SQLCase testCase) throws Exception {
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/v040/test_like.yaml")
-    public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/v040/test_like.yaml")
-    public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
+    }
+
+    @Story("request")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/test_window_union_cluster_thousand.yaml"})
+    public void testWindowRequestMode2(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
 }

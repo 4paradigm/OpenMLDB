@@ -13,7 +13,8 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["两个子查询lastjoin，order不是主表的ts-rtidb不支持"]
+debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: lastjoin+窗口
@@ -57,6 +58,7 @@ cases:
         - [5,"bb",24,34,68]
   - id: 1
     desc: lastjoin+窗口-没有匹配的列
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

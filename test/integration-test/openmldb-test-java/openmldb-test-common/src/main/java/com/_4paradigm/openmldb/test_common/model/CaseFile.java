@@ -86,6 +86,9 @@ public class CaseFile {
         }
         List<SQLCase> testCaseList = new ArrayList<>();
         List<String> debugs = getDebugs();
+//        if(StringUtils.isNotEmpty(OpenMLDBGlobalVar.version)){
+//            cases = cases.stream().filter(c->c.getVersion().compareTo(OpenMLDBGlobalVar.version)<=0).collect(Collectors.toList());
+//        }
         if (!OpenMLDBGlobalVar.tableStorageMode.equals("memory")) {
             cases = cases.stream().filter(c->c.isSupportDiskTable()).peek(c->c.setStorage(OpenMLDBGlobalVar.tableStorageMode)).collect(Collectors.toList());
         }
@@ -111,6 +114,9 @@ public class CaseFile {
                 continue;
             }
             if (isCaseInBlackList(tmpCase)) {
+                continue;
+            }
+            if(StringUtils.isNotEmpty(OpenMLDBGlobalVar.version)&&OpenMLDBGlobalVar.version.compareTo(tmpCase.getVersion())<0){
                 continue;
             }
             addCase(tmpCase,testCaseList);

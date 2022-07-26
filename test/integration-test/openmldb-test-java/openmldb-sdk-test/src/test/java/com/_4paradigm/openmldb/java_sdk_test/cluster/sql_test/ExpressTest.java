@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -31,31 +31,39 @@ import org.testng.annotations.Test;
  * @date 2020/6/11 2:53 PM
  */
 @Slf4j
-@Feature("Lastjoin")
-public class LastJoinTest extends OpenMLDBTest {
+@Feature("Express")
+public class ExpressTest extends OpenMLDBTest {
 
-     @Story("batch")
-     @Test(dataProvider = "getCase")
-     @Yaml(filePaths = {"function/join/"})
-     public void testLastJoin(SQLCase testCase) throws Exception {
-         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
-     }
+    @Story("batch")
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = {
+            "function/expression/"
+    })
+    public void testExpress(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
-    public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
+    @Yaml(filePaths = {
+            "function/expression/"
+    })
+    public void testExpressRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
-     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
-    public void testLastJoinRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSp).run();
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {
+            "function/expression/"
+    })
+    public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
-     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
-    public void testLastJoinRequestModeWithSpAsync(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSpAsync).run();
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {
+            "function/expression/"
+    })
+    public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
 }

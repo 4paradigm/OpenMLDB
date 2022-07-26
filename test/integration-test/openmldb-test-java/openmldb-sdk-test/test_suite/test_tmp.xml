@@ -11,7 +11,7 @@
         </packages>
 <!--        <classes>-->
 <!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest" />-->
-<!--            &lt;!&ndash;<class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.ExpressTest" />&ndash;&gt;-->
+<!--            &lt;!&ndash;<class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.ExpressTest" />&ndash;&gt;-->
 <!--        </classes>-->
     </test>
     <listeners>

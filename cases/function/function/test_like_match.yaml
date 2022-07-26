@@ -15,6 +15,7 @@
 db: test_zw
 debugs: []
 sqlDialect: ["HybridSQL"]
+version: 0.5.0
 cases:
   - id: 0
     desc: "使用_"

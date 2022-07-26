@@ -13,7 +13,8 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["Last Join 无order by, 拼表条件命中索引, 副表多条命中"]
+debugs: []
+version: 0.5.0
 cases:
   - id: 1
     desc: 正常拼接

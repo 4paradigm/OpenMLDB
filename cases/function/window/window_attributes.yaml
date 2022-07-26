@@ -5,6 +5,7 @@
 # - MAXSIZE
 
 debugs: []
+version: 0.6.0
 cases:
   - id: 0
     desc: ROWS_RANGE window with exclude_current_row

@@ -72,7 +72,7 @@ public class OpenMLDBConfig {
             log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
         }
 
-        String versionStr = System.getProperty("fedbVersion");
+        String versionStr = System.getProperty("diffVersion");
         if (StringUtils.isEmpty(versionStr)) {
             versionStr = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_versions");
         }
@@ -96,6 +96,12 @@ public class OpenMLDBConfig {
         if(StringUtils.isNotEmpty(tableStorageMode)){
             OpenMLDBGlobalVar.tableStorageMode = tableStorageMode;
         }
+        log.info("test tableStorageMode: {}", OpenMLDBGlobalVar.tableStorageMode);
+        String version = CONFIG.getProperty("version");
+        if(StringUtils.isNotEmpty(version)){
+            OpenMLDBGlobalVar.version = version;
+        }
+        log.info("test version: {}", OpenMLDBGlobalVar.version);
     }
 
     public static boolean isCluster() {

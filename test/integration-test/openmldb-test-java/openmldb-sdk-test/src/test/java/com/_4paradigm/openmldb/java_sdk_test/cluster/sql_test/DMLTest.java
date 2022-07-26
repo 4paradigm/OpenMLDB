@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.java_sdk_test.cluster.v230;
+package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
 
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
@@ -42,6 +42,13 @@ public class DMLTest extends OpenMLDBTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
+    @Story("insert")
+    public void testInsertByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
     @Story("insert-prepared")
@@ -49,10 +56,17 @@ public class DMLTest extends OpenMLDBTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
     }
 
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Story("multi-insert")
+    public void testMultiInsert(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
-    @Story("insert")
-    public void testInsertByCli(SQLCase testCase){
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Story("multi-insert")
+    public void testMultiInsertByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
