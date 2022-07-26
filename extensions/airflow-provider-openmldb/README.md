@@ -28,8 +28,8 @@ To build openmldb provider, follow the steps below:
 
 # How to use
 
-Write the dag, using openmldb operators, ref [simple openmldb operator dag example](openmldb_provider/example_dags/example_openmldb.py).
+Write the dag, using openmldb operators, ref [simple openmldb operator dag example](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags/example_openmldb.py).
 
 Create the connection in airflow, the name is `openmldb_conn_id` you set. 
 
-Run dag.
+Trigger the dag.

@@ -17,14 +17,14 @@ setup(
             "provider_info=openmldb_provider.__init__:get_provider_info"
         ]
     },
-    license='Apache License 2.0',
+    license="copyright 4paradigm.com",
     packages=['openmldb_provider', 'openmldb_provider.hooks',
               'openmldb_provider.operators'],
     install_requires=['apache-airflow>=2.0'],
     setup_requires=['setuptools', 'wheel'],
     author='Huang Wei',
     author_email='huangwei@apache.org',
-    url='',
+    url='https://github.com/4paradigm/OpenMLDB',
     classifiers=[
         "Framework :: Apache Airflow",
         "Framework :: Apache Airflow :: Provider",
