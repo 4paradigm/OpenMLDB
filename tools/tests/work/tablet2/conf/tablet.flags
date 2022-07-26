@@ -1,1 +1,1 @@
---openmldb_log_dir=./logs_other
+#--openmldb_log_dir=./logs_other

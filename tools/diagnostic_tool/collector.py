@@ -16,19 +16,9 @@ import os
 
 import paramiko
 
-from diagnostic_tool.dist_conf import DistConf, ALL_SERVER_ROLES
+from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo
 
-
-def get_config_paths(endpoint, role, remote_root, local_root):
-    config_name = f'{role}.flags' if role != 'taskmanager' else f'{role}.properties'
-    local_prefix = f"{endpoint}-{role}"
-    return f"{remote_root}/conf/{config_name}", f"{local_root}/{local_prefix}/{config_name}"
-
-
-def get_log_paths(endpoint, role, remote_log_dir, log_names, dest):
-    # TODO(hw): openmldb glog config? will it get a too large log file? fix the settings
-    return [(f'{remote_log_dir}/{log_name}', f'{dest}/{endpoint}-{role}/{log_name}')
-            for log_name in log_names]
+log = logging.getLogger(__name__)
 
 
 class Collector:
@@ -45,20 +35,61 @@ class Collector:
         throw SSHException if the server fails to execute the command
         :return: bool
         """
-        endpoints = self.dist_conf.get_from_all_hosts(lambda server: server['endpoint'].split(':')[0])
-        for host in endpoints:
-            self.ssh_client.connect(hostname=host)
-            stdin, stdout, stderr = self.ssh_client.exec_command('whoami && pwd')
-            logging.info(stdout.read())
+
+        def ping(server_info: ServerInfo) -> bool:
+            self.ssh_client.connect(hostname=server_info.host)
+            _, stdout, stderr = self.ssh_client.exec_command('whoami && pwd')
+            print(stdout.read())
             stderr_byte = stderr.read()
             if len(stderr_byte) != 0:
-                logging.warning("got stderr when ping, " + str(stderr_byte))
+                log.warning(f"failed to ping {server_info}, err: {stderr_byte}")
                 return False
+            return True
+
+        return self.dist_conf.server_info_map.for_each(ping)
+
+    def pull_config_files(self, dest) -> bool:
+        def pull_one(server_info: ServerInfo) -> bool:
+            config_paths = server_info.make_paths_of_logs(dest)
+            return self.pull_file(server_info.host, config_paths)
+
+        return self.dist_conf.server_info_map.for_each(pull_one)
+
+    def pull_log_files(self, dest) -> bool:
+        def pull_one(server_info: ServerInfo) -> bool:
+            # get log dir
+            remote_log_dir, log_names = self.remote_log_file_list(server_info)
+            if len(log_names) == 0:
+                log.warning('no logs in %s', remote_log_dir)
+                return False
+            return self.pull_files(server_info.host,
+                                   server_info.make_paths_of_logs(remote_log_dir, log_names, dest))
+
+        return self.dist_conf.server_info_map.for_each(pull_one)
+
+    def collect_version(self):
+        # TODO(hw): just print?
+        def run_version(server_info: ServerInfo) -> bool:
+            self.ssh_client.connect(hostname=server_info.host)
+            _, stdout, _ = self.ssh_client.exec_command(f'{server_info.path}/bin/openmldb --version')
+            version = stdout.read()
+            if not version:
+                log.warning('failed at get version from %s:%s', server_info.endpoint, server_info.path)
+                return False
+            print(server_info, 'version: ', version)
+            return True
+
+        self.dist_conf.server_info_map.for_each(run_version, CXX_SERVER_ROLES)
+        # TODO(hw): taskmanager and batch version
+        # if no other jars with the same prefix, it's ok
+        # java -cp jars/openmldb-batch-*.jar com._4paradigm.openmldb.batch.utils.VersionCli
+        # taskmanager?
+        # get from zk, only get the master taskmanager
         return True
 
     def pull_file(self, remote_host, paths):
         remote_path, local_path = paths[0], paths[1]
-        logging.info(f"remote {remote_path}, local: {local_path}")
+        log.info(f"remote {remote_path}, local: {local_path}")
         self.ssh_client.connect(hostname=remote_host)
         sftp = self.ssh_client.open_sftp()
         try:
@@ -67,70 +98,62 @@ class Collector:
             # local path must be a file, not a dir
             sftp.get(remote_path, local_path)
         except Exception as e:
-            logging.warning(f"pull from remote {remote_host}:{remote_path} error on , err: {e}")
+            log.warning(f"pull from remote {remote_host}:{remote_path} error on , err: {e}")
             return False
         return True
 
-    def pull_config_files(self, dest) -> bool:
-        host_path_dict = {}
-        self.dist_conf.map(ALL_SERVER_ROLES, None, host_path_dict)
-        for role, servers_conf in host_path_dict.items():
-            for server_conf in servers_conf:
-                endpoint = server_conf['endpoint']
-                host = endpoint.split(':')[0]
-                path = server_conf['path']
-                ok = self.pull_file(host, get_config_paths(endpoint, role, path, dest))
-                if not ok:
-                    return False
-        return True
-
-    def pull_log_files(self, dest) -> bool:
-        host_path_dict = {}
-        # TODO(hw): taskmanager
-        self.dist_conf.map(['nameserver', 'tablet'], None, host_path_dict)
-        for role, servers_conf in host_path_dict.items():
-            for server_conf in servers_conf:
-                endpoint = server_conf['endpoint']
-                host = endpoint.split(':')[0]
-                path = server_conf['path']
-                # get log dir
-                remote_log_dir, log_names = self.remote_log_file_list(host, role, path)
-                ok = self.pull_files(host, get_log_paths(endpoint, role, remote_log_dir, log_names, dest))
-                if not ok:
-                    return False
-        return True
-
     def pull_files(self, remote_host, paths_list) -> bool:
-        for paths in paths_list:
-            if not self.pull_file(remote_host, paths):
-                return False
-        return True
+        return all([self.pull_file(remote_host, path_pair) for path_pair in paths_list])
 
-    def remote_log_file_list(self, remote_host, role, path, last_n=2):
-        self.ssh_client.connect(hostname=remote_host)
-        remote_config_file = get_config_paths(remote_host, role, path, '')[0]
-        logging.info("get openmldb_log_dir from %s", remote_config_file)
-        _, stdout, _ = self.ssh_client.exec_command(f"grep openmldb_log_dir {remote_config_file}")
+    def get_log_dir_from_conf(self, remote_config_file, server_info):
+        config_name = "openmldb_log_dir"
+        remote_log_dir_suffix = "/logs"
+        if server_info.role == "taskmanager":
+            config_name = "job.log.path"
+            # taskmanager '../log' is from 'bin/', so it's '/log'.
+            # TODO(hw): fix taskmanager start dir
+            remote_log_dir_suffix = "/log"
+
+        log.info("get %s from %s", config_name, remote_config_file)
+        _, stdout, _ = self.ssh_client.exec_command(f"grep {config_name} {remote_config_file}")
         grep_str = stdout.read()
-        # default log dir
-        remote_log_dir = path + '/logs'
         # if set openmldb_log_dir in config
         if grep_str:
-            logging.warning('unfinished')
-            return '', []
+            # TODO(hw):
+            log.warning('unfinished, if taskmanager, from bin/. notice that #<config>=<> comment')
+            # remote_log_dir_suffix = "/foo"
+        return server_info.path + remote_log_dir_suffix
 
-        logging.info("remote log dir is " + remote_log_dir)
+    def remote_log_file_list(self, server_info, last_n=2):
+        """
+        if role is taskmanager, ...
+        if ns or tablet, ...
+
+        :param server_info:
+        :param last_n:
+        :return:
+        """
+        self.ssh_client.connect(hostname=server_info.host)
+        remote_config_file = server_info.make_paths_of_logs('')[0]
+        remote_log_dir = self.get_log_dir_from_conf(remote_config_file, server_info)
+        log.info("remote log dir is " + remote_log_dir)
         sftp = self.ssh_client.open_sftp()
         # if no the log dir, let it crash
         logs = [attr.__dict__ for attr in sftp.listdir_attr(remote_log_dir)]
+
+        # taskmanager.log
+        # TODO(hw): grep job log exception
+        if server_info.role == "taskmanager":
+            logs = list(filter(lambda di: 'taskmanager' in di['filename'], logs))
+        else:
+            # info log
+            logs = list(filter(lambda di: 'info' in di['filename'], logs))
+            # TODO(hw):  warn log?
+
         # sort by modify time
         logs.sort(key=lambda x: x["st_mtime"], reverse=True)
-        logging.info("all_logs: %s", logs)
+        log.info("all_logs(sorted): %s", logs)
         # get last n
         logs = [log_attr['filename'] for log_attr in logs[:last_n]]
-        logging.info("get last %d: %s", last_n, logs)
+        log.info("get last %d: %s", last_n, logs)
         return remote_log_dir, logs
-
-    # TODO(hw): exec -version
-    def collect_version(self):
-        pass

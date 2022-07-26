@@ -6,5 +6,6 @@ if __name__ == '__main__':
     print(dist_conf)
     conns = Collector(dist_conf)
     # conns.ping_all()
-    conns.pull_config_files()
-
+    conns.pull_config_files('/tmp/cluster1/conf')
+    conns.pull_log_files('/tmp/cluster1/logs')
+    conns.collect_version()
