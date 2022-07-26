@@ -173,7 +173,7 @@ execute后，缓存的数据将被清除，无法重试execute。
 
 第三步，使用`PreparedStatement::addBatch()`接口完成一行的填充。
 
-第四步，继续使用`setType`和`addBatch`，填充多行。
+第四步，继续使用`setType(index, value)`和`addBatch()`，填充多行。
 
 第五步，使用`PreparedStatement::executeBatch()`接口完成批量插入。
 
