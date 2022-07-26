@@ -57,4 +57,4 @@ Please refer [here](./CREATE_TABLE_STATEMENT.md) for more details about `TTL` an
 
 ## Related SQL
 
-[DROP INDEX](./ddl/DROP_INDEX_STATEMENT.md)
+[DROP INDEX](./DROP_INDEX_STATEMENT.md)
