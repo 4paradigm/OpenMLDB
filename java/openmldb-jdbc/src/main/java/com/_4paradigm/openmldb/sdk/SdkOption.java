@@ -18,13 +18,14 @@ package com._4paradigm.openmldb.sdk;
 
 import lombok.Data;
 
-
 @Data
 public class SdkOption {
-//    options for cluster mode
+    // options for cluster mode
     private String zkCluster;
     private String zkPath;
-//    options for standalone mode
+    private String sparkConfPath = "";
+
+    // options for standalone mode
     private String host;
     private long port;
 
@@ -32,4 +33,5 @@ public class SdkOption {
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
     private boolean isClusterMode = true;
+
 }

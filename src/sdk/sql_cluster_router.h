@@ -298,6 +298,10 @@ class SQLClusterRouter : public SQLRouter {
 
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
+    SQLRouterOptions GetSqlRouterOptions() {
+        return options_;
+    }
+
  private:
     bool IsSyncJob();
     // get job timeout from the session variables, we will use the timeout when sending requests to the taskmanager
@@ -380,7 +384,7 @@ class SQLClusterRouter : public SQLRouter {
         std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
 
     hybridse::sdk::Status AddNewIndex(
-        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
         const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
 
     hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);

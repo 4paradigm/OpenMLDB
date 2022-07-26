@@ -50,7 +50,6 @@
 
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(bucket_size);
-DEFINE_string(spark_conf, "", "The config file of Spark job");
 DECLARE_uint32(replica_num);
 
 namespace openmldb {
@@ -2442,7 +2441,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
+                ReadSparkConfFromFile(options_.spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2473,7 +2472,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(FLAGS_spark_conf, &config);
+                ReadSparkConfFromFile(options_.spark_conf_path, &config);
 
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
@@ -2518,7 +2517,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
                                                                                 bool is_sync_job, int job_timeout,
                                                                                 ::hybridse::sdk::Status* status) {
     std::map<std::string, std::string> config;
-    ReadSparkConfFromFile(FLAGS_spark_conf, &config);
+    ReadSparkConfFromFile(options_.spark_conf_path, &config);
 
     if (is_sync_job) {
         // Run offline sql and wait to get output
@@ -3055,7 +3054,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
         return get_index_status;
     }
 
-    auto add_index_status = AddNewIndex(table_map, new_index_map);
+    auto add_index_status = AddNewIndex(db, table_map, new_index_map);
     if (!add_index_status.IsOK()) {
         return add_index_status;
     }
@@ -3179,16 +3178,16 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
+hybridse::sdk::Status SQLClusterRouter::AddNewIndex(const std::string& db,
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     if (cluster_sdk_->IsClusterMode()) {
         for (auto& kv : new_index_map) {
-            auto status = ns->AddMultiIndex(kv.first, kv.second);
+            auto status = ns->AddMultiIndex(db, kv.first, kv.second);
             if (!status.OK()) {
                 return {::hybridse::common::StatusCode::kCmdError,
-                        "table " + kv.first + " add index failed. " + status.msg};
+                        "table [" + db + "." + kv.first + "] add index failed. " + status.msg};
             }
         }
     } else {
@@ -3721,15 +3720,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 
-void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config) {
-    if (!conf_file.empty()) {
+void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::map<std::string, std::string>* config) {
+    if (!conf_file_path.empty()) {
         boost::property_tree::ptree pt;
 
         try {
-            boost::property_tree::ini_parser::read_ini(FLAGS_spark_conf, pt);
-            LOG(INFO) << "Load Spark conf file: " << conf_file;
+            boost::property_tree::ini_parser::read_ini(conf_file_path, pt);
+            LOG(INFO) << "Load Spark conf file: " << conf_file_path;
         } catch (...) {
-            LOG(WARNING) << "Fail to load Spark conf file: " << conf_file;
+            LOG(WARNING) << "Fail to load Spark conf file: " << conf_file_path;
             return;
         }
 
