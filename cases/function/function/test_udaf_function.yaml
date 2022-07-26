@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["AVG_WHERE-normal"]
 version: 0.5.0
 cases:
   -
@@ -114,6 +114,7 @@ cases:
   -
     id: 4
     desc: avg
+    version: 0.6.0
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -397,10 +398,10 @@ cases:
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [1, aa, 1,   1,   30,  NULL,2.1, 1590738990000, 2020-05-01, a, true]
-          - [2, aa, 4,   4,   NULL,1.4, 2.4, 1590738991000, 2020-05-03, c, false]
-          - [3, aa, 3,   NULL,32,  1.3, 2.3, 1590738992000, 2020-05-02, b, true]
-          - [4, aa, NULL,3,   33,  1.1, NULL,1590738993000, NULL,      NULL,NULL]
+          - [1, "aa", 1,   1,   30,  NULL,2.1, 1590738990000, "2020-05-01", "a", true]
+          - [2, "aa", 4,   4,   NULL,1.4, 2.4, 1590738991000, "2020-05-03", "c", false]
+          - [3, "aa", 3,   NULL,32,  1.3, 2.3, 1590738992000, "2020-05-02", "b", true]
+          - [4, "aa", NULL,3,   33,  1.1, NULL,1590738993000, NULL,      NULL,NULL]
     sql: |
       SELECT {0}.id, c1,
         avg_where(c2, c2<4) OVER w1 as m2,

@@ -67,9 +67,12 @@ echo "ROOT_DIR:${ROOT_DIR}"
 deployConfigPath="test/integration-test/openmldb-test-java/openmldb-deploy/src/main/resources/deploy.properties"
 OPENMLDB_SERVER_VERSION="SRC"
 SERVER_URL=$(more ${deployConfigPath} | grep "${OPENMLDB_SERVER_VERSION}")
+echo "SERVER_URL:${SERVER_URL}"
 if [[ "${SERVER_URL}" == "" ]]; then
+  echo "AAA"
   echo "${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz" >> ${deployConfigPath}
 else
+  echo "BBBB"
   sed -i "s#${OPENMLDB_SERVER_VERSION}=.*#${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz#" ${deployConfigPath}
 fi
 JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
