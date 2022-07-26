@@ -74,10 +74,10 @@ case $OP in
         if [ "$COMPONENT" != "taskmanager" ]; then
             ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
             PID=$!
-            sleep 1
+            sleep 3
             ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
             COUNT=1
-            while [ $COUNT -lt 15 ]
+            while [ $COUNT -lt 12 ]
             do
                 if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
                     sleep 1
