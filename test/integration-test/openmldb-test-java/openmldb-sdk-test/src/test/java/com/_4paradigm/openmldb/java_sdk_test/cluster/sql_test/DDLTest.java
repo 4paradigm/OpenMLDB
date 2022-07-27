@@ -40,7 +40,7 @@ public class DDLTest extends OpenMLDBTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
-    @Yaml(filePaths = "function/ddl/test_create.yaml")//7 表名为非保留关键字 没过
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
     @Story("create")
     @Test(dataProvider = "getCase",enabled = false)
     public void testCreateByCli(SQLCase testCase){
@@ -83,6 +83,20 @@ public class DDLTest extends OpenMLDBTest {
     @Yaml(filePaths = "function/ddl/test_options.yaml")
     @Story("options")
     public void testOptionsByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Story("create_no_index")
+    public void testCreateNoIndex(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Story("create_no_index")
+    public void testCreateNoIndexByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 }
