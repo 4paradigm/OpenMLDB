@@ -39,7 +39,8 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::api::TableMeta& meta,
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
-      index_hint_(),
+      index_pos_(0),
+      index_hint_vec_(),
       table_client_manager_(),
       local_tablet_(local_tablet) {}
 
@@ -50,11 +51,13 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& 
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
-      index_hint_(),
+      index_pos_(0),
+      index_hint_vec_(),
       table_client_manager_(),
       local_tablet_(local_tablet) {}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
+    index_hint_vec_.resize(partition_num_);
     bool ok = schema::SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
@@ -81,7 +84,8 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 
 bool TabletTableHandler::UpdateIndex(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
-    index_hint_.clear();
+    int pos = (index_pos_.load() + 1) % partition_num_;
+    index_hint_vec_[pos].clear();
     for (int32_t i = 0; i < indexs.size(); i++) {
         const auto& column_key = indexs.Get(i);
         ::hybridse::vm::IndexSt index_st;
@@ -105,9 +109,14 @@ bool TabletTableHandler::UpdateIndex(
             }
             index_st.keys.push_back(it->second);
         }
-        index_hint_.emplace(index_st.name, index_st);
+        index_hint_vec_[pos].emplace(index_st.name, index_st);
     }
+    index_pos_.store(pos, std::memory_order_release);
     return true;
+}
+
+const ::hybridse::vm::IndexHint& TabletTableHandler::GetIndex() {
+    return index_hint_vec_.at(index_pos_.load(std::memory_order_acquire));
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> TabletTableHandler::GetIterator() {
@@ -115,8 +124,9 @@ std::unique_ptr<::hybridse::codec::RowIterator> TabletTableHandler::GetIterator(
 }
 
 std::unique_ptr<::hybridse::codec::WindowIterator> TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
-    auto iter = index_hint_.find(idx_name);
-    if (iter == index_hint_.end()) {
+    const auto& index_hint = GetIndex();
+    auto iter = index_hint.find(idx_name);
+    if (iter == index_hint.end()) {
         LOG(WARNING) << "index name " << idx_name << " not exist";
         return std::unique_ptr<::hybridse::codec::WindowIterator>();
     }
@@ -183,7 +193,7 @@ const uint64_t TabletTableHandler::GetCount() {
 }
 
 std::shared_ptr<::hybridse::vm::PartitionHandler> TabletTableHandler::GetPartition(const std::string& index_name) {
-    if (index_hint_.find(index_name) == index_hint_.cend()) {
+    if (GetIndex().count(index_name) == 0) {
         LOG(WARNING) << "fail to get partition for tablet table handler, index name " << index_name;
         return std::shared_ptr<::hybridse::vm::PartitionHandler>();
     }
@@ -225,7 +235,7 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         table_st_.SetPartition(partition_st);
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
-    if (meta.column_key_size() != index_hint_.size()) {
+    if (meta.column_key_size() != static_cast<int>(GetIndex().size())) {
         UpdateIndex(meta.column_key());
     }
 }
@@ -403,20 +413,18 @@ bool TabletCatalog::UpdateTableMeta(const ::openmldb::api::TableMeta& meta) {
     const std::string& db_name = meta.db();
     const std::string& table_name = meta.name();
     std::shared_ptr<TabletTableHandler> handler;
-    {
-        std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
-        auto db_it = tables_.find(db_name);
-        if (db_it == tables_.end()) {
-            LOG(WARNING) << "db " << db_name << " is not exist";
-            return false;
-        }
-        auto it = db_it->second.find(table_name);
-        if (it == db_it->second.end()) {
-            LOG(WARNING) << "table " << table_name << " is not exist in db " << db_name;
-            return false;
-        } else {
-            handler = it->second;
-        }
+    std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
+    auto db_it = tables_.find(db_name);
+    if (db_it == tables_.end()) {
+        LOG(WARNING) << "db " << db_name << " is not exist";
+        return false;
+    }
+    auto it = db_it->second.find(table_name);
+    if (it == db_it->second.end()) {
+        LOG(WARNING) << "table " << table_name << " is not exist in db " << db_name;
+        return false;
+    } else {
+        handler = it->second;
     }
     return handler->UpdateIndex(meta.column_key());
 }

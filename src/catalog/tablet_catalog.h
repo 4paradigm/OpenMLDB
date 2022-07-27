@@ -153,7 +153,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     const ::hybridse::vm::Types &GetTypes() override { return types_; }
 
-    const ::hybridse::vm::IndexHint &GetIndex() override { return index_hint_; }
+    const ::hybridse::vm::IndexHint &GetIndex() override;
 
     const ::hybridse::codec::Row Get(int32_t pos);
 
@@ -199,7 +199,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     ::openmldb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::hybridse::vm::Types types_;
-    ::hybridse::vm::IndexHint index_hint_;
+    std::atomic<int32_t> index_pos_;
+    std::vector<::hybridse::vm::IndexHint> index_hint_vec_;
     std::shared_ptr<TableClientManager> table_client_manager_;
     std::shared_ptr<hybridse::vm::Tablet> local_tablet_;
 };
