@@ -39,7 +39,6 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::api::TableMeta& meta,
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
-      index_list_(),
       index_hint_(),
       table_client_manager_(),
       local_tablet_(local_tablet) {}
@@ -51,7 +50,6 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& 
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
-      index_list_(),
       index_hint_(),
       table_client_manager_(),
       local_tablet_(local_tablet) {}
@@ -83,29 +81,23 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
 
 bool TabletTableHandler::UpdateIndex(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs) {
-    index_list_.Clear();
     index_hint_.clear();
-    if (!schema::IndexUtil::ConvertIndex(indexs, &index_list_)) {
-        LOG(WARNING) << "fail to conver index to sql index";
-        return false;
-    }
-    // init index hint
-    for (int32_t i = 0; i < index_list_.size(); i++) {
-        const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
+    for (int32_t i = 0; i < indexs.size(); i++) {
+        const auto& column_key = indexs.Get(i);
         ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
         index_st.ts_pos = ::hybridse::vm::INVALID_POS;
-        if (!index_def.second_key().empty()) {
-            int32_t pos = GetColumnIndex(index_def.second_key());
+        if (!column_key.ts_name().empty()) {
+            int32_t pos = GetColumnIndex(column_key.ts_name());
             if (pos < 0) {
-                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                LOG(WARNING) << "fail to get second key " << column_key.ts_name();
                 return false;
             }
             index_st.ts_pos = pos;
         }
-        index_st.name = index_def.name();
-        for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
-            const std::string& key = index_def.first_keys(j);
+        index_st.name = column_key.index_name();
+        for (int32_t j = 0; j < column_key.col_name_size(); j++) {
+            const std::string& key = column_key.col_name(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
                 LOG(WARNING) << "column " << key << " does not exist in table " << GetName();
@@ -113,7 +105,7 @@ bool TabletTableHandler::UpdateIndex(
             }
             index_st.keys.push_back(it->second);
         }
-        index_hint_.insert(std::make_pair(index_st.name, index_st));
+        index_hint_.emplace(index_st.name, index_st);
     }
     return true;
 }
@@ -233,7 +225,7 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         table_st_.SetPartition(partition_st);
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
-    if (meta.column_key_size() != index_list_.size()) {
+    if (meta.column_key_size() != index_hint_.size()) {
         UpdateIndex(meta.column_key());
     }
 }
@@ -452,8 +444,8 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
         } else {
             handler = it->second;
         }
+        handler->Update(table_info, client_manager_);
     }
-    handler->Update(table_info, client_manager_);
     return true;
 }
 

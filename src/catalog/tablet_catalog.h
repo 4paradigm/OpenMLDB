@@ -199,7 +199,6 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     ::openmldb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::hybridse::vm::Types types_;
-    ::hybridse::vm::IndexList index_list_;
     ::hybridse::vm::IndexHint index_hint_;
     std::shared_ptr<TableClientManager> table_client_manager_;
     std::shared_ptr<hybridse::vm::Tablet> local_tablet_;
