@@ -1,4 +1,4 @@
-package com._4paradigm.openmldb.java_sdk_test.cluster.v050;
+package com._4paradigm.openmldb.java_sdk_test.cluster.disk;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;

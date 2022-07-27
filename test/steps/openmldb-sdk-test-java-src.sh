@@ -35,6 +35,9 @@ do
         l) echo "参数l的值:$OPTARG"
         CASE_LEVEL=$OPTARG
         ;;
+        s) echo "参数s的值:$OPTARG"
+        TABLE_STORAGE_MODE=$OPTARG
+        ;;
         ?) echo "未知参数"
            exit 1
         ;;
@@ -53,6 +56,7 @@ fi
 echo "CASE_XML:${CASE_XML}"
 echo "DEPLOY_MODE:${DEPLOY_MODE}"
 echo "CASE_LEVEL:${CASE_LEVEL}"
+echo "TABLE_STORAGE_MODE:${TABLE_STORAGE_MODE}"
 
 ROOT_DIR=$(pwd)
 # 安装wget
@@ -64,14 +68,12 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
 #echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
 # 从源码编译
-#deployConfigPath="test/integration-test/openmldb-test-java/openmldb-sdk-test/src/main/resources/deploy.properties"
 deployConfigPath="test/integration-test/openmldb-test-java/openmldb-deploy/src/main/resources/deploy.properties"
 OPENMLDB_SERVER_VERSION="SRC"
 SERVER_URL=$(more ${deployConfigPath} | grep "${OPENMLDB_SERVER_VERSION}")
 echo "SERVER_URL:${SERVER_URL}"
 if [[ "${SERVER_URL}" == "" ]]; then
   echo -e "\n${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz\n" >> ${deployConfigPath}
-  cat ${deployConfigPath}
 else
   sed -i "s#${OPENMLDB_SERVER_VERSION}=.*#${OPENMLDB_SERVER_VERSION}=${ROOT_DIR}/openmldb-linux.tar.gz#" ${deployConfigPath}
 fi
@@ -89,7 +91,7 @@ cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # modify config
-sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "SRC" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}"
+sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}" "${TABLE_STORAGE_MODE}"
 
 # install jar
 cd test/integration-test/openmldb-test-java || exit

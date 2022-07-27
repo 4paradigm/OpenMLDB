@@ -97,6 +97,7 @@ cases:
   -
     id: 3
     desc: 一个pk所有数据都不在窗口内
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -113,9 +114,9 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
-        - [2,"aa",0]
-        - [3,"aa",0]
+        - [1,"aa",null]
+        - [2,"aa",null]
+        - [3,"aa",null]
   -
     id: 4
     desc: 窗口只要当前行
@@ -163,6 +164,7 @@ cases:
   -
     id: 6
     desc: 最后一行进入窗口
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -179,12 +181,13 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
-        - [2,"aa",0]
+        - [1,"aa",null]
+        - [2,"aa",null]
         - [3,"aa",30]
   -
     id: 7
     desc: 纯历史窗口-滑动
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -203,7 +206,7 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
+        - [1,"aa",null]
         - [2,"aa",30]
         - [3,"aa",61]
         - [4,"aa",63]
@@ -211,6 +214,7 @@ cases:
   -
     id: 8
     desc: 两个pk，一个没有进入窗口，一个滑动
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -229,11 +233,11 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
+        - [1,"aa",null]
         - [2,"aa",30]
         - [3,"aa",61]
         - [4,"aa",63]
-        - [5,"bb",0]
+        - [5,"bb",null]
   -
     id: 9
     desc: 两个pk，一个全部进入窗口，一个滑动

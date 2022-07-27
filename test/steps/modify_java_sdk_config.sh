@@ -18,12 +18,13 @@
 CASE_XML=$1
 DEPLOY_MODE=$2
 OPENMLDB_SDK_VERSION=$3
-BUILD_MODE=$4
+TEST_CASE_VERSION=$4
 OPENMLDB_SERVER_VERSION=$5
 JAVA_NATIVE_VERSION=$6
+TABLE_STORAGE_MODE=$7
 echo "deploy_mode:${DEPLOY_MODE}"
 ROOT_DIR=$(pwd)
-echo "test_version:$OPENMLDB_SDK_VERSION"
+echo "test_sdk_version:$OPENMLDB_SDK_VERSION"
 cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 # modify suite_xml
 sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${OPENMLDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
@@ -33,6 +34,14 @@ sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\
 #fi
 echo "test suite xml:"
 cat test_suite/"${CASE_XML}"
+if [ -n "${TEST_CASE_VERSION}" ]; then
+  echo -e "\nversion=${TEST_CASE_VERSION}" >> src/main/resources/run_case.properties
+fi
+if [ -n "${TABLE_STORAGE_MODE}" ]; then
+  sed -i "s#table_storage_mode=.*#table_storage_mode=${TABLE_STORAGE_MODE}#" src/main/resources/run_case.properties
+fi
+echo "run_case config:"
+cat src/main/resources/run_case.properties
 # modify pom
 cd "${ROOT_DIR}"
 cd test/integration-test/openmldb-test-java/openmldb-test-common || exit

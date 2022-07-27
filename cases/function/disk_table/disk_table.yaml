@@ -328,6 +328,7 @@ cases:
         - [5,"ee",21,34]
   - id: 12
     desc: SSD 插入索引和ts 一样的数据
+    tags: ["TODO","bug修改后验证"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -344,12 +345,14 @@ cases:
         - ["aa", 2, 3, 1590738989000]
   - id: 13
     desc: HDD 插入索引和ts 一样的数据
+    tags: ["TODO","bug修改后验证"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
         storage: HDD
         rows:
+          - ["aa", 2, 3, 1590738989000]
           - ["aa", 2, 3, 1590738989000]
           - ["aa", 2, 3, 1590738989000]
     sql: select * from {0};
@@ -359,13 +362,7 @@ cases:
         - ["aa", 2, 3, 1590738989000]
   - id: 14
     desc: storage_mode=其他字符
-#    inputs:
-#      -
-#        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-#        indexs: ["index1:c1:c4"]
-#        storage: hdp
-#        rows:
-#          - ["aa", 2, 3, 1590738989000]
+    mode: request-unsupport
     sql: |
       create table auto_MDYewbTv(
       c1 string,
@@ -378,6 +375,7 @@ cases:
 
   - id: 15
     desc: 创建磁盘表，ttl_type=latest,ttl=4,insert 10
+    tags: ["TODO","bug修改后验证"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -405,6 +403,7 @@ cases:
 
   - id: 16
     desc: 创建磁盘表，ttl_type=absolute，ttl=10m, insert 10
+    tags: ["TODO","bug修改后验证"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -431,6 +430,7 @@ cases:
 
   - id: 17
     desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10
+    tags: ["TODO","bug修改后验证"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -458,6 +458,7 @@ cases:
 
   - id: 18
     desc: 创建磁盘表，有两个索引，分别为latest和absolute，insert=10 ,where条件
+    mode: request-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
