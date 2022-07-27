@@ -328,8 +328,10 @@ public class Table implements Serializable{
      * @return
      */
     public static String getColumnType(String column) {
-        int pos = column.trim().lastIndexOf(' ');
-        return column.trim().substring(pos).trim();
+//        int pos = column.trim().lastIndexOf(' ');
+//        return column.trim().substring(pos).trim();
+        String[] ss = column.split("\\s+");
+        return ss[1];
     }
 
     /**

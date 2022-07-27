@@ -78,7 +78,7 @@ jobs:
       - name: build jsdk and package
         run: |
           make configure CMAKE_INSTALL_PREFIX=openmldb-linux
-          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          make SQL_JAVASDK_ENABLE=ON install
           tar -zcvf openmldb-linux.tar.gz openmldb-linux
           echo "openmldb-pkg:"
           ls -al

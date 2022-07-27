@@ -90,7 +90,7 @@ public class DDLTest extends OpenMLDBTest {
     @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
     @Story("create_no_index")
     public void testCreateNoIndex(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
     @Test(dataProvider = "getCase")
