@@ -207,9 +207,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     }
     if (!distribution_list.empty()) {
         if (replica_num != static_cast<int32_t>(distribution_list.size())) {
-            status->msg =
-                "CREATE common: "
-                "replica_num should equal to partition meta size";
+            status->msg = "CREATE common: replica_num should equal to partition meta size";
             status->code = hybridse::common::kUnsupportSql;
             return false;
         }
@@ -222,9 +220,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     auto* p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
                     const std::string& ep = p_meta_node->GetEndpoint();
                     if (std::find(ep_vec.begin(), ep_vec.end(), ep) != ep_vec.end()) {
-                        status->msg =
-                            "CREATE common: "
-                            "partition meta endpoint duplicate";
+                        status->msg = "CREATE common: partition meta endpoint duplicate";
                         status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
