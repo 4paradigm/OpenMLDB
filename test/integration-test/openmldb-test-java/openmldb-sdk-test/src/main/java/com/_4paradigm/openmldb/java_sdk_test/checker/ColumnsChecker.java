@@ -51,7 +51,7 @@ public class ColumnsChecker extends BaseChecker {
             // Assert.assertEquals(columnNames.get(i)+" "+columnTypes.get(i),expectColumns.get(i));
             Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)));
             Assert.assertEquals(TypeUtil.getOpenMLDBColumnType(columnTypes.get(i)),
-                    TypeUtil.getOpenMLDBColumnType(Table.getColumnType(expectColumns.get(i))));
+                    TypeUtil.getOpenMLDBColumnType(Table.getColumnTypeByExpect(expectColumns.get(i))));
         }
 
     }

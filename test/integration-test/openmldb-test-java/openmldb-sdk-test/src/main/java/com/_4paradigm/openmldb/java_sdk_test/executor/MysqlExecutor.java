@@ -45,13 +45,13 @@ public class MysqlExecutor extends JDBCExecutor{
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.MYSQL.name())){
             return true;
         }
-        logger.info("skip case in mysql mode: {}", fesqlCase.getDesc());
+        log.info("skip case in mysql mode: {}", fesqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
-        logger.info("mysql prepare begin");
+        log.info("mysql prepare begin");
         for(InputDesc inputDesc:fesqlCase.getInputs()) {
             String createSql = MysqlUtil.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql, DBType.MYSQL);
@@ -60,12 +60,12 @@ public class MysqlExecutor extends JDBCExecutor{
                 throw new RuntimeException("fail to run MysqlExecutor: prepare fail");
             }
         }
-        logger.info("mysql prepare end");
+        log.info("mysql prepare end");
     }
 
     @Override
     public void execute() {
-        logger.info("mysql execute begin");
+        log.info("mysql execute begin");
         OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -80,12 +80,12 @@ public class MysqlExecutor extends JDBCExecutor{
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.MYSQL);
         }
         mainResult = fesqlResult;
-        logger.info("mysql execute end");
+        log.info("mysql execute end");
     }
 
     @Override
     public void tearDown() {
-        logger.info("mysql,begin drop table");
+        log.info("mysql,begin drop table");
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

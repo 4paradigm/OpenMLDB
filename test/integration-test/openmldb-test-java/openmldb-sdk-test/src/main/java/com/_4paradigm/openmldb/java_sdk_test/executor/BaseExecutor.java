@@ -21,7 +21,6 @@ import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 import org.testng.Assert;
 import org.testng.collections.Lists;
 
@@ -33,7 +32,7 @@ import java.util.List;
  */
 @Slf4j
 public abstract class BaseExecutor implements IExecutor{
-    protected static final Logger logger = new LogProxy(log);
+//    protected static final log log = new LogProxy(log);
     protected SQLCase fesqlCase;
     protected SQLCaseType executorType;
     protected String dbName;
@@ -45,7 +44,7 @@ public abstract class BaseExecutor implements IExecutor{
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
         System.out.println(className+"."+methodName+":"+fesqlCase.getCaseFileName()+":"+fesqlCase.getDesc() + " Begin!");
-        logger.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
+        log.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {
             verify = verify();

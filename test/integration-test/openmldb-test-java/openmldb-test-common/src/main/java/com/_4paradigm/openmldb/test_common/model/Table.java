@@ -333,6 +333,10 @@ public class Table implements Serializable{
         String[] ss = column.split("\\s+");
         return ss[1];
     }
+    public static String getColumnTypeByExpect(String column) {
+        int pos = column.trim().lastIndexOf(' ');
+        return column.trim().substring(pos).trim();
+    }
 
     /**
      * format columns and rows

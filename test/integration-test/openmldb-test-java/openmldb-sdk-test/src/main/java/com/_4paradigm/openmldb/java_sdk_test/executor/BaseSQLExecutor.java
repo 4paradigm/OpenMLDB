@@ -112,7 +112,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
 
     public void tearDown(String version,SqlExecutor executor) {
-        logger.info("version:{},begin tear down",version);
+        log.info("version:{},begin tear down",version);
         List<String> tearDown = fesqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
@@ -124,7 +124,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
                 SDKUtil.sql(executor, dbName, sql);
             });
         }
-        logger.info("version:{},begin drop table",version);
+        log.info("version:{},begin drop table",version);
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

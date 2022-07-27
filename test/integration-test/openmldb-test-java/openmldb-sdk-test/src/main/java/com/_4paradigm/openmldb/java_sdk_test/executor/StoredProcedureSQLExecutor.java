@@ -48,29 +48,29 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("create db:{},{}", dbName, dbOk);
+        log.info("create db:{},{}", dbName, dbOk);
         OpenMLDBResult res = SDKUtil.createAndInsert(
                 executor, dbName, fesqlCase.getInputs(),
                 !isBatchRequest && null == fesqlCase.getBatch_request());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run StoredProcedureSQLExecutor: prepare fail");
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor) {
-        logger.info("version:{} execute begin",version);
+        log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         try {
             if (fesqlCase.getInputs().isEmpty() ||
                     CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
-                logger.error("fail to execute in request query sql executor: sql case inputs is empty");
+                log.error("fail to execute in request query sql executor: sql case inputs is empty");
                 return null;
             }
             String sql = fesqlCase.getSql();
-            logger.info("sql: {}", sql);
+            log.info("sql: {}", sql);
             if (sql == null || sql.length() == 0) {
                 return null;
             }
@@ -83,13 +83,13 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         }catch (Exception e){
             e.printStackTrace();
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 
     private OpenMLDBResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spSql = fesqlCase.getProcedure(sql);
-        logger.info("spSql: {}", spSql);
+        log.info("spSql: {}", spSql);
         return SDKUtil.sqlRequestModeWithProcedure(
                 executor, dbName, fesqlCase.getSpName(), null == fesqlCase.getBatch_request(),
                 spSql, fesqlCase.getInputs().get(0), isAsyn);
@@ -98,7 +98,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     private OpenMLDBResult executeBatch(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
         String spSql = SQLUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
-        logger.info("spSql: {}", spSql);
+        log.info("spSql: {}", spSql);
         return SDKUtil.selectBatchRequestModeWithSp(
                 executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
@@ -106,7 +106,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     @Override
     public void tearDown(String version,SqlExecutor executor) {
-        logger.info("version:{},begin drop table",version);
+        log.info("version:{},begin drop table",version);
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }

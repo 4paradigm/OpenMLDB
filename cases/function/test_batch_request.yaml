@@ -253,6 +253,7 @@ cases:
         - [7,"a",15,100,4.2,7.2,1590738996000,"2020-05-07","e"]
   - id: 6
     desc: batch request with one common window and one non-common window
+    mode: disk-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
@@ -290,6 +291,7 @@ cases:
 
   - id: 7
     desc: batch request with common window and common and non-common aggregations, window is small
+    mode: disk-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 timestamp",
@@ -325,6 +327,7 @@ cases:
 
   - id: 8
     desc: batch request with one common window and one non-common window, current time == history time
+    mode: disk-unsupport
     inputs:
       -
         columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",

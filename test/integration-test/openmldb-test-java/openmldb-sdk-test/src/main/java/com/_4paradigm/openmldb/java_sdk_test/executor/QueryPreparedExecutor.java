@@ -47,7 +47,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
 
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor){
-        logger.info("version:{} execute begin",version);
+        log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         // List<String> sqls = fesqlCase.getSqls();
         // if (sqls != null && sqls.size() > 0) {
@@ -74,7 +74,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
             List<Object> objects = parameters.getRows().get(0);
             fesqlResult = SDKUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 }

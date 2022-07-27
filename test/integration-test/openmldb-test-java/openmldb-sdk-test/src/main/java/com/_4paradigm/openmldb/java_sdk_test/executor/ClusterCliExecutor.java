@@ -21,13 +21,11 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
 @Slf4j
 public class ClusterCliExecutor extends CommandExecutor{
-    private static final Logger logger = new LogProxy(log);
     public ClusterCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
         super(fesqlCase, executorType);
     }
@@ -39,11 +37,11 @@ public class ClusterCliExecutor extends CommandExecutor{
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-cli-unsupport")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            logger.info("skip case , mode: {}", fesqlCase.getDesc());
+            log.info("skip case , mode: {}", fesqlCase.getDesc());
             return false;
         }
         return super.verify();

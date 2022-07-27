@@ -42,13 +42,13 @@ public class InsertPreparedExecutor extends BatchSQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("version:{},create db:{},{}", version, dbName, dbOk);
+        log.info("version:{},create db:{},{}", version, dbName, dbOk);
         OpenMLDBResult res = SDKUtil.createAndInsertWithPrepared(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
 }

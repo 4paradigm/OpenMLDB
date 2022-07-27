@@ -16,18 +16,15 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
 @Slf4j
 public class StandaloneCliExecutor extends CommandExecutor{
-    private static final Logger logger = new LogProxy(log);
     public StandaloneCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
         super(fesqlCase, executorType);
     }
@@ -39,7 +36,7 @@ public class StandaloneCliExecutor extends CommandExecutor{
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("standalone-unsupport")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
         }
         return super.verify();

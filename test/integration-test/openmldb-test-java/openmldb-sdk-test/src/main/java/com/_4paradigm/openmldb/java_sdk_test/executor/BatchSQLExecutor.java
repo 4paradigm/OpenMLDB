@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -46,23 +47,27 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
-            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
-            logger.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && !OpenMLDBGlobalVar.tableStorageMode.equals("memory") && fesqlCase.getMode().contains("disk-unsupport")) {
+            log.info("skip case in disk mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;
@@ -70,20 +75,20 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("version:{},create db:{},{}", version, dbName, dbOk);
+        log.info("version:{},create db:{},{}", version, dbName, dbOk);
         SDKUtil.useDB(executor,dbName);
         OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
 
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor){
-        logger.info("version:{} execute begin",version);
+        log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -107,7 +112,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
             }
             fesqlResult = SDKUtil.sql(executor, dbName, sql);
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 }

@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
@@ -53,7 +54,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
     }
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor) {
-        logger.info("version:{} execute begin",version);
+        log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         try {
              List<String> sqls = fesqlCase.getSqls();
@@ -80,7 +81,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                 if (isBatchRequest) {
                     InputDesc batchRequest = fesqlCase.getBatch_request();
                     if (batchRequest == null) {
-                        logger.error("No batch request provided in case");
+                        log.error("No batch request provided in case");
                         return null;
                     }
                     List<Integer> commonColumnIndices = new ArrayList<>();
@@ -101,7 +102,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
                         request = fesqlCase.getInputs().get(0);
                     }
                     if (null == request || CollectionUtils.isEmpty(request.getColumns())) {
-                        logger.error("fail to execute in request query sql executor: sql case request columns is empty");
+                        log.error("fail to execute in request query sql executor: sql case request columns is empty");
                         return null;
                     }
                     fesqlResult = SDKUtil.sqlRequestMode(executor, dbName, null == fesqlCase.getBatch_request(), sql, request);
@@ -110,48 +111,52 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         }catch (Exception e){
             e.printStackTrace();
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 
     @Override
     protected void prepare(String version,SqlExecutor executor) {
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("create db:{},{}", dbName, dbOk);
+        log.info("create db:{},{}", dbName, dbOk);
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
         OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
 
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            logger.info("skip case in request mode: {}", fesqlCase.getDesc());
+            log.info("skip case in request mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("request-unsupport")) {
-            logger.info("skip case in request mode: {}", fesqlCase.getDesc());
+            log.info("skip case in request mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
-            logger.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && !OpenMLDBGlobalVar.tableStorageMode.equals("memory") && fesqlCase.getMode().contains("disk-unsupport")) {
+            log.info("skip case in disk mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (OpenMLDBConfig.isCluster() &&
                 null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            logger.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
+            log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;

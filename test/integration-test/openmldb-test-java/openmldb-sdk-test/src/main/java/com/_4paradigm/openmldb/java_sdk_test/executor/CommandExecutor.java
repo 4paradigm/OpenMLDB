@@ -35,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CommandExecutor extends BaseExecutor{
 
-    private static final Logger logger = new LogProxy(log);
     protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, OpenMLDBResult> resultMap;
 
@@ -67,27 +65,27 @@ public class CommandExecutor extends BaseExecutor{
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
-            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
-            logger.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cli-unsupport")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;
@@ -102,14 +100,14 @@ public class CommandExecutor extends BaseExecutor{
     }
 
     protected void prepare(String version, OpenMLDBInfo openMLDBInfo){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         OpenMLDBResult fesqlResult = OpenMLDBCommandUtil.createDB(openMLDBInfo,dbName);
-        logger.info("version:{},create db:{},{}", version, dbName, fesqlResult.isOk());
+        log.info("version:{},create db:{},{}", version, dbName, fesqlResult.isOk());
         OpenMLDBResult res = OpenMLDBCommandUtil.createAndInsert(openMLDBInfo, dbName, fesqlCase.getInputs());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
 
     @Override
@@ -126,7 +124,7 @@ public class CommandExecutor extends BaseExecutor{
     }
 
     protected OpenMLDBResult execute(String version, OpenMLDBInfo openMLDBInfo){
-        logger.info("version:{} execute begin",version);
+        log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -150,7 +148,7 @@ public class CommandExecutor extends BaseExecutor{
             }
             fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 
@@ -174,7 +172,7 @@ public class CommandExecutor extends BaseExecutor{
 
 
     public void tearDown(String version,OpenMLDBInfo openMLDBInfo) {
-        logger.info("version:{},begin tear down",version);
+        log.info("version:{},begin tear down",version);
         List<String> tearDown = fesqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
@@ -186,7 +184,7 @@ public class CommandExecutor extends BaseExecutor{
                 OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName, sql);
             });
         }
-        logger.info("version:{},begin drop table",version);
+        log.info("version:{},begin drop table",version);
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

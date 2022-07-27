@@ -45,7 +45,7 @@ public class NullExecutor extends BaseSQLExecutor {
 
     @Override
     public boolean verify() {
-        logger.info("No case need to be run.");
+        log.info("No case need to be run.");
         return false;
     }
 }

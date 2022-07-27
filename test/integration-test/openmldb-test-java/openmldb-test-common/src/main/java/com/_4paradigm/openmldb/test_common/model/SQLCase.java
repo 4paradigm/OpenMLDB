@@ -119,7 +119,9 @@ public class SQLCase implements Serializable{
         }
         StringBuilder builder = new StringBuilder("create procedure " + name + "(\n");
         for (int i = 0; i < columns.size(); i++) {
-            builder.append(columns.get(i));
+            String column = columns.get(i);
+            String[] ss = column.split("\\s+");
+            builder.append(ss[0]+" "+ss[1]);
             if (i != columns.size() - 1) {
                 builder.append(",");
             }

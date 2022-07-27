@@ -359,7 +359,6 @@ cases:
   -
     id: 22
     desc: test-case
-    tags: ["TODO","disk table apiserver:Table not found"]
     mode: standalone-unsupport
     inputs:
       -

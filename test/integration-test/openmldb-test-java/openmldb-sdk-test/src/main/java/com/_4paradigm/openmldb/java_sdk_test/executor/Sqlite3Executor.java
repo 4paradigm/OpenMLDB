@@ -46,13 +46,13 @@ public class Sqlite3Executor extends JDBCExecutor{
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.SQLITE3.name())){
             return true;
         }
-        logger.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
+        log.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
-        logger.info("sqlite3 prepare begin");
+        log.info("sqlite3 prepare begin");
         for(InputDesc inputDesc:fesqlCase.getInputs()) {
             String createSql = Sqlite3Util.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql,DBType.SQLITE3);
@@ -61,12 +61,12 @@ public class Sqlite3Executor extends JDBCExecutor{
                 throw new RuntimeException("fail to run Sqlite3Executor: prepare fail");
             }
         }
-        logger.info("sqlite3 prepare end");
+        log.info("sqlite3 prepare end");
     }
 
     @Override
     public void execute() {
-        logger.info("sqlite3 execute begin");
+        log.info("sqlite3 execute begin");
         OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
@@ -81,12 +81,12 @@ public class Sqlite3Executor extends JDBCExecutor{
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
         }
         mainResult = fesqlResult;
-        logger.info("sqlite3 execute end");
+        log.info("sqlite3 execute end");
     }
 
     @Override
     public void tearDown() {
-        logger.info("sqlite3,begin drop table");
+        log.info("sqlite3,begin drop table");
         List<InputDesc> tables = fesqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

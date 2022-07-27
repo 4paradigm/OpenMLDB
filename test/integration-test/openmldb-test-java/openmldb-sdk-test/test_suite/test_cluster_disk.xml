@@ -20,6 +20,8 @@
             <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.ParameterQueryTest"></class>
             <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.SelectTest"></class>
             <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.WindowTest"></class>
+
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.disk.DiskTableTest"></class>
         </classes>
     </test>
     <listeners>
