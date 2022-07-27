@@ -20,6 +20,7 @@ version: 0.5.0
 cases:
   - id: 0
     desc: 正常union
+    mode: disk-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
