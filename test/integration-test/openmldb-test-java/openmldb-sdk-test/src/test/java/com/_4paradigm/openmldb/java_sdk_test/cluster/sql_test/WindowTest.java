@@ -42,7 +42,7 @@ public class WindowTest extends OpenMLDBTest {
     public void testWindowBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
-    @Story("request")
+    @Story("requestWithSp")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"function/window/",
             "function/cluster/",

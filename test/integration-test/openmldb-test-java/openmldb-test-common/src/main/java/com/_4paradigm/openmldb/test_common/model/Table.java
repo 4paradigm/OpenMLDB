@@ -208,7 +208,11 @@ public class Table implements Serializable{
         for (String row : data.trim().split("\n")) {
             List<Object> each_row = new ArrayList<Object>();
             for (String item : row.trim().split(",")) {
-                each_row.add(item.trim());
+                String data = item.trim();
+                if(data.equalsIgnoreCase("null")){
+                    data = null;
+                }
+                each_row.add(data);
             }
             parserd_rows.add(each_row);
         }
