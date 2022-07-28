@@ -131,6 +131,15 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
 
+struct QueryResp {
+    QueryResp() = default;
+    int code = 0;
+    std::string msg = "ok";
+    std::shared_ptr<hybridse::sdk::ResultSet> rs;
+};
+
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s); // NOLINT
+
 }  // namespace apiserver
 }  // namespace openmldb
 
