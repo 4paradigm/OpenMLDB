@@ -2588,13 +2588,22 @@ void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetTargetString(), "target", false);
     output << "\n";
-    PrintValue(output, tab, GetJobId(), "job_id", true);
+    if (target_ == DeleteTarget::JOB) {
+        PrintValue(output, tab, GetJobId(), "job_id", true);
+    } else {
+        PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
+        output << "\n";
+        PrintSqlNode(output, tab, condition_, "condition", true);
+    }
 }
 
 std::string DeleteTargetString(DeleteTarget target) {
     switch (target) {
         case DeleteTarget::JOB: {
             return "JOB";
+        }
+        case DeleteTarget::TABLE: {
+            return "TABLE";
         }
     }
     return "unknown";
