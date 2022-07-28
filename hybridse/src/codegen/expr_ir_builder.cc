@@ -765,7 +765,7 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
             break;
         }
         case ::hybridse::node::kFnOpRLike: {
-            CHECK_STATUS(BuildRLikeExprAsUdf(node, "rlike_match", left, right, output))
+            CHECK_STATUS(BuildRLikeExprAsUdf(node, "regexp_like", left, right, output))
             break;
         }
         default: {
