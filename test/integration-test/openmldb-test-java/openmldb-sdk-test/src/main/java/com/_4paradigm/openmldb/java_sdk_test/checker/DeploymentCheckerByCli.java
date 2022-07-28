@@ -38,7 +38,6 @@ public class DeploymentCheckerByCli extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("deployment check");
-        reportLog.info("deployment check");
         OpenmldbDeployment expectDeployment = expect.getDeployment();
         String name = expectDeployment.getName();
         name = SQLUtil.formatSql(name, fesqlResult.getTableNames());

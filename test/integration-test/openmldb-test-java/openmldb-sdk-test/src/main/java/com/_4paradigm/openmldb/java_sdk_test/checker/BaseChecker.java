@@ -18,7 +18,6 @@ package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 
 import java.util.Map;
@@ -31,7 +30,6 @@ public abstract class BaseChecker implements Checker {
     protected OpenMLDBResult fesqlResult;
     protected Map<String, OpenMLDBResult> resultMap;
     protected ExpectDesc expect;
-    protected ReportLog reportLog = ReportLog.of();
 
     public BaseChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
         this.expect = expect;

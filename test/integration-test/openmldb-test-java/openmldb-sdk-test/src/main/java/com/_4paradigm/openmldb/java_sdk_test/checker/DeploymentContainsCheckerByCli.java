@@ -38,7 +38,6 @@ public class DeploymentContainsCheckerByCli extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("deployment contains check");
-        reportLog.info("deployment contains name check");
         OpenmldbDeployment expectDeployment = expect.getDeploymentContains();
         if (expectDeployment == null) {
             return;

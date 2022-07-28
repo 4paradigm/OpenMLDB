@@ -37,7 +37,6 @@ public class DiffVersionChecker extends BaseChecker{
     @Override
     public void check() throws Exception {
         log.info("diff version check");
-        reportLog.info("diff version check");
         resultMap.entrySet().stream().forEach(e->{
             String version = e.getKey();
             OpenMLDBResult result = e.getValue();

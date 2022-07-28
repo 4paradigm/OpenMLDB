@@ -37,7 +37,6 @@ public class CountChecker extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("count check");
-        reportLog.info("count check");
         int expectCount = expect.getCount();
         int actual = fesqlResult.getCount();
         Assert.assertEquals(actual,expectCount,"count验证失败");

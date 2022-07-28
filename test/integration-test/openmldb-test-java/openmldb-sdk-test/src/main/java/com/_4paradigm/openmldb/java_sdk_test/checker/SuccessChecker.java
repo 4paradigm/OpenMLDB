@@ -34,7 +34,6 @@ public class SuccessChecker extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("success check");
-        reportLog.info("success check");
         boolean success =  expect.getSuccess();
         boolean actual = fesqlResult.isOk();
         Assert.assertEquals(actual,success,"success验证失败");

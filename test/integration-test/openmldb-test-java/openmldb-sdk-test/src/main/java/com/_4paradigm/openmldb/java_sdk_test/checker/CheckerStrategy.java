@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +81,9 @@ public class CheckerStrategy {
         }
         if(expect.getCat()!=null){
             checkList.add(new CatCheckerByCli(expect, fesqlResult));
+        }
+        if(StringUtils.isNotEmpty(expect.getMsg())){
+            checkList.add(new MessageChecker(expect, fesqlResult));
         }
         return checkList;
     }

@@ -43,7 +43,6 @@ public class ResultCheckerByJDBC extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("result check");
-        reportLog.info("result check");
         if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
@@ -59,9 +58,7 @@ public class ResultCheckerByJDBC extends BaseChecker {
         }
 
         log.info("expect:{}", expectRows);
-        reportLog.info("expect:{}", expectRows);
         log.info("actual:{}", actual);
-        reportLog.info("actual:{}", actual);
         Assert.assertEquals(actual.size(), expectRows.size(),
                 String.format("ResultChecker fail: expect size %d, real size %d", expectRows.size(), actual.size()));
         for (int i = 0; i < actual.size(); ++i) {

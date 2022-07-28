@@ -39,7 +39,6 @@ public class ColumnsChecker extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("column name check");
-        reportLog.info("column name check");
         List<String> expectColumns = expect.getColumns();
         if (expectColumns == null || expectColumns.size() == 0) {
             return;

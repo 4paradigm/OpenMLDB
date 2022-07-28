@@ -38,7 +38,6 @@ public class DeploymentCountCheckerByCli extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("deployment count check");
-        reportLog.info("deployment count name check");
         int expectDeploymentCount = expect.getDeploymentCount();
         List<OpenmldbDeployment> actualDeployments = fesqlResult.getDeployments();
         Integer deploymentCount = fesqlResult.getDeploymentCount();

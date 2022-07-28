@@ -20,7 +20,6 @@ public class CatCheckerByCli extends BaseChecker{
     @Override
     public void check() throws Exception {
         log.info("cat check");
-        reportLog.info("cat check");
         CatFile expectCat = expect.getCat();
         String path = expectCat.getPath();
         path = SQLUtil.formatSql(path, fesqlResult.getTableNames());

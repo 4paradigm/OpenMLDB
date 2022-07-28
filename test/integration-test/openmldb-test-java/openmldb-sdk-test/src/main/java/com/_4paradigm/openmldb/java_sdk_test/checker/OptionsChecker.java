@@ -44,7 +44,6 @@ public class OptionsChecker extends BaseChecker {
     @Override
     public void check() throws Exception {
         log.info("options check");
-        reportLog.info("options check");
         String apiserverEndpoint = OpenMLDBGlobalVar.mainInfo.getApiServerEndpoints().get(0);
         String dbName = fesqlResult.getDbName();
         String tableName = expect.getName();

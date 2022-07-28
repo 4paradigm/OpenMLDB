@@ -50,7 +50,6 @@ public class DiffResultChecker extends BaseChecker{
     }
     public void checkMysql(OpenMLDBResult mysqlResult) throws Exception {
         log.info("diff mysql check");
-        reportLog.info("diff mysql check");
         //验证success
         boolean fesqlOk = fesqlResult.isOk();
         boolean sqlite3Ok = mysqlResult.isOk();
@@ -60,16 +59,13 @@ public class DiffResultChecker extends BaseChecker{
         List<List<Object>> fesqlRows = fesqlResult.getResult();
         List<List<Object>> mysqlRows = mysqlResult.getResult();
         log.info("fesqlRows:{}", fesqlRows);
-        reportLog.info("fesqlRows:{}", fesqlRows);
         log.info("mysqlRows:{}", mysqlRows);
-        reportLog.info("mysqlRows:{}", mysqlRows);
         // Assert.assertEquals(fesqlRows.size(), mysqlRows.size(),
         //         String.format("ResultChecker fail: mysql size %d, fesql size %d", mysqlRows.size(), fesqlRows.size()));
         Assert.assertEquals(fesqlRows,mysqlRows,String.format("ResultChecker fail: mysql: %s, fesql: %s", mysqlRows, fesqlRows));
     }
     public void checkSqlite3(OpenMLDBResult sqlite3Result) throws Exception {
         log.info("diff sqlite3 check");
-        reportLog.info("diff sqlite3 check");
         //验证success
         boolean fesqlOk = fesqlResult.isOk();
         boolean sqlite3Ok = sqlite3Result.isOk();
@@ -79,9 +75,7 @@ public class DiffResultChecker extends BaseChecker{
         List<List<Object>> fesqlRows = fesqlResult.getResult();
         List<List<Object>> sqlite3Rows = sqlite3Result.getResult();
         log.info("fesqlRows:{}", fesqlRows);
-        reportLog.info("fesqlRows:{}", fesqlRows);
         log.info("sqlite3Rows:{}", sqlite3Rows);
-        reportLog.info("sqlite3Rows:{}", sqlite3Rows);
         Assert.assertEquals(fesqlRows.size(), sqlite3Rows.size(),
                 String.format("ResultChecker fail: sqlite3 size %d, fesql size %d", sqlite3Rows.size(), fesqlRows.size()));
         for (int i = 0; i < fesqlRows.size(); ++i) {

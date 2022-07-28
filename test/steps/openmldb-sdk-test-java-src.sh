@@ -91,7 +91,7 @@ cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # modify config
-sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "0.5.0" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}" "${TABLE_STORAGE_MODE}"
+sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}" "${TABLE_STORAGE_MODE}"
 
 # install jar
 cd test/integration-test/openmldb-test-java || exit

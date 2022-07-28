@@ -15,37 +15,27 @@
  */
 
 package com._4paradigm.openmldb.java_sdk_test.checker;
-
-
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
-import com._4paradigm.openmldb.test_common.model.Table;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
-
-import java.util.List;
 
 /**
  * @author zhaowei
  * @date 2020/6/16 3:14 PM
  */
 @Slf4j
-public class ColumnsCheckerByCli extends BaseChecker {
-    public ColumnsCheckerByCli(ExpectDesc expect, OpenMLDBResult fesqlResult) {
-        super(expect, fesqlResult);
+public class MessageChecker extends BaseChecker {
+
+    public MessageChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
+        super(expect,fesqlResult);
     }
 
     @Override
     public void check() throws Exception {
-        log.info("column name check");
-        List<String> expectColumns = expect.getColumns();
-        if (expectColumns == null || expectColumns.size() == 0) {
-            return;
-        }
-        List<String> columnNames = fesqlResult.getColumnNames();
-        Assert.assertEquals(expectColumns.size(),columnNames.size(), "Illegal schema size");
-        for (int i = 0; i < expectColumns.size(); i++) {
-            Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)).replace(" ",""));
-        }
+        log.info("message check");
+        String expectMsg = expect.getMsg();
+        String actualMsg = fesqlResult.getMsg();
+        Assert.assertTrue(actualMsg.contains(expectMsg),"msg验证失败,actualMsg="+actualMsg+",expectMsg="+expectMsg);
     }
 }
