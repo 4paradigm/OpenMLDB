@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["distinct_count"]
 version: 0.5.0
 cases:
   -
@@ -149,16 +149,16 @@ cases:
     sqlDialect: ["HybridSQL"]
     inputs:
       -
-        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:c1:c7"]
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool","ts timestamp"]
+        indexs: ["index1:c1:ts"]
         rows:
-          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
-          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",false]
-          - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true]
-          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true,1590738990000]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",false,1590738991000]
+          - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true,1590738992000]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL,1590738993000]
     sql: |
       SELECT {0}.id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9 FROM {0} WINDOW
-      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]

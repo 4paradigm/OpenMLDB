@@ -54,7 +54,7 @@ public class FunctionTest extends OpenMLDBTest {
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/function/")
+    @Yaml(filePaths = "function/function/test_udaf_function.yaml")
     public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

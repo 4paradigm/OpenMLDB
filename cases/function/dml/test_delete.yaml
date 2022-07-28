@@ -387,6 +387,22 @@ cases:
   -
     id: 21
     desc: delete 其他库的数据
+    inputs:
+      -
+        db: d1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [3,"aa",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+    sqls:
+      - delete from d1.{0} where c1='aa';
+      - select * from d1.{0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
   -
     id: 22
     desc: 两个index中key相同 delete 一个key
