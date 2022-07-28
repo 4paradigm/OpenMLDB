@@ -70,7 +70,7 @@ void Exporter::ExportTable() {
         std::string log = log_dir + ptr->d_name;
         file_path.emplace_back(log);
     }
-    std::ofstream my_cout(table_dir_path_ + "_result.csv");
+    std::ofstream my_cout(table_dir_path_.substr(table_dir_path_.find_last_of("/") + 1) + "_result.csv");
     for (int i = 0; i < schema_.size(); ++i) {
         my_cout << schema_.Get(i).name() << ",";
     }

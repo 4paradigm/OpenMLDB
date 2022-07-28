@@ -35,8 +35,10 @@ namespace tools {
 
 class TablemetaReader {
  public:
-    TablemetaReader(const std::string &db_name, const std::string &table_name) : db_name_(db_name), table_name_(table_name),
-            tmp_path_(std::filesystem::temp_directory_path() / std::filesystem::current_path()) {}
+    TablemetaReader(const std::string &db_name, const std::string &table_name) : db_name_(db_name), table_name_(table_name) {
+        std::filesystem::create_directory("./tmp");
+        tmp_path_ = "./tmp";
+    }
 
     virtual ~TablemetaReader() {}
 
@@ -51,11 +53,10 @@ class TablemetaReader {
     Schema getSchema() { return schema_; }
 
  protected:
-    virtual std::string ReadDBRootPath(const std::string&) = 0;
+    virtual std::string ReadDBRootPath(const std::string &, const std::string &) = 0;
 
     std::string db_name_;
     std::string table_name_;
-    std::unordered_map<std::string, std::string> ns_map_;
     std::unordered_map<std::string, std::string> tablet_map_;
     Schema schema_;
     uint32_t tid_;
@@ -72,7 +73,7 @@ class ClusterTablemetaReader : public TablemetaReader {
     void ReadTableMeta() override;
 
 private:
-    std::string ReadDBRootPath(const std::string&) override;
+    std::string ReadDBRootPath(const std::string &, const std::string &) override;
 
     ClusterOptions options_;
 };
@@ -88,7 +89,7 @@ class StandaloneTablemetaReader : public TablemetaReader {
     void ReadTableMeta() override;
 
  private:
-    std::string ReadDBRootPath(const std::string&) override;
+    std::string ReadDBRootPath(const std::string &, const std::string &) override;
 
     std::string host_;
     uint32_t port_;

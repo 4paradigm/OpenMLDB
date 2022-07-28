@@ -15,9 +15,11 @@
  */
 
 #include <gflags/gflags.h>
+#include <dirent.h>
 
 #include <iostream>
 #include <filesystem>
+#include <vector>
 #include <string>
 
 #include "sdk/db_sdk.h"
@@ -57,6 +59,7 @@ int main(int argc, char* argv[]) {
         }
         ::openmldb::tools::StandaloneTablemetaReader standalone_tablemeta_reader =
                 ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name, FLAGS_host, FLAGS_port);
+        standalone_tablemeta_reader.ReadConfigYaml("./conf.yaml");
         standalone_tablemeta_reader.ReadTableMeta();
         table_schema = standalone_tablemeta_reader.getSchema();
         tmp_path = standalone_tablemeta_reader.GetTmpPath().string();
@@ -71,16 +74,30 @@ int main(int argc, char* argv[]) {
         cluster_options.zk_path = FLAGS_zk_root_path;
         ::openmldb::tools::ClusterTablemetaReader cluster_tablemeta_reader =
                 ::openmldb::tools::ClusterTablemetaReader(FLAGS_db_name, FLAGS_table_name, cluster_options);
+        cluster_tablemeta_reader.ReadConfigYaml("./conf.yaml");
+        cluster_tablemeta_reader.ReadTableMeta();
         table_schema = cluster_tablemeta_reader.getSchema();
         tmp_path = cluster_tablemeta_reader.GetTmpPath().string();
     }
-
-    ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(tmp_path);
-    exporter.SetSchema(table_schema);
-    exporter.ReadManifest();
-    printf("--------start ExportData--------\n");
-    exporter.ExportTable();
-    printf("--------end ExportData--------\n");
-    std::filesystem::remove_all(tmp_path);
+    
+    std::vector<std::string> file_path;
+    struct dirent *ptr;
+    DIR *dir;
+    dir = opendir(tmp_path.c_str());
+    while ((ptr = readdir(dir)) != NULL) {
+        if (ptr->d_name[0] == '.' || !isdigit(ptr->d_name[0]))
+            continue;
+        std::string table = tmp_path + "/" + ptr->d_name;
+        file_path.emplace_back(table);
+    }
+    for (auto table: file_path) {
+        printf("Opening table path: %s\n", table.c_str());
+        ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(table);
+        exporter.SetSchema(table_schema);
+        exporter.ReadManifest();
+        printf("--------start ExportData--------\n");
+        exporter.ExportTable();
+        printf("--------end ExportData--------\n");
+    }
     return 0;
 }

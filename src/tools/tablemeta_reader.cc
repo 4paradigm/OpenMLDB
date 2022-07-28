@@ -16,6 +16,8 @@
 
 #include "tools/tablemeta_reader.h"
 
+#include <stdlib.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -37,28 +39,23 @@ namespace openmldb {
 namespace tools {
 
 void TablemetaReader::ReadConfigYaml(const std::string &yaml_path) {
-    // Reads nameserver's and tablet's endpoints and corresponding paths
+    printf("--------begin ReadConfigYaml--------\n");
+    // Reads tablet's endpoints and corresponding paths
     YAML::Node config = YAML::LoadFile(yaml_path);
-    for (YAML::const_iterator iter = config["nameserver"].begin(); iter != config["nameserver"].end(); ++iter) {
+    for (YAML::const_iterator iter = config["tablet"].begin(); iter != config["tablet"].end(); ++iter) {
         std::string endpoint = (*iter)["endpoint"].as<std::string>();
-        if (ns_map_.find(endpoint) == ns_map_.end()) {
-            printf("Error. Exists duplicate endpoints.\n");
-        } else {
-            ns_map_[endpoint] = (*iter)["path"].as<std::string>();
-        }
-    }
-    for (YAML::const_iterator iter = config["tablet"].begin(); iter != config["tablet"].end(); ++iter)
-    {
-        std::string endpoint = (*iter)["tablet"].as<std::string>();
-        if (tablet_map_.find(endpoint) == tablet_map_.end()) {
+        if (tablet_map_.find(endpoint) != tablet_map_.end()) {
             printf("Error. Exists duplicate endpoints.\n");
         } else {
             tablet_map_[endpoint] = (*iter)["path"].as<std::string>();
+            printf("Tablet's endpoint: %s, path: %s\n", endpoint.c_str(), tablet_map_[endpoint].c_str());
         }
     }
+    printf("--------end ReadConfigYaml--------\n");
 }
 
 void StandaloneTablemetaReader::ReadTableMeta() {
+    printf("--------begin ReadTableMeta--------\n");
     ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::StandAloneSDK(host_, port_);
     sdk->Init();
     SQLClusterRouter *sr = new SQLClusterRouter(sdk);
@@ -67,7 +64,7 @@ void StandaloneTablemetaReader::ReadTableMeta() {
 
     tid_ = tableInfo.tid();
     schema_ = tableInfo.column_desc();
-    //std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / std::filesystem::current_path();
+
     for (const auto& tablePartition : tableInfo.table_partition()) {
         uint32_t pid = tablePartition.pid();
         for (const auto& partitionMeta : tablePartition.partition_meta()) {
@@ -75,34 +72,49 @@ void StandaloneTablemetaReader::ReadTableMeta() {
             if (partitionMeta.is_leader()) {
                 std::string endpoint = partitionMeta.endpoint();
                 // go to the corresponding machine to find the deployment directory through the endpoint
-                if (ns_map_.find(endpoint) == ns_map_.end()) {
-                    path = ns_map_[endpoint];
-                } else if (tablet_map_.find(endpoint) == tablet_map_.end()) {
+                if (tablet_map_.find(endpoint) != tablet_map_.end()) {
                     path = tablet_map_[endpoint];
+                    std::string db_root_path = ReadDBRootPath(path, host_);
+                    std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
+
+                    char exec[180];
+                    sprintf(exec, "scp -r %s:%s %s", host_.c_str(), data_path.c_str(), tmp_path_.string().c_str());
+                    printf("SCP Command: %s\n", exec);
+                    if (system(exec) == 0)
+                        printf("%s copied successfully.\n", data_path.c_str());
+                    else
+                        printf("%s not copied successfully.\n", data_path.c_str());
                 } else {
                     printf("Error. Cannot find endpoint.\n");
-                    return;
                 }
                 break;
             }
-            std::string db_root_path = ReadDBRootPath(path);
-            std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-            std::filesystem::copy(data_path, tmp_path_);
         }
     }
+    printf("--------end ReadTableMeta--------\n");
 }
 
-std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_dir) {
+std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/standalone_tablet.flags";
-    std::ifstream infile(tablet_path);
+
+    char exec[180];
+    sprintf(exec,"scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
+    printf("SCP Command: %s\n", exec);
+    if (system(exec) == 0)
+        printf("%s copied successfully.\n", tablet_path.c_str());
+    else
+        printf("%s not copied successfully.\n", tablet_path.c_str());
+    std::string tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
+    std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;
     std::string db_root = "--db_root_path";
     while (std::getline(infile, line)) {
         if (line.find(db_root) != std::string::npos) {
             db_root_path = line.substr(line.find("=") + 1);
-            printf("The database root path is: %s\n", db_root_path.c_str());
+            if (db_root_path[0] == '.')
+                db_root_path = deploy_dir + db_root_path.substr(1);
             break;
         }
     }
@@ -111,10 +123,15 @@ std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_
 }
 
 void ClusterTablemetaReader::ReadTableMeta() {
+    printf("--------begin ReadTableMeta--------\n");
     ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::ClusterSDK(options_);
+    printf("start init sdk\n");
     sdk->Init();
+    printf("end init sdk\n");
     SQLClusterRouter *sr = new SQLClusterRouter(sdk);
+    printf("start init SQLClusterRouter\n");
     sr->Init();
+    printf("end init SQLClusterRouter\n");
     ::openmldb::nameserver::TableInfo tableInfo = sr->GetTableInfo(db_name_, table_name_);
 
     tid_ = tableInfo.tid();
@@ -123,38 +140,52 @@ void ClusterTablemetaReader::ReadTableMeta() {
     for (const auto& tablePartition : tableInfo.table_partition()) {
         uint32_t pid = tablePartition.pid();
         for (const auto& partitionMeta : tablePartition.partition_meta()) {
-            std::string path;
+            std::string path, endpoint;
             if (partitionMeta.is_leader()) {
-                std::string endpoint = partitionMeta.endpoint();
+                endpoint = partitionMeta.endpoint();
                 // go to the corresponding machine to find the deployment directory through the endpoint
-                if (ns_map_.find(endpoint) == ns_map_.end()) {
-                    path = ns_map_[endpoint];
-                } else if (tablet_map_.find(endpoint) == tablet_map_.end()) {
+                if (tablet_map_.find(endpoint) != tablet_map_.end()) {
                     path = tablet_map_[endpoint];
+                    std::string host = endpoint.substr(0, endpoint.find(":"));
+                    std::string db_root_path = ReadDBRootPath(path, host);
+                    std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
+                    char exec[180];
+                    sprintf(exec, "scp -r %s:%s %s", host.c_str(), data_path.c_str(), tmp_path_.string().c_str());
+                    printf("SCP Command: %s\n", exec);
+                    if (system(exec) == 0)
+                        printf("%s copied successfully.\n", data_path.c_str());
+                    else
+                        printf("%s not copied successfully.\n", data_path.c_str());
                 } else {
                     printf("Error. Cannot find endpoint.\n");
-                    return;
                 }
                 break;
             }
-            std::string db_root_path = ReadDBRootPath(path);
-            std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-            std::filesystem::copy(data_path, tmp_path_);
         }
     }
+    printf("--------end ReadTableMeta--------\n");
 }
 
-std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir) {
+std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/tablet.flags";
-    std::ifstream infile(tablet_path);
+    char exec[180];
+    sprintf(exec,"scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
+    printf("SCP Command: %s\n", exec);
+    if (system(exec) == 0)
+        printf("%s copied successfully.\n", tablet_path.c_str());
+    else
+        printf("%s not copied successfully.\n", tablet_path.c_str());
+    std::string tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
+    std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;
     std::string db_root = "--db_root_path";
     while (std::getline(infile, line)) {
         if (line.find(db_root) != std::string::npos) {
             db_root_path = line.substr(line.find("=") + 1);
-            printf("The database root path is: %s\n", db_root_path.c_str());
+            if (db_root_path[0] == '.')
+                db_root_path = deploy_dir + db_root_path.substr(1);
             break;
         }
     }
