@@ -22,7 +22,6 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
-        indexs: ["index1:c1:c7"]
         rows:
           - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
           - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
@@ -32,7 +31,7 @@ cases:
     dataProvider:
       - ["ROWS","ROWS_RANGE"]
     sql: |
-      deploy {0} options(long_windows='w1:2') SELECT id, c1 FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT id, c1, count_where(c8,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]

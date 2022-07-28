@@ -120,6 +120,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
+        SDKUtil.useDB(executor,dbName);
         boolean useFirstInputAsRequests = !isBatchRequest && null == sqlCase.getBatch_request();
         OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, sqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
