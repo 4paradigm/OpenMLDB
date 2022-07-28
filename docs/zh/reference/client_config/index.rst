@@ -1,13 +1,9 @@
 =============================
-参考
+客户端配置
 =============================
 
 
 .. toctree::
     :maxdepth: 1
 
-    rest_api
-    arch/index
-    sql/index
-    ip_tips
-    client_config/index
+    client_spark_config
