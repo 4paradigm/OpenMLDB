@@ -46,7 +46,7 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::api::TableMeta& meta,
 
 TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& meta,
                                        std::shared_ptr<hybridse::vm::Tablet> local_tablet)
-    : partition_num_(meta.partition_num()),
+    : partition_num_(meta.table_partition_size()),
       schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
@@ -57,6 +57,10 @@ TabletTableHandler::TabletTableHandler(const ::openmldb::nameserver::TableInfo& 
       local_tablet_(local_tablet) {}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
+    if (partition_num_ == 0) {
+        // some test cases not set table_partition
+        partition_num_ = 1;
+    }
     index_hint_vec_.resize(partition_num_);
     bool ok = schema::SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
