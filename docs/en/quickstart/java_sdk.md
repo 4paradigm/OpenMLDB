@@ -135,6 +135,41 @@ try {
 }
 ```
 
+#### 2.4.2 Use Placeholder to Execute Batch Insert
+
+1. Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to` get the InsertPrepareStatement`.
+2. Calling the `PreparedStatement::setType(index, value)` interface to fill data into `InsertPrepareStatement`.
+3. Using the `PreparedStatement::addBatch()` interface to build current row.
+4. Using the `PreparedStatement::setType(index, value)` and `PreparedStatement::addBatch()` to add new rows.
+5. Using the `PreparedStatement::executeBatch()` to execute batch insert.
+
+```java
+String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
+PreparedStatement pstmt = null;
+try {
+  pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSqlWithPlaceHolder);
+  pstmt.setInt(1, 24);
+  pstmt.setInt(2, 1.5f);
+  pstmt.addBatch();
+  pstmt.setInt(1, 25);
+  pstmt.setInt(2, 1.6f);
+  pstmt.addBatch();
+  pstmt.executeBatch();
+} catch (SQLException e) {
+  e.printStackTrace();
+  Assert.fail();
+} finally {
+  if (pstmt != null) {
+    try {
+      // PrepareStatement must be closed after it is used up
+      pstmt.close();
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+  }
+}
+```
+
 ### 2.5 Execute SQL Batch Query
 
 1. Using the `SqlClusterExecutor::executeSQL(selectSql)` interface to execute SQL batch query statements:

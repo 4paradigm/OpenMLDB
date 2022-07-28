@@ -173,9 +173,9 @@ execute后，缓存的数据将被清除，无法重试execute。
 
 第三步，使用`PreparedStatement::addBatch()`接口完成一行的填充。
 
-第四步，继续使用`setType`和`addBatch`，填充多行。
+第四步，继续使用`setType(index, value)`和`addBatch()`，填充多行。
 
-第五步，使用`PreparedStatement::addBatch()`接口完成批量插入。
+第五步，使用`PreparedStatement::executeBatch()`接口完成批量插入。
 
 ```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
@@ -184,7 +184,11 @@ try {
   pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSqlWithPlaceHolder);
   pstmt.setInt(1, 24);
   pstmt.setInt(2, 1.5f);
-  pstmt.execute();
+  pstmt.addBatch();
+  pstmt.setInt(1, 25);
+  pstmt.setInt(2, 1.7f);
+  pstmt.addBatch();
+  pstmt.executeBatch();
 } catch (SQLException e) {
   e.printStackTrace();
   Assert.fail();
