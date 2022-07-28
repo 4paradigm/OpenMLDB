@@ -1847,12 +1847,7 @@ base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, n
     CHECK_TRUE(id->num_names() == 1, common::kSqlAstError,
                "unsupported delete statement's target path has size >= 2");
     auto id_name = id->first_name()->GetAsStringView();
-    if (absl::EqualsIgnoreCase(id_name, "job")) {
-        std::vector<absl::string_view> targets;
-        CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
-        CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete job with path name >= 2");
-        *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front(), "", "", nullptr);
-    } else {
+    if (delete_stmt->where() != nullptr) {
         CHECK_TRUE(delete_stmt->GetTargetPathForNonNested().ok(), common::kSqlAstError,
                    "Un-support delete statement with illegal target table path")
         std::vector<std::string> names;
@@ -1866,6 +1861,13 @@ base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, n
         node::ExprNode* where_expr = nullptr;
         CHECK_STATUS(ConvertExprNode(delete_stmt->where(), node_manager, &where_expr));
         *output = node_manager->MakeDeleteNode(node::DeleteTarget::TABLE, "", db_name, table_name, where_expr);
+    } else if (absl::EqualsIgnoreCase(id_name, "job")) {
+        std::vector<absl::string_view> targets;
+        CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
+        CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete sql");
+        *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front(), "", "", nullptr);
+    } else {
+        FAIL_STATUS(common::kSqlAstError, "unsupported delete sql");
     }
     return base::Status::OK();
 }
