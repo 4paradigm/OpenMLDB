@@ -16,14 +16,12 @@ db: test_zw
 debugs: []
 version: 0.5.0
 cases:
-- id: 15
-  desc: 创建磁盘表，ttl_type=latest,ttl=4,insert 10
-  mode: request-unsupport
+- id: 0
+  desc: ttl_type=latest,ttl=4,insert 10
   inputs:
     -
       columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       indexs: ["index1:c1:c4:4:latest"]
-      storage: SSD
       rows:
         - ["bb", 2, 3, 1590738989000]
         - ["bb", 4, 5, 1590738990000]
