@@ -484,6 +484,7 @@ cases:
          5, 0, NULL, NULL, NULL
          6, 1, 56, 56, 56
   - id: 9
+    mode: disk-unsupport
     desc: |
       ROWS Window with exclude current_time and exclude current_row
     inputs:
