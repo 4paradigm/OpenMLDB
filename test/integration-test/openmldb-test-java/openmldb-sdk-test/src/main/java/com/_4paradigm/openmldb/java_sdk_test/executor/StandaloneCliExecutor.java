@@ -35,8 +35,8 @@ public class StandaloneCliExecutor extends CommandExecutor{
 
     @Override
     public boolean verify() {
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("standalone-unsupport")) {
-            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("standalone-unsupport")) {
+            log.info("skip case in cli mode: {}", sqlCase.getDesc());
             return false;
         }
         return super.verify();

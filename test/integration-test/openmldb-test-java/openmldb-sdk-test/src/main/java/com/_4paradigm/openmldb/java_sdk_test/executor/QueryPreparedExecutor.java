@@ -61,7 +61,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
         //         fesqlResult = FesqlUtil.sql(executor, dbName, sql);
         //     }
         // }
-        String sql = fesqlCase.getSql();
+        String sql = sqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
@@ -69,7 +69,7 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
             }else {
                 sql = SQLUtil.formatSql(sql, tableNames);
             }
-            InputDesc parameters = fesqlCase.getParameters();
+            InputDesc parameters = sqlCase.getParameters();
             List<String> types = parameters.getColumns().stream().map(s -> s.split("\\s+")[1]).collect(Collectors.toList());
             List<Object> objects = parameters.getRows().get(0);
             fesqlResult = SDKUtil.selectWithPrepareStatement(executor, dbName,sql, types,objects);

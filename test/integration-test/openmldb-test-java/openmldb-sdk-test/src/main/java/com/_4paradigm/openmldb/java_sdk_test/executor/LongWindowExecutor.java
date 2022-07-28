@@ -21,7 +21,6 @@ import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
-import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -51,22 +50,18 @@ public class LongWindowExecutor extends StoredProcedureSQLExecutor {
         log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         try {
-            if (fesqlCase.getInputs().isEmpty() ||
-                    CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
+            if (sqlCase.getInputs().isEmpty() ||
+                    CollectionUtils.isEmpty(sqlCase.getInputs().get(0).getRows())) {
                 log.error("fail to execute in request query sql executor: sql case inputs is empty");
                 return null;
             }
-            String sql = fesqlCase.getSql();
+            String sql = sqlCase.getSql();
             log.info("sql: {}", sql);
             if (sql == null || sql.length() == 0) {
                 return null;
             }
-            if (fesqlCase.getBatch_request() != null) {
-                fesqlResult = executeBatch(executor, sql, this.isAsyn);
-            } else {
-                fesqlResult = executeSingle(executor, sql, this.isAsyn);
-            }
-            spNames.add(fesqlCase.getSpName());
+            fesqlResult = SDKUtil.executeLongWindowDeploy(executor, sqlCase, this.isAsyn);
+            spNames.add(sqlCase.getSpName());
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -74,21 +69,13 @@ public class LongWindowExecutor extends StoredProcedureSQLExecutor {
         return fesqlResult;
     }
 
-    private OpenMLDBResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
-        String spSql = fesqlCase.getProcedure(sql);
-        log.info("spSql: {}", spSql);
-        return SDKUtil.sqlRequestModeWithProcedure(
-                executor, dbName, fesqlCase.getSpName(), null == fesqlCase.getBatch_request(),
-                spSql, fesqlCase.getInputs().get(0), isAsyn);
-    }
-
-    private OpenMLDBResult executeBatch(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
-        String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
-        String spSql = SQLUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
-        log.info("spSql: {}", spSql);
-        return SDKUtil.selectBatchRequestModeWithSp(
-                executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
-    }
+//    private OpenMLDBResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
+//        String spSql = sqlCase.getProcedure(sql);
+//        log.info("spSql: {}", spSql);
+//        return SDKUtil.sqlRequestModeWithProcedure(
+//                executor, dbName, sqlCase.getSpName(), null == sqlCase.getBatch_request(),
+//                spSql, sqlCase.getInputs().get(0), isAsyn);
+//    }
 
 
 //    @Override

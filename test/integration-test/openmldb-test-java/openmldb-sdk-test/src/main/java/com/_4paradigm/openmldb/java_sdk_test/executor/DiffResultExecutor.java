@@ -89,7 +89,7 @@ public class DiffResultExecutor extends BatchSQLExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(sqlCase, mainResult, executorType);
         strategyList.add(new DiffResultChecker(mainResult, resultMap));
         for (Checker checker : strategyList) {
             checker.check();

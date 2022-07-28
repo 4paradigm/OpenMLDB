@@ -15,6 +15,11 @@ public class SQLUtil {
     private static String reg = "\\{(\\d+)\\}";
     private static Pattern pattern = Pattern.compile(reg);
 
+    public static String getLongWindowDeploySQL(String name,String longWindow,String sql){
+        String deploySql = String.format("deploy %s options(long_windows='%s') %s",name,longWindow,sql);
+        return deploySql;
+    }
+
     public static String genInsertSQL(String tableName, List<List<Object>> dataList) {
         if (CollectionUtils.isEmpty(dataList)) {
             return "";

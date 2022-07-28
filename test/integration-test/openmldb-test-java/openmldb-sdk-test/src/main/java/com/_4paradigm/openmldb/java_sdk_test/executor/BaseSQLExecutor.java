@@ -50,7 +50,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         this.executor = executor;
-        this.fesqlCase = fesqlCase;
+        this.sqlCase = fesqlCase;
         this.executorType = executorType;
         dbName = Objects.isNull(fesqlCase.getDb()) ? "" : fesqlCase.getDb();
         if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
@@ -94,7 +94,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(sqlCase, mainResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(mainResult, resultMap));
         }
@@ -113,7 +113,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
     public void tearDown(String version,SqlExecutor executor) {
         log.info("version:{},begin tear down",version);
-        List<String> tearDown = fesqlCase.getTearDown();
+        List<String> tearDown = sqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
@@ -125,7 +125,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             });
         }
         log.info("version:{},begin drop table",version);
-        List<InputDesc> tables = fesqlCase.getInputs();
+        List<InputDesc> tables = sqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;
         }

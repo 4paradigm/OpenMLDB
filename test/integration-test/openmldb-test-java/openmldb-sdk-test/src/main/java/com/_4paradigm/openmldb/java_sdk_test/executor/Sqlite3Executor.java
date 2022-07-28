@@ -17,7 +17,6 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.java_sdk_test.util.JDBCUtil;
 import com._4paradigm.openmldb.java_sdk_test.util.Sqlite3Util;
 import com._4paradigm.openmldb.test_common.model.DBType;
@@ -42,18 +41,18 @@ public class Sqlite3Executor extends JDBCExecutor{
 
     @Override
     public boolean verify() {
-        List<String> sqlDialect = fesqlCase.getSqlDialect();
+        List<String> sqlDialect = sqlCase.getSqlDialect();
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.SQLITE3.name())){
             return true;
         }
-        log.info("skip case in sqlite3 mode: {}", fesqlCase.getDesc());
+        log.info("skip case in sqlite3 mode: {}", sqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
         log.info("sqlite3 prepare begin");
-        for(InputDesc inputDesc:fesqlCase.getInputs()) {
+        for(InputDesc inputDesc: sqlCase.getInputs()) {
             String createSql = Sqlite3Util.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql,DBType.SQLITE3);
             boolean ok = Sqlite3Util.insertData(inputDesc);
@@ -68,14 +67,14 @@ public class Sqlite3Executor extends JDBCExecutor{
     public void execute() {
         log.info("sqlite3 execute begin");
         OpenMLDBResult fesqlResult = null;
-        List<String> sqls = fesqlCase.getSqls();
+        List<String> sqls = sqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 sql = SQLUtil.formatSql(sql, tableNames);
                 fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
             }
         }
-        String sql = fesqlCase.getSql();
+        String sql = sqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             sql = SQLUtil.formatSql(sql, tableNames);
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.SQLITE3);
@@ -87,7 +86,7 @@ public class Sqlite3Executor extends JDBCExecutor{
     @Override
     public void tearDown() {
         log.info("sqlite3,begin drop table");
-        List<InputDesc> tables = fesqlCase.getInputs();
+        List<InputDesc> tables = sqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;
         }
