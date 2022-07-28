@@ -227,6 +227,18 @@ TEST_F(UdfIRBuilderTest, weekofyear_date_udf_test) {
         CheckUdf<int32_t, Date>("weekofyear", 22, date);
     }
 }
+TEST_F(UdfIRBuilderTest, last_day_date_udf_test) {
+    CheckUdf<Nullable<Date>, Nullable<Date>>("last_day", nullptr,
+                                             nullptr);
+    CheckUdf<Nullable<Date>, Nullable<Date>>("last_day", nullptr,
+                                             Date(2022, 02, 31));
+    CheckUdf<Nullable<Date>, Nullable<Date>>("last_day", Date(2022, 02, 28),
+                                             Date(2022, 02, 10));
+    CheckUdf<Nullable<Date>, Nullable<Date>>("last_day", Date(2020, 02, 29),
+                                             Date(2020, 02, 10));
+    CheckUdf<Nullable<Date>, Nullable<Date>>("last_day", Date(2021, 01, 31),
+                                             Date(2021, 01, 01));
+}
 
 TEST_F(UdfIRBuilderTest, minute_timestamp_udf_test) {
     Timestamp time(1590115420000L);
@@ -256,6 +268,12 @@ TEST_F(UdfIRBuilderTest, DayofyearTimestampUdfTest) {
 TEST_F(UdfIRBuilderTest, weekofyear_timestamp_udf_test) {
     Timestamp time(1590115420000L);
     CheckUdf<int32_t, Timestamp>("weekofyear", 21, time);
+}
+TEST_F(UdfIRBuilderTest, last_day_timestamp_udf_test) {
+    CheckUdf<Nullable<Date>, Timestamp>("last_day", nullptr,
+                                        Timestamp(std::numeric_limits<int64_t>::max()));
+    CheckUdf<Nullable<Date>, Timestamp>("last_day", Date(2022, 07, 31),
+                                        Timestamp(1658966400000L));  // 2022-07-28
 }
 
 TEST_F(UdfIRBuilderTest, month_timestamp_udf_test) {
@@ -332,6 +350,18 @@ TEST_F(UdfIRBuilderTest, weekofyear_int64_udf_test) {
     // Monday
     CheckUdf<int32_t, int64_t>("weekofyear", 23,
                                1590115420000L + 10 * 86400000L);
+}
+TEST_F(UdfIRBuilderTest, last_day_int64_udf_test) {
+    CheckUdf<Nullable<Date>, int64_t>("last_day", nullptr,
+                                      -100000000000000L);
+    CheckUdf<Nullable<Date>, int64_t>("last_day", Date(2020, 05, 31),
+                                      1589958000000L);  // 2020-05-22
+    CheckUdf<Nullable<Date>, int64_t>("last_day", Date(2022, 07, 31),
+                                      1658966400000L);  // 2022-07-28
+    CheckUdf<Nullable<Date>, int64_t>("last_day", Date(2022, 02, 28),
+                                      1644451200000L);  // 2022-02-10
+    CheckUdf<Nullable<Date>, int64_t>("last_day", Date(2020, 02, 29),
+                                      1581292800000L);  // 2020-02-10
 }
 TEST_F(UdfIRBuilderTest, inc_int32_udf_test) {
     CheckUdf<int32_t, int32_t>("inc", 2021, 2020);
