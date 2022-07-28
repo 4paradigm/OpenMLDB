@@ -54,7 +54,7 @@ void Exporter::ReadManifest() {
     offset_ = manifest.offset();
     printf("--------snapshot offset: %lu\n", offset_);
     printf("--------snapshot path: %s\n", snapshot_path_.c_str());
-    printf("--------end readManifest--------\n");
+    printf("---------end readManifest---------\n");
 }
 
 void Exporter::ExportTable() {
@@ -98,7 +98,7 @@ void Exporter::ExportTable() {
         printf("--------start ReadLog %s--------\n", file_path[i].c_str());
         std::string log_path = file_path[i];
         ReadLog(log_path, my_cout);
-        printf("--------end ReadLog %s--------\n", file_path[i].c_str());
+        printf("---------end ReadLog %s---------\n", file_path[i].c_str());
     }
     my_cout.close();
 }
@@ -148,7 +148,7 @@ void Exporter::ReadLog(std::string &log_path, std::ofstream& my_cout) {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
         if (!status.ok()) {
-            printf("Read to the end of file.\n");
+            // Finish reading the file.
             break;
         }
         ::openmldb::api::LogEntry entry;
@@ -172,7 +172,7 @@ void Exporter::ReadLog(std::string &log_path, std::ofstream& my_cout) {
             }
         }
     } while (status.ok());
-    printf("--------success_cnt: %lu\n", success_cnt);
+    printf("--------success_cnt: %lu--------\n", success_cnt);
     offset_ += success_cnt;
 }
 
@@ -196,7 +196,7 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
         if (!status.ok()) {
-            printf("Read to the end of file.\n");
+            // Finish reading the file.
             break;
         }
         ::openmldb::api::LogEntry entry;
@@ -217,7 +217,7 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
             }
         }
     } while (status.ok());
-    printf("--------end ReadSnapshot--------\n");
+    printf("----------end ReadSnapshot----------\n");
 }
 
 void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_cout) {

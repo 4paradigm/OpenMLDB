@@ -28,7 +28,6 @@
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 #include "codec/schema_codec.h"
-#include "yaml-cpp/yaml.h"
 
 using ::openmldb::sdk::SQLClusterRouter;
 using ::openmldb::sdk::DBSDK;
@@ -37,22 +36,6 @@ using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameser
 
 namespace openmldb {
 namespace tools {
-
-void TablemetaReader::ReadConfigYaml(const std::string &yaml_path) {
-    printf("--------begin ReadConfigYaml--------\n");
-    // Reads tablet's endpoints and corresponding paths
-    YAML::Node config = YAML::LoadFile(yaml_path);
-    for (YAML::const_iterator iter = config["tablet"].begin(); iter != config["tablet"].end(); ++iter) {
-        std::string endpoint = (*iter)["endpoint"].as<std::string>();
-        if (tablet_map_.find(endpoint) != tablet_map_.end()) {
-            printf("Error. Exists duplicate endpoints.\n");
-        } else {
-            tablet_map_[endpoint] = (*iter)["path"].as<std::string>();
-            printf("Tablet's endpoint: %s, path: %s\n", endpoint.c_str(), tablet_map_[endpoint].c_str());
-        }
-    }
-    printf("--------end ReadConfigYaml--------\n");
-}
 
 void StandaloneTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
@@ -77,8 +60,8 @@ void StandaloneTablemetaReader::ReadTableMeta() {
                     std::string db_root_path = ReadDBRootPath(path, host_);
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
 
-                    char exec[180];
-                    sprintf(exec, "scp -r %s:%s %s", host_.c_str(), data_path.c_str(), tmp_path_.string().c_str());
+                    char exec[200];
+                    snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host_.c_str(), data_path.c_str(), tmp_path_.string().c_str());
                     printf("SCP Command: %s\n", exec);
                     if (system(exec) == 0)
                         printf("%s copied successfully.\n", data_path.c_str());
@@ -91,15 +74,15 @@ void StandaloneTablemetaReader::ReadTableMeta() {
             }
         }
     }
-    printf("--------end ReadTableMeta--------\n");
+    printf("---------end ReadTableMeta---------\n");
 }
 
 std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/standalone_tablet.flags";
 
-    char exec[180];
-    sprintf(exec,"scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
+    char exec[200];
+    snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
     printf("SCP Command: %s\n", exec);
     if (system(exec) == 0)
         printf("%s copied successfully.\n", tablet_path.c_str());
@@ -118,20 +101,16 @@ std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_
             break;
         }
     }
-    printf("--------end ReadDBRootPath--------\n");
+    printf("---------end ReadDBRootPath---------\n");
     return db_root_path;
 }
 
 void ClusterTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
     ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::ClusterSDK(options_);
-    printf("start init sdk\n");
     sdk->Init();
-    printf("end init sdk\n");
     SQLClusterRouter *sr = new SQLClusterRouter(sdk);
-    printf("start init SQLClusterRouter\n");
     sr->Init();
-    printf("end init SQLClusterRouter\n");
     ::openmldb::nameserver::TableInfo tableInfo = sr->GetTableInfo(db_name_, table_name_);
 
     tid_ = tableInfo.tid();
@@ -149,8 +128,8 @@ void ClusterTablemetaReader::ReadTableMeta() {
                     std::string host = endpoint.substr(0, endpoint.find(":"));
                     std::string db_root_path = ReadDBRootPath(path, host);
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-                    char exec[180];
-                    sprintf(exec, "scp -r %s:%s %s", host.c_str(), data_path.c_str(), tmp_path_.string().c_str());
+                    char exec[200];
+                    snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), data_path.c_str(), tmp_path_.string().c_str());
                     printf("SCP Command: %s\n", exec);
                     if (system(exec) == 0)
                         printf("%s copied successfully.\n", data_path.c_str());
@@ -163,14 +142,14 @@ void ClusterTablemetaReader::ReadTableMeta() {
             }
         }
     }
-    printf("--------end ReadTableMeta--------\n");
+    printf("---------end ReadTableMeta---------\n");
 }
 
 std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/tablet.flags";
-    char exec[180];
-    sprintf(exec,"scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
+    char exec[200];
+    snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
     printf("SCP Command: %s\n", exec);
     if (system(exec) == 0)
         printf("%s copied successfully.\n", tablet_path.c_str());
@@ -189,10 +168,9 @@ std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir
             break;
         }
     }
-    printf("--------end ReadDBRootPath--------\n");
+    printf("---------end ReadDBRootPath---------\n");
     return db_root_path;
 }
 
 }  // namespace tools
 }  // namespace openmldb
-

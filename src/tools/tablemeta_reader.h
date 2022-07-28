@@ -35,7 +35,12 @@ namespace tools {
 
 class TablemetaReader {
  public:
-    TablemetaReader(const std::string &db_name, const std::string &table_name) : db_name_(db_name), table_name_(table_name) {
+    TablemetaReader(const std::string &db_name,
+                    const std::string &table_name,
+                    std::unordered_map<std::string, std::string> tablet_map) :
+                    db_name_(db_name),
+                    table_name_(table_name),
+                    tablet_map_(tablet_map) {
         std::filesystem::create_directory("./tmp");
         tmp_path_ = "./tmp";
     }
@@ -43,8 +48,6 @@ class TablemetaReader {
     virtual ~TablemetaReader() {}
 
     virtual bool IsClusterMode() const = 0;
-
-    void ReadConfigYaml(const std::string &);
 
     virtual void ReadTableMeta() = 0;
 
@@ -60,13 +63,14 @@ class TablemetaReader {
     std::unordered_map<std::string, std::string> tablet_map_;
     Schema schema_;
     uint32_t tid_;
-    std::filesystem::path tmp_path_; // = std::filesystem::temp_directory_path() / std::filesystem::current_path();
+    std::filesystem::path tmp_path_;
 };
 
 class ClusterTablemetaReader : public TablemetaReader {
  public:
-    ClusterTablemetaReader(const std::string &db_name, const std::string &table_name, const ClusterOptions& options) :
-            TablemetaReader(db_name, table_name), options_(options) {}
+    ClusterTablemetaReader(const std::string &db_name, const std::string &table_name,
+                       std::unordered_map<std::string, std::string> tablet_map, const ClusterOptions& options) :
+                       TablemetaReader(db_name, table_name, tablet_map), options_(options) {}
 
     bool IsClusterMode() const override { return true; }
 
@@ -81,8 +85,9 @@ private:
 
 class StandaloneTablemetaReader : public TablemetaReader {
  public:
-    StandaloneTablemetaReader(const std::string &db_name, const std::string &table_name, const std::string &host, int port) :
-            TablemetaReader(db_name, table_name), host_(host), port_(port) {}
+    StandaloneTablemetaReader(const std::string &db_name, const std::string &table_name,
+                          std::unordered_map<std::string, std::string> tablet_map, const std::string &host, int port) :
+                          TablemetaReader(db_name, table_name, tablet_map), host_(host), port_(port) {}
 
     bool IsClusterMode() const override { return false; }
 
