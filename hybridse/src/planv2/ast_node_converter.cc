@@ -1852,7 +1852,7 @@ base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, n
         CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
         CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete job with path name >= 2");
         *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front(), "", "", nullptr);
-    } else if (absl::EqualsIgnoreCase(id_name, "table")) {
+    } else {
         CHECK_TRUE(delete_stmt->GetTargetPathForNonNested().ok(), common::kSqlAstError,
                    "Un-support delete statement with illegal target table path")
         std::vector<std::string> names;
@@ -1866,8 +1866,6 @@ base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, n
         node::ExprNode* where_expr = nullptr;
         CHECK_STATUS(ConvertExprNode(delete_stmt->where(), node_manager, &where_expr));
         *output = node_manager->MakeDeleteNode(node::DeleteTarget::TABLE, "", db_name, table_name, where_expr);
-    } else {
-        FAIL_STATUS(common::kSqlAstError, "unsupported type for delete statement: ", id_name);
     }
     return base::Status::OK();
 }
