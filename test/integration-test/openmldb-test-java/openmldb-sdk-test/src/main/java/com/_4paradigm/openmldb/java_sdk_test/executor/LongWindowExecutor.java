@@ -16,16 +16,15 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -33,16 +32,16 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
+public class LongWindowExecutor extends StoredProcedureSQLExecutor {
 
     private List<String> spNames;
 
-    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+    public LongWindowExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(executor, fesqlCase, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
 
-    public StoredProcedureSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+    public LongWindowExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, fedbInfoMap, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
@@ -52,13 +51,15 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         log.info("version:{} execute begin",version);
         OpenMLDBResult fesqlResult = null;
         try {
-            if (fesqlCase.getInputs().isEmpty() || CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
-                throw new IllegalArgumentException("fail to execute in request query sql executor: sql case inputs is empty");
+            if (fesqlCase.getInputs().isEmpty() ||
+                    CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
+                log.error("fail to execute in request query sql executor: sql case inputs is empty");
+                return null;
             }
             String sql = fesqlCase.getSql();
             log.info("sql: {}", sql);
-            if (StringUtils.isEmpty(sql)) {
-                throw new IllegalArgumentException("fail to execute in request query sql executor: sql is empty");
+            if (sql == null || sql.length() == 0) {
+                return null;
             }
             if (fesqlCase.getBatch_request() != null) {
                 fesqlResult = executeBatch(executor, sql, this.isAsyn);
@@ -90,16 +91,16 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
     }
 
 
-    @Override
-    public void tearDown(String version,SqlExecutor executor) {
-        log.info("version:{},begin drop table",version);
-        if (CollectionUtils.isEmpty(spNames)) {
-            return;
-        }
-        for (String spName : spNames) {
-            String drop = "drop procedure " + spName + ";";
-            SDKUtil.ddl(executor, dbName, drop);
-        }
-        super.tearDown(version,executor);
-    }
+//    @Override
+//    public void tearDown(String version,SqlExecutor executor) {
+//        log.info("version:{},begin tearDown",version);
+//        if (CollectionUtils.isEmpty(spNames)) {
+//            return;
+//        }
+//        for (String spName : spNames) {
+//            String drop = "drop procedure " + spName + ";";
+//            SDKUtil.ddl(executor, dbName, drop);
+//        }
+//        super.tearDown(version,executor);
+//    }
 }

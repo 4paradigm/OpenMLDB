@@ -35,6 +35,7 @@ public class SQLCase implements Serializable{
     private String mode;
     private String db;
     private String version;
+    private String longWindow;
     private String sql;
     private List<List<String>> dataProvider;
     private List<String> sqls;

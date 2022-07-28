@@ -123,7 +123,7 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
         boolean useFirstInputAsRequests = !isBatchRequest && null == fesqlCase.getBatch_request();
         OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
-            throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail");
+            throw new RuntimeException("fail to run RequestQuerySQLExecutor: prepare fail");
         }
         log.info("version:{} prepare end",version);
     }
