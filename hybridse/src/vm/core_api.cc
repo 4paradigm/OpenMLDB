@@ -248,9 +248,23 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     // Create Row from input UnsafeRow bytes
     auto inputRow = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
-    
+
     return RowProject(fn, inputRow, Row(), need_free);
 }
+
+hybridse::codec::Row CoreAPI::UnsafeRowProjectDirect(
+        const hybridse::vm::RawPtrHandle fn,
+        hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+        const int inputRowSizeInBytes, const bool need_free) {
+
+    auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+
+    // Create Row from input UnsafeRow bytes
+    auto inputRow = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+
+    return RowProject(fn, inputRow, Row(), need_free);
+}
+
 
 void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
                                       hybridse::vm::ByteArrayPtr outputBytes,
