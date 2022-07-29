@@ -248,36 +248,8 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     // Create Row from input UnsafeRow bytes
     auto inputRow = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
-
-    auto parameterRow = hybridse::codec::Row();
-
-    return RowProject(fn, inputRow, parameterRow, need_free);
-
-/*
-
-    auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
-
-    // Init current run step runtime
-    JitRuntime::get()->InitRunStep();
-
-    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, const int8_t*, int8_t**)>(
-        const_cast<int8_t*>(fn));
-
-    int8_t* buf = nullptr;
-    uint32_t ret = udf(0, row_ptr, nullptr, nullptr, &buf);
-
-    // Release current run step resources
-    JitRuntime::get()->ReleaseRunStep();
-
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return hybridse::codec::Row();
-    }
-
-    return Row(base::RefCountedSlice::CreateManaged(
-        buf, hybridse::codec::RowView::GetSize(buf)));
-*/
+    
+    return RowProject(fn, inputRow, Row(), need_free);
 }
 
 void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
