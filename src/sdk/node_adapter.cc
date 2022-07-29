@@ -27,6 +27,7 @@
 #include "base/ddl_parser.h"
 #include "codec/schema_codec.h"
 #include "plan/plan_api.h"
+#include "schema/schema_adapter.h"
 
 DECLARE_uint32(partition_num);
 
@@ -41,8 +42,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
     const hybridse::node::NodePointVector& table_option_list = create_node->GetTableOptionList();
-    std::set<std::string> index_names;
-    std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     hybridse::node::NodePointVector distribution_list;
 
@@ -87,6 +86,14 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             }
         }
     }
+    if (replica_num == 0) {
+        *status = {hybridse::common::kUnsupportSql, "replicanum should be great than 0"};
+        return false;
+    }
+    if (partition_num == 0) {
+        *status = {hybridse::common::kUnsupportSql, "partitionnum should be great than 0"};
+        return false;
+    }
     // deny create table when invalid configuration in standalone mode
     if (!is_cluster_mode) {
         if (replica_num != 1) {
@@ -106,6 +113,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_format_version(1);
     table->set_storage_mode(static_cast<common::StorageMode>(storage_mode));
     bool has_generate_index = false;
+    std::set<std::string> index_names;
+    std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case hybridse::node::kColumnDesc: {
@@ -119,41 +128,14 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 add_column_desc->set_name(column_def->GetColumnName());
                 add_column_desc->set_not_null(column_def->GetIsNotNull());
                 column_names.insert(std::make_pair(column_def->GetColumnName(), add_column_desc));
-                switch (column_def->GetColumnType()) {
-                    case hybridse::node::kBool:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kBool);
-                        break;
-                    case hybridse::node::kInt16:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kSmallInt);
-                        break;
-                    case hybridse::node::kInt32:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kInt);
-                        break;
-                    case hybridse::node::kInt64:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kBigInt);
-                        break;
-                    case hybridse::node::kFloat:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kFloat);
-                        break;
-                    case hybridse::node::kDouble:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kDouble);
-                        break;
-                    case hybridse::node::kTimestamp:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kTimestamp);
-                        break;
-                    case hybridse::node::kVarchar:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kVarchar);
-                        break;
-                    case hybridse::node::kDate:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kDate);
-                        break;
-                    default: {
-                        status->msg = "CREATE common: column type " +
-                                      hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
-                        status->code = hybridse::common::kUnsupportSql;
-                        return false;
-                    }
+                openmldb::type::DataType data_type;
+                if (!openmldb::schema::SchemaAdapter::ConvertType(column_def->GetColumnType(), &data_type)) {
+                    status->msg = "CREATE common: column type " +
+                                  hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
+                    status->code = hybridse::common::kUnsupportSql;
+                    return false;
                 }
+                add_column_desc->set_data_type(data_type);
                 auto default_val = column_def->GetDefaultValue();
                 if (default_val) {
                     if (default_val->GetExprType() != hybridse::node::kExprPrimary) {

@@ -303,7 +303,8 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u",
+                        cur_offset + 1, entry.log_index(), tid_, pid_);
                 continue;
             }
             cur_offset = entry.log_index();
@@ -416,7 +417,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u",
+                        cur_offset + 1, entry.log_index(), tid_, pid_);
                 continue;
             }
             cur_offset = entry.log_index();
