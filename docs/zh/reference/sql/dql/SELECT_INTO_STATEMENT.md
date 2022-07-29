@@ -9,16 +9,17 @@
 SelectIntoStmt
 						::= SelectStmt 'INTO' 'OUTFILE' filePath SelectIntoOptionList
 						
-filePath ::= string_literal
+filePath 
+						::= string_literal
 SelectIntoOptionList
-									::= 'OPTIONS' '(' SelectInfoOptionItem (',' SelectInfoOptionItem)* ')'
+						::= 'OPTIONS' '(' SelectInfoOptionItem (',' SelectInfoOptionItem)* ')'
 
 SelectInfoOptionItem
-									::= 'DELIMITER' '=' string_literal
-											|'HEADER' '=' bool_literal
-											|'NULL_VALUE' '=' string_literal
-											|'FORMAT' '=' string_literal
-											|'MODE' '=' string_literal
+						::= 'DELIMITER' '=' string_literal
+						|'HEADER' '=' bool_literal
+						|'NULL_VALUE' '=' string_literal
+						|'FORMAT' '=' string_literal
+						|'MODE' '=' string_literal
 ```
 
 `SELECT INTO OUTFILE`分为三个部分。
