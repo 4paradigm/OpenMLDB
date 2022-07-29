@@ -2913,7 +2913,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     };
 
-    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser](const Row& row) {
+    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
+
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
@@ -2927,8 +2928,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
                 LOG(WARNING) << matches.status();
                 return;
             }
-            DLOG(INFO) << "evaluate agg result of " << cond_->GetExprString() << " : "
-                      << (matches->has_value() ? (matches->value() ? "true" : "false") : "null");
             if (false == matches->value_or(false)) {
                 return;
             }
