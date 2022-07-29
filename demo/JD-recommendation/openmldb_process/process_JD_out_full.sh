@@ -36,7 +36,7 @@ do
 	else 
 	        cp "$f" data_processed/test/.
 	fi	
-	echo "processing "$f" ..."
+	echo "processing $f ..."
 done
 
 cd data_processed/train || exit
