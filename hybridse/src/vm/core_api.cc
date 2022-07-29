@@ -260,7 +260,7 @@ hybridse::codec::Row CoreAPI::UnsafeRowProjectDirect(
     auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
 
     // Create Row from input UnsafeRow bytes
-    auto inputRow = Row(base::RefCountedSlice::CreateManaged(bufPtr, inputRowSizeInBytes));
+    auto inputRow = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
 
     return RowProject(fn, inputRow, Row(), need_free);
 }
