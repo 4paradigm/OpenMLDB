@@ -184,49 +184,30 @@ int32_t weekofyear(Date *date) {
     }
 }
 
-void last_day(int64_t ts, Date *output, bool *is_null) {
+void last_day(int64_t ts, Date *output) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
-    if (nullptr == gmtime_r(&time, &t)) {
-        *is_null = true;
-        return;
-    }
     gmtime_r(&time, &t);
-    try {
-        boost::gregorian::date d = boost::gregorian::date_from_tm(t);
-        boost::gregorian::date eom = d.end_of_month();
-        *output = Date(eom.year(), eom.month(), eom.day());
-        *is_null = false;
-        return;
-    } catch (...) {
-        *is_null = true;
-        return;
-    }
+    absl::CivilMonth next_month = absl::CivilMonth(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday) + 1;
+    absl::CivilDay eom = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(eom.year()), eom.month(), eom.day());
 }
-void last_day(Timestamp *ts, Date *output, bool *is_null) { last_day(ts->ts_, output, is_null); }
+void last_day(Timestamp *ts, Date *output) { last_day(ts->ts_, output); }
 void last_day(Date *ts, Date *output, bool *is_null) {
     int32_t year, month, day;
     if (!Date::Decode(ts->date_, &year, &month, &day)) {
         *is_null = true;
         return;
     }
-    try {
-        if (month <= 0 || month > 12) {
-            *is_null = true;
-            return;
-        } else if (day <= 0 || day > 31) {
-            *is_null = true;
-            return;
-        }
-        boost::gregorian::date g_date(year, month, day);
-        boost::gregorian::date eom = g_date.end_of_month();
-        *output = Date(eom.year(), eom.month(), eom.day());
-        *is_null = false;
-        return;
-    } catch (...) {
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
         *is_null = true;
         return;
     }
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
 }
 
 void int_to_char(int32_t val, StringRef* output) {

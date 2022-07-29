@@ -2109,11 +2109,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterAlias("week", "weekofyear");
 
-    RegisterExternal("last_day")
-            .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
-            .return_by_arg(true)
-            .returns<Nullable<Date>>()
-            .doc(R"(
+    const std::string last_day_doc =
+        R"(
             @brief Return the last day of the month to which the date belongs to
 
             Example:
@@ -2125,46 +2122,26 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select last_day(timestamp("2021-02-12"));
                 -- output 2021-02-28
             @endcode
-            @since 0.5.3
-        )");
+            @since 0.6.0
+        )";
 
     RegisterExternal("last_day")
-            .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, Date*, bool*)>(v1::last_day)))
+            .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*)>(v1::last_day)))
             .return_by_arg(true)
-            .returns<Nullable<Date>>()
-            .doc(R"(
-            @brief Return the last day of the month to which the date belongs to
+            .returns<Date>()
+            .doc(last_day_doc);
 
-            Example:
-            @code{.sql}
-                select last_day(timestamp("2020-05-22 10:43:40"));
-                -- output 2020-05-31
-                select last_day(timestamp("2020-02-12 10:43:40"));
-                -- output 2020-02-29
-                select last_day(timestamp("2021-02-12"));
-                -- output 2021-02-28
-            @endcode
-            @since 0.5.3
-        )");
+    RegisterExternal("last_day")
+            .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, Date*)>(v1::last_day)))
+            .return_by_arg(true)
+            .returns<Date>()
+            .doc(last_day_doc);
 
     RegisterExternal("last_day")
             .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, Date*, bool*)>(v1::last_day)))
             .return_by_arg(true)
             .returns<Nullable<Date>>()
-            .doc(R"(
-            @brief Return the last day of the month to which the date belongs to
-
-            Example:
-            @code{.sql}
-                select last_day(timestamp("2020-05-22 10:43:40"));
-                -- output 2020-05-31
-                select last_day(timestamp("2020-02-12 10:43:40"));
-                -- output 2020-02-29
-                select last_day(timestamp("2021-02-12"));
-                -- output 2021-02-28
-            @endcode
-            @since 0.5.3
-        )");
+            .doc(last_day_doc);
 
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>()
