@@ -1,7 +1,6 @@
 package com._4paradigm.openmldb.java_sdk_test.cluster.v040;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
-import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -13,7 +12,7 @@ import org.testng.annotations.Test;
 
 @Slf4j
 @Feature("Out-In")
-public class OutInTest extends FedbTest {
+public class OutInTest extends OpenMLDBTest {
 
     // @Test(dataProvider = "getCase")
     // @Yaml(filePaths = "function/out_in/test_out_in.yaml")
@@ -27,4 +26,13 @@ public class OutInTest extends FedbTest {
     public void testOutInByOffline(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+
+
+     @Test(dataProvider = "getCase")
+     @Yaml(filePaths = "function/out_in/test_out_in.yaml")
+     @Story("online")
+     public void testOutInByOnline(SQLCase testCase){
+         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+     }
+
 }

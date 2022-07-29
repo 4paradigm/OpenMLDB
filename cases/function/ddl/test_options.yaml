@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   -
     id: 0
@@ -55,7 +56,7 @@ cases:
       name: t3
       success: true
       options:
-        partitionNum: 1
+        partitionNum: 8
         replicaNum: 1
   -
     id: 3
@@ -66,14 +67,14 @@ cases:
       create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
       options (
       partitionnum = 1,
-      distribution = [ ('{tb_endpoint_0}',[])]
+      distribution = [ ('{tb_endpoint_0}',['{tb_endpoint_1}','{tb_endpoint_2}'])]
       );
     expect:
       name: t3
       success: true
       options:
         partitionNum: 1
-        replicaNum: 1
+        replicaNum: 3
   -
     id: 4
     desc: 创建表时没有distribution
@@ -109,7 +110,8 @@ cases:
       success: false
   -
     id: 6
-    desc: partitionnum=0
+    desc: partitionnum=0，指定distribution
+    tags: ["TODO","bug修复后验证"]
     mode: standalone-unsupport
     inputs:
       - name: t3
@@ -121,7 +123,11 @@ cases:
       distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
       );
     expect:
-      success: false
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
   -
     id: 7
     desc: partitionnum=10
@@ -288,7 +294,7 @@ cases:
       success: true
       options:
         partitionNum: 1
-        replicaNum: 1
+        replicaNum: 3
   -
     id: 18
     desc: 只有replicanum
@@ -303,11 +309,11 @@ cases:
       name: t3
       success: true
       options:
-        partitionNum: 1
+        partitionNum: 8
         replicaNum: 1
   -
     id: 19
-    desc: 只有distribution
+    desc: 没有replicaNum，distribution的个数和tablet数量不一致
     inputs:
       - name: t3
     sql: |
@@ -316,11 +322,7 @@ cases:
       distribution = [ ('{tb_endpoint_0}', [])]
       );
     expect:
-      name: t3
-      success: true
-      options:
-        partitionNum: 1
-        replicaNum: 1
+      success: false
   -
     id: 20
     desc: distribution指定的tablet不存在
@@ -379,8 +381,39 @@ cases:
       options:
         partitionNum: 1
         replicaNum: 3
-
-
+  -
+    id: 23
+    tags: ["TODO","bug修复后验证"]
+    desc: partitionnum=0，没有指定distribution
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 0,
+      replicanum = 3
+      );
+    expect:
+      success: false
+  -
+    id: 24
+    desc: 没有partitionnum和replicanum，指定distribution
+    tags: ["TODO","bug修复后验证"]
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
 
 
 

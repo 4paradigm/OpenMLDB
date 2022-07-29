@@ -17,19 +17,20 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CheckerStrategy {
 
-    public static List<Checker> build(SQLCase fesqlCase, FesqlResult fesqlResult, SQLCaseType executorType) {
+    public static List<Checker> build(SQLCase fesqlCase, OpenMLDBResult fesqlResult, SQLCaseType executorType) {
         List<Checker> checkList = new ArrayList<>();
         if (null == fesqlCase) {
             return checkList;
@@ -80,6 +81,9 @@ public class CheckerStrategy {
         }
         if(expect.getCat()!=null){
             checkList.add(new CatCheckerByCli(expect, fesqlResult));
+        }
+        if(StringUtils.isNotEmpty(expect.getMsg())){
+            checkList.add(new MessageChecker(expect, fesqlResult));
         }
         return checkList;
     }

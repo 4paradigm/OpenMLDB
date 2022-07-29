@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffResultChecker;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.DBType;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -39,7 +39,7 @@ import java.util.Map;
 @Slf4j
 public class DiffResultExecutor extends BatchSQLExecutor{
     private List<BaseExecutor> executors;
-    private Map<String, FesqlResult> resultMap;
+    private Map<String, OpenMLDBResult> resultMap;
     public DiffResultExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         super(executor, fesqlCase, executorType);
         executors = new ArrayList<>();

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ['数据里有null、空串、特殊字符']
 cases:
   -
     id: 0

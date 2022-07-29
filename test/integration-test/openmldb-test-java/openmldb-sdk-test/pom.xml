@@ -16,39 +16,19 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <openmldb.jdbc.version>0.4.2</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.4.2-macos</openmldb.navtive.version>
-
         <suiteXmlFile>test_suite/test_tmp.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
     </properties>
-    <repositories>
-        <repository>
-            <id>s01.oss.sonatype.org-snapshot</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
     <dependencies>
         <!-- 4paradigm -->
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-jdbc</artifactId>
-            <version>${openmldb.jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-native</artifactId>
-            <version>${openmldb.navtive.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-test-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-deploy</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -134,8 +114,8 @@
                             <value>${caseLevel}</value>
                         </property>
                         <property>
-                            <name>fedbVersion</name>
-                            <value>${fedbVersion}</value>
+                            <name>diffVersion</name>
+                            <value>${diffVersion}</value>
                         </property>
                         <property>
                             <name>reportLog</name>

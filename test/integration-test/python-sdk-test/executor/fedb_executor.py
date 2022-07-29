@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
 
 from nb_log import LogManager
 import check.checker
@@ -34,6 +35,7 @@ class BaseExecutor(metaclass=ABCMeta):
         log.info(str(self.fesqlCase['case_prefix']) + ': ' + self.fesqlCase['desc'] + " Begin!")
         self.prepare()
         fesqlResult = self.execute()
+        print(fesqlResult)
         self.check(fesqlResult)
         self.tearDown()
 
@@ -105,6 +107,8 @@ class SQLExecutor(BaseExecutor):
         #     except Exception as e:
         #         pass
         inputs = self.fesqlCase.get('inputs')
+        #if inputs.get(0).get('columns')==None:
+
         res, self.tableNames = fedb_util.createAndInsert(self.executor, self.dbName, inputs)
         if not res.ok:
             raise Exception("fail to run SQLExecutor: prepare fail")
@@ -117,6 +121,8 @@ class SQLExecutor(BaseExecutor):
                 log.info("sql:" + sql)
                 sql = fedb_util.formatSql(sql, self.tableNames)
                 fesqlResult = fedb_util.sql(self.executor, self.dbName, sql)
+        if self.fesqlCase.__contains__('sql') == False:
+            return fesqlResult
         sql = self.fesqlCase['sql']
         if sql != None and len(sql) > 0:
             log.info("sql:" + sql)

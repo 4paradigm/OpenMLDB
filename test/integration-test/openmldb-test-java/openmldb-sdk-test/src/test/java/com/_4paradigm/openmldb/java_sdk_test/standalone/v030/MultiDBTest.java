@@ -16,14 +16,12 @@
 
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
-import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
@@ -41,5 +39,13 @@ public class MultiDBTest extends StandaloneTest {
     @Yaml(filePaths = {"function/multiple_databases/"})
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build( testCase, SQLCaseType.kStandaloneCLI).run();
+    }
+
+    //pass
+    @Story("Standalone-CLI")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/multiple_databases/"})
+    public void testSelectSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 }

@@ -15,15 +15,28 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
 
-        <command.tool.version>1.0-SNAPSHOT</command.tool.version>
+        <openmldb.jdbc.version>0.5.0-SNAPSHOT</openmldb.jdbc.version>
+        <openmldb.navtive.version>0.5.0-macos-SNAPSHOT</openmldb.navtive.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.4paradigm.test-tool</groupId>
-            <artifactId>command-tool</artifactId>
-            <version>${command.tool.version}</version>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-deploy</artifactId>
+            <version>${project.version}</version>
         </dependency>
+        <!--   4paradigm     -->
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-jdbc</artifactId>
+            <version>${openmldb.jdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-native</artifactId>
+            <version>${openmldb.navtive.version}</version>
+        </dependency>
+
 
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

@@ -16,8 +16,7 @@
 package com._4paradigm.openmldb.http_test.executor;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.IExecutor;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
@@ -37,7 +36,7 @@ public abstract class BaseExecutor implements IExecutor {
     protected Logger logger = new LogProxy(log);
     protected HttpResult httpResult;
     protected RestfulCase restfulCase;
-    protected FesqlResult fesqlResult;
+    protected OpenMLDBResult fesqlResult;
     protected List<String> tableNames;
 
     public BaseExecutor(RestfulCase restfulCase){

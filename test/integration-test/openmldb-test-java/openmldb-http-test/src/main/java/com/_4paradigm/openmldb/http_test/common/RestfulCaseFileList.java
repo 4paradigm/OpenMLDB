@@ -21,7 +21,7 @@ import com._4paradigm.openmldb.http_test.util.CaseUtil;
 import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
 import com._4paradigm.openmldb.test_common.restful.model.RestfulCaseFile;
-import com._4paradigm.openmldb.test_common.util.FedbTool;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -61,7 +61,7 @@ public class RestfulCaseFileList {
                     && !FedbRestfulConfig.FESQL_CASE_PATH.equals(caseFile)) {
                 continue;
             }
-            String casePath = FedbTool.getCasePath(FedbRestfulConfig.YAML_CASE_BASE_DIR, caseFile);
+            String casePath = Tool.getCasePath(FedbRestfulConfig.YAML_CASE_BASE_DIR, caseFile);
             File file = new File(casePath);
             if (!file.exists()) {
                 continue;

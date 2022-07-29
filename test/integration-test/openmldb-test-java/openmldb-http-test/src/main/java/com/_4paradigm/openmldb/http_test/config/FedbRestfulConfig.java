@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.http_test.config;
 
 import com._4paradigm.openmldb.http_test.common.RestfulGlobalVar;
-import com._4paradigm.openmldb.test_common.util.FedbTool;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.collections.Lists;
@@ -47,7 +47,7 @@ public class FedbRestfulConfig {
     // public static final String BASE_URL;
     public static final String DB_NAME;
 
-    public static final Properties CONFIG = FedbTool.getProperties("fedb.properties");
+    public static final Properties CONFIG = Tool.getProperties("fedb.properties");
 
     static {
         String levelStr = System.getProperty("caseLevel");

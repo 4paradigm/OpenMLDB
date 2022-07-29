@@ -4,7 +4,7 @@
     <test name="standalone">
         <parameter name="env" value="standalone"/>
         <parameter name="version" value="0.3.0"/>
-        <parameter name="fedbPath" value=""/>
+        <parameter name="openMLDBPath" value=""/>
         <packages>
             <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v030"/>
             <package name="com._4paradigm.openmldb.java_sdk_test.standalone.v040"/>

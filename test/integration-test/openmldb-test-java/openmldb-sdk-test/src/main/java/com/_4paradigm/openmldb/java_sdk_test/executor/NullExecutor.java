@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -34,7 +34,7 @@ public class NullExecutor extends BaseSQLExecutor {
     }
 
     @Override
-    public FesqlResult execute(String version, SqlExecutor executor) {
+    public OpenMLDBResult execute(String version, SqlExecutor executor) {
         return null;
     }
 
@@ -45,7 +45,7 @@ public class NullExecutor extends BaseSQLExecutor {
 
     @Override
     public boolean verify() {
-        logger.info("No case need to be run.");
+        log.info("No case need to be run.");
         return false;
     }
 }

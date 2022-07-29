@@ -1,0 +1,840 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+sqlDialect: ["HybridSQL"]
+version: 0.5.0
+cases:
+  - id: 0
+    desc: "使用_"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"a_b",30,30,30,30.0,30.0,1590738990000,"2020-05-01",false]
+          - [2,"aab",30,30,30,30.0,30.0,1590738991000,"2020-05-01",false]
+          - [3,"a%b",30,30,30,30.0,30.0,1590738992000,"2020-05-01",false]
+          - [4,"b_c",30,30,30,30.0,30.0,1590738993000,"2020-05-01",false]
+          - [5,"abc",30,30,30,30.0,30.0,1590738994000,"2020-05-01",false]
+          - [6,"A0b",30,30,30,30.0,30.0,1590738995000,"2020-05-01",false]
+          - [7,"a#B",30,30,30,30.0,30.0,1590738996000,"2020-05-01",false]
+          - [8,"aaab",30,30,30,30.0,30.0,1590738991000,"2020-05-01",false]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'a_b') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,true]
+          - [2,true]
+          - [3,true]
+          - [4,false]
+          - [5,false]
+          - [6,false]
+          - [7,false]
+          - [8,false]
+      1:
+        rows:
+          - [1,true]
+          - [2,true]
+          - [3,true]
+          - [4,false]
+          - [5,false]
+          - [6,true]
+          - [7,true]
+          - [8,false]
+  - id: 1
+    desc: "使用%"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"a%_b",1590738992000]
+          - [4,"b_c",1590738993000]
+          - [5,"abc",1590738994000]
+          - [6,"A0b",1590738995000]
+          - [7,"a#B",1590738996000]
+          - [8,"aaab",1590738997000]
+          - [9,"ab",1590738998000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'a%b') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"a_b",true]
+          - [2,"aabb",true]
+          - [3,"a%_b",true]
+          - [4,"b_c",false]
+          - [5,"abc",false]
+          - [6,"A0b",false]
+          - [7,"a#B",false]
+          - [8,"aaab",true]
+          - [9,"ab",true]
+      1:
+        rows:
+          - [1,"a_b",true]
+          - [2,"aabb",true]
+          - [3,"a%_b",true]
+          - [4,"b_c",false]
+          - [5,"abc",false]
+          - [6,"A0b",true]
+          - [7,"a#B",true]
+          - [8,"aaab",true]
+          - [9,"ab",true]
+  - id: 2
+    desc: "同时使用%和_"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"aa#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'_a%b') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",true]
+          - [2,"aabb",true]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"aa#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",true]
+          - [2,"aabb",true]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",true]
+          - [7,"aa#0B",true]
+  - id: 3
+    desc: "使用默认的escape"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,"\\_a%b","\\") as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",true]
+  - id: 4
+    desc: "指定escape为#"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'#_a%b','#') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",true]
+  - id: 5
+    desc: "指定escape为_"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'__a%b','_') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",true]
+  - id: 6
+    desc: "指定escape为%"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA%b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'_a%%b','%') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA%b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA%b",true]
+          - [7,"_a#0B",false]
+  - id: 7
+    desc: "escape不指定"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,"\\_a%b") as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"_a#0B",true]
+  - id: 8
+    desc: "escape为空串，使用\\"
+    mode: cluster-unsupport
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,'\\\%a_b',1590738990000]
+          - [2,'\\\aabb',1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,'\\\bA0b',1590738995000]
+          - [7,'\\\_a#0B',1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,"\\_a%b","") as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,'\%a_b',true]
+          - [2,'\aabb',true]
+          - [3,'_a%_b',false]
+          - [4,'ba_c',false]
+          - [5,"abb",false]
+          - [6,'\bA0b',false]
+          - [7,'\_a#0B',false]
+      1:
+        rows:
+          - [1,'\%a_b',true]
+          - [2,'\aabb',true]
+          - [3,"_a%_b",false]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,'\bA0b',true]
+          - [7,'\_a#0B',true]
+  - id: 9
+    desc: "使用两个%"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"a%_b%0",1590738992000]
+          - [4,"b_c",1590738993000]
+          - [5,"abc",1590738994000]
+          - [6,"A0b",1590738995000]
+          - [7,"a#Bb",1590738996000]
+          - [8,"aaabbcc",1590738991000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'a%b%') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"a_b",true]
+          - [2,"aabb",true]
+          - [3,"a%_b%0",true]
+          - [4,"b_c",false]
+          - [5,"abc",true]
+          - [6,"A0b",false]
+          - [7,"a#Bb",true]
+          - [8,"aaabbcc",true]
+      1:
+        rows:
+          - [1,"a_b",true]
+          - [2,"aabb",true]
+          - [3,"a%_b%0",true]
+          - [4,"b_c",false]
+          - [5,"abc",true]
+          - [6,"A0b",true]
+          - [7,"a#Bb",true]
+          - [8,"aaabbcc",true]
+  - id: 10
+    desc: "使用两个_"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA0b",1590738995000]
+          - [7,"aa#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'_a_b') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",true]
+          - [2,"aabb",true]
+          - [3,"_a%_b",false]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",false]
+          - [7,"aa#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",true]
+          - [2,"aabb",true]
+          - [3,"_a%_b",false]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA0b",true]
+          - [7,"aa#0B",false]
+  - id: 11
+    desc: "使用两个%，其中一个被转义"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"a_b",1590738990000]
+          - [2,"aab%",1590738991000]
+          - [3,"a%_b%0",1590738992000]
+          - [4,"b_c",1590738993000]
+          - [5,"ab%",1590738994000]
+          - [6,"A0b",1590738995000]
+          - [7,"a#B%",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'a%b#%','#') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"a_b",false]
+          - [2,"aab%",true]
+          - [3,"a%_b%0",false]
+          - [4,"b_c",false]
+          - [5,"ab%",true]
+          - [6,"A0b",false]
+          - [7,"a#B%",false]
+      1:
+        rows:
+          - [1,"a_b",false]
+          - [2,"aab%",true]
+          - [3,"a%_b%0",false]
+          - [4,"b_c",false]
+          - [5,"ab%",true]
+          - [6,"A0b",false]
+          - [7,"a#B%",true]
+  - id: 12
+    desc: "使用两个_，其中一个被转义"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"_A0b",1590738995000]
+          - [7,"aa#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'#_a_b','#') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"_A0b",false]
+          - [7,"aa#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"_A0b",true]
+          - [7,"aa#0B",false]
+  - id: 13
+    desc: "同时使用%和_，其中_被转义"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a_b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"_A0b",1590738995000]
+          - [7,"_a#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'#_a%b','#') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"_A0b",false]
+          - [7,"_a#0B",false]
+      1:
+        rows:
+          - [1,"%a_b",false]
+          - [2,"aabb",false]
+          - [3,"_a%_b",true]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"_A0b",true]
+          - [7,"_a#0B",true]
+  - id: 14
+    desc: "同时使用%和_，其中%被转义"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"%a%b",1590738990000]
+          - [2,"aabb",1590738991000]
+          - [3,"_a%_b",1590738992000]
+          - [4,"ba_c",1590738993000]
+          - [5,"abb",1590738994000]
+          - [6,"bA%b",1590738995000]
+          - [7,"aa#0B",1590738996000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,c1,d[0](c1,'_a#%b','#') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","c1 string","v1 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"%a%b",true]
+          - [2,"aabb",false]
+          - [3,"_a%_b",false]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA%b",false]
+          - [7,"aa#0B",false]
+      1:
+        rows:
+          - [1,"%a%b",true]
+          - [2,"aabb",false]
+          - [3,"_a%_b",false]
+          - [4,"ba_c",false]
+          - [5,"abb",false]
+          - [6,"bA%b",true]
+          - [7,"aa#0B",false]
+  - id: 15
+    desc: "列中有null和空串"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"",1590738990000]
+          - [2,null,1590738991000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'a%b') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","v1 bool"]
+      rows:
+        - [1,false]
+        - [2,null]
+  - id: 16
+    desc: "使用空串"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"",1590738990000]
+          - [2,"aa",1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'') as v1 from {0};
+    expect:
+      order: id
+      columns: ["id bigint","v1 bool"]
+      rows:
+        - [1,true]
+        - [2,false]
+  - id: 17
+    desc: "使用null"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"",1590738990000]
+          - [2,"aa",1590738991000]
+          - [3,null,1590738992000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,null) as v1 from {0};
+    expect:
+      success: false
+  - id: 18
+    desc: "escape使用null"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"",1590738990000]
+          - [2,"aa",1590738991000]
+          - [3,null,1590738992000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'a%',null) as v1 from {0};
+    expect:
+      success: false
+  - id: 19
+    desc: "int类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 int","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 20
+    desc: "bigint类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 bigint","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 21
+    desc: "smallint类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 smallint","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 22
+    desc: "float类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 float","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12.0,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 23
+    desc: "double类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 double","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12.0,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 24
+    desc: "timestamp类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 timestamp","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,12,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 25
+    desc: "date类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 date","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"2012-05-01",1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 26
+    desc: "bool类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 bool","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,true,1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 27
+    desc: "列不存在"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",1590738990000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c2,'1%') as v1 from {0};
+    expect:
+      success: false
+  - id: 28
+    desc: "escape为多个字符"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"",1590738990000]
+          - [2,"aa",1590738991000]
+          - [3,null,1590738992000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'a%','<>') as v1 from {0};
+    expect:
+      success: true
+      order: id
+      columns : ["id bigint","v1 bool"]
+      rows:
+        - [1,false]
+        - [2,false]
+        - [3,null]
+  - id: 29
+    desc: "pattern以escape character结尾"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c7 timestamp"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"ab#",1590738990000]
+          - [2,"aa",1590738991000]
+    dataProvider:
+      - ["like_match","ilike_match"]
+    sql: select id,d[0](c1,'a%#','#') as v1 from {0};
+    expect:
+      success: true
+      columns : ["id bigint","v1 bool"]
+      rows:
+        - [1,false]
+        - [2,false]
+

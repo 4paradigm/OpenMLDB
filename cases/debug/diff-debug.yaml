@@ -1,0 +1,191 @@
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: diff-miaoche
+    inputs:
+      -
+        name: behaviourTable
+        create: |
+          CREATE TABLE IF NOT EXISTS behaviourTable(
+          	itemId string,
+          	reqId string,
+          	tags string,
+          	instanceKey string,
+          	eventTime timestamp,
+          	rank string,
+          	mcuid string,
+          	ip string,
+          	browser string,
+          	browser_version string,
+          	platform string,
+          	query string,
+          	sort_rule string,
+          	_i_rank string
+          );
+        inserts:
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+          - insert into behaviourTable values ('15966','1cbnZ2e7db70386+6a7f','pc_000,h','1cbnZ2e7db70386+6a7f^15966',1589517641000,'d','72619bce98fd345e15d37a41cda90351','115.213.231','Google Chrome','46.0.2486.0','windows','','def','9');
+      -
+        name: feedbackTable
+        create: |
+          CREATE TABLE IF NOT EXISTS feedbackTable(
+          	itemId string,
+          	reqId string,
+          	instanceKey string,
+          	eventTime timestamp,
+          	ingestionTime timestamp,
+          	actionValue double,
+          	rank string,
+          	index(key=(instanceKey), ttl=0m, ttl_type=absolute)
+          );
+      -
+        name: adinfo
+        create: |
+          CREATE TABLE IF NOT EXISTS adinfo(
+          	id string,
+          	ingestionTime timestamp,
+          	item_ts timestamp,
+          	I_brand_id string,
+          	I_series_id string,
+          	I_deal_record int,
+          	I_weight int,
+          	I_discount double,
+          	I_msrp double,
+          	I_min_price double,
+          	I_price_difference double,
+          	index(key=(id), ttl=0m, ttl_type=absolute)
+          );
+        inserts:
+          - insert into adinfo values ('15966',1606829773651,1461455554999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829770353,1461168198999,'57','142',0,163,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829763134,1460476061999,'57','142',0,121,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829766231,1460736086999,'57','142',0,127,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829768458,1460949164999,'57','142',0,148,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829766806,1460772891999,'57','142',0,130,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829747775,1458921819999,'57','142',0,0,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829747037,1458894698999,'57','142',0,0,8.9,59400.0,52900.0,6500.0);
+          - insert into adinfo values ('15966',1606829770755,1461215180999,'57','142',0,171,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829763146,1460471547999,'57','142',0,121,10.0,59400.0,59400.0,0.0);
+          - insert into adinfo values ('15966',1606829775064,1461600012999,'57','142',0,192,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829756644,1459958431999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829758171,1460045111999,'57','142',0,90,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829753139,1459612901999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829762301,1460390409999,'57','142',0,114,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829772288,1461401287999,'57','142',0,183,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829767305,1460822654999,'57','142',0,130,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829763039,1460427581999,'57','142',0,121,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829772193,1461377130999,'57','142',0,183,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829771541,1461290734999,'57','142',0,174,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829767875,1460908981999,'57','142',0,133,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829749745,1459304681999,'57','142',0,78,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829773598,1461434542999,'57','142',0,183,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829764377,1460560778999,'57','142',0,121,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829761046,1460259644999,'57','142',0,102,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829769091,1461119108999,'57','142',0,163,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829770895,1461254443999,'57','142',0,163,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829753948,1459699532999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829763513,1460477116999,'57','142',0,121,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829760094,1460171824999,'57','142',0,99,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829764378,1460563205999,'57','142',0,121,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829762134,1460346316999,'57','142',0,114,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829764377,1460555818999,'57','142',0,121,10.0,59400.0,59400.0,0.0);
+          - insert into adinfo values ('15966',1606829748975,1459221747999,'57','142',0,75,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829774044,1461480568999,'57','142',0,192,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829748548,1459131536999,'57','142',0,69,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829768701,1460995386999,'57','142',0,148,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829772289,1461400681999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829757385,1460044803999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829774138,1461513605999,'57','142',0,183,9.8,59400.0,58400.0,1000.0);
+          - insert into adinfo values ('15966',1606829765662,1460672955999,'57','142',0,127,10.0,59400.0,59400.0,0.0);
+          - insert into adinfo values ('15966',1606829754685,1459785626999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829760278,1460217604999,'57','142',0,99,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829761325,1460304048999,'57','142',0,102,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829774768,1461573207999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829773702,1461471084999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829768628,1460987463999,'57','142',0,148,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829771673,1461340817999,'57','142',0,171,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829770007,1461198993999,'57','142',0,160,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829759457,1460131235999,'57','142',0,93,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829772025,1461386182999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829773662,1461459086999,'57','142',0,183,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829770716,1461205528999,'57','142',0,163,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829771475,1461265956999,'57','142',0,171,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829774558,1461515993999,'57','142',0,192,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829747037,1458894690999,'57','142',null,0,8.9,59400.0,52900.0,6500.0);
+          - insert into adinfo values ('15966',1606829750078,1459440043999,'57','142',0,81,9.8,59400.0,58400.0,1000.0);
+          - insert into adinfo values ('15966',1606829748683,1459180812999,'57','142',0,69,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829772033,1461427208999,'57','142',0,183,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829747371,1458901214999,'57','142',0,0,9.5,66400.0,62900.0,3500.0);
+          - insert into adinfo values ('15966',1606829748068,1459094421999,'57','142',0,0,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829765721,1460675891999,'57','142',0,127,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829749046,1459267706999,'57','142',0,75,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829770792,1461220692999,'57','142',0,163,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829772034,1461342695999,'57','142',0,174,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829765263,1460649666999,'57','142',0,127,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829752101,1459526430999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829772025,1461386244999,'57','142',0,183,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829751449,1459445334999,'57','142',0,81,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829751069,1459480434999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829771056,1461295703999,'57','142',0,171,9.5,59400.0,56400.0,3000.0);
+          - insert into adinfo values ('15966',1606829749437,1459267358999,'57','142',0,75,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829748154,1459008046999,'57','142',0,0,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829771559,1461298469999,'57','142',0,174,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829755725,1459872065999,'57','142',0,87,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829775678,1461641476999,'57','142',0,202,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829767681,1460864505999,'57','142',0,133,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829763017,1460476828999,'57','142',0,121,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829750105,1459353816999,'57','142',0,78,9.4,59400.0,55900.0,3500.0);
+          - insert into adinfo values ('15966',1606829759182,1460094013999,'57','142',0,93,9.2,59400.0,54900.0,4500.0);
+          - insert into adinfo values ('15966',1606829769452,1461081633999,'57','142',0,148,9.3,59400.0,55400.0,4000.0);
+          - insert into adinfo values ('15966',1606829765072,1460601578999,'57','142',0,127,9.3,59400.0,55400.0,4000.0);
+    sql: |
+      select * from
+      (
+          select
+              `instanceKey` as instanceKey_1,
+              `eventTime` as behaviourTable_eventTime_original_0,
+              `instanceKey` as behaviourTable_instanceKey_original_1,
+              `_i_rank` as behaviourTable__i_rank_original_14,
+              `browser` as behaviourTable_browser_original_15,
+              `browser_version` as behaviourTable_browser_version_original_16,
+              `ip` as behaviourTable_ip_original_17,
+              `itemId` as behaviourTable_itemId_original_18,
+              `mcuid` as behaviourTable_mcuid_original_19,
+              `platform` as behaviourTable_platform_original_20,
+              `query` as behaviourTable_query_original_21,
+              `rank` as behaviourTable_rank_original_22
+          from
+              `behaviourTable`
+          )
+      as out0
+      last join
+      (
+      select
+          `behaviourTable`.`instanceKey` as instanceKey_3,
+          `feedbackTable_instanceKey`.`actionValue` as feedbackTable_actionValue_multi_direct_2,
+          `adinfo_id`.`I_brand_id` as adinfo_I_brand_id_multi_direct_3,
+          `adinfo_id`.`I_deal_record` as adinfo_I_deal_record_multi_direct_4,
+          `adinfo_id`.`I_discount` as adinfo_I_discount_multi_direct_5,
+          `adinfo_id`.`I_min_price` as adinfo_I_min_price_multi_direct_6,
+          `adinfo_id`.`I_msrp` as adinfo_I_msrp_multi_direct_7,
+          `adinfo_id`.`I_price_difference` as adinfo_I_price_difference_multi_direct_8,
+          `adinfo_id`.`I_series_id` as adinfo_I_series_id_multi_direct_9,
+          `adinfo_id`.`I_weight` as adinfo_I_weight_multi_direct_10,
+          `adinfo_id`.`ingestionTime` as adinfo_ingestionTime_multi_direct_11,
+          `adinfo_id`.`item_ts` as adinfo_item_ts_multi_direct_12,
+          `feedbackTable_instanceKey`.`rank` as feedbackTable_rank_multi_direct_13
+      from
+          `behaviourTable` last join `feedbackTable` as `feedbackTable_instanceKey` on `behaviourTable`.`instanceKey` = `feedbackTable_instanceKey`.`instanceKey`
+          last join `adinfo` as `adinfo_id` on `behaviourTable`.`itemId` = `adinfo_id`.`id`
+      )
+      as out1
+      on out0.instanceKey_1 = out1.instanceKey_3;
+    expect:
+      success: true

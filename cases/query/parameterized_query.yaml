@@ -13,6 +13,7 @@
 # limitations under the License.
 db: testdb
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: 带参数的Where条件命中索引

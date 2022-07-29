@@ -13,6 +13,7 @@
 # limitations under the License.
 db: multi_insert_db
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: 简单INSERT

@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import lombok.extern.slf4j.Slf4j;
@@ -31,16 +31,16 @@ import java.util.List;
  */
 @Slf4j
 public class DeploymentCountCheckerByCli extends BaseChecker {
-    public DeploymentCountCheckerByCli(ExpectDesc expect, FesqlResult fesqlResult) {
+    public DeploymentCountCheckerByCli(ExpectDesc expect, OpenMLDBResult fesqlResult) {
         super(expect, fesqlResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("deployment count check");
-        reportLog.info("deployment count name check");
         int expectDeploymentCount = expect.getDeploymentCount();
         List<OpenmldbDeployment> actualDeployments = fesqlResult.getDeployments();
-        Assert.assertEquals(actualDeployments.size(),expectDeploymentCount);
+        Integer deploymentCount = fesqlResult.getDeploymentCount();
+        Assert.assertEquals((int) deploymentCount,expectDeploymentCount);
     }
 }

@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -40,5 +39,13 @@ public class LastJoinTest extends StandaloneTest {
     @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
     public void testLastJoin(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
+
+    //all pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/join/","function/cluster/window_and_lastjoin.yaml"})
+    public void testLastJoinSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 }

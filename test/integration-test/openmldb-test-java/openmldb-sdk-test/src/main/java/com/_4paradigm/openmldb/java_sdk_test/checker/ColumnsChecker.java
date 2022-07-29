@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.TypeUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
 import lombok.extern.slf4j.Slf4j;
@@ -32,14 +32,13 @@ import java.util.List;
 @Slf4j
 public class ColumnsChecker extends BaseChecker {
 
-    public ColumnsChecker(ExpectDesc expect, FesqlResult fesqlResult) {
+    public ColumnsChecker(ExpectDesc expect, OpenMLDBResult fesqlResult) {
         super(expect, fesqlResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("column name check");
-        reportLog.info("column name check");
         List<String> expectColumns = expect.getColumns();
         if (expectColumns == null || expectColumns.size() == 0) {
             return;
@@ -50,8 +49,8 @@ public class ColumnsChecker extends BaseChecker {
         for (int i = 0; i < expectColumns.size(); i++) {
             // Assert.assertEquals(columnNames.get(i)+" "+columnTypes.get(i),expectColumns.get(i));
             Assert.assertEquals(columnNames.get(i), Table.getColumnName(expectColumns.get(i)));
-            Assert.assertEquals(FesqlUtil.getColumnType(columnTypes.get(i)),
-                    FesqlUtil.getColumnType(Table.getColumnType(expectColumns.get(i))));
+            Assert.assertEquals(TypeUtil.getOpenMLDBColumnType(columnTypes.get(i)),
+                    TypeUtil.getOpenMLDBColumnType(Table.getColumnTypeByExpect(expectColumns.get(i))));
         }
 
     }

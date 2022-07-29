@@ -1,6 +1,5 @@
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -21,4 +20,11 @@ public class OutInTest extends StandaloneTest {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
 
+    //11 17 18没有pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/out_in/test_out_in.yaml")
+    @Story("Out-In")
+    public void testOutInSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

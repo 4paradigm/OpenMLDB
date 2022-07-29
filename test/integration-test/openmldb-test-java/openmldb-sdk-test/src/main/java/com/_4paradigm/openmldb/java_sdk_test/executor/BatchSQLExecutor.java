@@ -16,12 +16,14 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 
@@ -38,30 +40,34 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     public BatchSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
         super(executor, fesqlCase, executorType);
     }
-    public BatchSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
+    public BatchSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, fedbInfoMap, executorType);
     }
 
     @Override
     public boolean verify() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("hybridse-only")) {
-            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("batch-unsupport")) {
-            logger.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
-            logger.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
             return false;
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("performance-sensitive-unsupport")) {
-            logger.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return false;
+        }
+        if (null != fesqlCase.getMode() && !OpenMLDBGlobalVar.tableStorageMode.equals("memory") && fesqlCase.getMode().contains("disk-unsupport")) {
+            log.info("skip case in disk mode: {}", fesqlCase.getDesc());
             return false;
         }
         return true;
@@ -69,43 +75,44 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("version:{},create db:{},{}", version, dbName, dbOk);
-        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
+        log.info("version:{},create db:{},{}", version, dbName, dbOk);
+        SDKUtil.useDB(executor,dbName);
+        OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), false);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
 
     @Override
-    public FesqlResult execute(String version,SqlExecutor executor){
-        logger.info("version:{} execute begin",version);
-        FesqlResult fesqlResult = null;
+    public OpenMLDBResult execute(String version, SqlExecutor executor){
+        log.info("version:{} execute begin",version);
+        OpenMLDBResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                    sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
                 }else {
-                    sql = FesqlUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+                fesqlResult = SDKUtil.sql(executor, dbName, sql);
             }
         }
         String sql = fesqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
             if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
             }else {
-                sql = FesqlUtil.formatSql(sql, tableNames);
+                sql = SQLUtil.formatSql(sql, tableNames);
             }
-            fesqlResult = FesqlUtil.sql(executor, dbName, sql);
+            fesqlResult = SDKUtil.sql(executor, dbName, sql);
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 }

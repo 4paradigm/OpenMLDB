@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: string为partition by
@@ -681,6 +682,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0 ]
   - id: 24-1
     desc: ROWS_RANGE Pure History Window
+    version: 0.6.0
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -714,6 +716,7 @@ cases:
         - [ "aa", 9, 1590739002000, 2.0 ]
   - id: 24-2
     desc: ROWS_RANGE Pure History Window With MaxSize
+    version: 0.6.0
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -940,6 +943,7 @@ cases:
 
   - id: 27-3
     desc: ROWS and ROWS_RANGE Pure History Window Cant' Be Merge
+    version: 0.6.0
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -1371,6 +1375,7 @@ cases:
   -
     id: 46
     desc: timestamp为order by-2s-1s
+    version: 0.6.0
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1443,6 +1448,7 @@ cases:
   -
     id: 49
     desc: timestamp为order by-2s-1
+    version: 0.6.0
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1467,6 +1473,7 @@ cases:
   -
     id: 50
     desc: timestamp为order by-前后单位不一样
+    version: 0.6.0
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

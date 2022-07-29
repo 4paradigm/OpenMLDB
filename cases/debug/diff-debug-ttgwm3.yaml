@@ -1,0 +1,51 @@
+db: test3
+debugs: []
+cases:
+  -
+    id: 0
+    desc: diff-ttgwm
+    inputs:
+      -
+        name: flattenRequest
+        columns: ["reqId string","eventTime timestamp","f_index string","f_requestId string","f_userGender string","f_userAddress string","f_itemTitle string","f_temDescription string","f_itemExpired string"]
+        indexs: ["index1:f_itemTitle:eventTime:0m:absolute","index2:f_requestId:eventTime:0m:absolute","index3:f_temDescription:eventTime:0m:absolute"]
+        rows:
+          - ['train_178837',1511188561000,'train_178837','2cf15328efc127cc26ae35cac0e896db','女','北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表','此款CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表外观设计简约，表盘直径约42mm，表壳厚度11mm。亮骚活力的橙色刻度显示，简约三针计时，采用日本石英表芯，光动能驱动，搭载矿物玻璃表镜，防刮擦又比较耐摔。3点钟方向自带日期显示，皮革表带质感上乘，工艺精湛，还自带100米生活防水。','0']
+          - ['train_1',     1511190175000,'train_1','14d51082b22b7e78177177fa82ef942d','女','北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表','此款CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表外观设计简约，表盘直径约42mm，表壳厚度11mm。亮骚活力的橙色刻度显示，简约三针计时，采用日本石英表芯，光动能驱动，搭载矿物玻璃表镜，防刮擦又比较耐摔。3点钟方向自带日期显示，皮革表带质感上乘，工艺精湛，还自带100米生活防水。','0']
+          - ['train_147',   1511191732000,'train_147','c4c081b82bb4b4d6907924317c13e8a3','女','安徽省,合肥市,瑶海区,当涂北路与新海大道交口新海尚宸家园*号楼*','CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表','此款CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表外观设计简约，表盘直径约42mm，表壳厚度11mm。亮骚活力的橙色刻度显示，简约三针计时，采用日本石英表芯，光动能驱动，搭载矿物玻璃表镜，防刮擦又比较耐摔。3点钟方向自带日期显示，皮革表带质感上乘，工艺精湛，还自带100米生活防水。','0']
+          - ['train_104',   1511192140000,'train_104','a9a98fd04053253626ab05ede3b37e43','女','*川省,成都市,蒲江县,海川阳光尚城*栋*','CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表','此款CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表外观设计简约，表盘直径约42mm，表壳厚度11mm。亮骚活力的橙色刻度显示，简约三针计时，采用日本石英表芯，光动能驱动，搭载矿物玻璃表镜，防刮擦又比较耐摔。3点钟方向自带日期显示，皮革表带质感上乘，工艺精湛，还自带100米生活防水。','0']
+          - ['train_92',    1511192324000,'train_92','04c2c1e536c275ebf26fcc90aa86105f','女','河北省,衡水市,桃城区,河北省衡水市桃城区胜利西路利康胡同*号楼*单元*、河北省,保定市,北市区,河北省保定市莲池区*东路*号河大新区坤舆生活区','CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表','此款CITIZEN 西铁城 BM8475-26E 皮带简约光动能男士手表外观设计简约，表盘直径约42mm，表壳厚度11mm。亮骚活力的橙色刻度显示，简约三针计时，采用日本石英表芯，光动能驱动，搭载矿物玻璃表镜，防刮擦又比较耐摔。3点钟方向自带日期显示，皮革表带质感上乘，工艺精湛，还自带100米生活防水。','0']
+      -
+        name: adinfo
+        create: |
+          CREATE TABLE IF NOT EXISTS action(
+          	reqId string,
+          	eventTime timestamp,
+          	ingestionTime timestamp,
+          	actionValue int,
+          	index(key=(reqId), ttl=0m, ttl_type=absolute)
+          );
+        inserts:
+          - insert into action values ('train_0',1511188285000,1511188285000,0);
+    sql: |
+      select
+          reqId as reqId_1,
+          `reqId` as flattenRequest_reqId_original_0,
+          `eventTime` as flattenRequest_eventTime_original_1,
+          distinct_count(`f_userAddress`) over flattenRequest_f_temDescription_eventTime_0s_172801s_100 as flattenRequest_f_userAddress_window_unique_count_111,
+          distinct_count(`f_userAddress`) over flattenRequest_f_temDescription_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_112,
+          distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_172801s_100 as flattenRequest_f_userAddress_window_unique_count_113,
+          distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_114,
+          fz_top1_ratio(`f_itemTitle`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 as flattenRequest_f_itemTitle_window_top1_ratio_126,
+          case when !isnull(at(`f_userGender`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_userGender`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_userGender_window_count_127,
+          case when !isnull(at(`f_itemExpired`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_itemExpired`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_itemExpired_window_count_128
+      from
+          `flattenRequest`
+          window flattenRequest_f_temDescription_eventTime_0s_172801s_100 as (partition by `f_temDescription` order by `eventTime` rows_range between 172800999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_temDescription_eventTime_0s_432001s_100 as (partition by `f_temDescription` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_itemTitle_eventTime_0s_172801s_100 as (partition by `f_itemTitle` order by `eventTime` rows_range between 172800999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_itemTitle_eventTime_0s_432001s_100 as (partition by `f_itemTitle` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_requestId_eventTime_0s_432001s_100 as (partition by `f_requestId` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100)
+      ;
+    expect:
+      success: true

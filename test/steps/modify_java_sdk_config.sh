@@ -17,21 +17,36 @@
 
 CASE_XML=$1
 DEPLOY_MODE=$2
-FEDB_SDK_VERSION=$3
-BUILD_MODE=$4
-FEDB_SERVER_VERSION=$4
-JAVA_NATIVE_VERSION=$5
+OPENMLDB_SDK_VERSION=$3
+TEST_CASE_VERSION=$4
+OPENMLDB_SERVER_VERSION=$5
+JAVA_NATIVE_VERSION=$6
+TABLE_STORAGE_MODE=$7
 echo "deploy_mode:${DEPLOY_MODE}"
 ROOT_DIR=$(pwd)
-echo "test_version:$FEDB_SDK_VERSION"
+echo "test_sdk_version:$OPENMLDB_SDK_VERSION"
 cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 # modify suite_xml
-sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${FEDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
+sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${OPENMLDB_SERVER_VERSION}\"/>#"  test_suite/"${CASE_XML}"
 sed -i "s#<parameter name=\"env\" value=\".*\"/>#<parameter name=\"env\" value=\"${DEPLOY_MODE}\"/>#"  test_suite/"${CASE_XML}"
-if [[ "${BUILD_MODE}" == "SRC" ]]; then
-    sed -i "s#<parameter name=\"fedbPath\" value=\".*\"/>#<parameter name=\"fedbPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
+#if [[ "${BUILD_MODE}" == "SRC" ]]; then
+#    sed -i "s#<parameter name=\"openMLDBPath\" value=\".*\"/>#<parameter name=\"openMLDBPath\" value=\"${ROOT_DIR}/build/bin/openmldb\"/>#" test_suite/"${CASE_XML}"
+#fi
+echo "test suite xml:"
+cat test_suite/"${CASE_XML}"
+if [ -n "${TEST_CASE_VERSION}" ]; then
+  echo -e "\nversion=${TEST_CASE_VERSION}" >> src/main/resources/run_case.properties
 fi
+if [ -n "${TABLE_STORAGE_MODE}" ]; then
+  sed -i "s#table_storage_mode=.*#table_storage_mode=${TABLE_STORAGE_MODE}#" src/main/resources/run_case.properties
+fi
+echo "run_case config:"
+cat src/main/resources/run_case.properties
 # modify pom
-sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${FEDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
+cd "${ROOT_DIR}" || exit
+cd test/integration-test/openmldb-test-java/openmldb-test-common || exit
+sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${OPENMLDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
 sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml
+echo "pom xml:"
+cat pom.xml
 cd "${ROOT_DIR}" || exit

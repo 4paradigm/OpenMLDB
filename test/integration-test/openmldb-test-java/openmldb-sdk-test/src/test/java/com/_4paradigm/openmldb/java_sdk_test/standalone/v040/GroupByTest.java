@@ -40,4 +40,12 @@ public class GroupByTest extends StandaloneTest {
     public void testExpress(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //全pass
+    @Story("standalone-cli")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/v040/test_groupby.yaml")
+    public void testExpressSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

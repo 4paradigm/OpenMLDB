@@ -13,7 +13,8 @@
 # limitations under the License.
 
 db: test_zw
-debugs: [ ]
+debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: window optimized one key one ts

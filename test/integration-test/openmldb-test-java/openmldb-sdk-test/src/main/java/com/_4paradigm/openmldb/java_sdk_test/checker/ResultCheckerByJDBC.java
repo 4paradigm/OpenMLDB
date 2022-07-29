@@ -15,10 +15,12 @@
  */
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.DataUtil;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
+import com._4paradigm.openmldb.test_common.util.SchemaUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
@@ -34,32 +36,29 @@ import java.util.List;
 @Slf4j
 public class ResultCheckerByJDBC extends BaseChecker {
 
-    public ResultCheckerByJDBC(ExpectDesc expect, FesqlResult fesqlResult) {
+    public ResultCheckerByJDBC(ExpectDesc expect, OpenMLDBResult fesqlResult) {
         super(expect, fesqlResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("result check");
-        reportLog.info("result check");
         if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
-        List<List<Object>> expectRows = FesqlUtil.convertRows(expect.getRows(),
+        List<List<Object>> expectRows = DataUtil.convertRows(expect.getRows(),
                 expect.getColumns());
         List<List<Object>> actual = fesqlResult.getResult();
 
         String orderName = expect.getOrder();
         if (StringUtils.isNotEmpty(orderName)) {
-            int index = FesqlUtil.getIndexByColumnName(fesqlResult.getColumnNames(),orderName);
+            int index = SchemaUtil.getIndexByColumnName(fesqlResult.getColumnNames(),orderName);
             Collections.sort(expectRows, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
         }
 
         log.info("expect:{}", expectRows);
-        reportLog.info("expect:{}", expectRows);
         log.info("actual:{}", actual);
-        reportLog.info("actual:{}", actual);
         Assert.assertEquals(actual.size(), expectRows.size(),
                 String.format("ResultChecker fail: expect size %d, real size %d", expectRows.size(), actual.size()));
         for (int i = 0; i < actual.size(); ++i) {

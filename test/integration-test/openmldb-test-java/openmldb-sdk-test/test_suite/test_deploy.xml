@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="openMLDB-deploy" parallel="false" thread-count="2">
+    <test name="deploy-tmp">
+        <classes>
+            <class name="com._4paradigm.openmldb.java_sdk_test.temp.TestFEDBDeploy">
+                <methods>
+                    <include name="testTmp" />
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

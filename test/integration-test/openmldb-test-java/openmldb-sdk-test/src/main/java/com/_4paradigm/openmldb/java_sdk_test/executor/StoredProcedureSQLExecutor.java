@@ -16,12 +16,13 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -40,36 +41,36 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         spNames = new ArrayList<>();
     }
 
-    public StoredProcedureSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+    public StoredProcedureSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, fedbInfoMap, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
 
     @Override
     public void prepare(String version,SqlExecutor executor){
-        logger.info("version:{} prepare begin",version);
+        log.info("version:{} prepare begin",version);
         boolean dbOk = executor.createDB(dbName);
-        logger.info("create db:{},{}", dbName, dbOk);
-        FesqlResult res = FesqlUtil.createAndInsert(
+        log.info("create db:{},{}", dbName, dbOk);
+        OpenMLDBResult res = SDKUtil.createAndInsert(
                 executor, dbName, fesqlCase.getInputs(),
                 !isBatchRequest && null == fesqlCase.getBatch_request());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run StoredProcedureSQLExecutor: prepare fail");
         }
-        logger.info("version:{} prepare end",version);
+        log.info("version:{} prepare end",version);
     }
     @Override
-    public FesqlResult execute(String version,SqlExecutor executor) {
-        logger.info("version:{} execute begin",version);
-        FesqlResult fesqlResult = null;
+    public OpenMLDBResult execute(String version, SqlExecutor executor) {
+        log.info("version:{} execute begin",version);
+        OpenMLDBResult fesqlResult = null;
         try {
             if (fesqlCase.getInputs().isEmpty() ||
                     CollectionUtils.isEmpty(fesqlCase.getInputs().get(0).getRows())) {
-                logger.error("fail to execute in request query sql executor: sql case inputs is empty");
+                log.error("fail to execute in request query sql executor: sql case inputs is empty");
                 return null;
             }
             String sql = fesqlCase.getSql();
-            logger.info("sql: {}", sql);
+            log.info("sql: {}", sql);
             if (sql == null || sql.length() == 0) {
                 return null;
             }
@@ -82,36 +83,36 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         }catch (Exception e){
             e.printStackTrace();
         }
-        logger.info("version:{} execute end",version);
+        log.info("version:{} execute end",version);
         return fesqlResult;
     }
 
-    private FesqlResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
+    private OpenMLDBResult executeSingle(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spSql = fesqlCase.getProcedure(sql);
-        logger.info("spSql: {}", spSql);
-        return FesqlUtil.sqlRequestModeWithSp(
+        log.info("spSql: {}", spSql);
+        return SDKUtil.sqlRequestModeWithProcedure(
                 executor, dbName, fesqlCase.getSpName(), null == fesqlCase.getBatch_request(),
                 spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
-    private FesqlResult executeBatch(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
+    private OpenMLDBResult executeBatch(SqlExecutor executor, String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
-        String spSql = FesqlUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
-        logger.info("spSql: {}", spSql);
-        return FesqlUtil.selectBatchRequestModeWithSp(
+        String spSql = SQLUtil.buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
+        log.info("spSql: {}", spSql);
+        return SDKUtil.selectBatchRequestModeWithSp(
                 executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
 
 
     @Override
     public void tearDown(String version,SqlExecutor executor) {
-        logger.info("version:{},begin drop table",version);
+        log.info("version:{},begin drop table",version);
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }
         for (String spName : spNames) {
             String drop = "drop procedure " + spName + ";";
-            FesqlUtil.ddl(executor, dbName, drop);
+            SDKUtil.ddl(executor, dbName, drop);
         }
         super.tearDown(version,executor);
     }

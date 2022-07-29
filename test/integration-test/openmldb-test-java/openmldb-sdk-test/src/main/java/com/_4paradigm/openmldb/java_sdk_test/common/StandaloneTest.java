@@ -18,10 +18,11 @@ package com._4paradigm.openmldb.java_sdk_test.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
-import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,33 +36,37 @@ import org.testng.annotations.Parameters;
  */
 @Slf4j
 public class StandaloneTest extends BaseTest {
-    // protected static SqlExecutor executor;
+    protected static SqlExecutor executor;
 
     @BeforeTest()
-    @Parameters({"env","version","fedbPath"})
-    public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String fedbPath) throws Exception {
-        FedbGlobalVar.env = env;
+    @Parameters({"env","version","openMLDBPath"})
+    public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String openMLDBPath) throws Exception {
+        OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("standalone")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            FedbGlobalVar.mainInfo = fedbDeploy.deployFEDBByStandalone();
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
+            openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployStandalone();
         }else{
-            FedbGlobalVar.mainInfo = FEDBInfo.builder()
+            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .basePath("/home/wangkaidong/fedb-auto-test/standalone")
+                    .openMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10019"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10020"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10021"))
+                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30013"))
+                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30014"))
+                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"))
                     .host("172.24.4.55")
-                    .port(10019)
+                    .port(30013)
                     .build();
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
-            FedbGlobalVar.env = caseEnv;
+            OpenMLDBGlobalVar.env = caseEnv;
         }
+        //单机版SDK
+        OpenMLDBClient standaloneClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getHost(), OpenMLDBGlobalVar.mainInfo.getPort());
+        executor = standaloneClient.getExecutor();
+        log.info("executor : {}",executor);
         log.info("fedb global var env: {}", env);
     }
 }

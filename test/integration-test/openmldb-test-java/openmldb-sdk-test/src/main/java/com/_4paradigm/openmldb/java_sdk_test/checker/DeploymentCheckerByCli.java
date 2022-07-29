@@ -17,15 +17,13 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
-import com._4paradigm.openmldb.test_common.model.Table;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
-
-import java.util.List;
 
 /**
  * @author zhaowei
@@ -33,20 +31,19 @@ import java.util.List;
  */
 @Slf4j
 public class DeploymentCheckerByCli extends BaseChecker {
-    public DeploymentCheckerByCli(ExpectDesc expect, FesqlResult fesqlResult) {
+    public DeploymentCheckerByCli(ExpectDesc expect, OpenMLDBResult fesqlResult) {
         super(expect, fesqlResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("deployment check");
-        reportLog.info("deployment check");
         OpenmldbDeployment expectDeployment = expect.getDeployment();
         String name = expectDeployment.getName();
-        name = FesqlUtil.formatSql(name, fesqlResult.getTableNames());
+        name = SQLUtil.formatSql(name, fesqlResult.getTableNames());
         expectDeployment.setName(name);
         String sql = expectDeployment.getSql();
-        sql = FesqlUtil.formatSql(sql, fesqlResult.getTableNames());
+        sql = SQLUtil.formatSql(sql, fesqlResult.getTableNames());
         expectDeployment.setSql(sql);
         if (expectDeployment == null) {
             return;

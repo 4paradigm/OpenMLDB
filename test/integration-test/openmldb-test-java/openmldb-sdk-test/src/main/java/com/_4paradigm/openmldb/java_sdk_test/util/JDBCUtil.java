@@ -16,9 +16,10 @@
 package com._4paradigm.openmldb.java_sdk_test.util;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.DBType;
+import com._4paradigm.openmldb.test_common.util.TypeUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
@@ -47,10 +48,10 @@ public class JDBCUtil {
         reportLog.info("jdbc update result:{}",n);
         return n;
     }
-    public static FesqlResult executeQuery(String sql, DBType dbType){
+    public static OpenMLDBResult executeQuery(String sql, DBType dbType){
         log.info("jdbc sql:{}",sql);
         reportLog.info("jdbc sql:{}",sql);
-        FesqlResult fesqlResult = new FesqlResult();
+        OpenMLDBResult fesqlResult = new OpenMLDBResult();
         try(Connection connection= ConnectionFactory.of().getConn(dbType)){
             Statement statement=connection.createStatement();
             ResultSet rs = statement.executeQuery(sql);
@@ -96,7 +97,7 @@ public class JDBCUtil {
         return result;
     }
 
-    public static void setSchema(ResultSetMetaData metaData,FesqlResult fesqlResult) {
+    public static void setSchema(ResultSetMetaData metaData, OpenMLDBResult fesqlResult) {
         try {
             int columnCount = metaData.getColumnCount();
             List<String> columnNames = new ArrayList<>();
@@ -109,7 +110,7 @@ public class JDBCUtil {
                     columnLabel = metaData.getColumnName(i);
                 }
                 columnNames.add(columnLabel);
-                columnTypes.add(FesqlUtil.getSQLTypeString(metaData.getColumnType(i)));
+                columnTypes.add(TypeUtil.fromJDBCTypeToString(metaData.getColumnType(i)));
             }
             fesqlResult.setColumnNames(columnNames);
             fesqlResult.setColumnTypes(columnTypes);

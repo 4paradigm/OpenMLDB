@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="tmp" parallel="false" thread-count="2">
+    <test name="tmp">
+        <classes>
+            <class name="com._4paradigm.openmldb.devops_test.tmp.TestTmp">
+<!--                <methods>-->
+<!--                    <include name="test2" />-->
+<!--                </methods>-->
+            </class>
+
+        </classes>
+    </test>
+</suite>
