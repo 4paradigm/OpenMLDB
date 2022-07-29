@@ -20,7 +20,7 @@ conda activate oneflow
 
 cd openmldb_process
 ##pass in directory of openmldb results
-sh process_JD_out_full.sh $demodir/demo/out/1
+sh process_JD_out_full.sh $demodir/out/1
 ##output data in $demodir/openmldb_process/out
 ##note output information, table_size_array
 
