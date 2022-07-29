@@ -1,0 +1,34 @@
+name: "embedding"
+backend: "oneflow"
+max_batch_size: 10000
+
+input [
+  {
+    name: "INPUT_0"
+    data_type: TYPE_INT64
+    dims: [ 41 ]
+  }
+]
+
+output [
+  {
+    name: "OUTPUT_0"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]
+
+parameters {
+    key: "one_embedding_persistent_table_path"
+    value: {
+      string_value: "/root/demo/persistent/0-1",
+    }
+}
