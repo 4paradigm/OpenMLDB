@@ -55,7 +55,6 @@ public class SDKUtil {
 
     public static OpenMLDBResult executeLongWindowDeploy(SqlExecutor executor, SQLCase sqlCase, boolean isAsyn) throws SQLException {
         String deploySQL = SQLUtil.getLongWindowDeploySQL(sqlCase.getSpName(),sqlCase.getLongWindow(),sqlCase.getSql());
-        deploy(executor,deploySQL);
         log.info("long window deploy sql: {}", deploySQL);
         return SDKUtil.sqlRequestModeWithProcedure(
                 executor, sqlCase.getDb(), sqlCase.getSpName(), null == sqlCase.getBatch_request(),
@@ -63,6 +62,7 @@ public class SDKUtil {
     }
 
     public static OpenMLDBResult deploy(SqlExecutor sqlExecutor,String sql){
+
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         openMLDBResult.setSql(sql);
         Statement statement = sqlExecutor.getStatement();
@@ -107,10 +107,10 @@ public class SDKUtil {
                                                              Boolean needInsertRequestRow, String sql,
                                                              InputDesc rows, boolean isAsyn) throws SQLException {
         OpenMLDBResult fesqlResult = null;
-        if (sql.toLowerCase().startsWith("create procedure")) {
+        if (sql.toLowerCase().startsWith("create procedure") || sql.toLowerCase().startsWith("deploy ")) {
             fesqlResult = selectRequestModeWithSp(executor, dbName, spName, needInsertRequestRow, sql, rows, isAsyn);
         } else {
-            log.error("unsupport sql: {}", sql);
+            throw new IllegalArgumentException("unsupport sql: "+ sql);
         }
         return fesqlResult;
     }
@@ -566,7 +566,9 @@ public class SDKUtil {
         log.info("procedure sql:{}", sql);
         String insertDbName = input.getDb().isEmpty() ? dbName : input.getDb();
         OpenMLDBResult fesqlResult = new OpenMLDBResult();
-        if (!executor.executeDDL(dbName, sql)) {
+        if(sql.startsWith("deploy ")){
+            deploy(executor,sql);
+        }else if (!executor.executeDDL(dbName, sql)) {
             log.error("execute ddl failed! sql: {}", sql);
             fesqlResult.setOk(false);
             fesqlResult.setMsg("execute ddl failed");

@@ -64,8 +64,8 @@ public class QueryPreparedExecutor extends BatchSQLExecutor {
         String sql = sqlCase.getSql();
         if (sql != null && sql.length() > 0) {
             // log.info("sql:{}", sql);
-            if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+            if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
             }else {
                 sql = SQLUtil.formatSql(sql, tableNames);
             }

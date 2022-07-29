@@ -35,7 +35,7 @@ import java.util.Map;
 @Slf4j
 public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
-    private List<String> spNames;
+    protected List<String> spNames;
 
     public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(executor, fesqlCase, isBatchRequest, isAsyn, executorType);
@@ -92,7 +92,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     @Override
     public void tearDown(String version,SqlExecutor executor) {
-        log.info("version:{},begin drop table",version);
+        log.info("version:{},begin tearDown",version);
         if (CollectionUtils.isEmpty(spNames)) {
             return;
         }

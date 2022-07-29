@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 public abstract class BaseSQLExecutor extends BaseExecutor{
     protected SqlExecutor executor;
     private Map<String,SqlExecutor> executorMap;
-    protected Map<String, OpenMLDBInfo> fedbInfoMap;
+    protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, OpenMLDBResult> resultMap;
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
@@ -64,7 +64,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         this(executor,fesqlCase,executorType);
         this.executor = executor;
         this.executorMap = executorMap;
-        this.fedbInfoMap = fedbInfoMap;
+        this.openMLDBInfoMap = fedbInfoMap;
     }
 
     @Override
@@ -116,8 +116,8 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         List<String> tearDown = sqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
-                if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = SQLUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                    sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
                     sql = SQLUtil.formatSql(sql, tableNames);
                 }

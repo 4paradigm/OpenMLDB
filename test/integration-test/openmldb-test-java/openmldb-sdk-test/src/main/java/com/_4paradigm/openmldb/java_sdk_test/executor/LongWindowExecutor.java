@@ -33,7 +33,7 @@ import java.util.Map;
 @Slf4j
 public class LongWindowExecutor extends StoredProcedureSQLExecutor {
 
-    private List<String> spNames;
+//    private List<String> spNames;
 
     public LongWindowExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
         super(executor, fesqlCase, isBatchRequest, isAsyn, executorType);
