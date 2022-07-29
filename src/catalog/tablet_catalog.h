@@ -255,13 +255,11 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     const Procedures &GetProcedures();
 
-    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables(
-        const std::string& base_db,
-        const std::string& base_table,
-        const std::string& aggr_func,
-        const std::string& aggr_col,
-        const std::string& partition_cols,
-        const std::string& order_col) override;
+    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables(const std::string &base_db, const std::string &base_table,
+                                                             const std::string &aggr_func, const std::string &aggr_col,
+                                                             const std::string &partition_cols,
+                                                             const std::string &order_col,
+                                                             const std::string &filter_col) override;
 
     void RefreshAggrTables(const std::vector<::hybridse::vm::AggrTableInfo>& entries);
 
@@ -273,12 +271,13 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
         std::string aggr_col;
         std::string partition_cols;
         std::string order_by_col;
+        std::string filter_col;
     };
 
     struct AggrTableKeyHash {
         std::size_t operator()(const AggrTableKey& key) const {
-            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func +
-                                            key.aggr_col + key.partition_cols + key.order_by_col);
+            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func + key.aggr_col +
+                                            key.partition_cols + key.order_by_col + key.filter_col);
         }
     };
 
@@ -289,7 +288,8 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
                 lhs.aggr_func == rhs.aggr_func &&
                 lhs.aggr_col == rhs.aggr_col &&
                 lhs.partition_cols == rhs.partition_cols &&
-                lhs.order_by_col == rhs.order_by_col;
+                lhs.order_by_col == rhs.order_by_col &&
+                lhs.filter_col == rhs.filter_col;
         }
     };
 

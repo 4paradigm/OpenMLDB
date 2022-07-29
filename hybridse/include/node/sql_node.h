@@ -1078,7 +1078,30 @@ class ConstNode : public ExprNode {
     // include 'udf/literal_traits.h' for Nullable lead to recursive include
     // so `optional` is used for nullable info
     template <typename T>
-    absl::StatusOr<std::optional<T>> GetAs() const;
+    absl::StatusOr<std::optional<T>> GetAs() const {
+        if (IsNull()) {
+            std::optional<T> r = {};
+            return r;
+        }
+
+        if constexpr (std::is_same_v<T, bool>) {
+            return GetBool();
+        } else if constexpr(std::is_same_v<T, int16_t>) {
+            return GetAsInt16();
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return GetAsInt32();
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return GetAsInt64();
+        } else if constexpr (std::is_same_v<T, float>) {
+            return GetAsFloat();
+        } else if constexpr (std::is_same_v<T, double>) {
+            return GetAsDouble();
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return GetAsString();
+        } else {
+            return absl::InvalidArgumentError("can't cast as T");
+        }
+    }
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
     static ConstNode *CastFrom(ExprNode *node);

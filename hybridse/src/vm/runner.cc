@@ -2918,6 +2918,22 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             return;
         }
 
+        if (cond_ != nullptr) {
+            // for those condition exists and evaluated to NULL/false
+            // will apply to functions `*_where`
+            // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
+            auto matches = internal::EvalCondWithAggRow(row_parser, row, cond_, "filter_key");
+            if (!matches.ok()) {
+                LOG(WARNING) << matches.status();
+                return;
+            }
+            DLOG(INFO) << "evaluate agg result of " << cond_->GetExprString() << " : "
+                      << (matches->has_value() ? (matches->value() ? "true" : "false") : "null");
+            if (false == matches->value_or(false)) {
+                return;
+            }
+        }
+
         std::string agg_val;
         row_parser->GetString(row, "agg_val", &agg_val);
         aggregator->Update(agg_val);

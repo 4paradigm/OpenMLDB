@@ -114,6 +114,10 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     const std::string& table_name = orig_data_provider->GetName();
     std::string func_name = aggr_op->GetFnDef()->GetName();
     std::string aggr_col = ConcatExprList({aggr_op->children_.front()});
+    std::string filter_col;
+    if (aggr_op->GetChildNum() >= 2) {
+        filter_col = ConcatExprList({aggr_op->GetChild(1)});
+    }
     std::string partition_col;
     if (window->GetPartitions()) {
         partition_col = ConcatExprList(window->GetPartitions()->children_);
@@ -145,7 +149,8 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
         }
     }
 
-    auto table_infos = catalog_->GetAggrTables(db_name, table_name, func_name, aggr_col, partition_col, order_col);
+    auto table_infos =
+        catalog_->GetAggrTables(db_name, table_name, func_name, aggr_col, partition_col, order_col, filter_col);
     if (table_infos.empty()) {
         LOG(WARNING) << absl::StrCat("No Pre-aggregation tables exists for ", db_name, ".", table_name, ": ", func_name,
                                      "(", aggr_col, ")", " partition by ", partition_col, " order by ", order_col);

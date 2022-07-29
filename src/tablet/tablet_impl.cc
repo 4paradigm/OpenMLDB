@@ -4386,6 +4386,8 @@ bool TabletImpl::RefreshAggrCatalog() {
         table_info.order_by_col.assign(str, len);
         row_view.GetValue(row.buf(), 8, &str, &len);
         table_info.bucket_size.assign(str, len);
+        row_view.GetValue(row.buf(), 9, &str, &len);
+        table_info.filter_col.assign(str, len);
 
         table_infos.emplace_back(std::move(table_info));
         it->Next();

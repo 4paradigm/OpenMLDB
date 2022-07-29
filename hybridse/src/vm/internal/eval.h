@@ -151,6 +151,15 @@ absl::StatusOr<std::optional<bool>> EvalBinaryExpr(const RowParser* parser, cons
 absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const codec::Row& row,
                                              const node::ExprNode* cond);
 
+// evaluate the condition expr same as `EvalCond`
+// but inputed `row` and schema is from pre-agg table.
+// The expr is also only supported as Binary Expr as 'col < constant', but col name to the
+// pre-agg table is already defined as 'filter_key', instead taken from ColumnRefNode kid of binary expr node
+//
+// * type infer is not smart as `EvalCond` because it just use type of const node
+absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, const codec::Row& row,
+                                                       const node::ExprNode* cond, absl::string_view filter_col_name);
+
 // extract type of the expr node
 //
 // why not use ExprNode::GetOutputType ?
