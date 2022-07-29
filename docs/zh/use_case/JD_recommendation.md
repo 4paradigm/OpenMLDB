@@ -30,15 +30,15 @@ export demodir=/home/gtest/demo
 docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.5.2 bash
 docker exec -it demo bash
 ```
-- 上述镜像预装了OpenMLDB的工具等，我们需要进一步安装Oneflow推理所需依赖。
+- 上述镜像预装了OpenMLDB的工具等，我们需要进一步安装OneFlow推理所需依赖。
 
-因为我们将在OpenMLDB的服务中嵌入OneFlow模型推理的预处理及调用，需要安装以下的依赖。
+因为我们将在OpenMLDB的容器中嵌入OneFlow模型推理的预处理及调用，需要安装以下的依赖。
 ```bash
 pip install tritonclient xxhash geventhttpclient
 ```
 
 ```{note}
-注意，本教程以下的OpenMLDB部分的演示命令默认均在该已经启动的 docker 容器内运行。OneFlow命令默认在 1.1 安装的oneflow环境下运行。
+注意，本教程以下的OpenMLDB部分的演示命令默认均在该已经启动的 docker 容器内运行。OneFlow命令默认在 1.1 安装的OneFlow环境下运行。
 ```
 
 ### 1.3 初始化环境
@@ -80,7 +80,7 @@ pip install tritonclient xxhash geventhttpclient
 > CREATE TABLE bo_product(ingestionTime timestamp, sku_id string, a1 string, a2 string, a3 string, cate string, br string);
 > CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comment_num int, has_bad_comment string, bad_comment_rate float);
 ```
-也可使用sql脚本(/root/project/create_tables.sql)运行：
+也可使用sql脚本(`/root/project/create_tables.sql`)运行：
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /root/project/create_tables.sql
@@ -99,15 +99,11 @@ pip install tritonclient xxhash geventhttpclient
 > LOAD DATA INFILE '/root/project/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', header=true, mode='append');
 > LOAD DATA INFILE '/root/project/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', header=true, mode='append');
 ```
-或使用脚本执行：
+或使用脚本执行，并通过以下命令快速查询jobs状态：
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /root/project/load_data.sql
-```
 
-并通过以下命令快速查询jobs状态：
-
-```
 echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 ```{note}
@@ -120,10 +116,10 @@ echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk
 请注意，在实际的机器学习特征调研过程中，科学家对特征进行反复试验，寻求模型效果最好的特征集。所以会不断的重复多次特征设计->离线特征抽取->模型训练过程，并不断调整特征以达到预期效果。
 
 #### 2.2.4 离线特征抽取
-用户在离线模式下，进行特征抽取，并将特征结果输出到`'/root/project/out/1'`目录下保存（对应映射为`$datadir/out/1`），以供后续的模型训练。 `SELECT` 命令对应了基于上述特征设计所产生的 SQL 特征计算脚本。以下命令均在 OpenMLDB CLI 下执行。
+用户在离线模式下，进行特征抽取，并将特征结果输出到`'/root/project/out/1'`目录下保存（对应映射为`$demodir/out/1`），以供后续的模型训练。 `SELECT` 命令对应了基于上述特征设计所产生的 SQL 特征计算脚本。以下命令均在 OpenMLDB CLI 下执行。
 ```sql
-USE JD_db;
-select * from
+> USE JD_db;
+> select * from
 (
 select
     `reqId` as reqId_1,
@@ -209,13 +205,13 @@ as out3
 on out0.reqId_1 = out3.reqId_17
 INTO OUTFILE '/root/project/out/1';
 ```
-此处仅一个命令，可以使用阻塞式LOAD DATA，直接运行sql脚本sync_select_out.sql:
+此处仅一个命令，可以使用阻塞式`LOAD DATA`，直接运行sql脚本`sync_select_out.sql`:
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /root/project/sync_select_out.sql
 ```
 ```{note}
-注意，集群版 `LOAD  DATA` 为非阻塞任务，可以使用命令 `SHOW  JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+注意，集群版 `SELECT INTO` 为非阻塞任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 ### 2.3 预处理数据集以配合DeepFM模型要求
 ```{note}
@@ -230,7 +226,6 @@ INTO OUTFILE '/root/project/out/1';
 cd $demodir/openmldb_process/
 sh process_JD_out_full.sh $demodir/out/1
 ```
-After generating parquet dataset, dataset information will also be printed. It contains the information about the number of samples and table size array, which is needed when training.
 对应生成parquet数据集将生成在 `$demodir/openmldb_process/out`。数据信息将被打印如下，该信息将被输入为训练的配置文件。
 >train samples = 4007924
 >val samples = 504398
@@ -242,7 +237,7 @@ After generating parquet dataset, dataset information will also be printed. It c
 ```{note}
 注意，以下命令在安装1.1所描述的OneFlow运行环境中运行
 ```
-#### 2.4.1 修改对应train_deepfm.sh配置文件
+#### 2.4.1 修改对应`train_deepfm.sh`配置文件
 ```bash
 cd $demodir/oneflow_process/
 ```
@@ -295,9 +290,9 @@ bash train_deepfm.sh
 
 ### 3.2 配置OpenMLDB进行在线特征抽取
 
-### 3.2.1 特征抽取SQL脚本上线
-假定2.4节中所设计的特征在上一步的模型训练中产出的模型符合预期，那么下一步就是将该特征抽取SQL脚本部署到线上去，以提供在线的特征抽取。
-1. 重新启动 OpenMLDB CLI，以进行 SQL 上线部署
+#### 3.2.1 特征抽取SQL脚本上线
+假定2.2.3节中所设计的特征在上一步的模型训练中产出的模型符合预期，那么下一步就是将该特征抽取SQL脚本部署到线上去，以提供在线的特征抽取。
+1. 重新启动 OpenMLDB CLI，以进行 SQL 上线部署。
    ```bash
    docker exec -it demo bash
    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
@@ -395,11 +390,11 @@ on out0.reqId_1 = out3.reqId_17;
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /root/project/deploy.sql
 ```
 
-可使用如下命令确认deploy信息
+可使用如下命令确认deploy信息:
 ```sql
 show deployment demo;
 ```
-### 3.2.2 在线数据准备
+#### 3.2.2 在线数据准备
 首先，请切换到**在线**执行模式。接着在在线模式下，导入数据作为在线数据，用于在线特征计算。以下命令均在 OpenMLDB CLI 下执行。
 ```sql
 > USE JD_db;
@@ -419,7 +414,7 @@ show deployment demo;
 注意，集群版 `LOAD  DATA` 为非阻塞任务，可以使用命令 `SHOW  JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 ### 3.3 配置OneFlow推理服务
-Oneflow的推理服务需要One Embedding的支持。该支持目前还没有合入主框架中。若需要重新编译，可参考附录A进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在`/home/gtest/work/oneflow_serving/`路径中。
+OneFlow的推理服务需要[OneEmbedding](https://docs.oneflow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。若需要重新编译，可参考附录A进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在`/home/gtest/work/oneflow_serving/`路径中。
 
 #### 3.3.1 检查模型路径（`$demodir/oneflow_process/model`）中模型文件及组织方式是否正确
 ```
@@ -434,9 +429,9 @@ model/
 #### 3.3.3 确认persistent路径（`$demodir/oneflow_process/persistent`）正确
  
 ### 3.4 启动推理服务
-### 3.4.1 启动OpenMLDB推理服务
+#### 3.4.1 启动OpenMLDB推理服务
 ```{note}
-注意，以下命令在demo docker中运行
+注意，以下命令在demo docker中运行。
 ```
 1.  如果尚未退出 OpenMLDB CLI，请使用  `quit`  命令退出 OpenMLDB CLI。
 2. 在普通命令行下启动预估服务：
@@ -444,7 +439,8 @@ model/
 cd /root/project/serving/openmldb_serving
 ./start_predict_server.sh 0.0.0.0:9080
 ```
-### 3.4.2 启动OneFlow推理服务
+
+#### 3.4.2 启动OneFlow推理服务
 ```{note}
 注意，以下命令在安装1.1所描述的OneFlow运行环境中运行
 ```
@@ -482,7 +478,7 @@ python predict.py
 
 
 ## 附录A -- OneFlow定制代码编译
-此章节介绍为One Embedding推理服务所定制的代码修改的编译过程。该代码会尽快合入OneFlow中，届时以下步骤可省略。
+此章节介绍为OneEmbedding推理服务所定制的代码修改的编译过程。该代码会尽快合入OneFlow中，届时以下步骤可省略。
 
 ### A.1 容器环境准备
 使用以下容器环境进行编译。该容器已经安装编译所需的依赖等。
