@@ -460,7 +460,7 @@ docker run --runtime=nvidia --rm --network=host \
 预估请求可在OpenMLDB的容器外执行。容器外部访问的具体信息可参见[IP 配置](https://openmldb.ai/docs/zh/main/reference/ip_tips.html)。
 在普通命令行下执行内置的 `predict.py` 脚本。该脚本发送一行请求数据到预估服务，接收返回的预估结果，并打印出来。
 ```bash
-python predict.py
+python $demodir/serving/predict.py
 ```
 范例输出：
 ```

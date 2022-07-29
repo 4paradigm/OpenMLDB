@@ -466,7 +466,7 @@ Requests can be executed outside the OpenMLDB docker. The details can be found i
 Execute `predict.py` in command window. This script will send a line of request data to the prediction service. Results will be received and printed out.
 
 ```bash
-python predict.py
+python $demodir/serving/predict.py
 ```
 Sample output:
 ```
