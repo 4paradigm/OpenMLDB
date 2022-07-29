@@ -248,6 +248,13 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     // Create Row from input UnsafeRow bytes
     auto inputRow = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                       inputRowSizeInBytes));
+
+    auto parameterRow = hybridse::codec::Row();
+
+    return RowProject(fn, inputRow, parameterRow, need_free);
+
+/*
+
     auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
 
     // Init current run step runtime
@@ -270,6 +277,7 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
 
     return Row(base::RefCountedSlice::CreateManaged(
         buf, hybridse::codec::RowView::GetSize(buf)));
+*/
 }
 
 void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
@@ -330,6 +338,8 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProject(
     // Create Row from input UnsafeRow bytes
     auto row = Row(base::RefCountedSlice::CreateManaged(inputUnsafeRowBytes,
                                                  inputRowSizeInBytes));
+
+
     return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());
 }
