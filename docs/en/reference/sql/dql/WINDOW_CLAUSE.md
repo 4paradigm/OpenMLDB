@@ -265,7 +265,6 @@ WindowFrameMaxSize
 
 The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. There are at most 3 rows in the window.
 ```sql
--- desc: window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW MAXSIZE 3);
 ```
