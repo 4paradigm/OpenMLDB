@@ -476,8 +476,10 @@ class CmdPlanNode : public LeafPlanNode {
 
 class DeletePlanNode : public LeafPlanNode {
  public:
-    DeletePlanNode(DeleteTarget target, std::string job_id)
-        : LeafPlanNode(kPlanTypeDelete), target_(target), job_id_(job_id) {}
+    DeletePlanNode(DeleteTarget target, std::string job_id,
+            const std::string& db_name, const std::string& table_name, const node::ExprNode* expression)
+        : LeafPlanNode(kPlanTypeDelete), target_(target), job_id_(job_id),
+        db_name_(db_name), table_name_(table_name), condition_(expression) {}
     ~DeletePlanNode() {}
 
     bool Equals(const PlanNode* that) const override;
@@ -485,10 +487,16 @@ class DeletePlanNode : public LeafPlanNode {
 
     const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
+    const std::string& GetDatabase() const { return db_name_; }
+    const std::string& GetTableName() const { return table_name_; }
+    const ExprNode* GetCondition() const { return condition_; }
 
  private:
     const DeleteTarget target_;
     const std::string job_id_;
+    const std::string db_name_;
+    const std::string table_name_;
+    const ExprNode *condition_;
 };
 
 class DeployPlanNode : public LeafPlanNode {

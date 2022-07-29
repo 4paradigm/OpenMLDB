@@ -2029,31 +2029,40 @@ class CmdNode : public SqlNode {
 };
 
 enum class DeleteTarget {
-    JOB
+    JOB = 1,
+    TABLE = 2,
 };
 std::string DeleteTargetString(DeleteTarget target);
 
 class DeleteNode : public SqlNode {
  public:
-    explicit DeleteNode(DeleteTarget t, std::string job_id)
-    : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
-    ~DeleteNode() {}
+    DeleteNode(DeleteTarget t, std::string job_id,
+            const std::string& db_name, const std::string& table_name, const node::ExprNode* where_expr)
+        : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id),
+         db_name_(db_name), table_name_(table_name), condition_(where_expr) {}
+    ~DeleteNode() = default;
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
     std::string GetTargetString() const;
 
     const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
+    const std::string& GetTableName() const { return table_name_; }
+    const std::string& GetDbName() const { return db_name_; }
+    const ExprNode* GetCondition() const { return condition_; }
 
  private:
     const DeleteTarget target_;
     const std::string job_id_;
+    const std::string db_name_;
+    const std::string table_name_;
+    const ExprNode *condition_;
 };
 
 class SelectIntoNode : public SqlNode {
  public:
-    explicit SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
-                            const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
+    SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+                   const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kSelectIntoStmt, 0, 0),
           query_(query),
           query_str_(query_str),
