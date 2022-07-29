@@ -785,7 +785,7 @@ class PhysicalReduceAggregationNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalReduceAggregationNode() {}
     base::Status InitSchema(PhysicalPlanContext *) override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     ConditionFilter having_condition_;
     const PhysicalAggregationNode* orig_aggr_ = nullptr;
 };
@@ -1510,15 +1510,15 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
           output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
-        fn_infos_.push_back(&window_.partition_.fn_info());
-        fn_infos_.push_back(&window_.sort_.fn_info());
-        fn_infos_.push_back(&window_.range_.fn_info());
-        fn_infos_.push_back(&window_.index_key_.fn_info());
+        AddFnInfo(&window_.partition_.fn_info());
+        AddFnInfo(&window_.sort_.fn_info());
+        AddFnInfo(&window_.range_.fn_info());
+        AddFnInfo(&window_.index_key_.fn_info());
 
-        fn_infos_.push_back(&agg_window_.partition_.fn_info());
-        fn_infos_.push_back(&agg_window_.sort_.fn_info());
-        fn_infos_.push_back(&agg_window_.range_.fn_info());
-        fn_infos_.push_back(&agg_window_.index_key_.fn_info());
+        AddFnInfo(&agg_window_.partition_.fn_info());
+        AddFnInfo(&agg_window_.sort_.fn_info());
+        AddFnInfo(&agg_window_.range_.fn_info());
+        AddFnInfo(&agg_window_.index_key_.fn_info());
 
         AddProducers(request, raw, aggr);
     }

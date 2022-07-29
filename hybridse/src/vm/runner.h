@@ -1024,17 +1024,6 @@ class RequestAggUnionRunner : public Runner {
     }
 
  private:
-    // evaluate the condition expr node
-    //
-    // implementation is limited
-    // * only assume `cond` as `BinaryExprNode`, and supports six basic compassion operators
-    //
-    // returns compassion result
-    // * true/false/NULL
-    // * invalid input -> InvalidStatus
-    absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const Row& row,
-                                                 const node::ExprNode* cond) const;
-
     enum AggType {
         kSum,
         kCount,

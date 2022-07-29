@@ -34,6 +34,7 @@
 
 namespace hybridse {
 namespace vm {
+namespace internal {
 
 // extract value from expr node
 // limited implementation since it only expect node one of
@@ -50,11 +51,46 @@ absl::StatusOr<std::optional<T>> ExtractValue(const RowParser* parser, const cod
     if (node->GetExprType() == node::ExprType::kExprColumnRef) {
         const auto* column_ref = dynamic_cast<const node::ColumnRefNode*>(node);
         if (parser->IsNull(row, *column_ref)) {
-            return std::make_optional<T>();
+            std::optional<T> r = {};
+            return r;
         }
-        T data = {};
-        parser->GetValue(row, *column_ref, &data);
-        return std::make_optional<T>(data);
+
+        if constexpr (std::is_same_v<T, std::string>) {
+            std::string data;
+            if (0 == parser->GetString(row, *column_ref, &data)) {
+                return data;
+            }
+        } else if constexpr (std::is_same_v<T, bool>) {
+            bool v = false;
+            if (0 == parser->GetValue(row, *column_ref, type::kBool, &v)) {
+                return v;
+            }
+        } else if constexpr (std::is_same_v<T, int16_t>) {
+            int16_t v = 0;
+            if (0 == parser->GetValue(row, *column_ref, type::kInt16, &v)) {
+                return v;
+            }
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            int32_t v = 0;
+            if (0 == parser->GetValue(row, *column_ref, type::kInt32, &v)) {
+                return v;
+            }
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            int64_t v = 0;
+            if (0 == parser->GetValue(row, *column_ref, type::kInt64, &v)) {
+                return v;
+            }
+        } else if constexpr (std::is_same_v<T, float>) {
+            float v = 0.0;
+            if (0 == parser->GetValue(row, *column_ref, type::kFloat, &v)) {
+                return v;
+            }
+        } else if constexpr (std::is_same_v<T, double>) {
+            double v = 0.0;
+            if (0 == parser->GetValue(row, *column_ref, type::kDouble, &v)) {
+                return v;
+            }
+        }
     }
 
     return absl::UnimplementedError(absl::StrCat("invalid node: ", node->GetExprString()));
@@ -64,7 +100,8 @@ template <typename T>
 std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optional<T>& lhs,
                                          const std::optional<T>& rhs) {
     if (!lhs.has_value() || !rhs.has_value()) {
-        return {};
+        std::optional<bool> r = {};
+        return r;
     }
 
     switch (op) {
@@ -84,25 +121,45 @@ std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optiona
             break;
     }
 
-    return {};
+    std::optional<bool> r = {};
+    return r;
 }
 
 template <typename T>
-absl::StatusOr<std::optional<bool>> EvalBinaryExpr(const RowParser* parser, const codec::Row& row,
-                                                         node::FnOperator op, const node::ExprNode* lhs,
-                                                         const node::ExprNode* rhs) {
+absl::StatusOr<std::optional<bool>> EvalBinaryExpr(const RowParser* parser, const codec::Row& row, node::FnOperator op,
+                                                   const node::ExprNode* lhs, const node::ExprNode* rhs) {
     absl::Status ret = absl::OkStatus();
     auto ls = ExtractValue<T>(parser, row, lhs);
     auto rs = ExtractValue<T>(parser, row, rhs);
     ret.Update(ls.status());
     ret.Update(rs.status());
     if (ret.ok()) {
-        return EvalSimpleBinaryExpr<T>(op, ls->value(), rs->value());
+        return EvalSimpleBinaryExpr<T>(op, ls.value(), rs.value());
     }
 
     return ret;
 }
 
+// evaluate the condition expr node
+//
+// implementation is limited
+// * only assume `cond` as `BinaryExprNode`, and supports six basic compassion operators
+//
+// returns compassion result
+// * true/false/NULL
+// * invalid input -> InvalidStatus
+absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const codec::Row& row,
+                                             const node::ExprNode* cond);
+
+// extract type of the expr node
+//
+// why not use ExprNode::GetOutputType ?
+// usually it will be null because the infered type node is saved in other place
+// (FnComponent) that can't access from input expr node
+node::TypeNode* ExtractType(node::NodeManager* nm, const RowParser* parser, const codec::Row& row,
+                            const node::ExprNode* node);
+
+}  // namespace internal
 }  // namespace vm
 }  // namespace hybridse
 

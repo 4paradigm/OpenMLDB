@@ -113,7 +113,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     const std::string& db_name = orig_data_provider->GetDb();
     const std::string& table_name = orig_data_provider->GetName();
     std::string func_name = aggr_op->GetFnDef()->GetName();
-    std::string aggr_col = ConcatExprList(aggr_op->children_);
+    std::string aggr_col = ConcatExprList({aggr_op->children_.front()});
     std::string partition_col;
     if (window->GetPartitions()) {
         partition_col = ConcatExprList(window->GetPartitions()->children_);

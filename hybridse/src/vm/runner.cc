@@ -2849,8 +2849,12 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // for those condition exists and evaluated to NULL/false
             // will apply to functions `*_where`
             // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
-            auto matches = EvalCond(row_parser, row, cond_);
-            if (!matches.ok() || !matches->has_value()) {
+            auto matches = internal::EvalCond(row_parser, row, cond_);
+            if (!matches.ok()) {
+                LOG(WARNING) << matches.status();
+                return;
+            }
+            if (false == matches->value_or(false)) {
                 return;
             }
         }
@@ -3057,54 +3061,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     window_table->AddRow(start, aggregator->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
     return window_table;
-}
-
-absl::StatusOr<std::optional<bool>> RequestAggUnionRunner::EvalCond(const RowParser* parser, const Row& row,
-                                                                    const node::ExprNode* cond) const {
-    const auto* bin_expr = dynamic_cast<const node::BinaryExpr*>(cond);
-    if (bin_expr == nullptr) {
-        return false;
-    }
-
-    const auto* left = bin_expr->GetChild(0);
-    const auto* right = bin_expr->GetChild(1);
-
-    node::NodeManager nm;
-    const node::TypeNode* compare_type = nullptr;
-    auto s = node::ExprNode::InferNumberCastTypes(&nm, left->GetOutputType(), right->GetOutputType(), &compare_type);
-    if (!s.isOK()) {
-        return absl::InvalidArgumentError(s.GetMsg());
-    }
-
-    switch (compare_type->base()) {
-        case node::DataType::kBool: {
-            return EvalBinaryExpr<bool>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kInt16: {
-            return EvalBinaryExpr<int16_t>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kInt32:
-        case node::DataType::kDate: {
-            return EvalBinaryExpr<int32_t>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kTimestamp:
-        case node::DataType::kInt64: {
-            return EvalBinaryExpr<int64_t>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kFloat: {
-            return EvalBinaryExpr<float>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kDouble: {
-            return EvalBinaryExpr<double>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        case node::DataType::kVarchar: {
-            return EvalBinaryExpr<std::string>(parser, row, bin_expr->GetOp(), left, right);
-        }
-        default:
-            break;
-    }
-
-    return absl::UnimplementedError(cond->GetExprString());
 }
 
 std::shared_ptr<DataHandler> ReduceRunner::Run(

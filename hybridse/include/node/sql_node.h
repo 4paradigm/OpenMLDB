@@ -1078,9 +1078,7 @@ class ConstNode : public ExprNode {
     // include 'udf/literal_traits.h' for Nullable lead to recursive include
     // so `optional` is used for nullable info
     template <typename T>
-    absl::StatusOr<std::optional<T>> GetAs() const {
-        return absl::InvalidArgumentError("can't cast T");
-    }
+    absl::StatusOr<std::optional<T>> GetAs() const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
     static ConstNode *CastFrom(ExprNode *node);

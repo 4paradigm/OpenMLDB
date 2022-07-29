@@ -90,7 +90,8 @@ Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
 template <>
 absl::StatusOr<std::optional<bool>> ConstNode::GetAs<bool>() const {
     if (IsNull()) {
-        return std::make_optional<bool>();
+        std::optional<bool> r = {};
+        return r;
     }
     return GetBool();
 }
@@ -98,7 +99,8 @@ absl::StatusOr<std::optional<bool>> ConstNode::GetAs<bool>() const {
 template <>
 absl::StatusOr<std::optional<int16_t>> ConstNode::GetAs<int16_t>() const {
     if (IsNull()) {
-        return std::make_optional<int16_t>();
+        std::optional<int16_t> r = {};
+        return r;
     }
     return GetAsInt16();
 }
@@ -106,7 +108,8 @@ absl::StatusOr<std::optional<int16_t>> ConstNode::GetAs<int16_t>() const {
 template <>
 absl::StatusOr<std::optional<int32_t>> ConstNode::GetAs<int32_t>() const {
     if (IsNull()) {
-        return std::make_optional<int32_t>();
+        std::optional<int32_t> r = {};
+        return r;
     }
     return GetAsInt32();
 }
@@ -114,7 +117,8 @@ absl::StatusOr<std::optional<int32_t>> ConstNode::GetAs<int32_t>() const {
 template <>
 absl::StatusOr<std::optional<int64_t>> ConstNode::GetAs<int64_t>() const {
     if (IsNull()) {
-        return std::make_optional<int64_t>();
+        std::optional<int64_t> r = {};
+        return r;
     }
     return GetAsInt64();
 }
@@ -122,7 +126,8 @@ absl::StatusOr<std::optional<int64_t>> ConstNode::GetAs<int64_t>() const {
 template <>
 absl::StatusOr<std::optional<float>> ConstNode::GetAs<float>() const {
     if (IsNull()) {
-        return std::make_optional<float>();
+        std::optional<float> r = {};
+        return r;
     }
     return GetAsFloat();
 }
@@ -130,7 +135,8 @@ absl::StatusOr<std::optional<float>> ConstNode::GetAs<float>() const {
 template <>
 absl::StatusOr<std::optional<double>> ConstNode::GetAs<double>() const {
     if (IsNull()) {
-        return std::make_optional<double>();
+        std::optional<double> r = {};
+        return r;
     }
     return GetAsDouble();
 }
@@ -138,7 +144,8 @@ absl::StatusOr<std::optional<double>> ConstNode::GetAs<double>() const {
 template <>
 absl::StatusOr<std::optional<std::string>> ConstNode::GetAs<std::string>() const {
     if (IsNull()) {
-        return std::make_optional<std::string>();
+        std::optional<std::string> r = {};
+        return r;
     }
     return GetAsString();
 }
