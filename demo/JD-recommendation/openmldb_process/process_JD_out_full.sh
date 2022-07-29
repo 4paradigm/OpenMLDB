@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [ ! -d "data_processed" ] 
 then
 	mkdir data_processed
