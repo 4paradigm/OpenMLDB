@@ -35,6 +35,7 @@
 DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
 DECLARE_string(cmd);
+DEFINE_string(spark_conf, "", "The config file of Spark job");
 
 // cluster mode
 DECLARE_string(zk_cluster);
@@ -209,6 +210,7 @@ bool InitClusterSDK() {
     copt.zk_session_timeout = FLAGS_zk_session_timeout;
     copt.zk_log_level = FLAGS_zk_log_level;
     copt.zk_log_file = FLAGS_zk_log_file;
+
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
@@ -220,6 +222,9 @@ bool InitClusterSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+
+    sr->GetSqlRouterOptions().spark_conf_path = FLAGS_spark_conf;
+
     return true;
 }
 

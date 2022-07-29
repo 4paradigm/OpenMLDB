@@ -75,9 +75,8 @@ function_name ( * ) OVER window_name
 
 - ROWS WINDOW SQL模版
 
-```sqlite
+```sql
 SELECT select_expr [, select_expr ...], window_function_name(expr) OVER window_name, ... FROM ... WINDOW AS window_name (PARTITION BY ... ORDER BY ... ROWS BETWEEN ... AND ...)
-
 ```
 
 - ROWS RANGE WINDOW SQL模版
@@ -88,9 +87,9 @@ SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_nam
 
 ## 边界说明
 
-| SELECT语句元素 | 状态                   | 说明                                                         |
-| :------------- | ---------------------- | :----------------------------------------------------------- |
-| WINDOW Clause  | Online Training 不支持 | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数来进行一些分析型计算的操作（```sql agg_func() over window_name```)。<br />OpenMLDB目前仅支持历史窗口，不支持未来窗口（即不支持`FOLLOWING`类型的窗口边界）。<br />OpenMLDB的窗口仅支持`PARTITION BY`列，不支持`PARTITION BY`运算或者函数表达式。<br />OpenMLDB的窗口仅支持`ORDER BY`列，不支持`ORDER BY`运算或者函数表达式。<br />在Online Serving时，需要遵循[3.2 Online Serving下Window的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-serving下window的使用规范) |
+| SELECT语句元素      | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                                                                                          |
+|:----------------| --------- | ------------ | ------------ |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| WINDOW   Clause | **``✓``** |              | **``✓``**    | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数来进行一些分析型计算的操作（```sql agg_func() over window_name```)。在Online Serving时，需要遵循[Online Serving下Window的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
 
 ## 基本的WINDOW SPEC语法元素
 
@@ -168,18 +167,14 @@ from t1;
 ```
 
 #### **Example: ROWS窗口**
-
+window ROWS, 前1000条到当前条
 ```SQL
--- ROWS example
--- desc: window ROWS, 前1000条到当前条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
 #### **Example: ROWS RANGE窗口**
-
+window ROWS_RANGE, 前10s到当前条
 ```SQL
--- ROWS example
--- desc: window ROWS_RANGE, 前10s到当前条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
@@ -242,19 +237,17 @@ WindowExcludeCurrentTime
 ```
 
 #### **2.1 Example: ROWS 窗口 EXCLUDE CURRENT TIME**
+window ROWS, 前1000条到当前条, 除了current row以外窗口内不包含当前时刻的其他数据
 
 ```SQL
--- ROWS example
--- desc: window ROWS, 前1000条到当前条, 除了current row以外窗口内不包含当前时刻的其他数据
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
 
 #### **2.2 Example: ROW RANGE 窗口 EXCLUDE CURRENT TIME**
+window ROWS_RANGE, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
 
 ```SQL
--- ROWS example
--- desc: window ROWS, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
@@ -272,7 +265,7 @@ WindowExcludeCurrentRow
 
 ### 4. Window Frame Max Size
 
-OpenMLDB在定义了元素，来限定窗口内条数。具体来说，可以在窗口定义里使用**MAXSIZE**关键字，来限制window内允许的有效窗口内最大数据条数。
+OpenMLDB在定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 
 `MaxSize` 属性仅支持 `ROWS_RANGE` 类型窗口。
 
@@ -284,10 +277,8 @@ WindowFrameMaxSize
 ![Figure 6: window config max size](../dql/images/window_max_size.png)
 
 #### **Example: ROW RANGE 窗口MAXSIZE**
-
+window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条
 ```sql
--- ROWS example
--- desc: window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW MAXSIZE 3);
 ```

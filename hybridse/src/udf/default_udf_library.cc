@@ -553,6 +553,38 @@ struct TopKDef {
 };
 
 void DefaultUdfLibrary::InitStringUdf() {
+    RegisterExternalTemplate<v1::ToHex>("hex")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert number to hexadecimal. If double, convert to hexadecimal after rounding.
+
+            Example:
+
+            @code{.sql}
+                select hex(17);
+                --output "11"
+                select hex(17.4);
+                --output "11"
+                select hex(17.5);
+                --output "12"
+            @endcode
+            @since 0.6.0)");
+
+    RegisterExternal("hex")
+        .args<StringRef>(static_cast<void (*)(StringRef*, StringRef*)>(udf::v1::hex))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert integer to hexadecimal.
+
+            Example:
+
+            @code{.sql}
+                select hex("Spark SQL");
+                --output "537061726B2053514C"
+            @endcode
+            @since 0.6.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)

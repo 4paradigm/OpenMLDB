@@ -9040,7 +9040,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
     if (!GetTableInfo(name, db, &table_info)) {
         base::SetResponseStatus(ReturnCode::kTableIsNotExist, "table is not exist!", response);
-        LOG(WARNING) << "table[" << name << "] is not exist!";
+        LOG(WARNING) << "table[" << db << "." << name << "] is not exist!";
         return;
     }
     if (table_info->storage_mode() != ::openmldb::common::kMemory) {
