@@ -51,8 +51,8 @@ WindowInstanceNotInWindow
 				:: = 'INSTANCE_NOT_IN_WINDOW'
 ```
 
-*Window call function* is similar to aggregate functions. The difference is that the window call function does not need to pack the query results into a single line when output the results. Instead, each line is separated when using WINDOW clause. 
-However, the window caller can scan all rows that may be part of the current row's group, depending on the grouping specification of the window caller (the `PARTITION BY` on columns).
+*Window function* is similar to aggregate functions. The difference is that the window function does not need to pack the query results into a single line when output the results. Instead, each line is separated when using WINDOW clause. 
+However, the window function can scan all rows that may be part of the current row's group, depending on the grouping specification of the window function (the `PARTITION BY` on columns).
 The syntax for calling a function over a window is shown bellow:
 
 ```
@@ -77,11 +77,11 @@ SELECT select_expr [, select_expr ...], window_function_name(expr) OVER window_n
 SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_name, ... FROM ... WINDOW AS window_name (PARTITION BY ... ORDER BY ... ROWS_RANEG BETWEEN ... AND ...)
 ```
 
-## Boundary Description
+## Description
 
 | `SELECT` Statement Elements                            | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
 |:-------------------------------------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| WINDOW Clause                                          | **``✓``**    |                     | **``✓``**           | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). During Online Serving, please follow [Online Serving下Window的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
+| WINDOW Clause                                          | **``✓``**    |                     | **``✓``**           | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). During Online Serving, please follow the [specification of WINDOW Clause under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
 
 ## Basic WINDOW SPEC Syntax Elements
 
@@ -140,7 +140,7 @@ WindowFrameBound
 - By default, OpenMLDB uses closed interval. To change this, you can use keyword `OPEN`.
 
 ```{Note}
-Standard SQL also supports `FOLLOWING` boundary, but OpenMLDB doesn't support it currently.
+Standard SQL also supports `FOLLOWING` keyword, but OpenMLDB doesn't support it currently.
 ````
 
 #### Example
@@ -214,7 +214,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 ![Figure 4: window union one table with instance_not_in_window](../dql/images/window_union_1_table_instance_not_in_window.png)
 
 
-**4. Window With `UNION` Composed Of Subquery**
+**4. Window With `UNION` Containing Subquery**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -271,5 +271,5 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 
 ```{seealso}
-Aggregate functions that can be used in window computation, refer to [Built-in Functions](../functions_and_operators/Files/udfs_8h.md)
+Please refer to [Built-in Functions](../functions_and_operators/Files/udfs_8h.md) for aggregate functions that can be used in window computation.
 ````
