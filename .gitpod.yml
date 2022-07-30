@@ -1,8 +1,7 @@
 tasks:
   - before: |
       sudo apt update -y
-      DEBIAN_FRONTEND=noninteractive sudo apt-get install -y bison python3-dev libcppunit-dev build-essential cmake autoconf tcl pkg-config git curl patch libtool-bin
-
+      DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-dev build-essential autoconf git curl
     init: |
       make NPROC=16 # gitpod.io offers 16 CPU & 60 GB RAM
       make install
