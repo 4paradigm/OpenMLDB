@@ -1,0 +1,11 @@
+tasks:
+  - before: |
+      sudo apt update -y
+      DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-dev build-essential autoconf git curl
+    init: |
+      make NPROC=16 # gitpod.io offers 16 CPU & 60 GB RAM
+      make install
+
+vscode:
+  extensions:
+    - ms-vscode.cpptools-extension-pack
