@@ -24,7 +24,7 @@ SelectInfoOptionItem
 
 `SELECT INTO OUTFILE`分为三个部分。
 
-- 第一部分是一个普通的SELECT语句，通过这个SELECT语句来查询所需要的数据；
+- 第一部分是一个普通的`SELECT`语句，通过这个`SELECT`语句来查询所需要的数据；
 - 第二部分是`filePath`，定义将查询的记录导出到哪个文件中；
 - 第三部分是`SelectIntoOptionList`为可选选项，其可能的取值有：
 

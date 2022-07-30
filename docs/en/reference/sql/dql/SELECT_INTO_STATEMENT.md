@@ -1,6 +1,6 @@
 # SELECT INTO
+The `SELECT INTO OUTFILE` statement is used to export the query results into a file. 
 
-The `SELECT INTO OUTFILE` statement allows the user to export the query results of the table to a file. 
 ```{note}
  The [`LOAD DATA INFILE`](../dml/LOAD_DATA_STATEMENT.md) statement is complementary to `SELECT INTO OUTFILE`, which allows the user to create a table from a specified file and load data into the table.
 ```
@@ -23,22 +23,23 @@ SelectInfoOptionItem
 						|'MODE' '=' string_literal
 ```
 
- `SELECT INTO OUTFILE` is divided into three parts.
+There are three parts in `SELECT INTO OUTFILE`.
+- The first part is an ordinary `SELECT` statement, which queries the data that needs to be exported.
+- The second part is `filePath`, which defines the file that the data should be exported into.
+- The third part is `SelectIntoOptionList`, which is an optional part, and its possible values are shown in the following table.
 
-- The first part is an ordinary SELECT statement, through which the required data is queried;
-- The second part is `filePath`, which defines which file to export the queried records to;
-- The third part `SelectIntoOptionList` is an optional option, and its possible values are:
+| Configuration Item | Type    | Default Value   | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|--------------------|---------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| delimiter          | String  | ,               | It determines the column separator of the exported file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| header             | Boolean | true            | It determines whether the exported table will contain a header. It will include header for default.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| null_value         | String  | null            | It determines the padding value for NULL, which is string `null` for default.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| format             | String  | csv             | It determines the format of the output file.<br />`csv` is the default format. <br />`parquet` format is supported in cluster version.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| mode               | String  | error_if_exists | It determines the output mode.<br />`error_if_exists` is the default mode which indicates that an error will be reported if the file already exists. <br />`overwrite` indicates that if the file already exists, the data will overwrite the contents of the original file. <br />`append` indicates that if the file already exists, the data will be appended to the original file.                                                                                                                                                                                                                                              |
+| quote              | String  | ""              | The output data string length it <= 1. The default is "", which means that the string surrounding the output data is empty. When a surrounding string is configured, a field will be surrounded by the surrounding string. For example, we configure the surrounding string as `"#"` and the original data as {1 1.0, This is a string, with comma}. The output text is `#1#, #1.0#, #This is a string, with comma#. `Please note that currently OpenMLDB does not support the escape of quote characters, so users need to choose quote characters carefully to ensure that the original string does not contain quote characters. |
 
-| configuration item     | type    | defaults          | describe                                                         |
-| ---------- | ------- | --------------- | ------------------------------------------------------------ |
-| delimiter  | String  | ,               | default column separator is, `,`                                          |
-| header     | Boolean | true            | default to include headers, `true`                                   |
-| null_value | String  | null            | NULL default padding value,`"null"`                                 |
-| format     | String  | csv             | default output file format, `csv`. Please add other optional formats.       |
-| mode       | String  | error_if_exists | Output mode:<br />`error_if_exists`: Indicates that an error will be reported if the file already exists. <br />`overwrite`: Indicates that if the file already exists, the data will overwrite the contents of the original file. <br />`append`: Indicates that if the file already exists, the data will be appended to the original file. <br />When the configuration is not displayed, the default mode is `error_if_exists`. |
-| quote      | String  | ""              | The output data string length it <= 1. The default is "", which means that the string surrounding the output data is empty. When a surrounding string is configured, a field will be surrounded by the surrounding string. For example, we configure the surrounding string as `"#"` and the original data as {1 1.0, This is a string, with comma}. The output text is `#1#, #1.0#, #This is a string, with comma#. `Please note that currently OpenMLDB does not support the escape of quote characters, so users need to choose quote characters carefully to ensure that the original string does not contain quote characters.|
-
-
+````{important}
+Currently, only cluster version supports the escape of quote string. Please guarantee there are not any quote characters in the original string in standalone version.
+````
 ## SQL Statement Template
 
 ```sql
