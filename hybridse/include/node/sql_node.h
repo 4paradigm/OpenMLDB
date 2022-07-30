@@ -1080,8 +1080,7 @@ class ConstNode : public ExprNode {
     template <typename T>
     absl::StatusOr<std::optional<T>> GetAs() const {
         if (IsNull()) {
-            std::optional<T> r = {};
-            return r;
+            return std::nullopt;
         }
 
         if constexpr (std::is_same_v<T, bool>) {

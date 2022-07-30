@@ -103,7 +103,7 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
     if (left->GetExprType() == node::kExprColumnRef) {
         auto* const_node = dynamic_cast<const node::ConstNode*>(right);
         if (const_node == nullptr) {
-            return absl::InvalidArgumentError("no const node for evaluation");
+            return absl::InvalidArgumentError("expect right node as const node for evaluation");
         }
         op_type = const_node->GetDataType();
 
@@ -168,7 +168,7 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
     } else if (right->GetExprType() == node::kExprColumnRef) {
         auto* const_node = dynamic_cast<const node::ConstNode*>(left);
         if (const_node == nullptr) {
-            return absl::InvalidArgumentError("no const node for evaluation");
+            return absl::InvalidArgumentError("expect left node as const node for evaluation");
         }
         op_type = const_node->GetDataType();
 
@@ -232,7 +232,7 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
         }
     }
 
-    return absl::InvalidArgumentError("unsupport binary op");
+    return absl::InvalidArgumentError(absl::StrCat("unsupport binary op: ", cond->GetExprString()));
 }
 
 node::TypeNode* ExtractType(node::NodeManager* nm, const RowParser* parser, const codec::Row& row,
