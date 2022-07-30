@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "passes/physical/transform_up_physical_pass.h"
 
 namespace hybridse {
@@ -31,6 +31,14 @@ class LongWindowOptimized : public TransformUpPysicalPass {
     explicit LongWindowOptimized(PhysicalPlanContext* plan_ctx);
     ~LongWindowOptimized() {}
 
+public:
+   // e.g count_where(col1, col2 < 4)
+   //  -> key_col_name = col1, filter_col_name = col2
+   struct AggInfo {
+      absl::string_view key_col_name;
+      absl::string_view filter_col_name;
+   };
+
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output) override;
     bool VerifySingleAggregation(vm::PhysicalProjectNode* op);
@@ -39,7 +47,8 @@ class LongWindowOptimized : public TransformUpPysicalPass {
     static std::string ConcatExprList(std::vector<node::ExprNode*> exprs, const std::string& delimiter = ",");
 
     // Check supported ExprNode, return false if the call expr type is not implemented
-    static absl::Status CheckExprNode(const node::CallExprNode* call);
+    // otherwise, return ok status with the agg info
+    static absl::StatusOr<AggInfo> CheckCallExpr(const node::CallExprNode* call);
 
     std::set<std::string> long_windows_;
 };

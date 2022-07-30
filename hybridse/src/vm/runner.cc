@@ -2354,9 +2354,7 @@ void Runner::PrintData(std::ostringstream& oss,
     oss << t;
 }
 
-void Runner::PrintRow(std::ostringstream& oss,
-                       const vm::SchemasContext* schema_list,
-                       Row row) {
+void Runner::PrintRow(std::ostringstream& oss, const vm::SchemasContext* schema_list, const Row& row) {
     std::vector<RowView> row_view_list;
     ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
@@ -2408,6 +2406,12 @@ void Runner::PrintRow(std::ostringstream& oss,
     }
     t.end_of_row();
     oss << t;
+}
+
+std::string Runner::GetPrettyRow(const vm::SchemasContext* schema_list, const Row& row) {
+    std::ostringstream os;
+    PrintRow(os, schema_list, row);
+    return os.str();
 }
 
 bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
@@ -2841,6 +2845,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     auto aggregator = CreateAggregator();
     auto update_base_aggregator = [aggregator = aggregator.get(), row_parser = base_row_parser, this](const Row& row) {
+        DLOG(INFO) << GetPrettyRow(row_parser->schema_ctx(), row);
         if (!agg_col_name_.empty() && row_parser->IsNull(row, agg_col_name_)) {
             return;
         }
@@ -2850,6 +2855,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // will apply to functions `*_where`
             // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
             auto matches = internal::EvalCond(row_parser, row, cond_);
+            DLOG(INFO) << "[Update Base] Evaluate result of " << cond_->GetExprString() << ": " << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(WARNING) << matches.status();
                 return;
@@ -2914,15 +2920,14 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
+        DLOG(INFO) << GetPrettyRow(row_parser->schema_ctx(), row);
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
 
         if (cond_ != nullptr) {
-            // for those condition exists and evaluated to NULL/false
-            // will apply to functions `*_where`
-            // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
             auto matches = internal::EvalCondWithAggRow(row_parser, row, cond_, "filter_key");
+            DLOG(INFO) << "[Update Agg] Evaluate result of " << cond_->GetExprString() << ": " << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(WARNING) << matches.status();
                 return;
@@ -3075,6 +3080,16 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     window_table->AddRow(start, aggregator->Output());
     DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
     return window_table;
+}
+
+std::string RequestAggUnionRunner::PrintEvalValue(absl::StatusOr<std::optional<bool>>& val) {
+    std::ostringstream os;
+    if (val.ok()) {
+        os << val.status();
+    } else {
+        os << (val->has_value() ? (val.value() ? "TRUE" : "FALSE") : "NULL");
+    }
+    return os.str();
 }
 
 std::shared_ptr<DataHandler> ReduceRunner::Run(

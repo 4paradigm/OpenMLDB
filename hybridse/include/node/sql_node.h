@@ -1646,7 +1646,7 @@ class ColumnRefNode : public ExprNode {
 
     void SetRelationName(const std::string &relation_name) { relation_name_ = relation_name; }
 
-    std::string GetColumnName() const { return column_name_; }
+    const std::string &GetColumnName() const { return column_name_; }
 
     void SetColumnName(const std::string &column_name) { column_name_ = column_name; }
 

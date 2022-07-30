@@ -521,9 +521,9 @@ class Runner : public node::NodeBase<Runner> {
     static void PrintData(std::ostringstream& oss,
                           const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
-    static void PrintRow(std::ostringstream& oss,
-                          const vm::SchemasContext* schema_list,
-                          Row row);
+    static void PrintRow(std::ostringstream& oss, const vm::SchemasContext* schema_list, const Row& row);
+    static std::string GetPrettyRow(const vm::SchemasContext* schema_list, const Row& row);
+
     static const bool IsProxyRunner(const RunnerType& type) {
         return kRunnerRequestRunProxy == type ||
                kRunnerBatchRequestRunProxy == type;
@@ -1022,6 +1022,8 @@ class RequestAggUnionRunner : public Runner {
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
+
+    static std::string PrintEvalValue(absl::StatusOr<std::optional<bool>>& val);
 
  private:
     enum AggType {

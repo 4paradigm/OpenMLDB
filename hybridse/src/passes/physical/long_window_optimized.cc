@@ -104,9 +104,9 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     auto aggr_op = dynamic_cast<const node::CallExprNode*>(projects.GetExpr(idx));
     auto window = aggr_op->GetOver();
 
-    auto s = CheckExprNode(aggr_op);
+    auto s = CheckCallExpr(aggr_op);
     if (!s.ok()) {
-        LOG(ERROR) << s;
+        LOG(ERROR) << s.status();
         return false;
     }
 
@@ -114,10 +114,7 @@ bool LongWindowOptimized::OptimizeWithPreAggr(vm::PhysicalAggregationNode* in, i
     const std::string& table_name = orig_data_provider->GetName();
     std::string func_name = aggr_op->GetFnDef()->GetName();
     std::string aggr_col = ConcatExprList({aggr_op->children_.front()});
-    std::string filter_col;
-    if (aggr_op->GetChildNum() >= 2) {
-        filter_col = ConcatExprList({aggr_op->GetChild(1)});
-    }
+    std::string filter_col = std::string(s->filter_col_name);
     std::string partition_col;
     if (window->GetPartitions()) {
         partition_col = ConcatExprList(window->GetPartitions()->children_);
@@ -277,7 +274,7 @@ std::string LongWindowOptimized::ConcatExprList(std::vector<node::ExprNode*> exp
 // type check of count_where condition node
 // left -> column ref
 // right -> constant
-absl::Status CheckCountWhereCond(const node::ExprNode* lhs, const node::ExprNode* rhs) {
+absl::StatusOr<absl::string_view> CheckCountWhereCond(const node::ExprNode* lhs, const node::ExprNode* rhs) {
     if (lhs->GetExprType() != node::ExprType::kExprColumnRef) {
         return absl::UnimplementedError(absl::StrCat("expect left as column reference but get ", lhs->GetExprString()));
     }
@@ -285,14 +282,14 @@ absl::Status CheckCountWhereCond(const node::ExprNode* lhs, const node::ExprNode
         return absl::UnimplementedError(absl::StrCat("expect right as constant but get ", rhs->GetExprString()));
     }
 
-    return absl::OkStatus();
+    return dynamic_cast<const node::ColumnRefNode*>(lhs)->GetColumnName();
 }
 
 // left  -> * or column name
 // right -> BinaryExpr of
 //       lhs column name and rhs constant, or versa
 //       op -> (eq, ne, gt, lt, ge, le)
-absl::Status CheckCountWhereArgs(const node::ExprNode* left, const node::ExprNode* right) {
+absl::StatusOr<absl::string_view> CheckCountWhereArgs(const node::ExprNode* right) {
     if (right->GetExprType() != node::ExprType::kExprBinary) {
         return absl::UnimplementedError(absl::StrCat("[Long Window] ExprType ",
                                                      node::ExprTypeName(right->GetExprType()),
@@ -303,16 +300,11 @@ absl::Status CheckCountWhereArgs(const node::ExprNode* left, const node::ExprNod
         return absl::UnknownError("[Long Window] right can't cast to binary expr");
     }
 
-    if (left->GetExprType() != node::ExprType::kExprAll && left->GetExprType() != node::ExprType::kExprColumnRef) {
-        return absl::UnimplementedError(
-            absl::StrCat("[Long Window] count_where column ", left->GetExprString(), " not supported"));
-    }
-
     auto s1 = CheckCountWhereCond(right->GetChild(0), right->GetChild(1));
     auto s2 = CheckCountWhereCond(right->GetChild(1), right->GetChild(0));
     if (!s1.ok() && !s2.ok()) {
         return absl::UnimplementedError(
-            absl::StrCat("[Long Window] cond as ", right->GetExprString(), " not support: ", s1.message()));
+            absl::StrCat("[Long Window] cond as ", right->GetExprString(), " not support: ", s1.status().message()));
     }
 
     switch (bin_expr->GetOp()) {
@@ -328,7 +320,10 @@ absl::Status CheckCountWhereArgs(const node::ExprNode* left, const node::ExprNod
                 absl::StrCat("[Long Window] filter cond operator ", node::ExprOpTypeName(bin_expr->GetOp())));
     }
 
-    return absl::OkStatus();
+    if (s1.ok()) {
+        return s1.value();
+    }
+    return s2.value();
 }
 
 // Supported:
@@ -350,28 +345,41 @@ absl::Status CheckCountWhereArgs(const node::ExprNode* left, const node::ExprNod
 //     - gt
 //     - le
 //     - ge
-absl::Status LongWindowOptimized::CheckExprNode(const node::CallExprNode* call) {
-    if (call->GetChildNum() == 1) {
-        // count/sum/min/max/avg
-        auto expr_type = call->GetChild(0)->GetExprType();
+absl::StatusOr<LongWindowOptimized::AggInfo> LongWindowOptimized::CheckCallExpr(const node::CallExprNode* call) {
+    if (call->GetChildNum() != 1 && call->GetChildNum() != 2) {
+        return absl::UnimplementedError(
+            absl::StrCat("expect call function with argument number 1 or 2, but got ", call->GetExprString()));
+    }
 
-        if (expr_type != node::kExprColumnRef && expr_type != node::kExprAll) {
-            return absl::UnimplementedError(
-                absl::StrCat("Not support aggregation over multiple cols:", ConcatExprList(call->children_)));
-        }
+    // count/sum/min/max/avg
+    auto expr_type = call->GetChild(0)->GetExprType();
 
-        return absl::OkStatus();
-    } else if (call->GetChildNum() == 2) {
+    absl::string_view key_col;
+    absl::string_view filter_col;
+    if (expr_type == node::kExprColumnRef) {
+        auto* col_ref = dynamic_cast<const node::ColumnRefNode*>(call->GetChild(0));
+        key_col = col_ref->GetColumnName();
+    } else if (expr_type == node::kExprAll) {
+        key_col = call->GetChild(0)->GetExprString();
+    } else {
+        return absl::UnimplementedError(
+            absl::StrCat("[Long Window] first arg to op is not column or * :", call->GetExprString()));
+    }
+
+    if (call->GetChildNum() == 2) {
         if (call->GetFnDef()->GetName() != "count_where") {
             return absl::UnimplementedError(absl::StrCat(call->GetFnDef()->GetName(), " not implemented"));
         }
 
         // count_where
-        return CheckCountWhereArgs(call->GetChild(0), call->GetChild(1));
+        auto s = CheckCountWhereArgs(call->GetChild(1));
+        if (!s.ok()) {
+            return s.status();
+        }
+        filter_col = s.value();
     }
 
-    return absl::UnimplementedError(
-        absl::StrCat("expect call function with argument number 1 or 2, but got ", ConcatExprList(call->children_)));
+    return AggInfo{key_col, filter_col};
 }
 
 }  // namespace passes
