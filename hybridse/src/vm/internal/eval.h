@@ -51,8 +51,7 @@ absl::StatusOr<std::optional<T>> ExtractValue(const RowParser* parser, const cod
     if (node->GetExprType() == node::ExprType::kExprColumnRef) {
         const auto* column_ref = dynamic_cast<const node::ColumnRefNode*>(node);
         if (parser->IsNull(row, *column_ref)) {
-            std::optional<T> r = {};
-            return r;
+            return std::nullopt;
         }
 
         if constexpr (std::is_same_v<T, std::string>) {
@@ -100,8 +99,7 @@ template <typename T>
 std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optional<T>& lhs,
                                          const std::optional<T>& rhs) {
     if (!lhs.has_value() || !rhs.has_value()) {
-        std::optional<bool> r = {};
-        return r;
+        return std::nullopt;
     }
 
     switch (op) {
@@ -121,8 +119,7 @@ std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optiona
             break;
     }
 
-    std::optional<bool> r = {};
-    return r;
+    return std::nullopt;
 }
 
 template <typename T>

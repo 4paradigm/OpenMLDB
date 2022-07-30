@@ -2914,7 +2914,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
-
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
@@ -2961,7 +2960,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     auto agg_it = union_segments[1]->GetIterator();
     if (agg_it) {
-         agg_it->Seek(end);
+        agg_it->Seek(end);
     } else {
         LOG(WARNING) << "Agg window is empty. Use base window only";
     }

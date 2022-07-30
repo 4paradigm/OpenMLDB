@@ -90,8 +90,7 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
 
     // if value of filter_col_name is NULL
     if (parser->IsNull(row, filter)) {
-        std::optional<bool> r = {};
-        return r;
+        return std::nullopt;
     }
 
     std::string filter_val;
@@ -225,8 +224,8 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
                                                     const_node->GetAs<double>().value_or(std::nullopt), v);
             }
             case node::DataType::kVarchar: {
-                return EvalSimpleBinaryExpr<std::string>(bin_expr->GetOp(),
-                                                         const_node->GetAs<std::string>().value_or(std::nullopt), filter_val);
+                return EvalSimpleBinaryExpr<std::string>(
+                    bin_expr->GetOp(), const_node->GetAs<std::string>().value_or(std::nullopt), filter_val);
             }
             default:
                 break;
