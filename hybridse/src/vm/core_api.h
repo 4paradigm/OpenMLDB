@@ -35,6 +35,8 @@ class HybridSeJitWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;
+// tobe1
+typedef unsigned char *NIOBUFFER;
 
 class WindowInterface {
  public:
@@ -138,6 +140,11 @@ class CoreAPI {
         const hybridse::vm::RawPtrHandle fn,
         hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free = false);
+
+    static hybridse::codec::Row UnsafeRowProjectDirect(
+            const hybridse::vm::RawPtrHandle fn,
+            hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+            const int inputRowSizeInBytes, const bool need_free = false);
 
     static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
                                         hybridse::vm::ByteArrayPtr outputBytes,
