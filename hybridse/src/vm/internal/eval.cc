@@ -14,6 +14,8 @@
 
 #include "vm/internal/eval.h"
 
+#include <string>
+
 #include "codegen/ir_base_builder.h"
 #include "node/node_manager.h"
 

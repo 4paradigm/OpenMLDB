@@ -1023,7 +1023,7 @@ class RequestAggUnionRunner : public Runner {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
 
-    static std::string PrintEvalValue(absl::StatusOr<std::optional<bool>>& val);
+    static std::string PrintEvalValue(const absl::StatusOr<std::optional<bool>>& val);
 
  private:
     enum AggType {

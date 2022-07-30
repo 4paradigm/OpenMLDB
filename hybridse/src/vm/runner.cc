@@ -2827,16 +2827,12 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     int64_t max_size = 0;
     if (ts_gen >= 0) {
         if (window_range.frame_type_ != Window::kFrameRows) {
-            start = (ts_gen + window_range.start_offset_) < 0
-                        ? 0
-                        : (ts_gen + window_range.start_offset_);
+            start = (ts_gen + window_range.start_offset_) < 0 ? 0 : (ts_gen + window_range.start_offset_);
         }
         if (exclude_current_time && 0 == window_range.end_offset_) {
             end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
         } else {
-            end = (ts_gen + window_range.end_offset_) < 0
-                      ? 0
-                      : (ts_gen + window_range.end_offset_);
+            end = (ts_gen + window_range.end_offset_) < 0 ? 0 : (ts_gen + window_range.end_offset_);
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
@@ -2855,7 +2851,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // will apply to functions `*_where`
             // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
             auto matches = internal::EvalCond(row_parser, row, cond_);
-            DLOG(INFO) << "[Update Base] Evaluate result of " << cond_->GetExprString() << ": " << PrintEvalValue(matches);
+            DLOG(INFO) << "[Update Base] Evaluate result of " << cond_->GetExprString() << ": "
+                       << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(WARNING) << matches.status();
                 return;
@@ -2927,7 +2924,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
         if (cond_ != nullptr) {
             auto matches = internal::EvalCondWithAggRow(row_parser, row, cond_, "filter_key");
-            DLOG(INFO) << "[Update Agg] Evaluate result of " << cond_->GetExprString() << ": " << PrintEvalValue(matches);
+            DLOG(INFO) << "[Update Agg] Evaluate result of " << cond_->GetExprString() << ": "
+                       << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(WARNING) << matches.status();
                 return;
@@ -2943,9 +2941,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     int64_t cnt = 0;
-    auto range_status = window_range.GetWindowPositionStatus(
-        cnt > rows_start_preceding, window_range.end_offset_ < 0,
-        request_key < start);
+    auto range_status = window_range.GetWindowPositionStatus(cnt > rows_start_preceding, window_range.end_offset_ < 0,
+                                                             request_key < start);
     if (output_request_row) {
         update_base_aggregator(request);
     }
@@ -3082,9 +3079,9 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     return window_table;
 }
 
-std::string RequestAggUnionRunner::PrintEvalValue(absl::StatusOr<std::optional<bool>>& val) {
+std::string RequestAggUnionRunner::PrintEvalValue(const absl::StatusOr<std::optional<bool>>& val) {
     std::ostringstream os;
-    if (val.ok()) {
+    if (!val.ok()) {
         os << val.status();
     } else {
         os << (val->has_value() ? (val.value() ? "TRUE" : "FALSE") : "NULL");
