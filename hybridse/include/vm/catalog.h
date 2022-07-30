@@ -471,6 +471,7 @@ struct AggrTableInfo {
     std::string partition_cols;
     std::string order_by_col;
     std::string bucket_size;
+    std::string filter_col;
 
     bool operator==(const AggrTableInfo& rhs) const {
         return aggr_table == rhs.aggr_table &&
@@ -481,7 +482,8 @@ struct AggrTableInfo {
             aggr_col == rhs.aggr_col &&
             partition_cols == rhs.partition_cols &&
             order_by_col == rhs.order_by_col &&
-            bucket_size == rhs.bucket_size;
+            bucket_size == rhs.bucket_size &&
+            filter_col == rhs.filter_col;
     }
 };
 
@@ -514,13 +516,10 @@ class Catalog {
         return nullptr;
     }
 
-    virtual std::vector<AggrTableInfo> GetAggrTables(
-        const std::string& base_db,
-        const std::string& base_table,
-        const std::string& aggr_func,
-        const std::string& aggr_col,
-        const std::string& partition_cols,
-        const std::string& order_col) {
+    virtual std::vector<AggrTableInfo> GetAggrTables(const std::string& base_db, const std::string& base_table,
+                                                     const std::string& aggr_func, const std::string& aggr_col,
+                                                     const std::string& partition_cols, const std::string& order_col,
+                                                     const std::string& filter_col) {
         return std::vector<AggrTableInfo>();
     }
 };

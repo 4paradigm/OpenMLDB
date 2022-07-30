@@ -785,7 +785,7 @@ class PhysicalReduceAggregationNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalReduceAggregationNode() {}
     base::Status InitSchema(PhysicalPlanContext *) override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     ConditionFilter having_condition_;
     const PhysicalAggregationNode* orig_aggr_ = nullptr;
 };
@@ -1500,26 +1500,25 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
                                 const RequestWindowOp &window, const RequestWindowOp &aggr_window,
                                 bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
-                                const node::FnDefNode *func, const node::ExprNode* agg_col)
+                                const node::CallExprNode *project)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
           agg_window_(aggr_window),
-          func_(func),
-          agg_col_(agg_col),
+          project_(project),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
-        fn_infos_.push_back(&window_.partition_.fn_info());
-        fn_infos_.push_back(&window_.sort_.fn_info());
-        fn_infos_.push_back(&window_.range_.fn_info());
-        fn_infos_.push_back(&window_.index_key_.fn_info());
+        AddFnInfo(&window_.partition_.fn_info());
+        AddFnInfo(&window_.sort_.fn_info());
+        AddFnInfo(&window_.range_.fn_info());
+        AddFnInfo(&window_.index_key_.fn_info());
 
-        fn_infos_.push_back(&agg_window_.partition_.fn_info());
-        fn_infos_.push_back(&agg_window_.sort_.fn_info());
-        fn_infos_.push_back(&agg_window_.range_.fn_info());
-        fn_infos_.push_back(&agg_window_.index_key_.fn_info());
+        AddFnInfo(&agg_window_.partition_.fn_info());
+        AddFnInfo(&agg_window_.sort_.fn_info());
+        AddFnInfo(&agg_window_.range_.fn_info());
+        AddFnInfo(&agg_window_.index_key_.fn_info());
 
         AddProducers(request, raw, aggr);
     }
@@ -1547,11 +1546,18 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
 
     RequestWindowOp window_;
     RequestWindowOp agg_window_;
-    const node::FnDefNode* func_ = nullptr;
-    const node::ExprNode* agg_col_;
+
+    // for long window, each node has only one projection node
+    const node::CallExprNode* project_;
     const SchemasContext* parent_schema_context_ = nullptr;
 
  private:
+    void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
+        AddProducer(request);
+        AddProducer(raw);
+        AddProducer(aggr);
+    }
+
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
 
@@ -1562,12 +1568,6 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     // whereas in `PhysicalRequestUnionNode`, it is about common column optimized and not related to
     // `EXCLUDE CURRENT_ROW`
     bool output_request_row_;
-
-    void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
-        AddProducer(request);
-        AddProducer(raw);
-        AddProducer(aggr);
-    }
 
     Schema agg_schema_;
 };

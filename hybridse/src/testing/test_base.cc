@@ -55,6 +55,11 @@ void BuildAggTableDef(::hybridse::type::TableDef& table, const std::string& aggr
         column->set_type(::hybridse::type::kInt64);
         column->set_name("binlog_offset");
     }
+    {
+        ::hybridse::type::ColumnDef* column = table.add_columns();
+        column->set_type(::hybridse::type::kVarchar);
+        column->set_name("filter_key");
+    }
 }
 
 void BuildTableDef(::hybridse::type::TableDef& table) {  // NOLINT
