@@ -475,16 +475,15 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     std::string_view flags_view(flags->data_, flags->size_);
     std::string_view pattern_view(pattern->data_, pattern->size_);
     std::string_view name_view(name->data_, name->size_);
-    RE2::Options opts;
+    
+    RE2::Options opts(RE2::POSIX);
+    opts.set_one_line(true);
 
-    if (name == nullptr || pattern == nullptr) {
+    if (name == nullptr || pattern == nullptr || flags == nullptr) {
         out = nullptr;
         *is_null = true;
         return;
     }
-
-    opts.set_posix_syntax(true);
-    opts.set_one_line(true);
 
     for(auto &flag: flags_view) {
         switch(flag) {
@@ -505,6 +504,7 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     }
 
     RE2 re(pattern_view, opts);
+    *is_null = false;
     *out = RE2::FullMatch(name_view, re);
 }
 

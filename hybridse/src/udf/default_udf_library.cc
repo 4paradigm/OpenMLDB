@@ -952,13 +952,48 @@ void DefaultUdfLibrary::InitStringUdf() {
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
-                @brief pattern match same as REGEXP_LIKE predicate
+                @brief pattern match same as RLIKE predicate (based on RE2)
+
+                Rules:
+                1. Accept standard POSIX (egrep) syntax regular expressions
+                   - dot (.) : matches any single-width ASCII character in an expression, with the exception of line break characters. 
+                   - asterisk (*) : matches the preceding token zero or more times. 
+                   - plus sign (+) : matches the preceding token one or more times. 
+                   - question mark (?) : identifies the preceding character as being optional. 
+                   - vertical bar (|) : separates tokens, one of which must be matched, much like a logical OR statement. 
+                   - parenthesis ('(' and ')') : groups multiple tokens together to disambiguate or simplify references to them. 
+                   - open square bracket ([) and close square bracket (]) : enclose specific characters or a range of characters to be matched. The characters enclosed inside square brackets are known as a character class. 
+                   - caret (^) : the caret has two different meanings in a regular expression, depending on where it appears:
+                     As the first character in a character class, a caret negates the characters in that character class.
+                     As the first character in a regular expression, a caret identifies the beginning of a term. In this context, the caret is often referred to as an anchor character.
+                   - dollar sign ($) : as the last character in a regular expression, a dollar sign identifies the end of a term. In this context, the dollar sign is often referred to as an anchor character.
+                   - backslash (\) : used to invoke the actual character value for a metacharacter in a regular expression.
+                2. Default flags parameter: 'c'
+                3. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                4. if one or more of target, pattern and flags are null values, then the result is null
+
+                Example:
+                @code{.sql}
+                    select regexp_like('Mike', 'Mi.k')
+                    -- output: true
+
+                    select regexp_like('Mi\nke', 'mi.k')
+                    -- output: false
+
+                    select regexp_like('Mi\nke', 'mi.k', 'si')
+                    -- output: true
+
+                    select regexp_like('append', 'ap*end')
+                    -- output: true
+                @endcode
 
                 @param target: string to match
 
-                @param regular expression: the regular expression match pattern 
+                @param pattern: the regular expression match pattern
 
-                @param flags: specifies the matching behavior of the regular expression function
+                @param flags: specifies the matching behavior of the regular expression function. 'c': case-sensitive matching(default); 'i': case-insensitive matching; 'm': multi-line mode; 'e': Extracts sub-matches(ignored here); 's': Enables the POSIX wildcard character . to match new line. 
+
+                @since 0.5.3
         )r");
     RegisterExternal("regexp_like")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
@@ -967,13 +1002,41 @@ void DefaultUdfLibrary::InitStringUdf() {
         .return_by_arg(true)
         .returns<Nullable<bool>>()
         .doc(R"r(
-                @brief pattern match same as REGEXP_LIKE predicate
+                @brief pattern match same as RLIKE predicate (based on RE2)
+
+                Rules:
+                1. Accept standard POSIX (egrep) syntax regular expressions
+                   - dot (.) : matches any single-width ASCII character in an expression, with the exception of line break characters. 
+                   - asterisk (*) : matches the preceding token zero or more times. 
+                   - plus sign (+) : matches the preceding token one or more times. 
+                   - question mark (?) : identifies the preceding character as being optional. 
+                   - vertical bar (|) : separates tokens, one of which must be matched, much like a logical OR statement. 
+                   - parenthesis ('(' and ')') : groups multiple tokens together to disambiguate or simplify references to them. 
+                   - open square bracket ([) and close square bracket (]) : enclose specific characters or a range of characters to be matched. The characters enclosed inside square brackets are known as a character class. 
+                   - caret (^) : the caret has two different meanings in a regular expression, depending on where it appears:
+                     As the first character in a character class, a caret negates the characters in that character class.
+                     As the first character in a regular expression, a caret identifies the beginning of a term. In this context, the caret is often referred to as an anchor character.
+                   - dollar sign ($) : as the last character in a regular expression, a dollar sign identifies the end of a term. In this context, the dollar sign is often referred to as an anchor character.
+                   - backslash (\) : used to invoke the actual character value for a metacharacter in a regular expression.
+                2. case sensitive
+                3. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                4. Return NULL if target or pattern is NULL
+
+                Example:
+                @code{.sql}
+                    select regexp_like('Mike', 'Mi.k')
+                    -- output: true
+
+                    select regexp_like('append', 'ap*end')
+                    -- output: true
+
+                @endcode
 
                 @param target: string to match
 
-                @param regular expression: the regular expression match pattern 
-                
-                @param flags: specifies the matching behavior of the regular expression function
+                @param pattern: the regular expression match pattern 
+
+                @since 0.5.3
         )r");
     RegisterExternal("ucase")
         .args<StringRef>(
