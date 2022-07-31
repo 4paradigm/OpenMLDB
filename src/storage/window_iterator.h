@@ -85,7 +85,6 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     ::openmldb::storage::TTLType ttl_type_;
     uint64_t expire_time_;
     uint64_t expire_cnt_;
-    uint32_t ts_index_{};
     Ticket ticket_;
     uint32_t ts_idx_;
 };
