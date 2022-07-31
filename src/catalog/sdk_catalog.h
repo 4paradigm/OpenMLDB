@@ -94,7 +94,6 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
     std::string name_;
     std::string db_;
     ::hybridse::vm::Types types_;
-    ::hybridse::vm::IndexList index_list_;
     ::hybridse::vm::IndexHint index_hint_;
     uint64_t cnt_;
     std::shared_ptr<TableClientManager> table_client_manager_;

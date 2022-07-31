@@ -4,51 +4,61 @@
 
 ```sql
 WindowClauseOptional
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
+        ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
+
 WindowDefinition
-         ::= WindowName 'AS' WindowSpec
+        ::= WindowName 'AS' WindowSpec
 
 WindowSpec
-         ::= '(' WindowSpecDetails ')'   
-         
-WindowSpecDetails
-         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause [WindowExcludeCurrentTime] [WindowInstanceNotInWindow]
+        ::= '(' WindowSpecDetails ')'
 
+WindowSpecDetails
+        ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
 
 WindowUnionClause
-				 :: = ( 'UNION' TableRefs)
+        :: = ( 'UNION' TableRefs)
 
 WindowPartitionClause
-         ::= ( 'PARTITION' 'BY' ByList ) 
+        ::= ( 'PARTITION' 'BY' ByList )
 
 WindowOrderByClause
-         ::= ( 'ORDER' 'BY' ByList )    
-
+        ::= ( 'ORDER' 'BY' ByList )
 
 WindowFrameClause
-         ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize]) 
+        ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize])
 
 WindowFrameUnits
-         ::= 'ROWS'
-           | 'ROWS_RANGE'         
+        ::= 'ROWS'
+          | 'ROWS_RANGE'
 
 WindowFrameExtent
-         ::= WindowFrameStart
-           | WindowFrameBetween
+        ::= WindowFrameStart
+          | WindowFrameBetween
+
 WindowFrameStart
-         ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-           | 'CURRENT' 'ROW'
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
+
 WindowFrameBetween
-         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+
 WindowFrameBound
-         ::= WindowFrameStart
-           | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'  
-           
-WindowExcludeCurrentTime 
-				::= 'EXCLUDE' 'CURRENT_TIME'      
+        ::= WindowFrameStart
+          | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'
+
+WindowAttribute
+        ::= WindowExcludeCurrentTime
+          | WindowExcludeCurrentRow
+          | WindowInstanceNotInWindow
+
+WindowExcludeCurrentTime
+        ::= 'EXCLUDE' 'CURRENT_TIME'
+
+WindowExcludeCurrentRow
+        ::= 'EXCLUDE' 'CURRENT_ROW'
 
 WindowInstanceNotInWindow
-				:: = 'INSTANCE_NOT_IN_WINDOW'
+        :: = 'INSTANCE_NOT_IN_WINDOW'
 ```
 
 *Window call function* implements functionality similar to aggregate functions. The difference is that the window call function does not need to pack the query results into a single line of output—in the query output, each line is separated. However, the window caller can scan all rows that may be part of the current row's group, depending on the grouping specification of the window caller (the `PARTITION BY` column). The syntax for calling a function from a window is one of the following:
@@ -87,10 +97,10 @@ SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_nam
 
 ```sql
 WindowPartitionClause
-         ::= ( 'PARTITION' 'BY' ByList )
+        ::= ( 'PARTITION' 'BY' ByList )
 
 WindowOrderByClause
-         ::= ( 'ORDER' 'BY' ByList )            
+        ::= ( 'ORDER' 'BY' ByList )
 ```
 
 The `PARTITION BY` option groups the rows of the query into *partitions*, which are processed separately in the window function. `PARTITION BY` and the query level `GROUP BY` clause do similar work, except that its expressions can only be used as expressions and not as output column names or numbers. OpenMLDB requires that `PARTITION BY` must be configured. And currently **only supports grouping by column**, cannot support grouping by operation and function expression.
@@ -101,8 +111,8 @@ The `ORDER BY` option determines the order in which the rows in the partition ar
 
 ```sql
 WindowFrameUnits
-         ::= 'ROWS'
-           | 'ROWS_RANGE' 
+        ::= 'ROWS'
+          | 'ROWS_RANGE'
 ```
 
 WindowFrameUnits defines the frame type of the window. OpenMLDB supports two types of window frames: ROWS and ROWS_RANGE
@@ -119,13 +129,13 @@ The SQL standard RANGE class window OpenMLDB system does not currently support i
 
 ```sql
 WindowFrameExtent
-         ::= WindowFrameStart
-           | WindowFrameBetween
+        ::= WindowFrameStart
+          | WindowFrameBetween
 WindowFrameBetween
-         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
 WindowFrameBound
-         ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-           | 'CURRENT' 'ROW'
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
 ```
 
  **WindowFrameExtent**定义了窗口的上界和下界。框架类型可以用 `ROWS`或`ROWS_RANGE`声明；
@@ -135,6 +145,7 @@ WindowFrameBound
 - `expr` PRECEDING
   - 窗口类型为ROWS时，`expr`必须为一个正整数。它表示边界为当前行往前`expr`行。
   - 窗口类型为ROWS_RANGE时,`expr`一般为时间区间（例如`10s`, `10m`,`10h`, `10d`)，它表示边界为当前行往前移expr时间段（例如，10秒，10分钟，10小时，10天）
+    - 也可以写成正整数，单位为 ms, 例如 `1000` 等价于 `1s`
 - OpenMLDB支持默认边界是闭合的。但支持OPEN关键字来修饰边界开区间
 - 请注意：标准SQL中，还支持FOLLOWING的边界，当OpenMLDB并不支持。
 
@@ -172,14 +183,14 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ## OpenMLDB特有的WINDOW SPEC元素
 
-### Window With Union
+### 1. Window With Union
 
 ```sql
 WindowUnionClause
-				 :: = ( 'UNION' TableRefs)
+        :: = ( 'UNION' TableRefs)
 ```
 
-#### **Example: Window with union 一张副表**
+#### **1.1 Example: Window with union 一张副表**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -188,7 +199,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 2: window union one table](../dql/images/window_union_1_table.png)
 
-#### **Example: Window with union 多张副表**
+#### **1.2 Example: Window with union 多张副表**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -197,7 +208,9 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
-#### **Example: Window with union 样本表不进入窗口**
+#### **1.3 Example: Window with union 样本表不进入窗口**
+
+With `INSTANCE_NOT_IN_WINDOW` for window, all rows in main table do not go into window except current row.
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -206,7 +219,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 4: window union one table with instance_not_in_window](../dql/images/window_union_1_table_instance_not_in_window.png)
 
-#### **Example: Window with union 列筛选子查询**
+#### **1.4 Example: Window with union 列筛选子查询**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -216,14 +229,16 @@ WINDOW w1 AS
 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
 
-### Window Exclude Current Time
+### 2. Window Exclude Current Time
+
+Rows whose `ts` is same with current row's do not go into window.
 
 ```
 WindowExcludeCurrentTime 
-				::= 'EXCLUDE' 'CURRENT_TIME'  
+        ::= 'EXCLUDE' 'CURRENT_TIME'  
 ```
 
-#### **Example: ROWS窗口EXCLUDE CURRENT TIME**
+#### **2.1 Example: ROWS窗口EXCLUDE CURRENT TIME**
 
 ```SQL
 -- ROWS example
@@ -232,7 +247,7 @@ SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
 
-#### **Example: ROW RANGE窗口EXCLUDE CURRENT TIME**
+#### **2.2 Example: ROW RANGE窗口EXCLUDE CURRENT TIME**
 
 ```SQL
 -- ROWS example
@@ -243,13 +258,31 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ![Figure 5: window exclude current time](../dql/images/window_exclude_current_time.png)
 
-### Window Frame Max Size
+### 3. Window Exclude Current Row
+
+Current row do not go into window.
+
+```
+WindowExcludeCurrentRow
+        ::= 'EXCLUDE' 'CURRENT_ROW'
+```
+
+#### 3.1 Example: ROWS_RANGE Window EXCLUDE CURRENT ROW
+
+```sql
+SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
+WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+```
+
+### 4. Window Frame Max Size
 
 OpenMLDB在定义了元素，来限定窗口内条数。具体来说，可以在窗口定义里使用**MAXSIZE**关键字，来限制window内允许的有效窗口内最大数据条数。
 
+`MaxSize` is only supported for `ROWS_RANGE` window.
+
 ```sql
 WindowFrameMaxSize
-				:: = MAXSIZE NumLiteral
+        :: = MAXSIZE NumLiteral
 ```
 
 ![Figure 6: window config max size](../dql/images/window_max_size.png)

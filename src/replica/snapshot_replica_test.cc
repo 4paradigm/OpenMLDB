@@ -46,6 +46,7 @@ using ::openmldb::storage::Ticket;
 using ::openmldb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(endpoint);
 DECLARE_int32(make_snapshot_threshold_offset);
@@ -324,6 +325,226 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
     tablet->DropTable(NULL, &dr, &drs, &closure);
     tablet1->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
+}
+
+TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
+    FLAGS_make_snapshot_threshold_offset = 0;
+    uint32_t tid = 2;
+    uint32_t pid = 123;
+    auto storage_mode = GetParam();
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    {
+        ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
+        MockClosure closure;
+        tablet->Init("");
+        brpc::Server server;
+        if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            PDLOG(WARNING, "fail to register tablet rpc service");
+            exit(1);
+        }
+        brpc::ServerOptions options;
+        std::string leader_point = "127.0.0.1:18529";
+        if (server.Start(leader_point.c_str(), &options) != 0) {
+            PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
+            exit(1);
+        }
+
+        ::openmldb::client::TabletClient client(leader_point, "");
+        client.Init();
+        std::vector<std::string> endpoints;
+        bool ret =
+            client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime,
+                               16, 0, ::openmldb::type::CompressType::kNoCompress, storage_mode);
+        ASSERT_TRUE(ret);
+        ret = client.Put(tid, pid, "testkey", cur_time, ::openmldb::test::EncodeKV("testkey", "value1"));
+        ASSERT_TRUE(ret);
+
+        uint32_t count = 0;
+        while (count < 10) {
+            count++;
+            std::string key = "test";
+            client.Put(tid, pid, key, cur_time + count, ::openmldb::test::EncodeKV(key, key));
+        }
+        ::openmldb::api::GeneralRequest grq;
+        grq.set_tid(tid);
+        grq.set_pid(pid);
+        grq.set_storage_mode(storage_mode);
+        ::openmldb::api::GeneralResponse grp;
+        grp.set_code(-1);
+        tablet->MakeSnapshot(NULL, &grq, &grp, &closure);
+        sleep(5);
+    }
+
+    {
+        ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
+        MockClosure closure;
+        tablet->Init("");
+        brpc::Server server;
+        if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            PDLOG(WARNING, "fail to register tablet rpc service");
+            exit(1);
+        }
+        brpc::ServerOptions options;
+        std::string leader_point = "127.0.0.1:18529";
+        if (server.Start(leader_point.c_str(), &options) != 0) {
+            PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
+            exit(1);
+        }
+
+        ::openmldb::client::TabletClient client(leader_point, "");
+        client.Init();
+
+        // load table
+        ::openmldb::api::TableMeta table_meta;
+        table_meta.set_format_version(1);
+        table_meta.set_name("table1");
+        table_meta.set_tid(tid);
+        table_meta.set_pid(pid);
+        table_meta.set_storage_mode(storage_mode);
+        client.LoadTable(table_meta, nullptr);
+        sleep(5);
+
+        ::openmldb::api::ScanRequest sr;
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("testkey");
+        sr.set_st(cur_time + 1);
+        sr.set_et(cur_time - 1);
+        sr.set_limit(10);
+        ::openmldb::api::ScanResponse srp;
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(1, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("test");
+        sr.set_st(cur_time + 20);
+        sr.set_et(cur_time - 20);
+        sr.set_limit(20);
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(10, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        std::string key = "test2";
+        ASSERT_TRUE(client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, key)));
+
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("test2");
+        sr.set_st(cur_time + 20);
+        sr.set_et(cur_time - 20);
+        sr.set_limit(20);
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(1, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+    }
+
+    // remove the snapshot file, only keeping the MANIFEST
+    // i.e., corrupt the snapshot
+    std::string db_root_path;
+    if (storage_mode == common::kSSD) {
+        db_root_path = FLAGS_ssd_root_path;
+    } else if (storage_mode == common::kHDD) {
+        db_root_path = FLAGS_hdd_root_path;
+    } else {
+        db_root_path = FLAGS_db_root_path;
+    }
+    std::string snapshot_path = absl::StrCat(db_root_path, "/", tid, "_", pid, "/snapshot/");
+    std::vector<std::string> sub_dirs;
+    ::openmldb::base::GetSubDir(snapshot_path, sub_dirs);
+    for (const auto& dir : sub_dirs) {
+        auto sub_path = absl::StrCat(snapshot_path, dir);
+        DLOG(INFO) << "remove snapshot path: " << sub_path;
+        ASSERT_TRUE(::openmldb::base::RemoveDir(sub_path));
+    }
+    sleep(2);
+
+    {
+        ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
+        MockClosure closure;
+        tablet->Init("");
+        brpc::Server server;
+        if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            PDLOG(WARNING, "fail to register tablet rpc service");
+            exit(1);
+        }
+        brpc::ServerOptions options;
+        std::string leader_point = "127.0.0.1:18529";
+        if (server.Start(leader_point.c_str(), &options) != 0) {
+            PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
+            exit(1);
+        }
+
+        ::openmldb::client::TabletClient client(leader_point, "");
+        client.Init();
+
+        // load table
+        ::openmldb::api::TableMeta table_meta;
+        table_meta.set_format_version(1);
+        table_meta.set_name("table1");
+        table_meta.set_tid(tid);
+        table_meta.set_pid(pid);
+        table_meta.set_storage_mode(storage_mode);
+        client.LoadTable(table_meta, nullptr);
+        sleep(5);
+
+        ::openmldb::api::ScanRequest sr;
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("testkey");
+        sr.set_st(cur_time + 1);
+        sr.set_et(cur_time - 1);
+        sr.set_limit(10);
+        ::openmldb::api::ScanResponse srp;
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(1, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("test");
+        sr.set_st(cur_time + 20);
+        sr.set_et(cur_time - 20);
+        sr.set_limit(20);
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(10, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("test2");
+        sr.set_st(cur_time + 20);
+        sr.set_et(cur_time - 20);
+        sr.set_limit(20);
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(1, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        uint32_t count = 0;
+        while (count < 10) {
+            count++;
+            std::string key = "test3";
+            client.Put(tid, pid, key, cur_time + count, ::openmldb::test::EncodeKV(key, key));
+        }
+
+        sr.set_tid(tid);
+        sr.set_pid(pid);
+        sr.set_pk("test3");
+        sr.set_st(cur_time + 20);
+        sr.set_et(cur_time - 20);
+        sr.set_limit(20);
+        tablet->Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(10, (int64_t)srp.count());
+        ASSERT_EQ(0, srp.code());
+
+        ::openmldb::api::DropTableRequest dr;
+        dr.set_tid(tid);
+        dr.set_pid(pid);
+        ::openmldb::api::DropTableResponse drs;
+        tablet->DropTable(NULL, &dr, &drs, &closure);
+        sleep(2);
+    }
 }
 
 TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {

@@ -1,6 +1,6 @@
 # Limit Clause
 
-The Limit clause is used to limit the number of results. OpenMLDB currently only supports Limit accepting one parameter, indicating the maximum number of rows of returned data;
+The Limit clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data.
 
 ## Syntax
 
@@ -16,17 +16,18 @@ SELECT ... LIMIT ...
 ```
 
 ## Boundary Description
+For the standalone version, `LIMIT` is supported in all conditions. For the cluster version, the execution modes, which support this clause, are shown below.
 
-| SELECT statement elements | state                 | direction                                                         |
-| :------------- | -------------------- | :----------------------------------------------------------- |
-| LIMIT Clause   | Online Serving is not supported | The Limit clause is used to limit the number of results. OpenMLDB currently only supports Limit accepting one parameter, indicating the maximum number of rows of returned data； |
+| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                          |
+|:-----------------------------------------------------------|--------------|---------------------|---------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| LIMIT Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Limit clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data. |
+
 
 ## Example
 
 ### SELECT with LIMIT
 
 ```SQL
--- desc: SELECT Limit
   SELECT t1.COL1 c1 FROM t1 limit 10;
 ```
 

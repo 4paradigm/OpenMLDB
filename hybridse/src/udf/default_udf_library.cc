@@ -553,6 +553,38 @@ struct TopKDef {
 };
 
 void DefaultUdfLibrary::InitStringUdf() {
+    RegisterExternalTemplate<v1::ToHex>("hex")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert number to hexadecimal. If double, convert to hexadecimal after rounding.
+
+            Example:
+
+            @code{.sql}
+                select hex(17);
+                --output "11"
+                select hex(17.4);
+                --output "11"
+                select hex(17.5);
+                --output "12"
+            @endcode
+            @since 0.6.0)");
+
+    RegisterExternal("hex")
+        .args<StringRef>(static_cast<void (*)(StringRef*, StringRef*)>(udf::v1::hex))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert integer to hexadecimal.
+
+            Example:
+
+            @code{.sql}
+                select hex("Spark SQL");
+                --output "537061726B2053514C"
+            @endcode
+            @since 0.6.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
@@ -2019,11 +2051,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.4.0
         )");
 
-    RegisterExternal("dayofyear")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
-        .doc(R"(
+    const std::string dayofyear_doc =
+        R"(
             @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 
             Example:
@@ -2041,7 +2070,25 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 -- output 0
             @endcode
             @since 0.1.0
-        )");
+        )";
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))

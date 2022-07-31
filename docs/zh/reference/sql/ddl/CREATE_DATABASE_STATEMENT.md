@@ -20,14 +20,14 @@ DBName ::=
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
-在创建一个名字为`db2`的数据库：
+再创建一个名字为`db2`的数据库：
 
 ```sql
 CREATE DATABASES db2;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
 显示数据库列表:
