@@ -962,9 +962,8 @@ std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
-    std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_,
-                                                                       expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_));
-    return wit;
+    return std::make_unique<DiskTableRowIterator>(db_, it, snapshot, ttl_type_, expire_time_,
+                                                  expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_);
 }
 
 ::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
@@ -1036,29 +1035,36 @@ const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
 }
 
 void DiskTableRowIterator::Seek(const uint64_t& key) {
-    std::string combine;
-    uint64_t tmp_ts = key;
-    if (has_ts_idx_) {
-        combine = CombineKeyTs(row_pk_, tmp_ts, ts_idx_);
-    } else {
-        combine = CombineKeyTs(row_pk_, tmp_ts);
-    }
-    it_->Seek(rocksdb::Slice(combine));
-    for (; it_->Valid(); it_->Next()) {
-        uint32_t cur_ts_idx = UINT32_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-        if (pk_ == row_pk_) {
-            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
-                // iterator will never get to (pk, ts_idx_) again. Can break here.
-                pk_valid_ = false;
-                break;
-            }
-            pk_valid_ = true;
+    if (expire_value_.ttl_type == TTLType::kAbsoluteTime) {
+        std::string combine;
+        uint64_t tmp_ts = key;
+        if (has_ts_idx_) {
+            combine = CombineKeyTs(row_pk_, tmp_ts, ts_idx_);
         } else {
-            pk_valid_ = false;
+            combine = CombineKeyTs(row_pk_, tmp_ts);
         }
-        break;
+        it_->Seek(rocksdb::Slice(combine));
+        for (; it_->Valid(); it_->Next()) {
+            uint32_t cur_ts_idx = UINT32_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            if (pk_ == row_pk_) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
+                    // iterator will never get to (pk, ts_idx_) again. Can break here.
+                    pk_valid_ = false;
+                    break;
+                }
+                pk_valid_ = true;
+            } else {
+                pk_valid_ = false;
+            }
+            break;
+        }
+    } else {
+        SeekToFirst();
+        while (Valid() && GetKey() > key) {
+            Next();
+        }
     }
 }
 
