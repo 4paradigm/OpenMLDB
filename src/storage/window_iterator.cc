@@ -50,7 +50,14 @@ const ::hybridse::codec::Row& MemTableWindowIterator::GetValue() {
 }
 
 void MemTableWindowIterator::Seek(const uint64_t& key) {
-    it_->Seek(key);
+    if (expire_value_.ttl_type == TTLType::kAbsoluteTime) {
+        it_->Seek(key);
+    } else {
+        SeekToFirst();
+        while (Valid() && GetKey() > key) {
+            Next();
+        }
+    }
 }
 
 void MemTableWindowIterator::SeekToFirst() {
