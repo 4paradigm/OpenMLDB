@@ -70,12 +70,12 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
-
+        currentRows.get(rowIdx).SetNULL(parameterIndex);
     }
 
     @Override
     public void setBoolean(int parameterIndex, boolean x) throws SQLException {
-        throw new SQLException("cannot delete by bool column");
+        currentRows.get(rowIdx).SetBool(parameterIndex, x);
     }
 
     @Override
@@ -86,17 +86,17 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void setShort(int parameterIndex, short x) throws SQLException {
-        currentRows.get(rowIdx).SetString(parameterIndex, String.valueOf(x));
+        currentRows.get(rowIdx).SetInt(parameterIndex, x);
     }
 
     @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
-        currentRows.get(rowIdx).SetString(parameterIndex, String.valueOf(x));
+        currentRows.get(rowIdx).SetInt(parameterIndex, x);
     }
 
     @Override
     public void setLong(int parameterIndex, long x) throws SQLException {
-        currentRows.get(rowIdx).SetString(parameterIndex, String.valueOf(x));
+        currentRows.get(rowIdx).SetInt(parameterIndex, x);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void setDate(int parameterIndex, Date x) throws SQLException {
-        throw new SQLException("cannot delete by date column");
+        currentRows.get(rowIdx).SetDate(parameterIndex, x.getYear() + 1900, x.getMonth() + 1, x.getDate());
     }
 
     @Override
@@ -136,7 +136,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
-        currentRows.get(rowIdx).SetString(parameterIndex, String.valueOf(x.getTime()));
+        currentRows.get(rowIdx).SetInt(parameterIndex, x.getTime());
     }
 
     @Override

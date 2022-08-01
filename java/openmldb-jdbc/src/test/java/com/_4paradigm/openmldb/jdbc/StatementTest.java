@@ -107,6 +107,27 @@ public class StatementTest {
         }
     }
 
+    private void checkDataCount(String tableName, int expectCnt) {
+        java.sql.Statement state = router.getStatement();
+        try {
+            state.execute("select * from " + tableName);
+            java.sql.ResultSet rs = state.getResultSet();
+            int cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(expectCnt, cnt);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                state.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     @Test
     public void testDelete() {
         java.sql.Statement state = router.getStatement();
@@ -127,35 +148,24 @@ public class StatementTest {
             state.executeUpdate("insert into t1 values(1003, 'key3');");
             state.executeUpdate("insert into t1 values(1004, 'key4');");
             state.executeUpdate("insert into t1 values(1001, 'key5');");
+            state.executeUpdate("insert into t1 values(1003, NULL);");
+            state.executeUpdate("insert into t1 values(1003, '');");
             state.execute("select * from t1");
-            java.sql.ResultSet rs = state.getResultSet();
-            int cnt = 0;
-            while (rs.next()) {
-                cnt++;
-            }
-            Assert.assertEquals(6, cnt);
+            checkDataCount("t1", 8);
             String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
             state.execute(sql);
-            state.execute("select * from t1");
-            rs = state.getResultSet();
-            cnt = 0;
-            while (rs.next()) {
-                cnt++;
-            }
-            Assert.assertEquals(4, cnt);
+            checkDataCount("t1", 6);
+            state.execute("DELETE FROM t1 WHERE col2 = NULL;");
+            checkDataCount("t1", 5);
+            state.execute("DELETE FROM t1 WHERE col2 = '';");
+            checkDataCount("t1", 4);
             sql = "DELETE FROM t1 WHERE col2 = ?;";
             java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
             p1.setString(1, "key2");
             p1.executeUpdate();
             p1.setString(1, "keynoexist");
             p1.executeUpdate();
-            state.execute("select * from t1");
-            rs = state.getResultSet();
-            cnt = 0;
-            while (rs.next()) {
-                cnt++;
-            }
-            Assert.assertEquals(3, cnt);
+            checkDataCount("t1", 3);
             p1.setString(1, "key3");
             p1.addBatch();
             p1.setString(1, "key4");
@@ -163,14 +173,7 @@ public class StatementTest {
             p1.setString(1, "key2");
             p1.addBatch();
             p1.executeBatch();
-            state.execute("select * from t1");
-            rs = state.getResultSet();
-            cnt = 0;
-            while (rs.next()) {
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
-
+            checkDataCount("t1", 1);
             ret = state.execute("drop table t1");
             Assert.assertFalse(ret);
         } catch (Exception e) {
