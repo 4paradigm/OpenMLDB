@@ -1,4 +1,4 @@
-# 创建 DEPLOYMENT
+# DEPLOY
 
 ## Syntax
 
@@ -12,15 +12,15 @@ DeployOptions（可选）
 DeploymentName
 						::= identifier
 ```
-`DeployOptions`的定义详见[DEPLOYMENT属性DeployOptions（可选）](#DEPLOYMENT属性DeployOptions（可选）).
+The definition of `DeployOptions` refer [DEPLOYMENT Property DeployOptions (optional)](#DEPLOYMENT Property DeployOptions (optional)).
 
-`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署[Select查询语句](../dql/SELECT_STATEMENT.md)，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+The `DEPLOY` statement is used to deploy SQL to online. It only support to deploy [Select Statement](../dql/SELECT_STATEMENT.md) in OpenMLDB，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
 
 ```SQL
 DEPLOY deployment_name SELECT clause
 ```
 
-### Example: 部署一个SQL到online serving
+### Example: Deploy SQL to online
 
 ```sql
 CREATE DATABASE db1;
@@ -36,7 +36,7 @@ DEPLOY demo_deploy SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 
 -- SUCCEED: deploy successfully
 ```
 
-查看部署详情：
+We can use `SHOW DEPLOYMENT demo_deploy` command to see the detail of sepcific deployment：
 
 ```sql
  --------- -------------------

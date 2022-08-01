@@ -36,7 +36,7 @@ DEPLOY demo_deploy SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 
 -- SUCCEED: deploy successfully
 ```
 
-查看部署详情：
+我们可以使用 `SHOW DEPLOYMENT demo_deploy` 命令查看部署的详情，执行结果如下：
 
 ```sql
  --------- -------------------
