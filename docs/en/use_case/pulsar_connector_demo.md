@@ -29,7 +29,7 @@ Only OpenMLDB cluster mode can be the sink dist, and only write to online storag
 
 We recommend that you use ‘host network’ to run docker. And bind volume ‘files’ too. The sql scripts are in it.
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.2 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.5.2 bash
 docker exec -it openmldb bash
 ```
 ```{note}
@@ -49,7 +49,7 @@ desc connector_test;
 ```
 Run the script:
 ```
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < files/create.sql
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/create.sql
 ```
 
 ![table desc](images/table.png)
@@ -209,6 +209,6 @@ select *, string(timestamp(pickup_datetime)), string(timestamp(dropoff_datetime)
 ```
 In OpenMLDB container, run:
 ```
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < files/select.sql
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 ![openmldb result](images/openmldb_result.png)

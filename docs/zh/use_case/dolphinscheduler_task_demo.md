@@ -44,9 +44,9 @@ DolphinScheduler 需要操作系统的用户，并且该用户需要有 sudo 权
 
 **运行 Predict Server**
 
-我们将完成一个导入数据，离线训练，训练成功后模型上线的工作流。模型上线的部分，可以使用简单的predict server，见[predict server source](https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/talkingdata-adtracking-fraud-detection/predict_server.py)。你可以将它下载至本地，并运行至后台：
+我们将完成一个导入数据，离线训练，训练成功后模型上线的工作流。模型上线的部分，可以使用`/work/talkingdata`中的的predict server来完成。将它运行至后台：
 ```
-python3 predict_server.py --no-init > predict.log 2>&1 &
+python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
 **运行 DolphinScheduler**
