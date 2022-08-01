@@ -4,8 +4,13 @@
 
 ```sql
 LoadDataInfileStmt
-				::= 'LOAD' 'DATA' 'INFILE' filePath LoadDataInfileOptionsList
-filePath ::= string_literal
+				::= 'LOAD' 'DATA' 'INFILE' filePath 'INTO' 'TABLE' tableName LoadDataInfileOptionsList
+filePath 
+				::= string_literal
+				    
+tableName
+				::= string_literal
+
 LoadDataInfileOptionsList
 				::= 'OPTIONS' '(' LoadDataInfileOptionItem (',' LoadDataInfileOptionItem)* ')'
 
@@ -42,34 +47,34 @@ LoadDataInfileOptionItem
 
 `INFILE`路径的读取是由batchjob来完成的，如果是相对路径，就需要batchjob可以访问到的相对路径。
 
-在生产环境中，batchjob的执行通常由yarn集群调度，难以确定具体的执行者。在测试环境中，如果也是多机部署，也很难确定batchjob的具体执行者。
+在生产环境中，batchjob的执行通常由yarn集群调度，难以确定具体的执行者。在测试环境中，如果也是多机部署，难以确定batchjob的具体执行者。
 
 所以，请尽量使用绝对路径。单机测试中，本地文件用`file://`开头；生产环境中，推荐使用hdfs等文件系统。
 ```
 ## SQL语句模版
 
 ```sql
-LOAD DATA INFILE 'file_name' OPTIONS (key = value, ...)
+LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 ```
 
 ## Examples:
 
-从`data.csv`文件读取数据到表`t1`在线存储中。并使用`,`作为列分隔符
+从`data.csv`文件读取数据到表`t1`在线存储中。并使用`','`作为列分隔符
 
 ```sql
 set @@execute_mode='online';
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 ( delimit = ',' );
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',' );
 ```
 
-从`data.csv`文件读取数据到表`t1`中。并使用`,`作为列分隔符， 字符串"NA"将被替换为NULL。
+从`data.csv`文件读取数据到表`t1`中。并使用`','`作为列分隔符， 字符串"NA"将被替换为NULL。
 
 ```sql
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 ( delimit = ',', nullptr_value='NA');
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',', null_value='NA');
 ```
 
 将`data_path`软拷贝到表`t1`中，作为离线数据。
 ```sql
 set @@execute_mode='offline';
-LOAD DATA INFILE 'data_path' INTO TABLE t1 ( deep_copy=true );
+LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS( deep_copy=true );
 ```
 
