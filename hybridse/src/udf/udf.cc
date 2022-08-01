@@ -472,6 +472,12 @@ void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
 //   word_boundary    (false) allow Perl's \b \B (word boundary and not)
 //   one_line         (false) ^ and $ only match beginning and end of text
 void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
+    if (name == nullptr || pattern == nullptr || flags == nullptr) {
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+
     std::string_view flags_view(flags->data_, flags->size_);
     std::string_view pattern_view(pattern->data_, pattern->size_);
     std::string_view name_view(name->data_, name->size_);
@@ -479,15 +485,10 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     RE2::Options opts(RE2::POSIX);
     opts.set_one_line(true);
 
-    if (name == nullptr || pattern == nullptr || flags == nullptr) {
-        out = nullptr;
-        *is_null = true;
-        return;
-    }
-
     for(auto &flag: flags_view) {
         switch(flag) {
             case 'c':
+                opts.set_case_sensitive(true);
             break;
             case 'i':
                 opts.set_case_sensitive(false);
@@ -496,6 +497,7 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
                 opts.set_one_line(false);
             break;
             case 'e':
+                // ignored here
             break;
             case 's':
                 opts.set_dot_nl(true);

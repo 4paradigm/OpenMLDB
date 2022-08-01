@@ -82,7 +82,141 @@ cases:
       rows:
         - [1, 1, 1, 1, 0]
 
+  - id: 3
+    desc: udf regexp_like
+    inputs:
+      - columns: ["id int", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1590115420000 ]
+          - [2, 1590115430000 ]
+          - [3, 1590115440000 ]
+          - [4, 1590115450000 ]
+          - [5, 1590115460000 ]
+          - [6, 1590115470000 ]
+      - columns: ["id int", "ts timestamp", "col2 string"]
+        indexs: ["index1:id:ts"]
+        rows:
+          - [1, 1590115420000, contact@openmldb.ai]
+          - [2, 1590115430000, contact@opfnmldb.ai]
+          - [3, 1590115440000, contact@opgnmldb.ai]
+          - [4, 1590115450000, contact@ophnmldb.ai]
+          - [5, 1590115460000, contact@dropmldb.ai]
+          - [6, 1590115470000, contact@closemldb.ai]
+    dataProvider:
+      - ["regexp_like", "NOT regexp_like"] # regexp_like / NOT regexp_like
+      - ["[A-Za-z0-9+_.-]+@openmldb[A-Za-z0-9+_.-]+"] # match pattern
+    sql: |
+      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND d[0](col2,'d[1]');
+    expect:
+      columns: ["id int", "col2 string"]
+      order: id
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [1, contact@openmldb.ai]
+            - [2, null]
+            - [3, null]
+            - [4, null]
+            - [5, null]
+            - [6, null]
+      1:
+        0:
+          rows:
+            - [1, null]
+            - [2, contact@opfnmldb.ai]
+            - [3, contact@opgnmldb.ai]
+            - [4, contact@ophnmldb.ai]
+            - [5, contact@dropmldb.ai]
+            - [6, contact@closemldb.ai]
 
-  
+  - id: 4
+    desc: udf regexp_like with flag i
+    inputs:
+      - columns: ["id int", "ts timestamp", "col2 string"]
+        indexs: ["index1:id:ts"]
+        rows:
+          - [1, 1590115420000, "The Lord of the Rings"]
+          - [2, 1590115430000, "the Lord of the Rings"]
+    sql: |
+      select id,
+      from {0}
+      where regexp_like(col2, "the Lord of the Rings", "i");
+    expect:
+      columns: ["id int"]
+      order: id
+      rows:
+        - [1]
+        - [2]
 
-        
+  - id: 5
+    desc: udf regexp_like with flags
+    inputs:
+      - columns: ["id int", "ts timestamp", "col2 string"]
+        indexs: ["index1:id:ts"]
+        rows:
+          - [1, 1590115420000, "the Lord of the Rings"]
+          - [2, 1590115420000, "The Lord of the Rings"]
+          - [3, 1590115420000, "The Lord of the Rings\nJ. R. R. Tolkien"]
+    dataProvider:
+      - ["The Lord of the Rings", "The Lord of the Rings.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien", "^The Lord of the Rings$.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien"] # match pattern
+      - ["i", "s", "m", "smi", "c", ""] # flags
+    sql: |
+      select id,
+      from {0}
+      where regexp_like(col2, 'd[0]', "d[1]");
+    expect:
+      columns: ["id int"]
+      order: id
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [1]
+            - [2]
+        1:
+          rows:
+            - [2]
+        2:
+          rows:
+            - [2]
+        3:
+          rows:
+            - [1]
+            - [2]
+        4:
+          rows:
+            - [2]
+        5:
+          rows:
+            - [2]
+      1:
+        0:
+          rows:
+        1:
+          rows:
+            - [3]
+        2:
+          rows:
+        3:
+          rows:
+            - [3]
+        4:
+          rows:
+        5:
+          rows:
+      2:
+        0:
+          rows:
+        1:
+          rows:
+        2:
+          rows:
+        3:
+          rows:
+            - [3]
+        4:
+          rows:
+        5:
+          rows:

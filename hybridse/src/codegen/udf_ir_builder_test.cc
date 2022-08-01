@@ -981,6 +981,43 @@ TEST_F(UdfIRBuilderTest, ilike_match) {
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         udf_name, true, StringRef("mi\\ke"), StringRef("Mi\\_e"), StringRef(""));
 }
+TEST_F(UdfIRBuilderTest, rlike_match) {
+    auto udf_name = "regexp_like";
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings"), StringRef("The Lord .f the Rings"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef(""));
+
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, nullptr, StringRef("The Lord .f the Rings"), StringRef(""));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, StringRef("The Lord of the Rings"), nullptr, StringRef(""));
+    // flags is null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, StringRef("The Lord of the Rings"), StringRef("The Lord .f the Rings"), nullptr);
+
+    // single flag
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef("c"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef("i"));
+        
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"), StringRef("The Lord of the Rings.J\\. R\\. R\\. Tolkien"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"), StringRef("The Lord of the Rings.J\\. R\\. R\\. Tolkien"), StringRef("s"));
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"), StringRef("^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"), StringRef("^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien"), StringRef("m"));
+
+    // multiple flags
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"), StringRef("^the Lord of the Rings$.J\\. R\\. R\\. Tolkien"), StringRef("mis"));
+}
 TEST_F(UdfIRBuilderTest, reverse) {
     auto udf_name = "reverse";
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>(udf_name, StringRef("SQL"), StringRef("LQS"));
