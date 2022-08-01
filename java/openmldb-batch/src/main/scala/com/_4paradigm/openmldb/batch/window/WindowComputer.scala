@@ -161,13 +161,14 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
       CoreAPI.UnsafeWindowProjectDirect(fn, key, hybridseRowBytes, hybridseRowBytesLength, true, appendSlices, window)
 
 
+    /*
     val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
     cleanerMethod.setAccessible(true)
     val returnValue = cleanerMethod.invoke(hybridseRowBytes)
     val cleanMethod = returnValue.getClass().getMethod("clean")
     cleanMethod.setAccessible(true)
     cleanMethod.invoke(returnValue)
-
+    */
 
     // TODO: Support append slice in JIT function instead of merge in offline
     val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {

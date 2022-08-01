@@ -120,7 +120,7 @@ object RowProjectPlan {
           }
         }
 
-        partitionIter.flatMap(internalRow => {
+        partitionIter.map(internalRow => {
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (colIdx <- inputTimestampColIndexes) {
@@ -145,13 +145,14 @@ object RowProjectPlan {
           // Call native method to compute
           val outputHybridseRow = CoreAPI.UnsafeRowProjectDirect(fn, hybridseRowBytes, hybridseRowBytesLength, false)
 
+          /*
           val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
           cleanerMethod.setAccessible(true)
           val returnValue = cleanerMethod.invoke(hybridseRowBytes)
           val cleanMethod = returnValue.getClass().getMethod("clean")
           cleanMethod.setAccessible(true)
           cleanMethod.invoke(returnValue)
-
+          */
 
 
           // Call methods to generate Spark InternalRow
@@ -172,7 +173,7 @@ object RowProjectPlan {
           }
 
           // TODO: Add index column if needed
-          Some(outputInternalRow)
+          outputInternalRow
         })
 
       })
