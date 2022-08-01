@@ -188,7 +188,7 @@ SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
 
-## WindowSpec Elements specifically designed by OpenMLDB
+## WindowSpec Elements Specifically Designed by OpenMLDB
 
 
 ### **Window With Union**
@@ -214,7 +214,6 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 **2. Window With `UNION` on Multiple Tables**
 
-
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
@@ -223,7 +222,7 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
 
-**3. Window With `UNION` but Exclude Instance Table**
+**3. Window With `UNION` Excluding the Instance Table**
 
 
 ```SQL
