@@ -25,6 +25,8 @@
 #ifndef HYBRIDSE_SRC_VM_INTERNAL_EVAL_H_
 #define HYBRIDSE_SRC_VM_INTERNAL_EVAL_H_
 
+#include <string>
+
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "codec/row.h"

@@ -31,13 +31,13 @@ class LongWindowOptimized : public TransformUpPysicalPass {
     explicit LongWindowOptimized(PhysicalPlanContext* plan_ctx);
     ~LongWindowOptimized() {}
 
-public:
-   // e.g count_where(col1, col2 < 4)
-   //  -> key_col_name = col1, filter_col_name = col2
-   struct AggInfo {
-      absl::string_view key_col_name;
-      absl::string_view filter_col_name;
-   };
+ public:
+    // e.g count_where(col1, col2 < 4)
+    //  -> key_col_name = col1, filter_col_name = col2
+    struct AggInfo {
+        absl::string_view key_col_name;
+        absl::string_view filter_col_name;
+    };
 
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output) override;
