@@ -295,6 +295,7 @@ cases:
   -
     id: 14
     desc: 不指定索引，插入数据，可查询
+    tags: ["TODO","CPP 不支持 id int not null 解析"]
     inputs:
       - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
         rows:
