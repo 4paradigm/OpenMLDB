@@ -1,9 +1,11 @@
 import pandas as pd
 import sys
 
-train_data = pd.read_parquet("/home/gtest/work/openmldb/new_process/out/train/train.parquet")
-val_data = pd.read_parquet("/home/gtest/work/openmldb/new_process/out/val/val.parquet")
-test_data = pd.read_parquet("/home/gtest/work/openmldb/new_process/out/test/test.parquet")
+path = sys.argv[1]
+
+train_data = pd.read_parquet(path+"/train/train.parquet")
+val_data = pd.read_parquet(path+"/val/val.parquet")
+test_data = pd.read_parquet(path+"/test/test.parquet")
 
 print(train_data['Label'].size)
 print(val_data['Label'].size)

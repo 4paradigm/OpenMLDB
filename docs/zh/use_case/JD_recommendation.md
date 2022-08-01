@@ -238,12 +238,14 @@ sh process_JD_out_full.sh $demodir/out/1
 注意，以下命令在安装1.1所描述的OneFlow运行环境中运行
 ```
 #### 2.4.1 修改对应`train_deepfm.sh`配置文件
+注意根据上一节所打印出的数据信息更新配置文件。具体包括`num_train_samples`,`num_val_samples`,`num_test_samples`和`table_size_array`等。
 ```bash
 cd $demodir/oneflow_process/
 ```
 ```bash
 #!/bin/bash
 DEVICE_NUM_PER_NODE=1
+demodir="$1"
 DATA_DIR=$demodir/openmldb_process/out
 PERSISTENT_PATH=/$demodir/oneflow_process/persistent
 MODEL_SAVE_DIR=$demodir/oneflow_process/model_out
@@ -279,7 +281,7 @@ deepfm_train_eval_JD.py \
 ```
 #### 2.4.2 开始模型训练
 ```bash
-bash train_deepfm.sh
+bash train_deepfm.sh $demodir
 ```
 生成模型将存放在`$demodir/oneflow_process/model_out`，用来serving的模型存放在`$demodir/oneflow_process/model/embedding/1/model`
 

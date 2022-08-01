@@ -1,9 +1,10 @@
 #!/bin/bash
 DEVICE_NUM_PER_NODE=1
-DATA_DIR=/home/gtest/demo/openmldb_process/out
-PERSISTENT_PATH=/home/gtest/demo/oneflow_process/persistent
-MODEL_SAVE_DIR=/home/gtest/demo/oneflow_process/model_out
-MODEL_SERVING_PATH=/home/gtest/demo/oneflow_process/model/embedding/1/model
+DEMODIR="$1"
+DATA_DIR="$DEMODIR"/openmldb_process/out
+PERSISTENT_PATH="$DEMODIR"/oneflow_process/persistent
+MODEL_SAVE_DIR="$DEMODIR"/oneflow_process/model_out
+MODEL_SERVING_PATH="$DEMODIR"/oneflow_process/model/embedding/1/model
 
 python3 -m oneflow.distributed.launch \
     --nproc_per_node $DEVICE_NUM_PER_NODE \

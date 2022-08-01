@@ -240,12 +240,14 @@ The generated dataset will be placed at `$demodir/openmldb_process/out`. After g
 Note that following commands are executed in the environment as installed in section 1.1.
 ```
 #### 2.4.1 Update `train_deepfm.sh` Configuration File
+The dataset information generated from the previous section need to be updated in the configuration file,including `num_train_samples`,`num_val_samples`,`num_test_samples` and `table_size_array`.
 ```bash
 cd $demodir/oneflow_process/
 ```
 ```bash
 #!/bin/bash
 DEVICE_NUM_PER_NODE=1
+demodir="$1"
 DATA_DIR=$demodir/openmldb_process/out
 PERSISTENT_PATH=/$demodir/oneflow_process/persistent
 MODEL_SAVE_DIR=$demodir/oneflow_process/model_out
@@ -281,7 +283,7 @@ deepfm_train_eval_JD.py \
 ```
 #### 2.4.2 Start Model Training
 ```bash
-bash train_deepfm.sh
+bash train_deepfm.sh $demodir
 ```
 Trained model will be saved in `$demodir/oneflow_process/model_out`, saved model for serving will be saved in `$demodir/oneflow_process/model/embedding/1/model`.
 

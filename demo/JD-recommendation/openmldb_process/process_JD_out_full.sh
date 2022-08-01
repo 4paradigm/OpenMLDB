@@ -1,20 +1,7 @@
 #!/bin/bash
-if [ ! -d "data_processed" ] 
-then
-	mkdir data_processed
-        if [ ! -d "data_processed/train" ]
-	then
-	        mkdir data_processed/train
-        fi
-        if [ ! -d "data_processed/test" ]
-	then
-	        mkdir data_processed/test
-        fi       
-	if [ ! -d "data_processed/valid" ]
-	then
-	        mkdir data_processed/valid
-        fi
-fi
+mkdir -p data_processed/train
+mkdir -p data_processed/test
+mkdir -p data_processed/valid
 
 number="$( find "$1"/*.csv | wc -l )"
 echo "total $number files"
@@ -40,17 +27,18 @@ do
 done
 
 cd data_processed/train || exit
-python3 /home/gtest/demo/openmldb_process/combine_convert.py train /home/gtest/demo/openmldb_process/out/train/
+python3 ../../combine_convert.py train ../../out/train/
 cd ../.. || exit
 
 cd data_processed/valid || exit
-python3 /home/gtest/demo/openmldb_process/combine_convert.py val /home/gtest/demo/openmldb_process/out/val/
+python3 ../../combine_convert.py val ../../out/val/
 cd ../.. || exit
 
 cd data_processed/test || exit
-python3 /home/gtest/demo/openmldb_process/combine_convert.py test /home/gtest/demo/openmldb_process/out/test/
+python3 ../../combine_convert.py test ../../out/test/
 cd ../.. || exit
 
-python3 cal_table_array_size.py
+python3 cal_table_array_size.py ./out/
+
 
 rm -rf data_processed
