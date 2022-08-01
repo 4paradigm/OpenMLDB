@@ -117,27 +117,31 @@ public class SDKUtil {
 
     public static OpenMLDBResult sql(SqlExecutor executor, String dbName, String sql) {
         useDB(executor,dbName);
-        OpenMLDBResult fesqlResult = null;
+        OpenMLDBResult openMLDBResult = null;
         if (sql.startsWith("create database") || sql.startsWith("drop database")) {
-            fesqlResult = db(executor, sql);
+            openMLDBResult = db(executor, sql);
         }else if(sql.startsWith("CREATE INDEX")||sql.startsWith("create index")){
-            fesqlResult = createIndex(executor, sql);
+            openMLDBResult = createIndex(executor, sql);
         }else if (sql.startsWith("create") || sql.startsWith("CREATE") || sql.startsWith("DROP")|| sql.startsWith("drop")) {
-            fesqlResult = ddl(executor, dbName, sql);
-        } else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
-            fesqlResult = insert(executor, dbName, sql);
+            openMLDBResult = ddl(executor, dbName, sql);
+        }else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
+            openMLDBResult = insert(executor, dbName, sql);
+        }else if (sql.startsWith("delete from")) {
+            openMLDBResult = delete(executor, dbName, sql);
         }else if(sql.startsWith("show deployments;")){
-            fesqlResult  = showDeploys(executor,dbName,sql);
+            openMLDBResult  = showDeploys(executor,dbName,sql);
         }else if(sql.startsWith("show deployment")){
-            fesqlResult = showDeploy(executor, dbName, sql);
+            openMLDBResult = showDeploy(executor, dbName, sql);
         }else if(sql.startsWith("desc ")){
-            fesqlResult = desc(executor,dbName,sql);
+            openMLDBResult = desc(executor,dbName,sql);
         }else if(sql.contains("outfile")){
-            fesqlResult = selectInto(executor, dbName, sql);
+            openMLDBResult = selectInto(executor, dbName, sql);
         }else {
-            fesqlResult = select(executor, dbName, sql);
+            openMLDBResult = select(executor, dbName, sql);
         }
-        return fesqlResult;
+        openMLDBResult.setSql(sql);
+        log.info("openMLDBResult:{}",openMLDBResult);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult selectInto(SqlExecutor executor, String dbName, String outSql){
@@ -288,6 +292,27 @@ public class SDKUtil {
         fesqlResult.setOk(createOk);
         log.info("insert result:{}" + fesqlResult);
         return fesqlResult;
+    }
+    public static OpenMLDBResult delete(SqlExecutor executor, String dbName, String deleteSql) {
+        useDB(executor,dbName);
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        Statement statement = executor.getStatement();
+        try {
+            statement.execute(deleteSql);
+            openMLDBResult.setOk(true);
+            openMLDBResult.setMsg("success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
+        }finally {
+            try {
+                statement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult selectWithPrepareStatement(SqlExecutor executor, String dbName, String sql, List<String> paramterTypes, List<Object> params) {

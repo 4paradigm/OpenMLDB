@@ -71,7 +71,7 @@ cases:
       - delete from {0} where c1='aa' or c1='cc';
     expect:
       success: false
-      msg: failed
+      msg: fail
   -
     id: 3
     desc: delete 两个索引的两个key
@@ -88,7 +88,7 @@ cases:
       - delete from {0} where c1='aa' or c2=1;
     expect:
       success: false
-      msg: failed
+      msg: fail
   -
     id: 4
     desc: 两个索引 delete 其中一个
@@ -144,6 +144,7 @@ cases:
       - select * from {0};
     expect:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
@@ -200,6 +201,7 @@ cases:
       - select * from {0};
     expect:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
       rows:
         - [1,"aa",2,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
@@ -255,6 +257,7 @@ cases:
       - select * from {0};
     expect:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [3,"aa",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
@@ -367,7 +370,7 @@ cases:
     sql: delete from {0}1 where c1='aa';
     expect:
       success: false
-      msg: failed
+      msg: fail
   -
     id: 20
     desc: delete列不存在
@@ -384,7 +387,7 @@ cases:
       - delete from {0} where c11=1;
     expect:
       success: false
-      msg: failed
+      msg: fail
   -
     id: 21
     desc: delete 其他库的数据
@@ -496,11 +499,9 @@ cases:
           - [3,"cc",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
     sqls:
       - delete from {0} where c1!='cc';
-      - select * from {0};
     expect:
-      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
-      rows:
-        - [3,"cc",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+      success: false
+      msg: fail
   -
     id: 27
     desc: 比较运算符删除
@@ -514,11 +515,9 @@ cases:
           - [3,"aa",3,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
     sqls:
       - delete from {0} where c2>=2;
-      - select * from {0};
     expect:
-      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
-      rows:
-        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      success: false
+      msg: fail
   -
     id: 28
     desc: 表名为job delete
@@ -538,3 +537,16 @@ cases:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
         - [2,"bb",2,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 29
+    desc: delete空表
+    inputs:
+      -
+        name: job
+        columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - delete from {0} where c1='aa';
+    expect:
+      success: true
+
