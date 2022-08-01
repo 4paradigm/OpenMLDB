@@ -330,6 +330,22 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProject(
                                  window->GetWindow());
 }
 
+hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
+        const RawPtrHandle fn, const uint64_t key,
+        hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+        const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
+        WindowInterface* window) {
+
+    auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+
+    // Create Row from input UnsafeRow bytes
+    auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+
+
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
+                                 window->GetWindow());
+}
+
 hybridse::codec::Row CoreAPI::GroupbyProject(
     const RawPtrHandle fn, hybridse::vm::GroupbyInterface* groupby_interface) {
     return Runner::GroupbyProject(fn, Row(), groupby_interface->GetTableHandler());
