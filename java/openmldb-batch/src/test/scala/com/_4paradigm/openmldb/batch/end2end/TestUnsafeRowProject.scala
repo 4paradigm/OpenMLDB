@@ -28,6 +28,8 @@ class TestUnsafeRowProject extends SparkTestSuite {
   test("Test end2end UnsafeRow optimization for row project") {
 
     getSparkSession.conf.set("spark.openmldb.unsaferow.opt", true)
+    getSparkSession.conf.set("spark.openmldb.opt.unsaferow.project", true)
+
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 

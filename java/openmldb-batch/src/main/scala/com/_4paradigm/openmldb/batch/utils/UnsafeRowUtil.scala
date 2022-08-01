@@ -51,6 +51,31 @@ object UnsafeRowUtil {
       .put(inputRowBytes).array()
   }
 
+  def internalRowToHybridseByteBuffer(internalRow: InternalRow): ByteBuffer = {
+    val unsafeRow = internalRow.asInstanceOf[UnsafeRow]
+
+    // Get input UnsafeRow bytes
+    val inputRowBytes = unsafeRow.getBytes
+    val inputRowSize = inputRowBytes.size
+
+    // FVersion
+    val fversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // SVersion
+    val sversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // Size
+    val sizeBytes = ByteArrayUtil.intToByteArray(HybridseRowHeaderSize + inputRowSize)
+
+    // Add the header and memcpy bytes for input row
+    ByteBuffer.allocateDirect(HybridseRowHeaderSize + inputRowSize).put(fversionBytes).put(sversionBytes).put(sizeBytes)
+      .put(inputRowBytes)
+  }
+
+  def getHybridseRowSize(internalRow: InternalRow): Int = {
+    val unsafeRow = internalRow.asInstanceOf[UnsafeRow]
+    val inputRowBytes = unsafeRow.getBytes
+    val inputRowSize = inputRowBytes.size
+    HybridseRowHeaderSize + inputRowSize
+  }
 
   /** Convert HybridSE row to Spark InternalRow.
    *

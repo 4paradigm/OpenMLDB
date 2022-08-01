@@ -143,14 +143,31 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
 
   def unsafeCompute(internalRow: InternalRow, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int,
                     outputSchema: StructType, enableUnsafeRowFormat: Boolean): InternalRow = {
-    val inputUnsaferow = internalRow.asInstanceOf[UnsafeRow]
 
     // Create native method input from Spark InternalRow
-    val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+    //var hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+
+    val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+    val hybridseRowBytesLength = UnsafeRowUtil.getHybridseRowSize(internalRow)
+
+
+
 
     // Call native method to compute
+    //val outputHybridseRow  =
+    //  CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
+
     val outputHybridseRow  =
-      CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
+      CoreAPI.UnsafeWindowProjectDirect(fn, key, hybridseRowBytes, hybridseRowBytesLength, true, appendSlices, window)
+
+
+    val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
+    cleanerMethod.setAccessible(true)
+    val returnValue = cleanerMethod.invoke(hybridseRowBytes)
+    val cleanMethod = returnValue.getClass().getMethod("clean")
+    cleanMethod.setAccessible(true)
+    cleanMethod.invoke(returnValue)
+
 
     // TODO: Support append slice in JIT function instead of merge in offline
     val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {
@@ -171,7 +188,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
       val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
         outputSchema.size - inputRowColNum)
 
-      new OpenmldbJoinedRow(outputInternalRow, inputUnsaferow)
+      new OpenmldbJoinedRow(outputInternalRow, internalRow.asInstanceOf[UnsafeRow])
     } else {
       // Call methods to generate Spark InternalRow
       UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)

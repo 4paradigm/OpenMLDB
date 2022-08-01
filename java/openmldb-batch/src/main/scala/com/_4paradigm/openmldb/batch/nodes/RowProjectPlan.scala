@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
+import com._4paradigm.openmldb.batch.utils.UnsafeRowUtil.HybridseRowHeaderSize
 import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil,
   UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
@@ -29,6 +30,8 @@ import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
 
+import java.lang.reflect.Method
+import java.nio.ByteBuffer
 import scala.collection.mutable
 
 
@@ -117,7 +120,7 @@ object RowProjectPlan {
           }
         }
 
-        partitionIter.map(internalRow => {
+        partitionIter.flatMap(internalRow => {
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (colIdx <- inputTimestampColIndexes) {
@@ -132,11 +135,24 @@ object RowProjectPlan {
             }
           }
 
+          // tobe1
           // Create native method input from Spark InternalRow
-          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+          //var hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+
+          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+          val hybridseRowBytesLength = UnsafeRowUtil.getHybridseRowSize(internalRow)
 
           // Call native method to compute
-          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
+          val outputHybridseRow = CoreAPI.UnsafeRowProjectDirect(fn, hybridseRowBytes, hybridseRowBytesLength, false)
+
+          val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
+          cleanerMethod.setAccessible(true)
+          val returnValue = cleanerMethod.invoke(hybridseRowBytes)
+          val cleanMethod = returnValue.getClass().getMethod("clean")
+          cleanMethod.setAccessible(true)
+          cleanMethod.invoke(returnValue)
+
+
 
           // Call methods to generate Spark InternalRow
           val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
@@ -156,7 +172,7 @@ object RowProjectPlan {
           }
 
           // TODO: Add index column if needed
-          outputInternalRow
+          Some(outputInternalRow)
         })
 
       })
