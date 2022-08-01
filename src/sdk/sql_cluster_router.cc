@@ -376,13 +376,6 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
         *status = {::hybridse::common::StatusCode::kCmdError, "no condition in delete sql"};
         return {};
     }
-    std::map<std::string, std::string> condition_map;
-    std::map<std::string, int> parameter_map;
-    auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ParseExprNode(binary_node, &condition_map, &parameter_map);
-    if (!status->IsOK()) {
-        return {};
-    }
     std::string database = delete_plan->GetDatabase().empty() ? db : delete_plan->GetDatabase();
     if (database.empty()) {
         *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
@@ -393,6 +386,14 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
     if (!table_info) {
         *status = {::hybridse::common::StatusCode::kCmdError,
             absl::StrCat("table ", table_name, " in db", database, " does not exist")};
+        return {};
+    }
+    auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
+    std::map<std::string, std::string> condition_map;
+    std::map<std::string, int> parameter_map;
+    auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
+    *status = NodeAdapter::ParseExprNode(binary_node, col_map, &condition_map, &parameter_map);
+    if (!status->IsOK()) {
         return {};
     }
     int index_pos = 0;
@@ -3008,19 +3009,20 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     if (condition == nullptr) {
         return {::hybridse::common::StatusCode::kCmdError, "has not where condition"};
     }
+    auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
+    if (!table_info) {
+        return {::hybridse::common::StatusCode::kCmdError, "table " + table_name + " in db " + db + " does not exist"};
+    }
     std::map<std::string, std::string> condition_map;
     std::map<std::string, int> parameter_map;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    auto status = NodeAdapter::ParseExprNode(binary_node, &condition_map, &parameter_map);
+    auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
+    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, &condition_map, &parameter_map);
     if (!status.IsOK()) {
         return status;
     }
     if (!parameter_map.empty()) {
         return {::hybridse::common::StatusCode::kCmdError, "unsupport placeholder in sql"};
-    }
-    auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
-    if (!table_info) {
-        return {::hybridse::common::StatusCode::kCmdError, "table " + table_name + " in db " + db + " does not exist"};
     }
     std::string index_name;
     std::string pk;

@@ -17,6 +17,7 @@
 #ifndef SRC_SCHEMA_SCHEMA_ADAPTER_H_
 #define SRC_SCHEMA_SCHEMA_ADAPTER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,6 +63,8 @@ class SchemaAdapter {
     static base::Status CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info);
 
     static PBSchema BuildSchema(const std::vector<std::string>& fields);
+
+    static std::map<std::string, openmldb::type::DataType> GetColMap(const nameserver::TableInfo& table_info);
 
  private:
     static bool ConvertColumn(const hybridse::type::ColumnDef& sql_column, openmldb::common::ColumnDesc* column);

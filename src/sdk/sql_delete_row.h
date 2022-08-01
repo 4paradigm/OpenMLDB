@@ -39,6 +39,7 @@ class SQLDeleteRow {
     bool SetTimestamp(int pos, int64_t val);
     bool SetDate(int pos, int32_t date);
     bool SetDate(int pos, uint32_t year, uint32_t month, uint32_t day);
+    bool SetNULL(int pos);
     bool Build();
 
     const std::string& GetValue() const { return val_; }

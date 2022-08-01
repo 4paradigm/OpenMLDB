@@ -73,6 +73,10 @@ bool SQLDeleteRow::SetDate(int pos, uint32_t year, uint32_t month, uint32_t day)
     return SetString(pos, std::to_string(date));
 }
 
+bool SQLDeleteRow::SetNULL(int pos) {
+    return SetString(pos, hybridse::codec::NONETOKEN);
+}
+
 bool SQLDeleteRow::Build() {
     if (col_names_.size() == 1) {
         return !val_.empty();
