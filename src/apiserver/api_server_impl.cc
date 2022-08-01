@@ -57,6 +57,7 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
     RegisterGetDeployment();
     RegisterGetDB();
     RegisterGetTable();
+    RegisterRefresh();
     return true;
 }
 
@@ -611,6 +612,14 @@ void APIServerImpl::RegisterGetTable() {
                           writer.EndObject();
                       }
                   });
+}
+
+void APIServerImpl::RegisterRefresh() {
+    provider_.post("/refresh", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                      auto resp = GeneralResp();
+                      auto ok = sql_router_->RefreshCatalog();
+                      writer << (ok ? resp : resp.Set("refresh failed"));
+});
 }
 
 std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
