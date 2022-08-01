@@ -114,6 +114,8 @@ class RowBuilder {
     inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }
     inline uint32_t GetAppendPos() { return cnt_; }
 
+    static bool ConvertDate(uint32_t year, uint32_t month, uint32_t day, uint32_t* val);
+
  private:
     bool Check(uint32_t index, ::openmldb::type::DataType type);
     inline void SetField(uint32_t index);

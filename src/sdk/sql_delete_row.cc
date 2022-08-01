@@ -15,6 +15,8 @@
  */
 
 #include "sdk/sql_delete_row.h"
+#include "codec/codec.h"
+#include "codec/fe_row_codec.h"
 
 namespace openmldb::sdk {
 
@@ -28,15 +30,47 @@ bool SQLDeleteRow::SetString(int pos, const std::string& val) {
         return false;
     }
     if (col_names_.size() == 1) {
-        val_ = val;
+        if (val.empty()) {
+            val_ = hybridse::codec::EMPTY_STRING;
+        } else {
+            val_ = val;
+        }
     } else {
         auto iter = hole_column_map_.find(pos);
         if (iter == hole_column_map_.end()) {
             return false;
         }
-        col_values_.emplace(iter->second, val);
+        if (val.empty()) {
+            col_values_.emplace(iter->second, hybridse::codec::EMPTY_STRING);
+        } else {
+            col_values_.emplace(iter->second, val);
+        }
     }
     return true;
+}
+
+bool SQLDeleteRow::SetBool(int pos, bool val) {
+    return SetString(pos, val ? "true" : "false");
+}
+
+bool SQLDeleteRow::SetInt(int pos, int64_t val) {
+    return SetString(pos, std::to_string(val));
+}
+
+bool SQLDeleteRow::SetTimestamp(int pos, int64_t val) {
+    return SetString(pos, std::to_string(val));
+}
+
+bool SQLDeleteRow::SetDate(int pos, int32_t val) {
+    return SetString(pos, std::to_string(val));
+}
+
+bool SQLDeleteRow::SetDate(int pos, uint32_t year, uint32_t month, uint32_t day) {
+    uint32_t date = 0;
+    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+        return false;
+    }
+    return SetString(pos, std::to_string(date));
 }
 
 bool SQLDeleteRow::Build() {

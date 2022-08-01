@@ -431,13 +431,11 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::TransformDataType(const 
                 int32_t month;
                 int32_t day;
                 if (node.GetAsDate(&year, &month, &day)) {
-                    if (year < 1900 || year > 9999) break;
-                    if (month < 1 || month > 12) break;
-                    if (day < 1 || day > 31) break;
-                    int32_t date = (year - 1900) << 16;
-                    date = date | ((month - 1) << 8);
-                    date = date | day;
-                    return std::make_shared<hybridse::node::ConstNode>(date);
+                    uint32_t date = 0;
+                    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                        break;
+                    }
+                    return std::make_shared<hybridse::node::ConstNode>(static_cast<int32_t>(date));
                 }
                 break;
             } else if (node_type == hybridse::node::kDate) {

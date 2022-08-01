@@ -3039,12 +3039,19 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
             if (!pk.empty()) {
                 pk.append("|");
             }
-            pk.append(iter->second);
+            if (iter->second.empty()) {
+                pk.append(hybridse::codec::EMPTY_STRING);
+            } else {
+                pk.append(iter->second);
+            }
         }
         if (found) {
             index_name = column_key.index_name();
             break;
         }
+    }
+    if (index_name.empty()) {
+        return {::hybridse::common::StatusCode::kCmdError, "no index col in delete sql"};
     }
     uint32_t pid = ::openmldb::base::hash64(pk) % table_info->table_partition_size();
     auto tablet = cluster_sdk_->GetTablet(db, table_name, pk);
