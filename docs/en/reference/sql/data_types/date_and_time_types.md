@@ -7,7 +7,7 @@ Each time type has a valid range of values ​​and a NULL value. The NULL valu
 | Type      | Size (bytes) |   Scope                                                         | Format            | Use                     |
 | :-------- | :----------- | :----------------------------------------------------------- | :-------------- | :----------------------- |
 | DATE      | 4            | 1900-01-01 ~                                                 | YYYY-MM-DD      | Date Value                   |
-| TIMESTAMP | 8            | From ‘1970-01-01 00:00:01.000000’ UTC to ‘2038-01-19 03:14:07.999999’(2038-01-19 11:14:07.999999 GMT) | online: int64, offline: int64 or 'yyyy-MM-dd'T'HH:mm:ss[.SSS][XXX]' | Mixed Date and Time Value, Timestamp |
+| TIMESTAMP | 8            | ~ INT64_MAX | online: int64, offline `LOAD DATA`: int64 or 'yyyy-MM-dd'T'HH:mm:ss[.SSS][XXX]' | Mixed Date and Time Value, Timestamp |
 
 ## Time Zone Handling
 
