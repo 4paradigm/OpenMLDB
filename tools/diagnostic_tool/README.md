@@ -6,9 +6,11 @@ read distribution yaml by dist_conf.py
 
 collector.py collects config, log, ...
 
+TODO: `<cluster-name>-conf` is better than custom dest name?
+
 config:
 ```
-<cluster-name>-conf/
+<dest>/
   <ip:port>-ns/
     nameserver.flags
   <ip:port>-tablet1/
@@ -21,7 +23,7 @@ config:
 
 log:
 ```
-<cluster-name>-log/
+<dest>/
   <ip:port>-ns/
     log.INFO.1
     log.INFO.2
@@ -33,5 +35,8 @@ log:
 versions:
 exec ...
 
+TODO: taskmanager version(not only the leader)
+ 
+how to get one taskmanager version in local?
 
-log_analysis.py read logs from local `<cluster-name>-log`
+log_analysis.py read logs from local path `<dest>`.

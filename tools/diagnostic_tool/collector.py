@@ -50,7 +50,7 @@ class Collector:
 
     def pull_config_files(self, dest) -> bool:
         def pull_one(server_info: ServerInfo) -> bool:
-            config_paths = server_info.make_paths_of_logs(dest)
+            config_paths = server_info.make_paths_of_conf(dest)
             return self.pull_file(server_info.host, config_paths)
 
         return self.dist_conf.server_info_map.for_each(pull_one)
@@ -134,7 +134,7 @@ class Collector:
         :return:
         """
         self.ssh_client.connect(hostname=server_info.host)
-        remote_config_file = server_info.make_paths_of_logs('')[0]
+        remote_config_file = server_info.make_paths_of_conf('')[0]
         remote_log_dir = self.get_log_dir_from_conf(remote_config_file, server_info)
         log.info("remote log dir is " + remote_log_dir)
         sftp = self.ssh_client.open_sftp()
