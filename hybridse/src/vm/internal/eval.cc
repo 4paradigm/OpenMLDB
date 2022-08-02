@@ -30,48 +30,36 @@ absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const code
         return absl::InvalidArgumentError("can't evaluate expr other than binary expr");
     }
 
+    auto tp = ExtractCompareType(parser, bin_expr);
+    if (!tp.ok()) {
+        return tp.status();
+    }
+
     const auto* left = bin_expr->GetChild(0);
     const auto* right = bin_expr->GetChild(1);
 
-    node::NodeManager nm;
-    auto* left_type = ExtractType(&nm, parser, row, left);
-    auto* right_type = ExtractType(&nm, parser, row, right);
-    if (left_type == nullptr || right_type == nullptr) {
-        return absl::InvalidArgumentError("operand type is null");
-    }
-
-    const node::TypeNode* compare_type = nullptr;
-    if (left_type->base() == right_type->base()) {
-        compare_type = left_type;
-    } else {
-        auto s = node::ExprNode::InferNumberCastTypes(&nm, left_type, right_type, &compare_type);
-        if (!s.isOK()) {
-            return absl::InvalidArgumentError(s.GetMsg());
-        }
-    }
-
-    switch (compare_type->base()) {
-        case node::DataType::kBool: {
+    switch (tp.value()) {
+        case type::kBool: {
             return EvalBinaryExpr<bool>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kInt16: {
+        case type::kInt16: {
             return EvalBinaryExpr<int16_t>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kInt32:
-        case node::DataType::kDate: {
+        case type::kInt32:
+        case type::kDate: {
             return EvalBinaryExpr<int32_t>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kTimestamp:
-        case node::DataType::kInt64: {
+        case type::kTimestamp:
+        case type::kInt64: {
             return EvalBinaryExpr<int64_t>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kFloat: {
+        case type::kFloat: {
             return EvalBinaryExpr<float>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kDouble: {
+        case type::kDouble: {
             return EvalBinaryExpr<double>(parser, row, bin_expr->GetOp(), left, right);
         }
-        case node::DataType::kVarchar: {
+        case type::kVarchar: {
             return EvalBinaryExpr<std::string>(parser, row, bin_expr->GetOp(), left, right);
         }
         default:
@@ -237,24 +225,19 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
     return absl::InvalidArgumentError(absl::StrCat("unsupport binary op: ", cond->GetExprString()));
 }
 
-node::TypeNode* ExtractType(node::NodeManager* nm, const RowParser* parser, const codec::Row& row,
-                            const node::ExprNode* node) {
-    if (node->GetExprType() == node::ExprType::kExprPrimary) {
-        const auto* const_node = dynamic_cast<const node::ConstNode*>(node);
-        return nm->MakeTypeNode(const_node->GetDataType());
+absl::StatusOr<type::Type> ExtractCompareType(const RowParser* parser, const node::BinaryExpr* node) {
+    if (node->GetChild(0)->GetExprType() == node::kExprColumnRef &&
+        node->GetChild(1)->GetExprType() == node::kExprPrimary) {
+        return parser->GetType(*dynamic_cast<const node::ColumnRefNode*>(node->GetChild(0)));
     }
-    if (node->GetExprType() == node::ExprType::kExprColumnRef) {
-        const auto* column_ref = dynamic_cast<const node::ColumnRefNode*>(node);
-        auto* type = nm->MakeTypeNode(node::DataType::kNull);
-        if (!codegen::SchemaType2DataType(parser->GetType(*column_ref), type)) {
-            LOG(ERROR) << "failed to convert data type";
-            return nullptr;
-        }
-        return type;
+    if (node->GetChild(1)->GetExprType() == node::kExprColumnRef &&
+        node->GetChild(0)->GetExprType() == node::kExprPrimary) {
+        return parser->GetType(*dynamic_cast<const node::ColumnRefNode*>(node->GetChild(1)));
     }
 
-    return nullptr;
+    return absl::UnimplementedError(absl::StrCat("Evaluating type for binary expr '", node->GetExprString()));
 }
+
 
 }  // namespace internal
 }  // namespace vm

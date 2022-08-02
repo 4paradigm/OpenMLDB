@@ -92,9 +92,12 @@ absl::StatusOr<std::optional<T>> ExtractValue(const RowParser* parser, const cod
                 return v;
             }
         }
+
+        return absl::UnimplementedError("not able to get value from a type different from schema");
     }
 
-    return absl::UnimplementedError(absl::StrCat("invalid node: ", node->GetExprString()));
+    return absl::UnimplementedError(
+        absl::StrCat("invalid node: ", node::ExprTypeName(node->GetExprType()), " -> ", node->GetExprString()));
 }
 
 template <typename T>
@@ -143,6 +146,7 @@ absl::StatusOr<std::optional<bool>> EvalBinaryExpr(const RowParser* parser, cons
 //
 // implementation is limited
 // * only assume `cond` as `BinaryExprNode`, and supports six basic compassion operators
+// * no type infer, the type of ColumnRefNode is used
 //
 // returns compassion result
 // * true/false/NULL
@@ -155,17 +159,15 @@ absl::StatusOr<std::optional<bool>> EvalCond(const RowParser* parser, const code
 // The expr is also only supported as Binary Expr as 'col < constant', but col name to the
 // pre-agg table is already defined as 'filter_key', instead taken from ColumnRefNode kid of binary expr node
 //
-// * type infer is not smart as `EvalCond` because it just use type of const node
+// * type of const node is used for compassion
 absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, const codec::Row& row,
                                                        const node::ExprNode* cond, absl::string_view filter_col_name);
 
-// extract type of the expr node
+// extract compare type for the input binary expr
 //
-// why not use ExprNode::GetOutputType ?
-// usually it will be null because the infered type node is saved in other place
-// (FnComponent) that can't access from input expr node
-node::TypeNode* ExtractType(node::NodeManager* nm, const RowParser* parser, const codec::Row& row,
-                            const node::ExprNode* node);
+// already assume the input binary expr as style of 'ColumnRefNode op ConstNode'
+// and the type of ColumnRefNode is returned
+absl::StatusOr<type::Type> ExtractCompareType(const RowParser* parser, const node::BinaryExpr* bin_expr);
 
 }  // namespace internal
 }  // namespace vm
