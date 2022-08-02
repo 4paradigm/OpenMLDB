@@ -1068,6 +1068,8 @@ class ConstNode : public ExprNode {
                 return std::to_string(val_.vdouble);
             case kVarchar:
                 return std::string(val_.vstr);
+            case kBool:
+                return val_.vint == 1 ? "true" : "false";
             default: {
                 return "";
             }

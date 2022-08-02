@@ -358,6 +358,14 @@ bool SchemaAdapter::ConvertColumn(const hybridse::type::ColumnDef& sql_column, o
     return true;
 }
 
+std::map<std::string, openmldb::type::DataType> SchemaAdapter::GetColMap(const nameserver::TableInfo& table_info) {
+    std::map<std::string, openmldb::type::DataType> col_map;
+    for (const auto& col : table_info.column_desc()) {
+        col_map.emplace(col.name(), col.data_type());
+    }
+    return col_map;
+}
+
 base::Status SchemaAdapter::CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info) {
     if (table_info.column_desc_size() == 0) {
         return {base::ReturnCode::kError, "no column"};
