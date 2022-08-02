@@ -133,13 +133,26 @@ object RowProjectPlan {
           }
 
           // Create native method input from Spark InternalRow
-          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+          //val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+
+          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+          val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
 
           // Call native method to compute
-          val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
+          //val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
 
+          val outputHybridseRow = CoreAPI.UnsafeRowProjectDirect(fn, hybridseRowBytes, byteBufferSize, false)
           // Call methods to generate Spark InternalRow
           val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+
+
+          val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
+          cleanerMethod.setAccessible(true)
+          val returnValue = cleanerMethod.invoke(hybridseRowBytes)
+          val cleanMethod = returnValue.getClass().getMethod("clean")
+          cleanMethod.setAccessible(true)
+          cleanMethod.invoke(returnValue)
+
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (tsColIdx <- outputTimestampColIndexes) {
