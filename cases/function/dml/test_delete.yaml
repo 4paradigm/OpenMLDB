@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["两个索引 delete 其中一个"]
 version: 0.5.0
 cases:
   -
@@ -99,18 +99,19 @@ cases:
         rows:
           - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
           - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-          - [3,"aa",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
-          - [4,"aa",2,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
+          - [3,"aa",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [4,"aa",1,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
     sqls:
       - delete from {0} where c2=2;
-      - select * from {0};
+    sql: SELECT id, c2, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
-      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      columns: ["id int","c2 smallint","w1_c4_count bigint"]
       order: id
       rows:
-        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-        - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-        - [3,"aa",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+        - [1,1,1]
+        - [2,1,2]
+        - [3,2,1]
+        - [4,1,3]
   -
     id: 5
     desc: delete 不是索引列
@@ -127,7 +128,7 @@ cases:
       - delete from {0} where c2=1;
     expect:
       success: false
-      msg: failed
+      msg: fail
   -
     id: 6
     desc: delete key不存在
@@ -161,7 +162,7 @@ cases:
           - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
           - [3,null,1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
     sqls:
-      - delete from {0} where c1 is null;
+      - delete from {0} where c1=null;
       - select * from {0};
     expect:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
