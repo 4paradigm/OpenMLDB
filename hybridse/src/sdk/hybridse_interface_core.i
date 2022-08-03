@@ -49,13 +49,17 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %typemap(jtype) hybridse::vm::ByteArrayPtr "byte[]"
 %typemap(jstype) hybridse::vm::ByteArrayPtr "byte[]"
 %typemap(in) hybridse::vm::ByteArrayPtr {
-    $1 = (hybridse::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
+  $1 = (hybridse::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
 }
+
 %typemap(argout) hybridse::vm::ByteArrayPtr {
-    JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, JNI_COMMIT);
+  JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, 0);
 }
+
 %typemap(javain) hybridse::vm::ByteArrayPtr "$javainput"
-%typemap(javaout) hybridse::vm::ByteArrayPtr "{ return $jnicall; }"
+
+/* Prevent default freearg typemap from being used */
+%typemap(freearg) hybridse::vm::ByteArrayPtr ""
 
 
 // tobe1
