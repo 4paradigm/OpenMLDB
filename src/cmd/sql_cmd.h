@@ -126,7 +126,8 @@ void HandleSQL(const std::string& sql) {
     } else {
         std::cout << "Error: " << status.msg << std::endl;
         if (sr->IsEnableTrace()) {
-            std::cout << status.trace << std::endl;
+            // trace has '\n' already
+            std::cout << status.trace;
         }
     }
 }
