@@ -18,7 +18,8 @@
 // cluster config
 DEFINE_string(endpoint, "", "ip:port, config the ip and port that openmldb serves for");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir");
-DEFINE_int32(zk_session_timeout, 2000, "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
+DEFINE_int32(zk_session_timeout, 2000,
+             "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline. unit is milliseconds");
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline. unit is milliseconds");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -41,7 +42,8 @@ DEFINE_uint32(name_server_task_concurrency_for_replica_cluster, 2,
               "config the concurrency of name_server_task for replica cluster");
 DEFINE_uint32(name_server_task_max_concurrency, 8, "config the max concurrency of name_server_task");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait. unit is milliseconds");
-DEFINE_uint32(name_server_op_execute_timeout, 2 * 60 * 60 * 1000, "config the timeout of nameserver op. unit is milliseconds");
+DEFINE_uint32(name_server_op_execute_timeout, 2 * 60 * 60 * 1000,
+              "config the timeout of nameserver op. unit is milliseconds");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
 DEFINE_uint32(partition_num, 8, "config the default partition_num");
@@ -74,7 +76,8 @@ DEFINE_bool(binlog_notify_on_put, false, "config the sync log to follower strate
 DEFINE_bool(binlog_enable_crc, false, "enable crc");
 DEFINE_int32(binlog_coffee_time, 1000, "config the coffee time. unit is milliseconds");
 DEFINE_int32(binlog_sync_wait_time, 100, "config the sync log wait time. unit is milliseconds");
-DEFINE_int32(binlog_sync_to_disk_interval, 20000, "config the interval of sync binlog to disk time. unit is milliseconds");
+DEFINE_int32(binlog_sync_to_disk_interval, 20000,
+             "config the interval of sync binlog to disk time. unit is milliseconds");
 DEFINE_int32(binlog_delete_interval, 60000, "config the interval of delete binlog. unit is milliseconds");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset. unit is milliseconds");
 DEFINE_int32(binlog_name_length, 8, "binlog name length");
@@ -92,7 +95,8 @@ DEFINE_int32(put_concurrency_limit, 0, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 0, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 20000, "request timeout(except the requests sent to taskmanager). unit is milliseconds");
+DEFINE_int32(request_timeout_ms, 20000,
+             "request timeout(except the requests sent to taskmanager). unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
@@ -110,7 +114,8 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
-DEFINE_int32(make_snapshot_check_interval, 1000 * 60 * 10, "config the interval to check making snapshot time. unit is milliseconds");
+DEFINE_int32(make_snapshot_check_interval, 1000 * 60 * 10,
+             "config the interval to check making snapshot time. unit is milliseconds");
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 DEFINE_uint32(make_snapshot_offline_interval, 60 * 60 * 24,
@@ -119,7 +124,8 @@ DEFINE_uint32(make_snapshot_offline_interval, 60 * 60 * 24,
 DEFINE_string(snapshot_compression, "off", "Type of snapshot compression, can be off, snappy, zlib");
 DEFINE_int32(snapshot_pool_size, 1, "the size of tablet thread pool for making snapshot");
 
-DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000, "config the max wait time of load index. unit is milliseconds");
+DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
+              "config the max wait time of load index. unit is milliseconds");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_bin_ssd_root_path, "", "specify the root path of recycle bin in ssd");
@@ -151,7 +157,8 @@ DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
 DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 
 // multiple data center
-DEFINE_uint32(get_replica_status_interval, 10000, "config the interval to sync replica cluster status time. unit is milliseconds");
+DEFINE_uint32(get_replica_status_interval, 10000,
+              "config the interval to sync replica cluster status time. unit is milliseconds");
 
 DEFINE_uint32(sync_deploy_stats_timeout, 10000,
               "time interval in milliseconds to sync deploy response time stats into table");
