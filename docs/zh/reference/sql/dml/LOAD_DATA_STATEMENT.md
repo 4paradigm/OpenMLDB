@@ -59,14 +59,14 @@ LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 
 ## Examples:
 
-从`data.csv`文件读取数据到表`t1`在线存储中。并使用`','`作为列分隔符
+从`data.csv`文件读取数据到表`t1`在线存储中。并使用`,`作为列分隔符
 
 ```sql
 set @@execute_mode='online';
 LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',' );
 ```
 
-从`data.csv`文件读取数据到表`t1`中。并使用`','`作为列分隔符， 字符串"NA"将被替换为NULL。
+从`data.csv`文件读取数据到表`t1`中。并使用`,`作为列分隔符， 字符串"NA"将被替换为NULL。
 
 ```sql
 LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',', null_value='NA');
