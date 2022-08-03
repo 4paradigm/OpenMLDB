@@ -26,30 +26,6 @@ object VersionUtil {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def getTaskManagerVersion(): String = {
-
-    // Read local git properties file
-    val stream = this.getClass.getClassLoader.getResourceAsStream("git.properties")
-    if (stream == null) {
-      throw new Exception("Fail to get version from file of git.properties")
-    }
-    val gitVersionStrList = IOUtils.readLines(stream, "UTF-8")
-
-    // Only get build version and git commit abbrev
-    var version = ""
-    var gitCommit = ""
-    for (line <- gitVersionStrList) {
-      if (line.startsWith("git.build.version=")) {
-        version = line.split("=")(1)
-      }
-      if (line.startsWith("git.commit.id.abbrev=")) {
-        gitCommit = line.split("=")(1)
-      }
-    }
-
-    s"$version-$gitCommit"
-  }
-
   def getBatchVersion(): String = {
     val sparkJarsPath = Paths.get(TaskManagerConfig.SPARK_HOME, "jars").toString
     val batchJarPath = BatchJobUtil.findOpenmldbBatchJar(sparkJarsPath)
