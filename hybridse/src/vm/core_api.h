@@ -109,6 +109,11 @@ class ColumnSourceInfo {
 
 class CoreAPI {
  public:
+
+    static hybridse::vm::ByteArrayPtr GetRowBufByteArray(hybridse::codec::Row& row) {
+        return row.buf();
+    }
+
     static hybridse::codec::Row NewRow(size_t bytes);
     static RawPtrHandle GetRowBuf(hybridse::codec::Row*, size_t idx);
     static RawPtrHandle AppendRow(hybridse::codec::Row*, size_t bytes);
@@ -148,6 +153,10 @@ class CoreAPI {
 
     static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
                                         hybridse::vm::ByteArrayPtr outputBytes,
+                                        const int length);
+
+    static void CopyRowToDirectByteBuffer(const hybridse::codec::Row& inputRow,
+                                        hybridse::vm::NIOBUFFER outputBytes,
                                         const int length);
 
     static hybridse::codec::Row WindowProject(

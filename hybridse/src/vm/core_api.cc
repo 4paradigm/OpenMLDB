@@ -271,6 +271,12 @@ void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
     memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
 }
 
+void CoreAPI::CopyRowToDirectByteBuffer(const hybridse::codec::Row& inputRow,
+                                      hybridse::vm::NIOBUFFER outputBytes,
+                                      const int length) {
+    memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
+}
+
 hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                             const uint64_t row_key,
                                             const Row& row,

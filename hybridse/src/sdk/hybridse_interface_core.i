@@ -57,6 +57,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 }
 
 %typemap(javain) hybridse::vm::ByteArrayPtr "$javainput"
+%typemap(javaout) hybridse::vm::ByteArrayPtr "{ return $jnicall; }"
 
 /* Prevent default freearg typemap from being used */
 %typemap(freearg) hybridse::vm::ByteArrayPtr ""
