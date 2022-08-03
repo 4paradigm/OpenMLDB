@@ -30,7 +30,7 @@ cases:
           - [4,"aa",4,4,33,1.4,2.4,1590738990003,"2020-05-04",true]
           - [5,"aa",5,5,34,1.5,2.5,1590738990004,"2020-05-05",false]
     sql: |
-      SELECT id, c1, count_where(c8,c3<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT id, c1, count_where(c8,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
       columns: ["id int","c1 string","w1_count bigint"]
