@@ -146,7 +146,7 @@ class CoreAPI {
             hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
             const int inputRowSizeInBytes, const bool need_free = false);
 
-    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
                                         hybridse::vm::ByteArrayPtr outputBytes,
                                         const int length);
 
