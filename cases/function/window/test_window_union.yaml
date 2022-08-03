@@ -1151,3 +1151,753 @@ cases:
       columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
       rows:
         - [1, 1, 2, NULL, NULL, NULL]
+
+  ###################################################
+  # tests for window attribute 'EXCLUDE CURRENT_ROW'
+  # - id: 20 - 23: exclude current_row window + lag window
+  # - id: 24 - 30: exclude current_row window + (maxsize, exclude current_time, instance_not_in_window)
+  ###################################################
+  - id: 20
+    desc: |
+      rows_range window union with exclude current_row. batch not support see 1807
+    mode: batch-unsupport
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+              +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+         lag(val, 1) over w as l1
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding and 0s preceding EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+        1, 2, 233, 200, 200
+        2, 3, 233, 21,  21
+  - id: 21
+    desc: |
+      rows_range window union with exclude current_row and exclude current_time
+    mode: batch-unsupport,disk-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 40
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+              +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_TIME, partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+         lag(val, 1) over w as l1
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding and 0s preceding
+         EXCLUDE CURRENT_ROW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+        1, 1, 233, 233, 233
+        2, 1, 233, 233, 233
+        3, 4, 233, 5,   5
+  - id: 22
+    desc: |
+      rows_range window union with exclude current_row and instance_not_in_window
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=)
+              +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(table=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=)
+              +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+         lag(val, 1) over w as l1
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding and 0s preceding
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+        1, 2, 233, 200, 200
+        2, 2, 233, 200,  200
+  - id: 23
+    desc: |
+      rows_range window union with exclude current_row, instance_not_in_window and exclude_current_time
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 40
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=)
+              +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(table=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_TIME, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=)
+              +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=idx)
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+         lag(val, 1) over w as l1
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding and 0s preceding
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+        1, 1, 233, 233, 233
+        2, 1, 233, 233, 233
+        3, 2, 233, 200, 200
+        4, 3, 233, 17,  17
+
+  # rows_range union  window with exclude current_row, single window
+  - id: 24
+    desc: |
+      rows_range union window with exclude_current_row
+    mode: disk-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, -1
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 PRECEDING), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding and 0s preceding
+         EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 2, 233, 200
+        2, 3, 233, 21
+        3, 5, 233, 5
+        4, 6, 233, 0
+  - id: 25
+    desc: |
+      rows_range union window with exclude_current_row and exclude_current_time
+    mode: disk-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=(g))
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         EXCLUDE CURRENT_ROW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 1, 233, 233
+        2, 1, 233, 233
+        3, 4, 233, 5
+        4, 6, 233, 0
+  - id: 26
+    desc: |
+      rows_range union window with exclude_current_row and instance_not_in_window
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    # instance_not_in_window not optimize main table
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(table=t1)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=)
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 2, 233, 200
+        2, 2, 233, 200
+        3, 3, 233, 17
+        4, 3, 233, 17
+  - id: 27
+    desc: |
+      rows_range union window with exclude_current_row, exclude current_time and instance_not_in_window
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(table=t1)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=)
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 1, 233, 233
+        2, 1, 233, 233
+        3, 2, 233, 200
+        4, 3, 233, 17
+  - id: 28
+    desc: |
+      rows_range union window with exclude_current_row, exclude current_time, instance_not_in_window and maxsize
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(table=t1)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=)
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         MAXSIZE 2
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 1, 233, 233
+        2, 1, 233, 233
+        3, 2, 233, 200
+        4, 2, 200, 17
+  - id: 29
+    desc: |
+      rows_range union window with exclude_current_row, instance_not_in_window and maxsize
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(table=t1)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=)
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(table=t1)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         MAXSIZE 2
+         EXCLUDE CURRENT_ROW INSTANCE_NOT_IN_WINDOW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 2, 233, 200
+        2, 2, 233, 200
+        3, 2, 200, 17
+        4, 2, 200, 17
+  - id: 30
+    desc: |
+      rows_range union window with exclude_current_row, exclude_current_time and maxsize
+    mode: disk-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100, 111, 21
+          2, 100, 111, 5
+          3, 101, 111, 0
+          4, 102, 111, 0
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99, 111, 233
+          1, 100, 111, 200
+          1, 101, 111, 17
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2))
+            RENAME(name=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(EXCLUDE_CURRENT_TIME, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=(g))
+          +-UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 CURRENT, maxsize=2), index_keys=(g))
+              RENAME(name=t1)
+                DATA_PROVIDER(type=Partition, table=t2, index=idx)
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    sql: |
+      select
+         id, count(val) over w as cnt,
+         max(val) over w as mv,
+         min(val) over w as mi,
+      from t1 window w as(
+         union t2
+         partition by `g` order by `ts`
+         rows_range between 3s preceding AND CURRENT ROW
+         MAXSIZE 2
+         EXCLUDE CURRENT_ROW EXCLUDE CURRENT_TIME);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+        1, 1, 233, 233
+        2, 1, 233, 233
+        3, 2, 21,  5
+        4, 2, 17,  0
