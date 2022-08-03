@@ -615,11 +615,12 @@ void APIServerImpl::RegisterGetTable() {
 }
 
 void APIServerImpl::RegisterRefresh() {
-    provider_.post("/refresh", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto resp = GeneralResp();
-                      auto ok = sql_router_->RefreshCatalog();
-                      writer << (ok ? resp : resp.Set("refresh failed"));
-});
+    provider_.post("/refresh",
+                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                       auto resp = GeneralResp();
+                       auto ok = sql_router_->RefreshCatalog();
+                       writer << (ok ? resp : resp.Set("refresh failed"));
+                   });
 }
 
 std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
