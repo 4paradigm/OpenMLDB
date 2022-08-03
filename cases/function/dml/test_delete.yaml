@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["两个索引 delete 其中一个"]
+debugs: []
 version: 0.5.0
 cases:
   -
@@ -92,6 +92,7 @@ cases:
   -
     id: 4
     desc: 两个索引 delete 其中一个
+    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -110,7 +111,6 @@ cases:
       rows:
         - [1,1,1]
         - [2,1,2]
-        - [3,2,1]
         - [4,1,3]
   -
     id: 5
@@ -320,6 +320,7 @@ cases:
   -
     id: 17
     desc: 两次delete 不同的index
+    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -327,17 +328,21 @@ cases:
         rows:
           - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
           - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-          - [3,"aa",1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [3,"aa",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
           - [4,"cc",2,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
     sqls:
       - delete from {0} where c1='aa';
-      - delete from {0} where c2=1;
-      - select * from {0};
+      - delete from {0} where c2=2;
+    sql: |
+      SELECT id, c2, count(c4) OVER w1 as w1_c4_count, count(c5) OVER w2 as w2_c5_count FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
-      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      columns: ["id int","c2 smallint","w1_c4_count bigint","w2_c5_count bigint"]
       order: id
       rows:
-        - [4,"cc",2,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
+        - [1,1,1,1]
+        - [2,1,1,2]
   -
     id: 18
     desc: delete过期数据
@@ -450,6 +455,7 @@ cases:
   -
     id: 24
     desc: 两个索引，一个索引数据过期，删除另一个索引
+    mode: cluster-unsupport
     inputs:
       -
         columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -462,13 +468,13 @@ cases:
           - [5,"cc",2,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
     sqls:
       - delete from {0} where c2=1;
-      - select * from {0};
+    sql: SELECT id, c2, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
-      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      columns: ["id int","c2 smallint","w1_c4_count bigint"]
       order: id
       rows:
-        - [4,"cc",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
-        - [5,"cc",2,2,3,1.1,2.1,1590738991000,"2020-05-01",true]
+        - [4,2,1]
+        - [5,2,2]
   -
     id: 25
     desc: 数据过期,delete其他pk
@@ -550,4 +556,42 @@ cases:
       - delete from {0} where c1='aa';
     expect:
       success: true
+  -
+    id: 30
+    desc: 组合key有一个是null
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1|c2:c7"]
+        rows:
+          - [1,null,2,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [3,null,1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+    sqls:
+      - delete from {0} where c1=null and c2=2;
+      - select * from {0};
+    expect:
+      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [3,null,1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+  -
+    id: 31
+    desc: 组合key有一个是空串
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1|c2:c7"]
+        rows:
+          - [1,"",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [3,"",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
+    sqls:
+      - delete from {0} where c1='' and c2=2;
+      - select * from {0};
+    expect:
+      columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
 

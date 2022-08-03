@@ -49,11 +49,5 @@ public class DMLTest extends OpenMLDBTest {
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_delete.yaml"})
-    @Story("delete")
-    public void testDeleteByRequest(SQLCase testCase){
-        ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
-    }
 
 }

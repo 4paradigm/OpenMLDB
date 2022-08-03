@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
@@ -68,6 +69,10 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
         }
         if (null != sqlCase.getMode() && !OpenMLDBGlobalVar.tableStorageMode.equals("memory") && sqlCase.getMode().contains("disk-unsupport")) {
             log.info("skip case in disk mode: {}", sqlCase.getDesc());
+            return false;
+        }
+        if (OpenMLDBConfig.isCluster() && null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-unsupport")) {
+            log.info("skip case in cluster mode: {}", sqlCase.getDesc());
             return false;
         }
         return true;
