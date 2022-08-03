@@ -1678,18 +1678,22 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
     // count_where with cond
     // - type of column ref node is taken for compassion
     // - col = null or col != null always return null
+    //
+    // only pre-agg tables for count_where(.., col1 ..) or count_where(.., col2 ..) has agg rows
+    // for other count_where, there is no agg row because each filter column only has one value, less then 2
     std::string deploy_sql =
         R"(DEPLOY test_aggr options(long_windows='w1:2')
     SELECT
         col1, col2,
-        count_where(i64_col, i64_col<8) over w1 as w1_count_where_i64_col_filter,
-        count_where(i64_col, i16_col > 8) over w1 as w1_count_where_i64_col_col1,
-        count_where(i16_col, i32_col = 10) over w1 as w1_count_where_i16_col,
-        count_where(i32_col, f_col != 10) over w1 as w1_count_where_i32_col,
-        count_where(f_col, d_col <= 10) over w1 as w1_count_where_f_col,
-        count_where(d_col, d_col >= 10) over w1 as w1_count_where_d_col,
-        count_where(s_col, null = col1) over w1 as w1_count_where_s_col,
-        count_where(date_col, null != s_col) over w1 as w1_count_where_date_col,
+        count_where(i64_col, i64_col<8) over w1 as cw_w1_2,
+        count_where(i64_col, i16_col > 8) over w1 as cw_w1_3,
+        count_where(i16_col, i32_col = 10) over w1 as cw_w1_4,
+        count_where(i32_col, f_col != 10) over w1 as cw_w1_5,
+        count_where(f_col, d_col <= 10) over w1 as cw_w1_6,
+        count_where(d_col, d_col >= 10) over w1 as cw_w1_7,
+        count_where(s_col, null = col1) over w1 as cw_w1_8,
+        count_where(s_col, 'str0' != col1) over w1 as cw_w1_9,
+        count_where(date_col, null != s_col) over w1 as cw_w1_10,
         count_where(col3, 10 < i64_col) over w2 as w2_count_where_col3 from )" +
         base_table +
         R"(
@@ -1714,6 +1718,14 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
     rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
     ASSERT_EQ(0, rs->Size());
 
+    {
+        ::hybridse::sdk::Status status;
+        rs = sr->ExecuteSQL(pre_aggr_db,
+                            absl::StrCat("select * from pre_", base_db, "_test_aggr_w1_count_where_s_col_col1"),
+                            &status);
+        EXPECT_EQ(5, rs->Size());
+    }
+
     // 11, 11, 10, 9, 8, 7, 6
     for (int i = 0; i < 2; i++) {
         std::shared_ptr<sdk::SQLRequestRow> req;
@@ -1733,8 +1745,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
         EXPECT_EQ(5, res->GetInt64Unsafe(6));
         EXPECT_EQ(3, res->GetInt64Unsafe(7));
         EXPECT_EQ(0, res->GetInt64Unsafe(8));
-        EXPECT_EQ(0, res->GetInt64Unsafe(9));
-        EXPECT_EQ(2, res->GetInt64Unsafe(10));
+        EXPECT_EQ(7, res->GetInt64Unsafe(9));
+        EXPECT_EQ(0, res->GetInt64Unsafe(10));
+        EXPECT_EQ(2, res->GetInt64Unsafe(11));
     }
 
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));

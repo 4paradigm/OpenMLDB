@@ -2854,7 +2854,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             DLOG(INFO) << "[Update Base] Evaluate result of " << cond_->GetExprString() << ": "
                        << PrintEvalValue(matches);
             if (!matches.ok()) {
-                LOG(WARNING) << matches.status();
+                LOG(ERROR) << matches.status();
                 return;
             }
             if (false == matches->value_or(false)) {
@@ -2927,7 +2927,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             DLOG(INFO) << "[Update Agg] Evaluate result of " << cond_->GetExprString() << ": "
                        << PrintEvalValue(matches);
             if (!matches.ok()) {
-                LOG(WARNING) << matches.status();
+                LOG(ERROR) << matches.status();
                 return;
             }
             if (false == matches->value_or(false)) {

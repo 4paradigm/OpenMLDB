@@ -96,6 +96,9 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
             return absl::InvalidArgumentError("expect right node as const node for evaluation");
         }
         op_type = const_node->GetDataType();
+        if (const_node->IsNull()) {
+            return std::nullopt;
+        }
 
         switch (op_type) {
             case node::DataType::kBool: {
@@ -161,6 +164,10 @@ absl::StatusOr<std::optional<bool>> EvalCondWithAggRow(const RowParser* parser, 
             return absl::InvalidArgumentError("expect left node as const node for evaluation");
         }
         op_type = const_node->GetDataType();
+
+        if (const_node->IsNull()) {
+            return std::nullopt;
+        }
 
         switch (op_type) {
             case node::DataType::kBool: {
