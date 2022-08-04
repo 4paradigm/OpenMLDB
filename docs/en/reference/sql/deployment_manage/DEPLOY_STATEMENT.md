@@ -1,4 +1,4 @@
-# 创建 DEPLOYMENT
+# DEPLOY
 
 ## Syntax
 
@@ -12,66 +12,74 @@ DeployOptions（可选）
 DeploymentName
 						::= identifier
 ```
-`DeployOptions`的定义详见[DEPLOYMENT属性DeployOptions（可选）](#DEPLOYMENT属性DeployOptions（可选）).
+Please refer to [DEPLOYMENT Property DeployOptions (optional)](#DEPLOYMENT Property DeployOptions (optional)) for the definition of `DeployOptions`.
 
-`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署[Select查询语句](../dql/SELECT_STATEMENT.md)，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+The `DEPLOY` statement is used to deploy SQL to online. It supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md)，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
 
 ```SQL
 DEPLOY deployment_name SELECT clause
 ```
 
-### Example: 部署一个SQL到online serving
+### Example: Deploy SQL onto Online
 
-```sqlite
+```sql
 CREATE DATABASE db1;
 -- SUCCEED: Create database successfully
 
 USE db1;
 -- SUCCEED: Database changed
 
-CREATE TABLE t1(col0 STRING);
+CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 -- SUCCEED: Create successfully
 
-DEPLOY demo_deploy select col0 from t1;
+DEPLOY demo_deploy SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 -- SUCCEED: deploy successfully
 ```
 
-查看部署详情：
+We can use `SHOW DEPLOYMENT demo_deploy` command to see the detail of sepcific deployment：
 
 ```sql
-
-SHOW DEPLOYMENT demo_deploy;
- ----- ------------- 
-  DB    Deployment   
- ----- ------------- 
-  db1   demo_deploy  
- ----- ------------- 
- 1 row in set
- 
- ---------------------------------------------------------------------------------- 
-  SQL                                                                               
- ---------------------------------------------------------------------------------- 
-  CREATE PROCEDURE deme_deploy (col0 varchar) BEGIN SELECT
-  col0
-FROM
-  t1
-; END;  
- ---------------------------------------------------------------------------------- 
+ --------- -------------------
+  DB        Deployment
+ --------- -------------------
+  demo_db   demo_deploy
+ --------- -------------------
 1 row in set
-
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SQL
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  DEPLOY demo_data_service SELECT
+  c1,
+  c2,
+  sum(c3) OVER (w1) AS w1_c3_sum
+FROM
+  demo_table1
+WINDOW w1 AS (PARTITION BY demo_table1.c1
+  ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+;
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+1 row in set
 # Input Schema
- --- ------- ---------- ------------ 
-  #   Field   Type       IsConstant  
- --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
- --- ------- ---------- ------------ 
+ --- ------- ------------ ------------
+  #   Field   Type         IsConstant
+ --- ------- ------------ ------------
+  1   c1      kVarchar     NO
+  2   c2      kInt32       NO
+  3   c3      kInt64       NO
+  4   c4      kFloat       NO
+  5   c5      kDouble      NO
+  6   c6      kTimestamp   NO
+  7   c7      kDate        NO
+ --- ------- ------------ ------------
 
 # Output Schema
- --- ------- ---------- ------------ 
-  #   Field   Type       IsConstant  
- --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
- --- ------- ---------- ------------ 
+ --- ----------- ---------- ------------
+  #   Field       Type       IsConstant
+ --- ----------- ---------- ------------
+  1   c1          kVarchar   NO
+  2   c2          kInt32     NO
+  3   w1_c3_sum   kInt64     NO
+ --- ----------- ---------- ------------ 
 ```
 
 

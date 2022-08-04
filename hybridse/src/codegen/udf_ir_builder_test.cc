@@ -98,6 +98,30 @@ void CheckUdfFail(const std::string &name, T expect, Args... args) {
                         .build();
     ASSERT_FALSE(function.valid());
 }
+// hex(int) normal check
+TEST_F(UdfIRBuilderTest, HexIntUdfTest) {
+    CheckUdf<StringRef, int16_t>("hex", "11", static_cast<int16_t>(17));
+    CheckUdf<StringRef, int16_t>("hex", "0", static_cast<int16_t>(0));
+    CheckUdf<StringRef, int32_t>("hex", "76ADF1", static_cast<int32_t>(7777777));
+    CheckUdf<StringRef, int64_t>("hex", "8000000000000000", LLONG_MIN);
+    CheckUdf<StringRef, int64_t>("hex", "7FFFFFFFFFFFFFFF", LLONG_MAX);
+}
+// hex(double) normal check
+TEST_F(UdfIRBuilderTest, HexDoubleUdfTest) {
+    CheckUdf<StringRef, double>("hex", "11", 17.4);
+    CheckUdf<StringRef, double>("hex", "12", 17.5);
+    CheckUdf<StringRef, double>("hex", "FFFFFFFFFFFFFFEE", -17.5);
+    CheckUdf<StringRef, double>("hex", "FFFFFFFFFFFFFFEF", -17.4);
+}
+// hex(float) normal check
+TEST_F(UdfIRBuilderTest, HexFloatUdfTest) {
+    CheckUdf<StringRef, float>("hex", "11", 17.0);
+}
+// hex(string) normal check
+TEST_F(UdfIRBuilderTest, HexStringUdfTest) {
+    CheckUdf<StringRef, StringRef>("hex", "537061726B2053514C", StringRef("Spark SQL"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("hex", nullptr, nullptr);
+}
 
 TEST_F(UdfIRBuilderTest, dayofmonth_date_udf_test) {
     CheckUdf<int32_t, Date>("dayofmonth", 22, Date(2020, 05, 22));
