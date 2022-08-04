@@ -1254,8 +1254,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
     auto client = GetTabletClientForBatchQuery(db, sql, parameter, status);
     if (!status->IsOK() || !client) {
-        DLOG(INFO) << "no tablet available for sql " << sql;
-        status->msg = absl::StrCat("no tablet available for sql", status->msg);
+        DLOG(INFO) << "no tablet available for sql '" << sql << "': " << status->msg;
+        status->msg = absl::StrCat("no tablet available for sql: ", status->msg);
         status->code = -1;
         return {};
     }
@@ -2430,7 +2430,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
     hybridse::base::Status sql_status;
     hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
     if (sql_status.code != 0) {
-        *status = {::hybridse::common::StatusCode::kCmdError, sql_status.msg};
+        *status = {::hybridse::common::StatusCode::kCmdError, sql_status.msg, sql_status.GetTraces()};
         return {};
     }
     auto ns_ptr = cluster_sdk_->GetNsClient();
@@ -3170,11 +3170,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     hybridse::base::Status sql_status;
     if (!cluster_sdk_->GetEngine()->Explain(select_sql, db, hybridse::vm::kMockRequestMode, &explain_output,
                                             &sql_status)) {
-        if (IsEnableTrace()) {
-            return {::hybridse::common::StatusCode::kCmdError, sql_status.str()};
-        } else {
-            return {::hybridse::common::StatusCode::kCmdError, sql_status.msg};
-        }
+        return {::hybridse::common::StatusCode::kCmdError, sql_status.GetMsg(), sql_status.GetTraces()};
     }
     // pack ProcedureInfo
     ::openmldb::api::ProcedureInfo sp_info;
