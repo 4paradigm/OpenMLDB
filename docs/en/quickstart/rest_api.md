@@ -209,3 +209,19 @@ The response:
 }
 ```
 
+## Refresh
+
+The request URL: http://ip:port/refresh
+
+HTTP method: POST
+
+Empty request body.
+
+The response:
+
+```json
+{
+    "code":0,
+    "msg":"ok"
+}
+```
