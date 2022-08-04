@@ -188,7 +188,7 @@ WindowUnionClause
         :: = ( 'UNION' TableRefs)
 ```
 
-#### **1.1 Example: Window with union 一张副表**
+**1 Example: Window with union 一张副表**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -197,7 +197,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 2: window union one table](../dql/images/window_union_1_table.png)
 
-#### **1.2 Example: Window with union 多张副表**
+**2 Window with union 多张副表**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -206,7 +206,7 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
-#### **1.3 Example: Window with union INSTANCE_NOT_IN_WINDOW**
+**3 Window with union INSTANCE_NOT_IN_WINDOW**
 
 使用 `INSTANCE_NOT_IN_WINDOW` 修饰 window, 样本表除当前行外其他行不进入窗口计算。
 
@@ -217,7 +217,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 4: window union one table with instance_not_in_window](../dql/images/window_union_1_table_instance_not_in_window.png)
 
-#### **1.4 Example: Window with union 列筛选子查询**
+**4 Window with union 列筛选子查询**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -235,8 +235,8 @@ PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW
 WindowExcludeCurrentTime 
         ::= 'EXCLUDE' 'CURRENT_TIME'  
 ```
-
-#### **2.1 Example: ROWS 窗口 EXCLUDE CURRENT TIME**
+#### Example
+**1 ROWS 窗口 EXCLUDE CURRENT TIME**
 window ROWS, 前1000条到当前条, 除了current row以外窗口内不包含当前时刻的其他数据
 
 ```SQL
@@ -244,7 +244,7 @@ SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
 
-#### **2.2 Example: ROW RANGE 窗口 EXCLUDE CURRENT TIME**
+**2 ROW RANGE 窗口 EXCLUDE CURRENT TIME**
 window ROWS_RANGE, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
 
 ```SQL
@@ -269,10 +269,11 @@ WindowExcludeCurrentRow
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
 ```
+![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
 ### 4. Window Frame Max Size
 
-OpenMLDB在定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
+OpenMLDB定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 
 `MaxSize` 属性仅支持 `ROWS_RANGE` 类型窗口。
 
@@ -281,7 +282,7 @@ WindowFrameMaxSize
         :: = MAXSIZE NumLiteral
 ```
 
-![Figure 6: window config max size](../dql/images/window_max_size.png)
+![Figure 7: window config max size](../dql/images/window_max_size.png)
 
 #### **Example: ROW RANGE 窗口MAXSIZE**
 window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条

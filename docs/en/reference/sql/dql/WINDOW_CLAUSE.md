@@ -191,7 +191,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ## WindowSpec Elements Specifically Designed by OpenMLDB
 
 
-### **Window With Union**
+### 1. Window With Union
 
 
 ```sql
@@ -246,8 +246,8 @@ PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW
 ```
 
 
-### **Window Exclude Current Time**
-
+### 2. Window Exclude Current Time
+Only rows whose `timestamp` values are different to `CURRENT ROW` will be included in the window.
 
 ```
 WindowExcludeCurrentTime 
@@ -257,8 +257,6 @@ WindowExcludeCurrentTime
 
 #### Example
 **1. ROWS WINDOW with EXCLUDE CURRENT TIME**
-
-
 The following `WINDOW` clause defines a `ROWS` window containing preceding 1000 rows and current row. Any other rows in the window will not have the same time as the `CURRENT ROW`.
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -292,6 +290,7 @@ WindowExcludeCurrentRow
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
 ```
+![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
 ### 4. Window Frame Max Size
 
@@ -303,9 +302,9 @@ WindowFrameMaxSize
         :: = MAXSIZE NumLiteral
 ```
 
-![Figure 6: window config max size](../dql/images/window_max_size.png)
+![Figure 7: window config max size](../dql/images/window_max_size.png)
 
-####Example
+#### Example
 **1. ROWS RANGE WINDOW with MAXSIZE**
 
 The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. There are at most 3 rows in the window.
