@@ -19,18 +19,14 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ByteArrayUtil, HybridseUtil, SparkUtil,
-  UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.openmldb.common.codec.CodecUtil
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.types.{DateType, LongType, StructType, TimestampType}
 import org.slf4j.LoggerFactory
-
 import scala.collection.mutable
-
 
 object RowProjectPlan {
 
@@ -77,6 +73,7 @@ object RowProjectPlan {
     val inputSchema = inputDf.schema
 
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
+    val unsaferowoptCopyDirectByteBuffer = ctx.getConf.unsaferowoptCopyDirectByteBuffer
 
     val outputDf = if (ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
 
@@ -85,7 +82,6 @@ object RowProjectPlan {
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
         JitManager.initJitModule(tag, buffer, isUnsafeRowOpt)
-
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
 
@@ -132,27 +128,24 @@ object RowProjectPlan {
             }
           }
 
-          // Create native method input from Spark InternalRow
+          // Notice that we should use DirectByteBuffer instead of byte array
           //val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
+          //val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
 
-          val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+          // Create native method input from Spark InternalRow
+          val hybridseRowDirectByteBuffer = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
           val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
 
           // Call native method to compute
-          //val outputHybridseRow = CoreAPI.UnsafeRowProject(fn, hybridseRowBytes, hybridseRowBytes.length, false)
+          val outputHybridseRow = CoreAPI.UnsafeRowProjectDirect(fn, hybridseRowDirectByteBuffer, byteBufferSize,
+            false)
 
-          val outputHybridseRow = CoreAPI.UnsafeRowProjectDirect(fn, hybridseRowBytes, byteBufferSize, false)
           // Call methods to generate Spark InternalRow
-          val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
-
-
-          val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
-          cleanerMethod.setAccessible(true)
-          val returnValue = cleanerMethod.invoke(hybridseRowBytes)
-          val cleanMethod = returnValue.getClass().getMethod("clean")
-          cleanMethod.setAccessible(true)
-          cleanMethod.invoke(returnValue)
-
+          val outputInternalRow = if (unsaferowoptCopyDirectByteBuffer) {
+            UnsafeRowUtil.hybridseRowToInternalRowDirect(outputHybridseRow, outputSchema.size)
+          } else {
+            UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+          }
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (tsColIdx <- outputTimestampColIndexes) {
@@ -210,9 +203,9 @@ object RowProjectPlan {
           decoder.decode(outputNativeRow, outputArr)
 
           // Release swig jni objects
-          nativeInputRow.delete()
-          outputNativeRow.delete()
-          emptyParameter.delete()
+          //nativeInputRow.delete()
+          //outputNativeRow.delete()
+          //emptyParameter.delete()
 
           // Append the index column if needed
           if (projectConfig.keepIndexColumn) {

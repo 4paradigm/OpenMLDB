@@ -35,7 +35,6 @@ class HybridSeJitWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;
-// tobe1
 typedef unsigned char *NIOBUFFER;
 
 class WindowInterface {
@@ -109,11 +108,6 @@ class ColumnSourceInfo {
 
 class CoreAPI {
  public:
-
-    static hybridse::vm::ByteArrayPtr GetRowBufByteArray(hybridse::codec::Row& row) {
-        return row.buf();
-    }
-
     static hybridse::codec::Row NewRow(size_t bytes);
     static RawPtrHandle GetRowBuf(hybridse::codec::Row*, size_t idx);
     static RawPtrHandle AppendRow(hybridse::codec::Row*, size_t bytes);

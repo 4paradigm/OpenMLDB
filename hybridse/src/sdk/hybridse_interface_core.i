@@ -62,8 +62,6 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 /* Prevent default freearg typemap from being used */
 %typemap(freearg) hybridse::vm::ByteArrayPtr ""
 
-
-// tobe1
 %typemap(jni) hybridse::vm::NIOBUFFER "jobject"
 %typemap(jtype) hybridse::vm::NIOBUFFER "java.nio.ByteBuffer"
 %typemap(jstype) hybridse::vm::NIOBUFFER "java.nio.ByteBuffer"

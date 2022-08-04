@@ -128,8 +128,11 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.opt.unsaferow.window", doc = "Enable UnsafeRow optimization for window")
   var enableUnsafeRowOptForWindow = false
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
-  var enableUnsafeRowOptForGroupby = false
+  //@ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
+  //var enableUnsafeRowOptForGroupby = false
+
+  @ConfigOption(name = "openmldb.unsaferowopt.copydirectbytebuffer", doc = "Copy row with DirectByteBuffer")
+  var unsaferowoptCopyDirectByteBuffer = false
 
   // Join optimization
   @ConfigOption(name = "openmldb.opt.join.spark_expr", doc = "Enable join with original Spark expression")

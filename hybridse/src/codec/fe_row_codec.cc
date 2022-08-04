@@ -168,9 +168,8 @@ bool RowBuilder::Check(::hybridse::type::Type type) {
 
 void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset) {
-    // tobe1, support for unsafe row opt
     if (FLAGS_enable_spark_unsaferow_format) {
-
+        // Do not update row pointer for UnsafeRowOpt
     } else {
         auto ptr = buf + start + addr_length * str_idx;
         if (addr_length == 1) {
