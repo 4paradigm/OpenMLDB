@@ -26,6 +26,7 @@
 #define HYBRIDSE_SRC_VM_INTERNAL_EVAL_H_
 
 #include <string>
+#include <ostream>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -103,6 +104,8 @@ absl::StatusOr<std::optional<T>> ExtractValue(const RowParser* parser, const cod
 template <typename T>
 std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optional<T>& lhs,
                                          const std::optional<T>& rhs) {
+    DLOG(INFO) << "[EvalSimpleBinaryExpr] " << lhs << " " << node::ExprOpTypeName(op) << " " << rhs;
+
     if (!lhs.has_value() || !rhs.has_value()) {
         return std::nullopt;
     }
@@ -125,6 +128,15 @@ std::optional<bool> EvalSimpleBinaryExpr(node::FnOperator op, const std::optiona
     }
 
     return std::nullopt;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::optional<T>& val) {
+    if constexpr (std::is_same_v<std::string, T>) {
+        return os << (val.has_value() ? absl::StrCat("\"", val.value(), "\"") : "NULL");
+    } else {
+        return os << (val.has_value() ? std::to_string(val.value()) : "NULL");
+    }
 }
 
 template <typename T>

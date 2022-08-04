@@ -23,6 +23,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/substitute.h"
 #include "base/texttable.h"
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
@@ -2968,33 +2969,51 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // we'll iterate over the following ranges:
-    // - base(end_base, end] if end_base < end
-    // - agg[start_base, end_base]
-    // - base[start, start_base) if start < start_base
-    int64_t end_base = start;
-    int64_t start_base = start + 1;
-    if (agg_it && agg_it->Valid()) {
-        int64_t ts_start = agg_it->GetKey();
+    // 1. base(end_base, end] if end_base < end
+    // 2. agg[start_base, end_base]
+    // 3. base[start, start_base) if start < start_base
+    //
+    // | start .. | start_base ... end_base | .. end |
+    // | <-----------------   iterate order (end to start)
+    //
+    // when start_base > end_base, step 2 skipped, fallback as
+    // | start .. | end_base .. end |
+    // | <-----------------   iterate order (end to start)
+    std::optional<int64_t> end_base = start;
+    std::optional<int64_t> start_base = {};
+    if (agg_it) {
+        int64_t ts_start = -1;
         int64_t ts_end = -1;
-        agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
 
-        if (ts_end > end) {  // [ts_start, ts_end] covers beyond the [start, end] region
-            end_base = ts_start;
-            agg_it->Next();
-            if (agg_it->Valid()) {
-                agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
-                end_base = ts_end;
-            } else {
-                // only base table will be used
-                end_base = start;
-                start_base = start + 1;
+        // iterate through agg_it and find the first one that
+        // - agg record inside window frame
+        //   - key (ts_start) >= start
+        //   - ts_end <= end
+        while (agg_it->Valid()) {
+            ts_start = agg_it->GetKey();
+            agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
+            if (ts_end <= end) {
+                break;
             }
-        } else {
-            end_base = ts_end;
+
+            agg_it->Next();
         }
+
+        if (ts_end != -1 && ts_start >= start) {
+            // first agg record inside window frame
+            end_base = ts_end;
+            // assign a value to start_base so agg aggregate happens
+            start_base = start + 1;
+        } /* else only base table will be used */
     }
 
-    // iterate over base table from end (inclusive) to end_base (exclusive)
+    // NOTE: start_base is not correct util step 2 finished
+    DLOG(INFO) << absl::Substitute(
+        "[RequestUnion]($6) {start=$0, start_base=$1, end_base=$2, end=$3, base_key=$4, agg_key=$5}", start,
+        start_base.value_or(-1), end_base.value_or(-1), end, base_it->GetKey(), (agg_it ? agg_it->GetKey() : -1),
+        (cond_ ? cond_->GetExprString() : ""));
+
+    // iterate over base table from [end, end_base) end (inclusive) to end_base (exclusive)
     if (end_base < end) {
         while (base_it->Valid()) {
             if (max_size > 0 && cnt >= max_size) {
@@ -3019,7 +3038,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     // iterate over agg table from end_base until start_base (both inclusive)
     int64_t last_ts_start = INT64_MAX;
-    while (agg_it && agg_it->Valid()) {
+    while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
@@ -3055,23 +3074,21 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         agg_it->Next();
     }
 
-    if (start_base > 0) {
-        // iterate over base table from start_base (exclusive) to start (inclusive)
-        base_it->Seek(start_base - 1);
-        while (base_it->Valid()) {
-            int64_t ts = base_it->GetKey();
-            auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
-                                                                     ts > end, static_cast<int64_t>(ts) < start);
-            if (WindowRange::kExceedWindow == range_status) {
-                break;
-            }
-            if (WindowRange::kInWindow == range_status) {
-                update_base_aggregator(base_it->GetValue());
-                cnt++;
-            }
-
-            base_it->Next();
+    // iterate over base table from start_base (exclusive) to start (inclusive)
+    base_it->Seek(start_base.value_or(start + 1) - 1);
+    while (base_it->Valid()) {
+        int64_t ts = base_it->GetKey();
+        auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
+                                                                 ts > end, static_cast<int64_t>(ts) < start);
+        if (WindowRange::kExceedWindow == range_status) {
+            break;
         }
+        if (WindowRange::kInWindow == range_status) {
+            update_base_aggregator(base_it->GetValue());
+            cnt++;
+        }
+
+        base_it->Next();
     }
 
     window_table->AddRow(start, aggregator->Output());
@@ -3084,7 +3101,7 @@ std::string RequestAggUnionRunner::PrintEvalValue(const absl::StatusOr<std::opti
     if (!val.ok()) {
         os << val.status();
     } else {
-        os << (val->has_value() ? (val.value() ? "TRUE" : "FALSE") : "NULL");
+        os << (val->has_value() ? (val->value() ? "TRUE" : "FALSE") : "NULL");
     }
     return os.str();
 }
