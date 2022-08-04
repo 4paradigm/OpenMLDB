@@ -203,9 +203,9 @@ object RowProjectPlan {
           decoder.decode(outputNativeRow, outputArr)
 
           // Release swig jni objects
-          //nativeInputRow.delete()
-          //outputNativeRow.delete()
-          //emptyParameter.delete()
+          nativeInputRow.delete()
+          outputNativeRow.delete()
+          emptyParameter.delete()
 
           // Append the index column if needed
           if (projectConfig.keepIndexColumn) {
