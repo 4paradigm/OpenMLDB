@@ -170,6 +170,15 @@ TEST_P(TableIteratorTest, latest) {
         wit->Next();
     }
     ASSERT_EQ(3, cnt);
+    wit->Seek(now - 4 * (60 * 1000));
+    ASSERT_FALSE(wit->Valid());
+    wit->Seek(now - 1000);
+    cnt = 0;
+    while (wit->Valid()) {
+        cnt++;
+        wit->Next();
+    }
+    ASSERT_EQ(2, cnt);
 }
 
 TEST_P(TableIteratorTest, smoketest2) {

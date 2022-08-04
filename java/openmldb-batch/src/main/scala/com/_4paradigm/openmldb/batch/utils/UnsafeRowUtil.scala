@@ -52,6 +52,29 @@ object UnsafeRowUtil {
   }
 
 
+  def internalRowToHybridseByteBuffer(internalRow: InternalRow): ByteBuffer = {
+    val unsafeRow = internalRow.asInstanceOf[UnsafeRow]
+
+    // Get input UnsafeRow bytes
+    val inputRowBytes = unsafeRow.getBytes
+    val inputRowSize = inputRowBytes.size
+
+    // FVersion
+    val fversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // SVersion
+    val sversionBytes = ByteArrayUtil.intToOneByteArray(1)
+    // Size
+    val sizeBytes = ByteArrayUtil.intToByteArray(HybridseRowHeaderSize + inputRowSize)
+
+    // Add the header and memcpy bytes for input row
+    ByteBuffer.allocateDirect(HybridseRowHeaderSize + inputRowSize).put(fversionBytes).put(sversionBytes).put(sizeBytes)
+      .put(inputRowBytes)
+  }
+
+  def getHybridseByteBufferSize(internalRow: InternalRow): Int = {
+    internalRow.asInstanceOf[UnsafeRow].getBytes.size + HybridseRowHeaderSize
+  }
+
   /** Convert HybridSE row to Spark InternalRow.
    *
    * The HybridSE row is compatible with UnsafeRow bytes but has 6 bytes as header.
@@ -64,6 +87,26 @@ object UnsafeRowUtil {
 
     // Copy and remove header for output row
     CoreAPI.CopyRowToUnsafeRowBytes(hybridseRow, unsafeRowWriter.getBuffer, hybridseRowWithoutHeaderSize)
+
+    // Release memory of C row
+    hybridseRow.delete()
+
+    // Convert to InternalRow
+    val unsafeRow = unsafeRowWriter.getRow
+    unsafeRow.asInstanceOf[InternalRow]
+  }
+
+  def hybridseRowToInternalRowDirect(hybridseRow: Row, columnNum: Int): InternalRow = {
+    val hybridseRowWithoutHeaderSize = hybridseRow.size - UnsafeRowUtil.HybridseRowHeaderSize
+    val unsafeRowWriter = new UnsafeRowWriter(columnNum, hybridseRowWithoutHeaderSize)
+    unsafeRowWriter.reset()
+    unsafeRowWriter.zeroOutNullBytes()
+
+    val newDirectByteBuffer = ByteBuffer.allocateDirect(hybridseRowWithoutHeaderSize)
+    // Copy to DirectByteBuffer
+    CoreAPI.CopyRowToDirectByteBuffer(hybridseRow, newDirectByteBuffer, hybridseRowWithoutHeaderSize)
+    // Copy to byte array of UnsafeRow
+    newDirectByteBuffer.get(unsafeRowWriter.getBuffer, 0, hybridseRowWithoutHeaderSize)
 
     // Release memory of C row
     hybridseRow.delete()

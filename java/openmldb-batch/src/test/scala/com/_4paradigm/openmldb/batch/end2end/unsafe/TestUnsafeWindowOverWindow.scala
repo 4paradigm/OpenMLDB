@@ -19,10 +19,11 @@ package com._4paradigm.openmldb.batch.end2end.unsafe
 import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
+import com._4paradigm.openmldb.batch.utils.SparkUtil
 
-class TestUnsafeWindowWithUnion extends UnsaferowoptSparkTestSuite {
+class TestUnsafeWindowOverWindow extends UnsaferowoptSparkTestSuite {
 
-  test("Test unsafe window") {
+  test("Test window over window with UnsafeRowOpt") {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
@@ -31,18 +32,19 @@ class TestUnsafeWindowWithUnion extends UnsaferowoptSparkTestSuite {
     df.createOrReplaceTempView("t1")
 
     val sqlText ="""
-                   | SELECT sum(trans_amount) OVER w AS w_sum_amount FROM t1
-                   | WINDOW w AS (
-                   |    UNION t1
-                   |    PARTITION BY name
-                   |    ORDER BY trans_time
-                   |    ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+                   | SELECT
+                   |   id,
+                   |   sum(trans_amount) OVER w AS w_sum_amount,
+                   |   sum(trans_amount) OVER w2 AS w2_sum_amount
+                   | FROM t1
+                   | WINDOW
+                   | w AS (PARTITION BY id ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+                   | w2 AS (PARTITION BY name ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)
      """.stripMargin
 
     val outputDf = sess.sql(sqlText)
-    val count = outputDf.count()
-    val expectedCount = df.count()
-    assert(count == expectedCount)
+    val sparksqlOutputDf = sess.sparksql(sqlText)
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
 }
