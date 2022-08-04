@@ -975,7 +975,7 @@ cases:
         2, 3, 233, 33, 200, 233, 33
   - id: 18
     desc: 主表ts都大于副表的
-    tags: ["TODO","cpp 失败"]
+    tags: ["TODO","cpp ut失败"]
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
