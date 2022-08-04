@@ -1844,8 +1844,8 @@ base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, n
     auto id = delete_stmt->GetTargetPathForNonNested().value_or(nullptr);
     CHECK_TRUE(id != nullptr, common::kSqlAstError,
                "unsupported delete statement's target is not path expression");
-    CHECK_TRUE(id->num_names() == 1, common::kSqlAstError,
-               "unsupported delete statement's target path has size >= 2");
+    CHECK_TRUE(id->num_names() == 1 || id->num_names() == 2, common::kSqlAstError,
+               "unsupported delete statement's target path has size > 2");
     auto id_name = id->first_name()->GetAsStringView();
     if (delete_stmt->where() != nullptr) {
         CHECK_TRUE(delete_stmt->GetTargetPathForNonNested().ok(), common::kSqlAstError,

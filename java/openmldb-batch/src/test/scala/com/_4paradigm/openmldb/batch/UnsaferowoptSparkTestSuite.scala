@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.taskmanager.util
+package com._4paradigm.openmldb.batch
 
-import com._4paradigm.openmldb.taskmanager.utils.VersionCli
-import org.scalatest.FunSuite
+class UnsaferowoptSparkTestSuite extends SparkTestSuite {
 
-class TestVersionUtil extends FunSuite {
+  override def customizedBefore(): Unit = {
+    val spark = getSparkSession
+    spark.conf.set("openmldb.unsaferowopt.enable", true)
+  }
 
-  test("Test getTaskManagerVersion") {
-    val version = VersionCli.getVersion()
-    assert(version.nonEmpty)
+  override def customizedAfter(): Unit = {
+    val spark = getSparkSession
+    spark.conf.set("openmldb.unsaferowopt.enable", false)
   }
 
 }

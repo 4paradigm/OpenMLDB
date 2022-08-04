@@ -431,13 +431,11 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::TransformDataType(const 
                 int32_t month;
                 int32_t day;
                 if (node.GetAsDate(&year, &month, &day)) {
-                    if (year < 1900 || year > 9999) break;
-                    if (month < 1 || month > 12) break;
-                    if (day < 1 || day > 31) break;
-                    int32_t date = (year - 1900) << 16;
-                    date = date | ((month - 1) << 8);
-                    date = date | day;
-                    return std::make_shared<hybridse::node::ConstNode>(date);
+                    uint32_t date = 0;
+                    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                        break;
+                    }
+                    return std::make_shared<hybridse::node::ConstNode>(static_cast<int32_t>(date));
                 }
                 break;
             } else if (node_type == hybridse::node::kDate) {
@@ -515,7 +513,8 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
 }
 
 hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
-            std::map<std::string, std::string>* condition_map, std::map<std::string, int>* parameter_map) {
+        const std::map<std::string, openmldb::type::DataType>& col_map,
+        std::map<std::string, std::string>* condition_map, std::map<std::string, int>* parameter_map) {
     auto op_type = expr_node->GetOp();
     if (op_type == hybridse::node::FnOperator::kFnOpAnd) {
         for (size_t idx = 0; idx < expr_node->GetChildNum(); idx++) {
@@ -523,7 +522,7 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
             if (node == nullptr) {
                 return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
             }
-            auto status = ParseExprNode(node, condition_map, parameter_map);
+            auto status = ParseExprNode(node, col_map, condition_map, parameter_map);
             if (!status.IsOK()) {
                 return status;
             }
@@ -533,12 +532,34 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
             return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
         }
         auto column_node = dynamic_cast<const hybridse::node::ColumnRefNode*>(expr_node->GetChild(0));
+        const auto& col_name = column_node->GetColumnName();
         if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprPrimary) {
+            auto iter = col_map.find(col_name);
+            if (iter == col_map.end()) {
+                return {::hybridse::common::StatusCode::kCmdError, "col " + col_name + " does not exist"};
+            }
             auto value_node = dynamic_cast<const hybridse::node::ConstNode*>(expr_node->GetChild(1));
-            condition_map->emplace(column_node->GetColumnName(), value_node->GetAsString());
+            if (value_node->IsNull()) {
+                condition_map->emplace(col_name, hybridse::codec::NONETOKEN);
+            } else if (iter->second == openmldb::type::kDate &&
+                    value_node->GetDataType() == hybridse::node::kVarchar) {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!value_node->GetAsDate(&year, &month, &day)) {
+                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                }
+                uint32_t date = 0;
+                if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                }
+                condition_map->emplace(col_name, std::to_string(date));
+            } else {
+                condition_map->emplace(col_name, value_node->GetAsString());
+            }
         } else if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprParameter) {
             auto value_node = dynamic_cast<const hybridse::node::ParameterExpr*>(expr_node->GetChild(1));
-            parameter_map->emplace(column_node->GetColumnName(), value_node->position());
+            parameter_map->emplace(col_name, value_node->position());
         } else {
             return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
         }
