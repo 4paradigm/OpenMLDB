@@ -62,6 +62,7 @@ class APIServerImpl : public APIServer {
     void RegisterGetDeployment();
     void RegisterGetDB();
     void RegisterGetTable();
+    void RegisterRefresh();
 
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
