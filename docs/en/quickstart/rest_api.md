@@ -72,3 +72,140 @@ The response:
     }
 }
 ```
+
+## Query
+
+The request URL: http://ip:port/dbs/{db_name}
+
+HTTP method: POST
+
+The request body example: 
+
+```json
+{
+    "mode": "online",
+    "sql": "select 1"
+}
+```
+
+mode: "offsync", "offasync", "online"
+
+The response:
+
+```json
+{
+    "code":0,
+    "msg":"ok"
+}
+```
+
+## Get Deployment Info
+
+
+The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "data": {
+    "name": "",
+    "procedure": "",
+    "input_schema": [
+
+    ],
+    "input_common_cols": [
+      
+    ],
+    "output_schema": [
+
+    ],
+    "output_common_cols": [
+      
+    ],
+    "dbs": [
+
+    ],
+    "tables": [
+
+    ]
+  }
+}
+```
+
+
+## List Database
+
+The request URL: http://ip:port/dbs
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "dbs": [
+
+  ]
+}
+```
+
+## List Table
+
+The request URL: http://ip:port/dbs/{db}/tables
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "tables": [
+    {
+      "name": "",
+      "table_partition_size": 8,
+      "tid": ,
+      "partition_num": 8,
+      "replica_num": 2,
+      "column_desc": [
+        {
+          "name": "",
+          "data_type": "",
+          "not_null": false
+        }
+      ],
+      "column_key": [
+        {
+          "index_name": "",
+          "col_name": [
+
+          ],
+          "ttl": {
+            
+          }
+        }
+      ],
+      "added_column_desc": [
+        
+      ],
+      "format_version": 1,
+      "db": "",
+      "partition_key": [
+        
+      ],
+      "schema_versions": [
+        
+      ]
+    }
+  ]
+}
+```
+
