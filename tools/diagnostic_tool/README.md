@@ -1,42 +1,57 @@
+# Diag Tool
 main: diagnose.py
 
 ssh/scp by connections.py
 
 read distribution yaml by dist_conf.py
 
-collector.py collects config, log, ...
+## Collector
+collector.py collects config, log and version
 
 TODO: `<cluster-name>-conf` is better than custom dest name?
 
-config:
+### config
 ```
 <dest>/
-  <ip:port>-ns/
+  <ip:port>-nameserver/
     nameserver.flags
-  <ip:port>-tablet1/
+  <ip:port>-tablet/
     tablet.flags
-  <ip:port>-tablet2/
+  <ip:port>-tablet/
     tablet.flags
-  <ip:port>-taskmanager1/
+  <ip:port>-taskmanager/
     taskmanager.properties
 ```
 
-log:
+### log
+Find log path in remote config file.
+
+Get last 2 files.
+
 ```
 <dest>/
-  <ip:port>-ns/
-    log.INFO.1
-    log.INFO.2
+  <ip:port>-nameserver/
+    nameserver.info.log.1
+    nameserver.info.log.2
     ...
-  <ip:port>-tablet
-  <ip:port>-taskmanager
+  <ip:port>-tablet/
+    ...
+  <ip:port>-taskmanager/
+    taskmanager.log.1
+    job_1_error.log
+    ...
 ```
 
-versions:
-exec ...
+### version
 
-TODO: taskmanager version(not only the leader)
- 
-how to get one taskmanager version in local?
+exec openmldb
 
-log_analysis.py read logs from local path `<dest>`.
+run jar taskmanager and batch
+
+#### find batch jar
+find spark home from remote taskmanager config file.
+
+## analysis
+
+log_analysis.py read logs from local path `<dest>`. 
+NOTE: if diag local cluster/standalone, directory structure is different.
