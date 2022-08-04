@@ -142,30 +142,22 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   }
 
   def unsafeCompute(internalRow: InternalRow, key: Long, keepIndexColumn: Boolean, unionFlagIdx: Int,
-                    outputSchema: StructType, enableUnsafeRowFormat: Boolean): InternalRow = {
+                    outputSchema: StructType, enableUnsafeRowFormat: Boolean, unsaferowoptCopyDirectByteBuffer: Boolean)
+  : InternalRow = {
     val inputUnsaferow = internalRow.asInstanceOf[UnsafeRow]
 
-    // Create native method input from Spark InternalRow
+    // Notice that do not use APIs with byte array
     //val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseRowBytes(internalRow)
-
-
-    val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
-    val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
-
-
-    // Call native method to compute
     //val outputHybridseRow  =
     //  CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
 
+    // Create native method input from Spark InternalRow
+    val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+    val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
+
+    // Call native method to compute
     val outputHybridseRow  =
       CoreAPI.UnsafeWindowProjectDirect(fn, key, hybridseRowBytes, byteBufferSize, true, appendSlices, window)
-
-    val cleanerMethod = hybridseRowBytes.getClass().getMethod("cleaner")
-    cleanerMethod.setAccessible(true)
-    val returnValue = cleanerMethod.invoke(hybridseRowBytes)
-    val cleanMethod = returnValue.getClass().getMethod("clean")
-    cleanMethod.setAccessible(true)
-    cleanMethod.invoke(returnValue)
 
     // TODO: Support append slice in JIT function instead of merge in offline
     val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {
@@ -183,13 +175,20 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
         internalRow.numFields
       }
 
-      val outputInternalRow = UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow,
-        outputSchema.size - inputRowColNum)
+      val outputInternalRow = if (unsaferowoptCopyDirectByteBuffer) {
+        UnsafeRowUtil.hybridseRowToInternalRowDirect(outputHybridseRow, outputSchema.size - inputRowColNum)
+      } else {
+        UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size - inputRowColNum)
+      }
 
       new OpenmldbJoinedRow(outputInternalRow, inputUnsaferow)
     } else {
       // Call methods to generate Spark InternalRow
-      UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+      if (unsaferowoptCopyDirectByteBuffer) {
+        UnsafeRowUtil.hybridseRowToInternalRowDirect(outputHybridseRow, outputSchema.size)
+      } else {
+        UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size)
+      }
     }
 
     // TODO: Add index column if needed

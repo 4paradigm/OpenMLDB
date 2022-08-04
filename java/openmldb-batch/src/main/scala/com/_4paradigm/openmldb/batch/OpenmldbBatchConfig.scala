@@ -119,14 +119,14 @@ class OpenmldbBatchConfig extends Serializable {
   var enableNativeLastJoin = true
 
   // UnsafeRow optimization
-  @ConfigOption(name = "openmldb.unsaferow.opt", doc = "Enable UnsafeRow optimization or not")
+  @ConfigOption(name = "openmldb.unsaferowopt.enable", doc = "Enable UnsafeRow optimization or not")
   var enableUnsafeRowOptimization = false
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.project", doc = "Enable UnsafeRow optimization for project")
-  var enableUnsafeRowOptForProject = false
+  @ConfigOption(name = "openmldb.unsaferowopt.project", doc = "Enable UnsafeRow optimization for project")
+  var enableUnsafeRowOptForProject = true
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.window", doc = "Enable UnsafeRow optimization for window")
-  var enableUnsafeRowOptForWindow = false
+  @ConfigOption(name = "openmldb.unsaferowopt.window", doc = "Enable UnsafeRow optimization for window")
+  var enableUnsafeRowOptForWindow = true
 
   //@ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
   //var enableUnsafeRowOptForGroupby = false
