@@ -2776,7 +2776,7 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_segments[i]);
-            LOG(INFO) << "union output " << i << ": " << sss.str();
+            LOG(INFO) << "union output " << i << ":\n" << sss.str();
         }
     }
 
@@ -2842,7 +2842,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     auto aggregator = CreateAggregator();
     auto update_base_aggregator = [aggregator = aggregator.get(), row_parser = base_row_parser, this](const Row& row) {
-        DLOG(INFO) << GetPrettyRow(row_parser->schema_ctx(), row);
+        DLOG(INFO) << "[Update Base]\n" << GetPrettyRow(row_parser->schema_ctx(), row);
         if (!agg_col_name_.empty() && row_parser->IsNull(row, agg_col_name_)) {
             return;
         }
@@ -2852,7 +2852,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // will apply to functions `*_where`
             // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
             auto matches = internal::EvalCond(row_parser, row, cond_);
-            DLOG(INFO) << "[Update Base] Evaluate result of " << cond_->GetExprString() << ": "
+            DLOG(INFO) << "[Update Base Filter] Evaluate result of " << cond_->GetExprString() << ": "
                        << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(ERROR) << matches.status();
@@ -2918,14 +2918,14 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
-        DLOG(INFO) << GetPrettyRow(row_parser->schema_ctx(), row);
+        DLOG(INFO) << "[Update Agg]\n" << GetPrettyRow(row_parser->schema_ctx(), row);
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
 
         if (cond_ != nullptr) {
             auto matches = internal::EvalCondWithAggRow(row_parser, row, cond_, "filter_key");
-            DLOG(INFO) << "[Update Agg] Evaluate result of " << cond_->GetExprString() << ": "
+            DLOG(INFO) << "[Update Agg Filter] Evaluate result of " << cond_->GetExprString() << ": "
                        << PrintEvalValue(matches);
             if (!matches.ok()) {
                 LOG(ERROR) << matches.status();
@@ -3013,7 +3013,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         start_base.value_or(-1), end_base.value_or(-1), end, base_it->GetKey(), (agg_it ? agg_it->GetKey() : -1),
         (cond_ ? cond_->GetExprString() : ""));
 
-    // iterate over base table from [end, end_base) end (inclusive) to end_base (exclusive)
+    // 1. iterate over base table from [end, end_base) end (inclusive) to end_base (exclusive)
     if (end_base < end) {
         while (base_it->Valid()) {
             if (max_size > 0 && cnt >= max_size) {
@@ -3036,7 +3036,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     }
 
-    // iterate over agg table from end_base until start_base (both inclusive)
+    // 2. iterate over agg table from end_base until start_base (both inclusive)
     int64_t last_ts_start = INT64_MAX;
     while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
@@ -3074,21 +3074,30 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         agg_it->Next();
     }
 
-    // iterate over base table from start_base (exclusive) to start (inclusive)
-    base_it->Seek(start_base.value_or(start + 1) - 1);
-    while (base_it->Valid()) {
-        int64_t ts = base_it->GetKey();
-        auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
-                                                                 ts > end, static_cast<int64_t>(ts) < start);
-        if (WindowRange::kExceedWindow == range_status) {
-            break;
-        }
-        if (WindowRange::kInWindow == range_status) {
-            update_base_aggregator(base_it->GetValue());
-            cnt++;
-        }
+    // 3. iterate over base table from start_base (exclusive) to start (inclusive)
+    //
+    // if start_base is empty ->
+    //     step 2 skiped, this step only agg on key = start
+    // otherwise ->
+    //    if start_base is 0 -> skiped
+    //    otherwise -> agg over [start, start_base)
+    int64_t step_3_start = start_base.value_or(start + 1);
+    if (step_3_start > 0) {
+        base_it->Seek(step_3_start - 1);
+        while (base_it->Valid()) {
+            int64_t ts = base_it->GetKey();
+            auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
+                                                                     ts > end, static_cast<int64_t>(ts) < start);
+            if (WindowRange::kExceedWindow == range_status) {
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                update_base_aggregator(base_it->GetValue());
+                cnt++;
+            }
 
-        base_it->Next();
+            base_it->Next();
+        }
     }
 
     window_table->AddRow(start, aggregator->Output());
