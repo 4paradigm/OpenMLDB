@@ -1,0 +1,439 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: template_db
+cases:
+- id: 1
+  desc: 单表-新闻场景
+  inputs:
+  - columns:
+    - "InstanceKey string"
+    - "RequestDatetime timestamp"
+    - "PageId string"
+    - "NewsId string"
+    - "CategoryId string"
+    - "TermScores string"
+    - "TitleTermScores string"
+    - "TagScores string"
+    - "UserTagScores string"
+    - "UserTermScores string"
+    - "MediaId string"
+    - "ContentWords int32"
+    - "TitleWords int32"
+    - "Tag string"
+    - "TotalLikes int32"
+    - "TotalDislikes int32"
+    - "TotalComments int32"
+    - "TotalImpressions int32"
+    - "TotalAdjustImpressions int32"
+    - "TotalClicks int32"
+    - "TotalShares int32"
+    - "UserId string"
+    - "RequestLatitude double"
+    - "RequestLongitude double"
+    - "DeviceId string"
+    - "UserIp string"
+    - "Clicked int32"
+    - "UserClickedMediaIdsIn1Times string"
+    - "UserClickedMediaIdsIn3Times string"
+    - "UserClickedMediaIdsIn10Times string"
+    - "UserClickedMediaIdsIn1Minutes string"
+    - "UserClickedMediaIdsIn5Minutes string"
+    - "UserClickedMediaIdsIn30Minutes string"
+    - "UserClickedMediaIdsIn360Minutes string"
+    - "UserClickedCatIdsIn1Times string"
+    - "UserClickedCatIdsIn3Times string"
+    - "UserClickedCatIdsIn10Times string"
+    - "UserClickedCatIdsIn1Minutes string"
+    - "UserClickedCatIdsIn5Minutes string"
+    - "UserClickedCatIdsIn30Minutes string"
+    - "UserClickedCatIdsIn360Minutes string"
+    - "UserClickedTagScoresIn1Times string"
+    - "UserClickedTagScoresIn3Times string"
+    - "UserClickedTagScoresIn10Times string"
+    - "UserClickedTagScoresIn1Minutes string"
+    - "UserClickedTagScoresIn5Minutes string"
+    - "UserClickedTagScoresIn30Minutes string"
+    - "UserClickedTagScoresIn360Minutes string"
+    - "UserClickedTermScoresIn1Times string"
+    - "UserClickedTermScoresIn3Times string"
+    - "UserClickedTermScoresIn10Times string"
+    - "UserClickedTermScoresIn1Minutes string"
+    - "UserClickedTermScoresIn5Minutes string"
+    - "UserClickedTermScoresIn30Minutes string"
+    - "UserClickedTermScoresIn360Minutes string"
+    - "UserClickedTitleTermScoresIn1Times string"
+    - "UserClickedTitleTermScoresIn3Times string"
+    - "UserClickedTitleTermScoresIn10Times string"
+    - "UserClickedTitleTermScoresIn1Minutes string"
+    - "UserClickedTitleTermScoresIn5Minutes string"
+    - "UserClickedTitleTermScoresIn30Minutes string"
+    - "UserClickedTitleTermScoresIn360Minutes string"
+    indexs:
+      - "index1:UserTermScores:RequestDatetime"
+      - "index2:UserTagScores:RequestDatetime"
+      - "index3:UserId:RequestDatetime"
+      - "index4:UserIp:RequestDatetime"
+    rows:
+    - - "InstanceKey_hdIp5qM957"
+      - 1609405780000
+      - "PageId_2qfcb9EBP4"
+      - "NewsId_ErcZw6WqZC"
+      - "CategoryId_gWDyj6FMC6"
+      - "TermScores_xppEG6AJ38"
+      - "TitleTermScores_kw3z2g2K98"
+      - "TagScores_c9zE9v08wj"
+      - "UserTagScores_84fOPfN56G"
+      - "UserTermScores_pJVZ7lPMeI"
+      - "MediaId_i0stuPP10g"
+      - 829372349
+      - 601942391
+      - "Tag_ciC6wk19PJ"
+      - -1820777477
+      - 883273961
+      - 266011166
+      - 625586443
+      - -684001291
+      - 902064193
+      - 124534625
+      - "UserId_N4VsmRmV5e"
+      - 3.7387905194494238
+      - 125.52669722380091
+      - "DeviceId_2zMD4oSYcI"
+      - "UserIp_HpEH1YJjRI"
+      - -1434651347
+      - "UserClickedMediaIdsIn1Times_3HDiJhw431"
+      - "UserClickedMediaIdsIn3Times_dMlPGtTIhR"
+      - "UserClickedMediaIdsIn10Times_av0JnzlZTG"
+      - "UserClickedMediaIdsIn1Minutes_mOktj5LJiD"
+      - "UserClickedMediaIdsIn5Minutes_9rypts8eWg"
+      - "UserClickedMediaIdsIn30Minutes_rgvXB0uxwH"
+      - "UserClickedMediaIdsIn360Minutes_c5UxGaYceL"
+      - "UserClickedCatIdsIn1Times_LeHDkid2pj"
+      - "UserClickedCatIdsIn3Times_q1NIvIEMP7"
+      - "UserClickedCatIdsIn10Times_6u8Xg7cS9F"
+      - "UserClickedCatIdsIn1Minutes_oRKjk9HTtA"
+      - "UserClickedCatIdsIn5Minutes_GdLcy4lnLO"
+      - "UserClickedCatIdsIn30Minutes_hJqHlZOlXf"
+      - "UserClickedCatIdsIn360Minutes_6E2LKw7j2O"
+      - "UserClickedTagScoresIn1Times_cAkeiQEbZi"
+      - "UserClickedTagScoresIn3Times_tFexwMHFw4"
+      - "UserClickedTagScoresIn10Times_M5J9oPpbqM"
+      - "UserClickedTagScoresIn1Minutes_F9Ba3faBRO"
+      - "UserClickedTagScoresIn5Minutes_wCSaqSRatG"
+      - "UserClickedTagScoresIn30Minutes_BzJfoCf21a"
+      - "UserClickedTagScoresIn360Minutes_30l7jaJ4gB"
+      - "UserClickedTermScoresIn1Times_LqLUppsBv0"
+      - "UserClickedTermScoresIn3Times_Lokr3ory2y"
+      - "UserClickedTermScoresIn10Times_xTZVbQqHw0"
+      - "UserClickedTermScoresIn1Minutes_pBFLuGB0p0"
+      - "UserClickedTermScoresIn5Minutes_giEJ7skHMs"
+      - "UserClickedTermScoresIn30Minutes_C8JaxDwypo"
+      - "UserClickedTermScoresIn360Minutes_Rm6L1ywrhl"
+      - "UserClickedTitleTermScoresIn1Times_JxKKWwPfnI"
+      - "UserClickedTitleTermScoresIn3Times_whxcLRU2Px"
+      - "UserClickedTitleTermScoresIn10Times_TwsUNK2E5q"
+      - "UserClickedTitleTermScoresIn1Minutes_nzkQNp1WVM"
+      - "UserClickedTitleTermScoresIn5Minutes_1YOFOVlbvh"
+      - "UserClickedTitleTermScoresIn30Minutes_IfSQLmvSqa"
+      - "UserClickedTitleTermScoresIn360Minutes_r5sD1XpY2c"
+    - - "InstanceKey_pve2h4oBmM"
+      - 1609405780000
+      - "PageId_KZoyi08pAP"
+      - "NewsId_TGIqBGEVHb"
+      - "CategoryId_Ie7ucdUYXe"
+      - "TermScores_1gZiIGPRQz"
+      - "TitleTermScores_yQyoGdHRNe"
+      - "TagScores_Y110SxqWpY"
+      - "UserTagScores_i0icat48DT"
+      - "UserTermScores_cL9G53KJhT"
+      - "MediaId_1tOAd6ZaZC"
+      - -1539942388
+      - -645368500
+      - "Tag_lstd2JNED7"
+      - -203531434
+      - -1137889304
+      - -1877229079
+      - -1849242659
+      - -1005223131
+      - 32773880
+      - -730536017
+      - "UserId_pjFJNfdPYs"
+      - 118.13343685266054
+      - -75.95372022179421
+      - "DeviceId_kmtzlnZRbc"
+      - "UserIp_pRTNUjNjpf"
+      - 186372981
+      - "UserClickedMediaIdsIn1Times_2EG9u6VG3z"
+      - "UserClickedMediaIdsIn3Times_U52gnngZpl"
+      - "UserClickedMediaIdsIn10Times_SZMJFndrWA"
+      - "UserClickedMediaIdsIn1Minutes_sUzsztqLo6"
+      - "UserClickedMediaIdsIn5Minutes_j8k1DEJ3K2"
+      - "UserClickedMediaIdsIn30Minutes_WQYr1ipJzJ"
+      - "UserClickedMediaIdsIn360Minutes_kNPuSmOLCh"
+      - "UserClickedCatIdsIn1Times_AWeuDDwzJX"
+      - "UserClickedCatIdsIn3Times_5oBau1ONjC"
+      - "UserClickedCatIdsIn10Times_nC04RrROot"
+      - "UserClickedCatIdsIn1Minutes_BCraczQzN8"
+      - "UserClickedCatIdsIn5Minutes_OYg6nwBjgB"
+      - "UserClickedCatIdsIn30Minutes_SR13pQy3Xn"
+      - "UserClickedCatIdsIn360Minutes_I8LR8qCAfD"
+      - "UserClickedTagScoresIn1Times_sLP8dEPBuF"
+      - "UserClickedTagScoresIn3Times_Z6wY8t1DdZ"
+      - "UserClickedTagScoresIn10Times_X9rXFAgUuH"
+      - "UserClickedTagScoresIn1Minutes_MazqtyoPcg"
+      - "UserClickedTagScoresIn5Minutes_16ltZzRQid"
+      - "UserClickedTagScoresIn30Minutes_pSlMAYSeYb"
+      - "UserClickedTagScoresIn360Minutes_0Zz8P4xjGH"
+      - "UserClickedTermScoresIn1Times_bvkzRyHAus"
+      - "UserClickedTermScoresIn3Times_0HMO3i4yns"
+      - "UserClickedTermScoresIn10Times_DT8xge6vdi"
+      - "UserClickedTermScoresIn1Minutes_2okBnnoBid"
+      - "UserClickedTermScoresIn5Minutes_lqNLfKvrh0"
+      - "UserClickedTermScoresIn30Minutes_ac2U74ym1H"
+      - "UserClickedTermScoresIn360Minutes_JSBVGmOT7m"
+      - "UserClickedTitleTermScoresIn1Times_xChAvlI0Hg"
+      - "UserClickedTitleTermScoresIn3Times_sASTrsDGA3"
+      - "UserClickedTitleTermScoresIn10Times_21cB10rAvK"
+      - "UserClickedTitleTermScoresIn1Minutes_SVXF4JVpJ5"
+      - "UserClickedTitleTermScoresIn5Minutes_LCLbuQVXs2"
+      - "UserClickedTitleTermScoresIn30Minutes_bwXZz631fl"
+      - "UserClickedTitleTermScoresIn360Minutes_sR95HAIcHx"
+    - - "InstanceKey_k4XtEfFsqT"
+      - 1609405780000
+      - "PageId_BZWLnCZmQ9"
+      - "NewsId_YdHfQBoErt"
+      - "CategoryId_oard5Cne0T"
+      - "TermScores_e8dAwnunlf"
+      - "TitleTermScores_8eghaLsTjR"
+      - "TagScores_Igz3roJMYt"
+      - "UserTagScores_D0noZJ4FzI"
+      - "UserTermScores_p2ZShNACkv"
+      - "MediaId_7BELEeQo8t"
+      - -1400976088
+      - -185610105
+      - "Tag_qDw3zDu0Kf"
+      - -1424703288
+      - 326020146
+      - -1788522406
+      - -894083919
+      - -614604127
+      - 836914113
+      - -514315335
+      - "UserId_cnDtbfUEMH"
+      - 77.52642088566631
+      - 61.52004136781969
+      - "DeviceId_88cLvltsp1"
+      - "UserIp_6QnBErDqMJ"
+      - -2147467600
+      - "UserClickedMediaIdsIn1Times_dfNUH5v0a6"
+      - "UserClickedMediaIdsIn3Times_7C9bV4aMUz"
+      - "UserClickedMediaIdsIn10Times_y7bSntxLJ9"
+      - "UserClickedMediaIdsIn1Minutes_PLy8SqEQ84"
+      - "UserClickedMediaIdsIn5Minutes_5BnsVlthDt"
+      - "UserClickedMediaIdsIn30Minutes_GMdEG1RRGL"
+      - "UserClickedMediaIdsIn360Minutes_Zb85hck0aF"
+      - "UserClickedCatIdsIn1Times_1WG4dLVfOH"
+      - "UserClickedCatIdsIn3Times_HuZi6EaTCV"
+      - "UserClickedCatIdsIn10Times_QPL2TWKSN3"
+      - "UserClickedCatIdsIn1Minutes_rzk3a4Klss"
+      - "UserClickedCatIdsIn5Minutes_0X05NkhD7o"
+      - "UserClickedCatIdsIn30Minutes_jYleKJf8IF"
+      - "UserClickedCatIdsIn360Minutes_ar6mj9US4t"
+      - "UserClickedTagScoresIn1Times_P2MmbiyS4I"
+      - "UserClickedTagScoresIn3Times_8StMrSWAeI"
+      - "UserClickedTagScoresIn10Times_Bl7yrclqG2"
+      - "UserClickedTagScoresIn1Minutes_DqBqyScA9d"
+      - "UserClickedTagScoresIn5Minutes_K6ZgXsqw0u"
+      - "UserClickedTagScoresIn30Minutes_6lv8OvRI7W"
+      - "UserClickedTagScoresIn360Minutes_Hs54K7u27l"
+      - "UserClickedTermScoresIn1Times_H6SHDMGtuy"
+      - "UserClickedTermScoresIn3Times_DVVW13LIcd"
+      - "UserClickedTermScoresIn10Times_dZdjYFHvpd"
+      - "UserClickedTermScoresIn1Minutes_ZTBWK0VaYf"
+      - "UserClickedTermScoresIn5Minutes_aIfxNFWfaz"
+      - "UserClickedTermScoresIn30Minutes_XkLhwMM16w"
+      - "UserClickedTermScoresIn360Minutes_VccLPVQ0kC"
+      - "UserClickedTitleTermScoresIn1Times_bM308gVgrl"
+      - "UserClickedTitleTermScoresIn3Times_4jqy1Aeiar"
+      - "UserClickedTitleTermScoresIn10Times_FQ79yzLr4K"
+      - "UserClickedTitleTermScoresIn1Minutes_enU5HDPII1"
+      - "UserClickedTitleTermScoresIn5Minutes_X0YzeMlxE1"
+      - "UserClickedTitleTermScoresIn30Minutes_WAWIp5zsTD"
+      - "UserClickedTitleTermScoresIn360Minutes_SYU1A5lgJy"
+    - - "InstanceKey_Ik6w1GJ3ak"
+      - 1609405780000
+      - "PageId_l8hTiHLe7c"
+      - "NewsId_U1l7n7Z1cz"
+      - "CategoryId_z93urYcLTz"
+      - "TermScores_05J4os5hvJ"
+      - "TitleTermScores_MGrW4hhUdP"
+      - "TagScores_1k3NEltzP4"
+      - "UserTagScores_1PHt2Sw8Z5"
+      - "UserTermScores_537uScy0i9"
+      - "MediaId_xc7NYROEZt"
+      - -1256228849
+      - -110570093
+      - "Tag_d4mRWCbrMO"
+      - 365243338
+      - 873343892
+      - 17923145
+      - -681865200
+      - -444619580
+      - -1894396283
+      - -1127215708
+      - "UserId_fgmdPtLt87"
+      - -61.396138086485564
+      - -87.37716465146411
+      - "DeviceId_CCtZyRqhvh"
+      - "UserIp_CxGseOdjSM"
+      - -76661935
+      - "UserClickedMediaIdsIn1Times_LEYaofr5Hl"
+      - "UserClickedMediaIdsIn3Times_3FSI83BEln"
+      - "UserClickedMediaIdsIn10Times_0uxy6hp2ql"
+      - "UserClickedMediaIdsIn1Minutes_iR7f3ML0Cy"
+      - "UserClickedMediaIdsIn5Minutes_5lifH8ACGz"
+      - "UserClickedMediaIdsIn30Minutes_veGUAV6ecL"
+      - "UserClickedMediaIdsIn360Minutes_4ZfwIYLjI0"
+      - "UserClickedCatIdsIn1Times_MsWvdpbriS"
+      - "UserClickedCatIdsIn3Times_OOQ3KsuFoC"
+      - "UserClickedCatIdsIn10Times_lSXIYryDz4"
+      - "UserClickedCatIdsIn1Minutes_lcgKRcqF1r"
+      - "UserClickedCatIdsIn5Minutes_APcl6yWNKU"
+      - "UserClickedCatIdsIn30Minutes_JA3aKMbLRU"
+      - "UserClickedCatIdsIn360Minutes_iRcC0hXYHY"
+      - "UserClickedTagScoresIn1Times_BsalAUhfaV"
+      - "UserClickedTagScoresIn3Times_4YgxkGeFO8"
+      - "UserClickedTagScoresIn10Times_JGEY6hnpRt"
+      - "UserClickedTagScoresIn1Minutes_qh78KhthQ9"
+      - "UserClickedTagScoresIn5Minutes_KwokIGT8ih"
+      - "UserClickedTagScoresIn30Minutes_esweRoZRlQ"
+      - "UserClickedTagScoresIn360Minutes_SEhVJL8Isv"
+      - "UserClickedTermScoresIn1Times_uiIHrsV6LB"
+      - "UserClickedTermScoresIn3Times_y3BznAylvB"
+      - "UserClickedTermScoresIn10Times_IU8v9wrb65"
+      - "UserClickedTermScoresIn1Minutes_YP8gIJCiEZ"
+      - "UserClickedTermScoresIn5Minutes_vDHmUEWZgj"
+      - "UserClickedTermScoresIn30Minutes_v3yee1Glcu"
+      - "UserClickedTermScoresIn360Minutes_7dWE2PTpRW"
+      - "UserClickedTitleTermScoresIn1Times_gnyIe4mq1F"
+      - "UserClickedTitleTermScoresIn3Times_UGzqsDJ5zr"
+      - "UserClickedTitleTermScoresIn10Times_498w6xB6Nc"
+      - "UserClickedTitleTermScoresIn1Minutes_jdo8wg4Qvj"
+      - "UserClickedTitleTermScoresIn5Minutes_u6pQFRC1AT"
+      - "UserClickedTitleTermScoresIn30Minutes_XyyNo9Vj1t"
+      - "UserClickedTitleTermScoresIn360Minutes_JlyEeiBHUZ"
+  sql: |-
+    select
+        InstanceKey as InstanceKey_1,
+        InstanceKey as t1_InstanceKey_0,
+        RequestDatetime as t1_RequestDatetime_1,
+        PageId as t1_PageId_2,
+        NewsId as t1_NewsId_3,
+        CategoryId as t1_CategoryId_4,
+        TermScores as t1_TermScores_5,
+        TitleTermScores as t1_TitleTermScores_6,
+        TagScores as t1_TagScores_7,
+        UserTagScores as t1_UserTagScores_8,
+        UserTermScores as t1_UserTermScores_9,
+        MediaId as t1_MediaId_10,
+        ContentWords as t1_ContentWords_11,
+        TitleWords as t1_TitleWords_12,
+        Tag as t1_Tag_13,
+        TotalLikes as t1_TotalLikes_14,
+        TotalDislikes as t1_TotalDislikes_15,
+        TotalComments as t1_TotalComments_16,
+        TotalImpressions as t1_TotalImpressions_17,
+        TotalAdjustImpressions as t1_TotalAdjustImpressions_18,
+        TotalClicks as t1_TotalClicks_19,
+        TotalShares as t1_TotalShares_20,
+        UserId as t1_UserId_21,
+        RequestLatitude as t1_RequestLatitude_22,
+        RequestLongitude as t1_RequestLongitude_23,
+        DeviceId as t1_DeviceId_24,
+        UserIp as t1_UserIp_25,
+        Clicked as t1_Clicked_26,
+        UserClickedMediaIdsIn1Times as t1_UserClickedMediaIdsIn1Times_27,
+        UserClickedMediaIdsIn3Times as t1_UserClickedMediaIdsIn3Times_28,
+        UserClickedMediaIdsIn10Times as t1_UserClickedMediaIdsIn10Times_29,
+        UserClickedMediaIdsIn1Minutes as t1_UserClickedMediaIdsIn1Minutes_30,
+        UserClickedMediaIdsIn5Minutes as t1_UserClickedMediaIdsIn5Minutes_31,
+        UserClickedMediaIdsIn30Minutes as t1_UserClickedMediaIdsIn30Minutes_32,
+        UserClickedMediaIdsIn360Minutes as t1_UserClickedMediaIdsIn360Minutes_33,
+        UserClickedCatIdsIn1Times as t1_UserClickedCatIdsIn1Times_34,
+        UserClickedCatIdsIn3Times as t1_UserClickedCatIdsIn3Times_35,
+        UserClickedCatIdsIn10Times as t1_UserClickedCatIdsIn10Times_36,
+        UserClickedCatIdsIn1Minutes as t1_UserClickedCatIdsIn1Minutes_37,
+        UserClickedCatIdsIn5Minutes as t1_UserClickedCatIdsIn5Minutes_38,
+        UserClickedCatIdsIn30Minutes as t1_UserClickedCatIdsIn30Minutes_39,
+        UserClickedCatIdsIn360Minutes as t1_UserClickedCatIdsIn360Minutes_40,
+        UserClickedTagScoresIn1Times as t1_UserClickedTagScoresIn1Times_41,
+        UserClickedTagScoresIn3Times as t1_UserClickedTagScoresIn3Times_42,
+        UserClickedTagScoresIn10Times as t1_UserClickedTagScoresIn10Times_43,
+        UserClickedTagScoresIn1Minutes as t1_UserClickedTagScoresIn1Minutes_44,
+        UserClickedTagScoresIn5Minutes as t1_UserClickedTagScoresIn5Minutes_45,
+        UserClickedTagScoresIn30Minutes as t1_UserClickedTagScoresIn30Minutes_46,
+        UserClickedTagScoresIn360Minutes as t1_UserClickedTagScoresIn360Minutes_47,
+        UserClickedTermScoresIn1Times as t1_UserClickedTermScoresIn1Times_48,
+        UserClickedTermScoresIn3Times as t1_UserClickedTermScoresIn3Times_49,
+        UserClickedTermScoresIn10Times as t1_UserClickedTermScoresIn10Times_50,
+        UserClickedTermScoresIn1Minutes as t1_UserClickedTermScoresIn1Minutes_51,
+        UserClickedTermScoresIn5Minutes as t1_UserClickedTermScoresIn5Minutes_52,
+        UserClickedTermScoresIn30Minutes as t1_UserClickedTermScoresIn30Minutes_53,
+        UserClickedTermScoresIn360Minutes as t1_UserClickedTermScoresIn360Minutes_54,
+        UserClickedTitleTermScoresIn1Times as t1_UserClickedTitleTermScoresIn1Times_55,
+        UserClickedTitleTermScoresIn3Times as t1_UserClickedTitleTermScoresIn3Times_56,
+        UserClickedTitleTermScoresIn10Times as t1_UserClickedTitleTermScoresIn10Times_57,
+        UserClickedTitleTermScoresIn1Minutes as t1_UserClickedTitleTermScoresIn1Minutes_58,
+        UserClickedTitleTermScoresIn5Minutes as t1_UserClickedTitleTermScoresIn5Minutes_59,
+        UserClickedTitleTermScoresIn30Minutes as t1_UserClickedTitleTermScoresIn30Minutes_60,
+        UserClickedTitleTermScoresIn360Minutes as t1_UserClickedTitleTermScoresIn360Minutes_61,
+        sum(TitleWords) over t1_UserTermScores_RequestDatetime_0s_7200s as t1_TitleWords_62,
+        fz_top1_ratio(NewsId) over t1_UserTermScores_RequestDatetime_0s_7200s as t1_NewsId_63,
+        sum(RequestLatitude) over t1_UserTermScores_RequestDatetime_0s_7200s as t1_RequestLatitude_64,
+        distinct_count(NewsId) over t1_UserTermScores_RequestDatetime_0s_7200s as t1_NewsId_65,
+        sum(ContentWords) over t1_UserTermScores_RequestDatetime_0s_7200s as t1_ContentWords_66,
+        case when !isnull(lag(UserClickedTagScoresIn1Times, 0)) over t1_UserTermScores_RequestDatetime_0s_7200s then count(UserClickedTagScoresIn1Times) over t1_UserTermScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTagScoresIn1Times_67,
+        case when !isnull(lag(UserClickedTagScoresIn1Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTagScoresIn1Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTagScoresIn1Times_68,
+        case when !isnull(lag(UserClickedCatIdsIn1Times, 0)) over t1_UserTermScores_RequestDatetime_0s_7200s then count(UserClickedCatIdsIn1Times) over t1_UserTermScores_RequestDatetime_0s_7200s else null end as t1_UserClickedCatIdsIn1Times_69,
+        case when !isnull(lag(UserClickedMediaIdsIn1Times, 0)) over t1_UserTermScores_RequestDatetime_0s_7200s then count(UserClickedMediaIdsIn1Times) over t1_UserTermScores_RequestDatetime_0s_7200s else null end as t1_UserClickedMediaIdsIn1Times_70,
+        case when !isnull(lag(UserClickedTagScoresIn30Minutes, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTagScoresIn30Minutes) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTagScoresIn30Minutes_71,
+        fz_top1_ratio(NewsId) over t1_UserTagScores_RequestDatetime_0s_7200s as t1_NewsId_72,
+        case when !isnull(lag(UserClickedTagScoresIn3Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTagScoresIn3Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTagScoresIn3Times_73,
+        case when !isnull(lag(UserClickedTagScoresIn10Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTagScoresIn10Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTagScoresIn10Times_74,
+        case when !isnull(lag(UserClickedCatIdsIn1Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedCatIdsIn1Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedCatIdsIn1Times_75,
+        case when !isnull(lag(UserClickedTitleTermScoresIn1Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTitleTermScoresIn1Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTitleTermScoresIn1Times_76,
+        case when !isnull(lag(UserClickedTermScoresIn30Minutes, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTermScoresIn30Minutes) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTermScoresIn30Minutes_77,
+        case when !isnull(lag(UserClickedTermScoresIn1Times, 0)) over t1_UserTagScores_RequestDatetime_0s_7200s then count(UserClickedTermScoresIn1Times) over t1_UserTagScores_RequestDatetime_0s_7200s else null end as t1_UserClickedTermScoresIn1Times_78,
+        case when !isnull(lag(UserClickedMediaIdsIn10Times, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserClickedMediaIdsIn10Times) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserClickedMediaIdsIn10Times_79,
+        case when !isnull(lag(UserTermScores, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserTermScores) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserTermScores_80,
+        case when !isnull(lag(UserClickedMediaIdsIn10Times, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserClickedMediaIdsIn10Times) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserClickedMediaIdsIn10Times_81,
+        distinct_count(InstanceKey) over t1_UserTagScores_RequestDatetime_0s_7200s as t1_InstanceKey_82,
+        case when !isnull(lag(UserTagScores, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserTagScores) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserTagScores_83,
+        case when !isnull(lag(UserTagScores, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserTagScores) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserTagScores_84,
+        case when !isnull(lag(UserClickedTitleTermScoresIn3Times, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserClickedTitleTermScoresIn3Times) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserClickedTitleTermScoresIn3Times_85,
+        case when !isnull(lag(UserClickedMediaIdsIn360Minutes, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserClickedMediaIdsIn360Minutes) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserClickedMediaIdsIn360Minutes_86,
+        case when !isnull(lag(UserClickedTitleTermScoresIn10Times, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserClickedTitleTermScoresIn10Times) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserClickedTitleTermScoresIn10Times_87,
+        case when !isnull(lag(UserClickedTitleTermScoresIn3Times, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserClickedTitleTermScoresIn3Times) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserClickedTitleTermScoresIn3Times_88,
+        case when !isnull(lag(UserClickedTermScoresIn3Times, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserClickedTermScoresIn3Times) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserClickedTermScoresIn3Times_89,
+        case when !isnull(lag(UserClickedMediaIdsIn360Minutes, 0)) over t1_UserIp_RequestDatetime_0s_7200s then count(UserClickedMediaIdsIn360Minutes) over t1_UserIp_RequestDatetime_0s_7200s else null end as t1_UserClickedMediaIdsIn360Minutes_90,
+        case when !isnull(lag(UserClickedTermScoresIn10Times, 0)) over t1_UserId_RequestDatetime_0s_7200s then count(UserClickedTermScoresIn10Times) over t1_UserId_RequestDatetime_0s_7200s else null end as t1_UserClickedTermScoresIn10Times_91
+    from
+        {0}
+        window t1_UserTermScores_RequestDatetime_0s_7200s as ( partition by UserTermScores order by RequestDatetime rows_range between 7200s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t1_UserTagScores_RequestDatetime_0s_7200s as ( partition by UserTagScores order by RequestDatetime rows_range between 7200s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t1_UserId_RequestDatetime_0s_7200s as ( partition by UserId order by RequestDatetime rows_range between 7200s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t1_UserIp_RequestDatetime_0s_7200s as ( partition by UserIp order by RequestDatetime rows_range between 7200s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
+  expect:
+    success: true

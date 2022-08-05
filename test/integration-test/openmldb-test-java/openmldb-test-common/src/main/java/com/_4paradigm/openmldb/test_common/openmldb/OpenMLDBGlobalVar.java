@@ -19,6 +19,8 @@ package com._4paradigm.openmldb.test_common.openmldb;
 
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 
+import java.util.List;
+
 /**
  * @author zhaowei
  * @date 2020/6/11 11:45 AM
@@ -31,4 +33,10 @@ public class OpenMLDBGlobalVar {
     public static OpenMLDBInfo mainInfo;
     public static String dbName = "test_zw";
     public static String tableStorageMode = "memory";
+    public static List<Integer> CASE_LEVELS;
+    public static String CASE_NAME;
+    public static String CASE_ID;
+    public static String CASE_DESC;
+    public static String CASE_PATH;
+    public static String YAML_CASE_BASE_DIR;
 }

@@ -35,11 +35,11 @@ import java.util.stream.Collectors;
 public class OpenMLDBConfig {
     public static final List<String> VERSIONS;
     public static boolean INIT_VERSION_ENV = true;
-    public static final List<Integer> FESQL_CASE_LEVELS;
-    public static final String FESQL_CASE_PATH;
-    public static final String FESQL_CASE_NAME;
-    public static final String FESQL_CASE_ID;
-    public static final String FESQL_CASE_DESC;
+    public static final List<Integer> CASE_LEVELS;
+    public static final String CASE_PATH;
+    public static final String CASE_NAME;
+    public static final String CASE_ID;
+    public static final String CASE_DESC;
     public static final String YAML_CASE_BASE_DIR;
     public static final boolean ADD_REPORT_LOG;
 
@@ -49,24 +49,24 @@ public class OpenMLDBConfig {
     static {
         String levelStr = System.getProperty("caseLevel");
         levelStr = StringUtils.isEmpty(levelStr) ? "0" : levelStr;
-        FESQL_CASE_LEVELS = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
-        FESQL_CASE_NAME = System.getProperty("caseName");
-        FESQL_CASE_ID = System.getProperty("caseId");
-        FESQL_CASE_DESC = System.getProperty("caseDesc");
-        FESQL_CASE_PATH = System.getProperty("casePath");
+        CASE_LEVELS = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        CASE_NAME = System.getProperty("caseName");
+        CASE_ID = System.getProperty("caseId");
+        CASE_DESC = System.getProperty("caseDesc");
+        CASE_PATH = System.getProperty("casePath");
         YAML_CASE_BASE_DIR = System.getProperty("yamlCaseBaseDir");
-        log.info("FESQL_CASE_LEVELS {}", FESQL_CASE_LEVELS);
-        if (!StringUtils.isEmpty(FESQL_CASE_NAME)) {
-            log.info("FESQL_CASE_NAME {}", FESQL_CASE_NAME);
+        log.info("FESQL_CASE_LEVELS {}", CASE_LEVELS);
+        if (!StringUtils.isEmpty(CASE_NAME)) {
+            log.info("FESQL_CASE_NAME {}", CASE_NAME);
         }
-        if (!StringUtils.isEmpty(FESQL_CASE_ID)) {
-            log.info("FESQL_CASE_ID {}", FESQL_CASE_ID);
+        if (!StringUtils.isEmpty(CASE_ID)) {
+            log.info("FESQL_CASE_ID {}", CASE_ID);
         }
-        if (!StringUtils.isEmpty(FESQL_CASE_PATH)) {
-            log.info("FESQL_CASE_PATH {}", FESQL_CASE_PATH);
+        if (!StringUtils.isEmpty(CASE_PATH)) {
+            log.info("FESQL_CASE_PATH {}", CASE_PATH);
         }
-        if (!StringUtils.isEmpty(FESQL_CASE_DESC)) {
-            log.info("FESQL_CASE_DESC {}", FESQL_CASE_DESC);
+        if (!StringUtils.isEmpty(CASE_DESC)) {
+            log.info("FESQL_CASE_DESC {}", CASE_DESC);
         }
         if (!StringUtils.isEmpty(YAML_CASE_BASE_DIR)) {
             log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);

@@ -33,6 +33,7 @@ public class SQLCase implements Serializable{
     private String id;
     private String desc;
     private String mode;
+    private String json;
     private String db;
     private String version;
     private String longWindow;

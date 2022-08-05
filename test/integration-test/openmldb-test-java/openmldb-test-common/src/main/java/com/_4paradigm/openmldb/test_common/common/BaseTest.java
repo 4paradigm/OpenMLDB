@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.java_sdk_test.common;
+package com._4paradigm.openmldb.test_common.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.CaseFile;
+import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.provider.Yaml;

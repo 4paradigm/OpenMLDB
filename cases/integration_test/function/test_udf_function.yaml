@@ -1,0 +1,89 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+sqlDialect: ["HybridSQL"]
+version: 0.5.0
+cases:
+  - id: 0
+    desc: 默认udf null处理逻辑：返回null
+    inputs:
+      - columns: ["id int64", "c1 string", "c2 int", "c3 double",
+                  "c4 date", "c5 timestamp", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts"]
+        rows:
+        - [1, NULL, 42, 3.14, "2020-05-20", 1590738989000, 1590738989000]
+        - [2, "hello world", NULL, NULL, NULL, NULL, 1590738989000]
+    sql: select id,
+        substring(c1, 1, 5) as r1,
+        substring(c1, 1, c2) as r2,
+        pow(c2, 2) as r3,
+        floor(c3) as r4,
+        dayofweek(c4) as r5,
+        dayofweek(c5) as r6
+        from {0};
+    expect:
+      order: id
+      columns: ["id int64", "r1 string", "r2 string", "r3 double", "r4 double",
+                "r5 int", "r6 int"]
+      rows:
+        - [1, NULL, NULL, 1764, 3.00, 4, 6]
+        - [2, "hello", NULL, NULL, NULL, NULL, NULL]
+
+  - id: 1
+    desc: udf使用中间结果null值
+    inputs:
+      - columns: ["id int64", "c1 string", "c2 int", "c3 double",
+                  "c4 date", "c5 timestamp", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts"]
+        rows:
+        - [1, NULL, 42, 3.14, "2020-05-20", 1590738989000, 1590738989000]
+        - [2, "hello world", NULL, NULL, NULL, NULL, 1590738989000]
+    sql: select id,
+        substring(substring(c1, 1, 5), 1, 1) as r1,
+        substring(substring(c1, 1, c2), c2, 1) as r2,
+        abs(pow(c2, 2)) as r3,
+        abs(floor(c3)) as r4,
+        abs(dayofweek(c4)) as r5,
+        abs(dayofweek(c5)) as r6
+        from {0};
+    expect:
+      order: id
+      columns: ["id int64", "r1 string", "r2 string", "r3 double", "r4 double",
+                "r5 int", "r6 int"]
+      rows:
+        - [1, NULL, NULL, 1764, 3.00, 4, 6]
+        - [2, "h", NULL, NULL, NULL, NULL, NULL]
+
+  - id: 2
+    desc: 函数名大小写不敏感
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 timestamp"]
+        indexs: ["index1:id:c2"]
+        rows:
+          - [1, 1.0, 1590738989000]
+    sql: select id,
+        SUM(c1) over w as r1, sUm(c1) over w as r2, sum(c1) over w as r3, log(c1) as r4 
+        from {0} window w as (PARTITION BY id ORDER BY c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "r1 double", "r2 double", "r3 double", "r4 double"]
+      rows:
+        - [1, 1, 1, 1, 0]
+
+
+  
+
+        
