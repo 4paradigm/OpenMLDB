@@ -1,13 +1,10 @@
 import logging
 import os.path
-import sys
 import unittest
+from unittest.mock import patch
 
 from diagnostic_tool.collector import Collector
 from diagnostic_tool.dist_conf import DistConfReader, ServerInfoMap, ALL_SERVER_ROLES, ServerInfo
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                    format='{%(filename)s:%(lineno)d} %(levelname)s - %(message)s', )
 
 
 class MyTestCase(unittest.TestCase):
@@ -36,12 +33,18 @@ class MyTestCase(unittest.TestCase):
         # no logs in tablet1
         with self.assertLogs() as cm:
             self.assertFalse(self.conns.pull_log_files('/tmp/log_copy_to'))
-        self.assertTrue(any(['no logs in' in log_str for log_str in cm.output]))
+        self.assertTrue(any(['no file in' in log_str for log_str in cm.output]))
+        for log_str in cm.output:
+            print(log_str)
 
     @unittest.skip
-    def test_version(self):
-        self.conns.collect_version()
+    @patch('diagnostic_tool.collector.parse_config_from_properties')
+    def test_version(self, mock_conf):
+        mock_conf.return_value = os.path.dirname(__file__) + '/work/spark_home'
+        self.assertTrue(self.conns.collect_version())
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO,
+                        format='{%(filename)s:%(lineno)d} %(levelname)s - %(message)s', )
     unittest.main()

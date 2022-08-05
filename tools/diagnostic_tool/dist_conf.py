@@ -21,6 +21,8 @@ ALL_SERVER_ROLES = ['nameserver', 'tablet', 'taskmanager']
 
 CXX_SERVER_ROLES = ALL_SERVER_ROLES[:2]
 
+JAVA_SERVER_ROLES = [ALL_SERVER_ROLES[2]]
+
 
 class ServerInfo:
     def __init__(self, role, endpoint, path):
@@ -32,16 +34,24 @@ class ServerInfo:
     def __str__(self):
         return f'Server[{self.role}, {self.endpoint}, {self.path}]'
 
-    def make_paths_of_conf(self, local_root):
+    def is_taskmanager(self):
+        return self.role == 'taskmanager'
+
+    def conf_path(self):
+        return f'{self.path}/conf'
+
+    def conf_path_pair(self, local_root):
         config_name = f'{self.role}.flags' if self.role != 'taskmanager' \
             else f'{self.role}.properties'
-        local_prefix = f"{self.endpoint}-{self.role}"
-        return f"{self.path}/conf/{config_name}", f"{local_root}/{local_prefix}/{config_name}"
+        local_prefix = f'{self.endpoint}-{self.role}'
+        return f'{self.path}/conf/{config_name}', f'{local_root}/{local_prefix}/{config_name}'
 
-    def make_paths_of_logs(self, remote_log_dir, log_names, dest):
-        # TODO(hw): openmldb glog config? will it get a too large log file? fix the settings
-        return [(f'{remote_log_dir}/{log_name}', f'{dest}/{self.endpoint}-{self.role}/{log_name}')
-                for log_name in log_names]
+    def remote_log4j_path(self):
+        return f'{self.path}/conf/log4j.properties'
+
+    # TODO(hw): openmldb glog config? will it get a too large log file? fix the settings
+    def remote_local_pairs(self, remote_dir, file, dest):
+        return f'{remote_dir}/{file}', f'{dest}/{self.endpoint}-{self.role}/{file}'
 
 
 class ServerInfoMap:
