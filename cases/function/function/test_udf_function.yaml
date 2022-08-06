@@ -131,120 +131,120 @@ cases:
             - [5, contact@dropmldb.ai]
             - [6, contact@closemldb.ai]
 
-  - id: 5
-    desc: udf regexp_like with flags
-    inputs:
-      - columns: ["id int", "ts timestamp"]
-        indexs: ["index1:id:ts"]
-        rows:
-          - [1, 1590115420000]
-          - [2, 1590115420001]
-          - [3, 1590115420002]
-      - columns: ["id int", "ts timestamp", "col2 string"]
-        indexs: ["index1:id:ts"]
-        rows:
-          - [1, 1590115420000, "the Lord of the Rings"]
-          - [2, 1590115420001, "The Lord of the Rings"]
-          - [3, 1590115420002, "The Lord of the Rings\nJ. R. R. Tolkien"]
-    dataProvider:
-      - ["The Lord of the Rings", "The Lord of the Rings.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien", "^The Lord of the Rings$.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien"] # match pattern
-      - ["i", "s", "m", "smi", "c", ""] # flags
-    sql: |
-      select {0}.id, {1}.col2 from {0} last join {1} on {0}.id = {1}.id and regexp_like(col2, "d[0]", "d[1]");
-    expect:
-      columns: ["id int", "col2 string"]
-      order: id
-    expectProvider:
-      0:
-        0:
-          rows:
-            - [1, "the Lord of the Rings"]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-        1:
-          rows:
-            - [1, null]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-        2:
-          rows:
-            - [1, null]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-        3:
-          rows:
-            - [1, "the Lord of the Rings"]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-        4:
-          rows:
-            - [1, null]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-        5:
-          rows:
-            - [1, null]
-            - [2, "The Lord of the Rings"]
-            - [3, null]
-      1:
-        0:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        1:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
-        2:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        3:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
-        4:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        5:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-      2:
-        0:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        1:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        2:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        3:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
-        4:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
-        5:
-          rows:
-            - [1, null]
-            - [2, null]
-            - [3, null]
+#  - id: 4
+#    desc: udf regexp_like with flags
+#    inputs:
+#      - columns: ["id int", "ts timestamp"]
+#        indexs: ["index1:id:ts"]
+#        rows:
+#          - [1, 1590115420000]
+#          - [2, 1590115420001]
+#          - [3, 1590115420002]
+#      - columns: ["id int", "ts timestamp", "col2 string"]
+#        indexs: ["index1:id:ts"]
+#        rows:
+#          - [1, 1590115420000, "the Lord of the Rings"]
+#          - [2, 1590115420001, "The Lord of the Rings"]
+#          - [3, 1590115420002, "The Lord of the Rings\nJ. R. R. Tolkien"]
+#    dataProvider:
+#      - ["The Lord of the Rings", "The Lord of the Rings.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien", "^The Lord of the Rings$.J\\\\\\\\. R\\\\\\\\. R\\\\\\\\. Tolkien"] # match pattern
+#      - ["i", "s", "m", "smi", "c", ""] # flags
+#    sql: |
+#      select {0}.id, {1}.col2 from {0} last join {1} on {0}.id = {1}.id and regexp_like(col2, "d[0]", "d[1]");
+#    expect:
+#      columns: ["id int", "col2 string"]
+#      order: id
+#    expectProvider:
+#      0:
+#        0:
+#          rows:
+#            - [1, "the Lord of the Rings"]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#        1:
+#          rows:
+#            - [1, null]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#        2:
+#          rows:
+#            - [1, null]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#        3:
+#          rows:
+#            - [1, "the Lord of the Rings"]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#        4:
+#          rows:
+#            - [1, null]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#        5:
+#          rows:
+#            - [1, null]
+#            - [2, "The Lord of the Rings"]
+#            - [3, null]
+#      1:
+#        0:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        1:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
+#        2:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        3:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
+#        4:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        5:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#      2:
+#        0:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        1:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        2:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        3:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, "The Lord of the Rings\nJ. R. R. Tolkien"]
+#        4:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
+#        5:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, null]
