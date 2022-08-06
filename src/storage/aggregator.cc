@@ -123,16 +123,25 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     }
 
     AggrBufferLocked* aggr_buffer_lock;
+    // If filter key not empty, ts_end of AggrBuffer should aligned
+    // with AggrBuffer with same key but different filter key.
+    // Designed alignment only for range window, left TODO for rows window
+    int64_t aligned_end = -1;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto it = aggr_buffer_map_.find(key);
         if (it == aggr_buffer_map_.end()) {
-            auto insert_pair = aggr_buffer_map_[key].insert(std::make_pair(filter_key, AggrBufferLocked{}));
+            auto insert_pair = aggr_buffer_map_[key].emplace(filter_key, AggrBufferLocked{});
             aggr_buffer_lock = &insert_pair.first->second;
         } else {
-            auto filter_it = it->second.find(filter_key);
-            if (filter_it == it->second.end()) {
-                auto insert_pair = it->second.emplace(filter_key, AggrBufferLocked{});
+            auto& filter_map = it->second;
+            auto filter_it = filter_map.find(filter_key);
+            if (filter_it == filter_map.end()) {
+                if (!filter_map.empty() && window_type_ == WindowType::kRowsRange) {
+                    aligned_end = filter_map.cbegin()->second.buffer_.ts_end_;
+                }
+
+                auto insert_pair = filter_map.emplace(filter_key, AggrBufferLocked{});
                 aggr_buffer_lock = &insert_pair.first->second;
             } else {
                 aggr_buffer_lock = &filter_it->second;
@@ -148,7 +157,11 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         aggr_buffer.data_type_ = aggr_col_type_;
         aggr_buffer.ts_begin_ = cur_ts;
         if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
+            if (aligned_end != -1) {
+                aggr_buffer.ts_end_ = aligned_end;
+            } else {
+                aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
+            }
         }
     }
 

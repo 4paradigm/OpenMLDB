@@ -2753,7 +2753,7 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         for (size_t i = 0; i < union_inputs.size(); i++) {
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_inputs[i]);
-            LOG(INFO) << "union input " << i << ": " << sss.str();
+            LOG(INFO) << "union input " << i << ":\n" << sss.str();
         }
     }
 
@@ -3047,7 +3047,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         // for mem-table, updating will inserts duplicate entries
         if (last_ts_start == ts_start) {
             DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
-            continue;
+            // agg_it->Next();
+            // continue;
         }
         last_ts_start = ts_start;
 

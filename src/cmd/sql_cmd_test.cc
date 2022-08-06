@@ -1958,7 +1958,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere4) {
         ~DeployLongWindowCountWhereEnv() override {}
 
         void Deploy() override {
-            ProcessSQLs(sr_, {absl::Substitute(R"(DEPLOY $0 options(long_windows='w1:2s')
+            ProcessSQLs(sr_, {absl::Substitute(R"(DEPLOY $0 options(long_windows='w1:3s')
     SELECT
         col1, col2,
         count_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,
