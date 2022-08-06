@@ -450,9 +450,15 @@ TEST_P(DBSDKTest, Deploy) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    std::string deploy_sql1 =
+        "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql1, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
 
@@ -590,6 +596,54 @@ TEST_P(DBSDKTest, DeployOptions) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
+
+TEST_P(DBSDKTest, Delete) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    ProcessSQLs(
+        sr, {
+                "set @@execute_mode = 'online'",
+                absl::StrCat("create database ", db_name, ";"),
+                absl::StrCat("use ", db_name, ";"),
+                absl::StrCat("create table ", table_name, "(c1 string, c2 int, c3 bigint);"),
+                absl::StrCat("insert into ", table_name, " values ('key1', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key2', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key3', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key4', 11, 22);"),
+            });
+
+    hybridse::sdk::Status status;
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 4);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 3);
+    std::string delete_sql = "delete from " + table_name + " where c1 = ?;";
+    auto insert_row = sr->GetDeleteRow(db_name, delete_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    insert_row->SetString(1, "key3");
+    ASSERT_TRUE(insert_row->Build());
+    sr->ExecuteDelete(insert_row, &status);
+    ASSERT_TRUE(status.IsOK());
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 2);
+    insert_row->Reset();
+    insert_row->SetString(1, "key100");
+    ASSERT_TRUE(insert_row->Build());
+    sr->ExecuteDelete(insert_row, &status);
+    ASSERT_TRUE(status.IsOK());
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 2);
+
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 
 TEST_P(DBSDKTest, DeployLongWindows) {
     auto cli = GetParam();

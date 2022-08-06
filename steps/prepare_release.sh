@@ -52,6 +52,7 @@ MINOR=${ARR[1]}
 BUG=${ARR[2]}
 
 # version in server
+echo -e "${GREEN}setting native cpp version to $MAJOR.$MINOR.$BUG${NC}"
 sed -i"" -e "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"

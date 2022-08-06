@@ -261,8 +261,8 @@ class NodeManager {
     DeployPlanNode *MakeDeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                                        const std::shared_ptr<OptionsMap> options, bool if_not_exist);
 
-    // create a delete job node
-    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);
+    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id,
+            const std::string& db_name, const std::string& table, node::ExprNode* where_expr);
     DeletePlanNode* MakeDeletePlanNode(const DeleteNode* node);
 
     LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string &db, const std::string &table,
