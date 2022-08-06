@@ -2126,9 +2126,9 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )";
 
     RegisterExternal("last_day")
-            .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*)>(v1::last_day)))
+            .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
             .return_by_arg(true)
-            .returns<Date>()
+            .returns<Nullable<Date>>()
             .doc(last_day_doc);
 
     RegisterExternal("last_day")

@@ -224,7 +224,7 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
-void last_day(int64_t ts, Date *output);
+void last_day(int64_t ts, Date *output, bool *is_null);
 void last_day(Timestamp *ts, Date *output);
 void last_day(Date *ts, Date *output, bool *is_null);
 
