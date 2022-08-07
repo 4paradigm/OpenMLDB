@@ -122,6 +122,11 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
     }
 
+    if (!filter_key.empty() && window_type_ != WindowType::kRowsRange) {
+        LOG(ERROR) << "unsupport rows bucket window for *_where agg op";
+        return false;
+    }
+
     AggrBufferLocked* aggr_buffer_lock;
     // If filter key not empty, ts_end of AggrBuffer should aligned
     // with AggrBuffer with same key but different filter key.

@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "node/node_manager.h"
@@ -219,8 +220,9 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
 
     if (0 != sql_status.code) {
         DLOG(ERROR) << sql_status.msg;
-        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg);
+        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg, sql_status.GetTraces());
     }
+
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
@@ -339,6 +341,12 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 return false;
             }
             aggr_col += agg_expr->GetChild(0)->GetExprString();
+
+            if (absl::EndsWithIgnoreCase(aggr_name, "_where") &&
+                project_list_node->GetW()->frame_node()->frame_type() == hybridse::node::kFrameRows) {
+                LOG(WARNING) << "unsupport *_where op (" << aggr_name <<") for rows window";
+                return false;
+            }
 
             // extract filter column from condition expr
             std::string filter_col;

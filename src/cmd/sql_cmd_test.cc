@@ -1671,6 +1671,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCount) {
 }
 
 TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
+    GTEST_SKIP() << "count_where for rows window un-supported due to pre-agg rows not aligned";
+
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -1825,6 +1827,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
 
 // count where for condition between different compare type
 TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
+    GTEST_SKIP() << "count_where for rows window un-supported due to pre-agg rows not aligned";
+
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
