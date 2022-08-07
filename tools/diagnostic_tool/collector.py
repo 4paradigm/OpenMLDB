@@ -18,7 +18,7 @@ import re
 import paramiko
 from paramiko.file import BufferedFile
 
-from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES
+from dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES
 
 log = logging.getLogger(__name__)
 
@@ -89,36 +89,39 @@ class Collector:
         ok = self.dist_conf.server_info_map.for_each(pull_cxx, CXX_SERVER_ROLES)
         return self.dist_conf.server_info_map.for_each(pull_taskmanager, JAVA_SERVER_ROLES) and ok
 
+
     def collect_version(self):
         """
         get the version of components before starts
         :return:
         """
+        version_map = {}
+        def extract_version(raw_version):
+            return raw_version.split(' ')[2].split('-')[0]
 
-        # TODO(hw): just print?
         def run_version(server_info: ServerInfo) -> bool:
+            version_map.setdefault(server_info.role, [])
             self.ssh_client.connect(hostname=server_info.host)
             _, stdout, _ = self.ssh_client.exec_command(f'{server_info.path}/bin/openmldb --version')
             version = buf2str(stdout)
             if not version:
                 log.warning('failed at get version from %s', server_info)
                 return False
-            print(server_info, 'version: ', version)
+            version_map[server_info.role].append((server_info.host, extract_version(version)))
             return True
 
-        ok = self.dist_conf.server_info_map.for_each(run_version, CXX_SERVER_ROLES)
+        self.dist_conf.server_info_map.for_each(run_version, CXX_SERVER_ROLES)
 
-        # If we haven't started the taskmanager, can't get batch version by it. Get batch version manually.
         def jar_version(server_info: ServerInfo) -> bool:
             remote_config_file = server_info.conf_path_pair('')[0]
             bv = self.get_batch_version(self.get_spark_home(remote_config_file))
             print(bv) if bv else log.warning('failed at get batch version from %s', server_info)
-            tv = self.get_taskmanager_version(server_info.path)
+            tv = self.get_taskmanager_version(server_info.taskmanager_path())
             print(tv) if tv else log.warning('failed at get taskmanager version from %s', server_info)
             return len(bv) != 0 and len(tv) != 0
 
-        ok = self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES) and ok
-        return ok
+        #ok = self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES) and ok
+        return version_map
 
     def get_spark_home(self, remote_config_file):
         """
@@ -148,7 +151,7 @@ class Collector:
 
     def get_batch_version(self, spark_home):
         # TODO(hw): check if multi batch jars
-        log.warning("spark_home %s", spark_home)
+        log.info("spark_home %s", spark_home)
         batch_jar_path = f'{spark_home}/jars/openmldb-batch-*'
         _, stdout, _ = self.ssh_client.exec_command(
             f'java -cp {batch_jar_path} com._4paradigm.openmldb.batch.utils.VersionCli')
@@ -157,7 +160,7 @@ class Collector:
     def get_taskmanager_version(self, root_path):
         # TODO(hw): check if multi taskmanager jars
         _, stdout, _ = self.ssh_client.exec_command(
-            f'java -cp {root_path}/lib/openmldb-taskmanager-* '
+            f'~/.bash_profile; java -cp {root_path}/lib/openmldb-taskmanager-* '
             f'com._4paradigm.openmldb.taskmanager.utils.VersionCli')
         return buf2str(stdout)
 
@@ -167,7 +170,7 @@ class Collector:
         job_log_dir = self.remote_config_value(server_info.host, remote_conf_path, 'job.log.path=', '../log')
         # job_log_dir is start from taskmanager/bin
         # TODO(hw): what if abs path?
-        job_log_dir = f'{server_info.path}/bin/{job_log_dir}'
+        job_log_dir = f'{server_info.taskmanager_path()}/bin/{job_log_dir}'
 
         # only log names job_x_error.log
         log_list = self.remote_log_file_list(server_info.host, job_log_dir,
@@ -211,7 +214,7 @@ class Collector:
 
         # TODO(hw): what if abs path?
         # dir is start from taskmanager/bin
-        server_log_dir = f'{server_info.path}/bin/{server_log_dir}'
+        server_log_dir = f'{server_info.taskmanager_path()}/bin/{server_log_dir}'
 
         log_list = self.remote_log_file_list(server_info.host, server_log_dir,
                                              lambda di: 'taskmanager' in di['filename'], last_n)

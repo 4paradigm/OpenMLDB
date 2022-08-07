@@ -69,7 +69,7 @@ class ServerChecker:
             log.warn(e)
             return None
 
-    def check_run_job(self):
+    def check_run_job(self) -> bool:
         self.cursor.execute('SET @@execute_mode=\'offline\';')
         result = self.cursor.execute('SELECT * FROM {};'.format(self.table_name)).fetchall()
         if len(result) < 1:
@@ -80,44 +80,47 @@ class ServerChecker:
         while True:
             status = self.get_job_status(job_id)
             if status is None:
-                return
+                return False
             elif status == 'FINISHED':
-                return
+                return True
             elif status == 'FAILED':
                 log.warn('job execute failed')
-                return
+                return False
             time.sleep(2)
 
-    def run_test_sql(self):
+    def run_test_sql(self) -> bool:
         self.cursor.execute('CREATE DATABASE IF NOT EXISTS {};'.format(self.db_name))
         result = self.cursor.execute('SHOW DATABASES;').fetchall()
         if not self.is_exist(result, self.db_name):
             log.warn('create database failed')
-            return
+            return False
         self.cursor.execute('USE {};'.format(self.db_name)).fetchall()
         self.cursor.execute('CREATE TABLE IF NOT EXISTS {} (col1 string, col2 string);'.format(self.table_name))
         result = self.cursor.execute('SHOW TABLES;').fetchall()
         if not self.is_exist(result, self.table_name):
             log.warn('create table failed')
-            return
+            return False
 
+        flag = True
         if self.conf_dict['mode'] == 'cluster':
-            self.check_run_job()
+            if not self.check_run_job():
+                flag = False
 
         self.cursor.execute('SET @@execute_mode=\'online\';')
         self.cursor.execute('INSERT INTO {} VALUES (\'aa\', \'bb\');'.format(self.table_name))
         result = self.cursor.execute('SELECT * FROM {};'.format(self.table_name)).fetchall()
         if len(result) != 1:
             log.warn('check select data failed')
-            return
+            flag = False
 
         self.cursor.execute('DROP TABLE {};'.format(self.table_name))
         result = self.cursor.execute('SHOW TABLES;').fetchall()
         if self.is_exist(result, self.table_name):
             log.warn(f'drop table {self.table_name} failed')
-            return
+            flag = False
         self.cursor.execute('DROP DATABASE {};'.format(self.db_name))
         result = self.cursor.execute('SHOW DATABASES;').fetchall()
         if self.is_exist(result, self.db_name):
             log.warn(f'drop database {self.db_name} failed')
-            return
+            flag = False
+        return flag

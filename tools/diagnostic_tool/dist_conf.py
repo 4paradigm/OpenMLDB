@@ -40,6 +40,12 @@ class ServerInfo:
     def conf_path(self):
         return f'{self.path}/conf'
 
+    def bin_path(self):
+        return f'{self.path}/bin'
+
+    def taskmanager_path(self):
+        return f'{self.path}/taskmanager'
+
     def conf_path_pair(self, local_root):
         config_name = f'{self.role}.flags' if self.role != 'taskmanager' \
             else f'{self.role}.properties'
@@ -47,7 +53,7 @@ class ServerInfo:
         return f'{self.path}/conf/{config_name}', f'{local_root}/{local_prefix}/{config_name}'
 
     def remote_log4j_path(self):
-        return f'{self.path}/conf/log4j.properties'
+        return f'{self.path}/taskmanager/conf/log4j.properties'
 
     # TODO(hw): openmldb glog config? will it get a too large log file? fix the settings
     def remote_local_pairs(self, remote_dir, file, dest):
@@ -87,8 +93,6 @@ class DistConf:
         self.mode = self.full_conf['mode']
         self.server_info_map = ServerInfoMap(
             self.map(ALL_SERVER_ROLES, lambda role, s: ServerInfo(role, s['endpoint'], s['path'])))
-        if self.mode == 'cluster':
-            self.zk = self.full_conf['zookeeper']
 
     def __str__(self):
         return str(self.full_conf)
@@ -96,6 +100,8 @@ class DistConf:
     def map(self, role_list, trans):
         result = {}
         for role in role_list:
+            if role not in self.full_conf:
+                continue
             ss = self.full_conf[role]
             if ss:
                 result[role] = []
@@ -111,3 +117,23 @@ class DistConfReader:
 
     def conf(self):
         return self.dist_conf
+
+class ConfParser:
+    def __init__(self, config_path):
+        self.conf_map = {}
+        with open(config_path, "r") as stream:
+            for line in stream:
+                item = line.strip()
+                if item == '' or item.startswith('#'):
+                    continue
+                arr = item.split("=")
+                if len(arr) != 2:
+                    continue
+                if arr[0].startswith('--'):
+                    # for gflag
+                    self.conf_map[arr[0][2:]] = arr[1]
+                else:
+                    self.conf_map[arr[0]] = arr[1]
+
+    def conf(self):
+        return self.conf_map
