@@ -1957,6 +1957,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
         count_where(s_col, null = col1) over w1 as cw_w1_8,
         count_where(s_col, 'str0' != col1) over w1 as cw_w1_9,
         count_where(date_col, null != s_col) over w1 as cw_w1_10,
+        count_where(*, i64_col > 0) over w1 as cw_w1_11,
+        count_where(filter, i64_col > 0) over w1 as cw_w1_12,
         count_where(col3, 10 < i64_col) over w2 as w2_count_where_col3
     FROM $1 WINDOW
         w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW),
@@ -1976,6 +1978,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_d_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_col1"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_s_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where__i64_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_filter_i64_col"),
                              });
         }
     };
@@ -2002,7 +2006,9 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
     EXPECT_EQ(0, res->GetInt64Unsafe(8));
     EXPECT_EQ(8, res->GetInt64Unsafe(9));
     EXPECT_EQ(0, res->GetInt64Unsafe(10));
-    EXPECT_EQ(2, res->GetInt64Unsafe(11));
+    EXPECT_EQ(8, res->GetInt64Unsafe(11));
+    EXPECT_EQ(7, res->GetInt64Unsafe(12));
+    EXPECT_EQ(2, res->GetInt64Unsafe(13));
 }
 
 // pre agg rows is range buckets

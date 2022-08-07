@@ -1002,7 +1002,7 @@ class RequestAggUnionRunner : public Runner {
           agg_col_(project->GetChild(0)) {
         if (agg_col_->GetExprType() == node::kExprColumnRef) {
             agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
-        }
+        } /* for kAllExpr like count(*), agg_col_name_ is empty */
 
         if (project->GetChildNum() >= 2) {
             // assume second kid of project as filter condition
