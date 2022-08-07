@@ -2,7 +2,7 @@
 
 ## Syntax
 
-```
+```sql
 WindowClauseOptional
         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
 
@@ -14,7 +14,6 @@ WindowSpec
 
 WindowSpecDetails
         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
-
 
 WindowUnionClause
         :: = ( 'UNION' TableRefs)
@@ -174,7 +173,7 @@ from t1;
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
-- **ROWS_RANGE类型窗口**
+- **ROWS_RANGE 类型窗口**
 
 定义一个ROWS_RANGE类型窗口，窗口范围是当前行前10s的所有行，以及当前行。
 ```SQL
@@ -278,7 +277,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 ![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
-### 4. Window Frame Max Size
+### 4. Window with MAXSIZE
 
 OpenMLDB定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 
@@ -292,9 +291,9 @@ WindowFrameMaxSize
 ![Figure 7: window config max size](../dql/images/window_max_size.png)
 
 #### Example
-- **ROW RANGE 类型窗口，带有 MAXSIZE 限制**
+- **ROWS_RANGE 类型窗口，带有 MAXSIZE 限制**
 
-定义一个ROWS_RANGE 类型窗口，窗口范围是当前行前10s的所有行，以及当前行。同时限制窗口内数据条数不超过3条。
+定义一个 ROWS_RANGE 类型窗口，窗口范围是当前行前10s的所有行，以及当前行。同时限制窗口内数据条数不超过3条。
 ```sql
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW MAXSIZE 3);
