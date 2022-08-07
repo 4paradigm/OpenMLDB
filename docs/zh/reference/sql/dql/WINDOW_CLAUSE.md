@@ -2,7 +2,7 @@
 
 ## Syntax
 
-```
+```sql
 WindowClauseOptional
         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
 
@@ -14,7 +14,6 @@ WindowSpec
 
 WindowSpecDetails
         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
-
 
 WindowUnionClause
         :: = ( 'UNION' TableRefs)
@@ -151,14 +150,15 @@ WindowFrameBound
 - OpenMLDB支持默认边界是闭合的。但支持OPEN关键字来修饰边界开区间
 - 请注意：标准SQL中，还支持FOLLOWING的边界，当OpenMLDB并不支持。
 
-#### **Example: 有名窗口（Named Window）**
+#### Example
+- **有名窗口（Named Window）**
 
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW)
 ```
 
-#### **Example: 匿名窗口**
+- **匿名窗口**
 
 ```SQL
 SELECT id, pk1, col1, std_ts,
@@ -166,14 +166,16 @@ sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CU
 from t1;
 ```
 
-#### **Example: ROWS窗口**
-window ROWS, 前1000条到当前条
+- **ROWS 类型窗口**
+
+定义一个ROWS 类型窗口， 窗口范围是前1000行到当前行。
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
-#### **Example: ROWS RANGE窗口**
-window ROWS_RANGE, 前10s到当前条
+- **ROWS_RANGE 类型窗口**
+
+定义一个ROWS_RANGE类型窗口，窗口范围是当前行前10s的所有行，以及当前行。
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
@@ -181,14 +183,15 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ## OpenMLDB特有的WINDOW SPEC元素
 
-### 1. Window With Union
+### 1. WINDOW ... UNION
 
 ```sql
 WindowUnionClause
         :: = ( 'UNION' TableRefs)
 ```
 
-#### **1.1 Example: Window with union 一张副表**
+#### Example
+- **基于一张副表的 WINDOW ... UNION**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -197,7 +200,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 2: window union one table](../dql/images/window_union_1_table.png)
 
-#### **1.2 Example: Window with union 多张副表**
+- **基于多张副表的 WINDOW ... UNION**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -206,7 +209,7 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
-#### **1.3 Example: Window with union INSTANCE_NOT_IN_WINDOW**
+- **带有 INSTANCE_NOT_IN_WINDOW 的 WINDOW ... UNION**
 
 使用 `INSTANCE_NOT_IN_WINDOW` 修饰 window, 样本表除当前行外其他行不进入窗口计算。
 
@@ -217,7 +220,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 ![Figure 4: window union one table with instance_not_in_window](../dql/images/window_union_1_table_instance_not_in_window.png)
 
-#### **1.4 Example: Window with union 列筛选子查询**
+- **带有列筛选子查询的 WINDOW ... UNION**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -227,7 +230,7 @@ WINDOW w1 AS
 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
 ```
 
-### 2. Window Exclude Current Time
+### 2. WINDOW with EXCLUDE CURRENT_TIME
 
 窗口计算时除当前行外其他与当前行的 `ts` 列值相同的行不进入窗口计算。
 
@@ -235,17 +238,19 @@ PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW
 WindowExcludeCurrentTime 
         ::= 'EXCLUDE' 'CURRENT_TIME'  
 ```
+#### Example
+- **ROWS 类型窗口，带有 EXCLUDE CURRENT_TIME**
 
-#### **2.1 Example: ROWS 窗口 EXCLUDE CURRENT TIME**
-window ROWS, 前1000条到当前条, 除了current row以外窗口内不包含当前时刻的其他数据
+定义一个ROWS 类型窗口，窗口范围是前1000行到当前行。 除了当前行以外窗口内不包含当前时刻的其他数据。
 
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
 ```
 
-#### **2.2 Example: ROW RANGE 窗口 EXCLUDE CURRENT TIME**
-window ROWS_RANGE, 前10s到当前条，除了current row以外窗口内不包含当前时刻的其他数据
+- **ROWS_RANGE 类型窗口，带有 EXCLUDE CURRENT_TIME**
+
+定义一个ROWS_RANGE 类型窗口，窗口范围是当前行前10s的所有行，以及当前行。除了当前行以外窗口内不包含当前时刻的其他数据。
 
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -254,7 +259,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ![Figure 5: window exclude current time](../dql/images/window_exclude_current_time.png)
 
-### 3. Window Exclude Current Row
+### 3. WINDOW with EXCLUDE CURRENT_ROW
 
 当前行不进入窗口计算。
 
@@ -263,16 +268,18 @@ WindowExcludeCurrentRow
         ::= 'EXCLUDE' 'CURRENT_ROW'
 ```
 
-#### 3.1 Example: ROWS_RANGE 窗口 EXCLUDE CURRENT ROW
+#### Example
+- **ROWS_RANGE 类型窗口，带有 EXCLUDE CURRENT_ROW**
 
 ```sql
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
 ```
+![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
-### 4. Window Frame Max Size
+### 4. Window with MAXSIZE
 
-OpenMLDB在定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
+OpenMLDB定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 
 `MaxSize` 属性仅支持 `ROWS_RANGE` 类型窗口。
 
@@ -281,10 +288,12 @@ WindowFrameMaxSize
         :: = MAXSIZE NumLiteral
 ```
 
-![Figure 6: window config max size](../dql/images/window_max_size.png)
+![Figure 7: window config max size](../dql/images/window_max_size.png)
 
-#### **Example: ROW RANGE 窗口MAXSIZE**
-window ROWS_RANGE, 前10s到当前条，同时限制窗口条数不超过3条
+#### Example
+- **ROWS_RANGE 类型窗口，带有 MAXSIZE 限制**
+
+定义一个 ROWS_RANGE 类型窗口，窗口范围是当前行前10s的所有行，以及当前行。同时限制窗口内数据条数不超过3条。
 ```sql
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW MAXSIZE 3);
