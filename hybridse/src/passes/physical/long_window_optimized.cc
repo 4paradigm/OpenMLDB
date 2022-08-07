@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/algorithm/container.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "vm/engine.h"
@@ -25,6 +27,10 @@
 
 namespace hybridse {
 namespace passes {
+
+static const absl::flat_hash_set<absl::string_view> WHERE_FUNS = {
+    "count_where", "sum_where", "avg_where", "min_where", "max_where",
+};
 
 LongWindowOptimized::LongWindowOptimized(PhysicalPlanContext* plan_ctx) : TransformUpPysicalPass(plan_ctx) {
     std::vector<std::string> windows;
@@ -367,7 +373,7 @@ absl::StatusOr<LongWindowOptimized::AggInfo> LongWindowOptimized::CheckCallExpr(
     }
 
     if (call->GetChildNum() == 2) {
-        if (call->GetFnDef()->GetName() != "count_where") {
+        if (absl::c_none_of(WHERE_FUNS, [&call](absl::string_view e) { return call->GetFnDef()->GetName() == e; })) {
             return absl::UnimplementedError(absl::StrCat(call->GetFnDef()->GetName(), " not implemented"));
         }
 

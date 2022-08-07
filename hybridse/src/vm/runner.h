@@ -1033,6 +1033,10 @@ class RequestAggUnionRunner : public Runner {
         kMin,
         kMax,
         kCountWhere,
+        kSumWhere,
+        kAvgWhere,
+        kMinWhere,
+        kMaxWhere,
     };
 
     RequestWindowUnionGenerator windows_union_gen_;
@@ -1056,8 +1060,16 @@ class RequestAggUnionRunner : public Runner {
     std::unique_ptr<BaseAggregator> CreateAggregator() const;
 
     static inline const absl::flat_hash_map<absl::string_view, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax}, {"count_where", kCountWhere},
-    };
+        {"sum", kSum},
+        {"count", kCount},
+        {"avg", kAvg},
+        {"min", kMin},
+        {"max", kMax},
+        {"count_where", kCountWhere},
+        {"sum_where", kSumWhere},
+        {"avg_where", kAvgWhere},
+        {"min_where", kMinWhere},
+        {"max_where", kMaxWhere}};
 };
 
 class PostRequestUnionRunner : public Runner {

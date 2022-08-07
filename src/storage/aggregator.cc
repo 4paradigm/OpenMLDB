@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
+#include "storage/aggregator.h"
+
 #include <algorithm>
 #include <utility>
-#include "absl/strings/str_cat.h"
-#include "boost/algorithm/string.hpp"
 
+#include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "base/file_util.h"
 #include "base/glog_wapper.h"
 #include "base/slice.h"
 #include "base/strings.h"
+#include "boost/algorithm/string.hpp"
 #include "common/timer.h"
-#include "storage/aggregator.h"
 #include "storage/table.h"
 
 DECLARE_bool(binlog_notify_on_put);
@@ -375,6 +377,18 @@ bool Aggregator::GetAggrBuffer(const std::string& key, const std::string& filter
     }
     *buffer = &aggr_buffer_map_[key][filter_key].buffer_;
     return true;
+}
+
+bool Aggregator::SetFilter(absl::string_view filter_col) {
+    for (int i = 0; i < base_table_schema_.size(); i++) {
+        if (base_table_schema_.Get(i).name() == filter_col) {
+            filter_col_ = filter_col;
+            filter_col_idx_ = i;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer) {
@@ -911,24 +925,6 @@ bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t
     return true;
 }
 
-CountWhereAggregator::CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta,
-                                           const ::openmldb::api::TableMeta& aggr_meta,
-                                           std::shared_ptr<Table> aggr_table,
-                                           std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
-                                           const std::string& aggr_col, const AggrType& aggr_type,
-                                           const std::string& ts_col, WindowType window_tpye, uint32_t window_size,
-                                           const std::string& filter_col)
-    : CountAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col,
-                      window_tpye, window_size) {
-    filter_col_ = filter_col;
-    for (int i = 0; i < base_meta.column_desc().size(); i++) {
-        if (base_meta.column_desc(i).name() == filter_col_) {
-            filter_col_idx_ = i;
-            break;
-        }
-    }
-}
-
 AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
                              const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
@@ -1016,14 +1012,14 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         window_type = WindowType::kRowsRange;
         if (bucket_size.empty()) {
             PDLOG(ERROR, "Bucket size is empty");
-            return std::shared_ptr<Aggregator>();
+            return {};
         }
         char time_unit = tolower(bucket_size.back());
         std::string time_size = bucket_size.substr(0, bucket_size.size() - 1);
         boost::trim(time_size);
         if (!::openmldb::base::IsNumber(time_size)) {
             PDLOG(ERROR, "Bucket size is not a number");
-            return std::shared_ptr<Aggregator>();
+            return {};
         }
         switch (time_unit) {
             case 's':
@@ -1040,39 +1036,46 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
                 break;
             default: {
                 PDLOG(ERROR, "Unsupported time unit");
-                return std::shared_ptr<Aggregator>();
+                return {};
             }
         }
     }
 
-    if (aggr_type == "sum") {
-        return std::make_shared<SumAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
+    std::shared_ptr<Aggregator> agg;
+    if (aggr_type == "sum" || aggr_type == "sum_where") {
+        agg = std::make_shared<SumAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
                                                AggrType::kSum, ts_col, window_type, window_size);
-    } else if (aggr_type == "min") {
-        return std::make_shared<MinAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
+    } else if (aggr_type == "min" || aggr_type == "min_where") {
+        agg = std::make_shared<MinAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
                                                AggrType::kMin, ts_col, window_type, window_size);
-    } else if (aggr_type == "max") {
-        return std::make_shared<MaxAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
-                                               AggrType::kMax, ts_col, window_type, window_size);
-    } else if (aggr_type == "count") {
-        return std::make_shared<CountAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
-                                                 AggrType::kCount, ts_col, window_type, window_size);
-    } else if (aggr_type == "avg") {
-        return std::make_shared<AvgAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
-                                               AggrType::kAvg, ts_col, window_type, window_size);
-    } else if (aggr_type == "count_where") {
-        if (filter_col.empty()) {
-            PDLOG(ERROR, "no filter column specified for count_where");
-            return std::shared_ptr<Aggregator>();
-        }
-        return std::make_shared<CountWhereAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos,
-                                                      aggr_col, AggrType::kCountWhere, ts_col, window_type, window_size,
-                                                      filter_col);
+    } else if (aggr_type == "max" || aggr_type == "max_where") {
+        agg = std::make_shared<MaxAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
+                                              AggrType::kMax, ts_col, window_type, window_size);
+    } else if (aggr_type == "count" || aggr_type == "count_where") {
+        agg = std::make_shared<CountAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
+                                                AggrType::kCount, ts_col, window_type, window_size);
+    } else if (aggr_type == "avg" || aggr_type == "avg_where") {
+        agg = std::make_shared<AvgAggregator>(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col,
+                                              AggrType::kAvg, ts_col, window_type, window_size);
     } else {
         PDLOG(ERROR, "Unsupported aggregate function type");
-        return std::shared_ptr<Aggregator>();
+        return {};
     }
-    return std::shared_ptr<Aggregator>();
+
+    if (filter_col.empty() && !absl::EndsWithIgnoreCase(aggr_type, "_where")) {
+        return agg;
+    }
+
+    // _where variant
+    if (filter_col.empty()) {
+        PDLOG(ERROR, "no filter column specified for %s", aggr_type);
+        return {};
+    }
+    if (!agg->SetFilter(filter_col)) {
+        PDLOG(ERROR, "can not find filter column '%s' for %s", filter_col, aggr_type);
+        return {};
+    }
+    return agg;
 }
 
 }  // namespace storage

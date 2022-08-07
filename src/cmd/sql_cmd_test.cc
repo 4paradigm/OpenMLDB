@@ -746,6 +746,7 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
     ASSERT_TRUE(req->Build());
 }
 
+// TODO(ace): create instance of DeployLongWindowEnv with template
 class DeployLongWindowEnv {
  public:
     explicit DeployLongWindowEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {}
@@ -2076,6 +2077,68 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere4) {
     EXPECT_EQ(0, res->GetInt64Unsafe(9));
     EXPECT_EQ(8, res->GetInt64Unsafe(10));
     EXPECT_EQ(3, res->GetInt64Unsafe(11));
+}
+
+TEST_P(DBSDKTest, LongWindowMaxWhere) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    class DeployLongWindowMaxWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowMaxWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowMaxWhereEnv() override {}
+
+        void Deploy() override {
+            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    max_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,
+    max_where(i64_col, col1='str1') over w1 as w1_count_where_i64_col_col1,
+    max_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,
+    max_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,
+    max_where(f_col, 0=filter) over w1 as w1_count_where_f_col,
+    max_where(d_col, 1=filter) over w1 as w1_count_where_d_col,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                               dp_, table_)});
+        }
+
+                void TearDownPreAggTables() override {
+                        absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
+                        ProcessSQLs(sr_,
+                                    {
+                                        absl::StrCat("use ", pre_agg_db),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_filter"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_col1"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i16_col_filter"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i32_col_filter"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_f_col_filter"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_d_col_filter"),
+                                    });
+                        }
+    };
+
+    // request window [4s, 11s]
+    DeployLongWindowMaxWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
+
+    std::shared_ptr<hybridse::sdk::ResultSet> res;
+    // ts 11, 11, 10, 9, 8, 7, 6, 5, 4
+    env.CallDeploy(&res);
+    ASSERT_TRUE(res != nullptr) << "call deploy failed";
+
+    EXPECT_EQ(1, res->Size());
+    EXPECT_TRUE(res->Next());
+    EXPECT_EQ("str1", res->GetStringUnsafe(0));
+    EXPECT_EQ("str2", res->GetStringUnsafe(1));
+    EXPECT_EQ(10, res->GetInt64Unsafe(2));
+    EXPECT_EQ(11, res->GetInt64Unsafe(3));
+    EXPECT_TRUE(res->IsNULL(4));
+    EXPECT_TRUE(res->IsNULL(5));
+    EXPECT_EQ(10.0, res->GetFloatUnsafe(6));
+    EXPECT_EQ(11.0, res->GetDoubleUnsafe(7));
 }
 
 TEST_P(DBSDKTest, LongWindowsCleanup) {

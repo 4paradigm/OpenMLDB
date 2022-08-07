@@ -226,6 +226,7 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
+            // TODO(ace): Traverse Node return Status
             if (!TraverseNode(node, window_map, infos)) {
                 return hybridse::sdk::Status(base::ReturnCode::kError, "TraverseNode failed");
             }

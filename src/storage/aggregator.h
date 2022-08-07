@@ -43,7 +43,6 @@ enum class AggrType {
     kMax = 3,
     kCount = 4,
     kAvg = 5,
-    kCountWhere = 6,
 };
 
 enum class WindowType {
@@ -147,6 +146,9 @@ class Aggregator {
     bool GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer);
 
     uint32_t GetAggrTid() { return aggr_table_->GetId(); }
+
+    // set the filter column info that not initialized in constructor
+    bool SetFilter(absl::string_view filter_col);
 
  protected:
     codec::Schema base_table_schema_;
@@ -269,17 +271,6 @@ class CountAggregator : public Aggregator {
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
 
     bool count_all = false;
-};
-
-class CountWhereAggregator : public CountAggregator {
- public:
-    CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-                         std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                         const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
-                         const std::string& ts_col, WindowType window_tpye, uint32_t window_size,
-                         const std::string& filter_col);
-
-    ~CountWhereAggregator() = default;
 };
 
 class AvgAggregator : public Aggregator {

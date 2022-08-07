@@ -2710,15 +2710,19 @@ bool RequestAggUnionRunner::InitAggregator() {
 std::unique_ptr<BaseAggregator> RequestAggUnionRunner::CreateAggregator() const {
     switch (agg_type_) {
         case kSum:
+        case kSumWhere:
             return MakeOverflowAggregator<SumAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kAvg:
+        case kAvgWhere:
             return std::make_unique<AvgAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kCount:
         case kCountWhere:
             return std::make_unique<CountAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMin:
+        case kMinWhere:
             return MakeSameTypeAggregator<MinAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMax:
+        case kMaxWhere:
             return MakeSameTypeAggregator<MaxAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         default:
             LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
