@@ -906,7 +906,7 @@ TEST_F(ExternUdfTest, RLikeMatchTest) {
             EXPECT_EQ(is_null, ret_null) << "rlike(" << name << ", " << pattern << ")";
         }
     };
-    
+
     check_rlike(true, false, "The Lord of the Rings", "The Lord of the Rings", "");
 
     // case sensitive
@@ -922,14 +922,19 @@ TEST_F(ExternUdfTest, RLikeMatchTest) {
     check_rlike(false, false, "The Lord of the Rings", "the L.rd .f the Rings", "c");
     check_rlike(true, false, "The Lord of the Rings", "the L.rd .f the Rings", "i");
 
-    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien", "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "");
-    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien", "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "s");
+    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "");
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "s");
     
-    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien", "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "");
-    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien", "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "m");
+    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "");
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "m");
 
     // multiple flags
-    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien", "^the Lord of the Rings$.J\\. R\\. R\\. Tolkien", "mis");
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^the Lord of the Rings$.J\\. R\\. R\\. Tolkien", "mis");
 
 }
 

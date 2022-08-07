@@ -485,8 +485,8 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     RE2::Options opts(RE2::POSIX);
     opts.set_one_line(true);
 
-    for(auto &flag: flags_view) {
-        switch(flag) {
+    for( auto &flag: flags_view ) {
+        switch( flag ) {
             case 'c':
                 opts.set_case_sensitive(true);
             break;

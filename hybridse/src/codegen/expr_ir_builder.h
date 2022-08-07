@@ -108,7 +108,7 @@ class ExprIRBuilder {
     Status BuildEscapeExpr(const ::hybridse::node::EscapedExpr* node, NativeValue* output);
 
     Status BuildRLikeExprAsUdf(const ::hybridse::node::BinaryExpr* node, const std::string& name, const NativeValue& lhs,
-                              const NativeValue& rhs, NativeValue* output);
+                               const NativeValue& rhs, NativeValue* output);
 
     Status ExtractSliceFromRow(const NativeValue& input_value, const int schema_idx, ::llvm::Value** slice_ptr,
                                ::llvm::Value** slice_size);
