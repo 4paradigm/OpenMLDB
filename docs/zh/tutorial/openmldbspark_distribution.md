@@ -34,6 +34,8 @@ OpenMLDB Spark兼容标准的[Spark配置](https://spark.apache.org/docs/latest/
 * 如果SQL任务中Join条件表达式比较复杂，默认运行失败，推荐关闭Join条件Spark表达式优化，提高任务运行成功率。
 * 如果SQL任务中输入表或中间表列数较大，推荐同时开启上表的三个UnsafeRow优化，减少编解码开销和降低任务运行时间。
 
+## 使用
+
 ### 使用Example Jars
 
 下载解压后，设置`SPARK_HOME`环境变量，可以直接执行Example Jars中的例子。
