@@ -2079,26 +2079,31 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere4) {
     EXPECT_EQ(3, res->GetInt64Unsafe(11));
 }
 
-TEST_P(DBSDKTest, LongWindowMaxWhere) {
+TEST_P(DBSDKTest, LongWindowMinMaxWhere) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
 
-    class DeployLongWindowMaxWhereEnv : public DeployLongWindowEnv {
+    class DeployLongWindowMinMaxWhereEnv : public DeployLongWindowEnv {
      public:
-        explicit DeployLongWindowMaxWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
-        ~DeployLongWindowMaxWhereEnv() override {}
+        explicit DeployLongWindowMinMaxWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowMinMaxWhereEnv() override {}
 
         void Deploy() override {
             ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
   SELECT
     col1, col2,
-    max_where(i64_col, filter<1) over w1 as w1_count_where_i64_col_filter,
-    max_where(i64_col, col1='str1') over w1 as w1_count_where_i64_col_col1,
-    max_where(i16_col, filter>1) over w1 as w1_count_where_i16_col,
-    max_where(i32_col, 1<filter) over w1 as w1_count_where_i32_col,
-    max_where(f_col, 0=filter) over w1 as w1_count_where_f_col,
-    max_where(d_col, 1=filter) over w1 as w1_count_where_d_col,
+    max_where(i64_col, filter<1) over w1 as m1,
+    max_where(i64_col, col1='str1') over w1 as m2,
+    max_where(i16_col, filter>1) over w1 as m3,
+    max_where(i32_col, 1<filter) over w1 as m4,
+    max_where(f_col, 0=filter) over w1 as m5,
+    max_where(d_col, 1=filter) over w1 as m6,
+    min_where(i64_col, i16_col > 8) over w1 as m7,
+    min_where(i16_col, i32_col = 10) over w1 as m8,
+    min_where(i32_col, f_col != 10) over w1 as m9,
+    min_where(f_col, d_col <= 10) over w1 as m10,
+    min_where(d_col, d_col >= 10) over w1 as m11,
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
@@ -2115,12 +2120,17 @@ TEST_P(DBSDKTest, LongWindowMaxWhere) {
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i32_col_filter"),
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_f_col_filter"),
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_d_col_filter"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i64_col_i16_col"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i16_col_i32_col"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i32_col_f_col"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_f_col_d_col"),
+                                        absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_d_col_d_col"),
                                     });
                         }
     };
 
     // request window [4s, 11s]
-    DeployLongWindowMaxWhereEnv env(sr);
+    DeployLongWindowMinMaxWhereEnv env(sr);
     env.SetUp();
     absl::Cleanup clean = [&env]() { env.TearDown(); };
 
@@ -2139,6 +2149,157 @@ TEST_P(DBSDKTest, LongWindowMaxWhere) {
     EXPECT_TRUE(res->IsNULL(5));
     EXPECT_EQ(10.0, res->GetFloatUnsafe(6));
     EXPECT_EQ(11.0, res->GetDoubleUnsafe(7));
+    EXPECT_EQ(9, res->GetInt64Unsafe(8));
+    EXPECT_EQ(10, res->GetInt16Unsafe(9));
+    EXPECT_EQ(4, res->GetInt32Unsafe(10));
+    EXPECT_EQ(4.0, res->GetFloatUnsafe(11));
+    EXPECT_EQ(10.0, res->GetDoubleUnsafe(12));
+}
+
+TEST_P(DBSDKTest, LongWindowSumWhere) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    class DeployLongWindowSumWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowSumWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowSumWhereEnv() override {}
+
+        void Deploy() override {
+            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    sum_where(i64_col, col1='str1') over w1 as m1,
+    sum_where(i16_col, filter>1) over w1 as m2,
+    sum_where(i32_col, filter = null) over w1 as m3,
+    sum_where(f_col, 0=filter) over w1 as m4,
+    sum_where(d_col, 1=filter) over w1 as m5,
+    sum_where(i64_col, i16_col > 8) over w1 as m6,
+    sum_where(i16_col, i32_col = 10) over w1 as m7,
+    sum_where(i32_col, f_col != 10) over w1 as m8,
+    sum_where(f_col, d_col <= 10) over w1 as m9,
+    sum_where(d_col, d_col >= 10) over w1 as m10,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                               dp_, table_)});
+        }
+
+        void TearDownPreAggTables() override {
+            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
+            ProcessSQLs(sr_, {
+                                 absl::StrCat("use ", pre_agg_db),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_col1"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_i16_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_i32_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_f_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_d_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_d_col"),
+                             });
+        }
+    };
+
+    // request window [4s, 11s]
+    DeployLongWindowSumWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
+
+    std::shared_ptr<hybridse::sdk::ResultSet> res;
+    // ts 11, 11, 10, 9, 8, 7, 6, 5, 4
+    env.CallDeploy(&res);
+    ASSERT_TRUE(res != nullptr) << "call deploy failed";
+
+    EXPECT_EQ(1, res->Size());
+    EXPECT_TRUE(res->Next());
+    EXPECT_EQ("str1", res->GetStringUnsafe(0));
+    EXPECT_EQ("str2", res->GetStringUnsafe(1));
+    EXPECT_EQ(71, res->GetInt64Unsafe(2));
+    EXPECT_TRUE(res->IsNULL(3));
+    EXPECT_TRUE(res->IsNULL(4));
+    EXPECT_EQ(28.0, res->GetFloatUnsafe(5));
+    EXPECT_EQ(32.0, res->GetDoubleUnsafe(6));
+    EXPECT_EQ(41, res->GetInt64Unsafe(7));
+    EXPECT_EQ(10, res->GetInt16Unsafe(8));
+    EXPECT_EQ(61, res->GetInt32Unsafe(9));
+    EXPECT_EQ(49.0, res->GetFloatUnsafe(10));
+    EXPECT_EQ(32.0, res->GetDoubleUnsafe(11));
+}
+
+TEST_P(DBSDKTest, LongWindowAvgWhere) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    class DeployLongWindowAvgWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowAvgWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowAvgWhereEnv() override {}
+
+        void Deploy() override {
+            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    avg_where(i64_col, col1!='str1') over w1 as m1,
+    avg_where(i16_col, filter<1) over w1 as m2,
+    avg_where(i32_col, filter = null) over w1 as m3,
+    avg_where(f_col, 0=filter) over w1 as m4,
+    avg_where(d_col, f_col = 11) over w1 as m5,
+    avg_where(i64_col, i16_col > 10) over w1 as m6,
+    avg_where(i16_col, i32_col = 10) over w1 as m7,
+    avg_where(i32_col, f_col != 7) over w1 as m8,
+    avg_where(f_col, d_col <= 10) over w1 as m9,
+    avg_where(d_col, d_col < 4.5) over w1 as m10,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                               dp_, table_)});
+        }
+
+        void TearDownPreAggTables() override {
+            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
+            ProcessSQLs(sr_, {
+                                 absl::StrCat("use ", pre_agg_db),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
+                             });
+        }
+    };
+
+    // request window [4s, 11s]
+    DeployLongWindowAvgWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
+
+    std::shared_ptr<hybridse::sdk::ResultSet> res;
+    // ts 11, 11, 10, 9, 8, 7, 6, 5, 4
+    env.CallDeploy(&res);
+    ASSERT_TRUE(res != nullptr) << "call deploy failed";
+
+    EXPECT_EQ(1, res->Size());
+    EXPECT_TRUE(res->Next());
+    EXPECT_EQ("str1", res->GetStringUnsafe(0));
+    EXPECT_EQ("str2", res->GetStringUnsafe(1));
+    EXPECT_TRUE(res->IsNULL(2));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(3));
+    EXPECT_TRUE(res->IsNULL(4));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(5));
+    EXPECT_EQ(11.0, res->GetDoubleUnsafe(6));
+    EXPECT_EQ(11.0, res->GetDoubleUnsafe(7));
+    EXPECT_EQ(10.0, res->GetDoubleUnsafe(8));
+    EXPECT_EQ(8.0, res->GetDoubleUnsafe(9));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(10));
+    EXPECT_EQ(4.0, res->GetDoubleUnsafe(11));
 }
 
 TEST_P(DBSDKTest, LongWindowsCleanup) {
