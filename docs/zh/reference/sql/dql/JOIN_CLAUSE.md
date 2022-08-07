@@ -19,7 +19,7 @@ JoinType ::= 'LAST'
 ## SQL语句模版
 
 ```sql
-SELECT ... FROM table_ref LAST JOIN table_ref;
+SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 ```
 
 ## 边界说明
