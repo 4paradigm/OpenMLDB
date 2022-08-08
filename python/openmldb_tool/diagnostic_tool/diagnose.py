@@ -1,20 +1,20 @@
-from collector import Collector
-from dist_conf import DistConfReader
-from dist_conf import ConfParser
-from dist_conf import DistConf
-from dist_conf import ConfParser
-from conf_validator import YamlConfValidator
-from conf_validator import StandaloneConfValidator
-from conf_validator import ClusterConfValidator
-from conf_validator import TaskManagerConfValidator
-from log_analysis import LogAnalysis
-#from server_checker import ServerChecker
-import util
+from diagnostic_tool.collector import Collector
+from diagnostic_tool.dist_conf import DistConfReader
+from diagnostic_tool.dist_conf import ConfParser
+from diagnostic_tool.dist_conf import DistConf
+from diagnostic_tool.dist_conf import ConfParser
+from diagnostic_tool.conf_validator import YamlConfValidator
+from diagnostic_tool.conf_validator import StandaloneConfValidator
+from diagnostic_tool.conf_validator import ClusterConfValidator
+from diagnostic_tool.conf_validator import TaskManagerConfValidator
+from diagnostic_tool.log_analysis import LogAnalysis
+from diagnostic_tool.server_checker import ServerChecker
+import diagnostic_tool.util as util
 import sys
 import os
 import logging
 from absl import app
-from conf_option import ConfOption
+from diagnostic_tool.conf_option import ConfOption
 
 LOG_FORMAT = '%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -139,6 +139,9 @@ def main(argv):
         check_log(dist_conf.full_conf, file_map['log'])
     if conf_opt.check_sql():
         run_test_sql(dist_conf)
+
+def run():
+    app.run(main)
 
 if __name__ == '__main__':
     app.run(main)

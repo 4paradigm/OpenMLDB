@@ -18,7 +18,7 @@ import re
 import paramiko
 from paramiko.file import BufferedFile
 
-from dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES
+from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES
 
 log = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ class Collector:
             print(tv) if tv else log.warning('failed at get taskmanager version from %s', server_info)
             return len(bv) != 0 and len(tv) != 0
 
-        #ok = self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES) and ok
+        self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES)
         return version_map
 
     def get_spark_home(self, remote_config_file):
@@ -153,14 +153,14 @@ class Collector:
         # TODO(hw): check if multi batch jars
         log.info("spark_home %s", spark_home)
         batch_jar_path = f'{spark_home}/jars/openmldb-batch-*'
-        _, stdout, _ = self.ssh_client.exec_command(
+        _, stdout, err = self.ssh_client.exec_command(
             f'java -cp {batch_jar_path} com._4paradigm.openmldb.batch.utils.VersionCli')
         return buf2str(stdout)
 
     def get_taskmanager_version(self, root_path):
         # TODO(hw): check if multi taskmanager jars
         _, stdout, _ = self.ssh_client.exec_command(
-            f'~/.bash_profile; java -cp {root_path}/lib/openmldb-taskmanager-* '
+            f'java -cp {root_path}/lib/openmldb-taskmanager-* '
             f'com._4paradigm.openmldb.taskmanager.utils.VersionCli')
         return buf2str(stdout)
 
