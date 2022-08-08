@@ -62,6 +62,7 @@ class APIServerImpl : public APIServer {
     void RegisterGetDeployment();
     void RegisterGetDB();
     void RegisterGetTable();
+    void RegisterRefresh();
 
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
@@ -130,6 +131,15 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key);
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
+
+struct QueryResp {
+    QueryResp() = default;
+    int code = 0;
+    std::string msg = "ok";
+    std::shared_ptr<hybridse::sdk::ResultSet> rs;
+};
+
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s); // NOLINT
 
 }  // namespace apiserver
 }  // namespace openmldb

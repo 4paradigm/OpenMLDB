@@ -1,7 +1,5 @@
 # GROUP BY Clause
 
-All -group by- currently only has supports in batch mode (that is, console debugging SQL support, offline mode is still under development)
-
 ## Syntax
 
 ```SQL
@@ -17,25 +15,23 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ...
 
 ## Boundary Description
 
-| SELECT statement elements  | state          | directions                                                         |
-| :-------------- | ------------- | :----------------------------------------------------------- |
-| GROUP BY Clause | Online not supported | Group By clause is used to group the query result set. Grouping expression lists only support simple columns. |
+For the standalone version, `GROUP BY` is supported in all conditions. For the cluster version, the execution modes which support this clause are shown below.
 
-
+| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                    |
+|:-----------------------------------------------------------|--------------|---------------------|---------------------|:------------------------------------------------------------------------------------------------------------------------|
+| GROUP BY Clause            | **``✓``**    |                     |                     | The Group By clause is used to group the query results.The grouping conditions only support grouping on simple columns. |
 
 ## Example
 
-### 1. Aggregate After Grouping By Column
+**1. Aggregate After Grouping By One Column**
 
 ```SQL
--- desc: simple SELECT grouping KEY
-  SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1;
 ```
 
-### 2. Aggregate After Grouping By Two Columns
+**2. Aggregate After Grouping By Two Columns**
 
 ```SQL
--- desc: simple SELECT grouping KEY
-  SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0;
+SELECT COL1, SUM(COL2), AVG(COL2) FROM t1 group by COL1, COL0;
 ```
 

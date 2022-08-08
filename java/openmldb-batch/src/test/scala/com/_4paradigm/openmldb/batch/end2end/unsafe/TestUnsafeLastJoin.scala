@@ -16,17 +16,11 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 
-class TestUnsafeLastJoin extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
-  }
+class TestUnsafeLastJoin extends UnsaferowoptSparkTestSuite {
 
   test("Test unsafe last join") {
     val spark = getSparkSession
@@ -43,12 +37,6 @@ class TestUnsafeLastJoin extends SparkTestSuite {
     val outputDf = sess.sql(sqlText)
     outputDf.show()
     assert(outputDf.count() == df.count())
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", false)
   }
 
 }

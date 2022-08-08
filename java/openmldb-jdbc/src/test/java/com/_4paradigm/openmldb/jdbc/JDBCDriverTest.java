@@ -145,11 +145,13 @@ public class JDBCDriverTest {
             Assert.assertEquals(e.getMessage(), "unsupported sql");
         }
         try {
-            String deleteSQL = "DELETE FROM table ...";
-            connection.prepareStatement(deleteSQL);
-            Assert.fail();
+            String deleteSQL = "DELETE FROM " + tableName + " WHERE c1 = ?";
+            PreparedStatement deleteStatement = connection.prepareStatement(deleteSQL);
+            deleteStatement.setInt(1, 1);
+            deleteStatement.execute();
         } catch (Exception e) {
-            Assert.assertEquals(e.getMessage(), "unsupported sql");
+            e.printStackTrace();
+            Assert.fail();
         }
 
         // useless but won't fail
@@ -210,10 +212,11 @@ public class JDBCDriverTest {
 
 
         try {
-            stmt = connection.prepareStatement("DELETE FROM " + tableName + " WHERE c1=1");
-            Assert.fail("delete is unsupported");
-        } catch (Exception ignored) {
-
+            PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM " + tableName + " WHERE c1=?");
+            preparedStatement.setInt(1, 1);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
         }
 
         // sink, catalog and schema patterns are always be null

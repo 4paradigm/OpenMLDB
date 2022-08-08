@@ -58,6 +58,8 @@ public interface SqlExecutor {
 
     PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException;
 
+    PreparedStatement getDeletePreparedStmt(String db, String sql) throws SQLException;
+
     PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException;
 
     PreparedStatement getPreparedStatement(String db, String sql) throws SQLException;
