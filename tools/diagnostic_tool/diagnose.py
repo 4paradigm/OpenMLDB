@@ -8,11 +8,13 @@ from conf_validator import StandaloneConfValidator
 from conf_validator import ClusterConfValidator
 from conf_validator import TaskManagerConfValidator
 from log_analysis import LogAnalysis
-#from server_checker import ServerChecker
+from server_checker import ServerChecker
 import util
 import sys
 import os
 import logging
+from absl import app
+from conf_option import ConfOption
 
 LOG_FORMAT = '%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -97,11 +99,12 @@ def run_test_sql(dist_conf : DistConf):
     if checker.run_test_sql():
         log.info('test sql execute ok.')
 
+def main(argv):
+    conf_opt = ConfOption()
+    if not conf_opt.init():
+        return
 
-if __name__ == '__main__':
-    root_path = '/tmp/dl_test'
-    #dist_conf = DistConfReader('../tests/cluster_dist.yml').conf()
-    dist_conf = DistConfReader('../tests/standalone_dist.yml').conf()
+    dist_conf = DistConfReader(conf_opt.dist_conf).conf()
     yaml_validator = YamlConfValidator(dist_conf.full_conf)
     if not yaml_validator.validate():
         log.warning("check yaml conf failed")
@@ -111,32 +114,31 @@ if __name__ == '__main__':
     log.info("mode is {}".format(dist_conf.mode))
     if dist_conf.mode == 'cluster':
         collector = Collector(dist_conf)
-        version_map = collector.collect_version()
-        collector.pull_config_files(f'{root_path}/conf')
-        collector.pull_log_files(f'{root_path}/log')
+        if conf_opt.check_version():
+            version_map = collector.collect_version()
+        if conf_opt.check_conf():
+            collector.pull_config_files(f'{root_path}/conf')
+        if conf_opt.check_log():
+            collector.pull_log_files(f'{root_path}/log')
         file_map = util.get_files(root_path)
     else:
-        version_map = get_standalone_version(dist_conf)
-        file_map = get_standalone_files(dist_conf)
+        if conf_opt.check_version():
+            version_map = get_standalone_version(dist_conf)
+        if conf_opt.check_conf() or conf_opt.check_log():
+            file_map = get_standalone_files(dist_conf)
 
-    flag, version = check_version(version_map)
-    if flag:
-        log.info(f'openmldb version is {version}')
-        log.info('check version ok')
+    if conf_opt.check_version():
+        flag, version = check_version(version_map)
+        if flag:
+            log.info(f'openmldb version is {version}')
+            log.info('check version ok')
 
-    check_conf(dist_conf.full_conf, file_map['conf'])
-    check_log(dist_conf.full_conf, file_map['log'])
-    #run_test_sql(dist_conf)
+    if conf_opt.check_conf():
+        check_conf(dist_conf.full_conf, file_map['conf'])
+    if conf_opt.check_log():
+        check_log(dist_conf.full_conf, file_map['log'])
+    if conf_opt.check_sql():
+        run_test_sql(dist_conf)
 
-
-    #task_manager_conf_dict = ConfParser('../tests/work/taskmanager1/conf/taskmanager.properties').conf()
-    #validator = TaskManagerConfValidator(task_manager_conf_dict)
-    #validator.validate()
-
-    #check_conf(dist_conf);
-
-    #conns = Collector(dist_conf)
-    # conns.ping_all()
-    #conns.pull_config_files('/tmp/cluster1/conf')
-    #conns.pull_log_files('/tmp/cluster1/logs')
-    #conns.collect_version()
+if __name__ == '__main__':
+    app.run(main)
