@@ -43,7 +43,21 @@ def get_files(root_path):
                 file_map[name][arr[1]][arr[0]].append((cur_file, os.path.abspath(os.path.join(cur_path, cur_file))))
     return file_map
 
-if __name__ == '__main__':
-    #get_files('/tmp/dl_test/')
-    files = get_local_logs('/work/openmldb/logs', 'tablet')
-    print(files)
+def clean_dir(path):
+    def rm_dirs(path):
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+            except Exception as e:
+                print(e)
+        elif os.path.isdir(path):
+            for item in os.listdir(path):
+                itempath = os.path.join(path, item)
+                rm_dirs(itempath)
+            try:
+                os.rmdir(path)
+            except Exception as e:
+                print(e)
+
+    if os.path.exists(path):
+        rm_dirs(path)

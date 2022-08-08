@@ -25,11 +25,12 @@ JAVA_SERVER_ROLES = [ALL_SERVER_ROLES[2]]
 
 
 class ServerInfo:
-    def __init__(self, role, endpoint, path):
+    def __init__(self, role, endpoint, path, is_local):
         self.role = role
         self.endpoint = endpoint
         self.path = path
         self.host = endpoint.split(':')[0]
+        self.is_local = is_local
 
     def __str__(self):
         return f'Server[{self.role}, {self.endpoint}, {self.path}]'
@@ -92,7 +93,8 @@ class DistConf:
         self.full_conf = conf_dict
         self.mode = self.full_conf['mode']
         self.server_info_map = ServerInfoMap(
-            self.map(ALL_SERVER_ROLES, lambda role, s: ServerInfo(role, s['endpoint'], s['path'])))
+            self.map(ALL_SERVER_ROLES, lambda role, s: ServerInfo(role, s['endpoint'], s['path'],
+                s['is_local'] if 'is_local' in s else False)))
 
     def __str__(self):
         return str(self.full_conf)

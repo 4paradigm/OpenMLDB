@@ -18,7 +18,7 @@ import re
 import paramiko
 from paramiko.file import BufferedFile
 
-from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES
+from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES, ConfParser
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +74,9 @@ class Collector:
         def pull_one(server_info: ServerInfo) -> bool:
             # if taskmanager, pull taskmanager.properties, no log4j
             config_paths = server_info.conf_path_pair(dest)
+            if server_info.is_local:
+                log.debug(f"get from local {server_info.host}")
+                return self.copy_local_file(config_paths)
             return self.pull_file(server_info.host, config_paths)
 
         return self.dist_conf.server_info_map.for_each(pull_one)
@@ -167,14 +170,14 @@ class Collector:
     def pull_job_logs(self, server_info, dest, last_n) -> bool:
         # job log path is in config
         remote_conf_path = server_info.conf_path_pair('')[0]
-        job_log_dir = self.remote_config_value(server_info.host, remote_conf_path, 'job.log.path=', '../log')
+        job_log_dir = self.get_config_value(server_info, remote_conf_path, 'job.log.path=', '../log')
         # job_log_dir is start from taskmanager/bin
         # TODO(hw): what if abs path?
         job_log_dir = f'{server_info.taskmanager_path()}/bin/{job_log_dir}'
 
         # only log names job_x_error.log
-        log_list = self.remote_log_file_list(server_info.host, job_log_dir,
-                                             lambda di: 'error' in di['filename'], last_n)
+        log_list = self.get_log_files(server_info, job_log_dir)
+        log_list = self.filter_file_list(log_list, lambda di: 'error' in di['filename'], last_n)
         return self.pull_files(server_info, job_log_dir, log_list, dest)
 
     def pull_cxx_server_logs(self, server_info, dest, last_n) -> bool:
@@ -186,13 +189,13 @@ class Collector:
         :return:
         """
         remote_conf_path = server_info.conf_path_pair('')[0]
-        server_log_dir = self.remote_config_value(server_info.host, remote_conf_path,
+        server_log_dir = self.get_config_value(server_info, remote_conf_path,
                                                   'openmldb_log_dir=', './logs')
         # TODO(hw): what if `openmldb_log_dir` is abs path
         server_log_dir = f'{server_info.path}/{server_log_dir}'
         # only get info log, no soft link file
-        log_list = self.remote_log_file_list(server_info.host, server_log_dir,
-                                             lambda di: f'{server_info.role}.info.log' in di['filename'], last_n)
+        log_list = self.get_log_files(server_info, server_log_dir)
+        log_list = self.filter_file_list(log_list, lambda di: f'{server_info.role}.info.log' in di['filename'], last_n)
         return self.pull_files(server_info, server_log_dir, log_list, dest)
 
     def pull_tm_server_logs(self, server_info, dest, last_n) -> bool:
@@ -207,7 +210,7 @@ class Collector:
         if not server_info.is_taskmanager():
             return False
         remote_conf_path = server_info.remote_log4j_path()
-        server_log_file_pattern = self.remote_config_value(server_info.host, remote_conf_path, 'log4j.appender.file'
+        server_log_file_pattern = self.get_config_value(server_info, remote_conf_path, 'log4j.appender.file'
                                                                                                '.file=', '')
         # file.file is a file name, not a dir
         server_log_dir = os.path.split(server_log_file_pattern)[0]
@@ -216,22 +219,39 @@ class Collector:
         # dir is start from taskmanager/bin
         server_log_dir = f'{server_info.taskmanager_path()}/bin/{server_log_dir}'
 
-        log_list = self.remote_log_file_list(server_info.host, server_log_dir,
-                                             lambda di: 'taskmanager.log' in di['filename'], last_n)
+        log_list = self.get_log_files(server_info, server_log_dir)
+        log_list = self.filter_file_list(log_list, lambda di: 'taskmanager.log' in di['filename'], last_n)
         return self.pull_files(server_info, server_log_dir, log_list, dest)
 
-    def remote_config_value(self, host, conf_path, config_name, default_v):
+    def get_config_value(self, server_info, conf_path, config_name, default_v):
         v = default_v
         log.info('get %s from %s', config_name, conf_path)
-        self.ssh_client.connect(hostname=host)
-        _, stdout, _ = self.ssh_client.exec_command(f'grep {config_name} {conf_path}')
-        grep_str = buf2str(stdout)
-        if grep_str:
-            # may set config in config file
-            tmp = parse_config_from_properties(grep_str, config_name)
-            if tmp:
-                v = tmp
+        if server_info.is_local:
+            conf_map = ConfParser(conf_path).conf()
+            key = config_name[:-1]
+            if key in conf_map:
+                v = conf_map[key]
+        else:
+            self.ssh_client.connect(hostname=server_info.host)
+            _, stdout, _ = self.ssh_client.exec_command(f'grep {config_name} {conf_path}')
+            grep_str = buf2str(stdout)
+            if grep_str:
+                # may set config in config file
+                tmp = parse_config_from_properties(grep_str, config_name)
+                if tmp:
+                    v = tmp
         return v
+
+    def copy_local_file(self, paths) -> bool:
+        src_path, local_path = paths[0], paths[1]
+        try:
+            # ensure local path is exists
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            os.system(f'cp {src_path} {local_path}')
+        except Exception as e:
+            log.warning(f"local copy {src_path}:{local_path} error on , err: {e}")
+            return False
+        return True
 
     def pull_file(self, remote_host, paths) -> bool:
         remote_path, local_path = paths[0], paths[1]
@@ -252,9 +272,13 @@ class Collector:
         if not file_list:
             log.warning('no file in %s on %s', remote_path, server_info)
             return False
-        return all([self.pull_file(server_info.host,
-                                   server_info.remote_local_pairs(remote_path, file, dest))
-                    for file in file_list])
+        if server_info.is_local:
+            return all([self.copy_local_file(server_info.remote_local_pairs(remote_path, file, dest))
+                        for file in file_list])
+        else:
+            return all([self.pull_file(server_info.host,
+                                       server_info.remote_local_pairs(remote_path, file, dest))
+                        for file in file_list])
 
     def get_log_dir_from_conf(self, remote_config_file, server_info):
         """
@@ -283,31 +307,33 @@ class Collector:
         # may set log dir path in config
         return parse_config_from_properties(grep_str, config_name)
 
-    def remote_log_file_list(self, host, log_dir, filter_func, last_n):
-        """
-        if role is taskmanager, log path setting is in log4j.properties
-        if ns or tablet, log path setting is in *.flags
+    def get_log_files(self, server_info, log_dir):
+        if server_info.is_local:
+            log_dir = os.path.normpath(log_dir)
+            log.info('get logs from %s', log_dir)
+            # if no the log dir, let it crash
+            logs = []
+            for name in os.listdir(log_dir):
+                stat = os.stat(os.path.join(log_dir, name));
+                logs.append({'filename': name, 'st_mtime': stat.st_mtime})
+        else:
+            host = server_info.host
+            self.ssh_client.connect(hostname=host)
+            sftp = self.ssh_client.open_sftp()
 
-        :param host:
-        :param log_dir:
-        :param filter_func:
-        :param last_n:
-        :return:
-        """
-        self.ssh_client.connect(hostname=host)
-        sftp = self.ssh_client.open_sftp()
+            log_dir = os.path.normpath(log_dir)
+            log.info('get logs name from %s, %s', log_dir, host)
+            # if no the log dir, let it crash
+            logs = [attr.__dict__ for attr in sftp.listdir_attr(log_dir)]
+        return logs
 
-        log_dir = os.path.normpath(log_dir)
-        log.info('get logs name from %s, %s', log_dir, host)
-        # if no the log dir, let it crash
-        logs = [attr.__dict__ for attr in sftp.listdir_attr(log_dir)]
-
+    def filter_file_list(self, logs, filter_func, last_n):
         logs = list(filter(filter_func, logs))
 
         # avoid soft link file?
         # sort by modify time
         logs.sort(key=lambda x: x["st_mtime"], reverse=True)
-        log.info("all_logs(sorted): %s", logs)
+        log.debug("all_logs(sorted): %s", logs)
         # get last n
         logs = [log_attr['filename'] for log_attr in logs[:last_n]]
         log.info("get last %d: %s", last_n, logs)

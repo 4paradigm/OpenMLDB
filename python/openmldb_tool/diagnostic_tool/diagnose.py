@@ -1,12 +1,22 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from diagnostic_tool.collector import Collector
-from diagnostic_tool.dist_conf import DistConfReader
-from diagnostic_tool.dist_conf import ConfParser
-from diagnostic_tool.dist_conf import DistConf
-from diagnostic_tool.dist_conf import ConfParser
-from diagnostic_tool.conf_validator import YamlConfValidator
-from diagnostic_tool.conf_validator import StandaloneConfValidator
-from diagnostic_tool.conf_validator import ClusterConfValidator
-from diagnostic_tool.conf_validator import TaskManagerConfValidator
+from diagnostic_tool.dist_conf import DistConfReader, ConfParser, DistConf
+from diagnostic_tool.conf_validator import YamlConfValidator, StandaloneConfValidator, ClusterConfValidator, TaskManagerConfValidator
 from diagnostic_tool.log_analysis import LogAnalysis
 from diagnostic_tool.server_checker import ServerChecker
 import diagnostic_tool.util as util
@@ -103,7 +113,7 @@ def main(argv):
     conf_opt = ConfOption()
     if not conf_opt.init():
         return
-
+    util.clean_dir(conf_opt.data_dir)
     dist_conf = DistConfReader(conf_opt.dist_conf).conf()
     yaml_validator = YamlConfValidator(dist_conf.full_conf)
     if not yaml_validator.validate():
