@@ -24,14 +24,16 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 ## Description
 
-| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
-|:-----------------------------------------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. During Online Serving, please follow [the specification of LAST JOIN under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join)                                                      |
+| `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                         |
+|:-----------------------------------------------------------|--------------|---------------------|---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For online request mode, please follow [the specification of LAST JOIN under Online Request mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join) |
 
 
 
 
 ### LAST JOIN without ORDER BY
+
+#### Example of the Computation Logic
 
 The unsorted `LAST JOIN` will concat every row of the left table with the last matched row of the right table.  
 
@@ -39,12 +41,15 @@ The unsorted `LAST JOIN` will concat every row of the left table with the last m
 
 
 Take the second row of the left table as an example. The right table is unordered, and there are 2 matched rows. The last one `5, b, 2020-05-20 10:11:12` will be joined with the second row of the left.  
-
+The final result is shown in the figure bellow.
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
-The final result is shown in the figure above.
+```{note}
+To realize the above JOIN result, please follow [the specification of LAST JOIN under Online Request mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join) like the SQL example bellow, even if you are using offline mode.
+Otherwise, you may not obtain the above result because of the uncertainty of the underlying storage order, although the result is correct as well.
+```
 
-**Example of LAST JOIN without ORDER_BY**
+#### SQL Example
 
 The following SQL commands created the left table t1 as mentioned above and inserted corresponding data.
 In order to check the results conveniently, it is recommended to create index on `col1` and use `std_ts` as timestamp. It doesn't matter if you create t1 without index, since it doesn't affect the concatenation in this case.
@@ -141,6 +146,7 @@ If the `ts` was not given when create index, OpenMLDB uses the time when the dat
 
 ### LAST JOIN with ORDER BY
 
+#### Example of the Computation Logic
 
 When `LAST JOIN` is configured with `ORDER BY`, the right table is sorted by the specified order, and the last matched data row will be joined.
 
@@ -152,7 +158,8 @@ Taking the second row of the left table as an example, there are 2 rows in the r
 
 The final result is shown in the figure above.
 
-**Example of LAST JOIN with ORDER BY**
+#### SQL Example
+
 
 The following SQL commands created the left table t1 as mentioned above and inserted corresponding data.
 ```SQL
