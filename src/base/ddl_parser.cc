@@ -343,12 +343,6 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             }
             aggr_col += agg_expr->GetChild(0)->GetExprString();
 
-            // TODO(#2313): *_where for rows bucket should support later
-            if (absl::EndsWithIgnoreCase(aggr_name, "_where") && openmldb::base::IsNumber(window_map.at(window_name))) {
-                LOG(WARNING) << "unsupport *_where op (" << aggr_name << ") for rows bucket type long window";
-                return false;
-            }
-
             // extract filter column from condition expr
             std::string filter_col;
             if (agg_expr->GetChildNum() == 2) {
