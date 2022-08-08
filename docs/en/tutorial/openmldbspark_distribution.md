@@ -33,8 +33,8 @@ OpenMLDB Spark supports [standard Spark configuration](https://spark.apache.org/
 | spark.openmldb.physical.plan.graphviz.path   | It is the path that the physical plan image will be exported to.              | ""                        | Image files are not exported by default.                                                                                                              |
 
 * If there are multiple window computing tasks and enough resources, it is recommended to set `spark.openmldb.window.parallelization=true` in order to improve resource utilization and reduce runtime.
-* If the JOIN expression is too complex, the execution may fail by default. It is recommended to set `spark.openmldb.opt.join.spark_expr=false` to increase the likelihood of a successful execution.
-* If there are too many columns in input tables or intermediate tables, you are advised to enable the three `unsaferow` optimizations to reduce the runtime and the overhead of encoding and decoding.
+* If the JOIN expression is too complex, the execution may fail by default. It is recommended to set `spark.openmldb.opt.join.spark_expr=false` to ensure the program can run successfully.
+* If there are too many columns in input tables or intermediate tables, you are recommended to enable all three optimization techniques related to `UnsafeRow`, in order to reduce the cost of encoding/decoding and improve the efficiency.
 
 ## Usage
 
