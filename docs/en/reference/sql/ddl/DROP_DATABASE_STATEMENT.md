@@ -33,11 +33,13 @@ The following sql command deletes the database `db1` and checks out the rest of 
 DROP DATABASE db1;
 
 SHOW DATABASES;
- ----------- 
-  Databases  
- -----------        
-  db2        
- ----------- 
+ -----------
+  Databases
+ -----------
+  db2
+ -----------
+
+1 rows in set
 ```
 
 ## Related Terms
