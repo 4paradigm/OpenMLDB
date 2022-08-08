@@ -343,9 +343,9 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             }
             aggr_col += agg_expr->GetChild(0)->GetExprString();
 
-            if (absl::EndsWithIgnoreCase(aggr_name, "_where") &&
-                project_list_node->GetW()->frame_node()->frame_type() == hybridse::node::kFrameRows) {
-                LOG(WARNING) << "unsupport *_where op (" << aggr_name <<") for rows window";
+            // TODO(#2313): *_where for rows bucket should support later
+            if (absl::EndsWithIgnoreCase(aggr_name, "_where") && openmldb::base::IsNumber(window_map.at(window_name))) {
+                LOG(WARNING) << "unsupport *_where op (" << aggr_name << ") for rows bucket type long window";
                 return false;
             }
 

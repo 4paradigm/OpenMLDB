@@ -1959,10 +1959,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
         count_where(date_col, null != s_col) over w1 as cw_w1_10,
         count_where(*, i64_col > 0) over w1 as cw_w1_11,
         count_where(filter, i64_col > 0) over w1 as cw_w1_12,
-        count_where(col3, 10 < i64_col) over w2 as w2_count_where_col3
     FROM $1 WINDOW
-        w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW),
-        w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)",
+        w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
 
@@ -2008,7 +2006,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
     EXPECT_EQ(0, res->GetInt64Unsafe(10));
     EXPECT_EQ(8, res->GetInt64Unsafe(11));
     EXPECT_EQ(7, res->GetInt64Unsafe(12));
-    EXPECT_EQ(2, res->GetInt64Unsafe(13));
 }
 
 // pre agg rows is range buckets
