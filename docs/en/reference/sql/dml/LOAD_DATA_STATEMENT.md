@@ -76,6 +76,6 @@ LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',', null_value='
 Soft copy `data_path` to table `t1` as offline data.
 ```sql
 set @@execute_mode='offline';
-LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS( deep_copy=true );
+LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
