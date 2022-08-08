@@ -1,4 +1,5 @@
 from absl import flags
+import os
 import logging
 
 log = logging.getLogger(__name__)
@@ -17,6 +18,9 @@ class ConfOption:
     def init(self) -> bool:
         if FLAGS.dist_conf == '':
             log.warn('dist_conf option should be setted')
+            return False
+        if not os.path.exists(FLAGS.dist_conf):
+            log.warn(f'{FLAGS.dist_conf} is not exist')
             return False
         self.dist_conf = FLAGS.dist_conf
         self.data_dir = FLAGS.data_dir

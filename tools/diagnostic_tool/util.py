@@ -16,9 +16,8 @@ def get_openmldb_version(path) -> str:
 
 def get_local_logs(root_path, role):
     def role_filter(role, file_name):
-        if not file_name.startswith(f'{role}.info'): return False
-        if file_name[-3:].isnumeric(): return True
-        return False
+        if not file_name.startswith(f'{role}.info.log'): return False
+        return True
     names = os.listdir(root_path)
     files = list(filter(lambda x : role_filter(role, x), names))
     file_list = []

@@ -8,7 +8,7 @@ from conf_validator import StandaloneConfValidator
 from conf_validator import ClusterConfValidator
 from conf_validator import TaskManagerConfValidator
 from log_analysis import LogAnalysis
-from server_checker import ServerChecker
+#from server_checker import ServerChecker
 import util
 import sys
 import os
@@ -117,10 +117,10 @@ def main(argv):
         if conf_opt.check_version():
             version_map = collector.collect_version()
         if conf_opt.check_conf():
-            collector.pull_config_files(f'{root_path}/conf')
+            collector.pull_config_files(f'{conf_opt.data_dir}/conf')
         if conf_opt.check_log():
-            collector.pull_log_files(f'{root_path}/log')
-        file_map = util.get_files(root_path)
+            collector.pull_log_files(f'{conf_opt.data_dir}/log')
+        file_map = util.get_files(conf_opt.data_dir)
     else:
         if conf_opt.check_version():
             version_map = get_standalone_version(dist_conf)
