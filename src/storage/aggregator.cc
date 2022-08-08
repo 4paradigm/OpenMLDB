@@ -1062,7 +1062,8 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         return {};
     }
 
-    if (filter_col.empty() && !absl::EndsWithIgnoreCase(aggr_type, "_where")) {
+    if (filter_col.empty() || !absl::EndsWithIgnoreCase(aggr_type, "_where")) {
+        // min/max/count/avg/sum ops
         return agg;
     }
 
