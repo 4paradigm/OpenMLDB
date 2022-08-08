@@ -2774,15 +2774,16 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         }
     }
 
-    // build window with start and end offset
     std::shared_ptr<TableHandler> window;
     if (agg_segment) {
         window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
                                     exclude_current_time_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
-                                                        output_request_row_, exclude_current_time_);
+        // NOTE: normal request union should always `output_request_row`, while the `output_request_row_`
+        // here indicate whether `EXCLUDE CURRENT_ROW`
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, true,
+                                                        exclude_current_time_, !output_request_row_);
     }
 
     if (ctx.is_debug()) {
@@ -2794,10 +2795,8 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 }
 
 std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) const {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, const bool output_request_row, const bool exclude_current_time) const {
     // TOOD(zhanghao): for now, we only support AggUnion with 1 base table and 1 agg table
     size_t unions_cnt = union_segments.size();
     if (unions_cnt != 2) {
@@ -2898,7 +2897,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     };
 
-    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
+    auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser](const Row& row) {
         if (row_parser->IsNull(row, "agg_val")) {
             return;
         }
@@ -2919,8 +2918,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         cnt++;
     }
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
         LOG(WARNING) << "Base window is empty.";
@@ -3083,7 +3081,7 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         LOG(WARNING) << "ReduceRunner input is empty";
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(iter->GetValue()));
+    std::shared_ptr<RowHandler> row_handler = std::make_shared<MemRowHandler>(iter->GetValue());
 
     if (ctx.is_debug()) {
         std::ostringstream oss;
@@ -3127,7 +3125,9 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
     const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
     uint64_t start = 0;
-    uint64_t end = UINT64_MAX;
+    // end is empty means end value < 0, that there is no effective window range
+    // this happend when `ts_gen` is 0 and exclude current_time needed
+    std::optional<uint64_t> end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
     if (ts_gen >= 0) {
@@ -3135,7 +3135,11 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
                     ? 0
                     : (ts_gen + window_range.start_offset_);
         if (exclude_current_time && 0 == window_range.end_offset_) {
-            end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
+            if (ts_gen == 0) {
+                end = {};
+            } else {
+                end = ts_gen - 1;
+            }
         } else {
             end = (ts_gen + window_range.end_offset_) < 0
                       ? 0
@@ -3174,7 +3178,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
             union_segment_status[i] = IteratorStatus();
             continue;
         }
-        union_segment_iters[i]->Seek(end);
+        union_segment_iters[i]->Seek(end.value_or(0));
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
             continue;

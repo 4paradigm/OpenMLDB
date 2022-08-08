@@ -18,10 +18,14 @@
 #define HYBRIDSE_INCLUDE_SDK_BASE_H_
 
 #include <stdint.h>
+
 #include <memory>
+#include <ostream>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
+
+#include "absl/strings/string_view.h"
 
 namespace hybridse {
 namespace sdk {
@@ -30,10 +34,13 @@ struct Status {
     Status() : code(0), msg("ok") {}
     Status(int status_code, const std::string& msg_str)
         : code(status_code), msg(msg_str) {}
+    Status(int status_code, absl::string_view msg_str, absl::string_view trace)
+        : code(status_code), msg(msg_str), trace(trace) {}
     bool IsOK() const { return code == 0; }
+
     int code;
-    std::string trace;
     std::string msg;
+    std::string trace;
 };
 
 enum DataType {

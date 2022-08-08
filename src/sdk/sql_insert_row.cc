@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 
+#include "codec/codec.h"
 #include "glog/logging.h"
 
 namespace openmldb {
@@ -251,16 +252,14 @@ bool SQLInsertRow::AppendString(const char* string_buffer_var_name, uint32_t len
 }
 
 bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
+    uint32_t date = 0;
+    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+        return false;
+    }
     if (IsDimension()) {
-        if (year < 1900 || year > 9999) return false;
-        if (month < 1 || month > 12) return false;
-        if (day < 1 || day > 31) return false;
-        int32_t date = (year - 1900) << 16;
-        date = date | ((month - 1) << 8);
-        date = date | day;
         PackDimension(std::to_string(date));
     }
-    if (rb_.AppendDate(year, month, day)) {
+    if (rb_.AppendDate(date)) {
         return MakeDefault();
     }
     return false;

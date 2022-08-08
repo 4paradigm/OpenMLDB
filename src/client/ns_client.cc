@@ -190,9 +190,9 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint
 bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response, const std::string& name,
                             uint32_t pid, std::string& msg) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
+    request.set_db(GetDb());
     if (!name.empty()) {
         request.set_name(name);
-        request.set_db(GetDb());
     }
     if (pid != INVALID_PID) {
         request.set_pid(pid);
@@ -884,7 +884,7 @@ bool NsClient::AddIndex(const std::string& db_name,
     return false;
 }
 
-base::Status NsClient::AddMultiIndex(const std::string& table_name,
+base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& table_name,
         const std::vector<::openmldb::common::ColumnKey>& column_keys) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
@@ -896,7 +896,7 @@ base::Status NsClient::AddMultiIndex(const std::string& table_name,
         }
     }
     request.set_name(table_name);
-    request.set_db(GetDb());
+    request.set_db(db);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {

@@ -19,7 +19,6 @@
 
 #include <map>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -114,6 +113,8 @@ class RowBuilder {
     void SetSchemaVersion(uint8_t version);
     inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }
     inline uint32_t GetAppendPos() { return cnt_; }
+
+    static bool ConvertDate(uint32_t year, uint32_t month, uint32_t day, uint32_t* val);
 
  private:
     bool Check(uint32_t index, ::openmldb::type::DataType type);
@@ -237,13 +238,6 @@ int32_t GetCol(int8_t* input, int32_t offset, int32_t type_id, int8_t* data);
 int32_t GetStrCol(int8_t* input, int32_t str_field_offset, int32_t next_str_field_offset, int32_t str_start_offset,
                   int32_t type_id, int8_t* data);
 }  // namespace v1
-
-inline std::string Int64ToString(const int64_t key) {
-    std::stringstream ss;
-    ss << std::hex << key;
-    std::string key_str = ss.str();
-    return key_str;
-}
 
 }  // namespace codec
 }  // namespace openmldb

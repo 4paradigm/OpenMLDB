@@ -35,6 +35,7 @@ class HybridSeJitWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;
+typedef unsigned char *NIOBUFFER;
 
 class WindowInterface {
  public:
@@ -126,8 +127,8 @@ class CoreAPI {
     static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);
 
     static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
-                                           const hybridse::codec::Row row,
-                                           const hybridse::codec::Row parameter,
+                                           const hybridse::codec::Row& row,
+                                           const hybridse::codec::Row& parameter,
                                            const bool need_free = false);
     static hybridse::codec::Row RowConstProject(
         const hybridse::vm::RawPtrHandle fn, const hybridse::codec::Row parameter,
@@ -139,12 +140,21 @@ class CoreAPI {
         hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free = false);
 
-    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+    static hybridse::codec::Row UnsafeRowProjectDirect(
+            const hybridse::vm::RawPtrHandle fn,
+            hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+            const int inputRowSizeInBytes, const bool need_free = false);
+
+    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
                                         hybridse::vm::ByteArrayPtr outputBytes,
                                         const int length);
 
+    static void CopyRowToDirectByteBuffer(const hybridse::codec::Row& inputRow,
+                                        hybridse::vm::NIOBUFFER outputBytes,
+                                        const int length);
+
     static hybridse::codec::Row WindowProject(
-        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,
         const bool is_instance, size_t append_slices, WindowInterface* window);
 
     // Window project API with Spark UnsafeRow optimization
@@ -154,8 +164,14 @@ class CoreAPI {
         const int inputRowSizeInBytes, const bool is_instance,
         size_t append_slices, WindowInterface* window);
 
+    static hybridse::codec::Row UnsafeWindowProjectDirect(
+            const hybridse::vm::RawPtrHandle fn, const uint64_t key,
+            hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+            const int inputRowSizeInBytes, const bool is_instance,
+            size_t append_slices, WindowInterface* window);
+
     static hybridse::codec::Row WindowProject(
-        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row row,
+        const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,
         WindowInterface* window);
 
     static hybridse::codec::Row GroupbyProject(

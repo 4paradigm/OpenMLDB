@@ -449,9 +449,15 @@ TEST_P(DBSDKTest, Deploy) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    std::string deploy_sql1 =
+        "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql1, &status);
+    ASSERT_TRUE(status.IsOK());
     std::string msg;
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
 
@@ -589,6 +595,54 @@ TEST_P(DBSDKTest, DeployOptions) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
+
+TEST_P(DBSDKTest, Delete) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    ProcessSQLs(
+        sr, {
+                "set @@execute_mode = 'online'",
+                absl::StrCat("create database ", db_name, ";"),
+                absl::StrCat("use ", db_name, ";"),
+                absl::StrCat("create table ", table_name, "(c1 string, c2 int, c3 bigint);"),
+                absl::StrCat("insert into ", table_name, " values ('key1', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key2', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key3', 11, 22);"),
+                absl::StrCat("insert into ", table_name, " values ('key4', 11, 22);"),
+            });
+
+    hybridse::sdk::Status status;
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 4);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 3);
+    std::string delete_sql = "delete from " + table_name + " where c1 = ?;";
+    auto insert_row = sr->GetDeleteRow(db_name, delete_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    insert_row->SetString(1, "key3");
+    ASSERT_TRUE(insert_row->Build());
+    sr->ExecuteDelete(insert_row, &status);
+    ASSERT_TRUE(status.IsOK());
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 2);
+    insert_row->Reset();
+    insert_row->SetString(1, "key100");
+    ASSERT_TRUE(insert_row->Build());
+    sr->ExecuteDelete(insert_row, &status);
+    ASSERT_TRUE(status.IsOK());
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 2);
+
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 
 TEST_P(DBSDKTest, DeployLongWindows) {
     auto cli = GetParam();
@@ -781,6 +835,60 @@ TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_t_col";
+    ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_P(DBSDKTest, DeployLongWindowsWithExcludeCurrentRow) {
+    auto& cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND 0 PRECEDING EXCLUDE CURRENT_ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    PrepareDataForLongWindow(base_db, base_table);
+    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
+    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
+    std::string result_sql = "select * from " + pre_aggr_table +";";
+    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
+    ASSERT_EQ(5, rs->Size());
+
+    int req_num = 2;
+    for (int i = 0; i < req_num; i++) {
+        std::shared_ptr<sdk::SQLRequestRow> req;
+        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
+        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
+        ASSERT_TRUE(status.IsOK());
+        ASSERT_EQ(1, res->Size());
+        ASSERT_TRUE(res->Next());
+        ASSERT_EQ("str1", res->GetStringUnsafe(0));
+        ASSERT_EQ("str2", res->GetStringUnsafe(1));
+        int64_t exp = 11 + 10 + 9 + 8 + 7 + 6;
+        ASSERT_EQ(exp, res->GetInt64Unsafe(2));
+    }
+
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
+    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_sum_i64_col";
     ok = sr->ExecuteDDL(pre_aggr_db, "drop table " + pre_aggr_table + ";", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -2214,7 +2322,7 @@ TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
         env.EnableDeployStats();
         absl::SleepFor(absl::Seconds(2));
 
-        for (int i =0; i < 5; ++i) {
+        for (int i = 0; i < 5; ++i) {
             env.CallProcedure();
         }
 

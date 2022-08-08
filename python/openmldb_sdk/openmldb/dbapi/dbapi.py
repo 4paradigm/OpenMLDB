@@ -377,7 +377,8 @@ class Cursor(object):
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
-                hole_pairs = build_sorted_holes(builder.GetHoleIdx())
+                hole_idxes = builder.GetHoleIdx()
+                hole_pairs = build_sorted_holes(hole_idxes)
                 for i in range(0, parameters_length, batch_number):
                     rows = parameters[i: i + batch_number]
                     ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
@@ -385,7 +386,7 @@ class Cursor(object):
                     if not ok:
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(
-                        rows, hole_pairs, schema, batch_builder, command)
+                        rows, hole_idxes, hole_pairs, schema, batch_builder, command)
             else:
                 ok, rs = self.connection._sdk.executeSQL(self.db, command)
                 if not ok:
@@ -574,7 +575,7 @@ class Connection(object):
         pass
 
     def close(self):
-        raise NotSupportedError("Unsupported in OpenMLDB")
+        self._sdk = None
 
     def cursor(self):
         return Cursor(self._db, self)

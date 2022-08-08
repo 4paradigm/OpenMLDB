@@ -295,21 +295,13 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   python-sdk-mac:
-    runs-on: macos-latest
+    runs-on: macos-12
     if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: 'cp_python_sdk_so openmldb'
     steps:
       - uses: actions/checkout@v3
-
-      - name: Cache thirdparty
-        uses: actions/cache@v3
-        with:
-          path: |
-            .deps/
-            thirdsrc
-          key: ${{ runner.os }}-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
 
       - name: prepare release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}

@@ -211,8 +211,8 @@ hybridse::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
 }
 
 hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
-                                         const hybridse::codec::Row row,
-                                         const hybridse::codec::Row parameter,
+                                         const hybridse::codec::Row& row,
+                                         const hybridse::codec::Row& parameter,
                                          const bool need_free) {
     if (row.empty()) {
         return hybridse::codec::Row();
@@ -246,41 +246,40 @@ hybridse::codec::Row CoreAPI::UnsafeRowProject(
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
     const int inputRowSizeInBytes, const bool need_free) {
     // Create Row from input UnsafeRow bytes
-    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
-                                                      inputRowSizeInBytes));
-    auto row_ptr = reinterpret_cast<const int8_t*>(&inputRow);
+    auto inputRow = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes, inputRowSizeInBytes));
 
-    // Init current run step runtime
-    JitRuntime::get()->InitRunStep();
-
-    auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
-                                            const int8_t*, const int8_t*, int8_t**)>(
-        const_cast<int8_t*>(fn));
-
-    int8_t* buf = nullptr;
-    uint32_t ret = udf(0, row_ptr, nullptr, nullptr, &buf);
-
-    // Release current run step resources
-    JitRuntime::get()->ReleaseRunStep();
-
-    if (ret != 0) {
-        LOG(WARNING) << "fail to run udf " << ret;
-        return hybridse::codec::Row();
-    }
-
-    return Row(base::RefCountedSlice::CreateManaged(
-        buf, hybridse::codec::RowView::GetSize(buf)));
+    return RowProject(fn, inputRow, Row(), need_free);
 }
 
-void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+hybridse::codec::Row CoreAPI::UnsafeRowProjectDirect(
+        const hybridse::vm::RawPtrHandle fn,
+        hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+        const int inputRowSizeInBytes, const bool need_free) {
+
+    auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+
+    // Create Row from input UnsafeRow bytes
+    auto inputRow = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+
+    return RowProject(fn, inputRow, Row(), need_free);
+}
+
+
+void CoreAPI::CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
                                       hybridse::vm::ByteArrayPtr outputBytes,
+                                      const int length) {
+    memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
+}
+
+void CoreAPI::CopyRowToDirectByteBuffer(const hybridse::codec::Row& inputRow,
+                                      hybridse::vm::NIOBUFFER outputBytes,
                                       const int length) {
     memcpy(outputBytes, inputRow.buf() + codec::HEADER_LENGTH, length);
 }
 
 hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                             const uint64_t row_key,
-                                            const Row row,
+                                            const Row& row,
                                             WindowInterface* window) {
     if (row.empty()) {
         return row;
@@ -313,7 +312,7 @@ hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
 }
 
 hybridse::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
-                                            const uint64_t key, const Row row,
+                                            const uint64_t key, const Row& row,
                                             const bool is_instance,
                                             size_t append_slices,
                                             WindowInterface* window) {
@@ -326,10 +325,27 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProject(
     hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
     const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
     WindowInterface* window) {
-    // tobe
+
     // Create Row from input UnsafeRow bytes
-    auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes,
-                                                 inputRowSizeInBytes));
+    auto row = Row(base::RefCountedSlice::Create(inputUnsafeRowBytes, inputRowSizeInBytes));
+
+
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
+                                 window->GetWindow());
+}
+
+hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
+        const RawPtrHandle fn, const uint64_t key,
+        hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+        const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
+        WindowInterface* window) {
+
+    auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+
+    // Create Row from input UnsafeRow bytes
+    auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+
+
     return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());
 }

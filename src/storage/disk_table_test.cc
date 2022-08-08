@@ -22,7 +22,7 @@
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
-#include "common/timer.h"  // NOLINT
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "storage/ticket.h"
 #include "test/util.h"
