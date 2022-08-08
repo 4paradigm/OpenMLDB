@@ -29,9 +29,8 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 | JOIN Clause| **``✓``** | **``✓``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在Online Serving时，需要遵循[Online Serving下LAST JOIN的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servinglast-join)|
 
 
-### LAST JOIN without ORDER BY
+### 未排序的LAST JOIN 
 
-#### Example1: LAST JOIN无排序拼接
 
 `LAST JOIN`无排序拼接时，拼接最后一条命中的数据行。
 
@@ -43,7 +42,8 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
 最后的拼接结果如上图所示。
-##### OpenMLDB CLI执行示例
+
+**示例**
 启动单机版OpenMLDB服务端和CLI客户端
 ```bash
 ./init.sh standalone
@@ -136,9 +136,8 @@ SUCCEED
 
 
 
-### LAST JOIN with ORDER BY
+### 排序的LAST JOIN
 
-#### Example2: LAST JOIN排序拼接 
 
 `LAST JOIN`时配置 `Order By` ，则右表按Order排序，拼接最后一条命中的数据行。
 
@@ -149,7 +148,8 @@ SUCCEED
 ![Figure 10: last join with order result](../dql/images/last_join_with_order2.png)
 
 最后的拼表结果如上图所示。
-##### OpenMLDB CLI执行示例
+
+**示例**
 建立上述左表t1，插入数据。可以不建立索引。
 ```SQL
 >CREATE TABLE t1 (id INT, col1 STRING,std_ts TIMESTAMP);
@@ -213,8 +213,11 @@ SUCCEED
  ---- ------ ---------------- ---- ------ ----------------
 ```
 
-#### Example3: LAST JOIN未命中
-在Example2中的t1表中插入新行并执行LAST JOIN
+
+### LAST JOIN 未命中
+以下示例展示了当右表没有任何一行数据能与左表中某行匹配时的执行结果。
+
+在[排序的LAST JOIN](#排序的LAST JOIN)中创建的t1表中插入新行并执行LAST JOIN
 ```sql
 >INSERT INTO t1 values(4,'d',20220707111111);
 SUCCEED

@@ -7,7 +7,7 @@ OpenMLDB currently only supports `LAST JOIN`.
 - The unsorted join will join two tables directly without sorting the right table.
 - The sorted join will sort the right table first, and then join two tables.
 
-Like `LEFT JOIN`, `LAST JOIN` returns all rows in the left table, even if there are no matching rows in the right table.
+Like `LEFT JOIN`, `LAST JOIN` returns all rows in the left table, even if there are no matched rows in the right table.
 ## Syntax
 
 ```
@@ -33,22 +33,21 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 ### LAST JOIN without ORDER BY
 
-#### Example1: Unsorted LAST JOIN
-
-The unsorted `LAST JOIN` will concat every row of the left table with the last matching row of the right table.  
+The unsorted `LAST JOIN` will concat every row of the left table with the last matched row of the right table.  
 
 ![Figure 7: last join without order](../dql/images/last_join_without_order.png)
 
 
-Take the second row of the left table as an example. The right table is unordered, and there are 2 matching rows. The last one `5, b, 2020-05-20 10:11:12` will be joined with the second row of the left.  
+Take the second row of the left table as an example. The right table is unordered, and there are 2 matched rows. The last one `5, b, 2020-05-20 10:11:12` will be joined with the second row of the left.  
 
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
 The final result is shown in the figure above.
 
-##### SQL Example using OpenMLDB CLI
+**Example of LAST JOIN without ORDER_BY**
+
 The following SQL commands created the left table t1 as mentioned above and inserted corresponding data.
-In order to check the results conveniently, it is recommended to create index on `col1` and use `std_ts` as timestamp. It doesn't matter if you create t1 without index, since it doesn't influence the concatenation in this case.
+In order to check the results conveniently, it is recommended to create index on `col1` and use `std_ts` as timestamp. It doesn't matter if you create t1 without index, since it doesn't affect the concatenation in this case.
 ```sql
 >CREATE TABLE t1 (id INT, col1 STRING,std_ts TIMESTAMP,INDEX(KEY=col1,ts=std_ts));
 SUCCEED
@@ -134,7 +133,7 @@ If you create t1 without index, the result of `JOIN` is the same but the order o
 ```
 
 ```{note}
-The execution of `LAST JOIN` can be optimized by index. If there is index corresponding with the `order by` and conditions in `LAST JOIN` clause, its `ts` will be used as the implicit order for unsorted `LAST JOIN`. If there is not index like this, the implicit order is the storage order. But the storage order of a table without index is unpredictable.
+The execution of `LAST JOIN` can be optimized by index. If there is index corresponding with the `ORDER BY` and conditions in `LAST JOIN` clause, its `ts` will be used as the implicit order for unsorted `LAST JOIN`. If there is not index like this, the implicit order is the storage order. But the storage order of a table without index is unpredictable.
 If the `ts` was not given when create index, OpenMLDB uses the time when the data was inserted as `ts`. 
 ```
 
@@ -142,20 +141,19 @@ If the `ts` was not given when create index, OpenMLDB uses the time when the dat
 
 ### LAST JOIN with ORDER BY
 
-#### Example2: Sorted LAST JOIN
 
-
-When `LAST JOIN` is configured with `Order By`, the right table is sorted by `Order`, and the last matching data row will be joined.
+When `LAST JOIN` is configured with `ORDER BY`, the right table is sorted by the specified order, and the last matched data row will be joined.
 
 ![Figure 9: last join with order](../dql/images/last_join_with_order1.png)
 
-Taking the second row of the left table as an example, there are 2 items in the right table that meet the conditions. After sorting by `std_ts`, the last row `3, b, 2020-05-20 10:11:13` will be joined.
+Taking the second row of the left table as an example, there are 2 rows in the right table that meet the conditions. After sorting by `std_ts`, the last row `3, b, 2020-05-20 10:11:13` will be joined.
 
 ![Figure 10: last join with order result](../dql/images/last_join_with_order2.png)
 
 The final result is shown in the figure above.
 
-##### SQL Example using OpenMLDB CLI
+**Example of LAST JOIN with ORDER BY**
+
 The following SQL commands created the left table t1 as mentioned above and inserted corresponding data.
 ```SQL
 >CREATE TABLE t1 (id INT, col1 STRING,std_ts TIMESTAMP);
@@ -220,8 +218,11 @@ The result of `SELECT` with `LAST JOIN` is shown below.
  ---- ------ ---------------- ---- ------ ----------------
 ```
 
-#### Example3: LAST JOIN without Matching Row
-Please insert a new row into t1 in Example2 as follows, then run `LAST JOIN` command.
+### LAST JOIN with No Matched Rows
+The following example shows the result of LAST JOIN with no matched rows.
+
+Please insert a new row into t1 (created in [Example of LAST JOIN with ORDER BY](#LAST JOIN with ORDER BY)) as follows, then run `LAST JOIN` command.
+
 ```sql
 >INSERT INTO t1 values(4,'d',20220707111111);
 SUCCEED
