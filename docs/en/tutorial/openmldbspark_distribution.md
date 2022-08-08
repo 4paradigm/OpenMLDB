@@ -9,7 +9,6 @@ GitHub Repo: https://github.com/4paradigm/Spark/
 ## Download
 
 You can download the OpenMLDB Spark distribution in the [Release page](https://github.com/4paradigm/Spark/releases) of the repository mentioned above.
-
 ```{note}
 The pre-compiled OpenMLDB Spark distribution is the AllinOne version, which supports Linux and MacOS operating systems. If you have special requirements, you can also download the source code and recompile it.
 ```
