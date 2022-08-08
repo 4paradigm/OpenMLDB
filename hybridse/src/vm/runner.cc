@@ -3041,22 +3041,33 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // 2. iterate over agg table from end_base until start_base (both inclusive)
-    int64_t last_ts_start = INT64_MAX;
+    int64_t prev_ts_start = INT64_MAX;
+    std::string prev_filter_val;
     while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
 
         int64_t ts_start = agg_it->GetKey();
-        // for mem-table, updating will inserts duplicate entries
-        if (last_ts_start == ts_start) {
-            DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
-            // agg_it->Next();
-            // continue;
-        }
-        last_ts_start = ts_start;
 
         const Row& row = agg_it->GetValue();
+        std::string filter_val;
+        if (!agg_row_parser->IsNull(row, "filter_key") &&
+            0 != agg_row_parser->GetString(row, "filter_key", &filter_val)) {
+            LOG(ERROR) << "failed to get value of filter_key";
+            agg_it->Next();
+            continue;
+        }
+        // for mem-table, updating will inserts duplicate entries
+        if (prev_ts_start == ts_start && (filter_val.empty() || filter_val == prev_filter_val)) {
+            DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start
+                       << ", filter_key=" << filter_val;
+            agg_it->Next();
+            continue;
+        }
+        prev_ts_start = ts_start;
+        prev_filter_val = filter_val;
+
         int64_t ts_end = -1;
         agg_row_parser->GetValue(row, "ts_end", type::Type::kTimestamp, &ts_end);
         int num_rows = 0;
