@@ -188,11 +188,11 @@ class Collector:
         remote_conf_path = server_info.conf_path_pair('')[0]
         server_log_dir = self.remote_config_value(server_info.host, remote_conf_path,
                                                   'openmldb_log_dir=', './logs')
-        # TODO(hw): what if abs path
+        # TODO(hw): what if `openmldb_log_dir` is abs path
         server_log_dir = f'{server_info.path}/{server_log_dir}'
-        # TODO(hw): only get info log?
+        # only get info log, no soft link file
         log_list = self.remote_log_file_list(server_info.host, server_log_dir,
-                                             lambda di: 'info' in di['filename'], last_n)
+                                             lambda di: f'{server_info.role}.info.log' in di['filename'], last_n)
         return self.pull_files(server_info, server_log_dir, log_list, dest)
 
     def pull_tm_server_logs(self, server_info, dest, last_n) -> bool:
@@ -217,7 +217,7 @@ class Collector:
         server_log_dir = f'{server_info.taskmanager_path()}/bin/{server_log_dir}'
 
         log_list = self.remote_log_file_list(server_info.host, server_log_dir,
-                                             lambda di: 'taskmanager' in di['filename'], last_n)
+                                             lambda di: 'taskmanager.log' in di['filename'], last_n)
         return self.pull_files(server_info, server_log_dir, log_list, dest)
 
     def remote_config_value(self, host, conf_path, config_name, default_v):
