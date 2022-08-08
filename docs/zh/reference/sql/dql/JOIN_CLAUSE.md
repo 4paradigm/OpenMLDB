@@ -24,26 +24,32 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 ## 边界说明
 
-| SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                                              |
-| :--------------------------------------------- | --------- | ------------ | ------------ |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause| **``✓``** | **``✓``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在Online Serving时，需要遵循[Online Serving下LAST JOIN的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servinglast-join)|
+| SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                  |
+| :--------------------------------------------- | --------- | ------------ | ------------ |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| JOIN Clause| **``✓``** | **``✓``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servinglast-join) |
 
 
 ### 未排序的LAST JOIN 
 
 
 `LAST JOIN`无排序拼接时，拼接最后一条命中的数据行。
+#### 计算逻辑示例
 
 ![Figure 7: last join without order](../dql/images/last_join_without_order.png)
 
 
-以左表第二行为例，符合条件的右表是无序的，命中条件的有2条，选择最后一条`5, b, 2020-05-20 10:11:12`
+以左表第二行为例，符合条件的右表是无序的，命中条件的有2条，选择最后一条`5, b, 2020-05-20 10:11:12`。最后的拼接结果如下。
 
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
-最后的拼接结果如上图所示。
+```{note}
+为了实现上图展示的拼接效果，即使您使用的是离线模式，也请遵循[在线请求模式下LAST JOIN的使用规范](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servinglast-join)。
+否则由于底层存储顺序的不确定，可能无法复现上述拼接结果。但是执行结果也是正确的。
+```
 
-**示例**
+#### SQL示例
+**使用OpenMLDB SQL语句复现上述计算逻辑的过程如下。**
+
 启动单机版OpenMLDB服务端和CLI客户端
 ```bash
 ./init.sh standalone
@@ -137,9 +143,9 @@ SUCCEED
 
 
 ### 排序的LAST JOIN
-
-
 `LAST JOIN`时配置 `Order By` ，则右表按Order排序，拼接最后一条命中的数据行。
+
+#### 计算逻辑示例
 
 ![Figure 9: last join with order](../dql/images/last_join_with_order1.png)
 
@@ -149,7 +155,9 @@ SUCCEED
 
 最后的拼表结果如上图所示。
 
-**示例**
+#### SQL示例
+**使用OpenMLDB SQL语句复现上述计算逻辑的过程如下。**
+
 建立上述左表t1，插入数据。可以不建立索引。
 ```SQL
 >CREATE TABLE t1 (id INT, col1 STRING,std_ts TIMESTAMP);
