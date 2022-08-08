@@ -317,6 +317,45 @@ bool Segment::Delete(const Slice& key) {
     return true;
 }
 
+bool Segment::Delete(const Slice& key, uint64_t time, DataBlock** block) {
+    ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    if (ts_cnt_ > 1) {
+        return false;
+    }
+    void* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
+        return false;
+    }
+    entry_ts_node = ((KeyEntry*)entry)->entries.Remove(time);  // NOLINT
+    *block = entry_ts_node->GetValue();
+    return true;
+}
+
+bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
+    ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    DataBlock* block = NULL;
+    {
+        auto pos = ts_idx_map_.find(idx);
+        if (pos == ts_idx_map_.end()) {
+            return false;
+        }
+        if (ts_cnt_ == 1) {
+            Delete(key, time, &block);
+        } else {
+            void* entry = NULL;
+            if (entries_->Get(key, entry) < 0 || entry == NULL) {
+                return false;
+            }
+            entry_ts_node = ((KeyEntry**)entry)[pos->second]->entries.Remove(time);  // NOLINT
+            block = entry_ts_node->GetValue();
+        }
+    }
+    {
+        // TODO : Complete delay deletion
+    }
+    return true;
+}
+
 void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
                        uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     while (node != NULL) {

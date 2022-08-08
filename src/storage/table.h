@@ -59,6 +59,8 @@ class Table {
 
     virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
 
+    virtual bool Delete(const std::string& pk, uint32_t idx, uint64_t time) = 0;
+
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
 

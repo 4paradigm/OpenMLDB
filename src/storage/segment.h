@@ -170,6 +170,10 @@ class Segment {
 
     bool Delete(const Slice& key);
 
+    bool Delete(const Slice& key, uint64_t time, DataBlock** block);
+
+    bool Delete(const Slice& key, uint32_t idx, const uint64_t time);
+
     uint64_t Release();
 
     void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,                          // NOLINT
