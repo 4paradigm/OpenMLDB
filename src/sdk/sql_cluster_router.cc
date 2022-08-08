@@ -3507,11 +3507,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
-            auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
-            if (!base_table_info) {
-                return {base::ReturnCode::kError, "get table info failed"};
-            }
-
             if (absl::EndsWithIgnoreCase(lw.aggr_func_, "_where")) {
                 // TOOD(ace): *_where op only support for memory base table
                 if (tables[0].storage_mode() != common::StorageMode::kMemory) {
@@ -3526,9 +3521,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 }
 
                 // unsupport filter col of date/timestamp
-                for (size_t i = 0; i < base_table_info->column_desc_size(); ++i) {
-                    if (lw.filter_col_ == base_table_info->column_desc(i).name()) {
-                        auto type = base_table_info->column_desc(i).data_type();
+                for (size_t i = 0; i < tables[0].column_desc_size(); ++i) {
+                    if (lw.filter_col_ == tables[0].column_desc(i).name()) {
+                        auto type = tables[0].column_desc(i).data_type();
                         if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
                             return {base::ReturnCode::kError,
                                     absl::StrCat("un-support date or timestamp filer column")};
@@ -3570,6 +3565,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             bool ret = cluster_sdk_->GetTablet(base_db, base_table, &tablets);
             if (!ret || tablets.empty()) {
                 return {base::ReturnCode::kError, "get tablets failed"};
+            }
+            auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
+            if (!base_table_info) {
+                return {base::ReturnCode::kError, "get table info failed"};
             }
             auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
             ::openmldb::api::TableMeta base_table_meta;
