@@ -63,18 +63,18 @@ LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 
 ```sql
 set @@execute_mode='online';
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',' );
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',' );
 ```
 
 从`data.csv`文件读取数据到表`t1`中。并使用`,`作为列分隔符， 字符串"NA"将被替换为NULL。
 
 ```sql
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',', null_value='NA');
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', null_value='NA');
 ```
 
 将`data_path`软拷贝到表`t1`中，作为离线数据。
 ```sql
 set @@execute_mode='offline';
-LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS( deep_copy=true );
+LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
