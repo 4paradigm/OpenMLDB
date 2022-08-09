@@ -2063,7 +2063,7 @@ TEST_P(DBSDKTest, LongWindowSumWhere) {
         ~DeployLongWindowSumWhereEnv() override {}
 
         void Deploy() override {
-            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:4s')
   SELECT
     col1, col2,
     sum_where(i64_col, col1='str1') over w1 as m1,
