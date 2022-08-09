@@ -86,6 +86,9 @@ class ServerChecker:
             return None
 
     def check_run_job(self) -> bool:
+        if 'taskmanager' not in self.conf_dict:
+            log.info('no taskmanager installed. skip job test')
+            return True
         self.cursor.execute('SET @@execute_mode=\'offline\';')
         result = self.cursor.execute('SELECT * FROM {};'.format(self.table_name)).fetchall()
         if len(result) < 1:
@@ -103,6 +106,7 @@ class ServerChecker:
                 log.warn('job execute failed')
                 return False
             time.sleep(2)
+        return True
 
     def run_test_sql(self) -> bool:
         self.cursor.execute('CREATE DATABASE IF NOT EXISTS {};'.format(self.db_name))

@@ -26,13 +26,37 @@ flags.DEFINE_string('data_dir', '/tmp/diagnose_tool_data', 'the dir of data')
 flags.DEFINE_string('check', 'ALL', 'the item should be check. one of ALL/CONF/LOG/SQL/VERSION')
 flags.DEFINE_string('exclude', '', 'one of CONF/LOG/SQL/VERSION')
 flags.DEFINE_string('env', '', 'startup environment. set onebox if started with start-all.sh')
+flags.DEFINE_string('log_level', 'INFO', 'the level of log')
+
+LOG_FORMAT = '%(levelname)s: %(message)s'
 
 class ConfOption:
     def __init__(self):
         self.all_items = ['ALL', 'CONF', 'LOG', 'SQL', 'VERSION']
         self.check_items = []
 
+    def set_log(self):
+        if self.log_dir != '':
+            logfile = os.path.join(self.log_dir, 'log.txt')
+            handler = logging.FileHandler(logfile, mode='w')
+        else:
+            handler = logging.StreamHandler()
+        root_logger = logging.getLogger()
+        for h in root_logger.handlers:
+            root_logger.removeHandler(h)
+        logging.basicConfig(level=self.log_level, format=LOG_FORMAT, handlers=[handler])
+
     def init(self) -> bool:
+        self.log_dir = FLAGS.log_dir
+        if self.log_dir != '' and not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        log_map = {'debug': logging.DEBUG, 'info': logging.INFO, 'warn': logging.WARN}
+        log_level = FLAGS.log_level.lower()
+        if log_level not in log_map:
+            print(f'invalid log_level {FLAGS.log_level}. log_level should be info/warn/debug')
+            return False
+        self.log_level = log_map[log_level]
+        self.set_log()
         if FLAGS.dist_conf == '':
             log.warn('dist_conf option should be setted')
             return False
@@ -59,6 +83,8 @@ class ConfOption:
         if exclude != '':
             self.check_items = list(filter(lambda x : x != exclude, self.check_items))
         self.env = FLAGS.env;
+
+
         return True
 
     def check_version(self) -> bool:

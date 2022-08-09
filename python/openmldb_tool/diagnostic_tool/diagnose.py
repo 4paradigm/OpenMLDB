@@ -26,8 +26,6 @@ import logging
 from absl import app
 from diagnostic_tool.conf_option import ConfOption
 
-LOG_FORMAT = '%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(__name__)
 
 def check_version(version_map : dict):
@@ -105,19 +103,24 @@ def main(argv):
             collector.pull_config_files(f'{conf_opt.data_dir}/conf')
         if conf_opt.check_log():
             collector.pull_log_files(f'{conf_opt.data_dir}/log')
-        file_map = util.get_files(conf_opt.data_dir)
+        if conf_opt.check_conf() or conf_opt.check_log():
+            file_map = util.get_files(conf_opt.data_dir)
+            log.debug("file_map: %s", file_map)
     else:
         collector = LocalCollector(dist_conf)
         if conf_opt.check_version():
             version_map = collector.collect_version()
         if conf_opt.check_conf() or conf_opt.check_log():
             file_map = collector.collect_files()
+            log.debug("file_map: %s", file_map)
 
     if conf_opt.check_version():
         flag, version = check_version(version_map)
         if flag:
             log.info(f'openmldb version is {version}')
             log.info('check version ok')
+        else:
+            log.warn('check version failed')
 
     if conf_opt.check_conf():
         check_conf(dist_conf.full_conf, file_map['conf'])

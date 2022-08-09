@@ -23,6 +23,8 @@ import diagnostic_tool.util as util
 
 log = logging.getLogger(__name__)
 
+logging.getLogger("paramiko").setLevel(logging.WARNING)
+
 
 def parse_config_from_properties(props_str, config_name) -> str:
     f"""
@@ -103,6 +105,12 @@ class Collector:
         def extract_version(raw_version):
             return raw_version.split(' ')[2].split('-')[0]
 
+        def extract_java_version(raw_version):
+            arr = raw_version.split('-')
+            if len(arr) < 2:
+                return ''
+            return arr[0]
+
         def run_version(server_info: ServerInfo) -> bool:
             version_map.setdefault(server_info.role, [])
             self.ssh_client.connect(hostname=server_info.host)
@@ -119,10 +127,23 @@ class Collector:
         def jar_version(server_info: ServerInfo) -> bool:
             remote_config_file = server_info.conf_path_pair('')[0]
             bv = self.get_batch_version(self.get_spark_home(remote_config_file))
-            print(bv) if bv else log.warning('failed at get batch version from %s', server_info)
+            if bv:
+                version = extract_java_version(bv)
+                if version != '':
+                    log.info(f'openmldb-batch version: {version}')
+                else:
+                    log.warning(f'{bv}')
+            else:
+                log.warning('failed at get batch version from %s', server_info)
             tv = self.get_taskmanager_version(server_info.taskmanager_path())
-            print(tv) if tv else log.warning('failed at get taskmanager version from %s', server_info)
-            return len(bv) != 0 and len(tv) != 0
+            if tv:
+                version = extract_java_version(tv)
+                if version != '':
+                    log.info(f'taskmanager version: {version}')
+                else:
+                    log.warning(f'{tv}')
+            else:
+                log.warning('failed at get taskmanager version from %s', server_info)
 
         self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES)
         return version_map
@@ -134,7 +155,7 @@ class Collector:
         :return: abs path
         """
         config_name = 'spark.home='
-        log.info("get %s from %s", config_name, remote_config_file)
+        log.debug("get %s from %s", config_name, remote_config_file)
         # avoid comments
         _, stdout, _ = self.ssh_client.exec_command(f"grep {config_name} {remote_config_file}")
         grep_str = buf2str(stdout)
@@ -155,18 +176,18 @@ class Collector:
 
     def get_batch_version(self, spark_home):
         # TODO(hw): check if multi batch jars
-        log.info("spark_home %s", spark_home)
+        log.debug("spark_home %s", spark_home)
         batch_jar_path = f'{spark_home}/jars/openmldb-batch-*'
         _, stdout, err = self.ssh_client.exec_command(
             f'java -cp {batch_jar_path} com._4paradigm.openmldb.batch.utils.VersionCli')
-        return buf2str(stdout)
+        return buf2str(err)
 
     def get_taskmanager_version(self, root_path):
         # TODO(hw): check if multi taskmanager jars
-        _, stdout, _ = self.ssh_client.exec_command(
+        _, stdout, err = self.ssh_client.exec_command(
             f'java -cp {root_path}/lib/openmldb-taskmanager-* '
             f'com._4paradigm.openmldb.taskmanager.utils.VersionCli')
-        return buf2str(stdout)
+        return buf2str(err)
 
     def pull_job_logs(self, server_info, dest, last_n) -> bool:
         # job log path is in config
@@ -226,7 +247,7 @@ class Collector:
 
     def get_config_value(self, server_info, conf_path, config_name, default_v):
         v = default_v
-        log.info('get %s from %s', config_name, conf_path)
+        log.debug('get %s from %s', config_name, conf_path)
         if server_info.is_local:
             conf_map = ConfParser(conf_path).conf()
             key = config_name[:-1]
@@ -256,7 +277,7 @@ class Collector:
 
     def pull_file(self, remote_host, paths) -> bool:
         remote_path, local_path = paths[0], paths[1]
-        print(f"remote {remote_path}, local: {local_path}")
+        log.debug(f"remote {remote_path}, local: {local_path}")
         self.ssh_client.connect(hostname=remote_host)
         sftp = self.ssh_client.open_sftp()
         try:
@@ -299,7 +320,7 @@ class Collector:
             # TODO(hw): fix taskmanager start dir
             default_dir = "/log"
 
-        log.info("get %s from %s", config_name, remote_config_file)
+        log.debug("get %s from %s", config_name, remote_config_file)
         _, stdout, _ = self.ssh_client.exec_command(f"grep {config_name} {remote_config_file}")
         grep_str = buf2str(stdout)
 
@@ -311,7 +332,7 @@ class Collector:
     def get_log_files(self, server_info, log_dir):
         if server_info.is_local:
             log_dir = os.path.normpath(log_dir)
-            log.info('get logs from %s', log_dir)
+            log.debug('get logs from %s', log_dir)
             # if no the log dir, let it crash
             logs = []
             for name in os.listdir(log_dir):
@@ -323,7 +344,7 @@ class Collector:
             sftp = self.ssh_client.open_sftp()
 
             log_dir = os.path.normpath(log_dir)
-            log.info('get logs name from %s, %s', log_dir, host)
+            log.debug('get logs name from %s, %s', log_dir, host)
             # if no the log dir, let it crash
             logs = [attr.__dict__ for attr in sftp.listdir_attr(log_dir)]
         return logs
@@ -337,7 +358,7 @@ class Collector:
         log.debug("all_logs(sorted): %s", logs)
         # get last n
         logs = [log_attr['filename'] for log_attr in logs[:last_n]]
-        log.info("get last %d: %s", last_n, logs)
+        log.debug("get last %d: %s", last_n, logs)
         return logs
 
 class LocalCollector:

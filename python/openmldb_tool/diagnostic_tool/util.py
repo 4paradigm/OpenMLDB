@@ -26,6 +26,9 @@ def get_local_logs(root_path, role):
     return file_list
 
 def get_files(root_path):
+    if not os.path.exists(root_path):
+        log.warning(f"{root_path} is not exists")
+        return ""
     file_map = {}
     names = os.listdir(root_path)
     for name in names:
