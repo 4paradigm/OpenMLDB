@@ -177,6 +177,13 @@ class Aggregator {
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
+    int64_t AlignedStart(int64_t ts) {
+        if (window_type_ == WindowType::kRowsRange) {
+            return ts / window_size_ * window_size_;
+        } else {
+            return ts;
+        }
+    }
 
     uint32_t index_pos_;
     std::string aggr_col_;

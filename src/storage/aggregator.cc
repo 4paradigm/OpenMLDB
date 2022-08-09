@@ -146,9 +146,9 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     // init buffer timestamp range
     if (aggr_buffer.ts_begin_ == -1) {
         aggr_buffer.data_type_ = aggr_col_type_;
-        aggr_buffer.ts_begin_ = cur_ts;
+        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
         if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
+            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
         }
     }
 
@@ -157,10 +157,10 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         int64_t latest_ts = aggr_buffer.ts_end_ + 1;
         uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
         aggr_buffer.clear();
-        aggr_buffer.ts_begin_ = latest_ts;
         aggr_buffer.binlog_offset_ = latest_binlog;
+        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
         if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
+            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
         }
         lock.unlock();
         FlushAggrBuffer(key, filter_key, flush_buffer);
@@ -475,8 +475,12 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
     }
 
     if (!tmp_buffer.IsInited()) {
-        tmp_buffer.ts_begin_ = cur_ts;
-        tmp_buffer.ts_end_ = cur_ts;
+        tmp_buffer.ts_begin_ = AlignedStart(cur_ts);
+        if (window_type_ == WindowType::kRowsRange) {
+            tmp_buffer.ts_end_ = tmp_buffer.ts_begin_ + window_size_ - 1;
+        } else {
+            tmp_buffer.ts_end_ = cur_ts;
+        }
         tmp_buffer.aggr_cnt_ = 1;
         tmp_buffer.binlog_offset_ = offset;
     }
