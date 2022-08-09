@@ -587,7 +587,7 @@ TEST_P(DBSDKTest, DeployOptions) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
@@ -1826,115 +1826,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere) {
     ASSERT_TRUE(ok);
 }
 
-// count where for condition between different compare type
-TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
-    GTEST_SKIP() << "count_where for rows window un-supported due to pre-agg rows not aligned";
-
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    ::hybridse::sdk::Status status;
-    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
-    std::string base_table = "t_lw" + GenRand();
-    std::string base_db = "d_lw" + GenRand();
-    std::string msg;
-    CreateDBTableForLongWindow(base_db, base_table);
-
-    // count_where with cond
-    // - type of column ref node is taken for compassion
-    // - col = null or col != null always return null
-    //
-    // only pre-agg tables for count_where(.., col1 ..) or count_where(.., col2 ..) has agg rows
-    // for other count_where, there is no agg row because each filter column only has one value, less then 2
-    std::string deploy_sql =
-        R"(DEPLOY test_aggr options(long_windows='w1:2')
-    SELECT
-        col1, col2,
-        count_where(i64_col, i64_col<8) over w1 as cw_w1_2,
-        count_where(i64_col, i16_col > 8) over w1 as cw_w1_3,
-        count_where(i16_col, i32_col = 10) over w1 as cw_w1_4,
-        count_where(i32_col, f_col != 10) over w1 as cw_w1_5,
-        count_where(f_col, d_col <= 10) over w1 as cw_w1_6,
-        count_where(d_col, d_col >= 10) over w1 as cw_w1_7,
-        count_where(s_col, null = col1) over w1 as cw_w1_8,
-        count_where(s_col, 'str0' != col1) over w1 as cw_w1_9,
-        count_where(date_col, null != s_col) over w1 as cw_w1_10,
-        count_where(col3, 10 < i64_col) over w2 as w2_count_where_col3 from )" +
-        base_table +
-        R"(
-    WINDOW
-        w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW),
-        w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)";
-
-    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    sr->ExecuteSQL(base_db, deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-
-    PrepareDataForLongWindow(base_db, base_table);
-    std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
-    std::string pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_i64_col";
-    std::string result_sql = "select * from " + pre_aggr_table +";";
-    auto rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
-    ASSERT_EQ(0, rs->Size());
-
-    pre_aggr_table = "pre_" + base_db + "_test_aggr_w1_count_where_i64_col_i16_col";
-    result_sql = "select * from " + pre_aggr_table +";";
-    rs = sr->ExecuteSQL(pre_aggr_db, result_sql, &status);
-    ASSERT_EQ(0, rs->Size());
-
-    {
-        ::hybridse::sdk::Status status;
-        rs = sr->ExecuteSQL(pre_aggr_db,
-                            absl::StrCat("select * from pre_", base_db, "_test_aggr_w1_count_where_s_col_col1"),
-                            &status);
-        EXPECT_EQ(5, rs->Size());
-    }
-
-    // 11, 11, 10, 9, 8, 7, 6
-    for (int i = 0; i < 2; i++) {
-        std::shared_ptr<sdk::SQLRequestRow> req;
-        PrepareRequestRowForLongWindow(base_db, "test_aggr", req);
-        DLOG(INFO) << "Before CallProcedure";
-        auto res = sr->CallProcedure(base_db, "test_aggr", req, &status);
-        DLOG(INFO) << "After CallProcedure";
-        EXPECT_TRUE(status.IsOK());
-        EXPECT_EQ(1, res->Size());
-        EXPECT_TRUE(res->Next());
-        EXPECT_EQ("str1", res->GetStringUnsafe(0));
-        EXPECT_EQ("str2", res->GetStringUnsafe(1));
-        EXPECT_EQ(2, res->GetInt64Unsafe(2));
-        EXPECT_EQ(4, res->GetInt64Unsafe(3));
-        EXPECT_EQ(1, res->GetInt64Unsafe(4));
-        EXPECT_EQ(6, res->GetInt64Unsafe(5));
-        EXPECT_EQ(5, res->GetInt64Unsafe(6));
-        EXPECT_EQ(3, res->GetInt64Unsafe(7));
-        EXPECT_EQ(0, res->GetInt64Unsafe(8));
-        EXPECT_EQ(7, res->GetInt64Unsafe(9));
-        EXPECT_EQ(0, res->GetInt64Unsafe(10));
-        EXPECT_EQ(2, res->GetInt64Unsafe(11));
-    }
-
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(base_db, "test_aggr", msg));
-
-    ProcessSQLs(sr, {
-                        absl::StrCat("use ", pre_aggr_db),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_i64_col_i64_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_i64_col_i16_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_i16_col_i32_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_i32_col_f_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_f_col_d_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_d_col_d_col"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_s_col_col1"),
-                        absl::StrCat("drop table pre_", base_db, "_test_aggr_w1_count_where_date_col_s_col"),
-                        absl::StrCat("use ", base_db),
-                        absl::StrCat("drop table ", base_table),
-                        absl::StrCat("drop database ", base_db),
-                    });
-}
-
 // pre agg rows is range buckets
-TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
+TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -2009,7 +1902,7 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
 }
 
 // pre agg rows is range buckets
-TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere4) {
+TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
