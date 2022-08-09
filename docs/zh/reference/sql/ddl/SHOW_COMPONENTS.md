@@ -5,6 +5,7 @@
 SHOW COMPONENTS;
 ```
 
+## 说明
 | Column       | Description                                                             |
 | ------------ |-------------------------------------------------------------------------|
 | Endpoint     | 组件端点，同 `--endpoint` flag                                                |
@@ -20,7 +21,8 @@ SHOW COMPONENTS;
 - 只能展示单个 task manager master 的信息，不能展示其他 slave 节点
 - 单机版 nameserver 的 connect time 不准确
 ```
-# Example
+
+## Example
 
 ```sql
 SHOW COMPONENTS;

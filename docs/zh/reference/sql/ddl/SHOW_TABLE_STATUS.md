@@ -8,7 +8,7 @@ SHOW TABLE STATUS
 
 
 
-Column Information
+## 说明
 
 | Column            | Description                                                |
 | ----------------- | ---------------------------------------------------------- |
@@ -28,7 +28,7 @@ Column Information
 
 
 
-# Example
+## Example
 
 ```sql
 > USE db;
