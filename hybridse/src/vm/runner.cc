@@ -3037,7 +3037,6 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     // 2. iterate over agg table from end_base until start_base (both inclusive)
     int64_t prev_ts_start = INT64_MAX;
-    std::string prev_filter_val;
     while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
@@ -3079,6 +3078,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // for agg rows has filter_key
             // max_size check should happen after iterate all agg rows for the same key
             std::vector<Row> key_agg_rows;
+            std::set<std::string> filter_val_set;
 
             int total_rows = 0;
             int64_t ts_end_range = -1;
@@ -3098,7 +3098,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
                     continue;
                 }
 
-                if (prev_ts_start == ts_start && filter_val == prev_filter_val) {
+                if (prev_ts_start == ts_start && filter_val_set.count(filter_val) != 0) {
                     DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start
                                << ", filter_key=" << filter_val;
                     agg_it->Next();
@@ -3106,7 +3106,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
                 }
 
                 prev_ts_start = ts_start;
-                prev_filter_val = filter_val;
+                filter_val_set.insert(filter_val);
 
                 int num_rows = 0;
                 agg_row_parser->GetValue(drow, "num_rows", type::Type::kInt32, &num_rows);

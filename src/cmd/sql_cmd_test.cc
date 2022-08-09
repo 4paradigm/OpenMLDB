@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/algorithm/container.h"
 #include "absl/cleanup/cleanup.h"
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
@@ -764,29 +765,7 @@ class DeployLongWindowEnv {
 
         Deploy();
 
-        // prepare data
-        // -----------------------------------------------------------------------------------
-        // col1 col2  col3       i64_col i16_col i32_col f_col d_col t_col  s_col  date_col   filter
-        // str1 str2  i * 1000     i       i       i       i     i     i      i    1900-01-i  i % 2
-        //
-        // where i in [1 .. 11]
-        // -----------------------------------------------------------------------------------
-        for (int i = 1; i <= 11; i++) {
-            std::string val = std::to_string(i);
-            std::string filter_val = std::to_string(i % 2);
-            std::string date;
-            if (i < 10) {
-                date = absl::StrCat("1900-01-0", std::to_string(i));
-            } else {
-                date = absl::StrCat("1900-01-", std::to_string(i));
-            }
-            std::string insert =
-                absl::StrCat("insert into ", table_, " values('str1', 'str2', ", i * 1000, ", ", val, ", ", val, ", ",
-                             val, ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "', ", filter_val, ");");
-            ::hybridse::sdk::Status s;
-            bool ok = sr_->ExecuteInsert(db_, insert, &s);
-            ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
-        }
+        PrepareData();
     }
 
     void TearDown() {
@@ -819,6 +798,32 @@ class DeployLongWindowEnv {
                       "index(key=(col1,col2), ts=col3, abs_ttl=0, ttl_type=absolute)) "
                       "options(partitionnum=8);")
                 });
+    }
+
+    virtual void PrepareData() {
+        // prepare data
+        // -----------------------------------------------------------------------------------
+        // col1 col2  col3       i64_col i16_col i32_col f_col d_col t_col  s_col  date_col   filter
+        // str1 str2  i * 1000     i       i       i       i     i     i      i    1900-01-i  i % 2
+        //
+        // where i in [1 .. 11]
+        // -----------------------------------------------------------------------------------
+        for (int i = 1; i <= 11; i++) {
+            std::string val = std::to_string(i);
+            std::string filter_val = std::to_string(i % 2);
+            std::string date;
+            if (i < 10) {
+                date = absl::StrCat("1900-01-0", std::to_string(i));
+            } else {
+                date = absl::StrCat("1900-01-", std::to_string(i));
+            }
+            std::string insert =
+                absl::StrCat("insert into ", table_, " values('str1', 'str2', ", i * 1000, ", ", val, ", ", val, ", ",
+                             val, ", ", val, ", ", val, ", ", val, ", '", val, "', '", date, "', ", filter_val, ");");
+            ::hybridse::sdk::Status s;
+            bool ok = sr_->ExecuteInsert(db_, insert, &s);
+            ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
+        }
     }
 
     virtual void Deploy() = 0;
@@ -2187,6 +2192,104 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
 
     // request window [4s, 11s]
     DeployLongWindowAvgWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
+
+    std::shared_ptr<hybridse::sdk::ResultSet> res;
+    // ts 11, 11, 10, 9, 8, 7, 6, 5, 4
+    env.CallDeploy(&res);
+    ASSERT_TRUE(res != nullptr) << "call deploy failed";
+
+    EXPECT_EQ(1, res->Size());
+    EXPECT_TRUE(res->Next());
+    EXPECT_EQ("str1", res->GetStringUnsafe(0));
+    EXPECT_EQ("str2", res->GetStringUnsafe(1));
+    EXPECT_TRUE(res->IsNULL(2));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(3));
+    EXPECT_TRUE(res->IsNULL(4));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(5));
+    EXPECT_EQ(11.0, res->GetDoubleUnsafe(6));
+    EXPECT_EQ(11.0, res->GetDoubleUnsafe(7));
+    EXPECT_EQ(10.0, res->GetDoubleUnsafe(8));
+    EXPECT_EQ(8.0, res->GetDoubleUnsafe(9));
+    EXPECT_EQ(7.0, res->GetDoubleUnsafe(10));
+    EXPECT_EQ(4.0, res->GetDoubleUnsafe(11));
+}
+
+TEST_P(DBSDKTest, LongWindowAnyWhereWithDataOutOfOrder) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    class DeployLongWindowAnyWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowAnyWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowAnyWhereEnv() override {}
+
+        void Deploy() override {
+            ProcessSQLs(sr_, {absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    avg_where(i64_col, col1!='str1') over w1 as m1,
+    avg_where(i16_col, filter<1) over w1 as m2,
+    avg_where(i32_col, filter = null) over w1 as m3,
+    avg_where(f_col, 0=filter) over w1 as m4,
+    avg_where(d_col, f_col = 11) over w1 as m5,
+    avg_where(i64_col, i16_col > 10) over w1 as m6,
+    avg_where(i16_col, i32_col = 10) over w1 as m7,
+    avg_where(i32_col, f_col != 7) over w1 as m8,
+    avg_where(f_col, d_col <= 10) over w1 as m9,
+    avg_where(d_col, d_col < 4.5) over w1 as m10,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                               dp_, table_)});
+        }
+
+        void PrepareData() override {
+            std::vector<int> order = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+            absl::BitGen gen;
+            absl::c_shuffle(order, gen);
+
+            for (auto i : order) {
+                std::string val = std::to_string(i);
+                std::string filter_val = std::to_string(i % 2);
+                std::string date;
+                if (i < 10) {
+                    date = absl::StrCat("1900-01-0", std::to_string(i));
+                } else {
+                    date = absl::StrCat("1900-01-", std::to_string(i));
+                }
+                std::string insert = absl::StrCat("insert into ", table_, " values('str1', 'str2', ", i * 1000, ", ",
+                                                  val, ", ", val, ", ", val, ", ", val, ", ", val, ", ", val, ", '",
+                                                  val, "', '", date, "', ", filter_val, ");");
+                ::hybridse::sdk::Status s;
+                bool ok = sr_->ExecuteInsert(db_, insert, &s);
+                ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
+            }
+        }
+
+        void TearDownPreAggTables() override {
+            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
+            ProcessSQLs(sr_, {
+                                 absl::StrCat("use ", pre_agg_db),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
+                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
+                                 absl::StrCat("use ", db_),
+                                 absl::StrCat("drop deployment ", dp_),
+                             });
+        }
+    };
+
+    // request window [4s, 11s]
+    DeployLongWindowAnyWhereEnv env(sr);
     env.SetUp();
     absl::Cleanup clean = [&env]() { env.TearDown(); };
 
