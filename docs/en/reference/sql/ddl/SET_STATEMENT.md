@@ -1,4 +1,5 @@
 # SET STATEMENT
+The `SET` statement is used to set system variables on OpenMLDB. At present, the system variables of OpenMLDB include session system variables and global system variables. Modifications to session variables will only affect the current session (that is, the current database connection). Modifications to global variables take effect for all sessions.
 
 ## Syntax
 
@@ -15,7 +16,6 @@ in the following way
 ```sql
 'SET' [ GLOBAL | SESSION ] <variableName> '=' <value>
 ```
-**Description**
 
 The `SET` statement is used to set system variables on OpenMLDB. At present, the system variables of OpenMLDB include session system variables and global system variables. Modifications to session variables will only affect the current session (that is, the current database connection). Modifications to global variables take effect for all sessions.
 
@@ -52,6 +52,7 @@ The `SET` statement is used to set system variables on OpenMLDB. At present, the
 
 4 rows in set
 > SET @@session.execute_mode = "online";
+-- SUCCEED
 > SHOW VARIABLES;
  --------------- ---------
   Variable_name   Value
@@ -64,6 +65,7 @@ The `SET` statement is used to set system variables on OpenMLDB. At present, the
 
 4 rows in set
 > SET @@session.enable_trace = "true";
+ -- SUCCEED
 > SHOW VARIABLES;
   --------------- ---------
   Variable_name   Value
@@ -90,6 +92,7 @@ The `SET` statement is used to set system variables on OpenMLDB. At present, the
 
 4 rows in set
 > SET @@global.enable_trace = "true";
+-- SUCCEED
 > SHOW GLOBAL VARIABLES;
  --------------- ----------------
   Variable_name   Variable_value
@@ -109,18 +112,18 @@ The `SET` statement is used to set system variables on OpenMLDB. At present, the
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 USE db1;
 -- SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
---SUCCEED: Create successfully
-
+--SUCCEED
 ```
 
 - When enable_trace is turned off, the wrong SQL is executed:
 
 ```sql
 > set @@enable_trace = "false";
+-- SUCCEED    
 > select sum(col1) over w1 from t1 window w1 as (partition by col1 order by col0 rows_range between 10d preceding and current row);
 -- ERROR: Invalid Order column type : kVarchar
 ```
@@ -129,6 +132,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 
 ```sql
 > set @@enable_trace = "true";
+-- SUCCEED
 > select sum(col1) over w1 from t1 window w1 as (partition by col1 order by col0 rows_range between 10d preceding and current row);
 -- ERROR: Invalid Order column type : kVarchar
     (At /Users/chenjing/work/chenjing/OpenMLDB/hybridse/src/vm/sql_compiler.cc:263)
