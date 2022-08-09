@@ -119,7 +119,9 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     }
     std::string filter_key = "";
     if (filter_col_idx_ != -1) {
-        base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
+        if (!base_row_view_.IsNULL(row_ptr, filter_col_idx_)) {
+            base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
+        }
     }
 
     AggrBufferLocked* aggr_buffer_lock;
@@ -253,9 +255,8 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
         aggr_row_view_.GetStrValue(data_ptr, 0, &pk);
-        auto is_null = aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
-        if (is_null == 1) {
-            filter_key.clear();
+        if (!aggr_row_view_.IsNULL(data_ptr, 6)) {
+            aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
         }
         auto insert_pair = aggr_buffer_map_[pk].insert(std::make_pair(filter_key, AggrBufferLocked{}));
         auto& buffer = insert_pair.first->second.buffer_;
@@ -454,9 +455,8 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
         }
 
         std::string fk;
-        auto is_null = aggr_row_view_.GetStrValue(aggr_row_ptr, 6, &fk);
-        if (is_null == 1) {
-            fk.clear();
+        if (!aggr_row_view_.IsNULL(aggr_row_ptr, 6)) {
+            aggr_row_view_.GetStrValue(aggr_row_ptr, 6, &fk);
         }
         // filter_key doesn't match, continue
         if (filter_key.compare(fk) != 0) {
