@@ -49,13 +49,41 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %typemap(jtype) hybridse::vm::ByteArrayPtr "byte[]"
 %typemap(jstype) hybridse::vm::ByteArrayPtr "byte[]"
 %typemap(in) hybridse::vm::ByteArrayPtr {
-    $1 = (hybridse::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
+  $1 = (hybridse::vm::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
 }
+
 %typemap(argout) hybridse::vm::ByteArrayPtr {
-    JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, JNI_COMMIT);
+  JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, 0);
 }
+
 %typemap(javain) hybridse::vm::ByteArrayPtr "$javainput"
 %typemap(javaout) hybridse::vm::ByteArrayPtr "{ return $jnicall; }"
+
+/* Prevent default freearg typemap from being used */
+%typemap(freearg) hybridse::vm::ByteArrayPtr ""
+
+%typemap(jni) hybridse::vm::NIOBUFFER "jobject"
+%typemap(jtype) hybridse::vm::NIOBUFFER "java.nio.ByteBuffer"
+%typemap(jstype) hybridse::vm::NIOBUFFER "java.nio.ByteBuffer"
+%typemap(javain,
+  pre="  assert $javainput.isDirect() : \"Buffer must be allocated direct.\";") hybridse::vm::NIOBUFFER "$javainput"
+%typemap(javaout) hybridse::vm::NIOBUFFER {
+  return $jnicall;
+}
+%typemap(in) hybridse::vm::NIOBUFFER {
+  $1 = (unsigned char *) JCALL1(GetDirectBufferAddress, jenv, $input);
+  if ($1 == NULL) {
+    SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "Unable to get address of a java.nio.ByteBuffer direct byte buffer. Buffer must be a direct buffer and not a non-direct buffer.");
+  }
+}
+%typemap(memberin) hybridse::vm::NIOBUFFER {
+  if ($input) {
+    $1 = $input;
+  } else {
+    $1 = 0;
+  }
+}
+%typemap(freearg) hybridse::vm::NIOBUFFER ""
 #endif
 
 // Fix for Java shared_ptr unref

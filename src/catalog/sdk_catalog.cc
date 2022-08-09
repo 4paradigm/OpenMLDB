@@ -32,19 +32,9 @@ SDKTableHandler::SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta, 
       table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
-    if (meta_.format_version() != 1) {
-        LOG(WARNING) << "bad format version " << meta_.format_version();
-        return false;
-    }
     bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
-        return false;
-    }
-
-    ok = schema::IndexUtil::ConvertIndex(meta_.column_key(), &index_list_);
-    if (!ok) {
-        LOG(WARNING) << "fail to conver index to sql index";
         return false;
     }
 
@@ -59,22 +49,22 @@ bool SDKTableHandler::Init() {
     }
 
     // init index hint
-    for (int32_t i = 0; i < index_list_.size(); i++) {
-        const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
+    for (int32_t i = 0; i < meta_.column_key_size(); i++) {
+        const auto& column_key = meta_.column_key(i);
         ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
         index_st.ts_pos = ::hybridse::vm::INVALID_POS;
-        if (!index_def.second_key().empty()) {
-            int32_t pos = GetColumnIndex(index_def.second_key());
+        if (!column_key.ts_name().empty()) {
+            int32_t pos = GetColumnIndex(column_key.ts_name());
             if (pos < 0) {
-                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                LOG(WARNING) << "fail to get second key " << column_key.ts_name();
                 return false;
             }
             index_st.ts_pos = pos;
         }
-        index_st.name = index_def.name();
-        for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
-            const std::string& key = index_def.first_keys(j);
+        index_st.name = column_key.index_name();
+        for (int32_t j = 0; j < column_key.col_name_size(); j++) {
+            const std::string& key = column_key.col_name(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
                 LOG(WARNING) << "column " << key << " does not exist in table " << name_;
@@ -82,7 +72,7 @@ bool SDKTableHandler::Init() {
             }
             index_st.keys.push_back(it->second);
         }
-        index_hint_.insert(std::make_pair(index_st.name, index_st));
+        index_hint_.emplace(index_st.name, index_st);
     }
     VLOG(5) << "init table handler for table " << name_ << " in db " << db_ << " done";
     return true;

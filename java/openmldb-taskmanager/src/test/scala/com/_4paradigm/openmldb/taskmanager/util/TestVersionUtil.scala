@@ -16,12 +16,13 @@
 
 package com._4paradigm.openmldb.taskmanager.util
 
+import com._4paradigm.openmldb.taskmanager.utils.VersionCli
 import org.scalatest.FunSuite
 
 class TestVersionUtil extends FunSuite {
 
   test("Test getTaskManagerVersion") {
-    val version = VersionUtil.getTaskManagerVersion()
+    val version = VersionCli.getVersion()
     assert(version.nonEmpty)
   }
 
