@@ -3048,46 +3048,98 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             break;
         }
 
-        int64_t ts_start = agg_it->GetKey();
+        if (cond_ == nullptr) {
+            int64_t ts_start = agg_it->GetKey();
+            const Row& row = agg_it->GetValue();
+            if (prev_ts_start == ts_start) {
+                DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
+                agg_it->Next();
+                continue;
+            }
+            prev_ts_start = ts_start;
 
-        const Row& row = agg_it->GetValue();
-        std::string filter_val;
-        if (!agg_row_parser->IsNull(row, "filter_key") &&
-            0 != agg_row_parser->GetString(row, "filter_key", &filter_val)) {
-            LOG(ERROR) << "failed to get value of filter_key";
+            int64_t ts_end = -1;
+            agg_row_parser->GetValue(row, "ts_end", type::Type::kTimestamp, &ts_end);
+            int num_rows = 0;
+            agg_row_parser->GetValue(row, "num_rows", type::Type::kInt32, &num_rows);
+
+            // FIXME(zhanghao): check cnt and rows_start_preceding meanings
+            int next_incr = num_rows > 0 ? num_rows - 1 : 0;
+            auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
+                                                                     ts_start > end, ts_start < start);
+            if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
+                start_base = ts_end + 1;
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                update_agg_aggregator(row);
+                cnt += num_rows;
+            }
+
+            start_base = ts_start;
             agg_it->Next();
-            continue;
-        }
-        // for mem-table, updating will inserts duplicate entries
-        if (prev_ts_start == ts_start && (filter_val.empty() || filter_val == prev_filter_val)) {
-            DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start
-                       << ", filter_key=" << filter_val;
-            agg_it->Next();
-            continue;
-        }
-        prev_ts_start = ts_start;
-        prev_filter_val = filter_val;
+        } else {
+            const int64_t ts_start = agg_it->GetKey();
 
-        int64_t ts_end = -1;
-        agg_row_parser->GetValue(row, "ts_end", type::Type::kTimestamp, &ts_end);
-        int num_rows = 0;
-        agg_row_parser->GetValue(row, "num_rows", type::Type::kInt32, &num_rows);
+            // for agg rows has filter_key
+            // max_size check should happen after iterate all agg rows for the same key
+            std::vector<Row> key_agg_rows;
 
-        // FIXME(zhanghao): check cnt and rows_start_preceding meanings
-        int next_incr = num_rows > 0 ? num_rows - 1 : 0;
-        auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding, ts_start > end,
-                                                                 ts_start < start);
-        if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
-            start_base = ts_end + 1;
-            break;
-        }
-        if (WindowRange::kInWindow == range_status) {
-            update_agg_aggregator(row);
-            cnt += num_rows;
-        }
+            int total_rows = 0;
+            int64_t ts_end_range = -1;
+            agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end_range);
+            while (agg_it->Valid() && ts_start == agg_it->GetKey()) {
+                const Row& drow = agg_it->GetValue();
 
-        start_base = ts_start;
-        agg_it->Next();
+                std::string filter_val;
+                if (agg_row_parser->IsNull(drow, "filter_key")) {
+                    LOG(ERROR) << "filter_key is null for *_where op";
+                    agg_it->Next();
+                    continue;
+                }
+                if (0 != agg_row_parser->GetString(drow, "filter_key", &filter_val)) {
+                    LOG(ERROR) << "failed to get value of filter_key";
+                    agg_it->Next();
+                    continue;
+                }
+
+                if (prev_ts_start == ts_start && filter_val == prev_filter_val) {
+                    DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start
+                               << ", filter_key=" << filter_val;
+                    agg_it->Next();
+                    continue;
+                }
+
+                prev_ts_start = ts_start;
+                prev_filter_val = filter_val;
+
+                int num_rows = 0;
+                agg_row_parser->GetValue(drow, "num_rows", type::Type::kInt32, &num_rows);
+
+                if (num_rows > 0) {
+                    total_rows += num_rows;
+                    key_agg_rows.push_back(drow);
+                }
+
+                agg_it->Next();
+            }
+
+            int next_incr = total_rows > 0 ? total_rows - 1 : 0;
+            auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
+                                                                     ts_start > end, ts_start < start);
+            if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
+                start_base = ts_end_range + 1;
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                for (auto& row : key_agg_rows) {
+                    update_agg_aggregator(row);
+                }
+                cnt += total_rows;
+            }
+
+            start_base = ts_start;
+        }
     }
 
     // 3. iterate over base table from start_base (exclusive) to start (inclusive)
