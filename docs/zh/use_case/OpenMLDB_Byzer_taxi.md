@@ -4,16 +4,16 @@
 
 ## 1. 准备工作
 
-### 1.1 安装OpenMLDB 引擎
+### 1.1 安装 OpenMLDB 引擎
 
 1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)。
 2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](https://openmldb.ai/docs/zh/main/reference/ip_tips.html)。
 
-### 1.2 安装Byzer 引擎和Byzer Notebook 
+### 1.2 安装 Byzer 引擎和Byzer Notebook 
 
 1. Byzer 引擎的安装步骤详见[Byzer Language官方文档](https://docs.byzer.org/#/byzer-lang/zh-cn/)
 
-2. 本例需要使用Byzer提供的[FeatureStoreExt插件](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb)完成与OpenMLDB的消息传递。在Byzer中使用插件必须配置`streaming.datalake.path`项，详见[Byzer引擎配置说明-常用参数](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration)。
+2. 本例需要使用 Byzer 提供的[OpenMLDB 插件](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb)完成与 OpenMLDB 的消息传递。在Byzer中使用插件必须配置`streaming.datalake.path`项，详见[Byzer引擎配置说明-常用参数](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration)。
 
 3. 本文使用 Byzer Notebook 进行演示，Byzer 引擎安装完成后，请安装Byzer Notebook（您也可以使用[VSCode中的Byzer插件](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/vscode/byzer-vscode-extension-installation)连接您的Byzer 引擎）。关于Byzer Notebook，详见[Byzer Notebook官方文档](https://docs.byzer.org/#/byzer-notebook/zh-cn/)。其界面如下。
 
@@ -35,15 +35,15 @@ and header = "true"
 as taxi_tour_table_train_simple;
 ```
 
-### 2.2 将数据导入FeatureStore(OpenMLDB)
+### 2.2 将数据导入 OpenMLDB
 
-安装**FeatureStoreExt**插件
+安装 OpenMLDB 插件
 
 ```sql
 !plugin app add - "byzer-openmldb-3.0";
 ```
 
-使用该插件连接OpenMLDB引擎。在Byzer Notebook中运行该代码块前，请确保OpenMLDB引擎已启动，并创建了名为`db1`的数据库。
+使用该插件连接 OpenMLDB 引擎。在Byzer Notebook中运行该代码块前，请确保OpenMLDB引擎已启动，并创建了名为`db1`的数据库。
 
 ```sql
 run command as FeatureStoreExt.`` where
