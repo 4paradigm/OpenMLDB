@@ -8,7 +8,7 @@ SetStatement ::=
     'SET' variableName '=' value
 
 variableName ::=
-		|	sessionVariableName
+	sessionVariableName
 	
 sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Identifier
 ```
