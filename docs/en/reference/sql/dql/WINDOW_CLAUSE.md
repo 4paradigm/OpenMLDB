@@ -89,9 +89,9 @@ SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_nam
 
 ## Description
 
-| `SELECT` Statement Elements                            | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
-|:-------------------------------------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| WINDOW Clause                                          | **``✓``**    |                     | **``✓``**           | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). During Online Serving, please follow the [specification of WINDOW Clause under Online Serving](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
+| `SELECT` Statement Elements                            | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                                                      |
+|:-------------------------------------------------------|--------------|---------------------|---------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| WINDOW Clause                                          | **``✓``**    |                     | **``✓``**           | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). For Online Request Mode, please follow the [specification of WINDOW Clause under Online Request](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#online-servingwindow) |
 
 ## Basic WINDOW SPEC Syntax Elements
 
@@ -156,14 +156,14 @@ Standard SQL also supports `FOLLOWING` keyword, but OpenMLDB doesn't support it 
 ````
 
 #### Example
-**1. Named Window**
+- **Named Window**
 
 ```SQL
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW)
 ```
 
-**2. Anonymous Window**
+- **Anonymous Window**
 
 ```SQL
 SELECT id, pk1, col1, std_ts,
@@ -171,7 +171,7 @@ sum(col1) OVER (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CU
 from t1;
 ```
 
-**3. ROWS Window**
+- **ROWS Window**
 
 The following `WINDOW` clause defines a `ROWS` window containing preceding 1000 rows and current row. The window will contain a maximum of 1001 rows.
 ```SQL
@@ -180,7 +180,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CU
 ```
 
 
-**4. ROWS RANGE Window**
+- **ROWS_RANGE Window**
 
 The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row.
 ```SQL
@@ -191,7 +191,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ## WindowSpec Elements Specifically Designed by OpenMLDB
 
 
-### **Window With Union**
+### 1. WINDOW ... UNION
 
 
 ```sql
@@ -201,7 +201,7 @@ WindowUnionClause
 
 
 #### Example
-**1. Window With `UNION` On 2 Tables**
+- **Window with `UNION` On 2 Tables**
 
 
 ```SQL
@@ -212,7 +212,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 ![Figure 2: window union one table](../dql/images/window_union_1_table.png)
 
 
-**2. Window With `UNION` on Multiple Tables**
+- **Window with `UNION` on Multiple Tables**
 
 ```SQL
 SELECT col1, col5, sum(col2) OVER w1 as w1_col2_sum FROM t1
@@ -222,7 +222,7 @@ WINDOW w1 AS (UNION t2, t3 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10
 ![Figure 3: window union two tables](../dql/images/window_union_2_table.png)
 
 
-**3. Window With `UNION` Excluding the Instance Table**
+- **Window with `UNION` and `INSTANCE_NOT_IN_WINDOW`**
 
 
 ```SQL
@@ -234,7 +234,7 @@ WINDOW w1 AS (UNION t2 PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PR
 
 
 
-**4. Window With `UNION` Containing Subquery**
+- **Window with `UNION` Containing Subquery**
 
 
 ```SQL
@@ -246,8 +246,8 @@ PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW
 ```
 
 
-### **Window Exclude Current Time**
-
+### 2. Window with EXCLUDE CURRENT_TIME
+Only rows whose `timestamp` values are different to `CURRENT ROW` will be included in the window.
 
 ```
 WindowExcludeCurrentTime 
@@ -256,8 +256,7 @@ WindowExcludeCurrentTime
 
 
 #### Example
-**1. ROWS WINDOW with EXCLUDE CURRENT TIME**
-
+- **ROWS Window with EXCLUDE CURRENT_TIME**
 
 The following `WINDOW` clause defines a `ROWS` window containing preceding 1000 rows and current row. Any other rows in the window will not have the same time as the `CURRENT ROW`.
 ```SQL
@@ -266,7 +265,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CU
 ```
 
 
-**2.ROW RANGE WINDOW with EXCLUDE CURRENT TIME**
+- **ROWS_RANGE Window with EXCLUDE CURRENT_TIME**
 
 
 The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. Any other rows in the window will not have the same time as the `CURRENT ROW`.
@@ -277,7 +276,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 
 ![Figure 5: window exclude current time](../dql/images/window_exclude_current_time.png)
 
-### 3. Window Exclude Current Row
+### 3. Window with EXCLUDE CURRENT_ROW
 
 Current row do not go into window.
 
@@ -286,14 +285,16 @@ WindowExcludeCurrentRow
         ::= 'EXCLUDE' 'CURRENT_ROW'
 ```
 
-#### 3.1 Example: ROWS_RANGE Window EXCLUDE CURRENT ROW
+#### Example
+- **ROWS_RANGE Window with EXCLUDE CURRENT_ROW**
 
 ```sql
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
 ```
+![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
-### 4. Window Frame Max Size
+### 4. Window with MAXSIZE
 
 
 The keyword `MAXSIZE` is used to limit the number of rows in the window.
@@ -303,10 +304,10 @@ WindowFrameMaxSize
         :: = MAXSIZE NumLiteral
 ```
 
-![Figure 6: window config max size](../dql/images/window_max_size.png)
+![Figure 7: window config max size](../dql/images/window_max_size.png)
 
-####Example
-**1. ROWS RANGE WINDOW with MAXSIZE**
+#### Example
+- **ROWS_RANGE Window with MAXSIZE**
 
 The following `WINDOW` clause defines a `ROWS_RANGE` window containing preceding 10s rows and current row. There are at most 3 rows in the window.
 ```sql

@@ -2362,7 +2362,6 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto index = table_info.add_column_key();
     index->set_index_name("key_index");
     index->add_col_name("key");
-    index->add_col_name("filter_key");
     index->set_ts_name("ts_start");
 
     // keep ttl in pre-aggr table the same as base table
