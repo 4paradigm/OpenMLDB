@@ -26,6 +26,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
+#include "absl/strings/substitute.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -3524,8 +3525,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                     if (lw.filter_col_ == tables[0].column_desc(i).name()) {
                         auto type = tables[0].column_desc(i).data_type();
                         if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
-                            return {base::ReturnCode::kError,
-                                    absl::StrCat("unsupport date or timestamp filer column")};
+                            return {
+                                base::ReturnCode::kError,
+                                absl::Substitute("unsupport date or timestamp as filer column ($0)", lw.filter_col_)};
                         }
                     }
                 }

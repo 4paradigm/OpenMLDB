@@ -757,17 +757,8 @@ class DeployLongWindowEnv {
         db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
         table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
         dp_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        ProcessSQLs(
-            sr_, {"SET @@execute_mode='online';",
-                  absl::StrCat("create database ", db_),
-                  absl::StrCat("use ", db_),
-                  absl::StrCat(
-                      "create table ", table_,
-                      "(col1 string, col2 string, col3 timestamp, i64_col bigint, i16_col smallint, i32_col int, f_col "
-                      "float, d_col double, t_col timestamp, s_col string, date_col date, filter int, "
-                      "index(key=(col1,col2), ts=col3, abs_ttl=0, ttl_type=absolute)) "
-                      "options(partitionnum=8);")
-                });
+
+        PrepareSchema();
 
         ASSERT_TRUE(sr_->RefreshCatalog());
 
@@ -816,6 +807,20 @@ class DeployLongWindowEnv {
     }
 
  private:
+    virtual void PrepareSchema() {
+        ProcessSQLs(
+            sr_, {"SET @@execute_mode='online';",
+                  absl::StrCat("create database ", db_),
+                  absl::StrCat("use ", db_),
+                  absl::StrCat(
+                      "create table ", table_,
+                      "(col1 string, col2 string, col3 timestamp, i64_col bigint, i16_col smallint, i32_col int, f_col "
+                      "float, d_col double, t_col timestamp, s_col string, date_col date, filter int, "
+                      "index(key=(col1,col2), ts=col3, abs_ttl=0, ttl_type=absolute)) "
+                      "options(partitionnum=8);")
+                });
+    }
+
     virtual void Deploy() = 0;
 
     virtual void TearDownPreAggTables() = 0;
@@ -2235,8 +2240,10 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                              dp_, table_),
                             &status);
-            ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n"
-                                       << status.trace;
+            ASSERT_FALSE(status.IsOK());
+            EXPECT_EQ(status.msg, "unsupport *_where op (avg_where) for rows bucket type long window")
+                << "code=" << status.code << ", msg=" << status.msg << "\n"
+                << status.trace;
         }
 
         void TearDownPreAggTables() override {}
@@ -2264,12 +2271,15 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                 sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
   SELECT
     col1, col2,
-    min_where(i64_col, date_col!=12000) over w1 as m1,
+    min_where(i64_col, date_col!="2012-12-12") over w1 as m1,
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                  dp_, table_),
                                 &status);
-                ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n" << status.trace;
+                ASSERT_FALSE(status.IsOK());
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (date_col)")
+                    << "code=" << status.code << ", msg=" << status.msg << "\n"
+                    << status.trace;
             }
 
             void TearDownPreAggTables() override {}
@@ -2292,12 +2302,15 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                 sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
   SELECT
     col1, col2,
-    count_where(i64_col, t_col!=12000) over w1 as m1,
+    count_where(i64_col, t_col!="2012-12-12") over w1 as m1,
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                  dp_, table_),
                                 &status);
-                ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n" << status.trace;
+                ASSERT_FALSE(status.IsOK());
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (t_col)")
+                    << "code=" << status.code << ", msg=" << status.msg << "\n"
+                    << status.trace;
             }
 
             void TearDownPreAggTables() override {}
@@ -2308,6 +2321,67 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
         env.SetUp();
         absl::Cleanup clean = [&env]() { env.TearDown(); };
     }
+}
+
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
+    // *_where over HDD/SSD table main table not support
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    if (cs->IsClusterMode()) {
+        GTEST_SKIP() << "cluster mode skiped because it use same hdd path with standalone mode";
+    }
+
+    class DeployLongWindowAnyWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowAnyWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowAnyWhereEnv() override {}
+
+        void PrepareSchema() override {
+            ProcessSQLs(
+                sr_, {"SET @@execute_mode='online';", absl::StrCat("create database ", db_), absl::StrCat("use ", db_),
+                      absl::StrCat("create table ", table_,
+    R"((col1 string, col2 string, col3 timestamp, i64_col bigint,
+        i16_col smallint, i32_col int, f_col float,
+        d_col double, t_col timestamp, s_col string,
+        date_col date, filter int,
+        index(key=(col1,col2), ts=col3, abs_ttl=0, ttl_type=absolute)
+    ) options(storage_mode = 'HDD'))")});
+        }
+
+        void Deploy() override {
+            hybridse::sdk::Status status;
+            sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    avg_where(i64_col, col1!='str1') over w1 as m1,
+    avg_where(i16_col, filter<1) over w1 as m2,
+    avg_where(i32_col, filter = null) over w1 as m3,
+    avg_where(f_col, 0=filter) over w1 as m4,
+    avg_where(d_col, f_col = 11) over w1 as m5,
+    avg_where(i64_col, i16_col > 10) over w1 as m6,
+    avg_where(i16_col, i32_col = 10) over w1 as m7,
+    avg_where(i32_col, f_col != 7) over w1 as m8,
+    avg_where(f_col, d_col <= 10) over w1 as m9,
+    avg_where(d_col, d_col < 4.5) over w1 as m10,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                             dp_, table_),
+                            &status);
+            ASSERT_FALSE(status.IsOK());
+            EXPECT_EQ(status.msg, "avg_where only support over memory base table")
+                << "code=" << status.code << ", msg=" << status.msg << "\n"
+                << status.trace;
+        }
+
+        void TearDownPreAggTables() override {}
+    };
+
+    // unsupport: deploy any_where with rows bucket
+    DeployLongWindowAnyWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
 }
 
 TEST_P(DBSDKTest, LongWindowsCleanup) {
