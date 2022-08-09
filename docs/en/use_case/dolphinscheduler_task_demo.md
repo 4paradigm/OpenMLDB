@@ -30,7 +30,7 @@ In addition to the feature engineering done by OpenMLDB, the prediction also req
 ### Configuration
 The demo can run on MacOS or Linux, or use the OpenMLDB docker image provided by us:
 ```
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.5.3 bash
 ```
 
 
