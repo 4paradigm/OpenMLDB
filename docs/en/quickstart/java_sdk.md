@@ -282,6 +282,35 @@ You should use the `SqlClusterExecutor::dropDB(db)` interface to drop a specifie
 sqlExecutor.dropDB(db);
 ```
 
+### 2.9 Delete all data under one key in specific index
+
+There two methods to delete as below:
+
+- use delete sql
+- use delete preparestatement
+
+```
+java.sql.Statement state = router.getStatement();
+try {
+    String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+    state.execute(sql);
+    sql = "DELETE FROM t1 WHERE col2 = ?;";
+    java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+    p1.setString(1, "key2");
+    p1.executeUpdate();
+    p1.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        state.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
 ## 3. A Complete Example
 
 ```java
@@ -525,7 +554,6 @@ public class Demo {
             }
         }
     }
-
 
     private void setData(PreparedStatement pstmt, ResultSetMetaData metaData) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {
