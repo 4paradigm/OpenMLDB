@@ -5702,8 +5702,8 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         sr.set_et(0);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        // 51 = 50(the number of aggr value) + 1(the number of out-of-order put)
-        ASSERT_EQ(51, (signed)srp.count());
+        // 50 = 49 (the number of aggr value) + 1 (the number of out-of-order put)
+        ASSERT_EQ(50, (signed)srp.count());
         auto aggrs = tablet.GetAggregators(base_table_id, 1);
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
@@ -5713,8 +5713,7 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
         ASSERT_EQ(aggr_buffer->binlog_offset_, 100);
         aggr->GetAggrBuffer("id2", &aggr_buffer);
-        // the last buffer is flushed due to out-of-order put
-        ASSERT_EQ(aggr_buffer->aggr_cnt_, 0);
+        ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
 
         ::openmldb::api::DropTableRequest dr;
         dr.set_tid(base_table_id);

@@ -119,7 +119,9 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     }
     std::string filter_key = "";
     if (filter_col_idx_ != -1) {
-        base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
+        if (!base_row_view_.IsNULL(row_ptr, filter_col_idx_)) {
+            base_row_view_.GetStrValue(row_ptr, filter_col_idx_, &filter_key);
+        }
     }
 
     AggrBufferLocked* aggr_buffer_lock;
@@ -146,25 +148,10 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     // init buffer timestamp range
     if (aggr_buffer.ts_begin_ == -1) {
         aggr_buffer.data_type_ = aggr_col_type_;
-        aggr_buffer.ts_begin_ = cur_ts;
+        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
         if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = cur_ts + window_size_ - 1;
+            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
         }
-    }
-
-    if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
-        AggrBuffer flush_buffer = aggr_buffer;
-        int64_t latest_ts = aggr_buffer.ts_end_ + 1;
-        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
-        aggr_buffer.clear();
-        aggr_buffer.ts_begin_ = latest_ts;
-        aggr_buffer.binlog_offset_ = latest_binlog;
-        if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = latest_ts + window_size_ - 1;
-        }
-        lock.unlock();
-        FlushAggrBuffer(key, filter_key, flush_buffer);
-        lock.lock();
     }
 
     if (offset < aggr_buffer.binlog_offset_) {
@@ -188,17 +175,32 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             PDLOG(ERROR, "Update flushed buffer failed");
             return false;
         }
-    } else {
-        aggr_buffer.aggr_cnt_++;
-        aggr_buffer.binlog_offset_ = offset;
-        if (window_type_ == WindowType::kRowsNum) {
-            aggr_buffer.ts_end_ = cur_ts;
+        return true;
+    }
+
+    if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
+        AggrBuffer flush_buffer = aggr_buffer;
+        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
+        aggr_buffer.clear();
+        aggr_buffer.binlog_offset_ = latest_binlog;
+        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
+        if (window_type_ == WindowType::kRowsRange) {
+            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
         }
-        bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
-        if (!ok) {
-            PDLOG(ERROR, "Update aggr value failed");
-            return false;
-        }
+        lock.unlock();
+        FlushAggrBuffer(key, filter_key, flush_buffer);
+        lock.lock();
+    }
+
+    aggr_buffer.aggr_cnt_++;
+    aggr_buffer.binlog_offset_ = offset;
+    if (window_type_ == WindowType::kRowsNum) {
+        aggr_buffer.ts_end_ = cur_ts;
+    }
+    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
+    if (!ok) {
+        PDLOG(ERROR, "Update aggr value failed");
+        return false;
     }
     return true;
 }
@@ -253,9 +255,8 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
         aggr_row_view_.GetStrValue(data_ptr, 0, &pk);
-        auto is_null = aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
-        if (is_null == 1) {
-            filter_key.clear();
+        if (!aggr_row_view_.IsNULL(data_ptr, 6)) {
+            aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
         }
         auto insert_pair = aggr_buffer_map_[pk].insert(std::make_pair(filter_key, AggrBufferLocked{}));
         auto& buffer = insert_pair.first->second.buffer_;
@@ -410,8 +411,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
         return false;
     }
     ::openmldb::api::LogEntry entry;
-    std::string pk = absl::StrCat(key, "|", filter_key);
-    entry.set_pk(pk);
+    entry.set_pk(key);
     entry.set_ts(time);
     entry.set_value(encoded_row);
     entry.set_term(aggr_replicator_->GetLeaderTerm());
@@ -427,27 +427,60 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
                                      int64_t cur_ts, uint64_t offset) {
     auto it = aggr_table_->NewTraverseIterator(0);
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
-    auto pk = absl::StrCat(key, "|", filter_key);
-    it->Seek(pk, cur_ts + 1);
+    it->Seek(key, cur_ts + 1);
     AggrBuffer tmp_buffer;
-    if (it->Valid()) {
+    while (it->Valid()) {
         auto val = it->GetValue();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
+
+        std::string pk;
+        aggr_row_view_.GetStrValue(aggr_row_ptr, 0, &pk);
+        // if pk doesn't match, break out
+        if (key.compare(pk) != 0) {
+            break;
+        }
+
+        int64_t ts_begin, ts_end;
+        aggr_row_view_.GetValue(aggr_row_ptr, 1, DataType::kTimestamp, &ts_begin);
+        aggr_row_view_.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &ts_end);
+        // iterate further will never get the required aggr result
+        if (cur_ts > ts_end) {
+            break;
+        }
+
+        // ts == cur_ts + 1 may have duplicate entries
+        if (cur_ts < ts_begin) {
+            it->Next();
+            continue;
+        }
+
+        std::string fk;
+        if (!aggr_row_view_.IsNULL(aggr_row_ptr, 6)) {
+            aggr_row_view_.GetStrValue(aggr_row_ptr, 6, &fk);
+        }
+        // filter_key doesn't match, continue
+        if (filter_key.compare(fk) != 0) {
+            it->Next();
+            continue;
+        }
 
         bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &tmp_buffer);
         if (!ok) {
             PDLOG(ERROR, "GetAggrBufferFromRowView failed");
             return false;
         }
-        if (cur_ts > tmp_buffer.ts_end_ || cur_ts < tmp_buffer.ts_begin_) {
-            PDLOG(ERROR, "Current ts isn't in buffer range");
-            return false;
-        }
         tmp_buffer.aggr_cnt_ += 1;
         tmp_buffer.binlog_offset_ = offset;
-    } else {
-        tmp_buffer.ts_begin_ = cur_ts;
-        tmp_buffer.ts_end_ = cur_ts;
+        break;
+    }
+
+    if (!tmp_buffer.IsInited()) {
+        tmp_buffer.ts_begin_ = AlignedStart(cur_ts);
+        if (window_type_ == WindowType::kRowsRange) {
+            tmp_buffer.ts_end_ = tmp_buffer.ts_begin_ + window_size_ - 1;
+        } else {
+            tmp_buffer.ts_end_ = cur_ts;
+        }
         tmp_buffer.aggr_cnt_ = 1;
         tmp_buffer.binlog_offset_ = offset;
     }
