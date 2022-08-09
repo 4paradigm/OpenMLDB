@@ -410,8 +410,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
         return false;
     }
     ::openmldb::api::LogEntry entry;
-    std::string pk = absl::StrCat(key, "|", filter_key);
-    entry.set_pk(pk);
+    entry.set_pk(key);
     entry.set_ts(time);
     entry.set_value(encoded_row);
     entry.set_term(aggr_replicator_->GetLeaderTerm());
@@ -427,25 +426,55 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
                                      int64_t cur_ts, uint64_t offset) {
     auto it = aggr_table_->NewTraverseIterator(0);
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
-    auto pk = absl::StrCat(key, "|", filter_key);
-    it->Seek(pk, cur_ts + 1);
+    it->Seek(key, cur_ts + 1);
     AggrBuffer tmp_buffer;
-    if (it->Valid()) {
+    while (it->Valid()) {
         auto val = it->GetValue();
         int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
+
+        std::string pk;
+        aggr_row_view_.GetStrValue(aggr_row_ptr, 0, &pk);
+        // if pk doesn't match, break out
+        if (key.compare(pk) != 0) {
+            break;
+        }
+
+        int64_t ts_begin, ts_end;
+        aggr_row_view_.GetValue(aggr_row_ptr, 1, DataType::kTimestamp, &ts_begin);
+        aggr_row_view_.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &ts_end);
+        // iterate further will never get the required aggr result
+        if (cur_ts > ts_end) {
+            break;
+        }
+
+        // ts == cur_ts + 1 may have duplicate entries
+        if (cur_ts < ts_begin) {
+            it->Next();
+            continue;
+        }
+
+        std::string fk;
+        auto is_null = aggr_row_view_.GetStrValue(aggr_row_ptr, 6, &fk);
+        if (is_null == 1) {
+            fk.clear();
+        }
+        // filter_key doesn't match, continue
+        if (filter_key.compare(fk) != 0) {
+            it->Next();
+            continue;
+        }
 
         bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &tmp_buffer);
         if (!ok) {
             PDLOG(ERROR, "GetAggrBufferFromRowView failed");
             return false;
         }
-        if (cur_ts > tmp_buffer.ts_end_ || cur_ts < tmp_buffer.ts_begin_) {
-            PDLOG(ERROR, "Current ts isn't in buffer range");
-            return false;
-        }
         tmp_buffer.aggr_cnt_ += 1;
         tmp_buffer.binlog_offset_ = offset;
-    } else {
+        break;
+    }
+
+    if (!tmp_buffer.IsInited()) {
         tmp_buffer.ts_begin_ = cur_ts;
         tmp_buffer.ts_end_ = cur_ts;
         tmp_buffer.aggr_cnt_ = 1;

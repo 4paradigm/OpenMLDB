@@ -108,6 +108,10 @@ class AggrBuffer {
         non_null_cnt_ = 0;
     }
     bool AggrValEmpty() const { return non_null_cnt_ == 0; }
+
+    bool IsInited() const {
+        return ts_begin_ != -1;
+    }
 };
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
