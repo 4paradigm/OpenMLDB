@@ -154,21 +154,6 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         }
     }
 
-    if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
-        AggrBuffer flush_buffer = aggr_buffer;
-        int64_t latest_ts = aggr_buffer.ts_end_ + 1;
-        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
-        aggr_buffer.clear();
-        aggr_buffer.binlog_offset_ = latest_binlog;
-        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
-        if (window_type_ == WindowType::kRowsRange) {
-            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
-        }
-        lock.unlock();
-        FlushAggrBuffer(key, filter_key, flush_buffer);
-        lock.lock();
-    }
-
     if (offset < aggr_buffer.binlog_offset_) {
         if (recover) {
             return true;
@@ -190,17 +175,32 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             PDLOG(ERROR, "Update flushed buffer failed");
             return false;
         }
-    } else {
-        aggr_buffer.aggr_cnt_++;
-        aggr_buffer.binlog_offset_ = offset;
-        if (window_type_ == WindowType::kRowsNum) {
-            aggr_buffer.ts_end_ = cur_ts;
+        return true;
+    }
+
+    if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
+        AggrBuffer flush_buffer = aggr_buffer;
+        uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
+        aggr_buffer.clear();
+        aggr_buffer.binlog_offset_ = latest_binlog;
+        aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
+        if (window_type_ == WindowType::kRowsRange) {
+            aggr_buffer.ts_end_ = aggr_buffer.ts_begin_ + window_size_ - 1;
         }
-        bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
-        if (!ok) {
-            PDLOG(ERROR, "Update aggr value failed");
-            return false;
-        }
+        lock.unlock();
+        FlushAggrBuffer(key, filter_key, flush_buffer);
+        lock.lock();
+    }
+
+    aggr_buffer.aggr_cnt_++;
+    aggr_buffer.binlog_offset_ = offset;
+    if (window_type_ == WindowType::kRowsNum) {
+        aggr_buffer.ts_end_ = cur_ts;
+    }
+    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer);
+    if (!ok) {
+        PDLOG(ERROR, "Update aggr value failed");
+        return false;
     }
     return true;
 }
