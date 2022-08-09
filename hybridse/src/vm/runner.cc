@@ -2796,11 +2796,6 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
                                                         exclude_current_time_, !output_request_row_);
     }
 
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, output_schemas(), window);
-        LOG(INFO) << "Request AGG UNION output: " << oss.str();
-    }
     return window;
 }
 
@@ -3200,11 +3195,6 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         return std::shared_ptr<DataHandler>();
     }
     auto table = std::dynamic_pointer_cast<TableHandler>(input);
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, producers_[0]->output_schemas(), table);
-        LOG(WARNING) << "ReduceRunner input: " << oss.str();
-    }
 
     auto parameter = ctx.GetParameterRow();
     if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
@@ -3219,11 +3209,6 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
     }
     std::shared_ptr<RowHandler> row_handler = std::make_shared<MemRowHandler>(iter->GetValue());
 
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, producers_[0]->output_schemas(), row_handler);
-        LOG(WARNING) << "ReduceRunner output: " << oss.str();
-    }
     return row_handler;
 }
 

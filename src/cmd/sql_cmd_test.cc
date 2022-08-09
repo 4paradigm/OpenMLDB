@@ -801,16 +801,10 @@ class DeployLongWindowEnv {
     void TearDown() {
         TearDownPreAggTables();
         ProcessSQLs(sr_, {
-                             absl::StrCat("use ", db_),
-                             absl::StrCat("drop deployment ", dp_),
                              absl::StrCat("drop table ", table_),
                              absl::StrCat("drop database ", db_),
                          });
     }
-
-    virtual void Deploy() = 0;
-
-    virtual void TearDownPreAggTables() = 0;
 
     void CallDeploy(std::shared_ptr<hybridse::sdk::ResultSet>* rs) {
         hybridse::sdk::Status status;
@@ -822,6 +816,10 @@ class DeployLongWindowEnv {
     }
 
  private:
+    virtual void Deploy() = 0;
+
+    virtual void TearDownPreAggTables() = 0;
+
     void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) {  // NOLINT
         ::hybridse::sdk::Status status;
         auto req = sr_->GetRequestRowByProcedure(db_, dp_, &status);
@@ -1871,6 +1869,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_s_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where__i64_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_filter_i64_col"),
+                                 absl::StrCat("use ", db_),
+                                 absl::StrCat("drop deployment ", dp_),
                              });
         }
     };
@@ -1945,6 +1945,8 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_t_col_filter"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_filter"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_filter"),
+                                 absl::StrCat("use ", db_),
+                                 absl::StrCat("drop deployment ", dp_),
                              });
         }
     };
@@ -2021,6 +2023,8 @@ TEST_P(DBSDKTest, LongWindowMinMaxWhere) {
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i32_col_f_col"),
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_f_col_d_col"),
                                         absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_d_col_d_col"),
+                                        absl::StrCat("use ", db_),
+                                        absl::StrCat("drop deployment ", dp_),
                                     });
                         }
     };
@@ -2095,6 +2099,8 @@ TEST_P(DBSDKTest, LongWindowSumWhere) {
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_f_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_d_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_d_col"),
+                                 absl::StrCat("use ", db_),
+                                 absl::StrCat("drop deployment ", dp_),
                              });
         }
     };
@@ -2168,6 +2174,8 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
                                  absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
+                                 absl::StrCat("use ", db_),
+                                 absl::StrCat("drop deployment ", dp_),
                              });
         }
     };
@@ -2196,6 +2204,110 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
     EXPECT_EQ(8.0, res->GetDoubleUnsafe(9));
     EXPECT_EQ(7.0, res->GetDoubleUnsafe(10));
     EXPECT_EQ(4.0, res->GetDoubleUnsafe(11));
+}
+
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    class DeployLongWindowAnyWhereEnv : public DeployLongWindowEnv {
+     public:
+        explicit DeployLongWindowAnyWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+        ~DeployLongWindowAnyWhereEnv() override {}
+
+        void Deploy() override {
+            hybridse::sdk::Status status;
+            sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3')
+  SELECT
+    col1, col2,
+    avg_where(i64_col, col1!='str1') over w1 as m1,
+    avg_where(i16_col, filter<1) over w1 as m2,
+    avg_where(i32_col, filter = null) over w1 as m3,
+    avg_where(f_col, 0=filter) over w1 as m4,
+    avg_where(d_col, f_col = 11) over w1 as m5,
+    avg_where(i64_col, i16_col > 10) over w1 as m6,
+    avg_where(i16_col, i32_col = 10) over w1 as m7,
+    avg_where(i32_col, f_col != 7) over w1 as m8,
+    avg_where(f_col, d_col <= 10) over w1 as m9,
+    avg_where(d_col, d_col < 4.5) over w1 as m10,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                             dp_, table_),
+                            &status);
+            ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n"
+                                       << status.trace;
+        }
+
+        void TearDownPreAggTables() override {}
+    };
+
+    // unsupport: deploy any_where with rows bucket
+    DeployLongWindowAnyWhereEnv env(sr);
+    env.SetUp();
+    absl::Cleanup clean = [&env]() { env.TearDown(); };
+}
+
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    {
+        class DeployLongWindowAnyWhereEnv : public DeployLongWindowEnv {
+         public:
+            explicit DeployLongWindowAnyWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+            ~DeployLongWindowAnyWhereEnv() override {}
+
+            void Deploy() override {
+                hybridse::sdk::Status status;
+                sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    min_where(i64_col, date_col!=12000) over w1 as m1,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                                 dp_, table_),
+                                &status);
+                ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n" << status.trace;
+            }
+
+            void TearDownPreAggTables() override {}
+        };
+
+        // unsupport: deploy any_where with rows bucket
+        DeployLongWindowAnyWhereEnv env(sr);
+        env.SetUp();
+        absl::Cleanup clean = [&env]() { env.TearDown(); };
+    }
+
+    {
+        class DeployLongWindowAnyWhereEnv : public DeployLongWindowEnv {
+         public:
+            explicit DeployLongWindowAnyWhereEnv(sdk::SQLClusterRouter* sr) : DeployLongWindowEnv(sr) {}
+            ~DeployLongWindowAnyWhereEnv() override {}
+
+            void Deploy() override {
+                hybridse::sdk::Status status;
+                sr_->ExecuteSQL(absl::Substitute(R"s(DEPLOY $0 options(long_windows='w1:3s')
+  SELECT
+    col1, col2,
+    count_where(i64_col, t_col!=12000) over w1 as m1,
+  FROM $1 WINDOW
+    w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
+                                                 dp_, table_),
+                                &status);
+                ASSERT_FALSE(status.IsOK()) << "code=" << status.code << ", msg=" << status.msg << "\n" << status.trace;
+            }
+
+            void TearDownPreAggTables() override {}
+        };
+
+        // unsupport: deploy any_where with rows bucket
+        DeployLongWindowAnyWhereEnv env(sr);
+        env.SetUp();
+        absl::Cleanup clean = [&env]() { env.TearDown(); };
+    }
 }
 
 TEST_P(DBSDKTest, LongWindowsCleanup) {

@@ -3525,7 +3525,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                         auto type = tables[0].column_desc(i).data_type();
                         if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
                             return {base::ReturnCode::kError,
-                                    absl::StrCat("un-support date or timestamp filer column")};
+                                    absl::StrCat("unsupport date or timestamp filer column")};
                         }
                     }
                 }
