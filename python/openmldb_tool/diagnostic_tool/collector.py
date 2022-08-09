@@ -52,6 +52,7 @@ class Collector:
         # use one ssh client to connect all servers, ssh connections won't keep alive
         self.ssh_client = paramiko.SSHClient()
         self.ssh_client.load_system_host_keys()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     def ping_all(self) -> bool:
         """
