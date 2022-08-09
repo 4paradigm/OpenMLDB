@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 
-
 def parse_config_from_properties(props_str, config_name) -> str:
     f"""
     the config line must start from {config_name}, no comment
@@ -131,7 +130,8 @@ class Collector:
             if bv:
                 version = extract_java_version(bv)
                 if version != '':
-                    log.info(f'openmldb-batch version: {version}')
+                    version_map.setdefault('openmldb-batch', [])
+                    version_map['openmldb-batch'].append((server_info.host, version))
                 else:
                     log.warning(f'{bv}')
             else:
@@ -140,11 +140,13 @@ class Collector:
             if tv:
                 version = extract_java_version(tv)
                 if version != '':
-                    log.info(f'taskmanager version: {version}')
+                    version_map.setdefault('taskmanager', [])
+                    version_map['taskmanager'].append((server_info.host, version))
                 else:
                     log.warning(f'{tv}')
             else:
                 log.warning('failed at get taskmanager version from %s', server_info)
+            return True
 
         self.dist_conf.server_info_map.for_each(jar_version, JAVA_SERVER_ROLES)
         return version_map
