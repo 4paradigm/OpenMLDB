@@ -355,16 +355,14 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         if (cur_offset >= entry.log_index()) {
             continue;
         }
-
-        // TODO(nauta): When the base table key is deleted, the pre-aggr table needs to be deleted at the same time.
-        if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            PDLOG(WARNING, "unsupport delete method for pre-aggr table");
-            continue;
-        }
         for (int i = 0; i < entry.dimensions_size(); i++) {
             const auto& dimension = entry.dimensions(i);
             if (dimension.idx() == index_pos_) {
-                Update(dimension.key(), entry.value(), entry.log_index(), true);
+                if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
+                    Delete(dimension.key());
+                } else {
+                    Update(dimension.key(), entry.value(), entry.log_index(), true);
+                }
                 break;
             }
         }
