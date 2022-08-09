@@ -2285,7 +2285,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
             void TearDownPreAggTables() override {}
         };
 
-        // unsupport: deploy any_where with rows bucket
         DeployLongWindowAnyWhereEnv env(sr);
         env.SetUp();
         absl::Cleanup clean = [&env]() { env.TearDown(); };
@@ -2316,7 +2315,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
             void TearDownPreAggTables() override {}
         };
 
-        // unsupport: deploy any_where with rows bucket
         DeployLongWindowAnyWhereEnv env(sr);
         env.SetUp();
         absl::Cleanup clean = [&env]() { env.TearDown(); };
@@ -2378,7 +2376,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
         void TearDownPreAggTables() override {}
     };
 
-    // unsupport: deploy any_where with rows bucket
     DeployLongWindowAnyWhereEnv env(sr);
     env.SetUp();
     absl::Cleanup clean = [&env]() { env.TearDown(); };
