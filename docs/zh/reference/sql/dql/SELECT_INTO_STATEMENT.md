@@ -61,5 +61,24 @@ SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',
 SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
 ```
 
+## Q&A
 
+Q: select into 错误 Found duplicate column(s)?
+```
+Exception in thread "main" org.apache.spark.sql.AnalysisException: Found duplicate column(s) when inserting into file:/tmp/out: `c1`;
+     at org.apache.spark.sql.util.SchemaUtils$.checkColumnNameDuplication(SchemaUtils.scala:90)
+     at org.apache.spark.sql.execution.datasources.InsertIntoHadoopFsRelationCommand.run(InsertIntoHadoopFsRelationCommand.scala:84)
+     at org.apache.spark.sql.execution.command.DataWritingCommandExec.sideEffectResult$lzycompute(commands.scala:108)
+     at org.apache.spark.sql.execution.command.DataWritingCommandExec.sideEffectResult(commands.scala:106)
+     at org.apache.spark.sql.execution.command.DataWritingCommandExec.doExecute(commands.scala:131)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$execute$1(SparkPlan.scala:175)
+     at org.apache.spark.sql.execution.SparkPlan.$anonfun$executeQuery$1(SparkPlan.scala:213)
+     at org.apache.spark.rdd.RDDOperationScope$.withScope(RDDOperationScope.scala:151)
+     at org.apache.spark.sql.execution.SparkPlan.executeQuery(SparkPlan.scala:210)
+     at org.apache.spark.sql.execution.SparkPlan.execute(SparkPlan.scala:171)
+     at org.apache.spark.sql.execution.QueryExecution.toRdd$lzycompute(QueryExecution.scala:122)
+     at org.apache.spark.sql.execution.QueryExecution.toRdd(QueryExecution.scala:121)
+     at org.apache.spark.sql.DataFrameWriter.$anonfun$runCommand$1(DataFrameWriter.scala:944)
+```
 
+A: 查询语句是允许列名重复的。但`SELECT INTO`除了查询还需要写入，写入中会检查重复列名。请避免重复列名，可以用`c1 as c_new`来重命名列。
