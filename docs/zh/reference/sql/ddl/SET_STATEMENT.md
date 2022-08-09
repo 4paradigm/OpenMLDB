@@ -19,15 +19,11 @@ sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Ide
 'SET' [ GLOBAL | SESSION ] <variableName> '=' <value>
 ```
 
-
-
-- 会话系统变量一般以`@session前缀`，如`SET @@session.execute_mode = "offline";`。
+- 会话系统变量一般以`@session前缀`，如`SET @@session.execute_mode = "offline";`。会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。
 - 全局系统变量以`@global为前缀`，如`SET @@global.enable_trace = true;` 
+- 会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。
 - OpenMLDB的SET语句只能用于设置/修改已存在（内置的）的系统变量。
 
-```{Note} 
-会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。变量名大小写不敏感。
-```
 
 ## 目前支持的系统变量
 
