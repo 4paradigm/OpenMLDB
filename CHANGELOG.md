@@ -22,17 +22,11 @@
 ### Bug Fixes
 
 - The SQL engine may produce incorrect results under certain circumstances. (#1950 #1997 #2024 @aceforeverd)
-
 - The `genDDL` function generates incorrect DDL if the SQL is partitioned by multiple columns. (#1956 @dl239)
-
 - The snapshot recovery may fail for disk tables. (#2174 @zhanghaohit)
-
 - `enable_trace` does not work for some SQL queries. (#2292 @aceforeverd)
-
 - Tablets cannot save `ttl` when updating the `ttl` of index. (#1935 @dl239)
-
 - MakeResultSet uses a wrong schema in projection. (#2049 @dl239)
-
 - A table does not exist when deploying SQL by the APIServer (#2205 @vagetablechicken)
 
 Other minor bug fixes (#2052 #1959 #2253 #2273 #2288 #1964 #2175 #1938 #1963 #1956 #2171 #2036 #2170 #2236 @dl239 @aceforeverd @tobegit3hub @dl239 @vagetablechicken @zhanghaohit) 
