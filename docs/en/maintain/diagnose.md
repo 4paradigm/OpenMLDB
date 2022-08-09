@@ -79,3 +79,6 @@ For instance, we can check `conf` only and print the ouput to local dir as below
 ```
 openmldb_tool --dist_conf=/tmp/cluster_dist.yml --check=conf --log_dir=./
 ```
+
+**Note1**: You need to run diagnostic tool on the OpenMLDB node if installed with standalone mode.  
+**Note2**: You can specific `is_local: true` in yaml conf if you run diagnostic tool in one of OpenMLDB nodes. 
