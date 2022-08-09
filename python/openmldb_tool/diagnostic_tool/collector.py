@@ -19,6 +19,7 @@ import paramiko
 from paramiko.file import BufferedFile
 
 from diagnostic_tool.dist_conf import DistConf, CXX_SERVER_ROLES, ServerInfo, JAVA_SERVER_ROLES, ConfParser
+import diagnostic_tool.util as util
 
 log = logging.getLogger(__name__)
 
@@ -338,3 +339,72 @@ class Collector:
         logs = [log_attr['filename'] for log_attr in logs[:last_n]]
         log.info("get last %d: %s", last_n, logs)
         return logs
+
+class LocalCollector:
+    def __init__(self, dist_conf: DistConf):
+        self.dist_conf = dist_conf
+
+    def get_tablet_conf_file(self, conf_path, endpoint):
+        conf_file = 'tablet.flags'
+        full_path = os.path.join(conf_path, conf_file)
+        detail_conf = ConfParser(full_path).conf()
+        if detail_conf['endpoint'] == endpoint:
+            return conf_file
+        else:
+            return 'tablet2.flags'
+
+    def get_taskmanager_logs(self, root_path, last_n):
+        taskmanager_logs = util.get_local_logs(root_path, 'taskmanager')
+        names = os.listdir(root_path)
+        job_logs = []
+        for file_name in names:
+            if file_name.startswith('job') and file_name.endswith('error.log'):
+                stat = os.stat(os.path.join(root_path, file_name));
+                job_logs.append({'filename': file_name, 'st_mtime': stat.st_mtime})
+        job_logs.sort(key=lambda x: x["st_mtime"], reverse=True)
+        job_logs = [log_attr['filename'] for log_attr in job_logs[:last_n]]
+        job_logs = [(file_name, os.path.join(root_path, file_name)) for file_name in job_logs]
+        return job_logs;
+
+    def collect_files(self):
+        file_map = {'conf' : {}, 'log' : {}}
+        for role, value in self.dist_conf.server_info_map.map.items():
+            file_map['conf'][role] = {}
+            file_map['log'][role] = {}
+            for item in value:
+                file_map['conf'][role].setdefault(item.endpoint, [])
+                if self.dist_conf.mode == 'cluster':
+                    if role == 'taskmanager':
+                        conf_file = f'taskmanager.properties'
+                    elif role == 'tablet':
+                        conf_file = self.get_tablet_conf_file(item.conf_path(), item.endpoint)
+                    else:
+                        conf_file = f'{role}.flags'
+                else:
+                    conf_file = f'standalone_{role}.flags'
+                full_path = os.path.join(item.conf_path(), conf_file)
+                file_map['conf'][role][item.endpoint].append((conf_file, full_path))
+                detail_conf = ConfParser(full_path).conf()
+                if role == 'taskmanager':
+                    log_dir = detail_conf['job.log.path'] if 'job.log.path' in detail_conf else './logs'
+                    item.path = item.path + '/taskmanager/bin'
+                else:
+                    log_dir = detail_conf['openmldb_log_dir'] if 'openmldb_log_dir' in detail_conf else './logs'
+                full_log_dir = log_dir if log_dir.startswith('/') else os.path.join(item.path, log_dir)
+                if role == 'taskmanager':
+                    file_map['log'][role][item.endpoint] = self.get_taskmanager_logs(full_log_dir, 2)
+                else:
+                    file_map['log'][role][item.endpoint] = util.get_local_logs(full_log_dir, role)
+        return file_map
+
+    def collect_version(self):
+        version_map = {}
+        for role, value in self.dist_conf.server_info_map.map.items():
+            version_map.setdefault(role, [])
+            if self.dist_conf.mode == 'cluster' and role == 'taskmanager':
+                pass
+            else:
+                for item in value:
+                    version = util.get_openmldb_version(item.bin_path())
+                    version_map[role].append((item.host, version))
+        return version_map

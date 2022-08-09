@@ -25,6 +25,7 @@ flags.DEFINE_string('dist_conf', '', 'the path of yaml conf')
 flags.DEFINE_string('data_dir', '/tmp/diagnose_tool_data', 'the dir of data')
 flags.DEFINE_string('check', 'ALL', 'the item should be check. one of ALL/CONF/LOG/SQL/VERSION')
 flags.DEFINE_string('exclude', '', 'one of CONF/LOG/SQL/VERSION')
+flags.DEFINE_string('env', '', 'startup environment. set onebox if started with start-all.sh')
 
 class ConfOption:
     def __init__(self):
@@ -57,6 +58,7 @@ class ConfOption:
             self.check_items.append(check)
         if exclude != '':
             self.check_items = list(filter(lambda x : x != exclude, self.check_items))
+        self.env = FLAGS.env;
         return True
 
     def check_version(self) -> bool:

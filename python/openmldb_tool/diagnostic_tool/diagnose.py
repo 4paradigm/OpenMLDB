@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from diagnostic_tool.collector import Collector
+from diagnostic_tool.collector import Collector, LocalCollector
 from diagnostic_tool.dist_conf import DistConfReader, ConfParser, DistConf
 from diagnostic_tool.conf_validator import YamlConfValidator, StandaloneConfValidator, ClusterConfValidator, TaskManagerConfValidator
 from diagnostic_tool.log_analysis import LogAnalysis
@@ -29,15 +29,6 @@ from diagnostic_tool.conf_option import ConfOption
 LOG_FORMAT = '%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(__name__)
-
-def get_standalone_version(dist_conf: DistConf):
-    version_map = {}
-    for role, value in dist_conf.server_info_map.map.items():
-        version_map.setdefault(role, [])
-        for item in value:
-            version = util.get_openmldb_version(item.bin_path())
-            version_map[role].append((item.host, version))
-    return version_map
 
 def check_version(version_map : dict):
     f_version = ''
@@ -54,22 +45,6 @@ def check_version(version_map : dict):
                 log.warn(f'version mismatch. {k} {endpoint} version {cur_version}, {f_role} {f_endpoint} version {f_version}')
                 flag = False
     return flag, f_version
-
-def get_standalone_files(dist_conf : DistConf):
-    file_map = {'conf' : {}, 'log' : {}}
-    for role, value in dist_conf.server_info_map.map.items():
-        file_map['conf'][role] = {}
-        file_map['log'][role] = {}
-        for item in value:
-            file_map['conf'][role].setdefault(item.endpoint, [])
-            conf_file = f'standalone_{role}.flags'
-            full_path = os.path.join(item.conf_path(), conf_file)
-            file_map['conf'][role][item.endpoint].append((conf_file, full_path))
-            detail_conf = ConfParser(full_path).conf()
-            log_dir = detail_conf['openmldb_log_dir'] if 'openmldb_log_dir' in detail_conf else './logs'
-            full_log_dir = log_dir if log_dir.startswith('/') else os.path.join(item.path, log_dir)
-            file_map['log'][role][item.endpoint] = util.get_local_logs(full_log_dir, role)
-    return file_map
 
 def check_conf(yaml_conf_dict, conf_map):
     detail_conf_map = {}
@@ -122,7 +97,7 @@ def main(argv):
     log.info("check yaml conf ok")
 
     log.info("mode is {}".format(dist_conf.mode))
-    if dist_conf.mode == 'cluster':
+    if dist_conf.mode == 'cluster' and conf_opt.env != 'onebox':
         collector = Collector(dist_conf)
         if conf_opt.check_version():
             version_map = collector.collect_version()
@@ -132,10 +107,11 @@ def main(argv):
             collector.pull_log_files(f'{conf_opt.data_dir}/log')
         file_map = util.get_files(conf_opt.data_dir)
     else:
+        collector = LocalCollector(dist_conf)
         if conf_opt.check_version():
-            version_map = get_standalone_version(dist_conf)
+            version_map = collector.collect_version()
         if conf_opt.check_conf() or conf_opt.check_log():
-            file_map = get_standalone_files(dist_conf)
+            file_map = collector.collect_files()
 
     if conf_opt.check_version():
         flag, version = check_version(version_map)

@@ -28,6 +28,8 @@ class YamlConfValidator:
     def check_exist(self, item_list : list, desc_dict : dict) -> bool:
         flag = True
         for item in item_list:
+            if item == 'taskmanager':
+                continue
             if item not in desc_dict:
                 log.warning(f'no {item} in yaml conf')
                 flag = False
@@ -119,8 +121,9 @@ class ClusterConfValidator:
     def check_task_manager_zk_conf(self, conf_dict) -> bool:
         flag = True
         if conf_dict['zookeeper.cluster'] != self.yaml_conf_dict['zookeeper']['zk_cluster']:
-            log.warning('zk_cluster of taskmanager {} and yam conf do not match'.format(conf_dict['server.host']))
-            flag = False
+            if conf_dict['zookeeper.cluster'].split(':')[0] != '0.0.0.0':
+                log.warning('zk_cluster of taskmanager {} and yam conf do not match'.format(conf_dict['server.host']))
+                flag = False
         if conf_dict['zookeeper.root_path'] != self.yaml_conf_dict['zookeeper']['zk_root_path']:
             log.warning('zk_root_path of taskmanager {} and yam conf do not match'.format(conf_dict['server.host']))
             flag = False
