@@ -4,19 +4,42 @@
 
 ### Highlights
 
-- 
+- Add a brand new toolkit for managing OpenMLDB, currently including a diagnostic tool and a log collector (#2299 #2326 @dl239 @vagetablechicken)
+- Support SQL syntax of `EXCLUDE CURRENT_ROW` (#2053 #2165 #2278 @aceforeverd)
+- Add the OpenMLDB plugin for DolphinScheduler (#1921 #1955 @vagetablechicken)
+- Add the OpenMLDB provider package for Airflow (#2215 @vagetablechicken)
 
 ### Other Features
 
-
+- Support SQL syntax of `DELETE` in SQL and Kafka Connector (#2183 #2257 @dl239)
+- Support customized order in the `insert` statement (#2075 @vagetablechicken)
+- Add a new use case of TalkingData AdTracking Fraud Detection (#2008 @vagetablechicken)
+- Improve the startup script to remove `mon` (#2050 @dl239)
+- Improve the performance of offline batch SQL engine (#1882 #1943 #1973 #2142 #2273 #1773 @tobegit3hub)
+- Support returning version numbers from TaskManager (@2102 @tobegit3hub)
+- Improve the documents (#2254 #1948 #2227 #2254 @vagetablechicken @tobegit3hub @aceforeverd)
 
 ### Bug Fixes
 
+- The SQL engine may produce incorrect results under certain circumstances. (#1950 #1997 #2024 @aceforeverd)
 
+- The `genDDL` function generates incorrect DDL if the SQL is partitioned by multiple columns. (#1956 @dl239)
+
+- The snapshot recovery may fail for disk tables. (#2174 @zhanghaohit)
+
+- `enable_trace` does not work for some SQL queries. (#2292 @aceforeverd)
+
+- Tablets cannot save `ttl` when updating the `ttl` of index. (#1935 @dl239)
+
+- MakeResultSet uses a wrong schema in projection. (#2049 @dl239)
+
+- A table does not exist when deploying SQL by the APIServer (#2205 @vagetablechicken)
+
+Other minor bug fixes (#2052 #1959 #2253 #2273 #2288 #1964 #2175 #1938 #1963 #1956 #2171 #2036 #2170 #2236 @dl239 @aceforeverd @tobegit3hub @dl239 @vagetablechicken @zhanghaohit) 
 
 ### Code Refactoring
 
-
+(Good first issues from contributors)
 
 ## [0.5.3] - 2022-07-22
 
