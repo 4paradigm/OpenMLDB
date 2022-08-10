@@ -109,6 +109,7 @@ class ServerChecker:
         return True
 
     def run_test_sql(self) -> bool:
+        self.check_component()
         self.cursor.execute('CREATE DATABASE IF NOT EXISTS {};'.format(self.db_name))
         result = self.cursor.execute('SHOW DATABASES;').fetchall()
         if not self.is_exist(result, self.db_name):
