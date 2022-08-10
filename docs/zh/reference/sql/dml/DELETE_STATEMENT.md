@@ -1,7 +1,5 @@
 # DELETE
 
-OpenMLDB supports single-row and multi-row insert statements
-
 ## 语法
 
 ```sql
