@@ -32,14 +32,13 @@
 - Tablets cannot save `ttl` when updating the `ttl` of index. (#1935 @dl239)
 - MakeResultSet uses a wrong schema in projection. (#2049 @dl239)
 - A table does not exist when deploying SQL by the APIServer (#2205 @vagetablechicken)
-- `map` is used (`int` should be used) to record the length of a string. (#2044 @mangoGoForward)
 - The cleanup for ZooKeep does not work properly. (#2191 @mangoGoForward)
 
 Other minor bug fixes (#2052 #1959 #2253 #2273 #2288 #1964 #2175 #1938 #1963 #1956 #2171 #2036 #2170 #2236 #1867 #1869 #1900 #2162 #2161 #2173 #2190 #2084 #2085 #2034 #1972 #1408 #1863 #1862 #1919 #2093 #2167 #2073 #1803 #1998 #2000 #2012 #2055 #2174 #2036 @Xeonacid @CuriousCorrelation @Shigm1026 @jiang1997 @Harshvardhantomar @nautaa @Ivyee17 @frazie @PrajwalBorkar @dl239 @aceforeverd @tobegit3hub @dl239 @vagetablechicken @zhanghaohit @mangoGoForward @SaumyaBhushan @BrokenArrow1404 @harshlancer)
 
 ### Code Refactoring
 
-#1884 #1917 #1953 #1965 #2017 #2033 @mangoGoForward; #2131 #2130 #2112 #2113 #2104 #2107 #2094 #2068 #2071 #2070 #1982 #1878 @PrajwalBorkar; #2158  #2051 #2037 #2015 #1886 #1857 @frazie; #2100 #2096 @KikiDotPy; #2089 @ayushclashroyale; #1994 @fpetrakov; #2079 kayverly; #2062 @WUBBBB; #1843 @1korenn; #2092 @HeZean; #1984 @0sirusD3m0n; #1976 @Jaguar16; #2086 @marc-marcos; #1999 @Albert-Debbarma;
+#1884 #1917 #1953 #1965 #2017 #2033 #2044 @mangoGoForward; #2131 #2130 #2112 #2113 #2104 #2107 #2094 #2068 #2071 #2070 #1982 #1878 @PrajwalBorkar; #2158  #2051 #2037 #2015 #1886 #1857 @frazie; #2100 #2096 @KikiDotPy; #2089 @ayushclashroyale; #1994 @fpetrakov; #2079 kayverly; #2062 @WUBBBB; #1843 @1korenn; #2092 @HeZean; #1984 @0sirusD3m0n; #1976 @Jaguar16; #2086 @marc-marcos; #1999 @Albert-Debbarma;
 
 ## [0.5.3] - 2022-07-22
 
