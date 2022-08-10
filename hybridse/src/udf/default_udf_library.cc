@@ -1740,7 +1740,7 @@ void DefaultUdfLibrary::InitLogicalUdf() {
             Example:
 
             @code{.sql}
-                SELECT if_null("hello", "default"), if_null(NULL, "default");
+                SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
                 -- output ["hello", "default"]
             @endcode
 
