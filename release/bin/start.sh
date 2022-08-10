@@ -95,7 +95,7 @@ case $OP in
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
             fi
             pushd ./taskmanager/bin/ > /dev/null
-            sh ./taskmanager.sh 2>&1 &
+            sh ./taskmanager.sh > logs/taskmanager.out 2>&1 &
             PID=$!
             popd > /dev/null 
             sleep 10

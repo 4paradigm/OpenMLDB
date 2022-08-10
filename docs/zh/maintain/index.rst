@@ -11,3 +11,4 @@
     monitoring
     cli
     faq
+    diagnose

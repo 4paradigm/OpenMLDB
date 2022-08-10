@@ -1,0 +1,9 @@
+mode: standalone
+nameserver:
+  -
+    endpoint: 127.0.0.1:6527
+    path: /work/openmldb
+tablet:
+  -
+    endpoint: 127.0.0.1:9527
+    path: /work/openmldb

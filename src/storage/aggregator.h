@@ -43,7 +43,6 @@ enum class AggrType {
     kMax = 3,
     kCount = 4,
     kAvg = 5,
-    kCountWhere = 6,
 };
 
 enum class WindowType {
@@ -108,6 +107,10 @@ class AggrBuffer {
         non_null_cnt_ = 0;
     }
     bool AggrValEmpty() const { return non_null_cnt_ == 0; }
+
+    bool IsInited() const {
+        return ts_begin_ != -1;
+    }
 };
 struct AggrBufferLocked {
     std::unique_ptr<std::mutex> mu_;
@@ -148,6 +151,9 @@ class Aggregator {
 
     uint32_t GetAggrTid() { return aggr_table_->GetId(); }
 
+    // set the filter column info that not initialized in constructor
+    bool SetFilter(absl::string_view filter_col);
+
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
@@ -173,6 +179,13 @@ class Aggregator {
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
+    int64_t AlignedStart(int64_t ts) {
+        if (window_type_ == WindowType::kRowsRange) {
+            return ts / window_size_ * window_size_;
+        } else {
+            return ts;
+        }
+    }
 
     uint32_t index_pos_;
     std::string aggr_col_;
@@ -269,17 +282,6 @@ class CountAggregator : public Aggregator {
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
 
     bool count_all = false;
-};
-
-class CountWhereAggregator : public CountAggregator {
- public:
-    CountWhereAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
-                         std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                         const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
-                         const std::string& ts_col, WindowType window_tpye, uint32_t window_size,
-                         const std::string& filter_col);
-
-    ~CountWhereAggregator() = default;
 };
 
 class AvgAggregator : public Aggregator {
