@@ -289,7 +289,7 @@ jobs:
         run: |
           cp python/openmldb_sdk/dist/openmldb*.whl .
           cp python/openmldb_tool/dist/openmldb*.whl .
-          twine upload openmldb-*.whl
+          twine upload openmldb*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
