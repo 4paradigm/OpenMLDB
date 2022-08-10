@@ -125,6 +125,7 @@ class Collector:
         self.dist_conf.server_info_map.for_each(run_version, CXX_SERVER_ROLES)
 
         def jar_version(server_info: ServerInfo) -> bool:
+            self.ssh_client.connect(hostname=server_info.host)
             remote_config_file = server_info.conf_path_pair('')[0]
             bv = self.get_batch_version(self.get_spark_home(remote_config_file))
             if bv:
@@ -179,7 +180,6 @@ class Collector:
 
     def get_batch_version(self, spark_home):
         # TODO(hw): check if multi batch jars
-        self.ping_all()
         log.debug("spark_home %s", spark_home)
         batch_jar_path = f'{spark_home}/jars/openmldb-batch-*'
         _, stdout, err = self.ssh_client.exec_command(
