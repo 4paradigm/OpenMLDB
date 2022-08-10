@@ -660,7 +660,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
         std::unordered_map<std::string, std::string> window_map;
-        window_map["w1"] = "1000";
+        window_map["w1"] = "1s";
         openmldb::base::LongWindowInfos window_infos;
         auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
         ASSERT_TRUE(extract_status.IsOK());
@@ -670,7 +670,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[0].aggr_col_, "c3");
         ASSERT_EQ(window_infos[0].partition_col_, "c1");
         ASSERT_EQ(window_infos[0].order_col_, "c6");
-        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1s");
         ASSERT_EQ(window_infos[0].filter_col_, "c1");
     }
 

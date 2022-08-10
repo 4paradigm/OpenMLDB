@@ -704,20 +704,20 @@ TEST_F(TabletCatalogTest, aggr_table_test) {
     infos.push_back(info3);
 
     catalog->RefreshAggrTables(infos);
-    auto res = catalog->GetAggrTables("base_db", "base_t1", "sum", "col1", "col2", "col3");
+    auto res = catalog->GetAggrTables("base_db", "base_t1", "sum", "col1", "col2", "col3", "");
     ASSERT_EQ(2, res.size());
     ASSERT_EQ(info1, res[0]);
     ASSERT_EQ(info2, res[1]);
 
-    res = catalog->GetAggrTables("base_db", "base_t1", "avg", "col1", "col2,col4", "col3");
+    res = catalog->GetAggrTables("base_db", "base_t1", "avg", "col1", "col2,col4", "col3", "");
     ASSERT_EQ(1, res.size());
     ASSERT_EQ(info3, res[0]);
 
-    res = catalog->GetAggrTables("base_db", "base_t1", "count", "col1", "col2,col4", "col3");
+    res = catalog->GetAggrTables("base_db", "base_t1", "count", "col1", "col2,col4", "col3", "");
     ASSERT_EQ(0, res.size());
 }
 
-TEST_F(TabletCatalogTest, long_window_smoke_test) {
+TEST_F(TabletCatalogTest, LongWindowSmokeTest) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     int num_pk = 2, num_ts = 9, bucket_size = 2;
@@ -728,8 +728,8 @@ TEST_F(TabletCatalogTest, long_window_smoke_test) {
     TestArgs args2 = PrepareAggTable("aggr_t1", num_pk, num_ts, bucket_size, 1);
     ASSERT_TRUE(catalog->AddTable(args2.meta[0], args2.tables[0]));
 
-    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "db1", "t1",
-                                           "sum", "col2", "col1", "col2", "2"};
+    ::hybridse::vm::AggrTableInfo info1 = {"aggr_t1", "aggr_db", "db1", "t1", "sum", "col2", "col1", "col2", "2", ""};
+
     catalog->RefreshAggrTables({info1});
 
     ::hybridse::vm::Engine engine(catalog);
