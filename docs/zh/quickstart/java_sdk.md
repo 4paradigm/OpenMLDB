@@ -340,7 +340,35 @@ try {
 }
 ```
 
+### 2.9 删除指定索引下某个pk的所有数据
 
+通过java sdk可以有一下两种方式删除:
+
+- 直接执行delete SQL
+- 使用 delete preparestatement
+
+
+```
+java.sql.Statement state = router.getStatement();
+try {
+    String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+    state.execute(sql);
+    sql = "DELETE FROM t1 WHERE col2 = ?;";
+    java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+    p1.setString(1, "key2");
+    p1.executeUpdate();
+    p1.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        state.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
 
 ## 3. 完整的Java SDK使用范例
 
