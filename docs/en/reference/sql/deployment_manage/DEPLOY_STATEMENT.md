@@ -127,8 +127,22 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT col0, sum(col1) OVER w1 
 
 The current long window optimization has the following limitations:
 - Only supports `SelectStmt` involving only one physical table, i.e. `SelectStmt` containing `join` or `union` is not supported
-- Only supported aggregation operations: `sum`, `avg`, `count`, `min`, `max`
+
+- Only supported aggregation operations: `sum`, `avg`, `count`, `min`, `max`, `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`
+
 - Do not allow data in the table when executing the `deploy` command
+
+- For `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`, there are extra limitations：
+
+  1. The main table over should be a memory type table (`storage_mode = 'Memory'`)
+
+  2. The type of `BucketSize` for deployment should be range, e.g.  `long_windows='w1:1d'` supported, whereas `long_windows='w1:100'` is not
+
+  3. The expression for where should be the format of `<column ref> op <const value>` or `<const value> op <column ref>`
+
+     - Supported where op: `>, <, >=, <=, =, !=`
+
+     - The `<column ref>` should not be type of date or timestamp
 
 ## Relevant SQL
 
