@@ -118,9 +118,13 @@ if(SQL_PYSDK_ENABLE)
             COMMAND cd ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/ && ${Python3_EXECUTABLE} setup.py bdist_wheel --plat-name ${PYTHON_PLATFORM}
             COMMAND cd ${PROJECT_SOURCE_DIR}/python/openmldb_tool/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
             BYPRODUCTS
-                build
-                dist
-                sqlalchemy-openmldb.egg-info)
+                ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/build
+                ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/dist
+                ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb.egg-info
+                ${PROJECT_SOURCE_DIR}/python/openmldb_tool/build
+                ${PROJECT_SOURCE_DIR}/python/openmldb_tool/dist
+                ${PROJECT_SOURCE_DIR}/python/openmldb_tool/openmldb_tool.egg-info
+                )
 
 endif()
 
