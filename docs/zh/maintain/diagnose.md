@@ -47,7 +47,6 @@ tablet:
   -
     endpoint: 127.0.0.1:9528
     path: /work/tablet2
-    #is_local: true
 taskmanager:
   -
     endpoint: 127.0.0.1:9902
@@ -77,5 +76,4 @@ openmldb_tool --dist_conf=/tmp/standalone_dist.yml
 openmldb_tool --dist_conf=/tmp/cluster_dist.yml --check=conf --log_dir=./
 ```
 
-**注1**: 如果是单机版，诊断工具必须在单机版部署节点上执行  
-**注2**: 如果诊断工具在集群版上的某一个节点上执行，可以在配置文件中对应的位置加上`is_local: true` 避免多余的文件拉取
+**注**: 如果是单机版，诊断工具必须在单机版部署节点上执行  

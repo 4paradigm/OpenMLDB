@@ -48,7 +48,6 @@ tablet:
   -
     endpoint: 127.0.0.1:9528
     path: /work/tablet2
-    #is_local: true
 taskmanager:
   -
     endpoint: 127.0.0.1:9902
@@ -80,5 +79,4 @@ For instance, we can check `conf` only and print the ouput to local dir as below
 openmldb_tool --dist_conf=/tmp/cluster_dist.yml --check=conf --log_dir=./
 ```
 
-**Note1**: You need to run diagnostic tool on the OpenMLDB node if installed with standalone mode.  
-**Note2**: You can specific `is_local: true` in yaml conf if you run diagnostic tool in one of OpenMLDB nodes. 
+**Note**: If you want to diagnostie standalone mode OpenMLDB, you need to run diagnostic tool on the OpenMLDB node.
