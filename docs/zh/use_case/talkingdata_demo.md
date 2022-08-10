@@ -13,7 +13,7 @@
 **启动 Docker**
 
 ```
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.5.3 bash
 ```
 
 #### 在本地运行
