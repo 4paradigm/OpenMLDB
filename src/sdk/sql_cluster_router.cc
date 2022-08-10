@@ -26,6 +26,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
+#include "absl/strings/substitute.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "boost/none.hpp"
@@ -2362,7 +2363,6 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     auto index = table_info.add_column_key();
     index->set_index_name("key_index");
     index->add_col_name("key");
-    index->add_col_name("filter_key");
     index->set_ts_name("ts_start");
 
     // keep ttl in pre-aggr table the same as base table
@@ -3507,6 +3507,31 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
         for (const auto& lw : long_window_infos) {
+            if (absl::EndsWithIgnoreCase(lw.aggr_func_, "_where")) {
+                // TOOD(ace): *_where op only support for memory base table
+                if (tables[0].storage_mode() != common::StorageMode::kMemory) {
+                    return {base::ReturnCode::kError,
+                            absl::StrCat(lw.aggr_func_, " only support over memory base table")};
+                }
+
+                // TODO(#2313): *_where for rows bucket should support later
+                if (openmldb::base::IsNumber(long_window_map.at(lw.window_name_))) {
+                    return {base::ReturnCode::kError, absl::StrCat("unsupport *_where op (", lw.aggr_func_,
+                                                                   ") for rows bucket type long window")};
+                }
+
+                // unsupport filter col of date/timestamp
+                for (size_t i = 0; i < tables[0].column_desc_size(); ++i) {
+                    if (lw.filter_col_ == tables[0].column_desc(i).name()) {
+                        auto type = tables[0].column_desc(i).data_type();
+                        if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
+                            return {
+                                base::ReturnCode::kError,
+                                absl::Substitute("unsupport date or timestamp as filer column ($0)", lw.filter_col_)};
+                        }
+                    }
+                }
+            }
             // check if pre-aggr table exists
             ::hybridse::sdk::Status status;
             bool is_exist = CheckPreAggrTableExist(base_table, base_db, lw, &status);
@@ -3543,10 +3568,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 return {base::ReturnCode::kError, "get tablets failed"};
             }
             auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
-            auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
             if (!base_table_info) {
                 return {base::ReturnCode::kError, "get table info failed"};
             }
+            auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
             ::openmldb::api::TableMeta base_table_meta;
             base_table_meta.set_db(base_table_info->db());
             base_table_meta.set_name(base_table_info->name());

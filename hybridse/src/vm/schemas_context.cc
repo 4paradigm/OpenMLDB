@@ -787,7 +787,10 @@ int32_t RowParser::GetString(const Row& row, const std::string& col, std::string
     const codec::RowView& row_view = row_view_list_[schema_idx];
     const char* ch = nullptr;
     uint32_t str_size;
-    row_view.GetValue(row.buf(schema_idx), col_idx, &ch, &str_size);
+    int ret = row_view.GetValue(row.buf(schema_idx), col_idx, &ch, &str_size);
+    if (0 != ret) {
+        return ret;
+    }
 
     std::string tmp(ch, str_size);
     val->swap(tmp);
