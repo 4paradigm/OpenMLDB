@@ -273,13 +273,13 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/openmldb/test/pytest.xml
+            python/openmldb_sdk/openmldb/test/pytest.xml
 
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v2
         with:
           name: coverage
-          files: python/test/coverage.xml
+          files: python/openmldb_sdk/test/coverage.xml
           fail_ci_if_error: true
           verbose: true
 
@@ -287,7 +287,8 @@ jobs:
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
-          cp python/dist/openmldb*.whl .
+          cp python/openmldb_sdk/dist/openmldb*.whl .
+          cp python/openmldb_tool/dist/openmldb*.whl .
           twine upload openmldb-*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -329,13 +330,14 @@ jobs:
         with:
           name: mac-ut-result-python-${{ github.sha }}
           path: |
-            python/openmldb/test/pytest.xml
+            python/openmldb_sdk/openmldb/test/pytest.xml
 
       - name: upload to pypi
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
-          cp python/dist/openmldb*.whl .
+          cp python/openmldb_sdk/dist/openmldb*.whl .
+          cp python/openmldb_tool/dist/openmldb*.whl .
           twine upload openmldb-*.whl
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
