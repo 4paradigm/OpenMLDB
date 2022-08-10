@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.ecosystem.common;
 
 
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.common.BaseTest;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;

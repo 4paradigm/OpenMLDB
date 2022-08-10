@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 public class LongWindowTest extends OpenMLDBTest {
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/long_window/test_count_where.yaml")
+    @Yaml(filePaths = "integration_test/long_window/test_count_where.yaml")
     @Story("longWindowDeploy")
     public void testLongWindow2(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kLongWindow).run();

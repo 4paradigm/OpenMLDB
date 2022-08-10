@@ -16,8 +16,6 @@
 package com._4paradigm.openmldb.test_common.common;
 
 
-import com._4paradigm.openmldb.test_common.common.LogProxy;
-import com._4paradigm.openmldb.test_common.common.ReportLog;
 import com._4paradigm.openmldb.test_common.model.CaseFile;
 import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -65,11 +63,11 @@ public class BaseTest implements ITest {
         ReportLog.of().clean();
         if(testData==null || testData.length==0) return;
         Assert.assertNotNull(
-                testData[0], "fail to run fesql test with null SQLCase: check yaml case");
+                testData[0], "fail to run openmldb test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
             Assert.assertNotEquals(CaseFile.FAIL_SQL_CASE,
-                    sqlCase.getDesc(), "fail to run fesql test with FAIL DATA PROVIDER SQLCase: check yaml case");
+                    sqlCase.getDesc(), "fail to run openmldb test with FAIL DATA PROVIDER SQLCase: check yaml case");
             testName.set(String.format("[%d]%s.%s", testNum, method.getName(), CaseNameFormat(sqlCase)));
         } else {
             testName.set(String.format("[%d]%s.%s", testNum, method.getName(), null == testData[0] ? "null" : testData[0].toString()));

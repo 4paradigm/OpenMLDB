@@ -98,7 +98,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
         }
         for (String spName : spNames) {
             String drop = "drop procedure " + spName + ";";
-//            SDKUtil.ddl(executor, dbName, drop);
+            SDKUtil.ddl(executor, dbName, drop);
         }
         super.tearDown(version,executor);
     }
