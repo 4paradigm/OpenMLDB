@@ -64,7 +64,7 @@ class Collector:
         def ping(server_info: ServerInfo) -> bool:
             self.ssh_client.connect(hostname=server_info.host)
             _, stdout, stderr = self.ssh_client.exec_command('whoami && pwd')
-            print(buf2str(stdout))
+            log.debug(buf2str(stdout))
             err = buf2str(stderr)
             if len(err) != 0:
                 log.warning(f"failed to ping {server_info}, err: {err}")
@@ -179,18 +179,19 @@ class Collector:
 
     def get_batch_version(self, spark_home):
         # TODO(hw): check if multi batch jars
+        self.ping_all()
         log.debug("spark_home %s", spark_home)
         batch_jar_path = f'{spark_home}/jars/openmldb-batch-*'
         _, stdout, err = self.ssh_client.exec_command(
             f'java -cp {batch_jar_path} com._4paradigm.openmldb.batch.utils.VersionCli')
-        return buf2str(err)
+        return buf2str(stdout).strip()
 
     def get_taskmanager_version(self, root_path):
         # TODO(hw): check if multi taskmanager jars
         _, stdout, err = self.ssh_client.exec_command(
             f'java -cp {root_path}/lib/openmldb-taskmanager-* '
             f'com._4paradigm.openmldb.taskmanager.utils.VersionCli')
-        return buf2str(err)
+        return buf2str(stdout).strip()
 
     def pull_job_logs(self, server_info, dest, last_n) -> bool:
         # job log path is in config
