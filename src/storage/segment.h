@@ -144,6 +144,7 @@ struct SliceComparator {
 
 typedef ::openmldb::base::Skiplist<::openmldb::base::Slice, void*, SliceComparator> KeyEntries;
 typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*>*, TimeComparator> KeyEntryNodeList;
+typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*, TimeComparator> KeyTsEntryNodeList;
 
 class Segment {
  public:
@@ -258,7 +259,9 @@ class Segment {
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
                          uint64_t& gc_record_byte_size);          // NOLINT
-    void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt,  // NOLINT
+    void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node,  // NOLINT
+                   ::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node,             // NOLINT
+                   uint64_t& gc_idx_cnt,            // NOLINT
                    uint64_t& gc_record_cnt,         // NOLINT
                    uint64_t& gc_record_byte_size);  // NOLINT
 
@@ -272,6 +275,7 @@ class Segment {
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
     KeyEntryNodeList* entry_free_list_;
+    KeyTsEntryNodeList* ts_entry_free_list_;
     uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;
