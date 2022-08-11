@@ -299,6 +299,44 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
+bool DiskTable::Delete(const std::string& pk, uint32_t idx, uint64_t time) {
+    rocksdb::WriteBatch batch;
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
+    if (!index_def) {
+        return false;
+    }
+    auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
+    if (inner_index && inner_index->GetIndex().size() > 1) {
+        const auto& indexs = inner_index->GetIndex();
+        for (const auto& index : indexs) {
+            auto ts_col = index->GetTsColumn();
+            if (!ts_col) {
+                return false;
+            }
+            uint64_t ts = 0;
+            std::string combine_key;
+            if (inner_index->GetIndex().size() > 1) {
+                combine_key = CombineKeyTs(pk, ts, ts_col->GetId());
+            } else {
+                combine_key = CombineKeyTs(pk, ts);
+            }
+            rocksdb::Slice spk = rocksdb::Slice(combine_key);
+            batch.Delete(cf_hs_[idx + 1], spk);
+        }
+    } else {
+        std::string combine_key = CombineKeyTs(pk, time);
+        batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(combine_key));
+    }
+    rocksdb::Status s = db_->Write(write_opts_, &batch);
+    if (s.ok()) {
+        offset_.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    } else {
+        DEBUGLOG("Delete failed. tid %u pid %u time %lu msg %s", id_, pid_, time, s.ToString().c_str());
+        return false;
+    }
+}
+
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
     Ticket ticket;
     auto it = NewIterator(idx, pk, ticket);

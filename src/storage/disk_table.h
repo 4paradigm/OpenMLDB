@@ -376,6 +376,8 @@ class DiskTable : public Table {
 
     bool Delete(const std::string& pk, uint32_t idx) override;
 
+    bool Delete(const std::string& pk, uint32_t idx, uint64_t time) override;
+
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
     uint64_t GetRecordCnt() const override {

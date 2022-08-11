@@ -90,6 +90,8 @@ class MemTable : public Table {
 
     bool Delete(const std::string& pk, uint32_t idx) override;
 
+    bool Delete(const std::string& pk, uint32_t idx, uint64_t time) override;
+
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
 
