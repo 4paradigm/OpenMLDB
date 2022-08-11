@@ -1090,6 +1090,55 @@ void DefaultUdfLibrary::InitStringUdf() {
              @endcode
              @since 0.5.2
              )r");
+
+    RegisterExternal("locate")
+            .args<StringRef, StringRef>(
+                static_cast<int32_t (*)(StringRef*, StringRef*)>(udf::v1::locate))
+            .return_by_arg(false)
+            .doc(R"(
+                @brief Returns the position of the first occurrence of `substr`` in `str`` after position pos.
+
+                Note: This function equals the `locate()` function.
+
+                Example:
+
+                @code{.sql}
+
+                    SELECT locate('bar', 'foobarbar');
+                    -- output 4
+
+                @endcode
+
+                @param str source string
+                @param substr
+
+                @since 0.6.0)");
+
+        RegisterExternal("locate")
+            .args<StringRef, int32_t, int32_t>(
+                static_cast<int32_t (*)(StringRef*, StringRef*, int32_t)>(udf::v1::locate))
+            .return_by_arg(false)
+            .doc(R"(
+                @brief Returns the position of the first occurrence of `substr`` in `str`` after position pos.
+
+                Note: This function equals the `locate()` function.
+
+                Example:
+
+                @code{.sql}
+
+                    SELECT locate('bar', 'foobarbar', 5);
+                    -- output 7
+
+                @endcode
+
+                @param str source string
+                @param substr
+                @param pos define the begining of the str.
+
+                 - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+
+                @since 0.6.0)");
 }
 
 void DefaultUdfLibrary::InitMathUdf() {

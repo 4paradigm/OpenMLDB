@@ -1089,6 +1089,16 @@ TEST_F(UdfIRBuilderTest, ReplaceNullable) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
+    //    locate('bar', 'foobarbar') == 4
+    CheckUdf<int32_t, StringRef, StringRef>("locate", StringRef("bar"),
+                                   StringRef("foobarbar"));
+
+    // locate('bar', 'foobarbar', 5) == 7
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", StringRef("bar"),
+                                              StringRef("foobarbar"),
+                                              5);
+}
 }  // namespace codegen
 }  // namespace hybridse
 

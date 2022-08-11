@@ -1179,6 +1179,41 @@ void delete_iterator(int8_t *input) {
     }
 }
 
+int32_t locate(StringRef *substr, StringRef *str) {
+    if (nullptr == str || str->IsNull() || nullptr == substr || substr->IsNull()) {
+        return 0;
+    }
+    return locate(substr, str, 1);
+}
+
+int32_t locate(StringRef *substr, StringRef *str, int32_t pos = 1) {
+    if (nullptr == str || str->IsNull() || nullptr == substr || substr->IsNull()) {
+        return 0;
+    }
+
+    int32_t str_size = static_cast<int32_t>(str->size_);
+    int32_t substr_size = static_cast<int32_t>(substr->size_);
+
+    // `substr` is out of str range
+    if (substr_size > str_size || substr_size + pos) {
+        return 0;
+    }
+
+    for (int32_t i = pos - 1; i +substr_size < str_size; i++) {
+        bool flag = true;
+        for (int32_t j = 0; j < substr_size; j++) {
+            if (str->data_[i + j] != substr->data_[j]) {
+                flag = false;
+                break;
+            }
+        }
+        if (flag) {
+            return i;
+        }
+    }
+    return;
+}
+
 }  // namespace v1
 
 bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,

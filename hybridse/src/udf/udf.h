@@ -335,6 +335,9 @@ struct ToHex {
 };
 void hex(StringRef *str, StringRef *output);
 
+int32_t locate(StringRef *substr, StringRef *str);
+int32_t locate(StringRef *substr, StringRef *str, int32_t pos);
+
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`
