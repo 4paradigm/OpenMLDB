@@ -364,7 +364,7 @@ public class TaskManagerClient {
     }
 
     /**
-     * Submit job to get job log.
+     * Get job log.
      */
     public String getJobLog(int id) throws Exception {
         TaskManager.GetJobLogRequest request = TaskManager.GetJobLogRequest.newBuilder()
