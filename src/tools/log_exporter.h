@@ -35,7 +35,7 @@ namespace tools {
 
 class Exporter {
  public:
-    explicit Exporter(const std::string& file_path) : table_dir_path_(file_path) {}
+    explicit Exporter(const std::string& file_path) : table_dir_path_(file_path), offset_(0) {}
 
     ~Exporter() {}
 

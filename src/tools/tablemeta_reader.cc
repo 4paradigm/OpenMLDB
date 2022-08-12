@@ -27,9 +27,7 @@
 #include "codec/schema_codec.h"
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
-//#include "sdk/sql_cluster_router.h"
 
-//using ::openmldb::sdk::SQLClusterRouter;
 using ::openmldb::sdk::DBSDK;
 using ::openmldb::codec::SchemaCodec;
 using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>;
@@ -51,14 +49,12 @@ void TablemetaReader::copyFromRemote(const std::string& host, const std::string&
     } else {
         printf("not copied successfully.\n");
     }
-
 }
+
 bool StandaloneTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
     ::openmldb::sdk::StandAloneSDK sdk(host_, port_);
     sdk.Init();
-//    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
-//    sr->Init();
     auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
     tid_ = tableInfo_ptr->tid();
     // check whether table exists
@@ -118,8 +114,6 @@ bool ClusterTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
     ::openmldb::sdk::ClusterSDK sdk(options_);
     sdk.Init();
-//    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
-//    sr->Init();
     auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
 
     tid_ = tableInfo_ptr->tid();

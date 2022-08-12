@@ -38,35 +38,35 @@ const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + ".
                                      std::to_string(OPENMLDB_VERSION_MINOR) + "." +
                                      std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
 
-std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>& tablet_map) {
+std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>* tablet_map) {
     printf("--------begin ReadConfigYaml--------\n");
     // Reads tablet's endpoints and corresponding paths
     YAML::Node config = YAML::LoadFile(yaml_path);
     for (YAML::const_iterator iter = config["tablet"].begin(); iter != config["tablet"].end(); ++iter) {
         std::string endpoint = (*iter)["endpoint"].as<std::string>();
-        if (tablet_map.find(endpoint) != tablet_map.end()) {
+        if (tablet_map->find(endpoint) != tablet_map->end()) {
             printf("Error. Exists duplicate endpoints.\n");
         } else {
-            tablet_map[endpoint] = (*iter)["path"].as<std::string>();
-            printf("Tablet's endpoint: %s, path: %s\n", endpoint.c_str(), tablet_map[endpoint].c_str());
+            (*tablet_map)[endpoint] = (*iter)["path"].as<std::string>();
+            printf("Tablet's endpoint: %s, path: %s\n", endpoint.c_str(), (*tablet_map)[endpoint].c_str());
         }
     }
     printf("--------end ReadConfigYaml--------\n");
     return config["mode"].as<std::string>();
 }
 
-void ReadHostAndPortFromYaml(const std::string& yaml_path, std::string& host, int& port) {
+void ReadHostAndPortFromYaml(const std::string& yaml_path, std::string* host, int* port) {
     YAML::Node config = YAML::LoadFile(yaml_path);
     YAML::const_iterator iter = config["nameserver"].begin();
     std::string endpoint = (*iter)["endpoint"].as<std::string>();
-    host = endpoint.substr(0, endpoint.find(":"));
-    port = stoi(endpoint.substr(endpoint.find(":") + 1));
+    *host = endpoint.substr(0, endpoint.find(":"));
+    *port = stoi(endpoint.substr(endpoint.find(":") + 1));
 }
 
-void ReadZKFromYaml(const std::string& yaml_path, std::string& zk_cluster, std::string& zk_root_path) {
+void ReadZKFromYaml(const std::string& yaml_path, std::string* zk_cluster, std::string* zk_root_path) {
     YAML::Node config = YAML::LoadFile(yaml_path);
-    zk_cluster = config["zookeeper"]["zk_cluster"].as<std::string>();
-    zk_root_path = config["zookeeper"]["zk_root_path"].as<std::string>();
+    *zk_cluster = config["zookeeper"]["zk_cluster"].as<std::string>();
+    *zk_root_path = config["zookeeper"]["zk_root_path"].as<std::string>();
 }
 
 int main(int argc, char* argv[]) {
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     std::unordered_map<std::string, std::string> tablet_map;
-    std::string mode = ReadConfigYaml("./conf.yaml", tablet_map);
+    std::string mode = ReadConfigYaml("./conf.yaml", &tablet_map);
     Schema table_schema;
     std::string tmp_path;
 
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Data Exporter starts in stand-alone mode." << std::endl;
         std::string host;
         int port;
-        ReadHostAndPortFromYaml("./conf.yaml", host, port);
+        ReadHostAndPortFromYaml("./conf.yaml", &host, &port);
 
         ::openmldb::tools::StandaloneTablemetaReader standalone_tablemeta_reader =
                 ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name,
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     } else {
         std::cout << "Data Exporter starts in cluster mode." << std::endl;
         std::string zk_cluster, zk_root_path;
-        ReadZKFromYaml("./conf.yaml", zk_cluster, zk_root_path);
+        ReadZKFromYaml("./conf.yaml", &zk_cluster, &zk_root_path);
         ::openmldb::sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = zk_cluster;
         cluster_options.zk_path = zk_root_path;
@@ -115,6 +115,7 @@ int main(int argc, char* argv[]) {
     struct dirent *ptr;
     DIR *dir;
     dir = opendir(tmp_path.c_str());
+    //int table_num;
     while ((ptr = readdir(dir)) != NULL) {
         if (ptr->d_name[0] == '.' || !isdigit(ptr->d_name[0]))
             continue;

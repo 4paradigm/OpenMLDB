@@ -80,7 +80,7 @@ class ClusterTablemetaReader : public TablemetaReader {
 
     bool ReadTableMeta() override;
 
-private:
+ private:
     std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) override;
 
     ClusterOptions options_;
