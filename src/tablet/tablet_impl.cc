@@ -1549,7 +1549,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         }
         idx = index_def->GetId();
     }
-    if (table->Delete(request->key(), idx, request->ts())) {
+    if ((request->has_ts() ? table->Delete(request->key(), idx, request->ts()) : table->Delete(request->key(), idx))) {
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         DEBUGLOG("delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());

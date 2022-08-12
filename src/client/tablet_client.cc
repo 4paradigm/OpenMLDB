@@ -846,7 +846,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
 }
 
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
-                          uint64_t& ts,
+                          uint64_t ts,
                           std::string& msg) {
     ::openmldb::api::DeleteRequest request;
     ::openmldb::api::GeneralResponse response;

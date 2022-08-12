@@ -351,6 +351,7 @@ bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
     DataBlock* block = NULL;
     {
+        std::lock_guard<std::mutex> lock(mu_);
         auto pos = ts_idx_map_.find(idx);
         if (pos == ts_idx_map_.end()) {
             return false;
