@@ -186,7 +186,7 @@ int32_t weekofyear(Date *date) {
 }
 
 void last_day(int64_t ts, Date *output, bool *is_null) {
-    if (ts < 0 && is_null) {
+    if (ts < 0) {
         *is_null = true;
         return;
     }
@@ -195,12 +195,10 @@ void last_day(int64_t ts, Date *output, bool *is_null) {
     absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
     absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
     *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
-    if (is_null) {
-        *is_null = false;
-    }
+    *is_null = false;
 }
-void last_day(Timestamp *ts, Date *output) { last_day(ts->ts_, output, nullptr); }
-void last_day(Date *ts, Date *output, bool *is_null) {
+void last_day(const Timestamp *ts, Date *output, bool *is_null) { last_day(ts->ts_, output, is_null); }
+void last_day(const Date *ts, Date *output, bool *is_null) {
     int32_t year, month, day;
     if (!Date::Decode(ts->date_, &year, &month, &day)) {
         *is_null = true;

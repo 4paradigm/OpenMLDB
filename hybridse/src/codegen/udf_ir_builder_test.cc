@@ -270,10 +270,11 @@ TEST_F(UdfIRBuilderTest, WeekofyearTimestampUdfTest) {
     CheckUdf<int32_t, Timestamp>("weekofyear", 21, time);
 }
 TEST_F(UdfIRBuilderTest, LastdayTimestampUdfTest) {
-    CheckUdf<Date, Timestamp>("last_day", Date(2022, 8, 31),
-                              Timestamp(1659312000000L));  // 2022-08-01 00:00:00 GMT
-    CheckUdf<Date, Timestamp>("last_day", Date(2022, 8, 31),
-                              Timestamp(1659311999000L));  // 2022-07-31 23:59:59 GMT, 08-01 07:59:59 UTC+8
+    // NOTE: last_day will always return a Date for not null Timestamp input
+    CheckUdf<Nullable<Date>, Timestamp>("last_day", Date(2022, 8, 31),
+                                        Timestamp(1659312000000L));  // 2022-08-01 00:00:00 GMT
+    CheckUdf<Nullable<Date>, Timestamp>("last_day", Date(2022, 8, 31),
+                                        Timestamp(1659311999000L));  // 2022-07-31 23:59:59 GMT, 08-01 07:59:59 UTC+8
 }
 
 TEST_F(UdfIRBuilderTest, MonthTimestampUdfTest) {

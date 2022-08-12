@@ -2122,7 +2122,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select last_day(timestamp("2021-02-12"));
                 -- output 2021-02-28
             @endcode
-            @since 0.6.0
+            @since 0.6.1
         )";
 
     RegisterExternal("last_day")
@@ -2132,13 +2132,13 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             .doc(last_day_doc);
 
     RegisterExternal("last_day")
-            .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, Date*)>(v1::last_day)))
+            .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
             .return_by_arg(true)
-            .returns<Date>()
+            .returns<Nullable<Date>>()
             .doc(last_day_doc);
 
     RegisterExternal("last_day")
-            .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, Date*, bool*)>(v1::last_day)))
+            .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
             .return_by_arg(true)
             .returns<Nullable<Date>>()
             .doc(last_day_doc);
