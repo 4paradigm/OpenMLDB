@@ -1,5 +1,51 @@
 # Release Notes
 
+## v0.6.0 Release Notes
+
+### Highlights
+
+- Add a new toolkit of managing OpenMLDB, currently including a diagnostic tool and a log collector (#2299 #2326 @dl239 @vagetablechicken)
+- Support aggregate functions with suffix `_where` using pre-aggregation (#1821 #1841 #2321 #2255 #2321 @aceforeverd @nautaa @zhanghaohit)
+- Support a new SQL syntax of `EXCLUDE CURRENT_ROW` (#2053 #2165 #2278 @aceforeverd)
+- Add new OpenMLDB ecosystem plugins for DolphinScheduler (#1921 #1955 @vagetablechicken) and Airflow (#2215 @vagetablechicken)
+
+### Other Features
+
+- Support SQL syntax of `DELETE` in SQL and Kafka Connector (#2183 #2257 @dl239)
+- Support customized order in the `insert` statement (#2075 @vagetablechicken)
+- Add a new use case of TalkingData AdTracking Fraud Detection (#2008 @vagetablechicken)
+- Improve the startup script to remove `mon` (#2050 @dl239)
+- Improve the performance of offline batch SQL engine (#1882 #1943 #1973 #2142 #2273 #1773 @tobegit3hub)
+- Support returning version numbers from TaskManager (#2102 @tobegit3hub)
+- Improve the CICD workflow and release procedure (#1873 #2025 #2028 @mangoGoForward)
+- Support GitHub Codespaces (#1922 @nautaa)
+- Support new built-in functions `char(int)`, `char_length`, `character_length`, `radians`, `hex`, `median` (#1896 #1895 #1897 #2159 #2030 @wuxiaobai24 @HGZ-20 @Ivyee17)
+- Support returning result set for a new query API (#2189 @qsliu2017)
+- Improve the documents (#1796 #1817 #1818 #2254 #1948 #2227 #2254  #1824 #1829 #1832 #1840 #1842 #1844 #1845 #1848 #1849 #1851 #1858 #1875  #1923 #1925 #1939 #1942 #1945 #1957 #2031 #2054 #2140 #2195 #2304 #2264 #2260 #2257 #2254 #2247 #2240 #2227 #2115 #2126 #2116 #2154 #2152 #2178 #2147 #2146 #2184 #2138 #2145 #2160 #2197 #2198 #2133 #2224 #2223 #2222 #2209 #2248 #2244 #2242 #2241 #2226 #2225 #2221 #2219 #2201 #2291 # 2231 #2196 #2297 #2206 #2238 #2270 #2296 #2317 #2065 #2048 #2088 #2331 #1831 #1945 #2118 @ZtXavier @pearfl @PrajwalBorkar @tobegit3hub @ZtXavier @zhouxh19 @dl239 @vagetablechicken @tobegit3hub @aceforeverd @jmoldyvan @lumianph @bxiiiiii @michelle-qinqin @yclchuxue @redundan3y)
+
+### Bug Fixes
+
+- The SQL engine may produce incorrect results under certain circumstances. (#1950 #1997 #2024 @aceforeverd)
+- The `genDDL` function generates incorrect DDL if the SQL is partitioned by multiple columns. (#1956 @dl239)
+- The snapshot recovery may fail for disk tables. (#2174 @zhanghaohit)
+- `enable_trace` does not work for some SQL queries. (#2292 @aceforeverd)
+- Tablets cannot save `ttl` when updating the `ttl` of index. (#1935 @dl239)
+- MakeResultSet uses a wrong schema in projection. (#2049 @dl239)
+- A table does not exist when deploying SQL by the APIServer (#2205 @vagetablechicken)
+- The cleanup for ZooKeep does not work properly. (#2191 @mangoGoForward)
+
+Other minor bug fixes (#2052 #1959 #2253 #2273 #2288 #1964 #2175 #1938 #1963 #1956 #2171 #2036 #2170 #2236 #1867 #1869 #1900 #2162 #2161 #2173 #2190 #2084 #2085 #2034 #1972 #1408 #1863 #1862 #1919 #2093 #2167 #2073 #1803 #1998 #2000 #2012 #2055 #2174 #2036 @Xeonacid @CuriousCorrelation @Shigm1026 @jiang1997 @Harshvardhantomar @nautaa @Ivyee17 @frazie @PrajwalBorkar @dl239 @aceforeverd @tobegit3hub @dl239 @vagetablechicken @zhanghaohit @mangoGoForward @SaumyaBhushan @BrokenArrow1404 @harshlancer)
+
+### Code Refactoring
+
+#1884 #1917 #1953 #1965 #2017 #2033 #2044 @mangoGoForward; #2131 #2130 #2112 #2113 #2104 #2107 #2094 #2068 #2071 #2070 #1982 #1878 @PrajwalBorkar; #2158  #2051 #2037 #2015 #1886 #1857 @frazie; #2100 #2096 @KikiDotPy; #2089 @ayushclashroyale; #1994 @fpetrakov; #2079 kayverly; #2062 @WUBBBB; #1843 @1korenn; #2092 @HeZean; #1984 @0sirusD3m0n; #1976 @Jaguar16; #2086 @marc-marcos; #1999 @Albert-Debbarma;
+
+## v0.5.3 Release Notes
+
+### Bug Fixes
+- The SQL file cannot be successfully loaded in the Yarn-Client mode. (#2151 @tobegit3hub)
+- The SQL file cannot be successfully loaded in the Yarn-Cluster mode. (#1993 @tobegit3hub)
+
 ## v0.5.2 Release Notes
 
 ### Features

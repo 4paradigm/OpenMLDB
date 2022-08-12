@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -1076,6 +1077,33 @@ class ConstNode : public ExprNode {
         }
     }
 
+    // include 'udf/literal_traits.h' for Nullable lead to recursive include
+    // so `optional` is used for nullable info
+    template <typename T>
+    absl::StatusOr<std::optional<T>> GetAs() const {
+        if (IsNull()) {
+            return std::nullopt;
+        }
+
+        if constexpr (std::is_same_v<T, bool>) {
+            return GetBool();
+        } else if constexpr(std::is_same_v<T, int16_t>) {
+            return GetAsInt16();
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return GetAsInt32();
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return GetAsInt64();
+        } else if constexpr (std::is_same_v<T, float>) {
+            return GetAsFloat();
+        } else if constexpr (std::is_same_v<T, double>) {
+            return GetAsDouble();
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return GetAsString();
+        } else {
+            return absl::InvalidArgumentError("can't cast as T");
+        }
+    }
+
     Status InferAttr(ExprAnalysisContext *ctx) override;
     static ConstNode *CastFrom(ExprNode *node);
 
@@ -1620,7 +1648,7 @@ class ColumnRefNode : public ExprNode {
 
     void SetRelationName(const std::string &relation_name) { relation_name_ = relation_name; }
 
-    std::string GetColumnName() const { return column_name_; }
+    const std::string &GetColumnName() const { return column_name_; }
 
     void SetColumnName(const std::string &column_name) { column_name_ = column_name; }
 
