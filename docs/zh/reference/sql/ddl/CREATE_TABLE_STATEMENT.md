@@ -1,4 +1,5 @@
 # CREATE TABLE
+ `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名在必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
 
 ## Syntax
 
@@ -17,7 +18,6 @@ TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
- `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名在必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
 
 建表语句中需要定义`table_element`列表。`table_element`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`table_element`列表中至少包含一个`ColumnDef`。
 
@@ -50,7 +50,7 @@ DefaultValueExpr ::=
     int_literal | float_literal | double_literal | string_literal
 ```
 
-一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及类配置。
+一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及列约束配置。
 
 - 列名：列在表中的名字。同一张表内的列名必须是唯一的。
 - 列类型：列的类型。想要了解OpenMLDB支持的数据类型，可以参考[数据类型](https://openmldb.ai/docs/zh/main/reference/sql/data_types/index.html)。
