@@ -16,11 +16,11 @@
 
 #include "tools/log_exporter.h"
 
+#include <dirent.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <dirent.h>
 
 #include <algorithm>
 #include <fstream>
@@ -29,8 +29,8 @@
 #include "base/file_util.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "proto/tablet.pb.h"
 #include "proto/common.pb.h"
+#include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
 #include "tools/tablemeta_reader.h"
 
@@ -48,9 +48,13 @@ void Exporter::ReadManifest() {
     printf("--------start readManifest--------\n");
     std::string manifest_path = table_dir_path_ + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
-    ::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest);
+    if (::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest)) {
+        printf("Failed to read manifest\n");
+        printf("---------end readManifest---------\n");
+        return;
+    }
     std::string snapshot_name = manifest.name();
-    snapshot_path_ = table_dir_path_ + "/snapshot/" +snapshot_name;
+    snapshot_path_ = table_dir_path_ + "/snapshot/" + snapshot_name;
     offset_ = manifest.offset();
     printf("--------snapshot offset: %lu\n", offset_);
     printf("--------snapshot path: %s\n", snapshot_path_.c_str());
@@ -75,7 +79,9 @@ void Exporter::ExportTable() {
         my_cout << schema_.Get(i).name() << ",";
     }
     my_cout << "\n";
-    ReadSnapshot(my_cout);
+    if (snapshot_path_.length()) {
+        ReadSnapshot(my_cout);
+    }
 
     // Sorts binlog files and performs binary search
     std::sort(file_path.begin(), file_path.end());
@@ -120,7 +126,7 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     status = reader.ReadRecord(&first_value, &scratch);
     ::openmldb::api::LogEntry first_entry;
     first_entry.ParseFromString(first_value.ToString());
-    printf("The start offset of binlog file %s is %lu, \n", log_path.c_str(), first_entry.log_index());
+    printf("The start offset of binlog file %s is %lu, ", log_path.c_str(), first_entry.log_index());
     if (first_entry.log_index() < offset_) {
         printf("which is less than snapshot's offset.\n");
     } else {
@@ -129,7 +135,7 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     return first_entry.log_index();
 }
 
-void Exporter::ReadLog(std::string &log_path, std::ofstream& my_cout) {
+void Exporter::ReadLog(const std::string &log_path, std::ofstream& my_cout) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", log_path.c_str());
@@ -223,69 +229,9 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
 void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_cout) {
     // Gets the values for each column, then writes the row to the csv file.
     for (int i = 0; i< schema_.size(); ++i) {
-        ::openmldb::type::DataType type = schema_.Get(i).data_type();
-        switch (type) {
-            case openmldb::type::kBool: {
-                bool val;
-                view.GetBool(i, &val);
-                my_cout << std::to_string(val) << ",";
-            }
-                break;
-            case openmldb::type::kSmallInt: {
-                int16_t val2;
-                view.GetInt16(i, &val2);
-                my_cout << std::to_string(val2) << ",";
-            }
-                break;
-            case openmldb::type::kInt: {
-                int32_t val3;
-                view.GetInt32(i, &val3);
-                my_cout << std::to_string(val3) << ",";
-            }
-                break;
-            case openmldb::type::kBigInt: {
-                int64_t val4;
-                view.GetInt64(i, &val4);
-                my_cout << std::to_string(val4) << ",";
-            }
-                break;
-            case openmldb::type::kFloat: {
-                float val5;
-                view.GetFloat(i, &val5);
-                my_cout << std::to_string(val5) << ",";
-            }
-                break;
-            case openmldb::type::kDouble: {
-                double val6;
-                view.GetDouble(i, &val6);
-                my_cout << std::to_string(val6) << ",";
-            }
-                break;
-            case openmldb::type::kTimestamp: {
-                int64_t val7;
-                view.GetTimestamp(i, &val7);
-                my_cout << std::to_string(val7) << ",";
-            }
-                break;
-            case openmldb::type::kVarchar:
-            case openmldb::type::kString: {
-                char *ch;
-                uint32_t len = 0;
-                view.GetString(i, &ch, &len);
-                std::string val8(ch, len);
-                my_cout << val8 << ",";
-            }
-                break;
-            case openmldb::type::kDate: {
-                uint32_t year, month, day;
-                view.GetDate(i, &year, &month, &day);
-                std::string val9 =
-                        std::to_string(year) + "-" + std::to_string(month) + "-" + std::to_string(day);
-                my_cout << val9 << ",";
-            }
-            default:
-                break;
-        }
+        std::string col;
+        view.GetStrValue(i, &col);
+        my_cout << col << ",";
     }
     my_cout << "\n";
 }

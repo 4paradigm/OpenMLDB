@@ -14,26 +14,22 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
 #include <dirent.h>
+#include <gflags/gflags.h>
 
-#include <iostream>
 #include <filesystem>
-#include <vector>
+#include <iostream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
+#include "proto/common.pb.h"
 #include "sdk/db_sdk.h"
 #include "tools/tablemeta_reader.h"
 #include "tools/log_exporter.h"
-#include "proto/common.pb.h"
-#include "yaml-cpp/yaml.h"
 #include "version.h"  // NOLINT
+#include "yaml-cpp/yaml.h"
 
-DECLARE_string(host);
-DECLARE_int32(port);
-DECLARE_string(zk_cluster);
-DECLARE_string(zk_root_path);
 DEFINE_string(db_name, "", "database name.");
 DEFINE_string(table_name, "", "table name. ");
 
@@ -42,7 +38,7 @@ const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + ".
                                      std::to_string(OPENMLDB_VERSION_MINOR) + "." +
                                      std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
 
-std::string ReadConfigYaml(const std::string &yaml_path, std::unordered_map<std::string, std::string> &tablet_map) {
+std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>& tablet_map) {
     printf("--------begin ReadConfigYaml--------\n");
     // Reads tablet's endpoints and corresponding paths
     YAML::Node config = YAML::LoadFile(yaml_path);
@@ -59,8 +55,21 @@ std::string ReadConfigYaml(const std::string &yaml_path, std::unordered_map<std:
     return config["mode"].as<std::string>();
 }
 
+void ReadHostAndPortFromYaml(const std::string& yaml_path, std::string& host, int& port) {
+    YAML::Node config = YAML::LoadFile(yaml_path);
+    YAML::const_iterator iter = config["nameserver"].begin();
+    std::string endpoint = (*iter)["endpoint"].as<std::string>();
+    host = endpoint.substr(0, endpoint.find(":"));
+    port = stoi(endpoint.substr(endpoint.find(":") + 1));
+}
+
+void ReadZKFromYaml(const std::string& yaml_path, std::string& zk_cluster, std::string& zk_root_path) {
+    YAML::Node config = YAML::LoadFile(yaml_path);
+    zk_cluster = config["zookeeper"]["zk_cluster"].as<std::string>();
+    zk_root_path = config["zookeeper"]["zk_root_path"].as<std::string>();
+}
+
 int main(int argc, char* argv[]) {
-    ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_db_name.empty() || FLAGS_table_name.empty()) {
         std::cout << "Error. db_name or table_name not set." << std::endl;
@@ -72,30 +81,33 @@ int main(int argc, char* argv[]) {
     std::string tmp_path;
 
     if (mode == "standalone") {
-        std::cout << "Data Exporter start in stand-alone mode." << std::endl;
-        if (FLAGS_host.empty() || FLAGS_port == 0) {
-            std::cout << "Error. host or port not set." << std::endl;
-            return -1;
-        }
+        std::cout << "Data Exporter starts in stand-alone mode." << std::endl;
+        std::string host;
+        int port;
+        ReadHostAndPortFromYaml("./conf.yaml", host, port);
+
         ::openmldb::tools::StandaloneTablemetaReader standalone_tablemeta_reader =
                 ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name,
-                                                             tablet_map, FLAGS_host, FLAGS_port);
-        standalone_tablemeta_reader.ReadTableMeta();
+                                                             tablet_map, host, port);
+        if (standalone_tablemeta_reader.ReadTableMeta() == 0) {
+            return -1;
+        }
         table_schema = standalone_tablemeta_reader.getSchema();
         tmp_path = standalone_tablemeta_reader.GetTmpPath().string();
     } else {
-        std::cout << "Data Exporter start in cluster mode." << std::endl;
-        if (FLAGS_zk_cluster.empty() || FLAGS_zk_root_path.empty()) {
-            std::cout << "Error. zk_cluster or zk_path not set." << std::endl;
-            return -1;
-        }
+        std::cout << "Data Exporter starts in cluster mode." << std::endl;
+        std::string zk_cluster, zk_root_path;
+        ReadZKFromYaml("./conf.yaml", zk_cluster, zk_root_path);
         ::openmldb::sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = FLAGS_zk_cluster;
-        cluster_options.zk_path = FLAGS_zk_root_path;
+        cluster_options.zk_cluster = zk_cluster;
+        cluster_options.zk_path = zk_root_path;
+
         ::openmldb::tools::ClusterTablemetaReader cluster_tablemeta_reader =
                 ::openmldb::tools::ClusterTablemetaReader(FLAGS_db_name, FLAGS_table_name,
                                                           tablet_map, cluster_options);
-        cluster_tablemeta_reader.ReadTableMeta();
+        if (cluster_tablemeta_reader.ReadTableMeta() == 0) {
+            return -1;
+        }
         table_schema = cluster_tablemeta_reader.getSchema();
         tmp_path = cluster_tablemeta_reader.GetTmpPath().string();
     }
@@ -109,7 +121,7 @@ int main(int argc, char* argv[]) {
         std::string table = tmp_path + "/" + ptr->d_name;
         file_path.emplace_back(table);
     }
-    for (auto table : file_path) {
+    for (const auto& table : file_path) {
         printf("Opening table path: %s\n", table.c_str());
         ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(table);
         exporter.SetSchema(table_schema);

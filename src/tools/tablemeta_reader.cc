@@ -20,16 +20,16 @@
 
 #include <cstdlib>
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
-#include "sdk/sql_cluster_router.h"
+#include "codec/schema_codec.h"
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
-#include "codec/schema_codec.h"
+//#include "sdk/sql_cluster_router.h"
 
-using ::openmldb::sdk::SQLClusterRouter;
+//using ::openmldb::sdk::SQLClusterRouter;
 using ::openmldb::sdk::DBSDK;
 using ::openmldb::codec::SchemaCodec;
 using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>;
@@ -37,18 +37,38 @@ using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameser
 namespace openmldb {
 namespace tools {
 
-void StandaloneTablemetaReader::ReadTableMeta() {
+void TablemetaReader::copyFromRemote(const std::string& host, const std::string& source,
+                                     const std::string& dest, int type) {
+    char exec[200];
+    if (type == TYPE_FILE) {
+        snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+    } else {
+        snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+    }
+    printf("SCP Command: %s, ", exec);
+    if (system(exec) == 0) {
+        printf("copied successfully.\n");
+    } else {
+        printf("not copied successfully.\n");
+    }
+
+}
+bool StandaloneTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
-    ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::StandAloneSDK(host_, port_);
-    sdk->Init();
-    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
-    sr->Init();
-    ::openmldb::nameserver::TableInfo tableInfo = sr->GetTableInfo(db_name_, table_name_);
+    ::openmldb::sdk::StandAloneSDK sdk(host_, port_);
+    sdk.Init();
+//    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
+//    sr->Init();
+    auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
+    tid_ = tableInfo_ptr->tid();
+    // check whether table exists
+    if (tid_ == 0) {
+        printf("Table not found. Exit\n");
+        return false;
+    }
+    schema_ = tableInfo_ptr->column_desc();
 
-    tid_ = tableInfo.tid();
-    schema_ = tableInfo.column_desc();
-
-    for (const auto& tablePartition : tableInfo.table_partition()) {
+    for (const auto& tablePartition : tableInfo_ptr->table_partition()) {
         uint32_t pid = tablePartition.pid();
         for (const auto& partitionMeta : tablePartition.partition_meta()) {
             std::string path;
@@ -58,15 +78,9 @@ void StandaloneTablemetaReader::ReadTableMeta() {
                 if (tablet_map_.find(endpoint) != tablet_map_.end()) {
                     path = tablet_map_[endpoint];
                     std::string db_root_path = ReadDBRootPath(path, host_);
-                    std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
 
-                    char exec[200];
-                    snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host_.c_str(), data_path.c_str(), tmp_path_.string().c_str());
-                    printf("SCP Command: %s\n", exec);
-                    if (system(exec) == 0)
-                        printf("%s copied successfully.\n", data_path.c_str());
-                    else
-                        printf("%s not copied successfully.\n", data_path.c_str());
+                    std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
+                    copyFromRemote(host_, data_path, tmp_path_.string(), TYPE_DIRECTORY);
                 } else {
                     printf("Error. Cannot find endpoint.\n");
                 }
@@ -75,28 +89,23 @@ void StandaloneTablemetaReader::ReadTableMeta() {
         }
     }
     printf("---------end ReadTableMeta---------\n");
+    return true;
 }
 
 std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/standalone_tablet.flags";
+    copyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
 
-    char exec[200];
-    snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
-    printf("SCP Command: %s\n", exec);
-    if (system(exec) == 0)
-        printf("%s copied successfully.\n", tablet_path.c_str());
-    else
-        printf("%s not copied successfully.\n", tablet_path.c_str());
     std::string tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
     std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;
     std::string db_root = "--db_root_path";
     while (std::getline(infile, line)) {
-        if (line.find(db_root) != std::string::npos) {
+        if (line.find(db_root) != std::string::npos && line[0] != '#') {
             db_root_path = line.substr(line.find("=") + 1);
-            if (db_root_path[0] == '.')
+            if (db_root_path[0] != '/')
                 db_root_path = deploy_dir + db_root_path.substr(1);
             break;
         }
@@ -105,18 +114,23 @@ std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_
     return db_root_path;
 }
 
-void ClusterTablemetaReader::ReadTableMeta() {
+bool ClusterTablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
-    ::openmldb::sdk::DBSDK *sdk = new ::openmldb::sdk::ClusterSDK(options_);
-    sdk->Init();
-    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
-    sr->Init();
-    ::openmldb::nameserver::TableInfo tableInfo = sr->GetTableInfo(db_name_, table_name_);
+    ::openmldb::sdk::ClusterSDK sdk(options_);
+    sdk.Init();
+//    SQLClusterRouter *sr = new SQLClusterRouter(sdk);
+//    sr->Init();
+    auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
 
-    tid_ = tableInfo.tid();
-    schema_ = tableInfo.column_desc();
+    tid_ = tableInfo_ptr->tid();
+    // check whether table exists
+    if (tid_ == 0) {
+        printf("Table not found. Exit\n");
+        return false;
+    }
+    schema_ = tableInfo_ptr->column_desc();
 
-    for (const auto& tablePartition : tableInfo.table_partition()) {
+    for (const auto& tablePartition : tableInfo_ptr->table_partition()) {
         uint32_t pid = tablePartition.pid();
         for (const auto& partitionMeta : tablePartition.partition_meta()) {
             std::string path, endpoint;
@@ -127,14 +141,9 @@ void ClusterTablemetaReader::ReadTableMeta() {
                     path = tablet_map_[endpoint];
                     std::string host = endpoint.substr(0, endpoint.find(":"));
                     std::string db_root_path = ReadDBRootPath(path, host);
+
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-                    char exec[200];
-                    snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), data_path.c_str(), tmp_path_.string().c_str());
-                    printf("SCP Command: %s\n", exec);
-                    if (system(exec) == 0)
-                        printf("%s copied successfully.\n", data_path.c_str());
-                    else
-                        printf("%s not copied successfully.\n", data_path.c_str());
+                    copyFromRemote(host, data_path, tmp_path_.string(), TYPE_DIRECTORY);
                 } else {
                     printf("Error. Cannot find endpoint.\n");
                 }
@@ -143,27 +152,23 @@ void ClusterTablemetaReader::ReadTableMeta() {
         }
     }
     printf("---------end ReadTableMeta---------\n");
+    return true;
 }
 
-std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
+std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string& host) {
     printf("--------start ReadDBRootPath--------\n");
     std::string tablet_path = deploy_dir + "/conf/tablet.flags";
-    char exec[200];
-    snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), tablet_path.c_str(), tmp_path_.string().c_str());
-    printf("SCP Command: %s\n", exec);
-    if (system(exec) == 0)
-        printf("%s copied successfully.\n", tablet_path.c_str());
-    else
-        printf("%s not copied successfully.\n", tablet_path.c_str());
-    std::string tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
+    copyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
+
+    std::string tablet_local_path =  tmp_path_.string() + "/tablet.flags";
     std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;
     std::string db_root = "--db_root_path";
     while (std::getline(infile, line)) {
-        if (line.find(db_root) != std::string::npos) {
+        if (line.find(db_root) != std::string::npos && line[0] != '#') {
             db_root_path = line.substr(line.find("=") + 1);
-            if (db_root_path[0] == '.')
+            if (db_root_path[0] != '/')
                 db_root_path = deploy_dir + db_root_path.substr(1);
             break;
         }

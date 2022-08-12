@@ -22,8 +22,8 @@
 #ifndef SRC_TOOLS_LOG_EXPORTER_H_
 #define SRC_TOOLS_LOG_EXPORTER_H_
 
-#include <string>
 #include <vector>
+#include <string>
 
 #include "codec/codec.h"
 
@@ -35,7 +35,7 @@ namespace tools {
 
 class Exporter {
  public:
-    explicit Exporter(const std::string &file_path) : table_dir_path_(file_path) {}
+    explicit Exporter(const std::string& file_path) : table_dir_path_(file_path) {}
 
     ~Exporter() {}
 
@@ -43,13 +43,13 @@ class Exporter {
 
     void ReadManifest();
 
-    void SetSchema(const Schema &schema) { schema_ = schema; }
+    void SetSchema(const Schema& schema) { schema_ = schema; }
 
-    Schema GetSchema() { return schema_; }
+    Schema GetSchema() const { return schema_; }
 
     std::string GetSnapshotPath() { return snapshot_path_; }
 
-    int GetOffset() { return offset_; }
+    int GetOffset() const { return offset_; }
 
  private:
     std::string table_dir_path_;
@@ -59,7 +59,7 @@ class Exporter {
 
     uint64_t GetLogStartOffset(std::string&);
 
-    void ReadLog(std::string&, std::ofstream&);
+    void ReadLog(const std::string&, std::ofstream&);
 
     void ReadSnapshot(std::ofstream&);
 

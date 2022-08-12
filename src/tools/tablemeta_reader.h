@@ -18,14 +18,16 @@
 #ifndef SRC_TOOLS_TABLEMETA_READER_H_
 #define SRC_TOOLS_TABLEMETA_READER_H_
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <filesystem>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include "sdk/sql_cluster_router.h"
-#include "sdk/db_sdk.h"
 #include "proto/common.pb.h"
+#include "sdk/db_sdk.h"
+
+#define TYPE_FILE 0
+#define TYPE_DIRECTORY 1
 
 using ::openmldb::sdk::ClusterOptions;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
@@ -49,14 +51,16 @@ class TablemetaReader {
 
     virtual bool IsClusterMode() const = 0;
 
-    virtual void ReadTableMeta() = 0;
+    virtual bool ReadTableMeta() = 0;
 
-    std::filesystem::path GetTmpPath() { return tmp_path_; }
+    std::filesystem::path GetTmpPath() const { return tmp_path_; }
 
-    Schema getSchema() { return schema_; }
+    Schema getSchema() const { return schema_; }
 
  protected:
-    virtual std::string ReadDBRootPath(const std::string &, const std::string &) = 0;
+    virtual std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) = 0;
+
+    void copyFromRemote(const std::string& host, const std::string& source, const std::string& dest, int type);
 
     std::string db_name_;
     std::string table_name_;
@@ -74,10 +78,10 @@ class ClusterTablemetaReader : public TablemetaReader {
 
     bool IsClusterMode() const override { return true; }
 
-    void ReadTableMeta() override;
+    bool ReadTableMeta() override;
 
 private:
-    std::string ReadDBRootPath(const std::string &, const std::string &) override;
+    std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) override;
 
     ClusterOptions options_;
 };
@@ -91,10 +95,10 @@ class StandaloneTablemetaReader : public TablemetaReader {
 
     bool IsClusterMode() const override { return false; }
 
-    void ReadTableMeta() override;
+    bool ReadTableMeta() override;
 
  private:
-    std::string ReadDBRootPath(const std::string &, const std::string &) override;
+    std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) override;
 
     std::string host_;
     uint32_t port_;
