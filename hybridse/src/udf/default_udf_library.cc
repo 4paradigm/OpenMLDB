@@ -2126,22 +2126,22 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )";
 
     RegisterExternal("last_day")
-            .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
-            .return_by_arg(true)
-            .returns<Nullable<Date>>()
-            .doc(last_day_doc);
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
 
     RegisterExternal("last_day")
-            .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
-            .return_by_arg(true)
-            .returns<Nullable<Date>>()
-            .doc(last_day_doc);
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
 
     RegisterExternal("last_day")
-            .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
-            .return_by_arg(true)
-            .returns<Nullable<Date>>()
-            .doc(last_day_doc);
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
 
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>()
