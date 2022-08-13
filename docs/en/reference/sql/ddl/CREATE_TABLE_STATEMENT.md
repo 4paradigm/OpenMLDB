@@ -194,11 +194,11 @@ The index key must be configured, and other configuration items are optional. Th
 |------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `KEY`      | It defines the index column (required). OpenMLDB supports single-column indexes as well as joint indexes. When `KEY`=one column, a single-column index is configured. When `KEY`=multiple columns, the joint index of these columns is configured: several columns are spliced into a new string as an index in order. | Single-column index: `ColumnName`<br/>Joint index: <br/>`(ColumnName (, ColumnName)* ) `                                  | Single-column index: `INDEX(KEY=col1)`<br />Joint index: `INDEX(KEY=(col1, col2))`                                           |
 | `TS`       | It defines the index time column (optional). Data on the same index will be sorted by the index time column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time.                                                                                                        | `ColumnName`                                                                                                              | `INDEX(KEY=col1, TS=std_time)`。 The index column is col1, and the data rows with the same col1 value are sorted by std_time. |
-| `TTL_TYPE` | It defines the elimination rules (optional). Including four types. When `TTL_TYPE` is not explicitly configured, the `ABSOLUTE` expiration configuration is used by default.                                                                                                                                           | Supported expr: `ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                                | For specific usage, please refer to "Configuration Rules for TTL and TTL_TYPE" bellow.                                       |
+| `TTL_TYPE` | It defines the elimination rules (optional). Including four types. When `TTL_TYPE` is not explicitly configured, the `ABSOLUTE` expiration configuration is used by default.                                                                                                                                           | Supported expr: `ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                                | For specific usage, please refer to **Configuration Rules for TTL and TTL_TYP** bellow.                                      |
 | `TTL`      | It defines the maximum survival time/number. Different TTL_TYPEs determines different `TTL` configuration methods. When `TTL` is not explicitly configured, `TTL=0` which means OpenMLDB will not evict records.                                                                                                       | Supported expr: `int_literal`<br/>  `interval_literal`<br/>`( interval_literal , int_literal )` | For specific usage, please refer to "Configuration Rules for TTL and TTL_TYPE" bellow.                                       |
 
 
-Configuration details of TTL and TTL_TYPE:
+**Configuration details of TTL and TTL_TYPE**:
 
 | TTL_TYPE    | TTL                                                                                                                                                                                               | Note                                                                                                   | Example                                                                                                                                                       |
 | ----------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -212,7 +212,8 @@ Configuration details of TTL and TTL_TYPE:
 
 **Example 1**
 
-Create A Table With A Single-Column Index
+The following sql example creates a table with a single-column index.
+
 ```sql
 USE db1;
 --SUCCEED: Database changed
@@ -235,7 +236,8 @@ desc t1;
 
 **Example 2**
 
-Create A Table With A Union Column Index
+The following sql example creates a table with a joint index.
+
 ```sql
 USE db1;
 --SUCCEED: Database changed
@@ -258,7 +260,9 @@ desc t1;
 
 **Example 3**
 
-Create A Table With A Single Column Index + Time Column
+The following sql example creates a table with a single-column index configuring the time column.
+
+
 ```sql
 USE db1;
 --SUCCEED: Database changed
@@ -281,7 +285,7 @@ desc t1;
 
 **Example 4**
 
-Create A Table With A Single Column Index + Time Column and Configure TTL_TYPE and TTL
+The following sql example creates a table with a single-column index configuring the time column, TTL_TYPE and TTL.
 
 ```sql
 USE db1;
@@ -305,7 +309,7 @@ desc t1;
 
 **Example 5** 
 
-Create A Table With Latest TTL Type, With A Single Column Index + Time Column, And Configure The TTL To 1
+The following sql commands create a table with a single-column index and set TTL_TYPE=LATEST.
 
 ```sql
 USE db1;
@@ -330,7 +334,7 @@ desc t1;
 
 **Example 6** 
 
-Create A Table With A Single-Column Index + Time Column Whose TTL Type Is absANDlat, And Configure The Expiration Time To Be 30 Days And The Maximum Number Of Retained Records As 10
+The following sql commands create a table with a single-column index, set TTL_TYPE=absandlat and configure the maximum number of retained records as 10.
 
 
 ```sql
@@ -354,8 +358,8 @@ desc t1;
 ```
 
 **Example 7** 
-Create A Table With A Single-Column Index + Time Column Whose TTL Type Is absORlat, And Configure The Expiration Time To Be 30 Days And The Maximum Number Of Retained Records As 10
 
+The following sql commands create a table with a single-column index, set TTL_TYPE=absorlat and configure the maximum number of retained records as 10.
 ```sql
 USE db1;
 --SUCCEED: Database changed
@@ -375,9 +379,11 @@ desc t1;
   1   INDEX_0_1639525079   col1   std_time   43200min||10   kAbsOrLat  
  --- -------------------- ------ ---------- -------------- ----------- 
 ```
+
 **Example 8** 
 
-Create A Multi-Index Table
+The following sql commands create a multi-index table.
+
 ```sql
 USE db1;
 --SUCCEED: Database changed
@@ -437,22 +443,23 @@ StorageMode
 
 
 
-| Configuration Item | Note                                                                                                                                                                                                                                                                                                                                                                     | Example                                                                       |
-|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `PARTITIONNUM`     | Configure the number of partitions for the table. OpenMLDB divides the table into different partition blocks for storage. A partition is the basic unit of storage, replica, and failover related operations in OpenMLDB. When not explicitly configured, `PARTITIONNUM` defaults to 8.                                                                                  | `OPTIONS (PARTITIONNUM=8)`                                                    |
-| `REPLICANUM`       | Configure the number of replicas for the table. Note that the number of replicas is only configurable in Cluster OpenMLDB.                                                                                                                                                                                                                                               | `OPTIONS (REPLICANUM=3)`                                                      |
-| `DISTRIBUTION`     | Configure the distributed node endpoint configuration. Generally, it contains a Leader node and several follower nodes. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and node.                                                                              | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
-| `STORAGE_MODE`     | The storage mode of the table. The supported modes are `Memory`, `HDD` or `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file conf/tablet.flags](../../../deploy/ conf.md). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+| Configuration Item | Note                                                                                                                                                                                                                                                                                                                                                                                | Example                                                                       |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `PARTITIONNUM`     | It defines the number of partitions for the table. OpenMLDB divides the table into different partition blocks for storage. A partition is the basic unit of storage, replica, and fail-over related operations in OpenMLDB. When not explicitly configured, `PARTITIONNUM` defaults to 8.                                                                                           | `OPTIONS (PARTITIONNUM=8)`                                                    |
+| `REPLICANUM`       | It defines the number of replicas for the table. Note that the number of replicas is only configurable in Cluster version.                                                                                                                                                                                                                                                          | `OPTIONS (REPLICANUM=3)`                                                      |
+| `DISTRIBUTION`     | It defines the distributed node endpoint configuration. Generally, it contains a Leader node and several followers. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and nodes.                                                                                            | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
+| `STORAGE_MODE`     | It defines the storage mode of the table. The supported modes are `Memory`, `HDD` and `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file conf/tablet.flags](../../../deploy/conf.md). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
 
-##### Disk Table（`STORAGE_MODE` == `HDD`|`SSD`）With Memory Table（`STORAGE_MODE` == `Memory`）The Difference
-- Currently disk tables do not support GC operations
-- When inserting data into a disk table, if (`key`, `ts`) are the same under the same index, the old data will be overwritten; a new piece of data will be inserted into the memory table
-- Disk tables do not support `addindex` and `deleteindex` operations, so you need to define all required indexes when creating a disk table
-(The `deploy` command will automatically add the required indexes, so for a disk table, if the corresponding index is missing when it is created, `deploy` will fail)
+##### The Difference between Disk Table(`STORAGE_MODE` == `HDD`|`SSD`) and Memory Table (`STORAGE_MODE` == `Memory`)
+- Currently, disk tables do not support GC operations
+- When inserting data into a disk table, if (`key`, `ts`) are the same under the same index, the old data will be overwritten; a new piece of data will be inserted into the memory table.
+- Disk tables do not support `addindex` or `deleteindex` operations, so you need to define all required indexes when creating a disk table. The `deploy` command will automatically add the required indexes, so for a disk table, if the corresponding index is missing when it is created, `deploy` will fail.
 
-##### Example: 
-Create A Band Table, Configure The Number Of Partions As 8, The Number Of Replicas As 3, And The Storage Mode As HDD
+
+
+##### Example
+The following sql commands create a table and configure the number of partitions as 8, the number of replicas as 3, and the storage_mode as HDD.
 
 ```sql
 USE db1;
