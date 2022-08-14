@@ -5,8 +5,9 @@
 SHOW COMPONENTS;
 ```
 
-## 说明
-| Column       | Description                                                             |
+## 输出信息说明
+
+| Column       | Note                                                                    |
 | ------------ |-------------------------------------------------------------------------|
 | Endpoint     | 组件端点，同 `--endpoint` flag                                                |
 | Role         | 组件角色，有 `tablet`、`nameserver`、`taskmanager`、`apiserver`， 同 `--role` flag |
