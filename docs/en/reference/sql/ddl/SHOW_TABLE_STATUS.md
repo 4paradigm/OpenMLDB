@@ -11,21 +11,21 @@ SHOW TABLE STATUS;
 
 ## Meaning of the Output
 
-| Column            | Note                                                                                              |
-| ----------------- |---------------------------------------------------------------------------------------------------|
-| Table_id          | It shows the unique id of the table.                                                              |
-| Table_name        | It shows the name of the table.                                                                   |
-| Database_name     | It shows the name of the database, which the table belongs to.                                    |
-| Storage_type      | It shows the storage type of the table. There are three types of value: `memory`,`ssd` and `hdd`. |
-| Rows              | It shows the number of rows in this table.                                                        |
-| Memory_data_size  | It shows the memory usage of the table in bytes.                                                  |
-| Disk_data_size    | It shows the disk usage of the table in bytes.                                  |
-| Partition         | Partiton 数量                                                                                       |
-| Partition_unalive | Unalive partition 数量                                                                              |
-| Replica           | Replica 数量                                                                                        |
-| Offline_path      | 表对应 offline 数据路径, `NULL` if not exists                                                            |
-| Offline_format    | 表对应 offline 数据格式, `NULL` if not exists                                                            |
-| Offline_deep_copy | 表对应 offline 数据是否使用 deep copy, `NULL` if not exits                                                 |
+| Column            | Note                                                                                                 |
+| ----------------- |------------------------------------------------------------------------------------------------------|
+| Table_id          | It shows the unique id of the table.                                                                 |
+| Table_name        | It shows the name of the table.                                                                      |
+| Database_name     | It shows the name of the database, which the table belongs to.                                       |
+| Storage_type      | It shows the storage type of the table. There are three types of value: `memory`,`ssd` and `hdd`.    |
+| Rows              | It shows the number of rows in this table.                                                           |
+| Memory_data_size  | It shows the memory usage of the table in bytes.                                                     |
+| Disk_data_size    | It shows the disk usage of the table in bytes.                                                       |
+| Partition         | It shows the number of partitons of the table.                                                       |
+| Partition_unalive | It shows the number of the unalive partitions of the table.                                          |
+| Replica           | It shows the replica number of the table.                                                            |
+| Offline_path      | It shows the path of the offline data for this table. The `NULL` value means the path doesn't exist. |
+| Offline_format    | It shows the offline data format of the table. The `NULL` value means it is not set.                 |
+| Offline_deep_copy | It indicates whether deep copy is used on the table. The `NULL` value means it is not set.   |
 
 
 
