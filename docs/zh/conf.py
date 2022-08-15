@@ -35,7 +35,10 @@ extensions = [
 'myst_parser',
 'sphinx_multiversion',
 'sphinx_copybutton',
+'sphinx.ext.autosectionlabel',
 ]
+
+myst_heading_anchors = 4
 
 myst_enable_extensions = [
     "amsmath",
@@ -53,7 +56,6 @@ myst_enable_extensions = [
     "tasklist",
 ]
 
-myst_heading_anchors = 4
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
