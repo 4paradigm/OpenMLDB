@@ -1180,14 +1180,22 @@ void delete_iterator(int8_t *input) {
 }
 
 int32_t locate(StringRef *substr, StringRef *str) {
-    if (nullptr == str || str->IsNull() || nullptr == substr || substr->IsNull()) {
+    if (nullptr == str || str->IsNull()) {
+        return -1;
+    }
+
+    if (nullptr == substr || substr->IsNull()) {
         return 0;
     }
     return locate(substr, str, 1);
 }
 
 int32_t locate(StringRef *substr, StringRef *str, int32_t pos = 1) {
-    if (nullptr == str || str->IsNull() || nullptr == substr || substr->IsNull()) {
+    if (nullptr == str || str->IsNull()) {
+        return -1;
+    }
+
+    if (nullptr == substr || substr->IsNull()) {
         return 0;
     }
 
@@ -1196,10 +1204,10 @@ int32_t locate(StringRef *substr, StringRef *str, int32_t pos = 1) {
 
     // `substr` is out of str range
     if (substr_size > str_size || substr_size + pos) {
-        return 0;
+        return -1;
     }
 
-    for (int32_t i = pos - 1; i +substr_size < str_size; i++) {
+    for (int32_t i = pos - 1; i + substr_size <= str_size; i++) {
         bool flag = true;
         for (int32_t j = 0; j < substr_size; j++) {
             if (str->data_[i + j] != substr->data_[j]) {
@@ -1208,10 +1216,10 @@ int32_t locate(StringRef *substr, StringRef *str, int32_t pos = 1) {
             }
         }
         if (flag) {
-            return i;
+            return i + 1;
         }
     }
-    return;
+    return -1;
 }
 
 }  // namespace v1

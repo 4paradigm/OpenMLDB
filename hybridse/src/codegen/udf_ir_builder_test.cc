@@ -1089,15 +1089,27 @@ TEST_F(UdfIRBuilderTest, ReplaceNullable) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, nullptr);
 }
 
-TEST_F(UdfIRBuilderTest, concat_str_udf_test) {
+TEST_F(UdfIRBuilderTest, locate_test) {
+    //    locate('bare', 'foobarbar') == -1
+    CheckUdf<int32_t, StringRef, StringRef>("locate", -1, StringRef("bare"), StringRef("foobarbar"));
+
+    //    locate('bare', 'bar') == -1
+    CheckUdf<int32_t, StringRef, StringRef>("locate", -1, StringRef("bare"), StringRef("bar"));
+
     //    locate('bar', 'foobarbar') == 4
-    CheckUdf<int32_t, StringRef, StringRef>("locate", StringRef("bar"),
-                                   StringRef("foobarbar"));
+    CheckUdf<int32_t, StringRef, StringRef>("locate", 4, StringRef("bar"), StringRef("foobarbar"));
 
     // locate('bar', 'foobarbar', 5) == 7
-    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", StringRef("bar"),
-                                              StringRef("foobarbar"),
-                                              5);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 7, StringRef("bar"), StringRef("foobarbar"), 5);
+
+    //    locate('bar', 'foobarbar', 7) == 0
+    CheckUdf<int32_t, StringRef, StringRef>("locate", -1, StringRef("bar"), StringRef("foobarbar"), 7);
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", 0, nullptr, StringRef("foobarbar"));
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", 0, nullptr, StringRef("foobarbar"), 2);
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", -1, StringRef("bar"), nullptr);
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", -1, StringRef("bar"), nullptr, 2);
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", -1, nullptr, nullptr);
+    CheckUdf<int32_t, Nullable<StringRef>, Nullable<StringRef>>("locate", -1, nullptr, nullptr, 1);
 }
 }  // namespace codegen
 }  // namespace hybridse

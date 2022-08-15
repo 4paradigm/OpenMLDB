@@ -1115,7 +1115,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 @since 0.6.0)");
 
         RegisterExternal("locate")
-            .args<StringRef, int32_t, int32_t>(
+            .args<StringRef, StringRef, int32_t>(
                 static_cast<int32_t (*)(StringRef*, StringRef*, int32_t)>(udf::v1::locate))
             .return_by_arg(false)
             .doc(R"(
