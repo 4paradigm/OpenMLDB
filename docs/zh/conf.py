@@ -38,6 +38,8 @@ extensions = [
 'sphinx.ext.autosectionlabel',
 ]
 
+autosectionlabel_prefix_document = True
+
 myst_heading_anchors = 4
 
 myst_enable_extensions = [
