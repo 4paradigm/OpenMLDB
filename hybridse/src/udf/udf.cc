@@ -483,6 +483,7 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     std::string_view name_view(name->data_, name->size_);
     
     RE2::Options opts(RE2::POSIX);
+    opts.set_log_errors(false);
     opts.set_one_line(true);
 
     for( auto &flag: flags_view ) {
@@ -502,10 +503,16 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
             case 's':
                 opts.set_dot_nl(true);
             break;
+            // ignore unknown flag
         }
     }
 
     RE2 re(pattern_view, opts);
+    if(re.error_code() != 0) {
+        DLOG(ERROR) << "Error parsing '" << pattern_view << "': " << re.error();
+        *out = false;
+        return;
+    }
     *is_null = false;
     *out = RE2::FullMatch(name_view, re);
 }
