@@ -40,7 +40,7 @@ extensions = [
 
 autosectionlabel_prefix_document = True
 
-myst_heading_anchors = 4
+myst_heading_anchors = 6
 
 myst_enable_extensions = [
     "amsmath",

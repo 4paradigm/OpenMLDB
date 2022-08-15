@@ -26,7 +26,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                         |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](https://openmldb.ai/docs/en/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html#the-usage-specification-of-last-join-under-online-serving) |
+| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving) |
 
 
 
@@ -79,7 +79,7 @@ The following SQL commands created the right table t2 as mentioned above and ins
 The storage order of data rows is not necessarily the same as their insert order. And the storage order will influence the matching order when JOIN.
 In this example, we want to realize the storage order of t2 as the above figure displayed, which will lead to a result that is convenient to check. 
 To guarantee the storage order of t2, please create following index, do not set `ts`, and sequentially instert data one by one. 
-Detail explanation is in [columnindex](https://openmldb.ai/docs/en/main/reference/sql/ddl/CREATE_TABLE_STATEMENT.html#columnindex).  
+Detail explanation is in [columnindex](../ddl/CREATE_TABLE_STATEMENT.md#columnindex).  
 ```
 ```sql
 >CREATE TABLE t2 (id INT, col1 string,std_ts TIMESTAMP,INDEX(KEY=col1));
