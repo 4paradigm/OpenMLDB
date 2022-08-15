@@ -127,8 +127,23 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT col0, sum(col1) OVER w1 
 
 目前长窗口优化有以下几点限制：
 - 仅支持`SelectStmt`只涉及到一个物理表的情况，即不支持包含`join`或`union`的`SelectStmt`
-- 支持的聚合运算仅限：`sum`, `avg`, `count`, `min`, `max`
+
+- 支持的聚合运算仅限：`sum`, `avg`, `count`, `min`, `max`, `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`
+
 - 执行`deploy`命令的时候不允许表中有数据
+
+- 对于 `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where` 带 where 条件的运算，有额外限制：
+
+  1. 主表必须是内存表 (`storage_mode = 'Memory'`)
+
+  2. Deploy 的 `BucketSize` 类型需要是 range 类型，即支持 `long_windows='w1:1d'`, 不支持 `long_windows='w1:100'`
+
+  3. where 条件必须是 `<column ref> op <const value> 或者 <const value> op <column ref>`的格式
+
+     - 支持的 where op: `>, <, >=, <=, =, !=`
+
+     - where 关联的列 `<column ref>`，数据类型不能是 date 或者 timestamp
+
 
 ## 相关SQL
 

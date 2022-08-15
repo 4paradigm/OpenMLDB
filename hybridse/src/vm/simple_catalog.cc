@@ -217,15 +217,12 @@ bool SimpleCatalogTableHandler::AddRow(const Row row) {
     return true;
 }
 
-std::vector<AggrTableInfo> SimpleCatalog::GetAggrTables(
-    const std::string& base_db,
-    const std::string& base_table,
-    const std::string& aggr_func,
-    const std::string& aggr_col,
-    const std::string& partition_cols,
-    const std::string& order_col) {
-    ::hybridse::vm::AggrTableInfo info = {"aggr_" + base_table, "aggr_db", base_db, base_table,
-                                           aggr_func, aggr_col, partition_cols, order_col, "1000"};
+std::vector<AggrTableInfo> SimpleCatalog::GetAggrTables(const std::string &base_db, const std::string &base_table,
+                                                        const std::string &aggr_func, const std::string &aggr_col,
+                                                        const std::string &partition_cols, const std::string &order_col,
+                                                        const std::string &filter_col) {
+    ::hybridse::vm::AggrTableInfo info = {"aggr_" + base_table, "aggr_db", base_db, base_table, aggr_func, aggr_col,
+                                          partition_cols,       order_col, "1000",  filter_col};
     return {info};
 }
 

@@ -39,13 +39,13 @@ sleep 5
 pgrep -f openmldb
 echo "ROOT_DIR:${ROOT_DIR}"
 
-cd "${ROOT_DIR}"/python/dist/
+cd "${ROOT_DIR}"/python/openmldb_sdk/dist/
 whl_name=$(ls openmldb*.whl)
 echo "whl_name:${whl_name}"
 python3 -m pip install "${whl_name}"
 python3 -m pip install pytest-cov
 
-cd "${ROOT_DIR}"/python/test
+cd "${ROOT_DIR}"/python/openmldb_sdk/test
 pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
 cd "${ROOT_DIR}"/onebox && sh stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

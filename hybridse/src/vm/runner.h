@@ -24,6 +24,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
@@ -518,9 +521,9 @@ class Runner : public node::NodeBase<Runner> {
     static void PrintData(std::ostringstream& oss,
                           const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
-    static void PrintRow(std::ostringstream& oss,
-                          const vm::SchemasContext* schema_list,
-                          Row row);
+    static void PrintRow(std::ostringstream& oss, const vm::SchemasContext* schema_list, const Row& row);
+    static std::string GetPrettyRow(const vm::SchemasContext* schema_list, const Row& row);
+
     static const bool IsProxyRunner(const RunnerType& type) {
         return kRunnerRequestRunProxy == type ||
                kRunnerBatchRequestRunProxy == type;
@@ -990,18 +993,23 @@ class RequestUnionRunner : public Runner {
 class RequestAggUnionRunner : public Runner {
  public:
     RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
-                          bool exclude_current_time, bool output_request_row, const node::FnDefNode* func,
-                          const node::ExprNode* agg_col)
+                          bool exclude_current_time, bool output_request_row, const node::CallExprNode* project)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
-          func_(func),
-          agg_col_(agg_col) {
-    if (agg_col_->GetExprType() == node::kExprColumnRef) {
-        agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+          func_(project->GetFnDef()),
+          agg_col_(project->GetChild(0)) {
+        if (agg_col_->GetExprType() == node::kExprColumnRef) {
+            agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
+        } /* for kAllExpr like count(*), agg_col_name_ is empty */
+
+        if (project->GetChildNum() >= 2) {
+            // assume second kid of project as filter condition
+            // function support check happens in compile
+            cond_ = project->GetChild(1);
+        }
     }
-}
 
     bool InitAggregator();
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
@@ -1015,13 +1023,20 @@ class RequestAggUnionRunner : public Runner {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
 
+    static std::string PrintEvalValue(const absl::StatusOr<std::optional<bool>>& val);
+
  private:
     enum AggType {
         kSum,
         kCount,
         kAvg,
         kMin,
-        kMax
+        kMax,
+        kCountWhere,
+        kSumWhere,
+        kAvgWhere,
+        kMinWhere,
+        kMaxWhere,
     };
 
     RequestWindowUnionGenerator windows_union_gen_;
@@ -1038,10 +1053,23 @@ class RequestAggUnionRunner : public Runner {
     std::string agg_col_name_;
     type::Type agg_col_type_;
 
+    // the filter condition for count_where
+    // simple compassion binary expr like col < 0 is supported
+    node::ExprNode* cond_ = nullptr;
+
     std::unique_ptr<BaseAggregator> CreateAggregator() const;
-    static inline const std::unordered_map<std::string, AggType> agg_type_map_ = {
-        {"sum", kSum}, {"count", kCount}, {"avg", kAvg}, {"min", kMin}, {"max", kMax},
-    };
+
+    static inline const absl::flat_hash_map<absl::string_view, AggType> agg_type_map_ = {
+        {"sum", kSum},
+        {"count", kCount},
+        {"avg", kAvg},
+        {"min", kMin},
+        {"max", kMax},
+        {"count_where", kCountWhere},
+        {"sum_where", kSumWhere},
+        {"avg_where", kAvgWhere},
+        {"min_where", kMinWhere},
+        {"max_where", kMaxWhere}};
 };
 
 class PostRequestUnionRunner : public Runner {
