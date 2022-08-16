@@ -16,7 +16,7 @@
         <maven.compiler.target>8</maven.compiler.target>
 
         <openmldb.jdbc.version>0.6.0</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.6.0-macos</openmldb.navtive.version>
+        <openmldb.navtive.version>0.6.0</openmldb.navtive.version>
     </properties>
 
     <dependencies>
@@ -30,15 +30,15 @@
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
             <version>${openmldb.jdbc.version}</version>
-            <scope>system</scope>
-            <systemPath>/Users/zhaowei/Downloads/openmldb-jdbc-0.6.0.jar</systemPath>
+<!--            <scope>system</scope>-->
+<!--            <systemPath>/Users/zhaowei/Downloads/openmldb-jdbc-0.6.0.jar</systemPath>-->
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
             <version>${openmldb.navtive.version}</version>
-            <scope>system</scope>
-            <systemPath>/Users/zhaowei/Downloads/openmldb-native-0.6.0.jar</systemPath>
+<!--            <scope>system</scope>-->
+<!--            <systemPath>/Users/zhaowei/Downloads/openmldb-native-0.6.0.jar</systemPath>-->
         </dependency>
 
 
