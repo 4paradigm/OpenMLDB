@@ -60,11 +60,11 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         }
     }
 
-    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        this(executor,fesqlCase,executorType);
+    public BaseSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        this(executor,sqlCase,executorType);
         this.executor = executor;
         this.executorMap = executorMap;
-        this.openMLDBInfoMap = fedbInfoMap;
+        this.openMLDBInfoMap = openMLDBInfoMap;
     }
 
     @Override
@@ -94,7 +94,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(sqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(executor, sqlCase, mainResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(mainResult, resultMap));
         }

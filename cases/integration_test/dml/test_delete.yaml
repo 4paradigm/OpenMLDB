@@ -14,7 +14,7 @@
 
 db: test_zw
 debugs: []
-version: 0.5.0
+version: 0.6.0
 cases:
   -
     id: 0
@@ -194,7 +194,7 @@ cases:
         columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
         indexs: ["index1:c3:c7"]
         rows:
-          - [1,"aa",2,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [1,"aa",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
           - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
           - [3,"aa",1,3,3,1.1,2.1,1590738990000,"2020-05-01",true]
     sqls:
@@ -204,7 +204,7 @@ cases:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       order: id
       rows:
-        - [1,"aa",2,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [1,"aa",2,2,3,1.1,2.1,1590738990000,"2020-05-01",true]
         - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
   -
     id: 11
@@ -572,6 +572,7 @@ cases:
       - select * from {0};
     expect:
       columns: ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
       rows:
         - [2,"bb",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [3,null,1,2,3,1.1,2.1,1590738990000,"2020-05-01",true]

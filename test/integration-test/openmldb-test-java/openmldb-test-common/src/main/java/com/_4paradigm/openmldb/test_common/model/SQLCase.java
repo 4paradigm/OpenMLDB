@@ -95,7 +95,7 @@ public class SQLCase implements Serializable{
             return false;
         }
         for(InputDesc input:inputs){
-            if (CollectionUtils.isNotEmpty(input.getColumns())&& StringUtils.isEmpty(input.getCreate())) {
+            if (CollectionUtils.isNotEmpty(input.getColumns())&& StringUtils.isEmpty(input.getCreate())&&StringUtils.isEmpty(input.getStorage())) {
                 return true;
             }
         }

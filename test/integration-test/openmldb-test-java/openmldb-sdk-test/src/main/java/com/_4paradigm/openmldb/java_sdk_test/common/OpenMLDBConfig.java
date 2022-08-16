@@ -60,11 +60,7 @@ public class OpenMLDBConfig {
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);
         }
-        String tableStorageMode = CONFIG.getProperty("table_storage_mode");
-        if(StringUtils.isNotEmpty(tableStorageMode)){
-            OpenMLDBGlobalVar.tableStorageMode = tableStorageMode;
-        }
-        log.info("test tableStorageMode: {}", OpenMLDBGlobalVar.tableStorageMode);
+
         String version = CONFIG.getProperty("version");
         if(StringUtils.isNotEmpty(version)){
             OpenMLDBGlobalVar.version = version;

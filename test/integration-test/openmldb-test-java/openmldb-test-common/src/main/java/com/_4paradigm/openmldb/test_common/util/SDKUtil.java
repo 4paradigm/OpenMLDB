@@ -62,7 +62,6 @@ public class SDKUtil {
     }
 
     public static OpenMLDBResult deploy(SqlExecutor sqlExecutor,String sql){
-
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         openMLDBResult.setSql(sql);
         Statement statement = sqlExecutor.getStatement();
@@ -75,7 +74,7 @@ public class SDKUtil {
             openMLDBResult.setMsg(e.getMessage());
             e.printStackTrace();
         }
-        log.info("deploy sql:{}",openMLDBResult);
+        log.info("deploy sql:{}",sql);
         return openMLDBResult;
     }
 
@@ -106,13 +105,13 @@ public class SDKUtil {
     public static OpenMLDBResult sqlRequestModeWithProcedure(SqlExecutor executor, String dbName, String spName,
                                                              Boolean needInsertRequestRow, String sql,
                                                              InputDesc rows, boolean isAsyn) throws SQLException {
-        OpenMLDBResult fesqlResult = null;
+        OpenMLDBResult openMLDBResult = null;
         if (sql.toLowerCase().startsWith("create procedure") || sql.toLowerCase().startsWith("deploy ")) {
-            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, needInsertRequestRow, sql, rows, isAsyn);
+            openMLDBResult = selectRequestModeWithSp(executor, dbName, spName, needInsertRequestRow, sql, rows, isAsyn);
         } else {
-            throw new IllegalArgumentException("unsupport sql: "+ sql);
+            throw new IllegalArgumentException("not support sql: "+ sql);
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult sql(SqlExecutor executor, String dbName, String sql) {
@@ -136,6 +135,8 @@ public class SDKUtil {
             openMLDBResult = desc(executor,dbName,sql);
         }else if(sql.contains("outfile")){
             openMLDBResult = selectInto(executor, dbName, sql);
+        }else if(sql.contains("deploy ")){
+            openMLDBResult = deploy(executor, sql);
         }else {
             openMLDBResult = select(executor, dbName, sql);
         }
@@ -149,22 +150,22 @@ public class SDKUtil {
             return null;
         }
         log.info("select into:{}",outSql);
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         ResultSet rawRs = executor.executeSQL(dbName, outSql);
         if (rawRs == null) {
-            fesqlResult.setOk(false);
-            fesqlResult.setMsg("executeSQL fail, result is null");
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg("executeSQL fail, result is null");
         } else if  (rawRs instanceof SQLResultSet){
             try {
                 SQLResultSet rs = (SQLResultSet)rawRs;
-                fesqlResult.setOk(true);
+                openMLDBResult.setOk(true);
             } catch (Exception e) {
-                fesqlResult.setOk(false);
-                fesqlResult.setMsg(e.getMessage());
+                openMLDBResult.setOk(false);
+                openMLDBResult.setMsg(e.getMessage());
             }
         }
-        log.info("select result:{} \n", fesqlResult);
-        return fesqlResult;
+        log.info("select result:{} \n", openMLDBResult);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult showDeploy(SqlExecutor executor, String dbName, String showDeploySql){
@@ -590,14 +591,18 @@ public class SDKUtil {
 
         log.info("procedure sql:{}", sql);
         String insertDbName = input.getDb().isEmpty() ? dbName : input.getDb();
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        openMLDBResult.setSpName(spName);
         if(sql.startsWith("deploy ")){
-            deploy(executor,sql);
+            OpenMLDBResult deployResult = deploy(executor, sql);
+            if(!deployResult.isOk()){
+                return deployResult;
+            }
         }else if (!executor.executeDDL(dbName, sql)) {
             log.error("execute ddl failed! sql: {}", sql);
-            fesqlResult.setOk(false);
-            fesqlResult.setMsg("execute ddl failed");
-            return fesqlResult;
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg("execute ddl failed");
+            return openMLDBResult;
         }
         List<List<Object>> result = Lists.newArrayList();
         for (int i = 0; i < rows.size(); i++) {
@@ -610,9 +615,9 @@ public class SDKUtil {
             try {
                 rps = executor.getCallablePreparedStmt(dbName, spName);
                 if (rps == null) {
-                    fesqlResult.setOk(false);
-                    fesqlResult.setMsg("Fail to getCallablePreparedStmt");
-                    return fesqlResult;
+                    openMLDBResult.setOk(false);
+                    openMLDBResult.setMsg("Fail to getCallablePreparedStmt");
+                    return openMLDBResult;
                 }
                 if (!isAsyn) {
                     resultSet = buildRequestPreparedStatement(rps, rows.get(i));
@@ -620,33 +625,33 @@ public class SDKUtil {
                     resultSet = buildRequestPreparedStatementAsync(rps, rows.get(i));
                 }
                 if (resultSet == null) {
-                    fesqlResult.setOk(false);
-                    fesqlResult.setMsg("result set is null");
-                    log.error("select result:{}", fesqlResult);
-                    return fesqlResult;
+                    openMLDBResult.setOk(false);
+                    openMLDBResult.setMsg("result set is null");
+                    log.error("select result:{}", openMLDBResult);
+                    return openMLDBResult;
                 }
                 result.addAll(ResultUtil.toList((SQLResultSet) resultSet));
                 if (needInsertRequestRow && !executor.executeInsert(insertDbName, inserts.get(i))) {
-                    fesqlResult.setOk(false);
-                    fesqlResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
-                    log.error(fesqlResult.getMsg());
-                    return fesqlResult;
+                    openMLDBResult.setOk(false);
+                    openMLDBResult.setMsg("fail to execute sql in request mode: fail to insert request row after query");
+                    log.error(openMLDBResult.getMsg());
+                    return openMLDBResult;
                 }
                 if (i == 0) {
                     try {
-                        ResultUtil.setSchema(resultSet.getMetaData(),fesqlResult);
+                        ResultUtil.setSchema(resultSet.getMetaData(),openMLDBResult);
                     } catch (SQLException throwables) {
-                        fesqlResult.setOk(false);
-                        fesqlResult.setMsg("fail to get/set meta data");
-                        return fesqlResult;
+                        openMLDBResult.setOk(false);
+                        openMLDBResult.setMsg("fail to get/set meta data");
+                        return openMLDBResult;
                     }
                 }
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 log.error("has exception. sql: {}", sql);
-                fesqlResult.setOk(false);
-                fesqlResult.setMsg("fail to execute sql");
-                return fesqlResult;
+                openMLDBResult.setOk(false);
+                openMLDBResult.setMsg("fail to execute sql");
+                return openMLDBResult;
             } finally {
                 try {
                     if (resultSet != null) resultSet.close();
@@ -656,11 +661,11 @@ public class SDKUtil {
                 }
             }
         }
-        fesqlResult.setResult(result);
-        fesqlResult.setCount(result.size());
-        fesqlResult.setOk(true);
-        log.info("select result:{}", fesqlResult);
-        return fesqlResult;
+        openMLDBResult.setResult(result);
+        openMLDBResult.setCount(result.size());
+        openMLDBResult.setOk(true);
+        log.info("select result:{}", openMLDBResult);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult selectBatchRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
@@ -835,26 +840,26 @@ public class SDKUtil {
             return null;
         }
         log.info("select sql:{}", selectSql);
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         ResultSet rawRs = executor.executeSQL(dbName, selectSql);
         if (rawRs == null) {
-            fesqlResult.setOk(false);
-            fesqlResult.setMsg("executeSQL fail, result is null");
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg("executeSQL fail, result is null");
         } else if  (rawRs instanceof SQLResultSet){
             try {
                 SQLResultSet rs = (SQLResultSet)rawRs;
-                ResultUtil.setSchema(rs.getMetaData(),fesqlResult);
-                fesqlResult.setOk(true);
+                ResultUtil.setSchema(rs.getMetaData(),openMLDBResult);
+                openMLDBResult.setOk(true);
                 List<List<Object>> result = ResultUtil.toList(rs);
-                fesqlResult.setCount(result.size());
-                fesqlResult.setResult(result);
+                openMLDBResult.setCount(result.size());
+                openMLDBResult.setResult(result);
             } catch (Exception e) {
-                fesqlResult.setOk(false);
-                fesqlResult.setMsg(e.getMessage());
+                openMLDBResult.setOk(false);
+                openMLDBResult.setMsg(e.getMessage());
             }
         }
-        log.info("select result:{} \n", fesqlResult);
-        return fesqlResult;
+        log.info("select result:{} \n", openMLDBResult);
+        return openMLDBResult;
     }
 
     // public static Object getColumnData(com._4paradigm.openmldb.ResultSet rs, Schema schema, int index) {

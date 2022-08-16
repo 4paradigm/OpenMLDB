@@ -152,7 +152,7 @@ public class CommandExecutor extends BaseExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(sqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(null,sqlCase, mainResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(mainResult, resultMap));
         }

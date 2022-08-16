@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
 
+import com._4paradigm.openmldb.test_common.util.Tool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -24,6 +25,7 @@ import org.testng.collections.Lists;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +47,8 @@ public class OpenMLDBGlobalVar {
     public static final String CASE_DESC;
     public static final String CASE_PATH;
     public static final String YAML_CASE_BASE_DIR;
+
+    public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 
     static {
         String levelStr = System.getProperty("caseLevel");
@@ -71,5 +75,10 @@ public class OpenMLDBGlobalVar {
         if (!StringUtils.isEmpty(YAML_CASE_BASE_DIR)) {
             log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
         }
+        String tableStorageMode = CONFIG.getProperty("table_storage_mode");
+        if(StringUtils.isNotEmpty(tableStorageMode)){
+            OpenMLDBGlobalVar.tableStorageMode = tableStorageMode;
+        }
+        log.info("test tableStorageMode: {}", OpenMLDBGlobalVar.tableStorageMode);
     }
 }

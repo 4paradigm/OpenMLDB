@@ -46,7 +46,7 @@ public abstract class JDBCExecutor extends BaseExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(sqlCase, mainResult,executorType);
+        List<Checker> strategyList = CheckerStrategy.build(null,sqlCase, mainResult,executorType);
         for (Checker checker : strategyList) {
             checker.check();
         }

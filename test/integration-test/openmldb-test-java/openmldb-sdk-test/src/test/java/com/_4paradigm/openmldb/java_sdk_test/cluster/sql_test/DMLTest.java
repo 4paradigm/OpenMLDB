@@ -69,5 +69,18 @@ public class DMLTest extends OpenMLDBTest {
     public void testMultiInsertByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"integration_test/dml/test_delete.yaml"})
+    @Story("delete")
+    public void testDelete(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = {"integration_test/dml/test_delete.yaml"})
+    @Story("delete")
+    public void testDeleteByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
 
 }

@@ -45,11 +45,11 @@ public class OptionsChecker extends BaseChecker {
     public void check() throws Exception {
         log.info("options check");
         String apiserverEndpoint = OpenMLDBGlobalVar.mainInfo.getApiServerEndpoints().get(0);
-        String dbName = fesqlResult.getDbName();
+        String dbName = openMLDBResult.getDbName();
         String tableName = expect.getName();
         if(tableName.matches(reg)){
             int index = Integer.parseInt(tableName.substring(1,tableName.length()-1));
-            tableName = fesqlResult.getTableNames().get(index);
+            tableName = openMLDBResult.getTableNames().get(index);
         }
         String url = String.format("http://%s/dbs/%s/tables/%s",apiserverEndpoint,dbName,tableName);
         Tool.sleep(3000);

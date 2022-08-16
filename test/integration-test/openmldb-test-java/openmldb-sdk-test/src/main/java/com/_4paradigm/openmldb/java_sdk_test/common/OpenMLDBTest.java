@@ -75,8 +75,8 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBGlobalVar.env = caseEnv;
         }
         log.info("fedb global var env: {}", env);
-        OpenMLDBClient fesqlClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
-        executor = fesqlClient.getExecutor();
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
         log.info("executor:{}",executor);
         Statement statement = executor.getStatement();
         statement.execute("SET @@execute_mode='online';");
