@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "node/node_manager.h"
@@ -219,11 +220,13 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
 
     if (0 != sql_status.code) {
         DLOG(ERROR) << sql_status.msg;
-        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg);
+        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg, sql_status.GetTraces());
     }
+
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
+            // TODO(ace): Traverse Node return Status
             if (!TraverseNode(node, window_map, infos)) {
                 return hybridse::sdk::Status(base::ReturnCode::kError, "TraverseNode failed");
             }

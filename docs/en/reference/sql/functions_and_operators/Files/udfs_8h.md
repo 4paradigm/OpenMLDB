@@ -614,7 +614,7 @@ Example:
 
 
 ```cpp
-select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
 -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
 ```
 
@@ -1571,7 +1571,7 @@ Example:
 
 
 ```cpp
-SELECT if_null("hello", "default"), if_null(NULL, "default");
+SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
 -- output ["hello", "default"]
 ```
 
@@ -2663,7 +2663,7 @@ Example:
 
 
 ```cpp
-SELECT if_null("hello", "default"), if_null(NULL, "default");
+SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
 -- output ["hello", "default"]
 ```
 

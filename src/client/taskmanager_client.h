@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/status.h"
 #include "client/client.h"
@@ -45,31 +46,31 @@ class TaskManagerClient : public Client {
     int Init() override { return client_.Init(); }
 
     ::openmldb::base::Status ShowJobs(bool only_unfinished, int job_timeout,
-                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos);  // NOLINT
+                                      std::vector<::openmldb::taskmanager::JobInfo>* job_infos);
 
-    ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
-    ::openmldb::base::Status StopJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status StopJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status RunBatchSql(const std::string& sql, const std::map<std::string, std::string>& config,
                                          const std::string& default_db, int job_timeout,
-                                         std::string& output);  // NOLINT
+                                         std::string* output);
 
     ::openmldb::base::Status RunBatchAndShow(const std::string& sql, const std::map<std::string, std::string>& config,
                                              const std::string& default_db, bool sync_job, int job_timeout,
-                                             ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                             ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                               const std::string& default_db, bool sync_job, int job_timeout,
-                                              ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                              ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db, bool sync_job, int job_timeout,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ExportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
                                                const std::string& default_db, bool sync_job, int job_timeout,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table, int job_timeout);
 

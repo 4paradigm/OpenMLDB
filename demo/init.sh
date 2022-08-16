@@ -26,9 +26,10 @@ set +e
 pkill python3
 set -e
 
-rm -rf /tmp/*
+rm -rf /tmp/openmldb_offline_storage/*
 rm -rf /work/openmldb/logs*
 rm -rf /work/openmldb/db*
+rm -rf /work/openmldb/taskmanager/bin/logs
 sleep 2
 echo "Starting openmldb in $MODE mode..."
 if [[ "$MODE" = "standalone" ]]; then
@@ -36,7 +37,7 @@ if [[ "$MODE" = "standalone" ]]; then
     cd /work/openmldb && ./bin/stop-standalone.sh && ./bin/start-standalone.sh
     sleep 1
 else
-    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh restart
+    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh stop && rm -rf /tmp/zookeeper && ./bin/zkServer.sh start
     sleep 1
     cd /work/openmldb && ./bin/stop-all.sh && ./bin/start-all.sh
 fi

@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -1073,9 +1074,38 @@ class ConstNode : public ExprNode {
                 return std::to_string(val_.vdouble);
             case kVarchar:
                 return std::string(val_.vstr);
+            case kBool:
+                return val_.vint == 1 ? "true" : "false";
             default: {
                 return "";
             }
+        }
+    }
+
+    // include 'udf/literal_traits.h' for Nullable lead to recursive include
+    // so `optional` is used for nullable info
+    template <typename T>
+    absl::StatusOr<std::optional<T>> GetAs() const {
+        if (IsNull()) {
+            return std::nullopt;
+        }
+
+        if constexpr (std::is_same_v<T, bool>) {
+            return GetBool();
+        } else if constexpr(std::is_same_v<T, int16_t>) {
+            return GetAsInt16();
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return GetAsInt32();
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return GetAsInt64();
+        } else if constexpr (std::is_same_v<T, float>) {
+            return GetAsFloat();
+        } else if constexpr (std::is_same_v<T, double>) {
+            return GetAsDouble();
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return GetAsString();
+        } else {
+            return absl::InvalidArgumentError("can't cast as T");
         }
     }
 
@@ -1623,7 +1653,7 @@ class ColumnRefNode : public ExprNode {
 
     void SetRelationName(const std::string &relation_name) { relation_name_ = relation_name; }
 
-    std::string GetColumnName() const { return column_name_; }
+    const std::string &GetColumnName() const { return column_name_; }
 
     void SetColumnName(const std::string &column_name) { column_name_ = column_name; }
 
@@ -2034,31 +2064,40 @@ class CmdNode : public SqlNode {
 };
 
 enum class DeleteTarget {
-    JOB
+    JOB = 1,
+    TABLE = 2,
 };
 std::string DeleteTargetString(DeleteTarget target);
 
 class DeleteNode : public SqlNode {
  public:
-    explicit DeleteNode(DeleteTarget t, std::string job_id)
-    : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
-    ~DeleteNode() {}
+    DeleteNode(DeleteTarget t, std::string job_id,
+            const std::string& db_name, const std::string& table_name, const node::ExprNode* where_expr)
+        : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id),
+         db_name_(db_name), table_name_(table_name), condition_(where_expr) {}
+    ~DeleteNode() = default;
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
     std::string GetTargetString() const;
 
     const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
+    const std::string& GetTableName() const { return table_name_; }
+    const std::string& GetDbName() const { return db_name_; }
+    const ExprNode* GetCondition() const { return condition_; }
 
  private:
     const DeleteTarget target_;
     const std::string job_id_;
+    const std::string db_name_;
+    const std::string table_name_;
+    const ExprNode *condition_;
 };
 
 class SelectIntoNode : public SqlNode {
  public:
-    explicit SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
-                            const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
+    SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+                   const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kSelectIntoStmt, 0, 0),
           query_(query),
           query_str_(query_str),

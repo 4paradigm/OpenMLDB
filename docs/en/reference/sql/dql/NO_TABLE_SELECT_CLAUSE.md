@@ -1,6 +1,6 @@
-# No Table SELECT
+# No-table SELECT
 
-The no table Select statement calculates the constant expression operation list, and the expression calculation does not need to depend on the table and column.
+The no-table Select statement computes the constant expression, and the computing does not depend on tables and columns.
 
 ## Syntax
 
@@ -14,7 +14,7 @@ SelectExpr    ::= ( Identifier '.' ( Identifier '.' )? )? '*'
      
 ```
 
-## SQL Statement Template
+## SQL Template
 
 ```sql
 SELECT const_expr [, const_expr ...];
@@ -22,17 +22,22 @@ SELECT const_expr [, const_expr ...];
 
 ## 2. SELECT Statement Elements
 
-| SELECT statement elements | state                | direction                                                         |
-| :------------- | ------------------- | :----------------------------------------------------------- |
-| Unlabeled SELECT statement | OnlineServing not supported | The no table Select statement calculates the constant expression operation list, and the expression calculation does not need to depend on the table and column |
+
+| `SELECT` Statement Elements | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                    |
+|:----------------------------|--------------|---------------------|---------------------|:----------------------------------------------------------------------------------------------------------------------------------------|
+| No-table SELECT statement   |**``✓``**                |**``✓``**                       |                     | The no-table SELECT statement computes the constant expression operation list, and the computation does not depend on tables or columns |
 
 #### Examples
 
+SELECT constant literal
 ```sql
--- desc: SELECT constant literal
 SELECT 1, 1L, 1.0f, 2.0, 'Hello';
--- desc: SELECT constant expression
-SELECT 1+1， 1L + 1L, 1.0f - 1.0f, 2.0*2.0, 'Hello' LIKE 'He%';
--- desc: SELECT function expression
+```
+SELECT constant expression
+```sql
+SELECT 1+1, 1L + 1L, 1.0f - 1.0f, 2.0*2.0, 'Hello' LIKE 'He%';
+```
+SELECT function expression
+```sql
 SELECT substr("hello world", 3, 6);
 ```

@@ -1,0 +1,8 @@
+setuptools>=62.3.2
+requests>=2.27.1
+# pandas>=1.4.2
+# sklearn>=0.0
+# scikit-learn>=1.1.1
+# xgboost>=1.4.2
+tenacity>=8.0.1
+apache-airflow>=2.0

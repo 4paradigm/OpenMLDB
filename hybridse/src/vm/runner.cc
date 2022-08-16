@@ -21,11 +21,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/substitute.h"
 #include "base/texttable.h"
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
+#include "vm/internal/eval.h"
 #include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 
@@ -572,10 +575,8 @@ ClusterTask RunnerBuilder::BuildRequestAggUnionTask(PhysicalOpNode* node, Status
     }
     auto op = dynamic_cast<const PhysicalRequestAggUnionNode*>(node);
     RequestAggUnionRunner* runner = nullptr;
-    CreateRunner<RequestAggUnionRunner>(
-        &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
-        op->window().range_, op->exclude_current_time(),
-        op->output_request_row(), op->func_, op->agg_col_);
+    CreateRunner<RequestAggUnionRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->window().range_,
+                                        op->exclude_current_time(), op->output_request_row(), op->project_);
     Key index_key;
     if (!op->instance_not_in_window()) {
         index_key = op->window_.index_key();
@@ -2354,9 +2355,7 @@ void Runner::PrintData(std::ostringstream& oss,
     oss << t;
 }
 
-void Runner::PrintRow(std::ostringstream& oss,
-                       const vm::SchemasContext* schema_list,
-                       Row row) {
+void Runner::PrintRow(std::ostringstream& oss, const vm::SchemasContext* schema_list, const Row& row) {
     std::vector<RowView> row_view_list;
     ::hybridse::base::TextTable t('-', '|', '+');
     // Add Header
@@ -2408,6 +2407,12 @@ void Runner::PrintRow(std::ostringstream& oss,
     }
     t.end_of_row();
     oss << t;
+}
+
+std::string Runner::GetPrettyRow(const vm::SchemasContext* schema_list, const Row& row) {
+    std::ostringstream os;
+    PrintRow(os, schema_list, row);
+    return os.str();
 }
 
 bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
@@ -2690,7 +2695,7 @@ bool RequestAggUnionRunner::InitAggregator() {
     if (agg_col_->GetExprType() == node::kExprColumnRef) {
         agg_col_type_ = producers_[1]->row_parser()->GetType(agg_col_name_);
     } else if (agg_col_->GetExprType() == node::kExprAll) {
-        if (agg_type_ != kCount) {
+        if (agg_type_ != kCount && agg_type_ != kCountWhere) {
             LOG(ERROR) << "only support " << ExprTypeName(agg_col_->GetExprType()) << "on count op";
             return false;
         }
@@ -2705,14 +2710,19 @@ bool RequestAggUnionRunner::InitAggregator() {
 std::unique_ptr<BaseAggregator> RequestAggUnionRunner::CreateAggregator() const {
     switch (agg_type_) {
         case kSum:
+        case kSumWhere:
             return MakeOverflowAggregator<SumAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kAvg:
+        case kAvgWhere:
             return std::make_unique<AvgAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kCount:
+        case kCountWhere:
             return std::make_unique<CountAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMin:
+        case kMinWhere:
             return MakeSameTypeAggregator<MinAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         case kMax:
+        case kMaxWhere:
             return MakeSameTypeAggregator<MaxAggregator>(agg_col_type_, *output_schemas_->GetOutputSchema());
         default:
             LOG(ERROR) << "RequestAggUnionRunner does not support for op " << func_->GetName();
@@ -2747,7 +2757,7 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         for (size_t i = 0; i < union_inputs.size(); i++) {
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_inputs[i]);
-            LOG(INFO) << "union input " << i << ": " << sss.str();
+            LOG(INFO) << "union input " << i << ":\n" << sss.str();
         }
     }
 
@@ -2770,34 +2780,28 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 
             std::ostringstream sss;
             PrintData(sss, producers_[i + 1]->output_schemas(), union_segments[i]);
-            LOG(INFO) << "union output " << i << ": " << sss.str();
+            LOG(INFO) << "union output " << i << ":\n" << sss.str();
         }
     }
 
-    // build window with start and end offset
     std::shared_ptr<TableHandler> window;
     if (agg_segment) {
         window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
                                     exclude_current_time_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_,
-                                                        output_request_row_, exclude_current_time_);
+        // NOTE: normal request union should always `output_request_row`, while the `output_request_row_`
+        // here indicate whether `EXCLUDE CURRENT_ROW`
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, true,
+                                                        exclude_current_time_, !output_request_row_);
     }
 
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, output_schemas(), window);
-        LOG(INFO) << "Request AGG UNION output: " << oss.str();
-    }
     return window;
 }
 
 std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
-    const Row& request,
-    std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, const bool output_request_row,
-    const bool exclude_current_time) const {
+    const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
+    const WindowRange& window_range, const bool output_request_row, const bool exclude_current_time) const {
     // TOOD(zhanghao): for now, we only support AggUnion with 1 base table and 1 agg table
     size_t unions_cnt = union_segments.size();
     if (unions_cnt != 2) {
@@ -2823,16 +2827,12 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     int64_t max_size = 0;
     if (ts_gen >= 0) {
         if (window_range.frame_type_ != Window::kFrameRows) {
-            start = (ts_gen + window_range.start_offset_) < 0
-                        ? 0
-                        : (ts_gen + window_range.start_offset_);
+            start = (ts_gen + window_range.start_offset_) < 0 ? 0 : (ts_gen + window_range.start_offset_);
         }
         if (exclude_current_time && 0 == window_range.end_offset_) {
             end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
         } else {
-            end = (ts_gen + window_range.end_offset_) < 0
-                      ? 0
-                      : (ts_gen + window_range.end_offset_);
+            end = (ts_gen + window_range.end_offset_) < 0 ? 0 : (ts_gen + window_range.end_offset_);
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
@@ -2841,15 +2841,33 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     auto aggregator = CreateAggregator();
     auto update_base_aggregator = [aggregator = aggregator.get(), row_parser = base_row_parser, this](const Row& row) {
+        DLOG(INFO) << "[Update Base]\n" << GetPrettyRow(row_parser->schema_ctx(), row);
         if (!agg_col_name_.empty() && row_parser->IsNull(row, agg_col_name_)) {
             return;
         }
 
+        if (cond_ != nullptr) {
+            // for those condition exists and evaluated to NULL/false
+            // will apply to functions `*_where`
+            // include `count_where` has supported, or `{min/max/avg/sum}_where` support later
+            auto matches = internal::EvalCond(row_parser, row, cond_);
+            DLOG(INFO) << "[Update Base Filter] Evaluate result of " << cond_->GetExprString() << ": "
+                       << PrintEvalValue(matches);
+            if (!matches.ok()) {
+                LOG(ERROR) << matches.status();
+                return;
+            }
+            if (false == matches->value_or(false)) {
+                return;
+            }
+        }
+
         auto type = aggregator->type();
-        if (agg_type_ == kCount) {
+        if (agg_type_ == kCount || agg_type_ == kCountWhere) {
             dynamic_cast<Aggregator<int64_t>*>(aggregator)->UpdateValue(1);
             return;
         }
+
         if (agg_col_name_.empty()) {
             return;
         }
@@ -2899,8 +2917,22 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     auto update_agg_aggregator = [aggregator = aggregator.get(), row_parser = agg_row_parser, this](const Row& row) {
+        DLOG(INFO) << "[Update Agg]\n" << GetPrettyRow(row_parser->schema_ctx(), row);
         if (row_parser->IsNull(row, "agg_val")) {
             return;
+        }
+
+        if (cond_ != nullptr) {
+            auto matches = internal::EvalCondWithAggRow(row_parser, row, cond_, "filter_key");
+            DLOG(INFO) << "[Update Agg Filter] Evaluate result of " << cond_->GetExprString() << ": "
+                       << PrintEvalValue(matches);
+            if (!matches.ok()) {
+                LOG(ERROR) << matches.status();
+                return;
+            }
+            if (false == matches->value_or(false)) {
+                return;
+            }
         }
 
         std::string agg_val;
@@ -2909,9 +2941,8 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     };
 
     int64_t cnt = 0;
-    auto range_status = window_range.GetWindowPositionStatus(
-        cnt > rows_start_preceding, window_range.end_offset_ < 0,
-        request_key < start);
+    auto range_status = window_range.GetWindowPositionStatus(cnt > rows_start_preceding, window_range.end_offset_ < 0,
+                                                             request_key < start);
     if (output_request_row) {
         update_base_aggregator(request);
     }
@@ -2919,8 +2950,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         cnt++;
     }
 
-    auto window_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    auto window_table = std::make_shared<MemTimeTableHandler>();
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
         LOG(WARNING) << "Base window is empty.";
@@ -2932,39 +2962,57 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
     auto agg_it = union_segments[1]->GetIterator();
     if (agg_it) {
-         agg_it->Seek(end);
+        agg_it->Seek(end);
     } else {
         LOG(WARNING) << "Agg window is empty. Use base window only";
     }
 
     // we'll iterate over the following ranges:
-    // - base(end_base, end] if end_base < end
-    // - agg[start_base, end_base]
-    // - base[start, start_base) if start < start_base
-    int64_t end_base = start;
-    int64_t start_base = start + 1;
-    if (agg_it && agg_it->Valid()) {
-        int64_t ts_start = agg_it->GetKey();
+    // 1. base(end_base, end] if end_base < end
+    // 2. agg[start_base, end_base]
+    // 3. base[start, start_base) if start < start_base
+    //
+    // | start .. | start_base ... end_base | .. end |
+    // | <-----------------   iterate order (end to start)
+    //
+    // when start_base > end_base, step 2 skipped, fallback as
+    // | start .. | end_base .. end |
+    // | <-----------------   iterate order (end to start)
+    std::optional<int64_t> end_base = start;
+    std::optional<int64_t> start_base = {};
+    if (agg_it) {
+        int64_t ts_start = -1;
         int64_t ts_end = -1;
-        agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
 
-        if (ts_end > end) {  // [ts_start, ts_end] covers beyond the [start, end] region
-            end_base = ts_start;
-            agg_it->Next();
-            if (agg_it->Valid()) {
-                agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
-                end_base = ts_end;
-            } else {
-                // only base table will be used
-                end_base = start;
-                start_base = start + 1;
+        // iterate through agg_it and find the first one that
+        // - agg record inside window frame
+        //   - key (ts_start) >= start
+        //   - ts_end <= end
+        while (agg_it->Valid()) {
+            ts_start = agg_it->GetKey();
+            agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end);
+            if (ts_end <= end) {
+                break;
             }
-        } else {
-            end_base = ts_end;
+
+            agg_it->Next();
         }
+
+        if (ts_end != -1 && ts_start >= start) {
+            // first agg record inside window frame
+            end_base = ts_end;
+            // assign a value to start_base so agg aggregate happens
+            start_base = start + 1;
+        } /* else only base table will be used */
     }
 
-    // iterate over base table from end (inclusive) to end_base (exclusive)
+    // NOTE: start_base is not correct util step 2 finished
+    DLOG(INFO) << absl::Substitute(
+        "[RequestUnion]($6) {start=$0, start_base=$1, end_base=$2, end=$3, base_key=$4, agg_key=$5}", start,
+        start_base.value_or(-1), end_base.value_or(-1), end, base_it->GetKey(), (agg_it ? agg_it->GetKey() : -1),
+        (cond_ ? cond_->GetExprString() : ""));
+
+    // 1. iterate over base table from [end, end_base) end (inclusive) to end_base (exclusive)
     if (end_base < end) {
         while (base_it->Valid()) {
             if (max_size > 0 && cnt >= max_size) {
@@ -2987,47 +3035,118 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
     }
 
-    // iterate over agg table from end_base until start (both inclusive)
-    int64_t last_ts_start = INT64_MAX;
-    while (agg_it && agg_it->Valid()) {
+    // 2. iterate over agg table from end_base until start_base (both inclusive)
+    int64_t prev_ts_start = INT64_MAX;
+    while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
         }
 
-        int64_t ts_start = agg_it->GetKey();
-        // for mem-table, updating will inserts duplicate entries
-        if (last_ts_start == ts_start) {
-            DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
-            continue;
-        }
-        last_ts_start = ts_start;
+        if (cond_ == nullptr) {
+            int64_t ts_start = agg_it->GetKey();
+            const Row& row = agg_it->GetValue();
+            if (prev_ts_start == ts_start) {
+                DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
+                agg_it->Next();
+                continue;
+            }
+            prev_ts_start = ts_start;
 
-        const Row& row = agg_it->GetValue();
-        int64_t ts_end = -1;
-        agg_row_parser->GetValue(row, "ts_end", type::Type::kTimestamp, &ts_end);
-        int num_rows = 0;
-        agg_row_parser->GetValue(row, "num_rows", type::Type::kInt32, &num_rows);
+            int64_t ts_end = -1;
+            agg_row_parser->GetValue(row, "ts_end", type::Type::kTimestamp, &ts_end);
+            int num_rows = 0;
+            agg_row_parser->GetValue(row, "num_rows", type::Type::kInt32, &num_rows);
 
-        // FIXME(zhanghao): check cnt and rows_start_preceding meanings
-        int next_incr = num_rows > 0 ? num_rows - 1 : 0;
-        auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding, ts_start > end,
-                                                                 ts_start < start);
-        if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
-            start_base = ts_end + 1;
-            break;
-        }
-        if (WindowRange::kInWindow == range_status) {
-            update_agg_aggregator(row);
-            cnt += num_rows;
-        }
+            // FIXME(zhanghao): check cnt and rows_start_preceding meanings
+            int next_incr = num_rows > 0 ? num_rows - 1 : 0;
+            auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
+                                                                     ts_start > end, ts_start < start);
+            if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
+                start_base = ts_end + 1;
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                update_agg_aggregator(row);
+                cnt += num_rows;
+            }
 
-        start_base = ts_start;
-        agg_it->Next();
+            start_base = ts_start;
+            agg_it->Next();
+        } else {
+            const int64_t ts_start = agg_it->GetKey();
+
+            // for agg rows has filter_key
+            // max_size check should happen after iterate all agg rows for the same key
+            std::vector<Row> key_agg_rows;
+            std::set<std::string> filter_val_set;
+
+            int total_rows = 0;
+            int64_t ts_end_range = -1;
+            agg_row_parser->GetValue(agg_it->GetValue(), "ts_end", type::Type::kTimestamp, &ts_end_range);
+            while (agg_it->Valid() && ts_start == agg_it->GetKey()) {
+                const Row& drow = agg_it->GetValue();
+
+                std::string filter_val;
+                if (agg_row_parser->IsNull(drow, "filter_key")) {
+                    LOG(ERROR) << "filter_key is null for *_where op";
+                    agg_it->Next();
+                    continue;
+                }
+                if (0 != agg_row_parser->GetString(drow, "filter_key", &filter_val)) {
+                    LOG(ERROR) << "failed to get value of filter_key";
+                    agg_it->Next();
+                    continue;
+                }
+
+                if (prev_ts_start == ts_start && filter_val_set.count(filter_val) != 0) {
+                    DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start
+                               << ", filter_key=" << filter_val;
+                    agg_it->Next();
+                    continue;
+                }
+
+                prev_ts_start = ts_start;
+                filter_val_set.insert(filter_val);
+
+                int num_rows = 0;
+                agg_row_parser->GetValue(drow, "num_rows", type::Type::kInt32, &num_rows);
+
+                if (num_rows > 0) {
+                    total_rows += num_rows;
+                    key_agg_rows.push_back(drow);
+                }
+
+                agg_it->Next();
+            }
+
+            int next_incr = total_rows > 0 ? total_rows - 1 : 0;
+            auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
+                                                                     ts_start > end, ts_start < start);
+            if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
+                start_base = ts_end_range + 1;
+                break;
+            }
+            if (WindowRange::kInWindow == range_status) {
+                for (auto& row : key_agg_rows) {
+                    update_agg_aggregator(row);
+                }
+                cnt += total_rows;
+            }
+
+            start_base = ts_start;
+        }
     }
 
-    if (start_base > 0) {
-        // iterate over base table from start_base (exclusive) to start (inclusive)
-        base_it->Seek(start_base - 1);
+    // 3. iterate over base table from start_base (exclusive) to start (inclusive)
+    //
+    // if start_base is empty ->
+    //     step 2 skiped, this step only agg on key = start
+    // otherwise ->
+    //    if start_base is 0 -> skiped
+    //    otherwise -> agg over [start, start_base)
+    int64_t step_3_start = start_base.value_or(start + 1);
+    if (step_3_start > 0) {
+        base_it->Seek(step_3_start - 1);
         while (base_it->Valid()) {
             int64_t ts = base_it->GetKey();
             auto range_status = window_range.GetWindowPositionStatus(static_cast<int64_t>(cnt) > rows_start_preceding,
@@ -3049,6 +3168,16 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     return window_table;
 }
 
+std::string RequestAggUnionRunner::PrintEvalValue(const absl::StatusOr<std::optional<bool>>& val) {
+    std::ostringstream os;
+    if (!val.ok()) {
+        os << val.status();
+    } else {
+        os << (val->has_value() ? (val->value() ? "TRUE" : "FALSE") : "NULL");
+    }
+    return os.str();
+}
+
 std::shared_ptr<DataHandler> ReduceRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
@@ -3066,11 +3195,6 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         return std::shared_ptr<DataHandler>();
     }
     auto table = std::dynamic_pointer_cast<TableHandler>(input);
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, producers_[0]->output_schemas(), table);
-        LOG(WARNING) << "ReduceRunner input: " << oss.str();
-    }
 
     auto parameter = ctx.GetParameterRow();
     if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
@@ -3083,13 +3207,8 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
         LOG(WARNING) << "ReduceRunner input is empty";
         return std::shared_ptr<DataHandler>();
     }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(iter->GetValue()));
+    std::shared_ptr<RowHandler> row_handler = std::make_shared<MemRowHandler>(iter->GetValue());
 
-    if (ctx.is_debug()) {
-        std::ostringstream oss;
-        PrintData(oss, producers_[0]->output_schemas(), row_handler);
-        LOG(WARNING) << "ReduceRunner output: " << oss.str();
-    }
     return row_handler;
 }
 
@@ -3127,7 +3246,9 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
     const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
     uint64_t start = 0;
-    uint64_t end = UINT64_MAX;
+    // end is empty means end value < 0, that there is no effective window range
+    // this happend when `ts_gen` is 0 and exclude current_time needed
+    std::optional<uint64_t> end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     uint64_t max_size = 0;
     if (ts_gen >= 0) {
@@ -3135,7 +3256,11 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
                     ? 0
                     : (ts_gen + window_range.start_offset_);
         if (exclude_current_time && 0 == window_range.end_offset_) {
-            end = (ts_gen - 1) < 0 ? 0 : (ts_gen - 1);
+            if (ts_gen == 0) {
+                end = {};
+            } else {
+                end = ts_gen - 1;
+            }
         } else {
             end = (ts_gen + window_range.end_offset_) < 0
                       ? 0
@@ -3174,7 +3299,7 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
             union_segment_status[i] = IteratorStatus();
             continue;
         }
-        union_segment_iters[i]->Seek(end);
+        union_segment_iters[i]->Seek(end.value_or(0));
         if (!union_segment_iters[i]->Valid()) {
             union_segment_status[i] = IteratorStatus();
             continue;

@@ -29,6 +29,7 @@ import com._4paradigm.openmldb.taskmanager.server.StatusCode;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import com._4paradigm.openmldb.taskmanager.util.VersionUtil;
+import com._4paradigm.openmldb.taskmanager.utils.VersionCli;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -316,9 +317,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
-    public TaskManager.GetTaskmanagerVersionResponse GetTaskmanagerVersion(TaskManager.EmptyMessage request) {
-        String version = VersionUtil.getVersion();
-        return TaskManager.GetTaskmanagerVersionResponse.newBuilder().setVersion(version).build();
+    public TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request) {
+        try {
+            String taskmanagerVersion = VersionCli.getVersion();
+            String batchVersion = VersionUtil.getBatchVersion();
+            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
+                    .setBatchVersion(batchVersion).build();
+        } catch (Exception e) {
+            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion("unknown")
+                    .setBatchVersion("unknown").build();
+        }
+
     }
 
     @Override

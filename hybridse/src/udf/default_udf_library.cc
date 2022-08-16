@@ -553,6 +553,38 @@ struct TopKDef {
 };
 
 void DefaultUdfLibrary::InitStringUdf() {
+    RegisterExternalTemplate<v1::ToHex>("hex")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert number to hexadecimal. If double, convert to hexadecimal after rounding.
+
+            Example:
+
+            @code{.sql}
+                select hex(17);
+                --output "11"
+                select hex(17.4);
+                --output "11"
+                select hex(17.5);
+                --output "12"
+            @endcode
+            @since 0.6.0)");
+
+    RegisterExternal("hex")
+        .args<StringRef>(static_cast<void (*)(StringRef*, StringRef*)>(udf::v1::hex))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert integer to hexadecimal.
+
+            Example:
+
+            @code{.sql}
+                select hex("Spark SQL");
+                --output "537061726B2053514C"
+            @endcode
+            @since 0.6.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
@@ -670,7 +702,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 Example:
 
                 @code{.sql}
-                    select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                    select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
                     -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
                 @endcode
                 @since 0.1.0)");
@@ -1801,7 +1833,7 @@ void DefaultUdfLibrary::InitLogicalUdf() {
             Example:
 
             @code{.sql}
-                SELECT if_null("hello", "default"), if_null(NULL, "default");
+                SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
                 -- output ["hello", "default"]
             @endcode
 
@@ -2112,11 +2144,8 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.4.0
         )");
 
-    RegisterExternal("dayofyear")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
-        .doc(R"(
+    const std::string dayofyear_doc =
+        R"(
             @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 
             Example:
@@ -2134,7 +2163,25 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 -- output 0
             @endcode
             @since 0.1.0
-        )");
+        )";
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
@@ -2154,6 +2201,40 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )");
 
     RegisterAlias("week", "weekofyear");
+
+    const std::string last_day_doc =
+        R"(
+            @brief Return the last day of the month to which the date belongs to
+
+            Example:
+            @code{.sql}
+                select last_day(timestamp("2020-05-22 10:43:40"));
+                -- output 2020-05-31
+                select last_day(timestamp("2020-02-12 10:43:40"));
+                -- output 2020-02-29
+                select last_day(timestamp("2021-02-12"));
+                -- output 2021-02-28
+            @endcode
+            @since 0.6.1
+        )";
+
+    RegisterExternal("last_day")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
 
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>()

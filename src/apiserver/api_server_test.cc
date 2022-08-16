@@ -145,6 +145,45 @@ TEST_F(APIServerTest, jsonFormat) {
     ASSERT_EQ(butil::rapidjson::kNullType, arr[6].GetType());
 }
 
+TEST_F(APIServerTest, query) {
+    const auto env = APIServerTestEnv::Instance();
+
+    std::string ddl = "create table demo (c1 int, c2 string);";
+    hybridse::sdk::Status status;
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+
+    std::string insert_sql = "insert into demo values (1, \"bb\");";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
+        cntl.request_attachment().append(R"({
+            "sql": "select c1, c2 from demo;", "mode": "online"
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec query resp:\n" << cntl.response_attachment().to_string();
+
+        butil::rapidjson::Document document;
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_EQ(1, document["data"].Size());
+        ASSERT_EQ(2, document["data"][0].Size());
+        ASSERT_EQ(1, document["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"][0][1].GetString());
+    }
+
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
+}
+
 TEST_F(APIServerTest, invalidPut) {
     const auto env = APIServerTestEnv::Instance();
     brpc::Controller cntl;
@@ -678,7 +717,7 @@ TEST_F(APIServerTest, getDBs) {
         ASSERT_TRUE(document.HasMember("dbs"));
         auto& exists_dbs = document["dbs"];
         ASSERT_TRUE(exists_dbs.IsArray());
-        for (int i = 0; i < exists_dbs.Size(); ++i) {
+        for (decltype(exists_dbs.Size()) i = 0; i < exists_dbs.Size(); ++i) {
             auto db = exists_dbs[i].GetString();
             if (test_dbs.find(db) != test_dbs.end()) {
                 FAIL() << "can't have test db " << db;

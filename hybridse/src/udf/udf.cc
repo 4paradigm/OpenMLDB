@@ -15,6 +15,7 @@
  */
 
 #include "udf/udf.h"
+#include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
 #include <map>
@@ -22,6 +23,7 @@
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
+#include "absl/time/civil_time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -50,6 +52,19 @@ using hybridse::codec::Row;
 using openmldb::base::StringRef;
 using openmldb::base::Timestamp;
 using openmldb::base::Date;
+
+void hex(StringRef *str, StringRef *output) {
+    std::ostringstream ss;
+    for (uint32_t i=0; i < str->size_; i++) {
+        ss << std::hex << std::uppercase << static_cast<int>(str->data_[i]);
+    }
+    output->size_ = ss.str().size();
+    char *buffer = AllocManagedStringBuf(output->size_);
+    memcpy(buffer, ss.str().data(), output->size_);
+    output->data_ = buffer;
+}
+
+
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;
 constexpr time_t TZ_OFFSET = TZ * 3600000;
@@ -58,11 +73,20 @@ bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 void trivial_fun() {}
 
-int32_t dayofyear(int64_t ts) {
+void dayofyear(int64_t ts, int32_t* out, bool* is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        *out = 0;
+        return;
+    }
+
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
-    return t.tm_yday + 1;
+
+    *out = t.tm_yday + 1;
+    *is_null = false;
 }
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -100,24 +124,27 @@ int32_t year(int64_t ts) {
     return t.tm_year + 1900;
 }
 
-int32_t dayofyear(Timestamp *ts) { return dayofyear(ts->ts_); }
-int32_t dayofyear(Date *date) {
+void dayofyear(Timestamp *ts, int32_t *out, bool *is_null) { dayofyear(ts->ts_, out, is_null); }
+void dayofyear(Date *date, int32_t* out, bool* is_null) {
     int32_t day, month, year;
     if (!Date::Decode(date->date_, &year, &month, &day)) {
-        return 0;
+        *out = 0;
+        *is_null = true;
+        return;
     }
-    try {
-        if (month <= 0 || month > 12) {
-            return 0;
-        } else if (day <= 0 || day > 31) {
-            return 0;
-        }
-        boost::gregorian::date d(year, month, day);
-        return d.day_of_year();
-    } catch (...) {
-        return 0;
+
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        // CivilTime normalize it because of invalid input
+        *out = 0;
+        *is_null = true;
+        return;
     }
+
+    *out = absl::GetYearDay(civil_day);
+    *is_null = false;
 }
+
 int32_t dayofmonth(Timestamp *ts) { return dayofmonth(ts->ts_); }
 int32_t weekofyear(Timestamp *ts) { return weekofyear(ts->ts_); }
 int32_t month(Timestamp *ts) { return month(ts->ts_); }
@@ -157,6 +184,36 @@ int32_t weekofyear(Date *date) {
     } catch (...) {
         return 0;
     }
+}
+
+void last_day(int64_t ts, Date *output, bool *is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day = absl::ToCivilDay(absl::FromUnixMillis(ts),
+                                                absl::FixedTimeZone(TZ_OFFSET / 1000));
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
+}
+void last_day(const Timestamp *ts, Date *output, bool *is_null) { last_day(ts->ts_, output, is_null); }
+void last_day(const Date *ts, Date *output, bool *is_null) {
+    int32_t year, month, day;
+    if (!Date::Decode(ts->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
 }
 
 void int_to_char(int32_t val, StringRef* output) {

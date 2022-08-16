@@ -364,7 +364,7 @@ public class TaskManagerClient {
     }
 
     /**
-     * Submit job to show batch version.
+     * Get job log.
      */
     public String getJobLog(int id) throws Exception {
         TaskManager.GetJobLogRequest request = TaskManager.GetJobLogRequest.newBuilder()
@@ -378,10 +378,13 @@ public class TaskManagerClient {
         return response.getLog();
     }
 
-    public String geTaskmanagertVersion() throws Exception {
-        TaskManager.GetTaskmanagerVersionResponse response = taskManagerInterface.GetTaskmanagerVersion(
+    public ArrayList<String> getVersion() throws Exception {
+        TaskManager.GetVersionResponse response = taskManagerInterface.GetVersion(
                 TaskManager.EmptyMessage.newBuilder().build());
-        return response.getVersion();
+        ArrayList<String> versions = new ArrayList<>();
+        versions.add(response.getTaskmanagerVersion());
+        versions.add(response.getBatchVersion());
+        return versions;
     }
 
     /**

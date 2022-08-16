@@ -28,6 +28,7 @@
 
 #include "sdk/base.h"
 #include "sdk/result_set.h"
+#include "sdk/sql_delete_row.h"
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/table_reader.h"
@@ -46,6 +47,7 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_cluster;
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
+    std::string spark_conf_path;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
@@ -98,6 +100,8 @@ class SQLRouter {
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                std::shared_ptr<openmldb::sdk::SQLInsertRows> row, hybridse::sdk::Status* status) = 0;
 
+    virtual bool ExecuteDelete(std::shared_ptr<openmldb::sdk::SQLDeleteRow> row, hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<openmldb::sdk::TableReader> GetTableReader() = 0;
 
     virtual std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
@@ -114,6 +118,9 @@ class SQLRouter {
 
     virtual std::shared_ptr<openmldb::sdk::SQLInsertRows> GetInsertRows(const std::string& db, const std::string& sql,
                                                                         ::hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<openmldb::sdk::SQLDeleteRow> GetDeleteRow(const std::string& db, const std::string& sql,
+                                                                      ::hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
@@ -171,13 +178,13 @@ class SQLRouter {
     virtual bool UpdateOfflineTableInfo(const ::openmldb::nameserver::TableInfo& info) = 0;
 
     virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
-                                              std::vector<::openmldb::taskmanager::JobInfo>& job_infos) = 0;  // NOLINT
+                                              std::vector<::openmldb::taskmanager::JobInfo>* job_infos) = 0;
 
     virtual ::openmldb::base::Status ShowJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
+                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
     virtual ::openmldb::base::Status StopJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo& job_info) = 0;  // NOLINT
+                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteOfflineQuery(const std::string& db, const std::string& sql,
                                                                           bool is_sync_job, int job_timeout,
