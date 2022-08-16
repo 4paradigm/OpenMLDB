@@ -481,13 +481,13 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     std::string_view flags_view(flags->data_, flags->size_);
     std::string_view pattern_view(pattern->data_, pattern->size_);
     std::string_view name_view(name->data_, name->size_);
-    
+
     RE2::Options opts(RE2::POSIX);
     opts.set_log_errors(false);
     opts.set_one_line(true);
 
-    for( auto &flag: flags_view ) {
-        switch( flag ) {
+    for (auto &flag : flags_view) {
+        switch (flag) {
             case 'c':
                 opts.set_case_sensitive(true);
             break;
@@ -508,9 +508,10 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
     }
 
     RE2 re(pattern_view, opts);
-    if(re.error_code() != 0) {
-        DLOG(ERROR) << "Error parsing '" << pattern_view << "': " << re.error();
-        *out = false;
+    if (re.error_code() != 0) {
+        LOG(ERROR) << "Error parsing '" << pattern_view << "': " << re.error();
+        out = nullptr;
+        *is_null = true;
         return;
     }
     *is_null = false;

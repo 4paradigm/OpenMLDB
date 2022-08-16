@@ -926,7 +926,7 @@ TEST_F(ExternUdfTest, RLikeMatchTest) {
                 "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "");
     check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
                 "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "s");
-    
+
     check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien",
                 "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "");
     check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
@@ -935,7 +935,6 @@ TEST_F(ExternUdfTest, RLikeMatchTest) {
     // multiple flags
     check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
                 "^the Lord of the Rings$.J\\. R\\. R\\. Tolkien", "mis");
-
 }
 
 TEST_F(ExternUdfTest, RLikeMatchNullable) {
