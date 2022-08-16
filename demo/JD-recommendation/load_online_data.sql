@@ -1,4 +1,5 @@
 USE JD_db;
+SET @@job_timeout=600000;
 SET @@execute_mode='online';
 LOAD DATA INFILE '/root/project/data/JD_data/action/*.parquet' INTO TABLE action options(format='parquet', header=true, mode='append');
 LOAD DATA INFILE '/root/project/data/JD_data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', header=true, mode='append');
