@@ -174,4 +174,30 @@ public class NsClient {
         return map;
     }
 
+    public Map<String,List<Long>> getTableOffset(String dbName){
+        List<String> lines = showTable(dbName,null);
+        Map<String,List<Long>> offsets = new HashMap<>();
+        for(int i=2;i<lines.size();i++){
+            String[] infos = lines.get(i).split("\\s+");
+            String key = infos[0]+"_"+infos[2];
+            List<Long> value = offsets.get(key);
+            String role = infos[4];
+            long offset = 0;
+            String offsetStr = infos[7].trim();
+            if(!offsetStr.equals("-")&&!offsetStr.equals("")){
+                offset = Long.parseLong(offsetStr);
+            }
+            if(value==null){
+                value = new ArrayList<>();
+                offsets.put(key,value);
+            }
+            if(role.equals("leader")){
+                value.add(0,offset);
+            }else {
+                value.add(offset);
+            }
+        }
+        return offsets;
+    }
+
 }

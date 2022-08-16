@@ -70,9 +70,9 @@ public class OpenMLDBDeploy {
             file.mkdirs();
         }
         downloadOpenMLDB(testPath);
-        OpenMLDBInfo fedbInfo = deployStandalone(testPath,ip);
-        log.info("openmldb-info:"+fedbInfo);
-        return fedbInfo;
+        OpenMLDBInfo openMLDBInfo = deployStandalone(testPath,ip);
+        log.info("openmldb-info:"+openMLDBInfo);
+        return openMLDBInfo;
     }
     public OpenMLDBInfo deployCluster(int ns, int tablet){
         return deployCluster(null,ns,tablet);
@@ -151,7 +151,7 @@ public class OpenMLDBDeploy {
         return fedbInfo;
     }
 
-    private String downloadOpenMLDB(String testPath){
+    public String downloadOpenMLDB(String testPath){
         try {
             String command;
             log.info("openMLDBUrl:{}",openMLDBUrl);
