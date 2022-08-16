@@ -39,6 +39,7 @@ extensions = [
 ]
 
 autosectionlabel_prefix_document = True
+
 myst_heading_anchors = 6
 
 myst_enable_extensions = [
@@ -123,3 +124,4 @@ master_doc = "index"
 html_static_path = []
 
 html_logo = "about/images/openmldb_logo.png"
+

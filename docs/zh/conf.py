@@ -125,13 +125,3 @@ html_static_path = []
 
 html_logo = "about/images/openmldb_logo.png"
 
-
-
-
-
-
-
-
-
-
-myst_heading_anchors=6
