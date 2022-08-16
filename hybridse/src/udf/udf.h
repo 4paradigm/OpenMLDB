@@ -224,6 +224,10 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
+void last_day(int64_t ts, Date *output, bool *is_null);
+void last_day(const Timestamp *ts, Date *output, bool *is_null);
+void last_day(const Date *ts, Date *output, bool *is_null);
+
 void int_to_char(int32_t, StringRef*);
 int32_t char_length(StringRef *str);
 double degree_to_radius(double degree);
