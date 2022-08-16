@@ -262,19 +262,19 @@ deepfm_train_eval_JD.py \
 --disable_fusedmlp \
 --data_dir $DATA_DIR \
 --persistent_path $PERSISTENT_PATH \
---table_size_array "11,42,1105,200,11,1295,1,1,5,3,23,23,7,5042381,3127923,5042381,3649642,28350,105180,7,2,5042381,5,4,4,41,2,2,8,3456,4,5,5042381,10,60,5042381,843,17,1276,101,100" \
+--table_size_array "4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37" \
 --store_type 'cached_host_mem' \
 --cache_memory_budget_mb 1024 \
---batch_size 10000 \
+--batch_size 1000 \
 --train_batches 75000 \
 --loss_print_interval 100 \
 --dnn "1000,1000,1000,1000,1000" \
 --net_dropout 0.2 \
 --learning_rate 0.001 \
 --embedding_vec_size 16 \
---num_train_samples 4007924 \
---num_val_samples 504398 \
---num_test_samples 530059 \
+--num_train_samples 11073 \
+--num_val_samples 1351 \
+--num_test_samples 1492 \
 --model_save_dir $MODEL_SAVE_DIR \
 --save_best_model \
 --save_graph_for_serving \
@@ -473,15 +473,15 @@ python $demodir/serving/predict.py
 Sample output:
 ```
 ----------------ins---------------
-['200080_5505_2016-03-15 20:43:04' '1458045784000'
-'200080_5505_2016-03-15 20:43:04' '200080_5505' '5505' '200080' '1' '1.0'
-'1.0' '1' '1' '3' '1' '200080_5505_2016-03-15 20:43:04' '0' '3' '1' '1'
-'214' '8' '1603438960564' '-1' '1453824000000' '2' '1'
-'200080_5505_2016-03-15 20:43:04' '0.02879999950528145' '0.0' '0.0' '2'
-'2' '1,,NULL' '4,0,NULL' '200080_5505_2016-03-15 20:43:04' ',NULL,NULL'
-',NULL,NULL' ',NULL,NULL' '1' '1' '1' ',NULL,NULL' ',NULL,NULL']
+['200001_80005_2016-03-31 18:11:20' 1459419080000
+ '200001_80005_2016-03-31 18:11:20' '200001_80005' '80005' '200001' 1 1.0
+ 1.0 1 1 5 1 '200001_80005_2016-03-31 18:11:20' None None None None None
+ None None None None None None '200001_80005_2016-03-31 18:11:20'
+ 0.019200000911951065 0.0 0.0 2 2 '1,,NULL' '4,0,NULL'
+ '200001_80005_2016-03-31 18:11:20' ',NULL,NULL' ',NULL,NULL' ',NULL,NULL'
+ 1 1 1 ',NULL,NULL' ',NULL,NULL']
 ---------------predict change of purchase -------------
-[[b'0.025186:0']]
+[[b'0.006222:0']]
 ```
 
 
