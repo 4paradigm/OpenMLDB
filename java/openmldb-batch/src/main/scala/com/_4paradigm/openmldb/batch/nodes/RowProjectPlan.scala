@@ -190,14 +190,8 @@ object RowProjectPlan {
         val outputArr = Array.fill[Any](outputFields)(null)
 
         val resultIter = partitionIter.map(row => {
-
-          //println("tobe print the row")
-          println(row)
-
           // Encode the spark row to native row
           val nativeInputRow = encoder.encode(row)
-
-
 
           val emptyParameter = new codec.Row()
 

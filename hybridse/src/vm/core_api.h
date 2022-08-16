@@ -127,8 +127,8 @@ class CoreAPI {
     static size_t GetUniqueID(const hybridse::vm::PhysicalOpNode* node);
 
     static hybridse::codec::Row RowProject(const hybridse::vm::RawPtrHandle fn,
-                                           const hybridse::codec::Row row,
-                                           const hybridse::codec::Row parameter,
+                                           const hybridse::codec::Row& row,
+                                           const hybridse::codec::Row& parameter,
                                            const bool need_free = false);
     static hybridse::codec::Row RowConstProject(
         const hybridse::vm::RawPtrHandle fn, const hybridse::codec::Row parameter,
