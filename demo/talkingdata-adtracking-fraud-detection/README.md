@@ -83,6 +83,10 @@ see [train_and_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/ta
 5. load data to online storage
 6. update model to predict server
 
+#### The Jupyter Way
+
+You can use the jupyter nodebook `train_and_serve.ipynb`, the same with `train_and_serve.py`
+
 ### Predict
 
 Predict once, send a post request to predict server `<ip>:<port>/predict`. Or you can run the python script below.
