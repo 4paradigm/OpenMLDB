@@ -11,7 +11,10 @@ import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Optional;
+import org.testng.annotations.Parameters;
+import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
 import java.io.File;
@@ -20,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class UpgradeTest extends ClusterTest {
+public class UpgradeStandalone extends ClusterTest {
     private String dbName;
     private String memoryTableName;
     private String ssdTableName;
