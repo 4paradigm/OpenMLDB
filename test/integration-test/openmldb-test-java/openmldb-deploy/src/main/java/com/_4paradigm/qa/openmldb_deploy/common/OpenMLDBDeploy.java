@@ -370,11 +370,13 @@ public class OpenMLDBDeploy {
         }
         throw new RuntimeException("spark 部署失败");
     }
-
     public int deployTaskManager(String testPath, String ip, int index, String zk_endpoint){
+        int port = LinuxUtil.getNoUsedPort();
+        return deployTaskManager(testPath,ip,port,index,zk_endpoint);
+    }
+    public int deployTaskManager(String testPath, String ip, int port, int index, String zk_endpoint){
         try {
             String sparkHome = deploySpark(testPath);
-            int port = LinuxUtil.getNoUsedPort();
             String task_manager_name = "/openmldb-task_manager-"+index;
             ExecutorUtil.run("cp -r " + testPath + "/" + openMLDBDirectoryName + " " + testPath + task_manager_name);
             if(batchJobJarPath==null) {

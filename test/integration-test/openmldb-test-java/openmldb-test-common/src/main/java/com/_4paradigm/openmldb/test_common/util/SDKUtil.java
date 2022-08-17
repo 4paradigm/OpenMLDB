@@ -74,7 +74,7 @@ public class SDKUtil {
             openMLDBResult.setMsg(e.getMessage());
             e.printStackTrace();
         }
-        log.info("deploy sql:{}",sql);
+        log.info("deploy:{}",openMLDBResult);
         return openMLDBResult;
     }
 

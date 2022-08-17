@@ -925,7 +925,7 @@ cases:
           - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
           - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
     sql: |
-      SELECT id, c1, d[0](c3,c5<1.4) OVER w1 as w1_where FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT id, c1, d[0](c3,c5<1.35) OVER w1 as w1_where FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     dataProvider:
       - ["min_where","max_where","sum_where","avg_where"]
     expect:
