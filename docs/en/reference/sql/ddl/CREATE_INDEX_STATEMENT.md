@@ -48,7 +48,7 @@ CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
 ```{note}
-If `OPTIONS` is not provided, the created index cannot be used in the SQL that will be deployed online, since the index doesn't have TS (timestamp).
+If `OPTIONS` is not provided, the SQL with the created index cannot be deployed online, since the index doesn't have TS (timestamp).
 ```
 We can also set `TS` column as below:
 ```SQL
