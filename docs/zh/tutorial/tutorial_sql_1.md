@@ -1,3 +1,4 @@
+
 # 基于 SQL 的特征开发（上）
 
 
@@ -26,7 +27,7 @@
 
 从上面的表格中总结可以看到，OpenMLDB 在功能和工程化落地方面都具有独特的优势，特别对于实时性高的时序特征计算，OpenMLDB 有不少的针对性优化。如果希望进一步了解 OpenMLDB，可以阅读相关 [介绍文档](https://zhuanlan.zhihu.com/p/462559609)，以及 [OpenMLDB 的 GitHub repo](https://github.com/4paradigm/OpenMLDB) 。
 
-在本系列教程中，我们将会基于 OpenMLDB 的 SQL 语法，来实践演示如何基于 SQL 开发特征工程脚本。你可以通过阅读我们的文档 - [OpenMLDB 快速上手](http://docs-cn.openmldb.ai/2620852)，来了解如何试用 OpenMLDB（推荐基于 docker 镜像，通过单机版来快速试用）；你也可以在这里找到我们 [完整的产品说明文档](http://docs-cn.openmldb.ai/)。
+在本系列教程中，我们将会基于 OpenMLDB 的 SQL 语法，来实践演示如何基于 SQL 开发特征工程脚本。你可以通过阅读我们的文档 - [OpenMLDB 快速上手](../quickstart/openmldb_quickstart.md)，来了解如何试用 OpenMLDB（推荐基于 docker 镜像，通过单机版来快速试用）；你也可以在这里找到我们 [完整的产品说明文档](../)。
 
 ## 3. 从 0 到 1，特征工程实践
 
@@ -34,7 +35,7 @@
 
 注意，如果你想运行本篇教程所举例的 SQL，请按照以下两个步骤做准备：
 
-- 推荐使用 docker 镜像在**单机版**下运行本教程，镜像拉取和 CLI 运行方式参考 [OpenMLDB 快速上手](http://docs-cn.openmldb.ai/2620852)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版 CLI 下的普通线上模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
+- 推荐使用 docker 镜像在**单机版**下运行本教程，镜像拉取和 CLI 运行方式参考 [OpenMLDB 快速上手](../quickstart/openmldb_quickstart.md)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版 CLI 下的普通线上模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
 - 本教程相关的所有数据以及导入操作脚本可以在[这里下载](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)。
 
 ### 3.1. 基本概念
@@ -143,7 +144,7 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE�
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界条数必须<=上界条数
 
-更多语法和特性可以参考 [OpenMLDB窗口参考手册](http://docs-cn.openmldb.ai/2620896)。
+更多语法和特性可以参考 [OpenMLDB窗口参考手册](../reference/sql/dql/WHERE_CLAUSE.md)。
 
 ![img](images/table_t1.jpg)
 
