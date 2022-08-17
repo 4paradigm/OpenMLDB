@@ -2109,6 +2109,40 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterAlias("week", "weekofyear");
 
+    const std::string last_day_doc =
+        R"(
+            @brief Return the last day of the month to which the date belongs to
+
+            Example:
+            @code{.sql}
+                select last_day(timestamp("2020-05-22 10:43:40"));
+                -- output 2020-05-31
+                select last_day(timestamp("2020-02-12 10:43:40"));
+                -- output 2020-02-29
+                select last_day(timestamp("2021-02-12"));
+                -- output 2021-02-28
+            @endcode
+            @since 0.6.1
+        )";
+
+    RegisterExternal("last_day")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .doc(R"(

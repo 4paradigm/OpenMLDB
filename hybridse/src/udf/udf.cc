@@ -15,6 +15,7 @@
  */
 
 #include "udf/udf.h"
+#include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
 #include <map>
@@ -182,6 +183,36 @@ int32_t weekofyear(Date *date) {
     } catch (...) {
         return 0;
     }
+}
+
+void last_day(int64_t ts, Date *output, bool *is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day = absl::ToCivilDay(absl::FromUnixMillis(ts),
+                                                absl::FixedTimeZone(TZ_OFFSET / 1000));
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
+}
+void last_day(const Timestamp *ts, Date *output, bool *is_null) { last_day(ts->ts_, output, is_null); }
+void last_day(const Date *ts, Date *output, bool *is_null) {
+    int32_t year, month, day;
+    if (!Date::Decode(ts->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
 }
 
 void int_to_char(int32_t val, StringRef* output) {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="openMLDB-deploy" parallel="false" thread-count="2">
+    <test name="deploy-tmp">
+<!--        <parameter name="openMLDBPath" value="/home/zhaowei01/tmp/openmldb"/>-->
+        <classes>
+            <class name="com._4paradigm.qa.openmldb_deploy.test.TmpDeployStandalone">
+                <methods>
+                    <include name="testTmp" />
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
