@@ -131,6 +131,8 @@ cases:
             - [5, contact@dropmldb.ai]
             - [6, contact@closemldb.ai]
 
+# reserved case
+# For more details, please checkout https://github.com/4paradigm/OpenMLDB/pull/2187
 #  - id: 4
 #    desc: udf regexp_like with flags
 #    inputs:

@@ -1025,7 +1025,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @param flags: specifies the matching behavior of the regular expression function. 'c': case-sensitive matching(default); 'i': case-insensitive matching; 'm': multi-line mode; 'e': Extracts sub-matches(ignored here); 's': Enables the POSIX wildcard character . to match new line. 
 
-                @since 0.5.3
+                @since 0.6.1
         )r");
     RegisterExternal("regexp_like")
         .args<StringRef, StringRef>(reinterpret_cast<void*>(
@@ -1068,7 +1068,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
                 @param pattern: the regular expression match pattern 
 
-                @since 0.5.3
+                @since 0.6.1
         )r");
     RegisterExternal("ucase")
         .args<StringRef>(
