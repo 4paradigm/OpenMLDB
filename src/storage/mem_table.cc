@@ -236,9 +236,6 @@ bool MemTable::Delete(const std::string& pk, uint32_t idx) {
 }
 
 bool MemTable::Delete(const std::string& pk, uint32_t idx, uint64_t ts) {
-    if (ts == 0) {
-        return Delete(pk, idx);
-    }
     std::shared_ptr<IndexDef> index_def = GetIndex(idx);
     if (!index_def || !index_def->IsReady()) {
         return false;

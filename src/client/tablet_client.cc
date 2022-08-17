@@ -830,7 +830,6 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
-    request.set_ts(0);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }
