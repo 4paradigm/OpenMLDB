@@ -25,7 +25,7 @@ SHOW TABLE STATUS;
 | Replica           | It shows the replica number of the table.                                                                                                         |
 | Offline_path      | It shows the path of the offline data for this table and is only configurable in the offline mode. The `NULL` value means the path doesn't exist. |
 | Offline_format    | It shows the offline data format of the table and is only configurable in the offline mode. The `NULL` value means it is not set.                 |
-| Offline_deep_copy | It indicates whether deep copy is used on the table and is only configurable in the offline mode. The `NULL` value means it is not set.                                                       |
+| Offline_deep_copy | It indicates whether deep copy is used on the table and is only configurable in the offline mode. The `NULL` value means it is not set.   |
 
 
 
