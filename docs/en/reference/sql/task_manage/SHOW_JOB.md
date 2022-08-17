@@ -14,7 +14,7 @@ Submit an online data import task:
 ```sql
 LOAD DATA INFILE 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');
 ```
-The output is shown bellow. The job id of the above command is 1.
+The output is shown below. The job id of the above command is 1.
 ```sql
 ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
   id   job_type           state       start_time   end_time        parameter                                                                                                                    cluster   application_id   error
