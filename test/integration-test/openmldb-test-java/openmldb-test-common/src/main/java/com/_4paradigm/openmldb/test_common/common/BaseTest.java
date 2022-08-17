@@ -37,7 +37,7 @@ import java.lang.reflect.Method;
  */
 @Slf4j
 public class BaseTest implements ITest {
-    protected static final Logger logger = new LogProxy(log);
+//    protected static final Logger logger = new LogProxy(log);
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
 
@@ -54,7 +54,7 @@ public class BaseTest implements ITest {
         }
         OpenMLDBCaseFileList dp = OpenMLDBCaseFileList.dataProviderGenerator(casePaths);
         Object[] caseArray = dp.getCases().toArray();
-        logger.info("caseArray.length:{}",caseArray.length);
+        log.info("caseArray.length:{}",caseArray.length);
         return caseArray;
     }
 

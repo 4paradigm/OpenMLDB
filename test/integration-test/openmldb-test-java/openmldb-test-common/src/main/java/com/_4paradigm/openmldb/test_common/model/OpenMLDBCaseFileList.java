@@ -34,8 +34,6 @@ public class OpenMLDBCaseFileList {
         List<SQLCase> cases = new ArrayList<SQLCase>();
 
         for (CaseFile dataProvider : dataProviderList) {
-            System.out.println("--------");
-            System.out.println(OpenMLDBGlobalVar.CASE_LEVELS);
             for (SQLCase sqlCase : dataProvider.getCases(OpenMLDBGlobalVar.CASE_LEVELS)) {
                 if (!StringUtils.isEmpty(OpenMLDBGlobalVar.CASE_NAME) &&
                         !OpenMLDBGlobalVar.CASE_NAME.equals(BaseTest.CaseNameFormat(sqlCase))) {
