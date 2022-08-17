@@ -10,7 +10,7 @@ The `DROP DATABASE` statement is used to drop a database.
 
 ## **Example**
 
-The following sql commands create two databases and view all databases.
+The following SQL commands create two databases and view all databases.
 
 ```sql
 CREATE DATABASE db1;
@@ -27,7 +27,7 @@ SHOW DATABASES;
   db2        
  ----------- 
 ```
-The following sql command deletes the database `db1` and checks out the rest of the databases.
+The following SQL command deletes the database `db1` and list the rest of the databases.
 
 ```sql
 DROP DATABASE db1;

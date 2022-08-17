@@ -16,7 +16,7 @@ The `CREATE DATABASE` statement is used to create a new database on OpenMLDB. Th
 
 ## **Example**
 
-The following sql command creates a database named `db1`. If a database with the same name already exists, an error will be thrown.
+The following SQl command creates a database named `db1`. If a database with the same name already exists, an error will be thrown.
 
 ```sql
 CREATE DATABASE db1;
