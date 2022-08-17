@@ -63,14 +63,15 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 #### Example: Example of Simple SELECT Query Statement that Supports Online
 
-
-
 ```sql
 CREATE DATABASE db1;
 
 USE db1;
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
--- SUCCEED: Create successfully
+-- SUCCEED
+
+CREATE TABLE t2 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
+-- SUCCEED
 
 desc t1;
  --- ---------- ----------- ------ --------- 
@@ -85,6 +86,22 @@ desc t1;
  --- -------------------- ------ ---------- ---------- --------------- 
   1   INDEX_0_1639524729   col1   std_time   43200min   kAbsoluteTime  
  --- -------------------- ------ ---------- ---------- --------------- 
+
+ -- last join without order by, 'col1' hit index
+ SELECT
+   t1.col1 as id,
+   t1.col0 as t1_col0,
+   t1.col1 + t2.col1 + 1 as test_col1,
+ FROM t1
+ LAST JOIN t2 ON t1.col1=t2.col1;
+ 
+ -- last join wit order by, 'col1:std_time' hit index
+ SELECT
+   t1.col1 as id,
+   t1.col0 as t1_col0,
+   t1.col1 + t2.col1 + 1 as test_col1,
+ FROM t1
+ LAST JOIN t2	ORDER BY t2.std_time ON t1.col1=t2.col1;
 ```
 ### Window Usage Specification Under Online Serving
 

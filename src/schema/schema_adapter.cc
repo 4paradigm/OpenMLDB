@@ -16,6 +16,7 @@
 
 #include "schema/schema_adapter.h"
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -68,6 +69,11 @@ bool SchemaAdapter::SubSchema(const ::hybridse::vm::Schema* schema,
     }
     return true;
 }
+std::shared_ptr<::hybridse::sdk::Schema> SchemaAdapter::ConvertSchema(const PBSchema& schema) {
+    ::hybridse::vm::Schema vm_schema;
+    ConvertSchema(schema, &vm_schema);
+    return std::make_shared<::hybridse::sdk::SchemaImpl>(vm_schema);
+}
 
 bool SchemaAdapter::ConvertSchema(const PBSchema& schema, ::hybridse::vm::Schema* output) {
     if (output == nullptr) {
@@ -84,40 +90,13 @@ bool SchemaAdapter::ConvertSchema(const PBSchema& schema, ::hybridse::vm::Schema
         new_column->set_name(column.name());
         new_column->set_is_not_null(column.not_null());
         new_column->set_is_constant(column.is_constant());
-        switch (column.data_type()) {
-            case openmldb::type::kBool:
-                new_column->set_type(::hybridse::type::kBool);
-                break;
-            case openmldb::type::kSmallInt:
-                new_column->set_type(::hybridse::type::kInt16);
-                break;
-            case openmldb::type::kInt:
-                new_column->set_type(::hybridse::type::kInt32);
-                break;
-            case openmldb::type::kBigInt:
-                new_column->set_type(::hybridse::type::kInt64);
-                break;
-            case openmldb::type::kFloat:
-                new_column->set_type(::hybridse::type::kFloat);
-                break;
-            case openmldb::type::kDouble:
-                new_column->set_type(::hybridse::type::kDouble);
-                break;
-            case openmldb::type::kDate:
-                new_column->set_type(::hybridse::type::kDate);
-                break;
-            case openmldb::type::kTimestamp:
-                new_column->set_type(::hybridse::type::kTimestamp);
-                break;
-            case openmldb::type::kString:
-            case openmldb::type::kVarchar:
-                new_column->set_type(::hybridse::type::kVarchar);
-                break;
-            default:
-                LOG(WARNING) << "type " << ::openmldb::type::DataType_Name(column.data_type())
-                             << " is not supported";
-                return false;
+        ::hybridse::type::Type type;
+        if (!ConvertType(column.data_type(), &type)) {
+            LOG(WARNING) << "type " << ::openmldb::type::DataType_Name(column.data_type())
+                         << " is not supported";
+            return false;
         }
+        new_column->set_type(type);
     }
     return true;
 }
@@ -377,6 +356,14 @@ bool SchemaAdapter::ConvertColumn(const hybridse::type::ColumnDef& sql_column, o
     }
     column->set_data_type(openmldb_type);
     return true;
+}
+
+std::map<std::string, openmldb::type::DataType> SchemaAdapter::GetColMap(const nameserver::TableInfo& table_info) {
+    std::map<std::string, openmldb::type::DataType> col_map;
+    for (const auto& col : table_info.column_desc()) {
+        col_map.emplace(col.name(), col.data_type());
+    }
+    return col_map;
 }
 
 base::Status SchemaAdapter::CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info) {

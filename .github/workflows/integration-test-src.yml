@@ -1,12 +1,9 @@
 name: INTEGRATION-TEST-SRC
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+#  pull_request:
   schedule:
-    - cron:  '* 1 * * *'
+    - cron:  '0 1 * * *'
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:

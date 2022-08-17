@@ -168,18 +168,24 @@ bool RowBuilder::Check(::hybridse::type::Type type) {
 
 void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset) {
-    auto ptr = buf + start + addr_length * str_idx;
-    if (addr_length == 1) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
-    } else if (addr_length == 2) {
-        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
-    } else if (addr_length == 3) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset & 0xFF00) >> 8;
-        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // Do not update row pointer for UnsafeRowOpt
     } else {
-        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
+        auto ptr = buf + start + addr_length * str_idx;
+        if (addr_length == 1) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
+        } else if (addr_length == 2) {
+            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
+        } else if (addr_length == 3) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
+            *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
+        } else {
+            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
+        }
     }
+
+
 }
 
 bool RowBuilder::AppendNULL() {
