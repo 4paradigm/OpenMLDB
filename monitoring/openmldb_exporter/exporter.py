@@ -39,6 +39,8 @@ def collect_task(collectors: Iterable[Collector]):
         logging.info("%s collecting", type(collector).__qualname__)
         collector.collect()
 
+def err_callback(failure):
+    logging.error(str(failure))
 
 def main():
     cfg_store = ConfigStore()
@@ -57,7 +59,8 @@ def main():
     )
 
     repeated_task = task.LoopingCall(collect_task, collectors)
-    repeated_task.start(cfg_store.pull_interval)
+    deferred = repeated_task.start(cfg_store.pull_interval)
+    deferred.addErrback(err_callback)
 
     root = Resource()
     # child path must be bytes
