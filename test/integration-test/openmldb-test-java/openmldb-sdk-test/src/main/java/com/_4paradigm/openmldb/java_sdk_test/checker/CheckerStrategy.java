@@ -37,7 +37,9 @@ public class CheckerStrategy {
             return checkList;
         }
         ExpectDesc expect = sqlCase.getOnlineExpectByType(executorType);
-
+        if (null == expect) {
+            return checkList;
+        }
         checkList.add(new SuccessChecker(expect, openMLDBResult));
 
         if (CollectionUtils.isNotEmpty(expect.getColumns())) {

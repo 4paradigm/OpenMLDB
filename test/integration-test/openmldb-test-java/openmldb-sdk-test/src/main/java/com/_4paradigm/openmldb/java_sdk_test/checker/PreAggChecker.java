@@ -64,6 +64,13 @@ public class PreAggChecker extends BaseChecker {
         String sql = String.format("select key,ts_start,ts_end,num_rows,agg_val,filter_key from %s",preAggTableName);
         OpenMLDBResult actualResult = SDKUtil.select(executor, "__PRE_AGG_DB", sql);
         List<List<Object>> actualRows = actualResult.getResult();
+        int count = preAgg.getCount();
+        if(count>=0){
+            Assert.assertEquals(actualRows.size(),count,"preAggTable count 不一致");
+        }
+        if(count==0){
+            return;
+        }
         actualRows.stream().forEach(l->{
             Object o = DataUtil.parseBinary((String)l.get(4),type);
             l.set(4,o);

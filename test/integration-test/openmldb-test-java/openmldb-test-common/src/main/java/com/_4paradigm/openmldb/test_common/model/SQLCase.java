@@ -60,6 +60,7 @@ public class SQLCase implements Serializable{
     private List<String> tearDown;
     private List<String> excludes;
     private String only;
+    private List<SQLCase> steps;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);

@@ -106,7 +106,7 @@ public class ClusterTest {
         if (!StringUtils.isEmpty(caseEnv)) {
             OpenMLDBGlobalVar.env = caseEnv;
         }
-        log.info("fedb global var env: {}", env);
+        log.info("openmldb global var env: {}", env);
         OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
         executor = openMLDBClient.getExecutor();
         log.info("executor:{}",executor);

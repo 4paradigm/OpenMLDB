@@ -54,7 +54,11 @@ public class SDKUtil {
     }
 
     public static OpenMLDBResult executeLongWindowDeploy(SqlExecutor executor, SQLCase sqlCase, boolean isAsyn) throws SQLException {
-        String deploySQL = SQLUtil.getLongWindowDeploySQL(sqlCase.getSpName(),sqlCase.getLongWindow(),sqlCase.getSql());
+        return executeLongWindowDeploy(executor,sqlCase,sqlCase.getSql(),isAsyn);
+    }
+
+    public static OpenMLDBResult executeLongWindowDeploy(SqlExecutor executor, SQLCase sqlCase, String sql, boolean isAsyn) throws SQLException {
+        String deploySQL = SQLUtil.getLongWindowDeploySQL(sqlCase.getSpName(),sqlCase.getLongWindow(),sql);
         log.info("long window deploy sql: {}", deploySQL);
         return SDKUtil.sqlRequestModeWithProcedure(
                 executor, sqlCase.getDb(), sqlCase.getSpName(), null == sqlCase.getBatch_request(),
@@ -79,7 +83,7 @@ public class SDKUtil {
     }
 
     public static OpenMLDBResult sqlRequestMode(SqlExecutor executor, String dbName,
-                                                Boolean need_insert_request_row, String sql, InputDesc input) throws SQLException {
+                                                Boolean need_insert_request_row, String sql, InputDesc input) {
         OpenMLDBResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("select")||sql.toLowerCase().startsWith("deploy")) {
             fesqlResult = selectRequestModeWithPreparedStatement(executor, dbName, need_insert_request_row, sql, input);
@@ -91,7 +95,7 @@ public class SDKUtil {
 
     public static OpenMLDBResult sqlBatchRequestMode(SqlExecutor executor, String dbName,
                                                      String sql, InputDesc input,
-                                                     List<Integer> commonColumnIndices) throws SQLException {
+                                                     List<Integer> commonColumnIndices) {
         OpenMLDBResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("select")) {
             fesqlResult = selectBatchRequestModeWithPreparedStatement(

@@ -9,5 +9,6 @@ import java.util.List;
 public class PreAggTable implements Serializable {
     private String name;
     private String type;
+    private int count = -1;
     private List<List<Object>> rows;
 }

@@ -48,13 +48,13 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
     protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, OpenMLDBResult> resultMap;
 
-    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
+    public BaseSQLExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         this.executor = executor;
-        this.sqlCase = fesqlCase;
+        this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = Objects.isNull(fesqlCase.getDb()) ? "" : fesqlCase.getDb();
-        if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
-            for (InputDesc inputDesc : fesqlCase.getInputs()) {
+        dbName = Objects.isNull(sqlCase.getDb()) ? "" : sqlCase.getDb();
+        if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
+            for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
             }
         }

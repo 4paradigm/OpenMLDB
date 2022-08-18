@@ -16,13 +16,17 @@
 
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
+import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
+import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
+import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -36,13 +40,15 @@ import java.util.Map;
  * @date 2020/6/15 11:29 AM
  */
 @Slf4j
-public class BatchSQLExecutor extends BaseSQLExecutor {
+public class StepExecutor extends BaseSQLExecutor {
 
-    public BatchSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    protected List<String> spNames;
+
+    public StepExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
     }
-    public BatchSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(sqlCase, executor, executorMap, fedbInfoMap, executorType);
+    public StepExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(fesqlCase, executor, executorMap, openMLDBInfoMap, executorType);
     }
 
     @Override
@@ -95,27 +101,31 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     public OpenMLDBResult execute(String version, SqlExecutor executor){
         log.info("version:{} execute begin",version);
         OpenMLDBResult openMLDBResult = null;
-        List<String> sqls = sqlCase.getSqls();
-        if (sqls != null && sqls.size() > 0) {
-            for (String sql : sqls) {
-                // log.info("sql:{}", sql);
-                if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+        try {
+            List<SQLCase> steps = sqlCase.getSteps();
+            for (SQLCase step : steps) {
+                String sql = step.getSql();
+                if (MapUtils.isNotEmpty(openMLDBInfoMap)) {
                     sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
-                }else {
+                } else {
                     sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+                if (executorType == SQLCaseType.kRequest) {
+                    InputDesc request = sqlCase.getInputs().get(0);
+                    openMLDBResult = SDKUtil.sqlRequestMode(executor, dbName, true, sql, request);
+                } else if (executorType == SQLCaseType.kLongWindow) {
+                    openMLDBResult = SDKUtil.executeLongWindowDeploy(executor, sqlCase, sql, false);
+                    spNames.add(sqlCase.getSpName());
+                } else {
+                    openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+                }
+                List<Checker> strategyList = CheckerStrategy.build(executor, step, openMLDBResult, executorType);
+                for (Checker checker : strategyList) {
+                    checker.check();
+                }
             }
-        }
-        String sql = sqlCase.getSql();
-        if (sql != null && sql.length() > 0) {
-            // log.info("sql:{}", sql);
-            if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
-                sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
-            }else {
-                sql = SQLUtil.formatSql(sql, tableNames);
-            }
-            openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+        }catch (Exception e){
+            e.printStackTrace();
         }
         log.info("version:{} execute end",version);
         return openMLDBResult;
