@@ -355,9 +355,8 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectBytes(
         hybridse::vm::ByteArrayPtr unsaferowBytes,
         const int unsaferowSize, const bool is_instance, size_t append_slices,
         WindowInterface* window) {
-
     auto actualRowSize = unsaferowSize + codec::HEADER_LENGTH;
-    int8_t* newRowPtr = (int8_t*) malloc(actualRowSize);
+    int8_t* newRowPtr = reinterpret_cast<int8_t*>(malloc(actualRowSize));
 
     // Write the row size
     *reinterpret_cast<uint32_t *>(newRowPtr) = actualRowSize;
