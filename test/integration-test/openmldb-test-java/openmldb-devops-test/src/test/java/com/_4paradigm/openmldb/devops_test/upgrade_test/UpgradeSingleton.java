@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class UpgradeStandalone extends ClusterTest {
+public class UpgradeSingleton extends ClusterTest {
     private String dbName;
     private String memoryTableName;
     private String ssdTableName;
@@ -31,9 +31,11 @@ public class UpgradeStandalone extends ClusterTest {
     private SDKClient sdkClient;
     private NsClient nsClient;
     private OpenMLDBDevops openMLDBDevops;
+    private String openMLDBPath;
     private String newBinPath;
     private String confPath;
     private String upgradePath;
+    private OpenMLDBDeploy openMLDBDeploy;
     @BeforeClass
     @Parameters("upgradeVersion")
     public void beforeClass(@Optional("0.6.0") String upgradeVersion){
@@ -45,25 +47,8 @@ public class UpgradeStandalone extends ClusterTest {
         nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
         openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
 
+        int dataCount = 100;
         sdkClient.createAndUseDB(dbName);
-        upgradePath = DeployUtil.getTestPath(version)+"/upgrade_"+upgradeVersion;
-        File file = new File(upgradePath);
-        if(!file.exists()){
-            file.mkdirs();
-        }
-        OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(upgradeVersion);
-        String upgradeDirectoryName = openMLDBDeploy.downloadOpenMLDB(upgradePath);
-        newBinPath = upgradeDirectoryName+"/bin/";
-        confPath = upgradeDirectoryName+"/conf";
-    }
-    @Test
-    public void testUpgrade(){
-//        Map<String,List<Long>> map1 = nsClient.getTableOffset(dbName);
-//        log.info("升级前offset："+map1);
-        openMLDBDevops.upgradeStandalone(newBinPath,confPath);
-//        Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
-//        log.info("升级后offset："+map2);
-//        Assert.assertEquals(map1,map2);
         String memoryTableDDL = "create table test_memory(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
@@ -74,7 +59,7 @@ public class UpgradeStandalone extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1);";
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3);";
         String ssdTableDDL = "create table test_ssd(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
@@ -85,7 +70,7 @@ public class UpgradeStandalone extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1,storage_mode=\"SSD\");";
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3,storage_mode=\"SSD\");";
         String hddTableDDL = "create table test_hdd(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
@@ -96,9 +81,7 @@ public class UpgradeStandalone extends ClusterTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "c9 bool,\n" +
-                "index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1,storage_mode=\"HDD\");";
-        // 插入一定量的数据
-        int dataCount = 100;
+                "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=3,storage_mode=\"HDD\");";
         List<List<Object>> dataList = new ArrayList<>();
         for(int i=0;i<dataCount;i++){
             List<Object> list = Lists.newArrayList("aa" + i, 1, 2, 3, 1.1, 2.1, 1590738989000L, "2020-05-01", true);
@@ -111,12 +94,51 @@ public class UpgradeStandalone extends ClusterTest {
             sdkClient.insertList(ssdTableName, dataList);
             sdkClient.insertList(hddTableName, dataList);
         }
-
+        upgradePath = DeployUtil.getTestPath(version)+"/upgrade_"+upgradeVersion;
+        File file = new File(upgradePath);
+        if(!file.exists()){
+            file.mkdirs();
+        }
+        openMLDBDeploy = new OpenMLDBDeploy(upgradeVersion);
+        String upgradeDirectoryName = openMLDBDeploy.downloadOpenMLDB(upgradePath);
+        openMLDBPath = upgradeDirectoryName+"/bin/openmldb";
+        newBinPath = upgradeDirectoryName+"/bin/";
+        confPath = upgradeDirectoryName+"/conf";
+    }
+    @Test
+    public void testUpgrade(){
+        Map<String,List<Long>> map1 = nsClient.getTableOffset(dbName);
+        log.info("升级前offset："+map1);
+        openMLDBDevops.upgradeNs(newBinPath,confPath);
+        openMLDBDevops.upgradeTablet(newBinPath,confPath);
+        openMLDBDevops.upgradeApiServer(newBinPath,confPath);
+        openMLDBDevops.upgradeTaskManager(openMLDBDeploy);
+        Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
+        log.info("升级后offset："+map2);
+        Assert.assertEquals(map1,map2);
         CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
         if(version.compareTo("0.5.0")>=0) {
             CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
         }
     }
+
+//    public void upgradeNs(){
+//        Map<String,List<Long>> map1 = nsClient.getTableOffset(dbName);
+//        log.info("升级前offset："+map1);
+//        openMLDBDevops.upgradeNs(openMLDBPath,confPath);
+//        Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
+//        log.info("升级后offset："+map2);
+//        Assert.assertEquals(map1,map2);
+//    }
+//    public void upgradeTablet(){
+//        Map<String,List<Long>> map1 = nsClient.getTableOffset(dbName);
+//        log.info("升级前offset："+map1);
+//        openMLDBDevops.upgradeTablet(openMLDBPath,confPath);
+//        Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
+//        log.info("升级后offset："+map2);
+//        Assert.assertEquals(map1,map2);
+//        CheckUtil.addDataCheck(sdkClient,nsClient,dbName,Lists.newArrayList(memoryTableName,ssdTableName,hddTableName),100,10);
+//    }
 
 //    @AfterClass
     public void afterClass(){

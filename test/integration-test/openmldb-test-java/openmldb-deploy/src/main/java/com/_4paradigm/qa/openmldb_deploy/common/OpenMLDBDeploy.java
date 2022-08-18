@@ -447,7 +447,7 @@ public class OpenMLDBDeploy {
             boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);
             if(nsOk&&tabletOk&&apiServerOk){
                 log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{},apiServerPort:{}",nsPort,tabletPort,apiServerPort));
-                OpenMLDBInfo fedbInfo = OpenMLDBInfo.builder()
+                OpenMLDBInfo openMLDBInfo = OpenMLDBInfo.builder()
                         .deployType(OpenMLDBDeployType.STANDALONE)
                         .openMLDBPath(testPath+"/openmldb-standalone/bin/openmldb")
                         .apiServerEndpoints(Lists.newArrayList())
@@ -460,7 +460,7 @@ public class OpenMLDBDeploy {
                         .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
                         .apiServerEndpoints(Lists.newArrayList(apiServerEndpoint))
                         .build();
-                return fedbInfo;
+                return openMLDBInfo;
             }
         }catch (Exception e){
             e.printStackTrace();

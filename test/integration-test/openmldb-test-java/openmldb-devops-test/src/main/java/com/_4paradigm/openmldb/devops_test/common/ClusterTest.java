@@ -56,6 +56,7 @@ public class ClusterTest {
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(true);
+            openMLDBDeploy.setSystemTableReplicaNum(1);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(1, 1);
         }else{
 //            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()

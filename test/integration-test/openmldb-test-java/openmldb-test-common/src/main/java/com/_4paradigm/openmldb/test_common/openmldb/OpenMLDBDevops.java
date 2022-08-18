@@ -38,6 +38,20 @@ public class OpenMLDBDevops {
             nsClient.checkTableIsAlive(dbName, null);
         }
     }
+    public void operateStandalone(String operator){
+        String command = "";
+        switch (operator){
+            case "start":
+                command = String.format("sh %s/openmldb-standalone/bin/start-standalone.sh",basePath);
+                break;
+            case "stop":
+                command = String.format("sh %s/openmldb-standalone/bin/stop-standalone.sh",basePath);
+                break;
+        }
+        ExecutorUtil.run(command);
+        Tool.sleep(5*1000);
+
+    }
     public void operateTablet(String operator){
         int size = openMLDBInfo.getTabletEndpoints().size();
         for(int i=0;i<size;i++){
@@ -136,6 +150,20 @@ public class OpenMLDBDevops {
             openMLDBDeploy.deployTaskManager(basePath,ip,port,i,openMLDBInfo.getZk_cluster());
             log.info("第{}个taskmanager升级结束",i);
         }
+    }
+    public void upgradeStandalone(String binPath,String confPath){
+        log.info("升级单机版 开始");
+        String basePath = openMLDBInfo.getBasePath();
+        String standalonePath = basePath + "/openmldb-standalone";
+        backUp(standalonePath);
+        cpBin(standalonePath, binPath);
+        cpConf(standalonePath, confPath);
+        modifyStandaloneConf(standalonePath, openMLDBInfo.getNsEndpoints().get(0), openMLDBInfo.getTabletEndpoints().get(0), openMLDBInfo.getApiServerEndpoints().get(0));
+        operateStandalone("stop");
+        Tool.sleep(10*1000);
+        operateStandalone("start");
+        Tool.sleep(20*1000);
+        log.info("升级单机版 结束");
     }
     public static void backUp(String path){
         String command = "cp -rf "+path +"/conf "+path+"/conf-back";
@@ -238,6 +266,29 @@ public class OpenMLDBDevops {
 //                "sed -i 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+taskManagerPath+ "/conf/taskmanager.properties",
 //                "sed -i 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+taskManagerPath+ "/conf/taskmanager.properties",
 //                "sed -i 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+taskManagerPath+ "/conf/taskmanager.properties"
+        };
+        for(String command:commands){
+            ExecutorUtil.run(command);
+        }
+    }
+    public static void modifyStandaloneConf(String standalonePath,String nsEndpoint,String tabletEndpoint,String apiServerEndpoint){
+        String[] commands = {
+                "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + standalonePath + "/conf/standalone_nameserver.flags",
+                "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+standalonePath+"/conf/standalone_nameserver.flags",
+                "sed -i 's#--endpoint=.*#--endpoint=" + nsEndpoint + "#' " + standalonePath + "/conf/standalone_nameserver.flags",
+                "sed -i 's@#--tablet=.*@--tablet=" + tabletEndpoint + "@' " + standalonePath + "/conf/standalone_nameserver.flags",
+                "sed -i 's@--tablet=.*@--tablet=" + tabletEndpoint + "@' " + standalonePath + "/conf/standalone_nameserver.flags",
+                "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' " + standalonePath + "/conf/standalone_tablet.flags",
+                "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+standalonePath+"/conf/standalone_tablet.flags",
+                "sed -i 's#--endpoint=.*#--endpoint=" + tabletEndpoint + "#' " + standalonePath + "/conf/standalone_tablet.flags",
+                "echo -e '\n--hdd_root_path=./db_hdd' >> "+standalonePath+"/conf/standalone_tablet.flags",
+                "echo '--recycle_bin_hdd_root_path=./recycle_hdd' >> "+standalonePath+"/conf/standalone_tablet.flags",
+                "echo '--ssd_root_path=./db_ssd' >> "+standalonePath+"/conf/standalone_tablet.flags",
+                "echo '--recycle_bin_ssd_root_path=./recycle_ssd' >> "+standalonePath+"/conf/standalone_tablet.flags",
+                "sed -i 's@--zk_cluster=.*@#--zk_cluster=127.0.0.1:2181@' "+standalonePath+"/conf/standalone_apiserver.flags",
+                "sed -i 's@--zk_root_path=.*@#--zk_root_path=/openmldb@' "+standalonePath+"/conf/standalone_apiserver.flags",
+                "sed -i 's#--endpoint=.*#--endpoint="+apiServerEndpoint+"#' "+standalonePath+"/conf/standalone_apiserver.flags",
+                "sed -i 's#--nameserver=.*#--nameserver="+nsEndpoint+"#' "+standalonePath+"/conf/standalone_apiserver.flags"
         };
         for(String command:commands){
             ExecutorUtil.run(command);
