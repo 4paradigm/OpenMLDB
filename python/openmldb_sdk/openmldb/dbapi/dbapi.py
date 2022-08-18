@@ -527,15 +527,15 @@ class Cursor(object):
 
 class Connection(object):
 
-    def __init__(self, db, is_cluster_mode, zk_or_host, zkPath_or_port):
+    def __init__(self, db, is_cluster_mode, zk_or_host, zkPath_or_port, request_timeout):
         self._connected = True
         self._db = db
         if is_cluster_mode:
             options = sdk_module.OpenMLDBClusterSdkOptions(
-                zk_or_host, zkPath_or_port)
+                zk_or_host, zkPath_or_port, request_timeout=request_timeout)
         else:
             options = sdk_module.OpenMLDBStandaloneSdkOptions(
-                zk_or_host, zkPath_or_port)
+                zk_or_host, zkPath_or_port, request_timeout=request_timeout)
         sdk = sdk_module.OpenMLDBSdk(options, is_cluster_mode)
         ok = sdk.init()
         if not ok:
@@ -582,13 +582,13 @@ class Connection(object):
 
 
 # Constructor for creating connection to db
-def connect(db, zk=None, zkPath=None, host=None, port=None):
+def connect(db, zk=None, zkPath=None, host=None, port=None, requestTimeout=None):
     # standalone
     if isinstance(zkPath, int):
         host, port = zk, zkPath
-        return Connection(db, False, host, port)
+        return Connection(db, False, host, port, requestTimeout)
     # cluster
     elif isinstance(zkPath, str):
-        return Connection(db, True, zk, zkPath)
+        return Connection(db, True, zk, zkPath, requestTimeout)
     elif zkPath is None:
-        return Connection(db, False, host, int(port))
+        return Connection(db, False, host, int(port), requestTimeout)

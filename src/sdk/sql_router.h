@@ -38,9 +38,10 @@ namespace openmldb {
 namespace sdk {
 
 struct BasicRouterOptions {
+    virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
     uint32_t max_sql_cache_size = 10;
-    uint32_t request_timeout = 60000;
+    int32_t request_timeout = 60000;
 };
 
 struct SQLRouterOptions : BasicRouterOptions {
@@ -180,11 +181,9 @@ class SQLRouter {
     virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
                                               std::vector<::openmldb::taskmanager::JobInfo>* job_infos) = 0;
 
-    virtual ::openmldb::base::Status ShowJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
+    virtual ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
-    virtual ::openmldb::base::Status StopJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
+    virtual ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteOfflineQuery(const std::string& db, const std::string& sql,
                                                                           bool is_sync_job, int job_timeout,

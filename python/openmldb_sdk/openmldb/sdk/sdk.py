@@ -32,17 +32,20 @@ logger = logging.getLogger("OpenMLDB_sdk")
 
 
 class OpenMLDBClusterSdkOptions(object):
-    def __init__(self, zk_cluster, zk_path, session_timeout=3000, spark_conf_path=""):
+    def __init__(self, zk_cluster, zk_path, session_timeout=3000, spark_conf_path="", request_timeout=None):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
+        # all timeout unit ms
         self.zk_session_timeout = session_timeout
         self.spark_conf_path = spark_conf_path
+        self.request_timeout = int(request_timeout) if request_timeout else 60000
 
 
 class OpenMLDBStandaloneSdkOptions(object):
-    def __init__(self, host, port):
+    def __init__(self, host, port, request_timeout=None):
         self.host = host
         self.port = port
+        self.request_timeout = int(request_timeout) if request_timeout else 60000
 
 
 class OpenMLDBSdk(object):
@@ -56,6 +59,7 @@ class OpenMLDBSdk(object):
             options = sql_router_sdk.SQLRouterOptions()
             options.zk_cluster = self.options.zk_cluster
             options.zk_path = self.options.zk_path
+            options.request_timeout = self.options.request_timeout
             self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
             if not self.sdk:
                 logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s" % (
@@ -67,6 +71,7 @@ class OpenMLDBSdk(object):
             options = sql_router_sdk.StandaloneOptions()
             options.host = self.options.host
             options.port = self.options.port
+            options.request_timeout = self.options.request_timeout
             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
             if not self.sdk:
                 logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (

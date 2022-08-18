@@ -230,7 +230,7 @@ class SQLClusterRouter : public SQLRouter {
 
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
-    SQLRouterOptions GetSqlRouterOptions() {
+    std::shared_ptr<BasicRouterOptions> GetRouterOptions() {
         return options_;
     }
 
@@ -344,8 +344,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      hybridse::sdk::Status* status);
 
  private:
-    SQLRouterOptions options_;
-    StandaloneOptions standalone_options_;
+    std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;

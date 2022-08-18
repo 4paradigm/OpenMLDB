@@ -56,9 +56,9 @@ rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 来调大rpc的timeout时间，单位为ms。
 #### 普通请求
 如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
-1. CLI: 目前无法更改
+1. CLI: 启动时配置`--request_timeout_ms`
 2. JAVA: SDK 直连，调整`SdkOption.requestTimeout`; JDBC，调整url中的参数`requestTimeout`
-3. Python: 目前无法更改
+3. Python: SDK 直连(DBAPI), 调整`connect()`参数`request_timeout`; SQLAlchemy, 调整url中的参数`requestTimeout`
 
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```

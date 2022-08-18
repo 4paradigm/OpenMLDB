@@ -105,6 +105,7 @@ class OpenmldbDialect(default.DefaultDialect):
         self._zkPath = None
         self._zk = None
         self._db = None
+        self._requestTimeout = None
 
     @classmethod
     def dbapi(cls):
@@ -120,6 +121,7 @@ class OpenmldbDialect(default.DefaultDialect):
         self._db = url.database
         self._zk = url.query.get("zk")
         self._zkPath = url.query.get("zkPath")
+        self._requestTimeout = url.query.get("requestTimeout")
 
         qargs["db"] = self._db
         qargs.update(url.query)

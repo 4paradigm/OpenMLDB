@@ -23,6 +23,7 @@ import openmldb
 import sqlalchemy as db
 from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.sql import select
+from sqlalchemy.exc import DatabaseError
 # fmt:on
 
 from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
@@ -52,6 +53,15 @@ class TestSqlalchemyAPI:
         for row in self.connection.execute(select([self.test_table])):
             assert 'first' in list(row)
             assert 100 in list(row)
+
+    def test_request_timeout(self):
+        engine = db.create_engine(
+            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=1'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        connection = engine.connect()
+        connection.execute("insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');")
+        with pytest.raises(DatabaseError) as e:
+            connection.execute("select * from test_table where x='b'").fetchall()
+        assert 'select fail' in str(e.value)
 
     def teardown_class(self):
         self.connection.execute("drop table test_table;")
