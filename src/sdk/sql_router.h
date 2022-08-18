@@ -41,7 +41,7 @@ struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
     uint32_t max_sql_cache_size = 10;
-    int32_t request_timeout = 60000;
+    uint32_t request_timeout = 60000;
 };
 
 struct SQLRouterOptions : BasicRouterOptions {
