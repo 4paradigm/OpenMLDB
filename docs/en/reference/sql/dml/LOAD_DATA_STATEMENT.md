@@ -80,3 +80,4 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
+
