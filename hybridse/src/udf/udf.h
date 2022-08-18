@@ -259,6 +259,9 @@ void ilike(StringRef *name, StringRef *pattern,
         StringRef *escape, bool *out, bool *is_null);
 void ilike(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null);
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
+
 void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
 void string_to_date(StringRef *str, Date *output, bool *is_null);
 void string_to_timestamp(StringRef *str, Timestamp *output, bool *is_null);
