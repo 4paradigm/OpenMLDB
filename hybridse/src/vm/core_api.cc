@@ -345,11 +345,11 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
         WindowInterface* window) {
 
     // Create Row from input UnsafeRow bytes
-    //auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
-    //auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+    // auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+    // auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
 
     // Notice that we need to use new pointer for buffering rows in window list
-    int8_t* bufPtr = (int8_t*) malloc(inputRowSizeInBytes);
+    int8_t* bufPtr = reinterpret_cast<int8_t*>(malloc(inputRowSizeInBytes));
     memcpy(bufPtr, inputUnsafeRowBytes, inputRowSizeInBytes);
     auto row = Row(base::RefCountedSlice::CreateManaged(bufPtr, inputRowSizeInBytes));
 
