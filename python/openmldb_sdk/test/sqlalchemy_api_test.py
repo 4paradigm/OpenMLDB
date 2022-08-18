@@ -35,19 +35,20 @@ class TestSqlalchemyAPI:
 
     def setup_class(self):
         self.engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+            'openmldb:///db_test?zk={}&zkPath={}'.format(
+                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         self.connection = self.engine.connect()
         self.metadata = MetaData()
         self.test_table = Table('test_table', self.metadata,
-                                Column('x', String),
-                                Column('y', Integer))
+                                Column('x', String), Column('y', Integer))
         self.metadata.create_all(self.engine)
 
     def test_create_table(self):
         assert self.connection.dialect.has_table(self.connection, 'test_table')
 
     def test_insert(self):
-        self.connection.execute(self.test_table.insert().values(x='first', y=100))
+        self.connection.execute(self.test_table.insert().values(x='first',
+                                                                y=100))
 
     def test_select(self):
         for row in self.connection.execute(select([self.test_table])):
@@ -56,11 +57,15 @@ class TestSqlalchemyAPI:
 
     def test_request_timeout(self):
         engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=1'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=1'.format(
+                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         connection = engine.connect()
-        connection.execute("insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');")
+        connection.execute(
+            "insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
+        )
         with pytest.raises(DatabaseError) as e:
-            connection.execute("select * from test_table where x='b'").fetchall()
+            connection.execute(
+                "select * from test_table where x='b'").fetchall()
         assert 'select fail' in str(e.value)
 
     def teardown_class(self):

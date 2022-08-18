@@ -211,12 +211,12 @@ SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
       cluster_sdk_(sdk),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {
-        if(is_cluster_mode_) {
-            options_ = std::make_shared<SQLRouterOptions>();
-        } else{
-            options_ = std::make_shared<StandaloneOptions>();
-        }
-      }
+    if (is_cluster_mode_) {
+        options_ = std::make_shared<SQLRouterOptions>();
+    } else {
+        options_ = std::make_shared<StandaloneOptions>();
+    }
+}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
@@ -353,8 +353,9 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const 
     return GetRequestRow(db, sql, status);
 }
 
-std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
-        const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) {
+std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(const std::string& db,
+                                                                            const std::string& sql,
+                                                                            ::hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return {};
     }
@@ -363,9 +364,9 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
         auto delete_cache = std::dynamic_pointer_cast<DeleteSQLCache>(cache);
         if (delete_cache) {
             status->code = 0;
-            return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
-                    delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
-                    delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+            return std::make_shared<openmldb::sdk::SQLDeleteRow>(
+                delete_cache->GetDatabase(), delete_cache->GetTableName(), delete_cache->GetIndexName(),
+                delete_cache->GetColNames(), delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
         }
     }
     ::hybridse::node::NodeManager nm;
@@ -395,7 +396,7 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
     auto table_info = cluster_sdk_->GetTableInfo(database, table_name);
     if (!table_info) {
         *status = {::hybridse::common::StatusCode::kCmdError,
-            absl::StrCat("table ", table_name, " in db", database, " does not exist")};
+                   absl::StrCat("table ", table_name, " in db", database, " does not exist")};
         return {};
     }
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
@@ -427,14 +428,14 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
         *status = {::hybridse::common::StatusCode::kCmdError, "no index col in sql"};
         return {};
     }
-    auto delete_cache = std::make_shared<DeleteSQLCache>(db, table_info->tid(), table_name,
-            table_info->column_key(index_pos), condition_map, parameter_map);
+    auto delete_cache = std::make_shared<DeleteSQLCache>(
+        db, table_info->tid(), table_name, table_info->column_key(index_pos), condition_map, parameter_map);
 
     SetCache(db, sql, hybridse::vm::kBatchMode, delete_cache);
     *status = {};
-    return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
-            delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
-            delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+    return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(), delete_cache->GetTableName(),
+                                                         delete_cache->GetIndexName(), delete_cache->GetColNames(),
+                                                         delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& db, const std::string& sql,
@@ -448,7 +449,8 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         if (insert_cache) {
             *status = {};
             return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-                    insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                                  insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                                  insert_cache->GetHoleIdxArr());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -460,12 +462,14 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    auto insert_cache = std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
-        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema));
+    auto insert_cache =
+        std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
+                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema));
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     *status = {};
     return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-            insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                          insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                          insert_cache->GetHoleIdxArr());
 }
 
 bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::string& sql,
@@ -729,8 +733,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
             auto cached_info = value.value();
             if (cached_info) {
                 if (!cached_info->GetTableName().empty()) {
-                    auto current_info = cluster_sdk_->GetTableInfo(cached_info->GetDatabase(),
-                            cached_info->GetTableName());
+                    auto current_info =
+                        cluster_sdk_->GetTableInfo(cached_info->GetDatabase(), cached_info->GetTableName());
                     if (!current_info || cached_info->GetTableId() != current_info->tid()) {
                         // just leave, this invalid value will be updated by SetCache()
                         return {};
@@ -775,7 +779,8 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         if (insert_cache) {
             status->code = 0;
             return std::make_shared<SQLInsertRows>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-                    insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                                   insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                                   insert_cache->GetHoleIdxArr());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -786,8 +791,9 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         return {};
     }
     auto col_schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    insert_cache = std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
-        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema));
+    insert_cache =
+        std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
+                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema));
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     return std::make_shared<SQLInsertRows>(table_info, insert_cache->GetSchema(), default_map, str_length,
                                            insert_cache->GetHoleIdxArr());
@@ -1064,8 +1070,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
                     tid = table_info->tid();
                 }
             }
-            router_cache = std::make_shared<RouterSQLCache>(main_db, tid, table_name, schema,
-                    parameter_schema, explain.router);
+            router_cache =
+                std::make_shared<RouterSQLCache>(main_db, tid, table_name, schema, parameter_schema, explain.router);
             SetCache(db, sql, engine_mode, router_cache);
         } else {
             status->msg = base_status.GetMsg();
@@ -2210,7 +2216,8 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
 
     std::shared_ptr<openmldb::sdk::BatchQueryFutureImpl> future =
         std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
-    bool ok = tablet->CallSQLBatchRequestProcedure(db, sp_name, row_batch, options_->enable_debug, timeout_ms, callback);
+    bool ok =
+        tablet->CallSQLBatchRequestProcedure(db, sp_name, row_batch, options_->enable_debug, timeout_ms, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
@@ -3012,7 +3019,7 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, const std::string& table_name,
-        const hybridse::node::ExprNode* condition) {
+                                                     const hybridse::node::ExprNode* condition) {
     if (db.empty() || table_name.empty()) {
         return {::hybridse::common::StatusCode::kCmdError, "database or table is empty"};
     }
@@ -3090,7 +3097,7 @@ bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse
     auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
     if (!table_info) {
         *status = {::hybridse::common::StatusCode::kCmdError,
-            "table " + table_name + " in db " + db + " does not exist"};
+                   "table " + table_name + " in db " + db + " does not exist"};
         return false;
     }
     const auto& pk = row->GetValue();
@@ -3375,8 +3382,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        if (!ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl,
-                                    old_column_key.index_name(), err)) {
+                        if (!ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, old_column_key.index_name(),
+                                               err)) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
                     }
@@ -3406,8 +3413,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::AddNewIndex(const std::string& db,
-    const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
+    const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     if (cluster_sdk_->IsClusterMode()) {
@@ -3860,7 +3867,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
         return {};
     }
 
-    std::string node_path = absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/taskmanager/leader");
+    std::string node_path =
+        absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/taskmanager/leader");
     std::string endpoint;
     Stat stat;
     if (!zk_client->GetNodeValueAndStat(node_path.c_str(), &endpoint, &stat)) {

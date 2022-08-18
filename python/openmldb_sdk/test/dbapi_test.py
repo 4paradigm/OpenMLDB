@@ -31,8 +31,7 @@ class TestOpenmldbDBAPI:
 
     @classmethod
     def setup_class(cls):
-        db = connect(
-            'db_test', OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH)
+        db = connect('db_test', OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH)
         cls.cursor = db.cursor()
         cls.cursor.execute("create database if not exists db_test;")
         cls.cursor.execute('create table new_table (x string, y int);')
@@ -71,21 +70,30 @@ class TestOpenmldbDBAPI:
         assert 200 in result
 
     def test_custom_order_insert(self):
-        self.cursor.execute("insert into new_table (y, x) values(300, 'third');")
-        self.cursor.execute("insert into new_table (y, x) values(?, ?);", (300, 'third'))
-        self.cursor.execute("insert into new_table (y, x) values(?, ?);", {'x': 'third', 'y': 300})
+        self.cursor.execute(
+            "insert into new_table (y, x) values(300, 'third');")
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);",
+                            (300, 'third'))
+        self.cursor.execute("insert into new_table (y, x) values(?, ?);", {
+            'x': 'third',
+            'y': 300
+        })
 
     def test_request_timeout(self):
-        db = connect(
-            'db_test', OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH, request_timeout=1)
+        db = connect('db_test',
+                     OpenMLDB_ZK_CLUSTER,
+                     OpenMLDB_ZK_PATH,
+                     request_timeout=1)
         cursor = db.cursor()
-        rs = cursor.execute("insert into new_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');")
+        rs = cursor.execute(
+            "insert into new_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
+        )
         # insert no result
         assert not rs
         with pytest.raises(DatabaseError) as e:
             cursor.execute("select * from new_table where y=402;").fetchall()
         assert 'execute select fail' in str(e.value)
-        
+
 
 if __name__ == "__main__":
     sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))
