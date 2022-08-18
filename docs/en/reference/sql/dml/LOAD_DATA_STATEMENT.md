@@ -68,7 +68,7 @@ set @@execute_mode='online';
 LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',' );
 ```
 
-The following sql example imports data from file `data.csv` into table `t1`. `data.csv` uses `,` as column delimiter. The null value will be replaed by string "NA".
+The following sql example imports data from file `data.csv` into table `t1`. `data.csv` uses `,` as column delimiter. The null value will be replaced by string "NA".
 
 ```sql
 LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS( delimiter = ',', null_value='NA');
