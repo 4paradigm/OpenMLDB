@@ -17,6 +17,7 @@
 #include "tools/log_exporter.h"
 
 #include <dirent.h>
+#include <gflags/gflags.h>
 #include <sched.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -33,6 +34,8 @@
 #include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
 #include "tools/tablemeta_reader.h"
+
+DEFINE_string(delimiter, ",", "delimiter");
 
 using ::openmldb::base::ParseFileNameFromPath;
 using ::openmldb::base::Slice;
@@ -149,6 +152,7 @@ void Exporter::ReadLog(const std::string &log_path, std::ofstream& my_cout) {
     Reader reader(rf, NULL, true, 0, is_compress);
     Status status;
     uint64_t success_cnt = 0;
+    RowView view(schema_);
 
     do {
         Slice value;
@@ -162,17 +166,14 @@ void Exporter::ReadLog(const std::string &log_path, std::ofstream& my_cout) {
 
         // Determine if there is a dimension with an idx of 0 in the dimensions.
         // If so, parse the value, else skip it
-        if (entry.dimensions_size() != 0) {
+        if (entry.dimensions_size() != 0 && entry.log_index() > offset_) {
             for (int i = 0; i < entry.dimensions_size(); i++) {
                 if (entry.dimensions(i).idx() == 0) {
-                    if (entry.log_index() > offset_) {
-                        std::string row;
-                        row = entry.value();
-                        RowView view(schema_);
-                        view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
-                        WriteToFile(view, my_cout);
-                        success_cnt++;
-                    }
+                    std::string row;
+                    row = entry.value();
+                    view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
+                    WriteToFile(view, my_cout);
+                    success_cnt++;
                     break;
                 }
             }
@@ -198,6 +199,8 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
     }
     Reader reader(rf, NULL, true, 0, is_compress);
     Status status;
+    RowView view(schema_);
+
     do {
         Slice value;
         status = reader.ReadRecord(&value, &scratch);
@@ -215,7 +218,6 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
                 if (entry.dimensions(i).idx() == 0) {
                     std::string row;
                     row = entry.value();
-                    RowView view(schema_);
                     view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
                     WriteToFile(view, my_cout);
                     break;
@@ -231,7 +233,7 @@ void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_c
     for (int i = 0; i< schema_.size(); ++i) {
         std::string col;
         view.GetStrValue(i, &col);
-        my_cout << col << ",";
+        my_cout << col << FLAGS_delimiter;
     }
     my_cout << "\n";
 }

@@ -30,13 +30,10 @@
 #include "version.h"  // NOLINT
 #include "yaml-cpp/yaml.h"
 
-DEFINE_string(db_name, "", "database name.");
-DEFINE_string(table_name, "", "table name. ");
+DEFINE_string(db_name, "", "database name");
+DEFINE_string(table_name, "", "table name");
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
-const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-                                     std::to_string(OPENMLDB_VERSION_MINOR) + "." +
-                                     std::to_string(OPENMLDB_VERSION_BUG) + "." + OPENMLDB_COMMIT_ID;
 
 std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>* tablet_map) {
     printf("--------begin ReadConfigYaml--------\n");
@@ -79,21 +76,14 @@ int main(int argc, char* argv[]) {
     std::string mode = ReadConfigYaml("./conf.yaml", &tablet_map);
     Schema table_schema;
     std::string tmp_path;
-
+    ::openmldb::tools::TablemetaReader *tablemeta_reader;
     if (mode == "standalone") {
         std::cout << "Data Exporter starts in stand-alone mode." << std::endl;
         std::string host;
         int port;
         ReadHostAndPortFromYaml("./conf.yaml", &host, &port);
-
-        ::openmldb::tools::StandaloneTablemetaReader standalone_tablemeta_reader =
-                ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name,
-                                                             tablet_map, host, port);
-        if (standalone_tablemeta_reader.ReadTableMeta() == 0) {
-            return -1;
-        }
-        table_schema = standalone_tablemeta_reader.getSchema();
-        tmp_path = standalone_tablemeta_reader.GetTmpPath().string();
+        tablemeta_reader = new ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name,
+                                                                tablet_map, host, port);
     } else {
         std::cout << "Data Exporter starts in cluster mode." << std::endl;
         std::string zk_cluster, zk_root_path;
@@ -101,16 +91,21 @@ int main(int argc, char* argv[]) {
         ::openmldb::sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = zk_cluster;
         cluster_options.zk_path = zk_root_path;
-
-        ::openmldb::tools::ClusterTablemetaReader cluster_tablemeta_reader =
-                ::openmldb::tools::ClusterTablemetaReader(FLAGS_db_name, FLAGS_table_name,
-                                                          tablet_map, cluster_options);
-        if (cluster_tablemeta_reader.ReadTableMeta() == 0) {
-            return -1;
-        }
-        table_schema = cluster_tablemeta_reader.getSchema();
-        tmp_path = cluster_tablemeta_reader.GetTmpPath().string();
+        tablemeta_reader = new ::openmldb::tools::ClusterTablemetaReader(FLAGS_db_name, FLAGS_table_name,
+                                                            tablet_map, cluster_options);
     }
+
+    tablemeta_reader->SetTableinfoPtr();
+    if (tablemeta_reader->GetTableinfoPtr() == nullptr) {
+        return -1;
+    }
+    if (tablemeta_reader->ReadTableMeta() == false) {
+        return -1;
+    }
+    table_schema = tablemeta_reader->GetSchema();
+    tmp_path = tablemeta_reader->GetTmpPath().string();
+    delete tablemeta_reader;
+
     std::vector<std::string> file_path;
     struct dirent *ptr;
     DIR *dir;

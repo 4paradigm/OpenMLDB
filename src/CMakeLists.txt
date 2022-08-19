@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(
     ${INCLUDE_DIRECTORIES}
@@ -143,15 +141,14 @@ if(TESTING_ENABLE)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
-add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/log_exporter.h
-        tools/tablemeta_reader.cc tools/tablemeta_reader.h  $<TARGET_OBJECTS:openmldb_proto>)
+add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/tablemeta_reader.cc $<TARGET_OBJECTS:openmldb_proto>)
 
 set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND LINK_LIBS unwind)
 endif()
 target_link_libraries(parse_log ${LINK_LIBS})
-target_link_libraries(data_exporter ${LINK_LIBS} ${BIN_LIBS} stdc++fs)
+target_link_libraries(data_exporter ${BIN_LIBS} stdc++fs)
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 

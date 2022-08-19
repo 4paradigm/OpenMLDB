@@ -28,14 +28,12 @@
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 
-using ::openmldb::sdk::DBSDK;
 using ::openmldb::codec::SchemaCodec;
-using TablePartitions = ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>;
 
 namespace openmldb {
 namespace tools {
 
-void TablemetaReader::copyFromRemote(const std::string& host, const std::string& source,
+void TablemetaReader::CopyFromRemote(const std::string& host, const std::string& source,
                                      const std::string& dest, int type) {
     char exec[200];
     if (type == TYPE_FILE) {
@@ -51,85 +49,17 @@ void TablemetaReader::copyFromRemote(const std::string& host, const std::string&
     }
 }
 
-bool StandaloneTablemetaReader::ReadTableMeta() {
+bool TablemetaReader::ReadTableMeta() {
     printf("--------begin ReadTableMeta--------\n");
-    ::openmldb::sdk::StandAloneSDK sdk(host_, port_);
-    sdk.Init();
-    auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
-    tid_ = tableInfo_ptr->tid();
-    // check whether table exists
-    if (tid_ == 0) {
-        printf("Table not found. Exit\n");
-        return false;
-    }
-    schema_ = tableInfo_ptr->column_desc();
+    tid_ = tableinfo_ptr->tid();
+    schema_ = tableinfo_ptr->column_desc();
 
-    for (const auto& tablePartition : tableInfo_ptr->table_partition()) {
-        uint32_t pid = tablePartition.pid();
-        for (const auto& partitionMeta : tablePartition.partition_meta()) {
+    for (const auto& table_partition : tableinfo_ptr->table_partition()) {
+        uint32_t pid = table_partition.pid();
+        for (const auto& partition_meta : table_partition.partition_meta()) {
             std::string path;
-            if (partitionMeta.is_leader()) {
-                std::string endpoint = partitionMeta.endpoint();
-                // go to the corresponding machine to find the deployment directory through the endpoint
-                if (tablet_map_.find(endpoint) != tablet_map_.end()) {
-                    path = tablet_map_[endpoint];
-                    std::string db_root_path = ReadDBRootPath(path, host_);
-
-                    std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-                    copyFromRemote(host_, data_path, tmp_path_.string(), TYPE_DIRECTORY);
-                } else {
-                    printf("Error. Cannot find endpoint.\n");
-                }
-                break;
-            }
-        }
-    }
-    printf("---------end ReadTableMeta---------\n");
-    return true;
-}
-
-std::string StandaloneTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string & host) {
-    printf("--------start ReadDBRootPath--------\n");
-    std::string tablet_path = deploy_dir + "/conf/standalone_tablet.flags";
-    copyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
-
-    std::string tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
-    std::ifstream infile(tablet_local_path);
-    std::string line;
-    std::string db_root_path;
-    std::string db_root = "--db_root_path";
-    while (std::getline(infile, line)) {
-        if (line.find(db_root) != std::string::npos && line[0] != '#') {
-            db_root_path = line.substr(line.find("=") + 1);
-            if (db_root_path[0] != '/')
-                db_root_path = deploy_dir + db_root_path.substr(1);
-            break;
-        }
-    }
-    printf("---------end ReadDBRootPath---------\n");
-    return db_root_path;
-}
-
-bool ClusterTablemetaReader::ReadTableMeta() {
-    printf("--------begin ReadTableMeta--------\n");
-    ::openmldb::sdk::ClusterSDK sdk(options_);
-    sdk.Init();
-    auto tableInfo_ptr = sdk.GetTableInfo(db_name_, table_name_);
-
-    tid_ = tableInfo_ptr->tid();
-    // check whether table exists
-    if (tid_ == 0) {
-        printf("Table not found. Exit\n");
-        return false;
-    }
-    schema_ = tableInfo_ptr->column_desc();
-
-    for (const auto& tablePartition : tableInfo_ptr->table_partition()) {
-        uint32_t pid = tablePartition.pid();
-        for (const auto& partitionMeta : tablePartition.partition_meta()) {
-            std::string path, endpoint;
-            if (partitionMeta.is_leader()) {
-                endpoint = partitionMeta.endpoint();
+            if (partition_meta.is_leader()) {
+                std::string endpoint = partition_meta.endpoint();
                 // go to the corresponding machine to find the deployment directory through the endpoint
                 if (tablet_map_.find(endpoint) != tablet_map_.end()) {
                     path = tablet_map_[endpoint];
@@ -137,9 +67,9 @@ bool ClusterTablemetaReader::ReadTableMeta() {
                     std::string db_root_path = ReadDBRootPath(path, host);
 
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
-                    copyFromRemote(host, data_path, tmp_path_.string(), TYPE_DIRECTORY);
+                    CopyFromRemote(host, data_path, tmp_path_.string(), TYPE_DIRECTORY);
                 } else {
-                    printf("Error. Cannot find endpoint.\n");
+                    printf("Error. Cannot find endpoint.\n");\
                 }
                 break;
             }
@@ -149,12 +79,13 @@ bool ClusterTablemetaReader::ReadTableMeta() {
     return true;
 }
 
-std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string& host) {
+std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string& host,
+                                            const std::string& mode) {
     printf("--------start ReadDBRootPath--------\n");
-    std::string tablet_path = deploy_dir + "/conf/tablet.flags";
-    copyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
+    std::string tablet_path = deploy_dir + "/conf/" + mode + "tablet.flags";
+    CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
 
-    std::string tablet_local_path =  tmp_path_.string() + "/tablet.flags";
+    std::string tablet_local_path =  tmp_path_.string() + mode + "/tablet.flags";
     std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;
@@ -169,6 +100,18 @@ std::string ClusterTablemetaReader::ReadDBRootPath(const std::string& deploy_dir
     }
     printf("---------end ReadDBRootPath---------\n");
     return db_root_path;
+}
+
+void StandaloneTablemetaReader::SetTableinfoPtr(){
+    ::openmldb::sdk::StandAloneSDK standalone_sdk(host_, port_);
+    standalone_sdk.Init();
+    tableinfo_ptr = standalone_sdk.GetTableInfo(db_name_, table_name_);
+}
+
+void ClusterTablemetaReader::SetTableinfoPtr(){
+    ::openmldb::sdk::ClusterSDK cluster_sdk(options_);
+    cluster_sdk.Init();
+    tableinfo_ptr = cluster_sdk.GetTableInfo(db_name_, table_name_);
 }
 
 }  // namespace tools

@@ -26,8 +26,8 @@
 #include "proto/common.pb.h"
 #include "sdk/db_sdk.h"
 
-#define TYPE_FILE 0
-#define TYPE_DIRECTORY 1
+constexpr int TYPE_FILE = 0;
+constexpr int TYPE_DIRECTORY = 1;
 
 using ::openmldb::sdk::ClusterOptions;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
@@ -51,16 +51,20 @@ class TablemetaReader {
 
     virtual bool IsClusterMode() const = 0;
 
-    virtual bool ReadTableMeta() = 0;
+    bool ReadTableMeta();
+
+    virtual void SetTableinfoPtr() = 0;
+
+    std::shared_ptr<openmldb::nameserver::TableInfo> GetTableinfoPtr() const { return tableinfo_ptr; }
 
     std::filesystem::path GetTmpPath() const { return tmp_path_; }
 
-    Schema getSchema() const { return schema_; }
+    Schema GetSchema() const { return schema_; }
 
  protected:
-    virtual std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) = 0;
+    std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host, const std::string& mode = "");
 
-    void copyFromRemote(const std::string& host, const std::string& source, const std::string& dest, int type);
+    void CopyFromRemote(const std::string& host, const std::string& source, const std::string& dest, int type);
 
     std::string db_name_;
     std::string table_name_;
@@ -68,6 +72,7 @@ class TablemetaReader {
     Schema schema_;
     uint32_t tid_;
     std::filesystem::path tmp_path_;
+    std::shared_ptr<openmldb::nameserver::TableInfo> tableinfo_ptr;
 };
 
 class ClusterTablemetaReader : public TablemetaReader {
@@ -76,13 +81,11 @@ class ClusterTablemetaReader : public TablemetaReader {
                        std::unordered_map<std::string, std::string> tablet_map, const ClusterOptions& options) :
                        TablemetaReader(db_name, table_name, tablet_map), options_(options) {}
 
+    void SetTableinfoPtr() override;
+
     bool IsClusterMode() const override { return true; }
 
-    bool ReadTableMeta() override;
-
  private:
-    std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) override;
-
     ClusterOptions options_;
 };
 
@@ -93,13 +96,11 @@ class StandaloneTablemetaReader : public TablemetaReader {
                           std::unordered_map<std::string, std::string> tablet_map, const std::string &host, int port) :
                           TablemetaReader(db_name, table_name, tablet_map), host_(host), port_(port) {}
 
+    void SetTableinfoPtr() override;
+
     bool IsClusterMode() const override { return false; }
 
-    bool ReadTableMeta() override;
-
  private:
-    std::string ReadDBRootPath(const std::string& deploy_dir, const std::string& host) override;
-
     std::string host_;
     uint32_t port_;
 };
