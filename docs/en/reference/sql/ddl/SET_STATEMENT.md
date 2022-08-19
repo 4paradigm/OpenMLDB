@@ -108,7 +108,7 @@ The following format is also equivalent.
 4 rows in set
 ```
 
-### Configure enable_trace
+### Configure `enable_trace`
 
 - Create a database `db1` and create table `t1`.
 
@@ -121,7 +121,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 --SUCCEED
 ```
 
-- When `enable_trace` is turned off, execute a wrong SQL.
+- When `enable_trace` is `false`, executing an invalid SQL will generate the following information.
 
 ```sql
 > set @@enable_trace = "false";
@@ -130,7 +130,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 -- ERROR: Invalid Order column type : kVarchar
 ```
 
-- When `enable_trace` is turned on, execute a wrong SQL.
+- When `enable_trace` is `true`, executing an invalid SQL will generate the following information.
 
 ```sql
 > set @@enable_trace = "true";
@@ -147,10 +147,10 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
     (At /Users/chenjing/work/chenjing/OpenMLDB/hybridse/src/vm/transform.cc:1997)
 ```
 
-### Configure Offline Command Synchronous Execution
+### Configure Synchronous Execution for Offline Commands
 
 
-- Set offline command synchronous execution:
+- Set the synchronous execution for offline commands:
 
 ```sql
 > SET @@sync_job = "true";
