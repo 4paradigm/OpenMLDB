@@ -6,7 +6,7 @@
 
 ### 1.1 安装 OpenMLDB 引擎
 
-1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)。
+1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart.md)。
 2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](https://openmldb.ai/docs/zh/main/reference/ip_tips.html)。
 
 ### 1.2 安装 Byzer 引擎和Byzer Notebook 
@@ -75,7 +75,7 @@ and action="ddl";
 
 ### 2.3 进行实时特征计算
 
-本例借用[OpenMLDB + LightGBM：出租车行程时间预测](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html)2.3节中设计的特征进行特征计算，并将处理后的数据集导出为本地csv文件。
+本例借用[OpenMLDB + LightGBM：出租车行程时间预测](./taxi_tour_duration_prediction.md)2.3节中设计的特征进行特征计算，并将处理后的数据集导出为本地csv文件。
 
 ```sql
 run command as FeatureStoreExt.`` where
