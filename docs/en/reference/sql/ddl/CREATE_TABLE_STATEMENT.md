@@ -208,6 +208,7 @@ The index key must be configured, and other configuration items are optional. Th
 | `ABSORLAT`  | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`. | Eliminates if and only if the record expires** or if the record exceeds the maximum number of records. | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`. When the record exceeds 100, **OR** when the record expires, it will be eliminated              |
 | `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | When records expire **OR** records exceed the maximum number of records, records will be eliminated.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. When there are more than 100 records, **OR** the records expire, they will also be eliminated. |
 
+
 ##### Example
 
 
@@ -441,6 +442,7 @@ StorageMode
 						    | 'HDD'
 						    | 'SSD'
 ```
+
 
 
 

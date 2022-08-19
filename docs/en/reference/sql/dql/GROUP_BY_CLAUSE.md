@@ -13,7 +13,7 @@ GroupByClause
 SELECT select_expr [,select_expr...] FROM ... GROUP BY ... 
 ```
 
-## Boundary Description
+## Description
 
 For the standalone version, `GROUP BY` is supported in all conditions. For the cluster version, the execution modes which support this clause are shown below.
 

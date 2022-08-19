@@ -96,7 +96,9 @@ java/hybridse-proto/src
 **/scalastyle-output.xml
 
 # test
-logs
+logs/
+out/
+allure-results/
 
 # python builds
 /python/openmldb_sdk/dist/
