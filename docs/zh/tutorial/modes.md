@@ -55,10 +55,10 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 - 非阻塞式执行的 SQL 由内部的 TaskManager 进行管理，可以通过 `SHOW JOBS`, `SHOW JOB`, `STOP JOB` 命令进行查看和管理。
 
 :::{tip}
-和很多关系型数据库系统不同，`SELECT`命令在离线模式下默认为异步执行，如需设置为同步执行，见[设置离线模式下命令的同步执行](https://openmldb.ai/docs/zh/main/reference/sql/ddl/SET_STATEMENT.html#id4)因此在离线特征开发阶段，如果使用异步执行，强烈建议使用`SELECT INTO`语句进行开发调试，可以将结果导出到文件，方便查看。
+和很多关系型数据库系统不同，`SELECT`命令在离线模式下默认为异步执行，如需设置为同步执行，见[设置离线模式下命令的同步执行](../reference/sql/ddl/SET_STATEMENT.md#id4)因此在离线特征开发阶段，如果使用异步执行，强烈建议使用`SELECT INTO`语句进行开发调试，可以将结果导出到文件，方便查看。
 :::
 
-用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html)。
+用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](../reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
 
 离线模式可以通过以下方式设置：
 
@@ -97,6 +97,6 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 在线请求模式通过以下形式支持：
 
 - CLI：不支持
-- REST APIs：支持单行或者多行 request rows 的请求，详见：[REST APIs](https://openmldb.ai/docs/zh/main/quickstart/rest_api.html)
-- Java SDK：支持单行或者多行 request rows 的请求，详见：[Java SDK 快速上手](https://openmldb.ai/docs/zh/main/quickstart/java_sdk.html)
-- Python SDK：仅支持单行的 request row 请求，详见：[Python SDK 快速上手](https://openmldb.ai/docs/zh/main/quickstart/python_sdk.html)
+- REST APIs：支持单行或者多行 request rows 的请求，详见：[REST APIs](../quickstart/rest_api.md)
+- Java SDK：支持单行或者多行 request rows 的请求，详见：[Java SDK 快速上手](../quickstart/java_sdk.md)
+- Python SDK：仅支持单行的 request row 请求，详见：[Python SDK 快速上手](../quickstart/python_sdk.md)
