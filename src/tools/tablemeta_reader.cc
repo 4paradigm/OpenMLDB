@@ -50,10 +50,10 @@ void TablemetaReader::CopyFromRemote(const std::string& host, const std::string&
 }
 
 bool TablemetaReader::ReadTableMeta() {
-    tid_ = tableinfo_ptr->tid();
-    schema_ = tableinfo_ptr->column_desc();
+    tid_ = tableinfo_ptr_->tid();
+    schema_ = tableinfo_ptr_->column_desc();
 
-    for (const auto& table_partition : tableinfo_ptr->table_partition()) {
+    for (const auto& table_partition : tableinfo_ptr_->table_partition()) {
         uint32_t pid = table_partition.pid();
         for (const auto& partition_meta : table_partition.partition_meta()) {
             std::string path;
@@ -102,13 +102,13 @@ std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const
 void StandaloneTablemetaReader::SetTableinfoPtr() {
     ::openmldb::sdk::StandAloneSDK standalone_sdk(host_, port_);
     standalone_sdk.Init();
-    tableinfo_ptr = standalone_sdk.GetTableInfo(db_name_, table_name_);
+    tableinfo_ptr_ = standalone_sdk.GetTableInfo(db_name_, table_name_);
 }
 
 void ClusterTablemetaReader::SetTableinfoPtr() {
     ::openmldb::sdk::ClusterSDK cluster_sdk(options_);
     cluster_sdk.Init();
-    tableinfo_ptr = cluster_sdk.GetTableInfo(db_name_, table_name_);
+    tableinfo_ptr_ = cluster_sdk.GetTableInfo(db_name_, table_name_);
 }
 
 }  // namespace tools

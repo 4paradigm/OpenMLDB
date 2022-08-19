@@ -56,7 +56,7 @@ class TablemetaReader {
 
     virtual void SetTableinfoPtr() = 0;
 
-    std::shared_ptr<openmldb::nameserver::TableInfo> GetTableinfoPtr() const { return tableinfo_ptr; }
+    std::shared_ptr<openmldb::nameserver::TableInfo> GetTableinfoPtr() const { return tableinfo_ptr_; }
 
     std::filesystem::path GetTmpPath() const { return tmp_path_; }
 
@@ -73,7 +73,7 @@ class TablemetaReader {
     Schema schema_;
     uint32_t tid_;
     std::filesystem::path tmp_path_;
-    std::shared_ptr<openmldb::nameserver::TableInfo> tableinfo_ptr;
+    std::shared_ptr<openmldb::nameserver::TableInfo> tableinfo_ptr_;
 };
 
 class ClusterTablemetaReader : public TablemetaReader {

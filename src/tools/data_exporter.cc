@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wapper.h"
 #include "proto/common.pb.h"
 #include "sdk/db_sdk.h"
 #include "tools/tablemeta_reader.h"
