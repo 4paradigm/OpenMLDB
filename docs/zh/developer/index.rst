@@ -10,3 +10,4 @@
     built_in_function_develop_guide
     udf_develop_guide
     sdk_develop
+    gen_udf_document.md
