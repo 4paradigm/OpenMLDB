@@ -17,7 +17,7 @@ package com._4paradigm.openmldb.tool_test.import_tool.data;
 
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbClient;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -35,7 +35,7 @@ public class CheckData {
             String[] data = line.split(",");
 
         }
-        FedbClient fedbClient = new FedbClient("172.24.4.55:10015","/openmldb");
+        OpenMLDBClient fedbClient = new OpenMLDBClient("172.24.4.55:10015","/openmldb");
 
     }
 }

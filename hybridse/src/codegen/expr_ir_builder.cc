@@ -764,6 +764,10 @@ Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,
             CHECK_STATUS(BuildLikeExprAsUdf(node, "ilike_match", left, right, output))
             break;
         }
+        case ::hybridse::node::kFnOpRLike: {
+            CHECK_STATUS(BuildRLikeExprAsUdf(node, "regexp_like", left, right, output))
+            break;
+        }
         default: {
             return Status(kCodegenError,
                           "Invalid op " + ExprOpTypeName(node->GetOp()));
@@ -827,6 +831,71 @@ Status ExprIRBuilder::BuildAsUdf(const node::ExprNode* expr,
 }
 
 Status ExprIRBuilder::BuildLikeExprAsUdf(const ::hybridse::node::BinaryExpr* expr,
+                                         const std::string& name,
+                                         const NativeValue& lhs,
+                                         const NativeValue& rhs,
+                                         NativeValue* output) {
+    auto library = udf::DefaultUdfLibrary::get();
+
+    std::vector<node::ExprNode*> proxy_args;
+    const auto nm = ctx_->node_manager();
+
+    // target node
+    const auto target_node = expr->GetChild(0);
+    auto arg_0 = nm->MakeExprIdNode("proxy_arg_0");
+    arg_0->SetOutputType(target_node->GetOutputType());
+    arg_0->SetNullable(target_node->nullable());
+    proxy_args.push_back(arg_0);
+
+    // pattern node
+    auto arg_1 = nm->MakeExprIdNode("proxy_arg_1");
+    const auto pattern_node = expr->GetChild(1);
+    const auto type_node = pattern_node->GetOutputType();
+    if (type_node->IsTuple()) {
+        arg_1->SetOutputType(type_node->GetGenericType(0));
+        arg_1->SetNullable(type_node->IsGenericNullable(0));
+        proxy_args.push_back(arg_1);
+
+        auto arg_2 = nm->MakeExprIdNode("proxy_arg_2");
+        arg_2->SetOutputType(type_node->GetGenericType(1));
+        arg_2->SetNullable(type_node->IsGenericNullable(1));
+        proxy_args.push_back(arg_2);
+    } else {
+        arg_1->SetOutputType(pattern_node->GetOutputType());
+        arg_1->SetNullable(pattern_node->nullable());
+        proxy_args.push_back(arg_1);
+    }
+
+    node::ExprNode* transformed = nullptr;
+    CHECK_STATUS(library->Transform(name, proxy_args, ctx_->node_manager(),
+                                    &transformed));
+    node::ExprNode* target_expr = nullptr;
+    node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library,
+                                           ctx_->schemas_context(), nullptr);
+    passes::ResolveFnAndAttrs resolver(&analysis_ctx);
+    CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
+
+    // Insert a transient binding scope between current scope and parent
+    // Thus temporal binding of udf proxy arg can be dropped after build
+    ScopeVar* cur_sv = ctx_->GetCurrentScope()->sv();
+    ScopeVar proxy_sv_scope(cur_sv->parent());
+    proxy_sv_scope.AddVar(proxy_args[0]->GetExprString(), lhs);
+    if (rhs.IsTuple()) {
+        proxy_sv_scope.AddVar(proxy_args[1]->GetExprString(), rhs.GetField(0));
+        proxy_sv_scope.AddVar(proxy_args[2]->GetExprString(), rhs.GetField(1));
+    } else {
+        proxy_sv_scope.AddVar(proxy_args[1]->GetExprString(), rhs);
+    }
+
+    cur_sv->SetParent(&proxy_sv_scope);
+
+    Status status = Build(target_expr, output);
+
+    cur_sv->SetParent(proxy_sv_scope.parent());
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildRLikeExprAsUdf(const ::hybridse::node::BinaryExpr* expr,
                                          const std::string& name,
                                          const NativeValue& lhs,
                                          const NativeValue& rhs,

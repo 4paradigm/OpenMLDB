@@ -208,6 +208,7 @@ The index key must be configured, and other configuration items are optional. Th
 | `ABSORLAT`  | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`. | Eliminates if and only if the record expires** or if the record exceeds the maximum number of records. | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`. When the record exceeds 100, **OR** when the record expires, it will be eliminated              |
 | `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | When records expire **OR** records exceed the maximum number of records, records will be eliminated.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. When there are more than 100 records, **OR** the records expire, they will also be eliminated. |
 
+
 ##### Example
 
 
@@ -444,12 +445,14 @@ StorageMode
 
 
 
+
 | Configuration Item | Note                                                                                                                                                                                                                                                                                                                                                                                | Example                                                                       |
 |--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
 | `PARTITIONNUM`     | It defines the number of partitions for the table. OpenMLDB divides the table into different partition blocks for storage. A partition is the basic unit of storage, replica, and fail-over related operations in OpenMLDB. When not explicitly configured, `PARTITIONNUM` defaults to 8.                                                                                           | `OPTIONS (PARTITIONNUM=8)`                                                    |
 | `REPLICANUM`       | It defines the number of replicas for the table. Note that the number of replicas is only configurable in Cluster version.                                                                                                                                                                                                                                                          | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION`     | It defines the distributed node endpoint configuration. Generally, it contains a Leader node and several followers. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and nodes.                                                                                            | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE`     | It defines the storage mode of the table. The supported modes are `Memory`, `HDD` and `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file conf/tablet.flags](../../../deploy/conf.md). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+
 
 
 ##### The Difference between Disk Table(`STORAGE_MODE` == `HDD`|`SSD`) and Memory Table (`STORAGE_MODE` == `Memory`)

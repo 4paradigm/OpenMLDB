@@ -23,7 +23,7 @@ public class ExecutorUtil {
         for(String line:results){
             line = line.trim();
             if(line.contains("ZOO_INFO") || line.contains("zk_client.cc")||
-                    line.startsWith("ns leader:")||line.startsWith("client start in")){
+                    line.startsWith("ns leader:")||line.startsWith("client start in")||line.startsWith("WARNING:")){
                 continue;
             }
             if(line.length()==0) continue;
@@ -43,7 +43,8 @@ public class ExecutorUtil {
     private static CommandExecutor getExecutor(){
         CommandExecutor executor;
         if(OSInfoUtil.isMac()){
-            executor = new RemoteExecutor();
+//            executor = new RemoteExecutor();
+            executor = new LocalExecutor();
         }else{
             executor = new LocalExecutor();
         }
