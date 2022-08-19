@@ -197,7 +197,7 @@ interval_literal ::= int_literal 'S'|'D'|'M'|'H'
 
 Indexes can be used by database search engines to speed up data retrieval. Simply put, an index is a pointer to the data in a table. Configuring a column index generally requires configuring the index key, index time column, TTL and TTL_TYPE. The index key must be configured, and other configuration items are optional. The following table lists the column index configuration items：
 
-| configuration item     | describe                                                         | Usage example                                                     |
+| Configuration Item     | Description                                                         | Usage example                                                     |
 | ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `KEY`      | Index column (required). OpenMLDB supports single-column indexes as well as joint indexes. When `KEY`=one column, a single-column index is configured. When `KEY`=multiple columns, the joint index of these columns is configured, specifically, several columns are spliced ​​into a string as an index in order. | Single-column index: `INDEX(KEY=col1)`<br />Joint index: `INDEX(KEY=(col1, col2))` |
 | `TS`       | Index time column (optional). Data on the same index will be sorted by the time index column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time. | `INDEX(KEY=col1, TS=std_time)`. The index column is col1, and the data rows with the same col1 are sorted by std_time. |
@@ -445,7 +445,7 @@ StorageMode
 
 
 
-| configuration item     | describe                                                         | Usage example                                                     |
+| Configuration Item     | Description                                                         | Usage example                                                     |
 | ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `PARTITIONNUM` | Configure the number of partitions for the table. OpenMLDB divides the table into different partition blocks for storage. A partition is the basic unit of storage, replica, and failover related operations in OpenMLDB. When not explicitly configured, `PARTITIONNUM` defaults to 8.                                                                      | `OPTIONS (PARTITIONNUM=8)`                                                    |
 | `REPLICANUM`   | Configure the number of replicas for the table. Note that the number of replicas is only configurable in Cluster OpenMLDB.                                                                                                                        | `OPTIONS (REPLICANUM=3)`                                                      |
