@@ -7,7 +7,7 @@
 ### 1.1 安装 OpenMLDB 引擎
 
 1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart.md)。
-2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](https://openmldb.ai/docs/zh/main/reference/ip_tips.html)。
+2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](../reference/ip_tips.md)。
 
 ### 1.2 安装 Byzer 引擎和Byzer Notebook 
 
