@@ -445,9 +445,8 @@ StorageMode
 
 
 
-| configuration item            | describe                                                                                                                                                               | 
-Usage example                                                                          |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| configuration item     | describe                                                         | Usage example                                                     |
+| ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | `PARTITIONNUM` | Configure the number of partitions for the table. OpenMLDB divides the table into different partition blocks for storage. A partition is the basic unit of storage, replica, and failover related operations in OpenMLDB. When not explicitly configured, `PARTITIONNUM` defaults to 8.                                                                      | `OPTIONS (PARTITIONNUM=8)`                                                    |
 | `REPLICANUM`   | Configure the number of replicas for the table. Note that the number of replicas is only configurable in Cluster OpenMLDB.                                                                                                                        | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION` | Configure the distributed node endpoint configuration. Generally, it contains a Leader node and several follower nodes. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and node.                               | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
