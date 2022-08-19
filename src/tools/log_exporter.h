@@ -35,7 +35,9 @@ namespace tools {
 
 class Exporter {
  public:
-    explicit Exporter(const std::string& file_path) : table_dir_path_(file_path), offset_(0) {}
+    explicit Exporter(const std::string& file_path, std::ofstream& table_cout) : table_dir_path_(file_path),
+                                                                                 table_cout_(table_cout),
+                                                                                 offset_(0) {}
 
     ~Exporter() {}
 
@@ -53,17 +55,18 @@ class Exporter {
 
  private:
     std::string table_dir_path_;
+    std::ofstream& table_cout_;
     uint64_t offset_;
     std::string snapshot_path_;
     Schema schema_;
 
     uint64_t GetLogStartOffset(std::string&);
 
-    void ReadLog(const std::string&, std::ofstream&);
+    void ReadLog(const std::string&);
 
-    void ReadSnapshot(std::ofstream&);
+    void ReadSnapshot();
 
-    void WriteToFile(RowView&, std::ofstream&);
+    void WriteToFile(RowView&);
 };
 
 }  // namespace tools

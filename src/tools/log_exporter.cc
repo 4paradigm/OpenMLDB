@@ -28,6 +28,7 @@
 #include <iostream>
 
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/common.pb.h"
@@ -48,20 +49,16 @@ namespace openmldb {
 namespace tools {
 
 void Exporter::ReadManifest() {
-    printf("--------start readManifest--------\n");
     std::string manifest_path = table_dir_path_ + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
     if (::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest)) {
-        printf("Failed to read manifest\n");
-        printf("---------end readManifest---------\n");
+        PDLOG(ERROR, "Failed to read manifest");
         return;
     }
     std::string snapshot_name = manifest.name();
     snapshot_path_ = table_dir_path_ + "/snapshot/" + snapshot_name;
     offset_ = manifest.offset();
-    printf("--------snapshot offset: %lu\n", offset_);
-    printf("--------snapshot path: %s\n", snapshot_path_.c_str());
-    printf("---------end readManifest---------\n");
+    PDLOG(INFO, "Snapshot's offset: %lu, path: %s.", offset_, snapshot_path_.c_str());
 }
 
 void Exporter::ExportTable() {
@@ -77,13 +74,8 @@ void Exporter::ExportTable() {
         std::string log = log_dir + ptr->d_name;
         file_path.emplace_back(log);
     }
-    std::ofstream my_cout(table_dir_path_.substr(table_dir_path_.find_last_of("/") + 1) + "_result.csv");
-    for (int i = 0; i < schema_.size(); ++i) {
-        my_cout << schema_.Get(i).name() << ",";
-    }
-    my_cout << "\n";
     if (snapshot_path_.length()) {
-        ReadSnapshot(my_cout);
+        ReadSnapshot();
     }
 
     // Sorts binlog files and performs binary search
@@ -104,18 +96,15 @@ void Exporter::ExportTable() {
 
     // Read binlog files
     for (uint64_t i = start_index; i < file_path.size(); ++i) {
-        printf("--------start ReadLog %s--------\n", file_path[i].c_str());
         std::string log_path = file_path[i];
-        ReadLog(log_path, my_cout);
-        printf("---------end ReadLog %s---------\n", file_path[i].c_str());
+        ReadLog(log_path);
     }
-    my_cout.close();
 }
 
 uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
-        printf("fopen failed: %s\n", log_path.c_str());
+        PDLOG(ERROR, "fopen failed: %s", log_path.c_str());
         return 0;
     }
     SequentialFile* rf = NewSeqFile(log_path, fd_r);
@@ -129,19 +118,21 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     status = reader.ReadRecord(&first_value, &scratch);
     ::openmldb::api::LogEntry first_entry;
     first_entry.ParseFromString(first_value.ToString());
-    printf("The start offset of binlog file %s is %lu, ", log_path.c_str(), first_entry.log_index());
+    PDLOG(INFO, "The start offset of binlog file %s is %lu, ", log_path.c_str(), first_entry.log_index());
     if (first_entry.log_index() < offset_) {
-        printf("which is less than snapshot's offset.\n");
+        PDLOG(INFO, "The start offset of binlog file %s is %lu, smaller than snapshot's offset.",
+              log_path.c_str(), first_entry.log_index());
     } else {
-        printf("which is greater than snapshot's offset.\n");
+        PDLOG(INFO, "The start offset of binlog file %s is %lu, greater than snapshot's offset.",
+              log_path.c_str(), first_entry.log_index());
     }
     return first_entry.log_index();
 }
 
-void Exporter::ReadLog(const std::string &log_path, std::ofstream& my_cout) {
+void Exporter::ReadLog(const std::string &log_path) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
-        printf("fopen failed: %s\n", log_path.c_str());
+        PDLOG(ERROR, "fopen failed: %s", log_path.c_str());
         return;
     }
 
@@ -172,22 +163,21 @@ void Exporter::ReadLog(const std::string &log_path, std::ofstream& my_cout) {
                     std::string row;
                     row = entry.value();
                     view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
-                    WriteToFile(view, my_cout);
+                    WriteToFile(view);
                     success_cnt++;
                     break;
                 }
             }
         }
     } while (status.ok());
-    printf("--------success_cnt: %lu--------\n", success_cnt);
+    PDLOG(INFO, "success_cnt: %lu", success_cnt);
     offset_ += success_cnt;
 }
 
-void Exporter::ReadSnapshot(std::ofstream& my_cout) {
-    printf("--------start ReadSnapshot--------\n");
+void Exporter::ReadSnapshot() {
     FILE* fd_r = fopen(snapshot_path_.c_str(), "rb");
     if (fd_r == NULL) {
-        printf("fopen failed: %s\n", snapshot_path_.c_str());
+        PDLOG(ERROR, "fopen failed: %s", snapshot_path_.c_str());
         return;
     }
     SequentialFile* rf = NewSeqFile(snapshot_path_, fd_r);
@@ -219,23 +209,24 @@ void Exporter::ReadSnapshot(std::ofstream& my_cout) {
                     std::string row;
                     row = entry.value();
                     view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
-                    WriteToFile(view, my_cout);
+                    WriteToFile(view);
                     break;
                 }
             }
         }
     } while (status.ok());
-    printf("----------end ReadSnapshot----------\n");
 }
 
-void Exporter::WriteToFile(::openmldb::codec::RowView& view, std::ofstream& my_cout) {
+void Exporter::WriteToFile(::openmldb::codec::RowView& view) {
     // Gets the values for each column, then writes the row to the csv file.
-    for (int i = 0; i< schema_.size(); ++i) {
+    for (int i = 0; i< schema_.size() - 1; ++i) {
         std::string col;
         view.GetStrValue(i, &col);
-        my_cout << col << FLAGS_delimiter;
+        table_cout_ << col << FLAGS_delimiter;
     }
-    my_cout << "\n";
+    std::string col;
+    view.GetStrValue(schema_.size() - 1, &col);
+    table_cout_ << col << "\n";
 }
 
 }  // namespace tools

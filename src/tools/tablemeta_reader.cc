@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 
+#include "base/glog_wapper.h"  // NOLINT
 #include "codec/schema_codec.h"
 #include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
@@ -41,16 +42,14 @@ void TablemetaReader::CopyFromRemote(const std::string& host, const std::string&
     } else {
         snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
     }
-    printf("SCP Command: %s, ", exec);
     if (system(exec) == 0) {
-        printf("copied successfully.\n");
+        PDLOG(INFO, "SCP command: %s successfully executed.", exec);
     } else {
-        printf("not copied successfully.\n");
+        PDLOG(WARNING, "SCP command: %s not successfully executed.", exec);
     }
 }
 
 bool TablemetaReader::ReadTableMeta() {
-    printf("--------begin ReadTableMeta--------\n");
     tid_ = tableinfo_ptr->tid();
     schema_ = tableinfo_ptr->column_desc();
 
@@ -69,19 +68,18 @@ bool TablemetaReader::ReadTableMeta() {
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
                     CopyFromRemote(host, data_path, tmp_path_.string(), TYPE_DIRECTORY);
                 } else {
-                    printf("Error. Cannot find endpoint.\n");\
+                    PDLOG(ERROR, "Cannot find endpoint %s", endpoint);
+                    return false;
                 }
                 break;
             }
         }
     }
-    printf("---------end ReadTableMeta---------\n");
     return true;
 }
 
 std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string& host,
-                                            const std::string& mode) {
-    printf("--------start ReadDBRootPath--------\n");
+                                            const std::string& mode) {\
     std::string tablet_path = deploy_dir + "/conf/" + mode + "tablet.flags";
     CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
 
@@ -98,17 +96,16 @@ std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const
             break;
         }
     }
-    printf("---------end ReadDBRootPath---------\n");
     return db_root_path;
 }
 
-void StandaloneTablemetaReader::SetTableinfoPtr(){
+void StandaloneTablemetaReader::SetTableinfoPtr() {
     ::openmldb::sdk::StandAloneSDK standalone_sdk(host_, port_);
     standalone_sdk.Init();
     tableinfo_ptr = standalone_sdk.GetTableInfo(db_name_, table_name_);
 }
 
-void ClusterTablemetaReader::SetTableinfoPtr(){
+void ClusterTablemetaReader::SetTableinfoPtr() {
     ::openmldb::sdk::ClusterSDK cluster_sdk(options_);
     cluster_sdk.Init();
     tableinfo_ptr = cluster_sdk.GetTableInfo(db_name_, table_name_);

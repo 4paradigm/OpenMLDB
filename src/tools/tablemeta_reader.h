@@ -19,6 +19,7 @@
 #define SRC_TOOLS_TABLEMETA_READER_H_
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>

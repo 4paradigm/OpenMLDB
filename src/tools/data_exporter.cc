@@ -18,16 +18,17 @@
 #include <gflags/gflags.h>
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "base/glog_wapper.h"  // NOLINT
 #include "proto/common.pb.h"
 #include "sdk/db_sdk.h"
 #include "tools/tablemeta_reader.h"
 #include "tools/log_exporter.h"
-#include "version.h"  // NOLINT
 #include "yaml-cpp/yaml.h"
 
 DEFINE_string(db_name, "", "database name");
@@ -35,20 +36,18 @@ DEFINE_string(table_name, "", "table name");
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 
-std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>* tablet_map) {
-    printf("--------begin ReadConfigYaml--------\n");
+std::string ReadConfigYaml(const std::string& yaml_path, std::unordered_map<std::string, std::string>* tablet_map) {\
     // Reads tablet's endpoints and corresponding paths
     YAML::Node config = YAML::LoadFile(yaml_path);
     for (YAML::const_iterator iter = config["tablet"].begin(); iter != config["tablet"].end(); ++iter) {
         std::string endpoint = (*iter)["endpoint"].as<std::string>();
         if (tablet_map->find(endpoint) != tablet_map->end()) {
-            printf("Error. Exists duplicate endpoints.\n");
+            PDLOG(WARNING, "Exists duplicate endpoints %s.", endpoint.c_str());
         } else {
             (*tablet_map)[endpoint] = (*iter)["path"].as<std::string>();
-            printf("Tablet's endpoint: %s, path: %s\n", endpoint.c_str(), (*tablet_map)[endpoint].c_str());
+            PDLOG(INFO, "Tablet's endpoint: %s, path: %s.", endpoint.c_str(), (*tablet_map)[endpoint].c_str());
         }
     }
-    printf("--------end ReadConfigYaml--------\n");
     return config["mode"].as<std::string>();
 }
 
@@ -106,25 +105,34 @@ int main(int argc, char* argv[]) {
     tmp_path = tablemeta_reader->GetTmpPath().string();
     delete tablemeta_reader;
 
-    std::vector<std::string> file_path;
+    std::unordered_map<int, std::vector<std::string>> filepath_map;
     struct dirent *ptr;
     DIR *dir;
     dir = opendir(tmp_path.c_str());
-    //int table_num;
+
     while ((ptr = readdir(dir)) != NULL) {
         if (ptr->d_name[0] == '.' || !isdigit(ptr->d_name[0]))
             continue;
         std::string table = tmp_path + "/" + ptr->d_name;
-        file_path.emplace_back(table);
+        int table_num = ptr->d_name[0] - '0';
+        if  (filepath_map.find(table_num) == filepath_map.end()) {
+            filepath_map[table_num] = std::vector<std::string>();
+        }
+        filepath_map[table_num].emplace_back(table);
     }
-    for (const auto& table : file_path) {
-        printf("Opening table path: %s\n", table.c_str());
-        ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(table);
-        exporter.SetSchema(table_schema);
-        exporter.ReadManifest();
-        printf("--------start ExportData--------\n");
-        exporter.ExportTable();
-        printf("--------end ExportData--------\n");
+    for (const auto& filepath_pair : filepath_map) {
+        PDLOG(INFO, "Starting export table %d.", filepath_pair.first);
+        std::ofstream table_cout(std::to_string(filepath_pair.first) + "_result.csv");
+        for (int i = 0; i < table_schema.size() - 1; ++i) {
+            table_cout << table_schema.Get(i).name() << ",";
+        }
+        table_cout << table_schema.Get(table_schema.size() - 1).name() << "\n";
+        for (const auto& table : filepath_pair.second) {
+            ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(table, table_cout);
+            exporter.SetSchema(table_schema);
+            exporter.ReadManifest();
+            exporter.ExportTable();
+        }
     }
     std::filesystem::path remove_path = tmp_path;
     std::filesystem::remove_all(remove_path);
