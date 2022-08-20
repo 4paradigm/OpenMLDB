@@ -143,8 +143,8 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB Memory 1 Test
+          body: OpenMLDB Memory 1 Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
@@ -187,8 +187,8 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB SSD Test
+          body: OpenMLDB SSD Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
@@ -217,7 +217,6 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-hdd-0 Report"
           comment_title: "SRC java-sdk-cluster-hdd-0 Report"
       - name: tar test report
@@ -231,8 +230,8 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB HDD Test
+          body: OpenMLDB HDD Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
