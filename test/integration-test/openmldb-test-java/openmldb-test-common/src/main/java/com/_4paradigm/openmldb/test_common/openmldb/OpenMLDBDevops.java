@@ -92,12 +92,13 @@ public class OpenMLDBDevops {
         int nsNum = openMLDBInfo.getNsNum();
         for(int i=1;i<=nsNum;i++) {
             log.info("开始升级第{}个ns",i);
+            operateNs(i-1,"stop");
             String nsPath = basePath + "/openmldb-ns-"+i;
             backUp(nsPath);
             cpBin(nsPath, binPath);
             cpConf(nsPath, confPath);
             modifyNsConf(nsPath, openMLDBInfo.getNsEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateNs(i-1,"restart");
+            operateNs(i-1,"start");
             Tool.sleep(20*1000);
             log.info("第{}个ns升级结束",i);
         }
@@ -107,12 +108,12 @@ public class OpenMLDBDevops {
         int tabletNum = openMLDBInfo.getTabletNum();
         for(int i=1;i<=tabletNum;i++) {
             log.info("开始升级第{}个tablet",i);
+            operateTablet(i-1,"stop");
             String tabletPath = basePath + "/openmldb-tablet-"+i;
             backUp(tabletPath);
             cpBin(tabletPath, binPath);
             cpConf(tabletPath, confPath);
             modifyTabletConf(tabletPath, openMLDBInfo.getTabletEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateTablet(i-1,"stop");
             Tool.sleep(10*1000);
             operateTablet(i-1,"start");
             Tool.sleep(20*1000);
@@ -124,12 +125,13 @@ public class OpenMLDBDevops {
         int apiServerNum = openMLDBInfo.getApiServerEndpoints().size();
         for(int i=1;i<=apiServerNum;i++) {
             log.info("开始升级第{}个apiserver",i);
+            operateApiServer(i-1,"stop");
             String apiServerPath = basePath + "/openmldb-apiserver-"+i;
             backUp(apiServerPath);
             cpBin(apiServerPath, binPath);
             cpConf(apiServerPath, confPath);
             modifyApiServerConf(apiServerPath, openMLDBInfo.getApiServerEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateApiServer(i-1,"restart");
+            operateApiServer(i-1,"start");
             Tool.sleep(20*1000);
             log.info("第{}个ns升级结束",i);
         }
@@ -139,9 +141,9 @@ public class OpenMLDBDevops {
         int taskManagerNum = openMLDBInfo.getTaskManagerEndpoints().size();
         for(int i=1;i<=taskManagerNum;i++) {
             log.info("开始升级第{}个taskmanager",i);
+            operateTaskManager(i,"stop");
             String taskManagerPath = basePath + "/openmldb-task_manager-"+i;
             backDirectory(taskManagerPath);
-            operateTaskManager(i,"stop");
             ExecutorUtil.run("rm -rf "+taskManagerPath);
             String ipPort = openMLDBInfo.getTaskManagerEndpoints().get(i-1);
             String[] ss = ipPort.split(":");

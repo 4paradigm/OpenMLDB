@@ -7,6 +7,7 @@ import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.testng.Assert;
 
 import java.util.*;
@@ -58,6 +59,19 @@ public class NsClient {
         Assert.assertTrue(b,"check op done failed.");
     }
     public List<String> showTable(String dbName,String tableName){
+        String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
+        String nsCommand = genNsCommand(dbName,command);
+        Tool.sleep(3*1000);
+        List<String> result = WaitUtil.waitCondition(() -> {
+            List<String> lines = CommandUtil.run(nsCommand);
+            if (lines.size() <= 2) {
+                return Pair.of(false, lines);
+            }
+            return Pair.of(true, lines);
+        });
+        return result;
+    }
+    public List<String> showTableHaveTable(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         List<String> lines = runNs(dbName,command);
         return lines;

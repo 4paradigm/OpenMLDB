@@ -55,3 +55,4 @@ rm -rf openmldb-ns-2/bin/openmldb
 rm -rf openmldb-tablet-1/bin/openmldb
 rm -rf openmldb-tablet-2/bin/openmldb
 rm -rf openmldb-tablet-3/bin/openmldb
+
