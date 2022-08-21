@@ -5328,9 +5328,9 @@ TEST_P(TabletImplTest, AddIndex) {
     tablet.AddIndex(NULL, &add_index_request, &add_index_response, &closure);
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
-    if (storage_mode != openmldb::common::kMemory) {
-        ASSERT_EQ(701, add_index_response.code());
-    } else {
+    // if (storage_mode != openmldb::common::kMemory) {
+    //     ASSERT_EQ(701, add_index_response.code());
+    // } else {
         ASSERT_EQ(0, add_index_response.code());
 
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -5376,7 +5376,7 @@ TEST_P(TabletImplTest, AddIndex) {
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, (signed)srp.count());
-    }
+    // }
 }
 
 TEST_P(TabletImplTest, CountWithFilterExpire) {

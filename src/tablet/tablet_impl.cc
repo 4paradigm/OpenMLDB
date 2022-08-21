@@ -5161,29 +5161,31 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
-    auto* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (mem_table == NULL) {
-        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
-        return;
-    }
+    // if (table->GetStorageMode() != ::openmldb::common::kMemory) {
+    //     response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+    //     response->set_msg("only support mem_table");
+    //     PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
+    //     return;
+    // }
+
+    // auto* mem_table = dynamic_cast<MemTable*>(table.get());
+    // if (mem_table == NULL) {
+    //     PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
+    //     base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
+    //     return;
+    // }
+
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
             // TODO(denglong): support add multi indexs in memory table
-            if (!mem_table->AddIndex(column_key)) {
+            if (!table->AddIndex(column_key)) {
                 PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
                 base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
                 return;
             }
         }
     } else {
-        if (!mem_table->AddIndex(request->column_key())) {
+        if (!table->AddIndex(request->column_key())) {
             PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
             base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
             return;

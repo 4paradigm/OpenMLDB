@@ -168,6 +168,7 @@ class Table {
 
     bool CheckFieldExist(const std::string& name);
 
+    virtual bool AddIndex(const ::openmldb::common::ColumnKey& column_key) = 0;
     virtual bool DeleteIndex(const std::string& idx_name) = 0;
 
     virtual uint64_t GetRecordIdxCnt() = 0;

@@ -1209,17 +1209,175 @@ TEST_F(DiskTableTest, AddIndex) {
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 3, 0);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
-    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    // SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    // SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
 
     std::string table_path = FLAGS_hdd_root_path + "/16_1";
     DiskTable* table = new DiskTable(table_meta, table_path);
     ASSERT_TRUE(table->Init());
 
-    
-    ::openmldb::common::ColumnKey *column_key = table_meta.add_column_key();
-    SchemaCodec::SetIndex(column_key, "mcc1", "mcc", "ts1", ::openmldb::type::kAbsoluteTime, 3, 0);
-    table->AddIndex(*column_key);
+    ASSERT_EQ(1, table_meta.column_key_size());
+    auto t = table_meta.column_key()[0];
+
+
+    // ::openmldb::common::ColumnKey column_key = ::openmldb::common::ColumnKey();
+    // SchemaCodec::SetIndex(&column_key, "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 3, 0);
+    // table->AddIndex(column_key);
+
+    ::openmldb::common::ColumnKey column_key = ::openmldb::common::ColumnKey();
+    SchemaCodec::SetIndex(&column_key, "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    table->AddIndex(column_key);
+
+    column_key = ::openmldb::common::ColumnKey();
+    SchemaCodec::SetIndex(&column_key, "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
+    table->AddIndex(column_key);
+
+    table_meta = *(table->GetTableMeta());
+
+    ASSERT_EQ(3, table->GetIdxCnt());
+
+    codec::SDKCodec codec(table_meta);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    for (int idx = 0; idx < 100; idx++) {
+        Dimensions dims;
+        ::openmldb::api::Dimension* dim = dims.Add();
+        dim->set_key("card" + std::to_string(idx));
+        dim->set_idx(0);
+        ::openmldb::api::Dimension* dim1 = dims.Add();
+        dim1->set_key("card" + std::to_string(idx));
+        dim1->set_idx(1);
+        ::openmldb::api::Dimension* dim2 = dims.Add();
+        dim2->set_key("mcc" + std::to_string(idx));
+        dim2->set_idx(2);
+        std::string key = "test" + std::to_string(idx);
+        if (idx == 5 || idx == 10) {
+            for (int i = 0; i < 10; i++) {
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_time - i * 60 * 1000),
+                                                std::to_string(cur_time - i * 60 * 1000)};
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                ASSERT_TRUE(table->Put(cur_time - i * 60 * 1000, value, dims));
+            }
+
+        } else {
+            for (int i = 0; i < 10; i++) {
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_time - i),
+                                                std::to_string(cur_time - i)};
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                ASSERT_TRUE(table->Put(cur_time - i, value, dims));
+            }
+        }
+    }
+    Ticket ticket;
+    TableIterator* iter = table->NewIterator(0, "card0", ticket);
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+    }
+    delete iter;
+    iter = table->NewIterator(2, "mcc0", ticket);
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+    }
+    delete iter;
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        uint64_t ts = cur_time;
+        if (idx == 5 || idx == 10) {
+            for (int i = 0; i < 10; i++) {
+                std::vector<std::string> row = {
+                    "value" + std::to_string(i),
+                    "value" + std::to_string(i),
+                    std::to_string(ts - i * 60 * 1000),
+                    std::to_string(ts - i * 60 * 1000),
+                };
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
+                std::string value;
+                ASSERT_TRUE(table->Get(0, key, ts - i * 60 * 1000, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(1, key, ts - i * 60 * 1000, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(2, key1, ts - i * 60 * 1000, value));
+            }
+
+        } else {
+            for (int i = 0; i < 10; i++) {
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(ts - i), std::to_string(ts - i)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
+                std::string value;
+                ASSERT_TRUE(table->Get(0, key, ts - i, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(1, key, ts - i, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(2, key1, ts - i, value));
+            }
+        }
+    }
+    table->CompactDB();
+    iter = table->NewIterator(0, "card0", ticket);
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+    }
+    delete iter;
+    iter = table->NewIterator(2, "mcc0", ticket);
+    iter->SeekToFirst();
+    while (iter->Valid()) {
+        iter->Next();
+    }
+    delete iter;
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        uint64_t ts = cur_time;
+        if (idx == 5 || idx == 10) {
+            for (int i = 0; i < 10; i++) {
+                uint64_t cur_ts = ts - i * 60 * 1000;
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(cur_ts), std::to_string(cur_ts)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
+                std::string value;
+                if (i < 3) {
+                    ASSERT_TRUE(table->Get(0, key, cur_ts, value));
+                    ASSERT_EQ(e_value, value);
+                } else {
+                    ASSERT_FALSE(table->Get(0, key, cur_ts, value));
+                }
+                if (i < 5) {
+                    ASSERT_TRUE(table->Get(1, key, cur_ts, value));
+                    ASSERT_EQ(e_value, value);
+                    ASSERT_TRUE(table->Get(2, key1, cur_ts, value));
+                } else {
+                    ASSERT_FALSE(table->Get(1, key, cur_ts, value));
+                    ASSERT_FALSE(table->Get(2, key1, cur_ts, value));
+                }
+            }
+        } else {
+            for (int i = 0; i < 10; i++) {
+                std::vector<std::string> row = {"value" + std::to_string(i), "value" + std::to_string(i),
+                                                std::to_string(ts - i), std::to_string(ts - i)};
+                std::string e_value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
+                std::string value;
+                ASSERT_TRUE(table->Get(0, key, ts - i, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(1, key, ts - i, value));
+                ASSERT_EQ(e_value, value);
+                ASSERT_TRUE(table->Get(2, key1, ts - i, value));
+            }
+        }
+    }
+    delete table;
+    RemoveData(table_path);
 }
 
 }  // namespace storage
