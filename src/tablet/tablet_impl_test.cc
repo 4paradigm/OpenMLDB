@@ -1199,22 +1199,27 @@ TEST_P(TabletImplTest, MultiGet) {
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
-    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(142, deleteindex_response.code());
-    } else {
-        ASSERT_EQ(701, deleteindex_response.code());
-    }
+    // if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+    //     ASSERT_EQ(142, deleteindex_response.code());
+    // } else {
+    //     ASSERT_EQ(701, deleteindex_response.code());
+    // }
+
+    ASSERT_EQ(142, deleteindex_response.code());
+
     // delete other index
     deleteindex_request.set_idx_name("amt");
     deleteindex_request.set_tid(id);
     tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
-    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(0, deleteindex_response.code());
-    } else {
-        ASSERT_EQ(701, deleteindex_response.code());
-    }
+    // if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+    //     ASSERT_EQ(0, deleteindex_response.code());
+    // } else {
+    //     ASSERT_EQ(701, deleteindex_response.code());
+    // }
+
+    ASSERT_EQ(0, deleteindex_response.code());
 
     // get index not found
     get_request.set_tid(id);
@@ -1225,11 +1230,13 @@ TEST_P(TabletImplTest, MultiGet) {
     tablet.Get(NULL, &get_request, &get_response, &closure);
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
-    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(108, get_response.code());
-    } else {
-        ASSERT_EQ(0, get_response.code());
-    }
+    // if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+    //     ASSERT_EQ(108, get_response.code());
+    // } else {
+    //     ASSERT_EQ(0, get_response.code());
+    // }
+
+    ASSERT_EQ(108, get_response.code());
 
     // scan index not found
     ::openmldb::api::ScanRequest scan_request;
@@ -1242,11 +1249,14 @@ TEST_P(TabletImplTest, MultiGet) {
     tablet.Scan(NULL, &scan_request, &scan_response, &closure);
     // Some functions in tablet_impl only support memtable now
     // refer to issue #1438
-    if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(108, scan_response.code());
-    } else {
-        ASSERT_EQ(0, scan_response.code());
-    }
+    // if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+    //     ASSERT_EQ(108, scan_response.code());
+    // } else {
+    //     ASSERT_EQ(0, scan_response.code());
+    // }
+
+    ASSERT_EQ(108, scan_response.code());
+
 }
 
 
@@ -2293,11 +2303,13 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         tablet.DeleteIndex(NULL, &deleteindex_request, &deleteindex_response, &closure);
         // Some functions in tablet_impl only support memtable now
         // refer to issue #1438
-        if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
-            ASSERT_EQ(0, deleteindex_response.code());
-        } else {
-            ASSERT_EQ(701, deleteindex_response.code());
-        }
+        // if (storage_mode == ::openmldb::common::StorageMode::kMemory) {
+        //     ASSERT_EQ(0, deleteindex_response.code());
+        // } else {
+        //     ASSERT_EQ(701, deleteindex_response.code());
+        // }
+
+        ASSERT_EQ(0, deleteindex_response.code());
     }
     // load
     {
@@ -2325,11 +2337,14 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         tablet.Scan(NULL, &sr, &srp, &closure);
         // Some functions in tablet_impl only support memtable now
         // refer to issue #1438
-        if (storage_mode == ::openmldb::common::kMemory) {
-            ASSERT_EQ(108, srp.code());
-        } else {
-            ASSERT_EQ(0, srp.code());
-        }
+        // if (storage_mode == ::openmldb::common::kMemory) {
+        //     ASSERT_EQ(108, srp.code());
+        // } else {
+        //     ASSERT_EQ(0, srp.code());
+        // }
+
+        ASSERT_EQ(108, srp.code());
+        
         sr.set_pk("card0");
         sr.set_idx_name("card");
         tablet.Scan(NULL, &sr, &srp, &closure);

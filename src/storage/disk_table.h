@@ -400,7 +400,6 @@ class DiskTable : public Table {
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) override;
 
-    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
 
     void SchedGc() override;
 
@@ -418,6 +417,7 @@ class DiskTable : public Table {
 
     int CreateCheckPoint(const std::string& checkpoint_dir);
 
+    bool AddIndex(const ::openmldb::common::ColumnKey& column_key) override;
     bool DeleteIndex(const std::string& idx_name) override;
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;

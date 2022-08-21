@@ -4588,12 +4588,12 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         response->set_msg("table is not exist");
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
+    // if (table->GetStorageMode() != ::openmldb::common::kMemory) {
+    //     response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
+    //     response->set_msg("only support mem_table");
+    //     PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
+    //     return;
+    // }
     std::string root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4601,8 +4601,8 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
         return;
     }
-    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (!mem_table->DeleteIndex(request->idx_name())) {
+    // MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
+    if (!table->DeleteIndex(request->idx_name())) {
         response->set_code(::openmldb::base::ReturnCode::kDeleteIndexFailed);
         response->set_msg("delete index failed");
         PDLOG(WARNING, "delete index %s failed. tid %u pid %u", request->idx_name().c_str(), tid, pid);
