@@ -16,9 +16,20 @@ cmake --build build --target export_udf_info
 ### 2. 生成 Doxygen 文档
 
 ```bash
-cd ${project_root}/hybridse/tools/documentation/
-python3 udf_doxygen/export_udf_doc.py
+cd ${project_root}/hybridse/tools/documentation/udf_doxygen/
+python3 export_udf_doc.py
 ```
+
+会在 udf_doxygen 目录下生成文件:
+
+```bash
+udf_doxygen/
+├── html/   # doxygen 生成的网页文件
+├── udfs/   # udfs.h
+└── xml/    # doxygen 生成的 XML 文件
+```
+
+
 
 ### 3. Doxygen 文档生成 Markdown
 
@@ -27,6 +38,8 @@ cd udf_doxygen
 mkdir -p udfgen
 doxybook2 --input xml --output udfgen/ --config config.json --templates ../template --summary-input SUMMARY.md.tmpl --summary-output SUMMARY.md
 ```
+
+将生成 `udf_doxygen/udfgen` 目录
 
 ### 4. 将生成的 Markdown 文件更新到正确位置
 

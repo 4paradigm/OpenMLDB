@@ -1504,6 +1504,38 @@ Used by feature zero, for each string value from specified column of window, spl
 
 * [`list<string>`, `list<string>`, `list<string>`] 
 
+### function hex
+
+```cpp
+hex()
+```
+
+**Description**:
+
+Convert number to hexadecimal. If double, convert to hexadecimal after rounding. 
+
+**Since**:
+0.6.0
+
+
+Example:
+
+```sql
+
+select hex(17);
+--output "11"
+select hex(17.4);
+--output "11"
+select hex(17.5);
+--output "12"
+```
+
+
+**Supported Types**:
+
+* [`number`]
+* [`string`] 
+
 ### function hour
 
 ```cpp
@@ -1908,6 +1940,37 @@ SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
 * [`list<number>`, `int64`]
 * [`list<string>`, `int64`]
 * [`list<timestamp>`, `int64`] 
+
+### function last_day
+
+```cpp
+last_day()
+```
+
+**Description**:
+
+Return the last day of the month to which the date belongs to. 
+
+**Since**:
+0.6.1
+
+
+Example: ```sql
+
+select last_day(timestamp("2020-05-22 10:43:40"));
+-- output 2020-05-31
+select last_day(timestamp("2020-02-12 10:43:40"));
+-- output 2020-02-29
+select last_day(timestamp("2021-02-12"));
+-- output 2021-02-28
+```
+
+
+**Supported Types**:
+
+* [`date`]
+* [`int64`]
+* [`timestamp`] 
 
 ### function lcase
 
@@ -2384,6 +2447,48 @@ Compute maximum of two arguments.
 * [`int64`, `int64`]
 * [`string`, `string`]
 * [`timestamp`, `timestamp`] 
+
+### function median
+
+```cpp
+median()
+```
+
+**Description**:
+
+Compute the median of values. 
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on.
+
+
+**Since**:
+0.6.0
+
+
+
+Example:
+
+
+| value     |
+|  -------- |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
+
+
+```sql
+
+SELECT median(value) OVER w;
+-- output 2.5
+```
+
+
+**Supported Types**:
+
+* [`list<number>`] 
 
 ### function min
 
@@ -2862,6 +2967,64 @@ SELECT RADIANS(90);
 **Supported Types**:
 
 * [`double`] 
+
+### function regexp_like
+
+```cpp
+regexp_like()
+```
+
+**Description**:
+
+pattern match same as RLIKE predicate (based on RE2) 
+
+**Parameters**: 
+
+  * **target** string to match
+  * **pattern** the regular expression match pattern
+  * **flags** specifies the matching behavior of the regular expression function. 'c': case-sensitive matching(default); 'i': case-insensitive matching; 'm': multi-line mode; 'e': Extracts sub-matches(ignored here); 's': Enables the POSIX wildcard character . to match new line.
+
+
+**Since**:
+0.6.1
+
+
+Rules:
+
+1. Accept standard POSIX (egrep) syntax regular expressions
+    * dot (.) : matches any single-width ASCII character in an expression, with the exception of line break characters.
+    * asterisk (*) : matches the preceding token zero or more times.
+    * plus sign (+) : matches the preceding token one or more times.
+    * question mark (?) : identifies the preceding character as being optional.
+    * vertical bar (|) : separates tokens, one of which must be matched, much like a logical OR statement.
+    * parenthesis ('(' and ')') : groups multiple tokens together to disambiguate or simplify references to them.
+    * open square bracket ([) and close square bracket (]) : enclose specific characters or a range of characters to be matched. The characters enclosed inside square brackets are known as a character class.
+    * caret (^) : the caret has two different meanings in a regular expression, depending on where it appears: As the first character in a character class, a caret negates the characters in that character class. As the first character in a regular expression, a caret identifies the beginning of a term. In this context, the caret is often referred to as an anchor character.
+    * dollar sign ($) : as the last character in a regular expression, a dollar sign identifies the end of a term. In this context, the dollar sign is often referred to as an anchor character.
+    * backslash () : used to invoke the actual character value for a metacharacter in a regular expression.
+2. Default flags parameter: 'c'
+3. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
+4. if one or more of target, pattern and flags are null values, then the result is null
+Example: ```sql
+
+select regexp_like('Mike', 'Mi.k')
+-- output: true
+
+select regexp_like('Mi\nke', 'mi.k')
+-- output: false
+
+select regexp_like('Mi\nke', 'mi.k', 'si')
+-- output: true
+
+select regexp_like('append', 'ap*end')
+-- output: true
+```
+
+
+**Supported Types**:
+
+* [`string`, `string`]
+* [`string`, `string`, `string`] 
 
 ### function replace
 
