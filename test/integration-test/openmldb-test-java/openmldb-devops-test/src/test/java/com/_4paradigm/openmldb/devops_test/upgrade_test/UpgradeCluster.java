@@ -98,9 +98,9 @@ public class UpgradeCluster extends ClusterTest {
         }
         openMLDBDeploy = new OpenMLDBDeploy(upgradeVersion);
         String upgradeDirectoryName = openMLDBDeploy.downloadOpenMLDB(upgradePath);
-        openMLDBPath = upgradeDirectoryName+"/bin/openmldb";
-        newBinPath = upgradeDirectoryName+"/bin/";
-        confPath = upgradeDirectoryName+"/conf";
+        openMLDBPath = upgradePath+"/"+upgradeDirectoryName+"/bin/openmldb";
+        newBinPath = upgradePath+"/"+upgradeDirectoryName+"/bin/";
+        confPath = upgradePath+"/"+upgradeDirectoryName+"/conf";
     }
     @Test
     public void testUpgrade(){
