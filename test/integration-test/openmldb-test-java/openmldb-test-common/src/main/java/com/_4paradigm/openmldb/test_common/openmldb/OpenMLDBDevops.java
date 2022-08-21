@@ -97,7 +97,7 @@ public class OpenMLDBDevops {
             cpBin(nsPath, binPath);
             cpConf(nsPath, confPath);
             modifyNsConf(nsPath, openMLDBInfo.getNsEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateNs(i,"restart");
+            operateNs(i-1,"restart");
             Tool.sleep(20*1000);
             log.info("第{}个ns升级结束",i);
         }
@@ -112,9 +112,9 @@ public class OpenMLDBDevops {
             cpBin(tabletPath, binPath);
             cpConf(tabletPath, confPath);
             modifyTabletConf(tabletPath, openMLDBInfo.getTabletEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateTablet(i,"stop");
+            operateTablet(i-1,"stop");
             Tool.sleep(10*1000);
-            operateTablet(i,"start");
+            operateTablet(i-1,"start");
             Tool.sleep(20*1000);
             log.info("第{}个tablet升级结束",i);
         }
@@ -129,7 +129,7 @@ public class OpenMLDBDevops {
             cpBin(apiServerPath, binPath);
             cpConf(apiServerPath, confPath);
             modifyApiServerConf(apiServerPath, openMLDBInfo.getApiServerEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
-            operateApiServer(i,"restart");
+            operateApiServer(i-1,"restart");
             Tool.sleep(20*1000);
             log.info("第{}个ns升级结束",i);
         }
@@ -143,7 +143,7 @@ public class OpenMLDBDevops {
             backDirectory(taskManagerPath);
             operateTaskManager(i,"stop");
             ExecutorUtil.run("rm -rf "+taskManagerPath);
-            String ipPort = openMLDBInfo.getTaskManagerEndpoints().get(i);
+            String ipPort = openMLDBInfo.getTaskManagerEndpoints().get(i-1);
             String[] ss = ipPort.split(":");
             String ip = ss[0];
             int port = Integer.parseInt(ss[1]);
