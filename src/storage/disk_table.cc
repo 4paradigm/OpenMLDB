@@ -1099,7 +1099,7 @@ inline bool DiskTableRowIterator::IsSeekable() const { return true; }
 
 bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
     // TODO(denglong): support ttl type and merge index
-    auto table_meta = GetTableMeta();  // std::shared_ptr<::openmldb::api::TableMeta>
+    auto table_meta = GetTableMeta();
     auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
     std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
     if (index_def) {
@@ -1112,19 +1112,19 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);
     }
-    if (!index_def) {  // indexes_ 中没有刚刚加入的 coloumn  key
-        auto cols = GetSchema();  // std::shared_ptr<Schema> version_schema_->rbegin()->second;
-        // Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
+    if (!index_def) {
+        auto cols = GetSchema();
         if (!cols) {
             return false;
         }
         std::map<std::string, ColumnDef> schema;
-        for (int idx = 0; idx < cols->size(); idx++) {  // 遍历所有的字段 version_schema
+        for (int idx = 0; idx < cols->size(); idx++) {
             const auto& col = cols->Get(idx);
             schema.emplace(col.name(), ColumnDef(col.name(), idx, col.data_type(), col.not_null()));
         }
+
         std::vector<ColumnDef> col_vec;
-        for (const auto& col_name : column_key.col_name()) {  // 组成 索引的所有字段
+        for (const auto& col_name : column_key.col_name()) {
             auto it = schema.find(col_name);
             if (it == schema.end()) {
                 PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", col_name.c_str(), id_, pid_);
@@ -1132,30 +1132,21 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             }
             col_vec.push_back(it->second);
         }
-        std::vector<uint32_t> ts_vec; //  记录时间字段
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = schema.find(column_key.ts_name());
-            if (ts_iter == schema.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
-                return false;
-            }
-            ts_vec.push_back(ts_iter->second.GetId());
-        } else {
-            ts_vec.push_back(DEFUALT_TS_COL_ID);
-        }
+
         uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
 
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
                 IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
 
 
-        if (!column_key.ts_name().empty()) { //  设置index的ts字段
+        if (!column_key.ts_name().empty()) {
             auto ts_iter = schema.find(column_key.ts_name());
             index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
         } else {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
                         ::openmldb::type::kTimestamp, true));
         }
+
         if (column_key.has_ttl()) {
             index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
         } else {
@@ -1167,18 +1158,11 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
 
-        // FillIndexValue
         index_def->SetInnerPos(inner_id);
         std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
         auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
         table_index_.AddInnerIndex(inner_index_st);
         table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
-
-        // InitColumnFamilyDescriptor
-
-        // auto inner_indexs = table_index_.GetAllInnerIndex();
-        // auto inner_index = (*inner_indexs)[inner_id];
-        // auto inner_index = inner_index_st;
 
         rocksdb::ColumnFamilyOptions cfo;
 
@@ -1196,14 +1180,14 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index_st);
         }
 
-        // Init
         rocksdb::ColumnFamilyHandle* handle;
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
 
         rocksdb::Status s = db_->CreateColumnFamily(cfo, index_def->GetName(), &handle);
         if (!s.ok()) {
-            PDLOG(WARNING, "rocksdb failed to create ColumnFamily. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
+            PDLOG(WARNING, "rocksdb failed to create ColumnFamily. tid %u pid %u error %s",
+                  id_, pid_, s.ToString().c_str());
             return false;
         }
 

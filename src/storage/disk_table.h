@@ -400,7 +400,6 @@ class DiskTable : public Table {
 
     ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t idx) override;
 
-
     void SchedGc() override;
 
     void GcHead();

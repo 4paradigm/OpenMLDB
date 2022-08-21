@@ -4588,12 +4588,6 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         response->set_msg("table is not exist");
         return;
     }
-    // if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-    //     response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-    //     response->set_msg("only support mem_table");
-    //     PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-    //     return;
-    // }
     std::string root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4601,7 +4595,6 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
         return;
     }
-    // MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
     if (!table->DeleteIndex(request->idx_name())) {
         response->set_code(::openmldb::base::ReturnCode::kDeleteIndexFailed);
         response->set_msg("delete index failed");
@@ -5161,20 +5154,6 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
         return;
     }
-    // if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-    //     response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-    //     response->set_msg("only support mem_table");
-    //     PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-    //     return;
-    // }
-
-    // auto* mem_table = dynamic_cast<MemTable*>(table.get());
-    // if (mem_table == NULL) {
-    //     PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-    //     base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
-    //     return;
-    // }
-
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
             // TODO(denglong): support add multi indexs in memory table

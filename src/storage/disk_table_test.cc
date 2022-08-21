@@ -1209,8 +1209,6 @@ TEST_F(DiskTableTest, AddIndex) {
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
     SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 3, 0);
-    // SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
-    // SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
 
     std::string table_path = FLAGS_hdd_root_path + "/16_1";
     DiskTable* table = new DiskTable(table_meta, table_path);
@@ -1218,11 +1216,6 @@ TEST_F(DiskTableTest, AddIndex) {
 
     ASSERT_EQ(1, table_meta.column_key_size());
     auto t = table_meta.column_key()[0];
-
-
-    // ::openmldb::common::ColumnKey column_key = ::openmldb::common::ColumnKey();
-    // SchemaCodec::SetIndex(&column_key, "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 3, 0);
-    // table->AddIndex(column_key);
 
     ::openmldb::common::ColumnKey column_key = ::openmldb::common::ColumnKey();
     SchemaCodec::SetIndex(&column_key, "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
