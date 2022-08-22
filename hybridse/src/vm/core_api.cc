@@ -357,6 +357,25 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
                                  window->GetWindow());
 }
 
+hybridse::codec::Row CoreAPI::UnsafeWindowProjectBytes(
+        const RawPtrHandle fn, const uint64_t key,
+        hybridse::vm::ByteArrayPtr unsaferowBytes,
+        const int unsaferowSize, const bool is_instance, size_t append_slices,
+        WindowInterface* window) {
+    auto actualRowSize = unsaferowSize + codec::HEADER_LENGTH;
+    int8_t* newRowPtr = reinterpret_cast<int8_t*>(malloc(actualRowSize));
+
+    // Write the row size
+    *reinterpret_cast<uint32_t *>(newRowPtr) = actualRowSize;
+
+    // Write the UnsafeRow bytes
+    memcpy(newRowPtr + codec::HEADER_LENGTH, unsaferowBytes, unsaferowSize);
+    auto row = Row(base::RefCountedSlice::CreateManaged(newRowPtr, actualRowSize));
+
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
+                                 window->GetWindow());
+}
+
 hybridse::codec::Row CoreAPI::GroupbyProject(
     const RawPtrHandle fn, hybridse::vm::GroupbyInterface* groupby_interface) {
     return Runner::GroupbyProject(fn, Row(), groupby_interface->GetTableHandler());
