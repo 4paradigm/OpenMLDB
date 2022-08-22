@@ -1,5 +1,5 @@
 # CREATE TABLE
- The `CREATE TABLE` statement is used to create a table. The table name must be unique in one database. If the table with the same name in a database is created repeatedly, an error will occur.
+ The `CREATE TABLE` statement is used to create a table. The table name must be unique in one database. 
 
 ## Syntax
 
