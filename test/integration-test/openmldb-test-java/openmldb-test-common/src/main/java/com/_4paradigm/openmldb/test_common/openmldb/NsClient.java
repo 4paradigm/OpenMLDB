@@ -58,7 +58,7 @@ public class NsClient {
         });
         Assert.assertTrue(b,"check op done failed.");
     }
-    public List<String> showTable(String dbName,String tableName){
+    public List<String> showTableHaveTable(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         String nsCommand = genNsCommand(dbName,command);
         Tool.sleep(3*1000);
@@ -71,7 +71,7 @@ public class NsClient {
         });
         return result;
     }
-    public List<String> showTableHaveTable(String dbName,String tableName){
+    public List<String> showTable(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         List<String> lines = runNs(dbName,command);
         return lines;
@@ -189,7 +189,7 @@ public class NsClient {
     }
 
     public Map<String,List<Long>> getTableOffset(String dbName){
-        List<String> lines = showTable(dbName,null);
+        List<String> lines = showTableHaveTable(dbName,null);
         Map<String,List<Long>> offsets = new HashMap<>();
         for(int i=2;i<lines.size();i++){
             String[] infos = lines.get(i).split("\\s+");

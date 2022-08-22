@@ -26,21 +26,21 @@ import org.slf4j.Logger;
 import java.util.List;
 
 @Slf4j
-public class OpenMLDBComamndFacade {
-    private static final Logger logger = new LogProxy(log);
+public class OpenMLDBCommandFacade {
+//    private static final Logger logger = new LogProxy(log);
     public static OpenMLDBResult sql(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        logger.info("sql:"+sql);
+        log.info("sql:"+sql);
         sql = StringUtils.replace(sql,"\n"," ");
         sql = sql.trim();
-        OpenMLDBResult fesqlResult = SqlChainManager.of().sql(openMLDBInfo, dbName, sql);
-        logger.info("fesqlResult:"+fesqlResult);
-        return fesqlResult;
+        OpenMLDBResult openMLDBResult = SqlChainManager.of().sql(openMLDBInfo, dbName, sql);
+        log.info("openMLDBResult:"+openMLDBResult);
+        return openMLDBResult;
     }
     public static OpenMLDBResult sqls(OpenMLDBInfo openMLDBInfo, String dbName, List<String> sqls) {
-        OpenMLDBResult fesqlResult = null;
+        OpenMLDBResult openMLDBResult = null;
         for(String sql:sqls){
-            fesqlResult = sql(openMLDBInfo,dbName,sql);
+            openMLDBResult = sql(openMLDBInfo,dbName,sql);
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 }

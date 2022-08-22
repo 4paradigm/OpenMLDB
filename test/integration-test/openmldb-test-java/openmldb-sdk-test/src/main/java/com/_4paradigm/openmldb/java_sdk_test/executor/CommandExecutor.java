@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
-import com._4paradigm.openmldb.test_common.command.OpenMLDBComamndFacade;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
@@ -99,8 +99,8 @@ public class CommandExecutor extends BaseExecutor{
 
     protected void prepare(String version, OpenMLDBInfo openMLDBInfo){
         log.info("version:{} prepare begin",version);
-        OpenMLDBResult fesqlResult = OpenMLDBCommandUtil.createDB(openMLDBInfo,dbName);
-        log.info("version:{},create db:{},{}", version, dbName, fesqlResult.isOk());
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandUtil.createDB(openMLDBInfo,dbName);
+        log.info("version:{},create db:{},{}", version, dbName, openMLDBResult.isOk());
         OpenMLDBResult res = OpenMLDBCommandUtil.createAndInsert(openMLDBInfo, dbName, sqlCase.getInputs());
         if (!res.isOk()) {
             throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
@@ -123,7 +123,7 @@ public class CommandExecutor extends BaseExecutor{
 
     protected OpenMLDBResult execute(String version, OpenMLDBInfo openMLDBInfo){
         log.info("version:{} execute begin",version);
-        OpenMLDBResult fesqlResult = null;
+        OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
@@ -133,7 +133,7 @@ public class CommandExecutor extends BaseExecutor{
                 }else {
                     sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
+                openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo, dbName, sql);
             }
         }
         String sql = sqlCase.getSql();
@@ -144,10 +144,10 @@ public class CommandExecutor extends BaseExecutor{
             }else {
                 sql = SQLUtil.formatSql(sql, tableNames);
             }
-            fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo, dbName, sql);
+            openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo, dbName, sql);
         }
         log.info("version:{} execute end",version);
-        return fesqlResult;
+        return openMLDBResult;
     }
 
     @Override

@@ -1,0 +1,77 @@
+package com._4paradigm.openmldb.test_common.openmldb;
+
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.command.CommandUtil;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
+import com._4paradigm.openmldb.test_common.util.*;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.testng.Assert;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+
+@Slf4j
+public class CliClient {
+    private OpenMLDBInfo openMLDBInfo;
+    private String dbName;
+
+    private CliClient(OpenMLDBInfo openMLDBInfo,String dbName){
+        this.openMLDBInfo = openMLDBInfo;
+        this.dbName = dbName;
+    }
+    public static CliClient of(OpenMLDBInfo openMLDBInfo,String dbName){
+        return new CliClient(openMLDBInfo,dbName);
+    }
+    public void createAndUseDB(String dbName){
+        List<String> sqlList = new ArrayList<>();
+        if (!dbIsExist(dbName)) {
+            sqlList.add(String.format("create database %s;", dbName));
+        }
+        sqlList.add(String.format("use %s;", dbName));
+        OpenMLDBCommandFacade.sqls(openMLDBInfo, dbName, sqlList);
+    }
+
+    public boolean dbIsExist(String dbName){
+        String sql = "show databases;";
+        try {
+            OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo, dbName, sql);
+            List<List<Object>> rows = openMLDBResult.getResult();
+            for(List<Object> row:rows){
+                if(row.get(0).equals(dbName)){
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public OpenMLDBResult execute(String sql) {
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo, dbName, sql);
+        openMLDBResult.setSql(sql);;
+        return openMLDBResult;
+    }
+    public OpenMLDBResult execute(List<String> sqlList) {
+        OpenMLDBResult openMLDBResult = null;
+        for(String sql:sqlList){
+            openMLDBResult = execute(sql);
+        }
+        return openMLDBResult;
+    }
+    public void insert(String tableName,List<Object> list){
+        List<List<Object>> dataList = new ArrayList<>();
+        dataList.add(list);
+        insertList(tableName,dataList);
+    }
+    public void insertList(String tableName,List<List<Object>> dataList){
+        String sql = SQLUtil.genInsertSQL(tableName,dataList);
+        OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+    }
+}

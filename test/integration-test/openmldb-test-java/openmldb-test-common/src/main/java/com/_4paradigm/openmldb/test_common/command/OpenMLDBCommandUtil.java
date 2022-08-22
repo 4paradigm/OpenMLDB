@@ -19,7 +19,6 @@ import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -36,13 +35,13 @@ public class OpenMLDBCommandUtil {
 
     public static OpenMLDBResult createDB(OpenMLDBInfo openMLDBInfo, String dbName) {
         String sql = String.format("create database %s ;",dbName);
-        OpenMLDBResult fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,sql);
+        OpenMLDBResult fesqlResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
         return fesqlResult;
     }
 
     public static OpenMLDBResult desc(OpenMLDBInfo openMLDBInfo, String dbName, String tableName) {
         String sql = String.format("desc %s ;",tableName);
-        OpenMLDBResult fesqlResult = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,sql);
+        OpenMLDBResult fesqlResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
         return fesqlResult;
     }
 
@@ -72,7 +71,7 @@ public class OpenMLDBCommandUtil {
                 createSql = SQLCase.formatSql(createSql, i, tableName);
                 createSql = SQLUtil.formatSql(createSql, openMLDBInfo);
                 if (!createSql.isEmpty()) {
-                    OpenMLDBResult res = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,createSql);
+                    OpenMLDBResult res = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,createSql);
                     if (!res.isOk()) {
                         logger.error("fail to create table");
                         // reportLog.error("fail to create table");
@@ -84,7 +83,7 @@ public class OpenMLDBCommandUtil {
                 for (String insertSql : inserts) {
                     insertSql = SQLCase.formatSql(insertSql, i, input.getName());
                     if (!insertSql.isEmpty()) {
-                        OpenMLDBResult res = OpenMLDBComamndFacade.sql(openMLDBInfo,dbName,insertSql);
+                        OpenMLDBResult res = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,insertSql);
                         if (!res.isOk()) {
                             logger.error("fail to insert table");
                             // reportLog.error("fail to insert table");

@@ -41,8 +41,8 @@ public class LongWindowExecutor extends StoredProcedureSQLExecutor {
 
 //    private List<String> spNames;
 
-    public LongWindowExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
-        super(executor, fesqlCase, isBatchRequest, isAsyn, executorType);
+    public LongWindowExecutor(SqlExecutor executor, SQLCase sqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+        super(executor, sqlCase, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
 
@@ -74,8 +74,6 @@ public class LongWindowExecutor extends StoredProcedureSQLExecutor {
                         openMLDBResult.setDbName(dbName);
                         openMLDBResult.setSpName(spNames.get(0));
                     }
-
-
 //                    if (executorType == SQLCaseType.kRequest) {
 //                        InputDesc request = sqlCase.getInputs().get(0);
 //                        openMLDBResult = SDKUtil.sqlRequestMode(executor, dbName, true, sql, request);
