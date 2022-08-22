@@ -63,7 +63,7 @@ ShowGlobalVariablesStmt ::=
 4 rows in set     
 ```
 
-After exiting the console, log back into the console and check the variables again.
+After exiting the console, login again into the console and check the variables again.
 
 ```sql
 > SHOW SESSION VARIABLES;
