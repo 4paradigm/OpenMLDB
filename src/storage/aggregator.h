@@ -129,6 +129,8 @@ class Aggregator {
 
     bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
 
+    bool Delete(const std::string& key);
+
     bool FlushAll();
 
     bool Init(std::shared_ptr<LogReplicator> base_replicator);
@@ -167,7 +169,6 @@ class Aggregator {
     std::shared_ptr<Table> aggr_table_;
     std::shared_ptr<LogReplicator> aggr_replicator_;
     std::atomic<AggrStat> status_;
-    Dimensions dimensions_;
 
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
     bool FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& aggr_buffer);
@@ -188,6 +189,7 @@ class Aggregator {
     }
 
     uint32_t index_pos_;
+    uint32_t aggr_index_pos_ = 0;
     std::string aggr_col_;
     AggrType aggr_type_;
     std::string ts_col_;

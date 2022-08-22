@@ -51,4 +51,29 @@ public class DeploymentTest extends StandaloneTest {
     public void testDrop(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+
+    // 全pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/deploy/test_create_deploy.yaml")
+    @Story("create")
+    public void testCreateSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //all pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/deploy/test_show_deploy.yaml")
+    @Story("show")
+    public void testShowSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //all pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/deploy/test_drop_deploy.yaml")
+    @Story("drop")
+    public void testDropSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }

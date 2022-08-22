@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.java_sdk_test.util;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProvider;
+import com._4paradigm.openmldb.test_common.model.CaseFile;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -111,9 +111,9 @@ public class CaseOutputUtil {
     }
 
     public static List<SQLCase> getCase(String path){
-        FesqlDataProvider dp = null;
+        CaseFile dp = null;
         try {
-            dp = FesqlDataProvider.dataProviderGenerator(path);
+            dp = CaseFile.parseCaseFile(path);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
@@ -136,6 +136,6 @@ public class CaseOutputUtil {
 
 
     public static void main(String[] args) {
-        fromYmlToCsv("/Users/zhaowei/code/4paradigm/rtidb/cases/integration/v1","./out_excel");
+        fromYmlToCsv("/Users/zhaowei/code/4paradigm/OpenMLDB/cases/function","./out");
     }
 }

@@ -1,4 +1,5 @@
 # DROP INDEX
+The `DROP INDEX` statement is used to drop an index of a specific table.
 
 ## Syntax
 
@@ -7,9 +8,8 @@ DROPIndexstmt ::=
     'DROP' 'INDEX' TableName.IndexName
 ```
 
-**Description**
 
-The `DROP INDEX` statement is used to drop an index from OpenMLDB.
+
 
 ## **Example**
 ```SQL

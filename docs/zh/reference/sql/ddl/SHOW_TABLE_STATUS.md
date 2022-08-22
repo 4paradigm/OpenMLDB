@@ -8,6 +8,7 @@ SHOW TABLE STATUS
 
 
 
+
 Column Information
 
 | Column            | Description                                               |
@@ -28,7 +29,8 @@ Column Information
 
 
 
-# Example
+
+## Example
 
 ```sql
 > USE db;

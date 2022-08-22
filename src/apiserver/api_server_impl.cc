@@ -969,21 +969,21 @@ JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
-
-    ar.Member("data");
-    ar.StartArray();
-    auto& rs = s.rs;
-    rs->Reset();
-    auto& schema = *rs->GetSchema();
-    while (rs->Next()) {
+    if (s.rs) {
+        ar.Member("data");
         ar.StartArray();
-        for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-            WriteValue(ar, rs, i);
+        auto& rs = s.rs;
+        rs->Reset();
+        auto& schema = *rs->GetSchema();
+        while (rs->Next()) {
+            ar.StartArray();
+            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                WriteValue(ar, rs, i);
+            }
+            ar.EndArray();
         }
         ar.EndArray();
     }
-    ar.EndArray();
-
     return ar.EndObject();
 }
 

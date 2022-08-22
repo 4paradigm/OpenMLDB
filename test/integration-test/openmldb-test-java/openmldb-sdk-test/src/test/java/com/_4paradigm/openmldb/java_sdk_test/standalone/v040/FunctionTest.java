@@ -47,4 +47,20 @@ public class FunctionTest extends StandaloneTest {
     public void testUDAF(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //pass
+    @Story("like_match")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/v040/test_like_match.yaml")
+    public void testLikeMatchSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //pass
+    @Story("udaf")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/v040/test_udaf.yaml")
+    public void testUDAFSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
 }
