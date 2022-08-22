@@ -44,7 +44,7 @@ ColumnType ::=
 						|'DOUBLE'
 						|'TIMESTAMP'
 						|'DATE'
-            |'BOOL'
+						|'BOOL'
 						|'STRING' | 'VARCHAR'
 						
 ColumnOptionList

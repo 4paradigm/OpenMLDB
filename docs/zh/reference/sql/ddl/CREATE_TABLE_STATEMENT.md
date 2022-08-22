@@ -38,8 +38,8 @@ ColumnType ::=
 						|'FLOAT'
 						|'DOUBLE'
 						|'TIMESTAMP'
-                        |'DATE'
-                        |'BOOL'
+						|'DATE'
+						|'BOOL'
 						|'STRING' | 'VARCHAR'
 						
 ColumnOptionList ::= 
