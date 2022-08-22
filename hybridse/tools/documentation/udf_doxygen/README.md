@@ -6,8 +6,23 @@
 
 - [doxygen](https://doxygen.nl/), [doxybook2](https://github.com/matusnovak/doxybook2) installed in host
 
+- [poetry](https://python-poetry.org/) optional
+  - or have [pyyaml](https://pypi.org/project/PyYAML/) >= 6.0 installed in host
 
-## Steps
+
+## Brief
+
+Simiply type `make udf_doc_gen` in top directory of OpenMLDB.
+
+```bash
+cd $(git rev-parse --show-toplevel)
+make udf_doc_gen
+```
+
+## Detailed Steps
+
+Here are the detailed steps inside `make udf_doc_gen`.
+
 ### 1. Compile export_udf_info
 
 ```bash
