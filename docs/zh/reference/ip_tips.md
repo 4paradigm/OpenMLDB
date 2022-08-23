@@ -17,7 +17,7 @@ OpenMLDB docker镜像或发布包内的ip配置默认都是127.0.0.1，如果是
 
 下面我们将介绍**onebox型OpenMLDB**如何修改配置实现**外部访问**。
 ```{attention}
-单机版中，不只是需要改endpoint，nameserver的配置中的tablet ip `--tablet=`也需要修改。
+单机版中，不只是需要改endpoint，nameserver的配置中的tablet IP `--tablet=`也需要修改。
 ```
 
 ## Onebox型OpenMLDB外部访问
@@ -30,7 +30,7 @@ OpenMLDB有多种访问方式，包括HTTP，多种SDK，以及命令行CLI。
 
 可以通过
 ```
-curl http://<ip:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show components"}'
+curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show components"}'
 ```
 可以确认apiserver是否正常工作。这里的nameserver、tablet server等ip即使是127.0.0.1，也不会有问题，因为apiserver可以通过127.0.0.1访问到这些server。
 
@@ -78,7 +78,7 @@ curl http://<ip:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
 由于server间内部通信是使用`endpoint`绑定的ip通信，而CLI/SDK也是直接获取同样的ip，直连tablet server或taskmanager，因此，nameserver和tablet/taskmanager通信正常，CLI/SDK却有可能因为跨主机或容器，无法正常连接到tablet/taskmanager。
 ```
 
-你可以通过这样一个简单的sql脚本来测试确认连接是否正常。
+你可以通过这样一个简单的SQL脚本来测试确认连接是否正常。
 ```
 show components;
 create database db;
