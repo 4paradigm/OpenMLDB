@@ -41,6 +41,7 @@ struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
     uint32_t max_sql_cache_size = 10;
+    // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
 };
 

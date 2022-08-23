@@ -80,6 +80,9 @@ class TestOpenmldbDBAPI:
         })
 
     def test_request_timeout(self):
+        """
+        Note: this test works now(python sdk is slow). If you can't reach the timeout, redesign the test.
+        """
         db = connect('db_test',
                      OpenMLDB_ZK_CLUSTER,
                      OpenMLDB_ZK_PATH,
@@ -90,6 +93,7 @@ class TestOpenmldbDBAPI:
         )
         # insert no result
         assert not rs
+
         with pytest.raises(DatabaseError) as e:
             cursor.execute("select * from new_table where y=402;").fetchall()
         assert 'execute select fail' in str(e.value)

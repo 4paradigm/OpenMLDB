@@ -49,8 +49,8 @@ DECLARE_string(zk_log_file);
 DECLARE_string(host);
 DECLARE_int32(port);
 
-// rpc request timeout
-DECLARE_int32(request_timeout_ms);
+// rpc request timeout of CLI
+DECLARE_int32(request_timeout);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -233,7 +233,7 @@ bool InitClusterSDK() {
 
     auto ops = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(sr->GetRouterOptions());
     ops->spark_conf_path = FLAGS_spark_conf;
-    ops->request_timeout = FLAGS_request_timeout_ms;
+    ops->request_timeout = FLAGS_request_timeout;
 
     return true;
 }
@@ -264,7 +264,7 @@ bool InitStandAloneSDK() {
     }
     sr->SetInteractive(FLAGS_interactive);
     auto ops = sr->GetRouterOptions();
-    ops->request_timeout = FLAGS_request_timeout_ms;
+    ops->request_timeout = FLAGS_request_timeout;
     return true;
 }
 
