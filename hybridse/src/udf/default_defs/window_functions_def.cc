@@ -95,14 +95,14 @@ template <typename V>
 void RegisterBaseListLag(UdfLibrary* lib) {
     lib->RegisterExternal("lag")
         .doc(R"(
-            @brief Returns value evaluated at the row that is offset rows before the current row within the partition. 
+            @brief Returns value evaluated at the row that is offset rows before the current row within the partition.
             Offset is evaluated with respect to the current row
-            
+
             Note: This function equals the `at()` function.
 
-            The offset in window is `nth_value()`, not `lag()/at()`. The old `at()`(version < 0.5.0) is start 
+            The offset in window is `nth_value()`, not `lag()/at()`. The old `at()`(version < 0.5.0) is start
             from the last row of window(may not be the current row), it's more like `nth_value()`
-            
+
             @param offset The number of rows forwarded from the current row, must not negative
 
             Example:

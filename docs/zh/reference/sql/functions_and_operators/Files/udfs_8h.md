@@ -151,6 +151,10 @@ Returns value evaluated at the row that is offset rows before the current row wi
   * **offset** The number of rows forwarded from the current row, must not negative
 
 
+Note: This function equals the `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
+
+The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
+
 
 Example:
 
@@ -166,7 +170,16 @@ Example:
 
 ```sql
 
-SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+SELECT lag(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
+-- output
+-- | co |
+-- |----|
+-- |NULL|
+-- |0   |
+-- |NULL|
+-- |2   |
+-- |3   |
+SELECT at(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
 -- output
 -- | co |
 -- |----|
@@ -209,7 +222,7 @@ Example:
 
 ```sql
 
-SELECT ATAN(-0.0);  
+SELECT ATAN(-0.0);
 -- output -0.000000
 
 SELECT ATAN(0, -0);
@@ -727,7 +740,7 @@ Example:
 
 ```sql
 
-SELECT COT(1);  
+SELECT COT(1);
 -- output 0.6420926159343306
 ```
 
@@ -990,7 +1003,9 @@ Return the day of the month for a timestamp or date.
 
 Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
-Example: ```sql
+Example:
+
+```sql
 
 select dayofmonth(timestamp(1590115420000));
 -- output 22
@@ -1022,7 +1037,9 @@ Return the day of the month for a timestamp or date.
 
 Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
-Example: ```sql
+Example:
+
+```sql
 
 select dayofmonth(timestamp(1590115420000));
 -- output 22
@@ -1054,7 +1071,9 @@ Return the day of week for a timestamp or date.
 
 Note: This function equals the `[week()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)` function.
 
-Example: ```sql
+Example:
+
+```sql
 
 select dayofweek(timestamp(1590115420000));
 -- output 6
@@ -1081,7 +1100,9 @@ Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select dayofyear(timestamp(1590115420000));
 -- output 143
@@ -1230,7 +1251,7 @@ Return the value of e (the base of natural logarithms) raised to the power of ex
 
 ```sql
 
-SELECT EXP(0);  
+SELECT EXP(0);
 -- output 1
 ```
 
@@ -1550,7 +1571,9 @@ Return the hour for a timestamp.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select hour(timestamp(1590115420000));
 -- output 10
@@ -1576,7 +1599,9 @@ Return value.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select identity(1);
 -- output 1
@@ -1706,7 +1731,9 @@ Rules:
 3. case insensitive
 4. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
 5. if one or more of target, pattern and escape are null values, then the result is null
-Example: ```sql
+Example:
+
+```sql
 
 select ilike_match('Mike', 'mi_e', '\\')
 -- output: true
@@ -1744,7 +1771,9 @@ Return expression + 1.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select inc(1);
 -- output 2
@@ -1907,6 +1936,10 @@ Returns value evaluated at the row that is offset rows before the current row wi
   * **offset** The number of rows forwarded from the current row, must not negative
 
 
+Note: This function equals the `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
+
+The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
+
 
 Example:
 
@@ -1922,7 +1955,16 @@ Example:
 
 ```sql
 
-SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+SELECT lag(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
+-- output
+-- | co |
+-- |----|
+-- |NULL|
+-- |0   |
+-- |NULL|
+-- |2   |
+-- |3   |
+SELECT at(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
 -- output
 -- | co |
 -- |----|
@@ -1955,7 +1997,9 @@ Return the last day of the month to which the date belongs to.
 0.6.1
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select last_day(timestamp("2020-05-22 10:43:40"));
 -- output 2020-05-31
@@ -2032,7 +2076,9 @@ Rules:
 3. case sensitive
 4. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
 5. if one or more of target, pattern and escape are null values, then the result is null
-Example: ```sql
+Example:
+
+```sql
 
 select like_match('Mike', 'Mi_e', '\\')
 -- output: true
@@ -2079,7 +2125,7 @@ Example:
 
 ```sql
 
-SELECT LN(1);  
+SELECT LN(1);
 -- output 0.000000
 ```
 
@@ -2113,7 +2159,7 @@ Example:
 
 ```sql
 
-SELECT LOG(1);  
+SELECT LOG(1);
 -- output 0.000000
 
 SELECT LOG(10,100);
@@ -2159,7 +2205,7 @@ Example:
 
 ```sql
 
-SELECT LOG10(100);  
+SELECT LOG10(100);
 -- output 2
 ```
 
@@ -2192,7 +2238,7 @@ Example:
 
 ```sql
 
-SELECT LOG2(65536);  
+SELECT LOG2(65536);
 -- output 16
 ```
 
@@ -2711,7 +2757,9 @@ Return the minute for a timestamp.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select minute(timestamp(1590115420000));
 -- output 43
@@ -2737,7 +2785,9 @@ Return the month part of a timestamp or date.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select month(timestamp(1590115420000));
 -- output 5
@@ -3005,7 +3055,9 @@ Rules:
 2. Default flags parameter: 'c'
 3. backslash: sql string literal use backslash() for escape sequences, write '\' as backslash itself
 4. if one or more of target, pattern and flags are null values, then the result is null
-Example: ```sql
+Example:
+
+```sql
 
 select regexp_like('Mike', 'Mi.k')
 -- output: true
@@ -3130,7 +3182,9 @@ Return the second for a timestamp.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select second(timestamp(1590115420000));
 -- output 40
@@ -4029,7 +4083,9 @@ Return the week of year for a timestamp or date.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select weekofyear(timestamp(1590115420000));
 -- output 21
@@ -4058,7 +4114,9 @@ Return the week of year for a timestamp or date.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select weekofyear(timestamp(1590115420000));
 -- output 21
@@ -4087,7 +4145,9 @@ Return the year part of a timestamp or date.
 0.1.0
 
 
-Example: ```sql
+Example:
+
+```sql
 
 select year(timestamp(1590115420000));
 -- output 2020
