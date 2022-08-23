@@ -81,7 +81,7 @@ class TestOpenmldbDBAPI:
 
     def test_request_timeout(self):
         """
-        Note: this test works now(python sdk is slow). If you can't reach the timeout, redesign the test.
+        Note: this test works now(select > 1ms). If you can't reach the timeout, redesign the test.
         """
         db = connect('db_test',
                      OpenMLDB_ZK_CLUSTER,
