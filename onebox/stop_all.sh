@@ -16,5 +16,5 @@
 
 set -x -e
 
-pkill -9 openmldb
+pkill -x -e -9 openmldb
 
