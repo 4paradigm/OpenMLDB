@@ -127,4 +127,6 @@ TableAsName
 因为一次查询可能在多台tablet 上进行大量的扫描，为了tablet 的稳定性，单个tablet 限制了最大扫描数据量，即`scan_max_bytes_size`。
 
 如果出现select结果截断，tablet 会出现`reach the max byte ...`的日志，但查询不会报错。
+
+在线模式或单机版都不适合做大数据的扫描，推荐使用集群版的离线模式。如果一定要调大扫描量，需要对每台tablet配置`--scan_max_bytes_size=xxx`，并重启tablet生效。
 ```
