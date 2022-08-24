@@ -19,7 +19,7 @@ TableElement ::=
 ```
 
 
-The `table_element` list needs to be defined in the `CREATE TABLE` statement. `table_element` is divided into column description `ColumnDef` and `Constraint`. OpenMLDB requires at least one `ColumnDef` in the `table_element` list.
+The `TableElementList` needs to be defined in the `CREATE TABLE` statement. `TableElementList` is consist of column description `ColumnDef` and `Constraint`. OpenMLDB requires at least one `ColumnDef` in the `TableElementList`.
 
 ### Related Syntax Elements
 
