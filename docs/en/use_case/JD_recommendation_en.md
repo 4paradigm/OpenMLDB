@@ -41,7 +41,7 @@ pip install tritonclient xxhash geventhttpclient
 Note that all the commands for OpenMLDB part below run in the docker container by default. All the commands for OneFlow are to run in the environment as installed in 1.1.
 ```
 
-## 1. Preparation and Preliminary Knowledge
+
 ### 1.3  Initialize Environment
 
 ```bash
