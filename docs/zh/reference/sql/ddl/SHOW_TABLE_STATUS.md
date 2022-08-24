@@ -18,7 +18,7 @@ Column Information
 | Storage_type      | 存储类型， `memory`,`ssd`,`hdd`                                |
 | Rows              | 表的 rows count                                             |
 | Memory_data_size  | 表内存占用（单位 bytes)                                           |
-| Disk_data_size    | 表磁盘占用 （但我 bytes)                                          |
+| Disk_data_size    | 表磁盘占用 （单位 bytes)                                          |
 | Partition         | Partiton 数量                                               |
 | Partition_unalive | Unalive partition 数量                                      |
 | Replica           | Replica 数量                                                |
