@@ -41,7 +41,7 @@ pip install tritonclient xxhash geventhttpclient
 Note that all the commands for OpenMLDB part below run in the docker container by default. All the commands for OneFlow are to run in the environment as installed in 1.1.
 ```
 
-
+## 1. Preparation and Preliminary Knowledge
 ### 1.3  Initialize Environment
 
 ```bash
@@ -62,6 +62,7 @@ Note that most of the commands in this tutorial are executed under the OpenMLDB 
 ### 1.5 Preliminary Knowledge: Non-Blocking Task of Cluster Version
 Some commands in the cluster version are non-blocking tasks, including `LOAD DATA` in online mode and `LOAD DATA`, `SELECT`, `SELECT INTO` commands in the offline mode. After submitting a task, you can use relevant commands such as `SHOW JOBS` and `SHOW JOB` to view the task progress. For details, see the offline task management document.
 
+## 2. Machine Learning Based on OpenMLDB and LightGBM
 ### 2.1 Overview
 Machine learning with OpenMLDB and OneFlow can be summarized into a few main steps. We will detail each step in the following sections. 
 
