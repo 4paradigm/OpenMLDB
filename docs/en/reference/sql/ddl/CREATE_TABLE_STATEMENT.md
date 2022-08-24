@@ -21,9 +21,8 @@ TableElement ::=
 
 The `TableElementList` needs to be defined in the `CREATE TABLE` statement. `TableElementList` is consist of column description `ColumnDef` and `Constraint`. OpenMLDB requires at least one `ColumnDef` in the `TableElementList`.
 
-### Related Syntax Elements
 
-#### ColumnDef (required)
+### ColumnDef (required)
 
 ```SQL
 ColumnDef ::=
@@ -58,7 +57,7 @@ A table contains one or more columns. The column description `ColumnDef` for eac
   - `NOT NULL`: The column does not allow null values.
   - `DEFAULT`: The default value of this column. It is recommended to configure the default value if `NOT NULL` is configured. In this case, when inserting data, if the value of the column is not defined, the default value will be inserted. If the `NOT NULL` attribute is configured but the `DEFAULT` value is not configured, OpenMLDB will throw an error when the change column value is not defined in the INSERT statement.
 
-##### Example
+#### Example
 
 **Example 1: Create a Table**
 
@@ -174,7 +173,7 @@ desc t3;
 
 
 
-#### ColumnIndex (optional）
+### ColumnIndex (optional）
 
 ```sql
 ColumnIndex ::= 
@@ -209,7 +208,7 @@ The index key must be configured, and other configuration items are optional. Th
 | `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | When records expire **OR** records exceed the maximum number of records, records will be eliminated.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. When there are more than 100 records, **OR** the records expire, they will also be eliminated. |
 
 
-##### Example
+#### Example
 
 
 **Example 1**
@@ -407,7 +406,7 @@ desc t1;
  --- -------------------- ------ ---------- ------ ---------------
 ```
 
-#### Table Property TableOptions (optional)
+### Table Property TableOptions (optional)
 
 ```sql
 TableOptions
@@ -454,14 +453,15 @@ StorageMode
 | `STORAGE_MODE`     | It defines the storage mode of the table. The supported modes are `Memory`, `HDD` and `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file **conf/tablet.flags**](../../../deploy/conf.md#the-configuration-file-for-apiserver:-conf/tablet.flags). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
 
-##### The Difference between Disk Table(`STORAGE_MODE` == `HDD`|`SSD`) and Memory Table (`STORAGE_MODE` == `Memory`)
+#### The Difference between Disk Table and Memory Table
+- If the value of `STORAGE_MODE` is `HDD` or `SSD`, the table is a **disk table**. If `STORAGE_MODE` is `Memory`, the table is a **memory table**.
 - Currently, disk tables do not support GC operations
 - When inserting data into a disk table, if (`key`, `ts`) are the same under the same index, the old data will be overwritten; a new piece of data will be inserted into the memory table.
 - Disk tables do not support `addindex` or `deleteindex` operations, so you need to define all required indexes when creating a disk table. The `deploy` command will automatically add the required indexes, so for a disk table, if the corresponding index is missing when it is created, `deploy` will fail.
 
 
 
-##### Example
+#### Example
 The following sql commands create a table and configure the number of partitions as 8, the number of replicas as 3, and the storage_mode as HDD.
 
 ```sql
