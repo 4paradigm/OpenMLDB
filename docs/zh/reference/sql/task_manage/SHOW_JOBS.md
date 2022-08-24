@@ -1,6 +1,6 @@
 # SHOW JOBS
 
-`SHOW JOBS`语句显示在线模式下已经提交的任务列表。
+`SHOW JOBS`语句显示在集群版的离线或在线模式下已经提交的任务列表。
 
 ```SQL
 SHOW JOBS;

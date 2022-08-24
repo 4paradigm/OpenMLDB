@@ -1,6 +1,6 @@
 # SHOW JOBS
 
-The `SHOW JOBS` statement displays the list of tasks that have been submitted in online mode.
+The `SHOW JOBS` statement displays the list of tasks that have been submitted in offline or online mode of the cluster version.
 
 ```SQL
 SHOW JOBS;
