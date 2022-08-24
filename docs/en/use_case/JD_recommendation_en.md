@@ -7,7 +7,7 @@ Extracting patterns from historical data to predict the future purchase intentio
 
 Note that: (1) this case is based on the OpenMLDB cluster version for tutorial demonstration; (2) this document uses the pre-compiled docker image. If you want to test it in the OpenMLDB environment compiled and built by yourself, you need to configure and use our [Spark Distribution for Feature Engineering Optimization](https://github.com/4paradigm/spark). Please refer to relevant documents of [compilation](https://openmldb.ai/docs/en/main/deploy/compile.html) (Refer to Chapter: "Spark Distribution Optimized for OpenMLDB") and the [installation and deployment documents](https://openmldb.ai/docs/en/main/deploy/install_deploy.html) (Refer to the section: [Deploy TaskManager](https://openmldb.ai/docs/en/main/deploy/install_deploy.html#deploy-taskmanager)).
 
-## 1.  Preparation and Preliminary Knowledge
+## 1. Preparation and Preliminary Knowledge
 
 ### 1.1 OneFlow Installation
 OneFlow framework leverage on the great computational power from GPU. Therefore please ensure that the machines for deployment are equipped with NVidia GPUs, and ensure the driver version is >=460.X.X  [driver version support for CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions).
