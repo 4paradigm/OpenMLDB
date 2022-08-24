@@ -35,7 +35,7 @@ import org.apache.spark.SparkFiles
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.JavaConverters.seqAsJavaList
 import scala.collection.mutable
 import scala.reflect.io.File
 
@@ -337,7 +337,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
     }
 
     try {
-      sqlEngine = new SqlEngine(dbs, engineOptions)
+      sqlEngine = new SqlEngine(seqAsJavaList(dbs), engineOptions)
       val engine = sqlEngine.getEngine
 
       // TODO(tobe): If use SparkPlanner instead of OpenmldbSession, these will be null

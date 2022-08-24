@@ -8,11 +8,11 @@ The `DROP TABLE` statement is used to drop a specified table.
 
 ## Example: Delete a Table in the Current Database
 
-Create a database and set it as the current database:
+Create database `db1` and set it as the current database:
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 USE db1;
 -- SUCCEED: Database changed
@@ -22,13 +22,13 @@ Create two tables `t1` and `t2` in the database:
 
 ```sql
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 
 CREATE TABLE t2(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 ```
 
-View the tables under the database:
+View the tables of current database:
 
 ```sql
 SHOW TABLES;
@@ -51,7 +51,7 @@ DROP TABLE t1;
 -- SUCCEED: Drop successfully
 ```
 
-Look at the tables under the database again:
+Look at the tables of `db1` again:
 
 ```sql
 SHOW TABLES;

@@ -16,12 +16,9 @@
 package com._4paradigm.openmldb.http_test.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbClient;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,14 +39,14 @@ public class StandaloneTest extends BaseTest{
         }
         log.info("openmldb global var env: {}", RestfulGlobalVar.env);
         if(env.equalsIgnoreCase("standalone")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            RestfulGlobalVar.mainInfo = fedbDeploy.deployFEDBByStandalone();
+            OpenMLDBDeploy fedbDeploy = new OpenMLDBDeploy(version);
+            fedbDeploy.setOpenMLDBPath(fedbPath);
+            RestfulGlobalVar.mainInfo = fedbDeploy.deployStandalone();
         }else{
-            RestfulGlobalVar.mainInfo = FEDBInfo.builder()
+            RestfulGlobalVar.mainInfo = OpenMLDBInfo.builder()
                     .deployType(OpenMLDBDeployType.STANDALONE)
                     .basePath("/home/zhaowei01/fedb-auto-test/standalone")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
+                    .openMLDBPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
                     .nsNum(1).tabletNum(1)
                     .nsEndpoints(Lists.newArrayList("172.24.4.55:10018"))
                     .tabletEndpoints(Lists.newArrayList("172.24.4.55:10019"))

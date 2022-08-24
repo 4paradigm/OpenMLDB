@@ -1,8 +1,8 @@
 # SHOW TABLE STATUS
 
-`SHOW TABLE STATUS` is used to show the information about tables in current database or all databases, excluding hidden databases.
-If no database is used, `SHOW TABLE STATUS` will display information about all tables in the database, excluding hidden databases.
-If a specific database is used, the statement will only display information about the tables in current used database.
+`SHOW TABLE STATUS` is used to show information about tables in a given database or all databases, excluding hidden databases.
+If no database is used, `SHOW TABLE STATUS` will display information about all tables in all databases, excluding hidden databases.
+If a database is specified, the statement will only display information about the tables in the given database.
 
 ```sql
 SHOW TABLE STATUS;
@@ -22,7 +22,7 @@ SHOW TABLE STATUS;
 | Disk_data_size    | It shows the disk usage of the table in bytes.                                                                                         |
 | Partition         | It shows the number of partitons of the table.                                                                                         |
 | Partition_unalive | It shows the number of the unalive partitions of the table.                                                                            |
-| Replica           | It shows the replica number of the table.                                                                                              |
+| Replica           | It shows the number of replicas of the table.                                                                                              |
 | Offline_path      | It shows the path of the offline data for this table and is valid only for offline tables. The `NULL` value means the path doesn't exist. |
 | Offline_format    | It shows the offline data format of the table and is valid only for offline tables. The `NULL` value means it is not set.              |
 | Offline_deep_copy | It indicates whether deep copy is used on the table and is valid only for offline tables. The `NULL` value means it is not set.        |

@@ -1,4 +1,10 @@
 # SHOW VARIABLES
+SHOW VARIABLES 语句用于查看系统变量。其中：
+- `SHOW SESSION VARIABLES`或`SHOW VARIABLES`语句用于显示当前会话的系统变量。
+- `SHOW GLOBAL VARIABLES`可用于查看全局系统变量。
+目前OpenMLDB只支持会话系统变量和全局系统变量，不支持用户变量。对会话变量的修改，只影响当前的会话（也就是当前的数据库连接）。因此，当关闭数据库连接（或者退出控制台）后,再重新连接（或者重新登陆控制台），先前对会话变量的配置和修改都将被重置。
+
+## Syntax
 
 ```sql
 ShowVariablesStmt ::=
@@ -11,10 +17,8 @@ ShowGlobalVariablesStmt ::=
     'SHOW' 'GLOBAL' 'VARIABLES'
 ```
 
-`SHOW SESSION VARIABLES`或`SHOW VARIABLES`语句用于显示当前会话的系统变量。
-`SHOW GLOBAL VARIABLES`可用于查看全局系统变量。
 
-目前OpenMLDB只支持会话系统变量和全局系统变量，不支持用户变量。对会话变量的修改，只影响当前的会话（也就是当前的数据库连接）。因此，当关闭数据库连接（或者退出控制台）后,再重新连接（或者重新登陆控制台），先前对会话变量的配置和修改都将被重置。
+
 
 ## Example
 

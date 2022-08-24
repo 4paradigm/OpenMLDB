@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
+#import yaml
 
 from common import fedb_config
 from common.fedb_client import FedbClient
@@ -31,8 +31,12 @@ class FedbTest:
     def setup_class(self):
         self.client = FedbClient(fedb_config.zk_cluster, fedb_config.zk_root_path, fedb_config.default_db_name)
         self.connect = self.client.getConnect()
-        try:
-            self.connect.execute("create database {};".format(fedb_config.default_db_name))
-            log.info("create db:" + fedb_config.default_db_name + ",success")
-        except Exception as e:
-            log.info("create db:" + fedb_config.default_db_name + ",failed . msg:"+str(e))
+        # try:
+        #     self.connect.execute("create database {};".format(fedb_config.default_db_name))
+        #     log.info("create db:" + fedb_config.default_db_name + ",success")
+        # except Exception as e:
+        #     log.info("create db:" + fedb_config.default_db_name + ",failed . msg:"+str(e))
+
+if __name__ == "__main__":
+    f = FedbTest()
+    f.setup_class()
