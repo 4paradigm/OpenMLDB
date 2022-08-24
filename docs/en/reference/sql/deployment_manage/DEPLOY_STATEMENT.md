@@ -63,22 +63,22 @@ WINDOW w1 AS (PARTITION BY demo_table1.c1
  --- ------- ------------ ------------
   #   Field   Type         IsConstant
  --- ------- ------------ ------------
-  1   c1      kVarchar     NO
-  2   c2      kInt32       NO
-  3   c3      kInt64       NO
-  4   c4      kFloat       NO
-  5   c5      kDouble      NO
-  6   c6      kTimestamp   NO
-  7   c7      kDate        NO
+  1   c1      Varchar     NO
+  2   c2      Int32       NO
+  3   c3      Int64       NO
+  4   c4      Float       NO
+  5   c5      Double      NO
+  6   c6      Timestamp   NO
+  7   c7      Date        NO
  --- ------- ------------ ------------
 
 # Output Schema
  --- ----------- ---------- ------------
   #   Field       Type       IsConstant
  --- ----------- ---------- ------------
-  1   c1          kVarchar   NO
-  2   c2          kInt32     NO
-  3   w1_c3_sum   kInt64     NO
+  1   c1          Varchar   NO
+  2   c2          Int32     NO
+  3   w1_c3_sum   Int64     NO
  --- ----------- ---------- ------------ 
 ```
 
