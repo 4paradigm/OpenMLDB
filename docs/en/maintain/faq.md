@@ -55,10 +55,10 @@ This happens easily when using synchronized offline commands. you can use
 ```
 To adjust the timeout time of rpc, use 'ms' units.
 #### normal request
-If it is a simple query or insert, there will be a timeout, and the general `request_timeout` configuration needs to be changed.
-1. CLI: cannot be changed at this time
+If it is a simple query or insert, still get timeout, the general `request_timeout` configuration needs to be changed.
+1. CLI: set `--request_timeout` before running
 2. JAVA: SDK direct connection, adjust `SdkOption.requestTimeout`; JDBC, adjust the parameter `requestTimeout` in url
-3. Python: cannot be changed at this time
+3. Python: SDK direct connection(DBAPI), adjust `connect()` arg `request_timeout`; SQLAlchemy, adjust the parameter `requestTimeout` in url
 
 ### 2. Why am I getting the warning log of Got EOF of Socket?
 ```

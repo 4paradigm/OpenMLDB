@@ -30,6 +30,7 @@
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_router.h"
 #include "version.h"  // NOLINT
 
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -47,6 +48,9 @@ DECLARE_string(zk_log_file);
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
+
+// rpc request timeout of CLI
+DECLARE_int32(request_timeout);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -227,7 +231,9 @@ bool InitClusterSDK() {
     }
     sr->SetInteractive(FLAGS_interactive);
 
-    sr->GetSqlRouterOptions().spark_conf_path = FLAGS_spark_conf;
+    auto ops = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(sr->GetRouterOptions());
+    ops->spark_conf_path = FLAGS_spark_conf;
+    ops->request_timeout = FLAGS_request_timeout;
 
     return true;
 }
@@ -257,6 +263,8 @@ bool InitStandAloneSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+    auto ops = sr->GetRouterOptions();
+    ops->request_timeout = FLAGS_request_timeout;
     return true;
 }
 
