@@ -611,7 +611,7 @@ __attribute__((unused)) static void PrintProcedureSchema(const std::string& head
             const auto& column = schema.Get(i);
             t.add(std::to_string(i + 1));
             t.add(column.name());
-            t.add(::hybridse::type::Type_Name(column.type()));
+            t.add(::hybridse::type::Type_Name(column.type()).substr(1));
             t.add(column.is_constant() ? "YES" : "NO");
             t.end_of_row();
         }
