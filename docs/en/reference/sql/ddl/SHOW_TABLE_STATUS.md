@@ -23,7 +23,7 @@ SHOW TABLE STATUS;
 | Partition         | It shows the number of partitons of the table.                                                                                         |
 | Partition_unalive | It shows the number of the unalive partitions of the table.                                                                            |
 | Replica           | It shows the number of replicas of the table.                                                                                              |
-| Offline_path      | It shows the path of the offline data for this table and is valid only for offline tables. The `NULL` value means the path doesn't exist. |
+| Offline_path      | It shows the path of the offline data for this table and is valid only for offline tables. The `NULL` value means the path is not set. |
 | Offline_format    | It shows the offline data format of the table and is valid only for offline tables. The `NULL` value means it is not set.              |
 | Offline_deep_copy | It indicates whether deep copy is used on the table and is valid only for offline tables. The `NULL` value means it is not set.        |
 
