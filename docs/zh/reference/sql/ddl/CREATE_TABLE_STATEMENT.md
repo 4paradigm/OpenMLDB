@@ -18,8 +18,8 @@ TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
+建表语句中需要定义`TableElementList`，即`TableElement`列表。`TableElement`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`TableElement`列表中至少包含一个`ColumnDef`。
 
-建表语句中需要定义`table_element`列表。`table_element`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`table_element`列表中至少包含一个`ColumnDef`。
 
 ### 相关语法元素
 
