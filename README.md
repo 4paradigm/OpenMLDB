@@ -84,7 +84,11 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 ## 5. Build and Install
 
-:point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
+You can directly start working on this repository by clicking on the following button
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
+
+Or, you can :point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
 
 ## 6. QuickStart
 
