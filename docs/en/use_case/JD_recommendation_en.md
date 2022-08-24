@@ -1,5 +1,4 @@
-
-#  OpenMLDB + OneFlow: Prediction of Purchase Intention for High Potential Customers
+# OpenMLDB + OneFlow: Prediction of Purchase Intention for High Potential Customers
 
 In this article, we will use [JD Prediction of purchase intention for high potential customers problem](https://jdata.jd.com/html/detail.html?id=1) as a demonstration，to show how we can use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [OneFlow](https://github.com/Oneflow-Inc/oneflow) together to build a complete machine learning application. Full dataset [download here](https://openmldb.ai/download/jd-recommendation/JD_data.tgz).
 
