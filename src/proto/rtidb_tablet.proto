@@ -1,0 +1,22 @@
+syntax = "proto2";
+package openmldb.rtidb_api;
+
+//option cc_generic_services = true;
+//option java_generic_services = true;
+//option java_package = "com._4paradigm.rtidb.tablet";
+//option java_outer_classname = "Tablet";
+
+enum TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    // keep the latest record
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+}
+
+message TTLDesc {
+    optional TTLType ttl_type = 1 [default = kAbsoluteTime];
+    optional uint64 abs_ttl = 2 [default=0];
+    optional uint64 lat_ttl = 3 [default=0];
+}

@@ -1,0 +1,36 @@
+syntax = "proto2";
+package openmldb.rtidb_type;
+
+option cc_generic_services = false;
+//option java_package = "com._4paradigm.rtidb.type";
+//option java_outer_classname = "Type";
+
+enum DataType {
+    kBool = 1;
+    kSmallInt = 2;
+    kInt = 3;
+    kBigInt = 4;
+    kFloat = 5;
+    kDouble = 6;
+    kDate = 7;
+    kTimestamp = 8;
+    // reserve 9, 10, 11, 12
+    kVarchar = 13;
+    kString = 14;
+    kBlob = 15;
+}
+
+enum TableType {
+    kTimeSeries = 1; 
+    kRelational = 2;
+    kObjectStore = 3;
+}
+
+enum IndexType {
+    kUnique = 1; // uinque index
+    kNoUnique = 2;
+    kPrimaryKey = 3; 
+    kAutoGen = 4;  // auto gen primary key
+    kIncrement = 5; // auto gen increment id primary key
+    kTimeSerise = 6;
+}

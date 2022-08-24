@@ -1,0 +1,102 @@
+syntax = "proto2";
+import "rtidb_common.proto";
+import "rtidb_tablet.proto";
+import "rtidb_type.proto";
+package openmldb.rtidb_nameserver;
+
+//option cc_generic_services = true;
+//option java_package = "com._4paradigm.rtidb.ns";
+//option java_outer_classname = "NS";
+
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
+enum ServerMode {
+    kNORMAL = 0;
+    kLEADER = 1;
+    kFOLLOWER = 2;
+}
+
+enum ClusterStatus {
+    kClusterHealthy = 0;
+    kClusterOffline = 1;
+    kClusterRemove = 2;
+}
+
+message ColumnDesc {
+    required string name = 1;
+    required string type = 2;
+    required bool add_ts_idx = 3;
+}
+
+message PartitionMeta {
+    required string endpoint = 1;
+    required bool is_leader = 2;
+    optional bool is_alive = 3 [default = true];
+    optional uint64 offset = 4;
+    optional uint64 record_cnt = 5;
+    optional uint64 record_byte_size = 6;
+    optional bool tablet_has_partition = 7 [default = true];
+    optional uint64 diskused = 8 [default = 0];
+    optional uint32 remote_tid = 9 [default = 4294967295]; // 4294967295 is UINT32 max value
+    optional string alias = 10;
+}
+
+message TermPair {
+    required uint64 term = 1;
+    required uint64 offset = 2;
+}
+
+message TablePartition {
+    required uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+    repeated TermPair term_offset = 3;
+    optional uint64 record_cnt = 4;
+    optional uint64 record_byte_size = 5;
+    optional uint64 diskused = 6 [default = 0];
+    repeated PartitionMeta remote_partition_meta = 7;
+}
+
+message BlobPartitionMeta {
+    optional string endpoint = 1;
+    optional bool is_leader = 2 [default = false];
+    optional bool is_alive = 3 [default = true];
+}
+
+message BlobPartition{
+    repeated BlobPartitionMeta partition_meta = 1;
+}
+
+message BlobInfo {
+    optional uint32 replica_num = 1 [default = 1];
+    repeated BlobPartition blob_partition = 2;
+    optional uint32 height = 3 [default = 1];
+}
+
+message TableInfo {
+    optional string name = 1;
+    optional uint64 ttl = 2 [default = 0, deprecated = true];
+    optional uint32 seg_cnt = 3 [default = 8];
+    repeated TablePartition table_partition = 4;
+    optional uint32 tid = 5;
+    repeated ColumnDesc column_desc = 6 [deprecated = true];
+    optional string ttl_type = 7 [default = "kAbsoluteTime", deprecated = true];
+    optional uint32 partition_num = 8;
+    optional uint32 replica_num = 9; // contain the leader
+    optional CompressType compress_type = 10 [default = kNoCompress];
+    optional uint32 key_entry_max_height = 11;
+    repeated openmldb.rtidb_common.ColumnDesc column_desc_v1 = 12;
+    repeated openmldb.rtidb_common.ColumnKey column_key = 13;
+    optional openmldb.rtidb_common.StorageMode storage_mode = 14 [default = kMemory];
+    repeated openmldb.rtidb_common.ColumnDesc added_column_desc = 15;
+    optional openmldb.rtidb_api.TTLDesc ttl_desc = 16;
+    optional openmldb.rtidb_type.TableType table_type = 17 [default = kTimeSeries];
+    optional uint32 format_version = 18 [default = 0];
+    optional BlobInfo blob_info = 19;
+    optional string db = 20 [default = ""];
+    repeated string partition_key = 21;
+    repeated openmldb.rtidb_common.VersionPair schema_versions = 22;
+}
+
