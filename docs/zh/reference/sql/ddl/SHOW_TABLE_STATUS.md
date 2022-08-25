@@ -1,15 +1,13 @@
 # SHOW TABLE STATUS
 
+`SHOW TABLE STATUS`命令可以展示当前使用的数据库或者所有数据库下表的详细信息。如果未使用任何数据库（即未执行`USE DATABASE`命令），`SHOW TABLE STATUS`命令将展示所有数据库里表的信息，不包括隐藏数据库；如果使用了特定数据库，将只展示当前数据库下表的信息。
+
 ```sql
-SHOW TABLE STATUS
+SHOW TABLE STATUS;
 ```
 
-展示当前使用的数据库或者所有数据库下 tables 的详细信息。如果未使用任何 database, `SHOW TABLE STATUS`展示所有数据库里 tables 的信息，不包括隐藏数据库；如果使用了特定 database, 只展示当前数据库下 tables 的信息。
 
-
-
-
-Column Information
+## 输出信息
 
 | Column            | Description                                               |
 | ----------------- |-----------------------------------------------------------|
@@ -32,8 +30,10 @@ Column Information
 
 ## Example
 
+
 ```sql
 > USE db;
+--SUCCEED: Database changed    
 > SHOW TABLE STATUS;
  ---------- ------------ --------------- -------------- ------ ------------------ ---------------- ----------- ------------------- --------- -------------- ---------------- ------------------- 
   Table_id   Table_name   Database_name   Storage_type   Rows   Memory_data_size   Disk_data_size   Partition   Partition_unalive   Replica   Offline_path   Offline_format   Offline_deep_copy  
