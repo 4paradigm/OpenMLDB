@@ -1,4 +1,4 @@
-### OpenMLDB + LightGBM: Taxi Trip Duration Prediction
+# OpenMLDB + LightGBM: Taxi Trip Duration Prediction
 
 In this document, we will take [the taxi travel time prediction problem on Kaggle as an example](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) to demonstrate how to use the OpenMLDB and LightGBM together to build a complete machine learning application. 
 
