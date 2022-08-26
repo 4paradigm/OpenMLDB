@@ -182,6 +182,10 @@ bool ConvertTableInfo(const ::openmldb::rtidb_nameserver::TableInfo& table_info,
             auto ttl = column_key->mutable_ttl();
             ttl->CopyFrom(table_ttl);
             if (table_info.column_key(idx).ts_name_size() > 0) {
+                if (table_info.column_key(idx).ts_name_size() > 1) {
+                    PDLOG(WARNING, "has multi ts in one index");
+                    return false;
+                }
                 std::string ts_name = table_info.column_key(idx).ts_name(0);
                 column_key->set_ts_name(ts_name);
                 auto ttl_iter = ttl_map.find(ts_name);
@@ -246,7 +250,10 @@ void CreateTable() {
     std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> openmldb_tables;
     for (const auto& table : tables) {
         auto openmldb_table_info = std::make_shared<::openmldb::nameserver::TableInfo>();
-        ConvertTableInfo(*table, openmldb_table_info);
+        if (!ConvertTableInfo(*table, openmldb_table_info)) {
+            PDLOG(WARNING, "convert table %s failed.", table->name().c_str());
+            continue;
+        }
         // std::string table_meta_info;
         // google::protobuf::TextFormat::PrintToString(*table, &table_meta_info);
         if (!client->CreateTable(*openmldb_table_info, true, msg)) {
