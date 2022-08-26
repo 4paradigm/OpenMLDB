@@ -167,7 +167,7 @@ int SDKCodec::EncodeDimension(const std::map<std::string, std::string>& raw_data
     return 0;
 }
 
-int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
+int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, int start_idx, uint32_t pid_num,
                               std::map<uint32_t, Dimension>* dimensions) {
     uint32_t dimension_idx = 0;
     for (const auto& column_key : index_) {
@@ -178,21 +178,21 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t
         std::string key;
         for (const auto& name : column_key.col_name()) {
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second + start_idx >= raw_data.size()) {
                 return -1;
             }
             if (!key.empty()) {
                 key += "|";
             }
-            key += raw_data[iter->second];
+            key += raw_data[iter->second + start_idx];
         }
         if (key.empty()) {
             const std::string& name = column_key.index_name();
             auto iter = schema_idx_map_.find(name);
-            if (iter == schema_idx_map_.end() || iter->second >= raw_data.size()) {
+            if (iter == schema_idx_map_.end() || iter->second + start_idx >= raw_data.size()) {
                 return -1;
             }
-            key = raw_data[iter->second];
+            key = raw_data[iter->second + start_idx];
         }
         uint32_t pid = 0;
         if (pid_num > 0) {
@@ -205,7 +205,10 @@ int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t
     return 0;
 }
 
-
+int SDKCodec::EncodeDimension(const std::vector<std::string>& raw_data, uint32_t pid_num,
+                              std::map<uint32_t, Dimension>* dimensions) {
+    return EncodeDimension(raw_data, 0, pid_num, dimensions);
+}
 
 int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data, std::string* row) {
     auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);

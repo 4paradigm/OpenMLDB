@@ -233,6 +233,14 @@ std::shared_ptr<::openmldb::client::NsClient> GetNsClient() {
 
 void CreateTable() {
     auto client = GetNsClient();
+    if (!client) {
+        return;
+    }
+    std::string msg;
+    if (!client->CreateDatabase(DEFAULT_DB, msg, true)) {
+        PDLOG(WARNING, "create database failed. msg is %s", msg.c_str());
+        return;
+    }
     std::vector<std::shared_ptr<::openmldb::rtidb_nameserver::TableInfo>> tables;
     GetTableInfo(FLAGS_table_name, &tables);
     std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> openmldb_tables;
@@ -241,7 +249,6 @@ void CreateTable() {
         ConvertTableInfo(*table, openmldb_table_info);
         // std::string table_meta_info;
         // google::protobuf::TextFormat::PrintToString(*table, &table_meta_info);
-        std::string msg;
         if (!client->CreateTable(*openmldb_table_info, true, msg)) {
             PDLOG(WARNING, "create %s failed. msg is %s", openmldb_table_info->name().c_str(), msg.c_str());
         } else {
