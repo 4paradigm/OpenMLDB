@@ -7,13 +7,13 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-Sphinx = "4.4.0"
+
+[tool.poetry.dev-dependencies]
+Sphinx = "4.5.0"
 sphinx-multiversion = "^0.2.4"
 sphinx-book-theme = "^0.3.3"
 myst-parser = {extras = ["linkify"], version = "^0.18.0"}
 sphinx-copybutton = "^0.5.0"
-
-[tool.poetry.dev-dependencies]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

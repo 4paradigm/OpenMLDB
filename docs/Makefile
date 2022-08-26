@@ -11,9 +11,11 @@ all: en zh
 
 en: init
 	$(POETRY_PRG) run sphinx-multiversion "$(MAKEFILE_DIR)/en" "$(OUT_DIR)/en"
+	echo '<!DOCTYPE html> <html><head><meta http-equiv="refresh" content="0; url=main" /></head></html>' > $(OUT_DIR)/en/index.html
 
 zh: init
 	$(POETRY_PRG) run sphinx-multiversion "$(MAKEFILE_DIR)/zh" "$(OUT_DIR)/zh"
+	echo '<!DOCTYPE html> <html><head><meta http-equiv="refresh" content="0; url=main" /></head></html>' > $(OUT_DIR)/zh/index.html
 
 init:
 	$(POETRY_PRG) install
