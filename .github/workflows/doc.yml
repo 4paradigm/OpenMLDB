@@ -1,0 +1,34 @@
+name: documents
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+    paths:
+      - .github/workflows/doc.yml
+      - 'docs/**'
+
+jobs:
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: setup poetry
+        run: |
+          pipx install poetry
+
+      - name: doc build
+        working-directory: ./docs
+        run: |
+          make
+
