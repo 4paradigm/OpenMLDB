@@ -14,7 +14,7 @@ on:
       - 'docs/**'
 
 jobs:
-  doc:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -27,8 +27,15 @@ jobs:
         run: |
           pipx install poetry
 
-      - name: doc build
-        working-directory: ./docs
+      - name: doc build (pr)
+        working-directory: docs
+        if: github.event_name == 'pull_request'
+        run: |
+          make all-local
+
+      - name: doc build (branch)
+        working-directory: docs
+        if: github.event_name == 'push'
         run: |
           make
 
