@@ -1558,6 +1558,26 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         response->set_msg("delete failed");
         return;
     }
+
+    // delete the entries from pre-aggr table
+    auto aggrs = GetAggregators(request->tid(), request->pid());
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            if (aggr->GetIndexPos() != idx) {
+                continue;
+            }
+            auto ok = aggr->Delete(request->key());
+            if (!ok) {
+                PDLOG(WARNING,
+                      "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
+                      request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
+                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete from associated pre-aggr table failed");
+                return;
+            }
+        }
+    }
+
     std::shared_ptr<LogReplicator> replicator;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
@@ -4139,7 +4159,7 @@ bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& valu
         return true;
     }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); ++iter) {
-        for (auto aggr : *aggrs) {
+        for (const auto& aggr : *aggrs) {
             if (aggr->GetIndexPos() != iter->idx()) {
                 continue;
             }

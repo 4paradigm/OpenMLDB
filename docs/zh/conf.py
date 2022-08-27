@@ -124,3 +124,4 @@ master_doc = "index"
 html_static_path = []
 
 html_logo = "about/images/openmldb_logo.png"
+

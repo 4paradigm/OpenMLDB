@@ -542,6 +542,18 @@ Status ExprNode::LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, cons
     return Status::OK();
 }
 
+// MC RlIKE PC
+// rules:
+// 1. MC & PC is string or null
+Status ExprNode::RlikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                const TypeNode** output) {
+    CHECK_TRUE(lhs != nullptr && rhs != nullptr, kTypeError);
+    CHECK_TRUE(lhs->IsNull() || lhs->IsString(), kTypeError, "invalid 'RlIKE' lhs: ", lhs->GetName());
+    CHECK_TRUE(rhs->IsNull() || rhs->IsString(), kTypeError, "invalid 'RlIKE' rhs: ", rhs->GetName());
+    *output = nm->MakeTypeNode(kBool);
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
@@ -638,6 +650,13 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         case kFnOpLike: {
             const TypeNode* top_type = nullptr;
             CHECK_STATUS(LikeTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+            }
+        case kFnOpRLike: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(RlikeTypeAccept(ctx->node_manager(), left_type, right_type, &top_type));
             SetOutputType(top_type);
             SetNullable(nullable);
             break;

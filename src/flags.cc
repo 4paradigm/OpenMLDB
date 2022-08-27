@@ -33,6 +33,8 @@ DEFINE_uint32(zk_log_level, 0,
 DEFINE_string(zk_log_file, "", "CLI: set zk log file, empty means stderr(default in zk)");
 DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
+DEFINE_int32(request_timeout, 60000, "rpc request timeout of CLI, unit is milliseconds");
+
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status. unit is milliseconds");
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status. unit is milliseconds");
 DEFINE_uint32(get_table_diskused_interval, 600000, "config the interval of get table diskused. unit is milliseconds");
@@ -96,7 +98,7 @@ DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 0, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
 DEFINE_int32(request_timeout_ms, 20000,
-             "request timeout(except the requests sent to taskmanager). unit is milliseconds");
+             "rpc request timeout of misc. unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
 
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");

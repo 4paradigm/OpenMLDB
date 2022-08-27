@@ -39,6 +39,7 @@ ColumnType ::=
 						|'DOUBLE'
 						|'TIMESTAMP'
 						|'DATE'
+						|'BOOL'
 						|'STRING' | 'VARCHAR'
 						
 ColumnOptionList ::= 

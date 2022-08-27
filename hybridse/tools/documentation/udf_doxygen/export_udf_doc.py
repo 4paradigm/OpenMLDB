@@ -19,16 +19,16 @@ import subprocess
 import yaml
 
 DOXYGEN_DIR = os.path.abspath(os.path.dirname(__file__))
-HOME_DIR = os.path.join(DOXYGEN_DIR, "../../..")
+HOME_DIR = os.path.join(DOXYGEN_DIR, "../../../..")
 BUILD_DIR = os.path.abspath(os.path.join(HOME_DIR, "build"))
-TMP_DIR = os.path.join(BUILD_DIR, "docs/tmp")
+TMP_DIR = os.path.join(BUILD_DIR, "hybridse/docs/tmp")
 
 
 def export_yaml():
 	if not os.path.exists(TMP_DIR):
 		os.makedirs(TMP_DIR)
 	ret = subprocess.call(
-		[os.path.join(BUILD_DIR, "src/export_udf_info"),
+		[os.path.join(BUILD_DIR, "hybridse/src/export_udf_info"),
 		 "--output_dir", TMP_DIR,
 		 "--output_file", "udf_defs.yaml"])
 	if ret != 0:
@@ -95,8 +95,8 @@ def merge_arith_types(signature_set):
 
 def make_header():
 	with open(os.path.join(TMP_DIR, "udf_defs.yaml")) as yaml_file:
-		udf_defs = yaml.load(yaml_file.read())
-	
+		udf_defs = yaml.safe_load(yaml_file.read())
+
 	if not os.path.exists(DOXYGEN_DIR + "/udfs"):
 		os.makedirs(DOXYGEN_DIR + "/udfs")
 	fake_header = os.path.join(DOXYGEN_DIR + "/udfs/udfs.h")
@@ -151,7 +151,7 @@ def make_header():
 					key = ", ".join(arg_types)
 					if key not in sig_set:
 						sig_set[key] = arg_types
-			
+
 			# merge for number type
 			sig_set = merge_arith_types(sig_set)
 

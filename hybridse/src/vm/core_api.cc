@@ -217,6 +217,7 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     if (row.empty()) {
         return hybridse::codec::Row();
     }
+
     // Init current run step runtime
     JitRuntime::get()->InitRunStep();
 
@@ -225,8 +226,10 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         const_cast<int8_t*>(fn));
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+
     // TODO(tobe): do not need to pass parameter row for offline
     auto parameter_ptr = reinterpret_cast<const int8_t*>(&parameter);
+
     int8_t* buf = nullptr;
     uint32_t ret = udf(0, row_ptr, nullptr, parameter_ptr, &buf);
 
@@ -237,6 +240,7 @@ hybridse::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         LOG(WARNING) << "fail to run udf " << ret;
         return hybridse::codec::Row();
     }
+
     return Row(base::RefCountedSlice::CreateManaged(
         buf, hybridse::codec::RowView::GetSize(buf)));
 }
@@ -340,11 +344,33 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
         const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
         WindowInterface* window) {
 
-    auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
-
     // Create Row from input UnsafeRow bytes
-    auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
+    // auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
+    // auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));
 
+    // Notice that we need to use new pointer for buffering rows in window list
+    int8_t* bufPtr = reinterpret_cast<int8_t*>(malloc(inputRowSizeInBytes));
+    memcpy(bufPtr, inputUnsafeRowBytes, inputRowSizeInBytes);
+    auto row = Row(base::RefCountedSlice::CreateManaged(bufPtr, inputRowSizeInBytes));
+
+    return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
+                                 window->GetWindow());
+}
+
+hybridse::codec::Row CoreAPI::UnsafeWindowProjectBytes(
+        const RawPtrHandle fn, const uint64_t key,
+        hybridse::vm::ByteArrayPtr unsaferowBytes,
+        const int unsaferowSize, const bool is_instance, size_t append_slices,
+        WindowInterface* window) {
+    auto actualRowSize = unsaferowSize + codec::HEADER_LENGTH;
+    int8_t* newRowPtr = reinterpret_cast<int8_t*>(malloc(actualRowSize));
+
+    // Write the row size
+    *reinterpret_cast<uint32_t *>(newRowPtr) = actualRowSize;
+
+    // Write the UnsafeRow bytes
+    memcpy(newRowPtr + codec::HEADER_LENGTH, unsaferowBytes, unsaferowSize);
+    auto row = Row(base::RefCountedSlice::CreateManaged(newRowPtr, actualRowSize));
 
     return Runner::WindowProject(fn, key, row, Row(), is_instance, append_slices,
                                  window->GetWindow());

@@ -28,6 +28,7 @@
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "re2/re2.h"
 
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
@@ -503,6 +504,80 @@ void ilike(StringRef *name, StringRef *pattern, StringRef *escape, bool *out, bo
 void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
     static StringRef default_esc(1, "\\");
     ilike(name, pattern, &default_esc,  out, is_null);
+}
+
+
+// The options are (defaults in parentheses):
+//
+//   utf8             (true)  text and pattern are UTF-8; otherwise Latin-1
+//   posix_syntax     (false) restrict regexps to POSIX egrep syntax
+//   longest_match    (false) search for longest match, not first match
+//   log_errors       (true)  log syntax and execution errors to ERROR
+//   max_mem          (see below)  approx. max memory footprint of RE2
+//   literal          (false) interpret string as literal, not regexp
+//   never_nl         (false) never match \n, even if it is in regexp
+//   dot_nl           (false) dot matches everything including new line
+//   never_capture    (false) parse all parens as non-capturing
+//   case_sensitive   (true)  match is case-sensitive (regexp can override
+//                              with (?i) unless in posix_syntax mode)
+//
+// The following options are only consulted when posix_syntax == true.
+// When posix_syntax == false, these features are always enabled and
+// cannot be turned off; to perform multi-line matching in that case,
+// begin the regexp with (?m).
+//   perl_classes     (false) allow Perl's \d \s \w \D \S \W
+//   word_boundary    (false) allow Perl's \b \B (word boundary and not)
+//   one_line         (false) ^ and $ only match beginning and end of text
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
+    if (name == nullptr || pattern == nullptr || flags == nullptr) {
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+
+    std::string_view flags_view(flags->data_, flags->size_);
+    std::string_view pattern_view(pattern->data_, pattern->size_);
+    std::string_view name_view(name->data_, name->size_);
+
+    RE2::Options opts(RE2::POSIX);
+    opts.set_log_errors(false);
+    opts.set_one_line(true);
+
+    for (auto &flag : flags_view) {
+        switch (flag) {
+            case 'c':
+                opts.set_case_sensitive(true);
+            break;
+            case 'i':
+                opts.set_case_sensitive(false);
+            break;
+            case 'm':
+                opts.set_one_line(false);
+            break;
+            case 'e':
+                // ignored here
+            break;
+            case 's':
+                opts.set_dot_nl(true);
+            break;
+            // ignore unknown flag
+        }
+    }
+
+    RE2 re(pattern_view, opts);
+    if (re.error_code() != 0) {
+        LOG(ERROR) << "Error parsing '" << pattern_view << "': " << re.error();
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+    *is_null = false;
+    *out = RE2::FullMatch(name_view, re);
+}
+
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null) {
+    StringRef flags("c");
+    regexp_like(name, pattern, &flags, out, is_null);
 }
 
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {

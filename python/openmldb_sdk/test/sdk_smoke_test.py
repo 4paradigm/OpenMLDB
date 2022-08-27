@@ -30,8 +30,8 @@ import pytest
 
 
 def test_sdk_smoke():
-    options = sdk_module.OpenMLDBClusterSdkOptions(case_conf.OpenMLDB_ZK_CLUSTER,
-                                                   case_conf.OpenMLDB_ZK_PATH)
+    options = sdk_module.OpenMLDBClusterSdkOptions(
+        case_conf.OpenMLDB_ZK_CLUSTER, case_conf.OpenMLDB_ZK_PATH)
     sdk = sdk_module.OpenMLDBSdk(options, True)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns() % 100000)
@@ -89,6 +89,18 @@ def test_sdk_smoke():
     ok, rs = sdk.executeSQL(db_name, select)
     assert ok
     assert rs.Size() == 4
+
+    # reset the request timeout
+    options = sdk_module.OpenMLDBClusterSdkOptions(
+        case_conf.OpenMLDB_ZK_CLUSTER,
+        case_conf.OpenMLDB_ZK_PATH,
+        request_timeout=1)
+    sdk = sdk_module.OpenMLDBSdk(options, True)
+    assert sdk.init()
+    select = "select * from " + table_name + "where col1='world';"
+    # request timeout 1ms, too fast, sending rpc request will reach timeout
+    ok, _ = sdk.executeSQL(db_name, select)
+    assert not ok
 
     # drop not empty db
     drop_db = "drop database " + db_name + ";"
