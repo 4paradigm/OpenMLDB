@@ -86,6 +86,10 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 :point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
 
+Or you can directly start working on this repository by clicking on the following button
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
+
 ## 6. QuickStart
 
 **Cluster and Standalone Versions**
