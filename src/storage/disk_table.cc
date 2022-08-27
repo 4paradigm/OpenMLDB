@@ -45,6 +45,7 @@ DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid, const s
       write_opts_(),
       offset_(0),
       table_path_(table_path) {
+    cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>();
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -59,6 +60,7 @@ DiskTable::DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::st
       write_opts_(),
       offset_(0),
       table_path_(table_path) {
+    cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>();
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -69,8 +71,8 @@ DiskTable::DiskTable(const ::openmldb::api::TableMeta& table_meta, const std::st
 }
 
 DiskTable::~DiskTable() {
-    for (auto handle : cf_hs_) {
-        delete handle;
+    for (auto handle : *cf_hs_) {
+        db_->DestroyColumnFamilyHandle(handle);
     }
     if (db_ != nullptr) {
         db_->Close();
@@ -191,7 +193,8 @@ bool DiskTable::Init() {
     options_.create_if_missing = true;
     options_.error_if_exists = false;
     options_.create_missing_column_families = true;
-    rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
+    // may change cf_hs_-.data
+    rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, cf_hs_.get(), &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
@@ -205,7 +208,7 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
     rocksdb::Status s;
     std::string combine_key = CombineKeyTs(pk, time);
     rocksdb::Slice spk = rocksdb::Slice(combine_key);
-    s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
+    s = db_->Put(write_opts_, cf_hs_->at(1), spk, rocksdb::Slice(data, size));
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -231,7 +234,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
 
         for (const auto& index_def : inner_index->GetIndex()) {
-            if (!index_def) {
+            if (!index_def || !index_def->IsReady()) {
                 PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
                       it->idx(), id_, pid_);
                 return false;
@@ -252,7 +255,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
                     combine_key = CombineKeyTs(it->key(), ts);
                 }
                 rocksdb::Slice spk = rocksdb::Slice(combine_key);
-                batch.Put(cf_hs_[inner_pos + 1], spk, value);
+                batch.Put(cf_hs_->at(inner_pos + 1), spk, value);
             }
         }
     }
@@ -269,7 +272,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     rocksdb::WriteBatch batch;
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
-    if (!index_def) {
+    if (!index_def || !index_def->IsReady()) {
         return false;
     }
     auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
@@ -282,12 +285,12 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
             }
             std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX, ts_col->GetId());
             std::string combine_key2 = CombineKeyTs(pk, 0, ts_col->GetId());
-            batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+            batch.DeleteRange(cf_hs_->at(idx + 1), rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
         }
     } else {
         std::string combine_key1 = CombineKeyTs(pk, UINT64_MAX);
         std::string combine_key2 = CombineKeyTs(pk, 0);
-        batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+        batch.DeleteRange(cf_hs_->at(idx + 1), rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
@@ -330,9 +333,61 @@ void DiskTable::GcHead() {
         ro.snapshot = snapshot;
         // ro.prefix_same_as_start = true;
         ro.pin_data = true;
-        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-        it->SeekToFirst();
         const auto& indexs = inner_index->GetIndex();
+
+        size_t deleted_num = 0;
+        // kWaiting -> kDeleting -> kDeleted
+        for (const auto& cur_index : indexs) {
+            switch (cur_index->GetStatus()) {
+                case IndexStatus::kWaiting:
+                    cur_index->SetStatus(IndexStatus::kDeleting);
+                    break;
+                case IndexStatus::kDeleting:
+                    if (indexs.size() == 1) {
+                        rocksdb::ColumnFamilyOptions cfo;
+
+                        if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
+                            cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
+                        } else {
+                            cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
+                        }
+
+                        cfo.comparator = &cmp_;
+                        cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
+
+                        if (cur_index->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
+                            cur_index->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+                            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
+                        }
+
+                        rocksdb::ColumnFamilyHandle* handle;
+                        db_->DropColumnFamily(cf_hs_->at(idx + 1));
+                        db_->DestroyColumnFamilyHandle(cf_hs_->at(idx + 1));
+                        db_->CreateColumnFamily(cfo, cur_index->GetName(), &handle);
+                        // modify element of cf_hs_
+                        {
+                            std::lock_guard<std::mutex> guard(cf_hs_mutex);
+                            cf_hs_->at(idx + 1) = handle;
+                        }
+                        deleted_num++;
+                    } else {
+                        // do nothing following mem_table
+                    }
+                    cur_index->SetStatus(IndexStatus::kDeleted);
+                    break;
+                case IndexStatus::kDeleted:
+                    deleted_num++;
+                    break;
+            }
+        }
+
+        if (deleted_num == indexs.size()) {
+            continue;
+        }
+
+        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_->at(idx + 1));
+        it->SeekToFirst();
+
         if (indexs.size() > 1) {
             bool need_ttl = false;
             std::map<uint32_t, uint64_t> ttl_map;
@@ -375,7 +430,8 @@ void DiskTable::GcHead() {
                     for (const auto& kv : delete_key_map) {
                         std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
                         std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
-                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
+                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_->at(idx + 1),
+                                                             rocksdb::Slice(combine_key1),
                                                              rocksdb::Slice(combine_key2));
                         if (!s.ok()) {
                             PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -391,7 +447,7 @@ void DiskTable::GcHead() {
             for (const auto& kv : delete_key_map) {
                 std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
                 std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
-                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
+                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_->at(idx + 1), rocksdb::Slice(combine_key1),
                                                      rocksdb::Slice(combine_key2));
                 if (!s.ok()) {
                     PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -417,7 +473,8 @@ void DiskTable::GcHead() {
                     } else {
                         std::string combine_key1 = CombineKeyTs(cur_pk, ts);
                         std::string combine_key2 = CombineKeyTs(cur_pk, 0);
-                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
+                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_->at(idx + 1),
+                                                             rocksdb::Slice(combine_key1),
                                                              rocksdb::Slice(combine_key2));
                         if (!s.ok()) {
                             PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -478,7 +535,7 @@ TableIterator* DiskTable::NewIterator(const std::string& pk, Ticket& ticket) {
 
 TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
-    if (!index_def) {
+    if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_, pid_);
         return NULL;
     }
@@ -489,7 +546,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
     ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_->at(inner_pos + 1));
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
@@ -501,7 +558,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 
 TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
-    if (!index_def) {
+    if (!index_def || !index_def->IsReady()) {
         return NULL;
     }
     uint32_t inner_pos = index_def->GetInnerPos();
@@ -514,7 +571,7 @@ TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
     ro.snapshot = snapshot;
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_->at(inner_pos + 1));
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
@@ -835,7 +892,7 @@ void DiskTableTraverseIterator::NextPK() {
 
 ::hybridse::vm::WindowIterator* DiskTable::NewWindowIterator(uint32_t idx) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
-    if (!index_def) {
+    if (!index_def || !index_def->IsReady()) {
         return NULL;
     }
     uint32_t inner_pos = index_def->GetInnerPos();
@@ -848,15 +905,16 @@ void DiskTableTraverseIterator::NextPK() {
     ro.snapshot = snapshot;
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_->at(inner_pos + 1));
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
             return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
-                                                 ts_col->GetId(), cf_hs_[inner_pos + 1]);
+                                                 ts_col->GetId(), cf_hs_->at(inner_pos + 1));
         }
     }
-    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt, cf_hs_[inner_pos + 1]);
+    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
+                                    cf_hs_->at(inner_pos + 1));
 }
 
 DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it,
@@ -1141,6 +1199,10 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
 
         if (!column_key.ts_name().empty()) {
             auto ts_iter = schema.find(column_key.ts_name());
+            if (ts_iter == schema.end()) {
+                PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", column_key.ts_name(), id_, pid_);
+                return false;
+            }
             index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
         } else {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
@@ -1191,7 +1253,13 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
 
-        cf_hs_.push_back(handle);
+        // may change cf_hs_->data
+        {
+            std::lock_guard<std::mutex> guard(cf_hs_mutex);
+            auto new_cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(GetCF_DS_());
+            new_cf_hs_->push_back(handle);
+            std::atomic_store_explicit(&cf_hs_, new_cf_hs_, std::memory_order_release);
+        }
     }
     index_def->SetStatus(IndexStatus::kReady);
     std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
@@ -1255,7 +1323,7 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     ro.snapshot = snapshot;
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_->at(inner_pos + 1));
 
     bool has_ts_idx = false;
     uint32_t ts_idx;

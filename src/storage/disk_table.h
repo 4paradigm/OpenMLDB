@@ -380,10 +380,10 @@ class DiskTable : public Table {
 
     uint64_t GetRecordCnt() const override {
         uint64_t count = 0;
-        if (cf_hs_.size() == 1) {
-            db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);
+        if (cf_hs_->size() == 1) {
+            db_->GetIntProperty(cf_hs_->at(0), "rocksdb.estimate-num-keys", &count);
         } else {
-            db_->GetIntProperty(cf_hs_[1], "rocksdb.estimate-num-keys", &count);
+            db_->GetIntProperty(cf_hs_->at(1), "rocksdb.estimate-num-keys", &count);
         }
         return count;
     }
@@ -409,7 +409,7 @@ class DiskTable : public Table {
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
     void CompactDB() {
-        for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
+        for (rocksdb::ColumnFamilyHandle* cf : *cf_hs_) {
             db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
         }
     }
@@ -424,13 +424,18 @@ class DiskTable : public Table {
     uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
+    std::vector<rocksdb::ColumnFamilyHandle*> GetCF_DS_() {
+        return *cf_hs_;
+    }
+
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
 
  private:
     rocksdb::DB* db_;
     rocksdb::WriteOptions write_opts_;
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
-    std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> cf_hs_;
+    std::mutex cf_hs_mutex;
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;

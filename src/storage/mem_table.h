@@ -136,7 +136,7 @@ class MemTable : public Table {
 
     bool DeleteIndex(const std::string& idx_name) override;
 
-    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
+    bool AddIndex(const ::openmldb::common::ColumnKey& column_key) override;
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
