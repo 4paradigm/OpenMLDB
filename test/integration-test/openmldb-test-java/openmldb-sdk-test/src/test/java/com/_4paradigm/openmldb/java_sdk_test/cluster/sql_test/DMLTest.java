@@ -36,35 +36,35 @@ import org.testng.annotations.Test;
 public class DMLTest extends OpenMLDBTest {
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
+    @Yaml(filePaths = {"integration_test/dml/test_insert.yaml"})
     @Story("insert")
     public void testInsert(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/dml/test_insert.yaml"})
+    @Yaml(filePaths = {"integration_test/dml/test_insert.yaml"})
     @Story("insert")
     public void testInsertByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/test_insert_prepared.yaml")
+    @Yaml(filePaths = "integration_test/dml/test_insert_prepared.yaml")
     @Story("insert-prepared")
     public void testInsertWithPrepared(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kInsertPrepared).run();
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Yaml(filePaths = "integration_test/dml/multi_insert.yaml")
     @Story("multi-insert")
     public void testMultiInsert(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Yaml(filePaths = "integration_test/dml/multi_insert.yaml")
     @Story("multi-insert")
     public void testMultiInsertByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
