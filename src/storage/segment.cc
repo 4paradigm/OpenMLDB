@@ -136,6 +136,7 @@ uint64_t Segment::Release() {
     ts_f_it->SeekToFirst();
     while (ts_f_it->Valid()) {
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = ts_f_it->GetValue();
+        while (node->GetValue()->dim_cnt_down > 1);
         delete node->GetValue();
         delete node;
         f_it->Next();
@@ -157,7 +158,7 @@ void Segment::ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uin
             entry_node = entries_->Remove(key);
         }
         if (entry_node != NULL) {
-            FreeEntry(entry_node, NULL, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            FreeEntry(entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
         it->Next();
         pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
@@ -330,26 +331,30 @@ bool Segment::Delete(const Slice& key) {
     return true;
 }
 
-bool Segment::Delete(const Slice& key, uint64_t time, DataBlock** block) {
+bool Segment::Delete(const Slice& key, uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
-    if (ts_cnt_ > 1) {
-        return false;
+    {
+        if (ts_cnt_ > 1) {
+            return false;
+        }
+        void* entry = NULL;
+        if (entries_->Get(key, entry) < 0 || entry == NULL) {
+            return false;
+        }
+        entry_ts_node = ((KeyEntry*)entry)->entries.Remove(time);  // NOLINT
+        if (entry_ts_node == NULL) {
+            return false;
+        }
     }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return false;
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
     }
-    entry_ts_node = ((KeyEntry*)entry)->entries.Remove(time);  // NOLINT
-    *block = entry_ts_node->GetValue();
     return true;
 }
 
 bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
-    if (time == 0) {
-        return Delete(key);
-    }
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
-    DataBlock* block = NULL;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto pos = ts_idx_map_.find(idx);
@@ -357,20 +362,18 @@ bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
             return false;
         }
         if (ts_cnt_ == 1) {
-            Delete(key, time, &block);
+            return Delete(key, time);
         } else {
             void* entry = NULL;
             if (entries_->Get(key, entry) < 0 || entry == NULL) {
                 return false;
             }
             entry_ts_node = ((KeyEntry**)entry)[pos->second]->entries.Remove(time);  // NOLINT
-            block = entry_ts_node->GetValue();
         }
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
-        // TODO(XLC-2) : Complete delay deletion
     }
     return true;
 }
@@ -395,40 +398,18 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint6
     }
 }
 
-void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node,
-                        ::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node,
-                        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
+void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                         uint64_t& gc_record_byte_size) {
-    if (entry_node == NULL && ts_entry_node == NULL) {
+    if (entry_node == NULL) {
         return;
     }
-    if (entry_node != NULL) {
-        // free pk memory
-        delete[] entry_node->GetKey().data();
-        if (ts_cnt_ > 1) {
-            KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();  // NOLINT
-            for (uint32_t i = 0; i < ts_cnt_; i++) {
-                uint64_t old = gc_idx_cnt;
-                KeyEntry* entry = entry_arr[i];
-                TimeEntries::Iterator* it = entry->entries.NewIterator();
-                it->SeekToFirst();
-                if (it->Valid()) {
-                    uint64_t ts = it->GetKey();
-                    ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
-                    FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                }
-                delete it;
-                delete entry;
-                idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-            }
-            delete[] entry_arr;
-            uint64_t byte_size =
-                GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), 
-                                        key_entry_max_height_, ts_cnt_);
-            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-        } else {
+    // free pk memory
+    delete[] entry_node->GetKey().data();
+    if (ts_cnt_ > 1) {
+        KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();  // NOLINT
+        for (uint32_t i = 0; i < ts_cnt_; i++) {
             uint64_t old = gc_idx_cnt;
-            KeyEntry* entry = (KeyEntry*)entry_node->GetValue();  // NOLINT
+            KeyEntry* entry = entry_arr[i];
             TimeEntries::Iterator* it = entry->entries.NewIterator();
             it->SeekToFirst();
             if (it->Valid()) {
@@ -438,51 +419,76 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node,
             }
             delete it;
             delete entry;
-            uint64_t byte_size =
-                GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
-            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-            idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
+            idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
         }
-    }
-    if (ts_entry_node != NULL) {
-        delete ts_entry_node->GetValue();
-        uint64_t byte_size = GetRecordPkIdxSize(ts_entry_node->Height(), sizeof(uint64_t), key_entry_max_height_);
-        // idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+        delete[] entry_arr;
+        uint64_t byte_size =
+            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), 
+                                    key_entry_max_height_, ts_cnt_);
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+    } else {
+        uint64_t old = gc_idx_cnt;
+        KeyEntry* entry = (KeyEntry*)entry_node->GetValue();  // NOLINT
+        TimeEntries::Iterator* it = entry->entries.NewIterator();
+        it->SeekToFirst();
+        if (it->Valid()) {
+            uint64_t ts = it->GetKey();
+            ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+            FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        }
+        delete it;
+        delete entry;
+        uint64_t byte_size =
+            GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+        idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
 }
 
 void Segment::GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                               uint64_t& gc_record_byte_size) {
     ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<Slice, void*>*>* node = NULL;
-    ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*>* ts_node = NULL;
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         node = entry_free_list_->Split(version);
+    }
+    while (node != NULL) {
+        ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+        FreeEntry(entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        delete entry_node;
+        ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<Slice, void*>*>* tmp = node;
+        node = node->GetNextNoBarrier(0);
+        delete tmp;
+        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+    }
+}
+
+void Segment::FreeTsEntry(::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node,
+                          uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
+                          uint64_t& gc_record_byte_size) {
+    if (ts_entry_node == NULL) {
+        return;
+    }
+    delete ts_entry_node->GetValue();
+    // TODO(XLC-2): record statistics.
+}
+
+void Segment::GcTsEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
+                                uint64_t& gc_record_byte_size) {
+    ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*>* ts_node = NULL;
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
         ts_node = ts_entry_free_list_->Split(version);
     }
-    while (node != NULL || ts_node != NULL) {
-        ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+    while (ts_node != NULL) {
         ::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node = NULL;
-        if (node != NULL) {
-            entry_node = node->GetValue();
-        }
-        if (ts_node != NULL) {
-            ts_entry_node = ts_node->GetValue();
-        }
-        FreeEntry(entry_node, ts_entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        if (entry_node != NULL) {
-            delete entry_node;
-            ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<Slice, void*>*>* tmp = node;
-            node = node->GetNextNoBarrier(0);
-            delete tmp;
-        }
-        if (ts_entry_node != NULL) {
-            delete ts_entry_node;
-            ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*>* tmp = ts_node;
-            ts_node = ts_node->GetNextNoBarrier(0);
-            delete tmp;
-        }
-        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+        ts_entry_node = ts_node->GetValue();
+        FreeTsEntry(ts_entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        delete ts_entry_node;
+        ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*>* tmp = ts_node;
+        ts_node = ts_node->GetNextNoBarrier(0);
+        delete tmp;
+        // TODO(XLC-2): determine whether pk_cnt_ needs to be modified.
     }
 }
 

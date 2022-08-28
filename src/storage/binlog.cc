@@ -111,7 +111,11 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
             if (entry.dimensions_size() == 0) {
                 PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid, pid, entry.log_index());
             } else {
-                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+                if (entry.has_ts()) {
+                    table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx(), entry.ts());
+                } else {
+                    table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+                }
             }
         } else {
             table->Put(entry);

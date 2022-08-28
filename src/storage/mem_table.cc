@@ -247,7 +247,11 @@ bool MemTable::Delete(const std::string& pk, uint32_t idx, uint64_t ts) {
     }
     uint32_t real_idx = index_def->GetInnerPos();
     Segment* segment = segments_[real_idx][seg_idx];
-    return segment->Delete(pk, idx, ts);
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        return segment->Delete(spk, ts_col->GetId(), ts);
+    }
+    return segment->Delete(spk, ts);
 }
 
 uint64_t MemTable::Release() {

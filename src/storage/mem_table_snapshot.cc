@@ -313,6 +313,9 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                     continue;
                 }
                 std::string combined_key = entry.dimensions(0).key() + "|" + std::to_string(entry.dimensions(0).idx());
+                if (entry.has_ts()) {
+                    combined_key += "|" + std::to_string(entry.ts());
+                }
                 deleted_keys_[combined_key] = cur_offset;
                 DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
             }
@@ -517,6 +520,9 @@ int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, c
     uint64_t cur_offset = entry.log_index();
     if (entry.dimensions_size() == 0) {
         std::string combined_key = entry.pk() + "|0";
+        if (entry.has_ts()) {
+            combined_key += "|" + std::to_string(entry.ts());
+        }
         auto iter = deleted_keys_.find(combined_key);
         if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
             DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
@@ -526,6 +532,9 @@ int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, c
         std::set<int> deleted_pos_set;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
             std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
+            if (entry.has_ts()) {
+                combined_key += "|" + std::to_string(entry.ts());
+            }
             auto iter = deleted_keys_.find(combined_key);
             if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
                 deleted_index.count(entry.dimensions(pos).idx())) {

@@ -144,7 +144,7 @@ struct SliceComparator {
 
 typedef ::openmldb::base::Skiplist<::openmldb::base::Slice, void*, SliceComparator> KeyEntries;
 typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*>*, TimeComparator> KeyEntryNodeList;
-typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*, 
+typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<uint64_t, DataBlock*>*,
                                    TimeComparator> KeyTsEntryNodeList;
 
 class Segment {
@@ -172,7 +172,7 @@ class Segment {
 
     bool Delete(const Slice& key);
 
-    bool Delete(const Slice& key, uint64_t time, DataBlock** block);
+    bool Delete(const Slice& key, uint64_t time);
 
     bool Delete(const Slice& key, uint32_t idx, const uint64_t time);
 
@@ -260,11 +260,17 @@ class Segment {
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
                          uint64_t& gc_record_byte_size);          // NOLINT
+    void GcTsEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
+                           uint64_t& gc_record_cnt,                 // NOLINT
+                           uint64_t& gc_record_byte_size);          // NOLINT
     void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node,  // NOLINT
-                   ::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node,             // NOLINT
                    uint64_t& gc_idx_cnt,            // NOLINT
                    uint64_t& gc_record_cnt,         // NOLINT
                    uint64_t& gc_record_byte_size);  // NOLINT
+    void FreeTsEntry(::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry_node,             // NOLINT
+                     uint64_t& gc_idx_cnt,            // NOLINT
+                     uint64_t& gc_record_cnt,         // NOLINT
+                     uint64_t& gc_record_byte_size);  // NOLINT
 
  private:
     KeyEntries* entries_;
