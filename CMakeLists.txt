@@ -304,3 +304,5 @@ install(
   DESTINATION tools
   PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
+
+add_executable(list_test hybridse/examples/toydb/src/storage/list_test.cc)
