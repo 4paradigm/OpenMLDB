@@ -5,6 +5,8 @@
 # - MAXSIZE
 
 debugs: []
+version: 0.6.0
+db: test_java
 cases:
   - id: 0
     desc: ROWS_RANGE window with exclude_current_row
@@ -59,13 +61,13 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         0, 0, NULL, NULL, NULL
-         1, 1,  0,  0,     0
-         2, 0, NULL, NULL, 0
-         3, 1, 21, 21, 21
-         4, 2, 22, 21, 22
-         5, 0, NULL, NULL, NULL
+      rows:
+        - [0, 0, NULL, NULL, NULL]
+        - [1, 1,  0,  0,     0]
+        - [2, 0, NULL, NULL, 0]
+        - [3, 1, 21, 21, 21]
+        - [4, 2, 22, 21, 22]
+        - [5, 0, NULL, NULL, NULL]
   - id: 1
     desc: |
       ROWS window with exclude_current_row, '0 PRECEDING EXCLUDE CURRENT_ROW' actually is the same as '0 OPEN PRECEDING'
@@ -101,11 +103,11 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 0, NULL, NULL, NULL
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
   - id: 2
     desc: |
       ROWS_RANGE pure-history window with exclude_current_row
@@ -159,11 +161,11 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 0, NULL, NULL, NULL
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
   - id: 3
     desc: |
       ROWS pure-history window with exclude_current_row
@@ -217,11 +219,11 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 0, NULL, NULL, NULL
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
 
   - id: 4
     desc: |
@@ -260,13 +262,13 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 2, 23, 22, 23
-         5, 0, NULL, NULL, NULL
-         6, 1, 56, 56, 56
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
 
   - id: 5
     desc: |
@@ -322,13 +324,13 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 2, 23, 22, 23
-         5, 0, NULL, NULL, NULL
-         6, 1, 56, 56, 56
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
 
   - id: 6
     desc: |
@@ -384,13 +386,13 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 3, 23, 21, 23
-         5, 0, NULL, NULL, NULL
-         6, 1, 56, 56, 56
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 3, 23, 21, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
 
   - id: 7
     desc: |
@@ -429,13 +431,13 @@ cases:
         - mi int
         - l1 int
       order: id
-      data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 2, 23, 22, 23
-         5, 0, NULL, NULL, NULL
-         6, 1, 56, 56, 56
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
 
   - id: 8
     desc: |
@@ -482,6 +484,7 @@ cases:
          5, 0, NULL, NULL, NULL
          6, 1, 56, 56, 56
   - id: 9
+    mode: disk-unsupport
     desc: |
       ROWS Window with exclude current_time and exclude current_row
     inputs:

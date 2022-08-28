@@ -8,27 +8,27 @@ SHOW TABLE STATUS
 
 
 
-Column Information
+## 输出信息说明
 
-| Column            | Description                                                |
-| ----------------- | ---------------------------------------------------------- |
-| Table_id          | 表唯一 id                                                  |
-| Table_name        | 表名                                                       |
-| Database_name     | 数据库名                                                   |
-| Storage_type      | 存储类型， `memory`,`ssd`,`hdd`                            |
-| Rows              | 表的 rows count                                            |
-| Memory_data_size  | 表内存占用（单位 bytes)                                    |
-| Disk_data_size    | 表磁盘占用 （但我 bytes)                                   |
-| Partition         | Partiton 数量                                              |
-| Partition_unalive | Unalive partition 数量                                     |
-| Replica           | Replica 数量                                               |
-| Offline_path      | 表对应 offline 数据路径, `NULL` if not exists              |
-| Offline_format    | 表对应 offline 数据格式, `NULL` if not exists              |
+| Column            | Note                                              |
+| ----------------- |---------------------------------------------------|
+| Table_id          | 表唯一 id                                            |
+| Table_name        | 表名                                                |
+| Database_name     | 数据库名                                              |
+| Storage_type      | 存储类型， `memory`,`ssd`,`hdd`                        |
+| Rows              | 表的行数                                              |
+| Memory_data_size  | 表内存占用（单位 bytes)                                   |
+| Disk_data_size    | 表磁盘占用 （单位 bytes)                                  |
+| Partition         | Partiton 数量                                       |
+| Partition_unalive | Unalive partition 数量                              |
+| Replica           | Replica 数量                                        |
+| Offline_path      | 表对应 offline 数据路径, `NULL` if not exists            |
+| Offline_format    | 表对应 offline 数据格式, `NULL` if not exists            |
 | Offline_deep_copy | 表对应 offline 数据是否使用 deep copy, `NULL` if not exits |
 
 
 
-# Example
+## Example
 
 ```sql
 > USE db;

@@ -68,7 +68,7 @@ If you only want to try OpenMLDB in a non-production environment, or learn and p
 
 ## 2. The Offline Mode
 
-As mentioned earlier, the offline data import, offline feature development and feature extraction deployment stages of cluster version are all running in offline mode. The management and computing of offline data are completed in this mode. Related computing nodes are supported by Spark release version, which has [been optimized for feature engineering by OpenMLDB](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html). Common storage systems such as HDFS can be used on the storage nodes.
+As mentioned earlier, the offline data import, offline feature development and feature extraction deployment stages of cluster version are all running in offline mode. The management and computing of offline data are completed in this mode. Related computing nodes are supported by Spark release version, which has [been optimized for feature engineering by OpenMLDB](./openmldbspark_distribution.md). Common storage systems such as HDFS can be used on the storage nodes.
 
 The offline mode has following main features.
 

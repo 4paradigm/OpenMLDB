@@ -56,9 +56,9 @@ rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 来调大rpc的timeout时间，单位为ms。
 #### 普通请求
 如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
-1. CLI: 目前无法更改
+1. CLI: 启动时配置`--request_timeout_ms`
 2. JAVA: SDK 直连，调整`SdkOption.requestTimeout`; JDBC，调整url中的参数`requestTimeout`
-3. Python: 目前无法更改
+3. Python: SDK 直连(DBAPI), 调整`connect()`参数`request_timeout`; SQLAlchemy, 调整url中的参数`requestTimeout`
 
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```
@@ -67,3 +67,15 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 这是因为`addr`端主动断开了连接，`addr`的地址大概率是taskmanager。这不代表taskmanager不正常，而是taskmanager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
 在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
 在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
+
+### 3. 离线查询结果显示中文乱码
+
+在使用离线查询时，可能出现包含中文的查询结果乱码，主要和系统默认编码格式与Spark任务编码格式参数有关。
+
+如果出现乱码情况，可以通过添加Spark高级参数`spark.driver.extraJavaOptions=-Dfile.encoding=utf-8`和`spark.executor.extraJavaOptions=-Dfile.encoding=utf-8`来解决。
+
+客户端配置方法可参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)，也可以在TaskManager配置文件中添加此项配置。
+
+```
+spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
+```

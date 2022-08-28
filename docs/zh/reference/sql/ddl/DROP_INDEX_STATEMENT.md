@@ -1,4 +1,5 @@
 # DROP INDEX
+`DROP INDEX`语句用来删除表中已有的索引。
 
 ## 语法
 
@@ -7,9 +8,7 @@ DROPIndexstmt ::=
     'DROP' 'INDEX' TableName.IndexName
 ```
 
-**说明**
 
-`DROP INDEX`语句用来删除表中已有的索引。
 
 ## **示例**
 ```SQL

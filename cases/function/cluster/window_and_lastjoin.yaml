@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 db: test_zw
-debugs:
+debugs: []
+version: 0.5.0
 cases:
   -
     id: 0

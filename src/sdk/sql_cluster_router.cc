@@ -49,7 +49,6 @@
 #include "sdk/result_set_sql.h"
 #include "sdk/split.h"
 
-DECLARE_int32(request_timeout_ms);
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
 
@@ -190,7 +189,7 @@ class BatchQueryFutureImpl : public QueryFuture {
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
-    : options_(options),
+    : options_(std::make_shared<SQLRouterOptions>(options)),
       is_cluster_mode_(true),
       interactive_(false),
       cluster_sdk_(nullptr),
@@ -198,7 +197,7 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
       rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
-    : standalone_options_(options),
+    : options_(std::make_shared<StandaloneOptions>(options)),
       is_cluster_mode_(false),
       interactive_(false),
       cluster_sdk_(nullptr),
@@ -211,7 +210,13 @@ SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
       interactive_(false),
       cluster_sdk_(sdk),
       mu_(),
-      rand_(::baidu::common::timer::now_time()) {}
+      rand_(::baidu::common::timer::now_time()) {
+    if (is_cluster_mode_) {
+        options_ = std::make_shared<SQLRouterOptions>();
+    } else {
+        options_ = std::make_shared<StandaloneOptions>();
+    }
+}
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
@@ -219,10 +224,11 @@ bool SQLClusterRouter::Init() {
     if (cluster_sdk_ == nullptr) {
         // init cluster_sdk_, require options_ or standalone_options_ is set
         if (is_cluster_mode_) {
+            auto ops = std::dynamic_pointer_cast<SQLRouterOptions>(options_);
             ClusterOptions coptions;
-            coptions.zk_cluster = options_.zk_cluster;
-            coptions.zk_path = options_.zk_path;
-            coptions.zk_session_timeout = options_.zk_session_timeout;
+            coptions.zk_cluster = ops->zk_cluster;
+            coptions.zk_path = ops->zk_path;
+            coptions.zk_session_timeout = ops->zk_session_timeout;
             cluster_sdk_ = new ClusterSDK(coptions);
             bool ok = cluster_sdk_->Init();
             if (!ok) {
@@ -230,7 +236,8 @@ bool SQLClusterRouter::Init() {
                 return false;
             }
         } else {
-            cluster_sdk_ = new ::openmldb::sdk::StandAloneSDK(standalone_options_.host, standalone_options_.port);
+            auto ops = std::dynamic_pointer_cast<StandaloneOptions>(options_);
+            cluster_sdk_ = new ::openmldb::sdk::StandAloneSDK(ops->host, ops->port);
             bool ok = cluster_sdk_->Init();
             if (!ok) {
                 LOG(WARNING) << "fail to init standalone sdk";
@@ -243,18 +250,20 @@ bool SQLClusterRouter::Init() {
         // might better to refactor constructors & fileds for SQLClusterRouter
         // but will introduce breaking changes as well
         if (is_cluster_mode_) {
-            if (options_.zk_cluster.empty() || options_.zk_path.empty()) {
+            auto ops = std::dynamic_pointer_cast<SQLRouterOptions>(options_);
+            if (ops->zk_cluster.empty() || ops->zk_path.empty()) {
                 auto* cluster_sdk = dynamic_cast<ClusterSDK*>(cluster_sdk_);
                 DCHECK(cluster_sdk != nullptr);
-                options_.zk_cluster = cluster_sdk->GetClusterOptions().zk_cluster;
-                options_.zk_path = cluster_sdk->GetClusterOptions().zk_path;
+                ops->zk_cluster = cluster_sdk->GetClusterOptions().zk_cluster;
+                ops->zk_path = cluster_sdk->GetClusterOptions().zk_path;
             }
         } else {
-            if (standalone_options_.host.empty() || standalone_options_.port == 0) {
+            auto ops = std::dynamic_pointer_cast<StandaloneOptions>(options_);
+            if (ops->host.empty() || ops->port == 0) {
                 auto* standalone_sdk = dynamic_cast<StandAloneSDK*>(cluster_sdk_);
                 DCHECK(standalone_sdk != nullptr);
-                standalone_options_.host = standalone_sdk->GetHost();
-                standalone_options_.port = standalone_sdk->GetPort();
+                ops->host = standalone_sdk->GetHost();
+                ops->port = standalone_sdk->GetPort();
             }
         }
     }
@@ -344,8 +353,9 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRowByProcedure(const 
     return GetRequestRow(db, sql, status);
 }
 
-std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
-        const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status) {
+std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(const std::string& db,
+                                                                            const std::string& sql,
+                                                                            ::hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return {};
     }
@@ -354,9 +364,9 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
         auto delete_cache = std::dynamic_pointer_cast<DeleteSQLCache>(cache);
         if (delete_cache) {
             status->code = 0;
-            return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
-                    delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
-                    delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+            return std::make_shared<openmldb::sdk::SQLDeleteRow>(
+                delete_cache->GetDatabase(), delete_cache->GetTableName(), delete_cache->GetIndexName(),
+                delete_cache->GetColNames(), delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
         }
     }
     ::hybridse::node::NodeManager nm;
@@ -386,7 +396,7 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
     auto table_info = cluster_sdk_->GetTableInfo(database, table_name);
     if (!table_info) {
         *status = {::hybridse::common::StatusCode::kCmdError,
-            absl::StrCat("table ", table_name, " in db", database, " does not exist")};
+                   absl::StrCat("table ", table_name, " in db", database, " does not exist")};
         return {};
     }
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
@@ -418,14 +428,14 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(
         *status = {::hybridse::common::StatusCode::kCmdError, "no index col in sql"};
         return {};
     }
-    auto delete_cache = std::make_shared<DeleteSQLCache>(db, table_info->tid(), table_name,
-            table_info->column_key(index_pos), condition_map, parameter_map);
+    auto delete_cache = std::make_shared<DeleteSQLCache>(
+        db, table_info->tid(), table_name, table_info->column_key(index_pos), condition_map, parameter_map);
 
     SetCache(db, sql, hybridse::vm::kBatchMode, delete_cache);
     *status = {};
-    return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(),
-            delete_cache->GetTableName(), delete_cache->GetIndexName(), delete_cache->GetColNames(),
-            delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+    return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(), delete_cache->GetTableName(),
+                                                         delete_cache->GetIndexName(), delete_cache->GetColNames(),
+                                                         delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& db, const std::string& sql,
@@ -439,7 +449,8 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         if (insert_cache) {
             *status = {};
             return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-                    insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                                  insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                                  insert_cache->GetHoleIdxArr());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -451,12 +462,14 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    auto insert_cache = std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
-        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema));
+    auto insert_cache =
+        std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
+                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema));
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     *status = {};
     return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-            insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                          insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                          insert_cache->GetHoleIdxArr());
 }
 
 bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::string& sql,
@@ -720,8 +733,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetCache(const std::string& db, cons
             auto cached_info = value.value();
             if (cached_info) {
                 if (!cached_info->GetTableName().empty()) {
-                    auto current_info = cluster_sdk_->GetTableInfo(cached_info->GetDatabase(),
-                            cached_info->GetTableName());
+                    auto current_info =
+                        cluster_sdk_->GetTableInfo(cached_info->GetDatabase(), cached_info->GetTableName());
                     if (!current_info || cached_info->GetTableId() != current_info->tid()) {
                         // just leave, this invalid value will be updated by SetCache()
                         return {};
@@ -747,7 +760,7 @@ void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
 
     auto cache_it = it->second.find(engine_mode);
     if (cache_it == it->second.end()) {
-        decltype(it->second)::mapped_type value(options_.max_sql_cache_size);
+        decltype(it->second)::mapped_type value(options_->max_sql_cache_size);
         auto pair = it->second.emplace(engine_mode, value);
         cache_it = pair.first;
     }
@@ -766,7 +779,8 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         if (insert_cache) {
             status->code = 0;
             return std::make_shared<SQLInsertRows>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
-                    insert_cache->GetDefaultValue(), insert_cache->GetStrLength(), insert_cache->GetHoleIdxArr());
+                                                   insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
+                                                   insert_cache->GetHoleIdxArr());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -777,8 +791,9 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         return {};
     }
     auto col_schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    insert_cache = std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
-        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema));
+    insert_cache =
+        std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
+                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema));
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     return std::make_shared<SQLInsertRows>(table_info, insert_cache->GetSchema(), default_map, str_length,
                                            insert_cache->GetHoleIdxArr());
@@ -1055,8 +1070,8 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
                     tid = table_info->tid();
                 }
             }
-            router_cache = std::make_shared<RouterSQLCache>(main_db, tid, table_name, schema,
-                    parameter_schema, explain.router);
+            router_cache =
+                std::make_shared<RouterSQLCache>(main_db, tid, table_name, schema, parameter_schema, explain.router);
             SetCache(db, sql, engine_mode, router_cache);
         } else {
             status->msg = base_status.GetMsg();
@@ -1220,7 +1235,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(co
         return {};
     }
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(options_.request_timeout);
+    cntl->set_timeout_ms(options_->request_timeout);
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql, hybridse::vm::kRequestMode, row, status);
     if (0 != status->code) {
@@ -1230,7 +1245,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLRequest(co
         status->msg = "not tablet found";
         return {};
     }
-    if (!client->Query(db, sql, row->GetRow(), cntl.get(), response.get(), options_.enable_debug)) {
+    if (!client->Query(db, sql, row->GetRow(), cntl.get(), response.get(), options_->enable_debug)) {
         status->msg = "request server error, msg: " + response->msg();
         return {};
     }
@@ -1261,11 +1276,11 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
         return {};
     }
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(options_.request_timeout);
+    cntl->set_timeout_ms(options_->request_timeout);
     DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_.enable_debug)) {
+                       options_->enable_debug)) {
         status->msg = response->msg();
         status->code = -1;
         return {};
@@ -1281,7 +1296,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
         return nullptr;
     }
     auto cntl = std::make_shared<::brpc::Controller>();
-    cntl->set_timeout_ms(options_.request_timeout);
+    cntl->set_timeout_ms(options_->request_timeout);
     auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
     auto client = GetTabletClient(db, sql, hybridse::vm::kBatchRequestMode, std::shared_ptr<SQLRequestRow>(),
                                   std::shared_ptr<SQLRequestRow>(), status);
@@ -1293,7 +1308,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchReque
         status->msg = "no tablet found";
         return nullptr;
     }
-    if (!client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(), response.get(), options_.enable_debug)) {
+    if (!client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(), response.get(), options_->enable_debug)) {
         status->code = -1;
         status->msg = "request server error " + response->msg();
         return nullptr;
@@ -1502,8 +1517,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(), options_.enable_debug,
-                                    options_.request_timeout);
+    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(), options_->enable_debug,
+                                    options_->request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error" + response->msg();
@@ -1534,7 +1549,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(db, sp_name, row_batch, cntl.get(), response.get(),
-                                                   options_.enable_debug, options_.request_timeout);
+                                                   options_->enable_debug, options_->request_timeout);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
@@ -2081,7 +2096,7 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
         pair->set_table_name(table.second);
     }
     // send request to ns client
-    return ns_ptr->CreateProcedure(sp_info, options_.request_timeout);
+    return ns_ptr->CreateProcedure(sp_info, options_->request_timeout);
 }
 
 bool SQLClusterRouter::CheckParameter(const PBSchema& parameter, const PBSchema& input_schema) {
@@ -2173,7 +2188,7 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
     auto* callback = new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
 
     std::shared_ptr<openmldb::sdk::QueryFutureImpl> future = std::make_shared<openmldb::sdk::QueryFutureImpl>(callback);
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms, options_.enable_debug, callback);
+    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms, options_->enable_debug, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
@@ -2201,7 +2216,8 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
 
     std::shared_ptr<openmldb::sdk::BatchQueryFutureImpl> future =
         std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
-    bool ok = tablet->CallSQLBatchRequestProcedure(db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
+    bool ok =
+        tablet->CallSQLBatchRequestProcedure(db, sp_name, row_batch, options_->enable_debug, timeout_ms, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error, msg: " + response->msg();
@@ -2555,7 +2571,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(options_.spark_conf_path, &config);
+
+                ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
                     *status = {};
@@ -2586,7 +2603,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                 // Handle in cluster mode
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
-                ReadSparkConfFromFile(options_.spark_conf_path, &config);
+                ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
 
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
@@ -2637,7 +2654,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
                                                                                 bool is_sync_job, int job_timeout,
                                                                                 ::hybridse::sdk::Status* status) {
     std::map<std::string, std::string> config;
-    ReadSparkConfFromFile(options_.spark_conf_path, &config);
+    ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
 
     if (is_sync_job) {
         // Run offline sql and wait to get output
@@ -3002,7 +3019,7 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, const std::string& table_name,
-        const hybridse::node::ExprNode* condition) {
+                                                     const hybridse::node::ExprNode* condition) {
     if (db.empty() || table_name.empty()) {
         return {::hybridse::common::StatusCode::kCmdError, "database or table is empty"};
     }
@@ -3080,7 +3097,7 @@ bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse
     auto table_info = cluster_sdk_->GetTableInfo(db, table_name);
     if (!table_info) {
         *status = {::hybridse::common::StatusCode::kCmdError,
-            "table " + table_name + " in db " + db + " does not exist"};
+                   "table " + table_name + " in db " + db + " does not exist"};
         return false;
     }
     const auto& pk = row->GetValue();
@@ -3237,7 +3254,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         option->mutable_value()->set_value(o.second->GetExprString());
     }
 
-    auto status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_.request_timeout);
+    auto status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_->request_timeout);
     if (!status.OK()) {
         return {::hybridse::common::StatusCode::kCmdError, status.msg};
     }
@@ -3365,8 +3382,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        if (!ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl,
-                                    old_column_key.index_name(), err)) {
+                        if (!ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, old_column_key.index_name(),
+                                               err)) {
                             return {::hybridse::common::StatusCode::kCmdError, "update ttl failed"};
                         }
                     }
@@ -3396,8 +3413,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::AddNewIndex(const std::string& db,
-    const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
+    const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     if (cluster_sdk_->IsClusterMode()) {
@@ -3746,7 +3763,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         return ResultSetSQL::MakeResultSet(schema, data, status);
     }
 
-    std::string node_path = absl::StrCat(options_.zk_path, "/leader");
+    std::string node_path = absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/leader");
     std::vector<std::string> children;
     if (!zk_client->GetChildren(node_path, children) || children.empty()) {
         status->code = hybridse::common::kRunError;
@@ -3850,7 +3867,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTaskManag
         return {};
     }
 
-    std::string node_path = absl::StrCat(options_.zk_path, "/taskmanager/leader");
+    std::string node_path =
+        absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/taskmanager/leader");
     std::string endpoint;
     Stat stat;
     if (!zk_client->GetNodeValueAndStat(node_path.c_str(), &endpoint, &stat)) {
