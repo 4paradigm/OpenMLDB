@@ -148,7 +148,7 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE 
 对于上面所示的交易表 t1，我们定义两个时间窗口和两个条数窗口。每一个样本行的窗口均按用户ID(`uid`)分组，按交易时间(`trans_time`)排序。下图展示了分组排序后的数据。
 ![img](images/table_t1.jpg)
 
-注意以下窗口定义并不是完整的 SQL，加上聚合函数以后才是完整的可运行 SQL（见[3.3.2](#3.3.2.步骤二：多行聚合函数加工)）。
+注意以下窗口定义并不是完整的 SQL，加上聚合函数以后才是完整的可运行 SQL（见[3.3.2](#3.3.2-步骤二：多行聚合函数加工)）。
 
 **w1d: 用户最近一天的窗口，包含当前行到最近1天以内的数据行**
 ```sql
@@ -231,9 +231,7 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 **分组后聚合计算**
 
-对数据集按某一列进行分组，然后分组统计，统计结果保存为形如`"k1:v1,k2:v2,k3:v3"`的的字符串。
-
-函数形如 `xxx_cate`:
+对数据集按某一列进行分组，然后分组统计，统计结果保存为形如`"k1:v1,k2:v2,k3:v3"`的的字符串。 函数形如 `xxx_cate`:
 
 ```sql
 xxx_cate(col, cate) over w
@@ -264,9 +262,7 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 **过滤后再分组聚合计算**
 
-先对窗口按条件过滤后, 然后对数据集按某一列进行分组，然后分组统计，统计结果保存为形如`"k1:v1,k2:v2,k3:v3"`的的字符串。
-
-函数形如 `xxx_cate_where`:
+先对窗口按条件过滤后, 然后对数据集按某一列进行分组，然后分组统计，统计结果保存为形如`"k1:v1,k2:v2,k3:v3"`的字符串。 函数形如 `xxx_cate_where`:
 
 ```text
 xxx_cate_where(col, filter_condition, cate) over w
@@ -300,21 +296,21 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 通常，我们会对类型特征进行频率的统计。例如，我们可能需要统计各个类别中，最高频次的类型，最高频的类型的频度占比等。
 
-Top ratio 特征`fz_top1_ratio`：求窗口内某列数量最多的类别占窗口总数据的比例。
+**Top ratio 特征`fz_top1_ratio`**：求窗口内某列数量最多的类别占窗口总数据的比例。
 
+以下SQL使用`fz_top1_ratio`求t1中最近30天的交易次数最大的城市的交易次数占比。
 ```sql
 SELECT 
--- 最近30天的交易次数最大的城市的交易次数占比
 fz_top1_ratio(city) over w30d as top_city_ratio 
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
 
-Top N 特征`fz_topn_frequency(col, top_n)`: 求取窗口内某列频率最高的N个类别
+**Top N 特征`fz_topn_frequency(col, top_n)`**: 求取窗口内某列频率最高的N个类别
 
+以下SQL使用`fz_topn_frequency`求t1中最近30天的交易次数最大的2个城市。
 ```sql
 SELECT 
--- 最近30天的交易次数最大的2个城市, "beijing,shanghai"
 fz_topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
