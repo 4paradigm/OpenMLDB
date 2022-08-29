@@ -369,6 +369,9 @@ bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
                 return false;
             }
             entry_ts_node = ((KeyEntry**)entry)[pos->second]->entries.Remove(time);  // NOLINT
+            if (entry_ts_node == NULL) {
+                return false;
+            }
         }
     }
     {
