@@ -46,4 +46,10 @@ public class TestCommand extends ClusterTest {
         List<List<Object>> result = openMLDBResult.getResult();
         result.forEach(l->System.out.println(l));
     }
+    @Test
+    public void test7(){
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, "test1", "show databases;");
+        List<List<Object>> result = openMLDBResult.getResult();
+        result.forEach(l->System.out.println(l));
+    }
 }
