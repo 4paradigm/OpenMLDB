@@ -115,7 +115,7 @@ minute(trans_time) as f_trans_minute FROM t1;
 我们既可以通过时间区间（如一个月），也可以通过窗口内的行数（如 100 条），去定义一个具体的时序窗口大小。时序窗口的最基本定义方式：
 
 ```sql
-window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE ROWS BETWEEN StartFrameBound AND EndFrameBound)
+window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE | ROWS BETWEEN StartFrameBound AND EndFrameBound)
 ```
 
 其中，不可或缺的语法元素包括：
