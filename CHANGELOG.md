@@ -3,19 +3,19 @@
 ## [0.6.1] - 2022-08-30
 
 ### Features
-- Support new build-in functions like `last_day`, `regexp_like` (#2262 @HeZean, #2187 @jiang1997)
-- Add talkingdata notebook (#2354 @vagetablechicken)
-- Add new api to disable saprk log for batch (#2359 @tobegit3hub)
-- Add `oneflow` demo (#2267 @Elliezza @vagetablechicken @siqi)
-- Support rpc request timeout in CLI and Python SDK (#2371 @vagetablechicken)
+- Support new build-in functions `last_day` and `regexp_like` (#2262 @HeZean, #2187 @jiang1997)
+- Support Jupyter Notebook for the TalkingData use case (#2354 @vagetablechicken)
+- Add a new API to disable Saprk logs of the batch engine (#2359 @tobegit3hub)
+- Add the use case of precision marketing based on OneFlow (#2267 @Elliezza @vagetablechicken @siqi)
+- Support the RPC request timeout in CLI and Python SDK (#2371 @vagetablechicken)
 - Improve the documents (#2021 @liuceyim, #2348 #2316 #2324 #2361 #2315 #2323 #2355 #2328 #2360 #2378 #2319 #2350 #2395 #2398 @michelle-qinqin, #2373 @njzyfr, #2370 @tobegit3hub, #2367 #2382 #2375 #2401 @vagetablechicken, #2387 #2394 @dl239, #2379 @aceforeverd, #2403 @lumianph, #2400 gitpod-for-oss @aceforeverd, )
 - Other minor features (#2363 @aceforeverd, #2185 @qsliu2017)
 
 ### Bug Fixes
-- `APIServer` will core dump if no `rs` in `QueryResp` (#2346 @vagetablechicken)
-- Data has not been deleted from `pre-aggr` tables if there are delete operations in main table (#2300 @zhanghaohit)
-- Task job will core dump when enabling `UnsafeRowOpt` with multiple threads in Yarn cluster (#2352 #2364 @tobegit3hub)
-- Other minor bug fixs (#2336 @dl239, #2337 @dl239, #2385 #2372 @aceforeverd, #2383 #2384 @vagetablechicken  )
+- `APIServer` will core dump if no `rs` in `QueryResp`. (#2346 @vagetablechicken)
+- Data has not been deleted from `pre-aggr` tables if there are delete operations in a main table. (#2300 @zhanghaohit)
+- Task jobs will core dump when enabling `UnsafeRowOpt` with multiple threads in the Yarn cluster. (#2352 #2364 @tobegit3hub)
+- Other minor bug fixes (#2336 @dl239, #2337 @dl239, #2385 #2372 @aceforeverd, #2383 #2384 @vagetablechicken)
 
 ### Code Refactoring
 #2310 @hv789, #2306 #2305 @yeya24, #2311 @Mattt47, #2368 @TBCCC, #2391 @PrajwalBorkar, #2392 @zahyaah, #2405 @wang-jiahua
@@ -325,6 +325,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.1...v0.5.2
