@@ -33,12 +33,12 @@
 
 
 VERSION=$1
-echo "new version is ${VERSION}"
-ARR=(${VERSION//./ })
-if [[ "${#ARR[*]}" -lt 3 ]]; then
-    echo -e "${RED}inputed version should have at least three number${NC}"
-    exit 1
+if [[ ! ${VERSION} =~ ^[0-9].[0-9].[0-9]$ ]]
+then
+    echo "invalid version ${VERSION}"
+    exit 0
 fi
+echo "new version is ${VERSION}"
 
 upgrade_docker() {
     sed -i"" -e "s/4pdosc\/openmldb:[0-9].[0-9].[0-9]/4pdosc\/openmldb:${VERSION}/g" "$1"
