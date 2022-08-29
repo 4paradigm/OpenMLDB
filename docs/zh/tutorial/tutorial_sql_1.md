@@ -148,7 +148,7 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE 
 对于上面所示的交易表 t1，我们定义两个时间窗口和两个条数窗口。每一个样本行的窗口均按用户ID(`uid`)分组，按交易时间(`trans_time`)排序。下图展示了分组排序后的数据。
 ![img](images/table_t1.jpg)
 
-注意以下窗口定义并不是完整的 SQL，加上聚合函数以后才是完整的可运行 SQL（见[3.3.2](#332-步骤二：多行聚合函数加工)）。
+注意以下窗口定义并不是完整的 SQL，加上聚合函数以后才是完整的可运行 SQL（见[3.3.2](#332)）。
 
 **w1d: 用户最近一天的窗口，包含当前行到最近1天以内的数据行**
 ```sql
