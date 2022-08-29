@@ -136,9 +136,10 @@ uint64_t Segment::Release() {
     ts_f_it->SeekToFirst();
     while (ts_f_it->Valid()) {
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = ts_f_it->GetValue();
-        while (node->GetValue()->dim_cnt_down > 1);
-        delete node->GetValue();
-        delete node;
+        if (node->GetValue()->dim_cnt_down <= 1) {
+            delete node->GetValue();
+            delete node;
+        }
         f_it->Next();
     }
     entry_free_list_->Clear();
