@@ -331,7 +331,8 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
             if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
                 response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
                 response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
+                PDLOG(WARNING, "ttl type mismatch request type %d current type %d. tid %u, pid %u",
+                        ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type()), index->GetTTLType(), tid, pid);
                 return;
             }
         }
@@ -1557,6 +1558,26 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         response->set_msg("delete failed");
         return;
     }
+
+    // delete the entries from pre-aggr table
+    auto aggrs = GetAggregators(request->tid(), request->pid());
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            if (aggr->GetIndexPos() != idx) {
+                continue;
+            }
+            auto ok = aggr->Delete(request->key());
+            if (!ok) {
+                PDLOG(WARNING,
+                      "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
+                      request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
+                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete from associated pre-aggr table failed");
+                return;
+            }
+        }
+    }
+
     std::shared_ptr<LogReplicator> replicator;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
@@ -4138,7 +4159,7 @@ bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& valu
         return true;
     }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); ++iter) {
-        for (auto aggr : *aggrs) {
+        for (const auto& aggr : *aggrs) {
             if (aggr->GetIndexPos() != iter->idx()) {
                 continue;
             }
@@ -4386,6 +4407,8 @@ bool TabletImpl::RefreshAggrCatalog() {
         table_info.order_by_col.assign(str, len);
         row_view.GetValue(row.buf(), 8, &str, &len);
         table_info.bucket_size.assign(str, len);
+        row_view.GetValue(row.buf(), 9, &str, &len);
+        table_info.filter_col.assign(str, len);
 
         table_infos.emplace_back(std::move(table_info));
         it->Next();

@@ -11,8 +11,10 @@
 
 ```bash
 > cd java/openmldb-import
-> mvn package 
+> mvn package
 ```
+
+`mvn package -Dmaven.test.skip=true` 跳过测试。
 
 ## 2. 导数工具使用
 
@@ -21,7 +23,7 @@
 --help可以展示出所有的配置项，星号表示必填项。
 
 ```bash
-> java -jar openmldb-import.jar --help
+> java -jar openmldb-import-1.0-SNAPSHOT.jar --help
 ```
 
 ```
@@ -32,8 +34,8 @@ Usage: Data Importer [-fhV] [--create_ddl=<createDDL>] --db=<dbName>
                      [,<files>...] [--files=<files>[,<files>...]]...
 insert/bulk load data(csv) to openmldb
       --create_ddl=<createDDL>
-                            if force_recreate_table is true, provide the create
-                              table sql
+                            if table is not exists or force_recreate_table is
+                              true, provide the create table sql
 *     --db=<dbName>         openmldb database
   -f, --force_recreate_table
                             if true, we will drop the table first
@@ -60,12 +62,13 @@ insert/bulk load data(csv) to openmldb
 
 重要配置的项目说明：
 
-- `--db=<dbName>`: 库名。库名可以是不存在的，importer可以帮助创建。
-- `--table=<tableName>`: 表名。表名可以是不存在的，importer可以帮助创建。但请注意，如果导入到已存在的表，需要表内数据为空，否则将会极大影响导入效率。
-- `--files=<files>[,<files>...]`: 导入源文件。目前源文件只支持csv格式的本地文件，并且csv文件必须有header，文件的列名和表的列名必须一致，顺序可以不一样。
-- `--zk_root_path=<zkRootPath>`和`--zk_cluster=<zkCluster>`: 集群版OpenMLDB的ZK地址和路径
-
 - `--importer_mode=<mode>`: 导入模式，支持insert和bulkload两种方式。默认配置为bulkload.
+
+- `--zk_cluster=<zkCluster>`和`--zk_root_path=<zkRootPath>`: 集群版OpenMLDB的ZK地址和路径。
+- `--db=<dbName>`: 库名。库名可以是不存在的，importer可以帮助创建。
+- `--table=<tableName>`: 表名。表名可以是不存在的，importer可以帮助创建，需配置`--create_ddl`。但请注意，如果导入到已存在的表，需要表内数据为空，否则将会极大影响导入效率。
+
+- `--files=<files>[,<files>...]`: 导入源文件。目前源文件只支持csv格式的本地文件，并且csv文件必须有header，文件的列名和表的列名必须一致，顺序可以不一样。
 
 ## 3. 大规模的数据导入
 

@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>openmldb-spark-connector</artifactId>
@@ -34,31 +34,7 @@
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.0.0</spark.version>
         <spark.dependencyScope>provided</spark.dependencyScope>
-        <default.project.version>0.3.0</default.project.version>
     </properties>
-    <profiles>
-        <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>macos</id>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}-macos</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>allinone</id>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}-allinone</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-    </profiles>
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
@@ -85,10 +61,11 @@
             <version>${spark.version}</version>
             <scope>${spark.dependencyScope}</scope>
         </dependency>
+        
         <dependency>
           <groupId>com.4paradigm.openmldb</groupId>
           <artifactId>openmldb-jdbc</artifactId>
-          <version>${openmldbVersionFromProfile}</version>
+          <version>${project.parent.version}</version>
         </dependency>
     </dependencies>
 

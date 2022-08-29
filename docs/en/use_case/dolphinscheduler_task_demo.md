@@ -30,7 +30,7 @@ In addition to the feature engineering done by OpenMLDB, the prediction also req
 ### Configuration
 The demo can run on MacOS or Linux, or use the OpenMLDB docker image provided by us:
 ```
-docker run -it 4pdosc/openmldb:0.5.1 bash
+docker run -it 4pdosc/openmldb:0.6.0 bash
 ```
 
 
@@ -43,9 +43,9 @@ In the container, you can directly run the following command to start the OpenML
 ./init.sh
 ```
 
-We will complete a workflow of importing data, offline training, and deploying the SQL and model online after successful training. For the online part of the model, you can use a simple predict server. See [predict server source](https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/demo/talkingdata-adtracking-fraud-detection/predict_server.py). You can download it locally and run it in the background:
+We will complete a workflow of importing data, offline training, and deploying the SQL and model online after successful training. For the online part of the model, you can use the simple predict server in `/work/talkingdata`. Run it in the background:
 ```
-python3 predict_server.py --no-init > predict.log 2>&1 &
+python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
 Note that, DolphinScheduler has not officially released the updated version supporting OpenMLDB Task (only on the `dev` branch), so please download [dolphinscheduler-bin](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.1/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz) that is prepared by us to have the DolphinScheduler version supporting OpenMLDB Task.

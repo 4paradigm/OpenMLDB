@@ -278,11 +278,15 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
 
   def delete(): Unit = {
-    rowViews.foreach(_.delete())
-    rowViews = null
+    if (rowViews != null) {
+      rowViews.foreach(_.delete())
+      rowViews = null
+    }
 
-    rowBuilders.foreach(_.delete())
-    rowBuilders = null
+    if (rowBuilders != null) {
+      rowBuilders.foreach(_.delete())
+      rowBuilders = null
+    }
   }
 }
 

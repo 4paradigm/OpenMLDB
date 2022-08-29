@@ -5702,8 +5702,8 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         sr.set_et(0);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        // 51 = 50(the number of aggr value) + 1(the number of out-of-order put)
-        ASSERT_EQ(51, (signed)srp.count());
+        // 50 = 49 (the number of aggr value) + 1 (the number of out-of-order put)
+        ASSERT_EQ(50, (signed)srp.count());
         auto aggrs = tablet.GetAggregators(base_table_id, 1);
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
@@ -5713,8 +5713,7 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
         ASSERT_EQ(aggr_buffer->binlog_offset_, 100);
         aggr->GetAggrBuffer("id2", &aggr_buffer);
-        // the last buffer is flushed due to out-of-order put
-        ASSERT_EQ(aggr_buffer->aggr_cnt_, 0);
+        ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
 
         ::openmldb::api::DropTableRequest dr;
         dr.set_tid(base_table_id);
@@ -5726,6 +5725,238 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         dr.set_pid(1);
         tablet.DropTable(NULL, &dr, &drs, &closure);
         ASSERT_EQ(0, drs.code());
+    }
+}
+
+TEST_F(TabletImplTest, AggregatorDeleteKey) {
+    uint32_t aggr_table_id;
+    uint32_t base_table_id;
+    {
+        TabletImpl tablet;
+        tablet.Init("");
+        ::openmldb::api::TableMeta base_table_meta;
+        // base table
+        uint32_t id = counter++;
+        base_table_id = id;
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_tid(id);
+        AddDefaultAggregatorBaseSchema(table_meta);
+        base_table_meta.CopyFrom(*table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        // pre aggr table
+        id = counter++;
+        aggr_table_id = id;
+        table_meta = request.mutable_table_meta();
+        table_meta->Clear();
+        table_meta->set_tid(id);
+        AddDefaultAggregatorSchema(table_meta);
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        // create aggr
+        ::openmldb::api::CreateAggregatorRequest aggr_request;
+        table_meta = aggr_request.mutable_base_table_meta();
+        table_meta->CopyFrom(base_table_meta);
+        aggr_request.set_aggr_table_tid(aggr_table_id);
+        aggr_request.set_aggr_table_pid(1);
+        aggr_request.set_aggr_col("col3");
+        aggr_request.set_aggr_func("sum");
+        aggr_request.set_index_pos(0);
+        aggr_request.set_order_by_col("ts_col");
+        aggr_request.set_bucket_size("2");
+        ::openmldb::api::CreateAggregatorResponse aggr_response;
+        tablet.CreateAggregator(NULL, &aggr_request, &aggr_response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        // put data to base table
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            for (int32_t i = 1; i <= 100; i++) {
+                ::openmldb::api::PutRequest prequest;
+                ::openmldb::test::SetDimension(0, key, prequest.add_dimensions());
+                prequest.set_time(i);
+                prequest.set_value(EncodeAggrRow("id1", i, i));
+                prequest.set_tid(base_table_id);
+                prequest.set_pid(1);
+                ::openmldb::api::PutResponse presponse;
+                MockClosure closure;
+                tablet.Put(NULL, &prequest, &presponse, &closure);
+                ASSERT_EQ(0, presponse.code());
+            }
+        }
+
+        // check the base table
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(base_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            ASSERT_EQ(100, (signed)srp.count());
+        }
+
+        // check the pre-aggr table
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(aggr_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            ASSERT_EQ(49, (signed)srp.count());
+
+            auto aggrs = tablet.GetAggregators(base_table_id, 1);
+            ASSERT_EQ(aggrs->size(), 1);
+            auto aggr = aggrs->at(0);
+            ::openmldb::storage::AggrBuffer* aggr_buffer;
+            aggr->GetAggrBuffer(key, &aggr_buffer);
+            ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
+            ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
+            ASSERT_EQ(aggr_buffer->binlog_offset_, 100 * k);
+        }
+
+        // delete key id1
+        ::openmldb::api::DeleteRequest dr;
+        ::openmldb::api::GeneralResponse res;
+        dr.set_tid(base_table_id);
+        dr.set_pid(1);
+        dr.set_key("id1");
+        dr.set_idx_name("idx1");
+        tablet.Delete(NULL, &dr, &res, &closure);
+        ASSERT_EQ(0, res.code());
+
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(base_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            ASSERT_EQ(k == 1 ? 0 : 100, (signed)srp.count());
+        }
+
+        // check the pre-aggr table
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(aggr_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            if (k == 1) {
+                ASSERT_EQ(0, (signed)srp.count());
+                auto aggrs = tablet.GetAggregators(base_table_id, 1);
+                ASSERT_EQ(aggrs->size(), 1);
+                auto aggr = aggrs->at(0);
+                ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
+                ASSERT_FALSE(aggr->GetAggrBuffer(key, &aggr_buffer));
+                ASSERT_EQ(nullptr, aggr_buffer);
+            } else {
+                ASSERT_EQ(49, (signed)srp.count());
+                auto aggrs = tablet.GetAggregators(base_table_id, 1);
+                ASSERT_EQ(aggrs->size(), 1);
+                auto aggr = aggrs->at(0);
+                ::openmldb::storage::AggrBuffer* aggr_buffer;
+                aggr->GetAggrBuffer(key, &aggr_buffer);
+                ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
+                ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
+                ASSERT_EQ(aggr_buffer->binlog_offset_, 100 * k);
+            }
+        }
+    }
+
+    // after re-start, the states are still correct
+    {
+        TabletImpl tablet;
+        tablet.Init("");
+        MockClosure closure;
+        ::openmldb::api::LoadTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(base_table_id);
+        table_meta->set_pid(1);
+        ::openmldb::api::GeneralResponse response;
+        tablet.LoadTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        table_meta = request.mutable_table_meta();
+        table_meta->Clear();
+        table_meta->set_name("pre_aggr_1");
+        table_meta->set_tid(aggr_table_id);
+        table_meta->set_pid(1);
+        tablet.LoadTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        sleep(3);
+
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(base_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            ASSERT_EQ(k == 1 ? 0 : 100, (signed)srp.count());
+        }
+
+        // check the pre-aggr table
+        for (int32_t k = 1; k <= 2; k++) {
+            std::string key = absl::StrCat("id", k);
+            ::openmldb::api::ScanRequest sr;
+            sr.set_tid(aggr_table_id);
+            sr.set_pid(1);
+            sr.set_pk(key);
+            sr.set_st(100);
+            sr.set_et(0);
+            ::openmldb::api::ScanResponse srp;
+            tablet.Scan(NULL, &sr, &srp, &closure);
+            ASSERT_EQ(0, srp.code());
+            if (k == 1) {
+                ASSERT_EQ(0, (signed)srp.count());
+                auto aggrs = tablet.GetAggregators(base_table_id, 1);
+                ASSERT_EQ(aggrs->size(), 1);
+                auto aggr = aggrs->at(0);
+                ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
+                ASSERT_FALSE(aggr->GetAggrBuffer(key, &aggr_buffer));
+                ASSERT_EQ(nullptr, aggr_buffer);
+            } else {
+                ASSERT_EQ(49, (signed)srp.count());
+                auto aggrs = tablet.GetAggregators(base_table_id, 1);
+                ASSERT_EQ(aggrs->size(), 1);
+                auto aggr = aggrs->at(0);
+                ::openmldb::storage::AggrBuffer* aggr_buffer;
+                aggr->GetAggrBuffer(key, &aggr_buffer);
+                ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
+                ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
+                ASSERT_EQ(aggr_buffer->binlog_offset_, 100 * k);
+            }
+        }
     }
 }
 

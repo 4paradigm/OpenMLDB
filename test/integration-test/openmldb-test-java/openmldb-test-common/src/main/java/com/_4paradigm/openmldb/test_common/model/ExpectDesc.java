@@ -34,4 +34,5 @@ public class ExpectDesc extends Table {
     private int deploymentCount = -1;
     private List<String> diffTables;
     private CatFile cat;
+    private String msg;
 }

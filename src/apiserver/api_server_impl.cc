@@ -57,6 +57,7 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
     RegisterGetDeployment();
     RegisterGetDB();
     RegisterGetTable();
+    RegisterRefresh();
     return true;
 }
 
@@ -137,11 +138,16 @@ void APIServerImpl::RegisterQuery() {
                        // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
                        //  supports ddl http api. It's useful for api server tests(We can create table when we only
                        //  connect to the api server).
-                       sql_router_->ExecuteSQL(db, sql, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
-                       writer << resp.Set(status.code, status.msg);
+                       auto rs = sql_router_->ExecuteSQL(db, sql, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
                        if (!status.IsOK()) {
+                           writer << resp.Set(status.code, status.msg);
                            LOG(WARNING) << "failed at: code " << status.code << ", msg " << status.msg;
+                           return;
                        }
+
+                       QueryResp query_resp;
+                       query_resp.rs = rs;
+                       writer << query_resp;
                    });
 }
 
@@ -330,7 +336,7 @@ void APIServerImpl::RegisterPut() {
             }
         }
 
-        auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
+        sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
         writer << resp.Set(status.code, status.msg);
     });
 }
@@ -606,6 +612,15 @@ void APIServerImpl::RegisterGetTable() {
                           writer.EndObject();
                       }
                   });
+}
+
+void APIServerImpl::RegisterRefresh() {
+    provider_.post("/refresh",
+                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                       auto resp = GeneralResp();
+                       auto ok = sql_router_->RefreshCatalog();
+                       writer << (ok ? resp : resp.Set("refresh failed"));
+                   });
 }
 
 std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
@@ -947,6 +962,28 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
 
     ar.Member("schema_versions") & info->schema_versions();
 
+    return ar.EndObject();
+}
+
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
+    ar.StartObject();
+    ar.Member("code") & s.code;
+    ar.Member("msg") & s.msg;
+    if (s.rs) {
+        ar.Member("data");
+        ar.StartArray();
+        auto& rs = s.rs;
+        rs->Reset();
+        auto& schema = *rs->GetSchema();
+        while (rs->Next()) {
+            ar.StartArray();
+            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                WriteValue(ar, rs, i);
+            }
+            ar.EndArray();
+        }
+        ar.EndArray();
+    }
     return ar.EndObject();
 }
 

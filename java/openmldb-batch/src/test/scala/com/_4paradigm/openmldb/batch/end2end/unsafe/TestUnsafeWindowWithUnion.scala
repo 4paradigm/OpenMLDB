@@ -16,17 +16,11 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
-import com._4paradigm.openmldb.batch.utils.SparkUtil
 
-class TestUnsafeWindowWithUnion extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-  }
+class TestUnsafeWindowWithUnion extends UnsaferowoptSparkTestSuite {
 
   test("Test unsafe window") {
     val spark = getSparkSession
@@ -49,11 +43,6 @@ class TestUnsafeWindowWithUnion extends SparkTestSuite {
     val count = outputDf.count()
     val expectedCount = df.count()
     assert(count == expectedCount)
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
   }
 
 }

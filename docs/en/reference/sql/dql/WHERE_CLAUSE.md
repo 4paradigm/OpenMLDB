@@ -16,25 +16,24 @@ WhereClause
 SELECT select_expr [,select_expr...] FROM ... WHERE where_condition
 ```
 
-## Boundary Description
+## Description
+For the standalone version, `WHERE` is supported in all conditions. For the cluster version, the execution modes which support this clause are shown below.
 
-| SELECT statement elements | state                 | illustrate                                                         |
-| :------------- | -------------------- | :----------------------------------------------------------- |
-| WHERE Clause   | Online Serving not supportED | The Where clause is used to set filter conditions, and only the data that meets the conditions will be included in the query result. |
+| `SELECT` Statement Elements | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                                                                       |
+|:----------------------------|--------------|---------------------|---------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| WHERE Clause                            | **``✓``**    | **``✓``**           |                     | The Where clause is used to set filter conditions, and only the data that meets the conditions will be included in the query result.                                                                                                                                                                                                                       |
 
 ## Example
 
-### Simple Conditional Filtering
+### Simple Condition Filtering
 
 ```SQL
--- desc: SELECT simple filter
-  sql: SELECT COL1 FROM t1 where COL1 > 10;
+sql: SELECT COL1 FROM t1 where COL1 > 10;
 ```
 
-### Complex Conditions Simple Condition Filtering
+### Complex Conditions Filtering
 
 ```sql
--- desc: The SELECT filter condition is a complex logical relational expression
-  sql: SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;
+sql: SELECT COL1 FROM t1 where COL1 > 10 and COL2 = 20 or COL1 =0;
 ```
 

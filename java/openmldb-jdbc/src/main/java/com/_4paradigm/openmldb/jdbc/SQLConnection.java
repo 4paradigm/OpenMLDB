@@ -86,6 +86,8 @@ public class SQLConnection implements Connection {
             return client.getInsertPreparedStmt(this.defaultDatabase, sql);
         } else if (lower.startsWith("select")) {
             return client.getPreparedStatement(this.defaultDatabase, sql);
+        } else if (lower.startsWith("delete")) {
+            return client.getDeletePreparedStmt(this.defaultDatabase, sql);
         }
         throw new SQLException("unsupported sql");
     }

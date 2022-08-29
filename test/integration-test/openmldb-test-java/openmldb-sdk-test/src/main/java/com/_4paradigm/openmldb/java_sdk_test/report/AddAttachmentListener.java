@@ -16,16 +16,14 @@
 
 package com._4paradigm.openmldb.java_sdk_test.report;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbConfig;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.common.ReportLog;
 import io.qameta.allure.Attachment;
-import org.apache.commons.collections4.CollectionUtils;
 import org.testng.IHookCallBack;
 import org.testng.IHookable;
 import org.testng.ITestResult;
 import org.yaml.snakeyaml.Yaml;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -53,7 +51,7 @@ public class AddAttachmentListener implements IHookable {
     @Override
     public void run(IHookCallBack callBack, ITestResult testResult) {
         callBack.runTestMethod(testResult);
-        if(FedbConfig.ADD_REPORT_LOG&&testResult.getThrowable()!=null) {
+        if(OpenMLDBConfig.ADD_REPORT_LOG&&testResult.getThrowable()!=null) {
             Object[] parameters = testResult.getParameters();
             if(parameters!=null&&parameters.length>0) {
                 Object parameter = testResult.getParameters()[0];

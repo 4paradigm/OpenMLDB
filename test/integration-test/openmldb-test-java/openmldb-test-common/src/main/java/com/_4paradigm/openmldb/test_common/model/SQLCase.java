@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -27,11 +28,13 @@ import java.util.Map;
 
 @Data
 public class SQLCase implements Serializable{
+    private String caseFileName;
     private int level = 0;
     private String id;
     private String desc;
     private String mode;
     private String db;
+    private String version;
     private String sql;
     private List<List<String>> dataProvider;
     private List<String> sqls;
@@ -53,6 +56,8 @@ public class SQLCase implements Serializable{
 
     private Map<Integer, ExpectDesc> expectProvider;
     private List<String> tearDown;
+    private List<String> excludes;
+    private String only;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);
@@ -83,6 +88,27 @@ public class SQLCase implements Serializable{
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
     }
 
+    public boolean isSupportDiskTable(){
+        if(CollectionUtils.isEmpty(inputs)){
+            return false;
+        }
+        for(InputDesc input:inputs){
+            if (CollectionUtils.isNotEmpty(input.getColumns())&& StringUtils.isEmpty(input.getCreate())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public void setStorage(String storageMode){
+        if(CollectionUtils.isNotEmpty(inputs)) {
+            inputs.forEach(t -> {
+                if(StringUtils.isEmpty(t.getStorage())){
+                    t.setStorage(storageMode);
+                }
+            });
+        }
+    }
+
     public String getProcedure(String sql) {
         return buildCreateSpSQLFromColumnsIndexs(spName, sql, inputs.get(0).getColumns());
     }
@@ -93,7 +119,9 @@ public class SQLCase implements Serializable{
         }
         StringBuilder builder = new StringBuilder("create procedure " + name + "(\n");
         for (int i = 0; i < columns.size(); i++) {
-            builder.append(columns.get(i));
+            String column = columns.get(i);
+            String[] ss = column.split("\\s+");
+            builder.append(ss[0]+" "+ss[1]);
             if (i != columns.size() - 1) {
                 builder.append(",");
             }

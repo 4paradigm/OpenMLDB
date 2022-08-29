@@ -13,6 +13,7 @@
 # limitations under the License.
 
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: Last Join tables from two databases 1 - default db is db1

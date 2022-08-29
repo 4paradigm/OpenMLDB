@@ -19,7 +19,7 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.6.0 bash
 ```
 
 ````{important}
@@ -265,7 +265,9 @@ cd taxi-trip
 
 注意，`LOAD DATA` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看任务进度。
 
-如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志，在这里不再展开。
+如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志（默认在/work/openmldb/taskmanager/bin/logs/jog_x.log，如需更改，修改taskmanager.properties的`job.log.path`）。
+
+如果job failed，可以查看/work/openmldb/taskmanager/bin/logs/jog_x_error.log，确认问题。
 
 #### 3.3.3 离线特征计算
 
