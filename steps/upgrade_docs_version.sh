@@ -33,7 +33,7 @@
 
 
 VERSION=$1
-if [[ ! ${VERSION} =~ ^[0-9].[0-9].[0-9]$ ]]
+if [[ ! ${VERSION} =~ ^[0-9]\.[0-9]\.[0-9]$ ]]
 then
     echo "invalid version ${VERSION}"
     exit 0
@@ -41,24 +41,24 @@ fi
 echo "new version is ${VERSION}"
 
 upgrade_docker() {
-    sed -i"" -e "s/4pdosc\/openmldb:[0-9].[0-9].[0-9]/4pdosc\/openmldb:${VERSION}/g" "$1"
+    sed -i"" -e "s/4pdosc\/openmldb:[0-9]\.[0-9]\.[0-9]/4pdosc\/openmldb:${VERSION}/g" "$1"
 }
 
 upgrade_java_sdk() {
-    sed -i"" -e "s/<version>[0-9].[0-9].[0-9]<\/version>/<version>${VERSION}<\/version>/g" "$1"
-    sed -i"" -e "s/<version>[0-9].[0-9].[0-9]-macos<\/version>/<version>${VERSION}-macos<\/version>/g" "$1"
-    sed -i"" -e "s/\`[0-9].[0-9].[0-9]-macos\`/\`${VERSION}-macos\`/g" "$1"
+    sed -i"" -e "s/<version>[0-9]\.[0-9]\.[0-9]<\/version>/<version>${VERSION}<\/version>/g" "$1"
+    sed -i"" -e "s/<version>[0-9]\.[0-9]\.[0-9]-macos<\/version>/<version>${VERSION}-macos<\/version>/g" "$1"
+    sed -i"" -e "s/\`[0-9]\.[0-9]\.[0-9]-macos\`/\`${VERSION}-macos\`/g" "$1"
 }
 
 upgrade_install_doc() {
-    sed -i"" -e "s/\/v[0-9].[0-9].[0-9]\//\/v${VERSION}\//g" "$1"
-    sed -i"" -e "s/openmldb-[0-9].[0-9].[0-9]-linux/openmldb-${VERSION}-linux/g" "$1"
-    sed -i"" -e "s/openmldb-[0-9].[0-9].[0-9]-darwin/openmldb-${VERSION}-darwin/g" "$1"
-    sed -i"" -e "s/-openmldb[0-9].[0-9].[0-9]\//-openmldb${VERSION}\//g" "$1"
+    sed -i"" -e "s/\/v[0-9]\.[0-9]\.[0-9]\//\/v${VERSION}\//g" "$1"
+    sed -i"" -e "s/openmldb-[0-9]\.[0-9]\.[0-9]-linux/openmldb-${VERSION}-linux/g" "$1"
+    sed -i"" -e "s/openmldb-[0-9]\.[0-9]\.[0-9]-darwin/openmldb-${VERSION}-darwin/g" "$1"
+    sed -i"" -e "s/-openmldb[0-9]\.[0-9]\.[0-9]\//-openmldb${VERSION}\//g" "$1"
     components=("ns" "tablet" "apiserver" "taskmanager")
     for component in "${components[@]}"
     do
-        sed -i"" -e "s/openmldb-${component}-[0-9].[0-9].[0-9]/openmldb-${component}-${VERSION}/g" "$1"
+        sed -i"" -e "s/openmldb-${component}-[0-9]\.[0-9]\.[0-9]/openmldb-${component}-${VERSION}/g" "$1"
     done
 }
 
