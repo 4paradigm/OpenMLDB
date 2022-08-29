@@ -2,31 +2,32 @@
 
 ## 1. 准备知识
 
-在上期系列文章中（[深入浅出特征工程 -- 基于 OpenMLDB 的实践指南（上）](https://zhuanlan.zhihu.com/p/467625760)），我们介绍了特征工程的基础概念、实践工具，以及基本的基于单表的特征脚本开发。在本篇文章中，我们将基于主表和副表，去展开详细介绍更加复杂和强大的基于多表的特征脚本开发。同时，我们依然依托 OpenMLDB 所提供的 SQL 语法进行特征工程脚本示例，关于 OpenMLDB 的更多信息可以访问 [OpenMLDB 的 GitHub repo](https://github.com/4paradigm/OpenMLDB)，以及 [文档网站](http://docs-cn.openmldb.ai/)。
+在[深入浅出特征工程 -- 基于 OpenMLDB 的实践指南（上）](https://zhuanlan.zhihu.com/p/467625760)中，我们介绍了特征工程的基础概念、实践工具，以及基于单表的特征脚本开发。本文将基于主表和副表，详细介绍更加复杂和强大的基于多表的特征脚本开发。同时，我们依然依托 OpenMLDB 所提供的 SQL 语法进行特征工程脚本示例，关于 OpenMLDB 的更多信息可以访问 [OpenMLDB 的 GitHub repo](https://github.com/4paradigm/OpenMLDB)，以及 [文档网站](https://openmldb.ai/docs/zh/main/)。
 
-如果你想运行本篇教程所举例的 SQL，请按照以下两个步骤做准备：
+如果你想运行本篇教程中的 SQL，请按照以下两个步骤做准备：
 
-- 推荐使用 OpenMLDB docker 镜像在**单机版**下运行本教程，运行方式参考 [OpenMLDB 快速上手](http://docs-cn.openmldb.ai/2620852)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版普通线上模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
+- 推荐使用 OpenMLDB docker 镜像在**单机版**下运行本教程，运行方式参考 [OpenMLDB 快速上手](../quickstart/openmldb_quickstart.md)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版 CLI 仅支持离线模式和在线预览模式。而在线预览模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
 - 本教程相关的所有数据以及导入操作脚本可以在 [这里下载](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)。
 
-在本篇文章中，我们将会使用到主表和副表，进行举例说明。我们依然使用上篇的反欺诈交易的样例数据，包含一张主表用户交易表（表一 t1）和一张副表商户流水表（表二 t2）。需要多表特征工程的背景，是在关系数据库设计中，为了避免数据冗余和一致性，一般都会按照一定的设计原则（数据库设计范式），把数据存入多个数据表中。在特征工程中，为了获得足够的有效信息，需要在多个表中取出数据，因此需要基于多表进行特征工程。
+本文将用到主表和副表进行举例说明。我们依然使用上篇的反欺诈交易的样例数据，包含一张主表：用户交易表（t1）和一张副表：商户流水表（t2）。
+在关系型数据库设计中，为了避免数据冗余以及保证数据一致性，一般都会按照一定的设计原则（数据库设计范式），把数据存入多个数据表中。在特征工程中，为了获得足够的有效信息，需要在多个表中取出数据，因此需要基于多表进行特征工程。
 
-**表一：主表，用户交易表 t1**
+**主表：用户交易表 t1**
 
-| Field      | Type      | Description                 |
-| ---------- | --------- | --------------------------- |
-| id         | BIGINT    | 样本ID,每一条样本拥有唯一ID |
-| uid        | STRING    | 用户ID                      |
-| mid        | STRING    | 商户ID                      |
-| cardno     | STRING    | 卡号                        |
+| Field      | Type      | Description             |
+| ---------- | --------- |-------------------------|
+| id         | BIGINT    | 样本ID,每一条样本拥有唯一ID        |
+| uid        | STRING    | 用户ID                    |
+| mid        | STRING    | 商户ID                    |
+| cardno     | STRING    | 卡号                      |
 | trans_time | TIMESTAMP | 交易时间                    |
 | trans_amt  | DOUBLE    | 交易金额                    |
 | trans_type | STRING    | 交易类型                    |
-| province   | STRING    | 省份                        |
-| city       | STRING    | 城市                        |
-| label      | BOOL      | 样本label, true\|false      |
+| province   | STRING    | 省份                      |
+| city       | STRING    | 城市                      |
+| label      | BOOL      | 样本label， `true`或`false` |
 
-**副表：表二，商户流水表 t2**
+**副表：商户流水表 t2**
 
 | Field         | Type      | Description            |
 | ------------- | --------- | ---------------------- |
@@ -36,13 +37,14 @@
 | purchase_amt  | DOUBLE    | 消费金额               |
 | purchase_type | STRING    | 消费类型：现金、信用卡 |
 
-在传统关系数据库中，为了取得多表的信息，最常用的方式是使用 join 进行拼接。但是对于特征工程的需求来说，数据库的 join 并不能非常高效的满足需求。最主要的原因是我们的主表样本表有一个用于模型训练的 label 列，其每一个值只能对应一行数据记录。所以实际中我们希望在 join 以后，结果表格的行数需要和主表的行数保持一致。
+在传统关系数据库中，为了取得多表的信息，最常用的方式是使用 join 进行拼接。 但是数据库的 join 并不能非常高效的满足特征工程的需求。 最主要的原因是我们的主表样本表有一个用于模型训练的 label 列，其每一个值只能对应一行数据记录。我们希望在 join 以后，结果表格的行数和主表的行数保持一致。
 
 ## 2. 副表单行特征
 
 ## 2.1 LAST JOIN
 
-OpenMLDB 目前支持`LAST JOIN`来进行类似数据库的 join 操作。LAST JOIN 可以看作一种特殊的 LEFT JOIN。在满足 JOIN 条件的前提下，左表的每一行拼取一条符合条件的最后一行。LAST JOIN分为无序拼接，和有序拼接。我们用更简单的表为例，假设表 s1，s2 的 schema 均为
+OpenMLDB 目前支持`LAST JOIN`来进行类似数据库的 join 操作。LAST JOIN 可以看作一种特殊的 LEFT JOIN。在满足 JOIN 条件的前提下，左表的每一行拼取右表符合条件的最后一行。LAST JOIN分为无序拼接和有序拼接。
+用简单的表为例，假设表 s1，s2 的 schema 均为
 
 ```sql
 (id int, col1 string, std_ts timestamp)
