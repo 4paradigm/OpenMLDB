@@ -10,7 +10,6 @@ import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com._4paradigm.qa.openmldb_deploy.util.DeployUtil;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
@@ -20,7 +19,6 @@ import org.testng.collections.Lists;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 public class UpgradeStandalone extends ClusterTest {
@@ -112,9 +110,9 @@ public class UpgradeStandalone extends ClusterTest {
             sdkClient.insertList(hddTableName, dataList);
         }
 
-        CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
+        CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
         if(version.compareTo("0.5.0")>=0) {
-            CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+            CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
         }
     }
 

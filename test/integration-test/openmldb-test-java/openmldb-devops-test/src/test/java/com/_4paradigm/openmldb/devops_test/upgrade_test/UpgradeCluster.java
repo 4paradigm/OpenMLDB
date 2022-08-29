@@ -114,9 +114,9 @@ public class UpgradeCluster extends ClusterTest {
         Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
         log.info("升级后offset："+map2);
         Assert.assertEquals(map1,map2);
-        CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
+        CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
         if(version.compareTo("0.5.0")>=0) {
-            CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+            CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
         }
     }
 

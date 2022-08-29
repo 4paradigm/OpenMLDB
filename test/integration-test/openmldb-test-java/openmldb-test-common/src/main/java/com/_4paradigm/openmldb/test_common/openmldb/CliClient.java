@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.testng.Assert;
+import org.testng.collections.Lists;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -73,5 +74,12 @@ public class CliClient {
     public void insertList(String tableName,List<List<Object>> dataList){
         String sql = SQLUtil.genInsertSQL(tableName,dataList);
         OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+    }
+    public Map<String,List<Long>> showTableStatus(){
+        OpenMLDBResult openMLDBResult = execute("show table status;");
+        List<List<Object>> result = openMLDBResult.getResult();
+        Map<String,List<Long>> map = new HashMap<>();
+        result.forEach(l->map.put(String.valueOf(l.get(1)), Lists.newArrayList(Long.parseLong(String.valueOf(l.get(4))))));
+        return map;
     }
 }

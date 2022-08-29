@@ -35,14 +35,14 @@ public class OpenMLDBCommandUtil {
 
     public static OpenMLDBResult createDB(OpenMLDBInfo openMLDBInfo, String dbName) {
         String sql = String.format("create database %s ;",dbName);
-        OpenMLDBResult fesqlResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
-        return fesqlResult;
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult desc(OpenMLDBInfo openMLDBInfo, String dbName, String tableName) {
         String sql = String.format("desc %s ;",tableName);
-        OpenMLDBResult fesqlResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
-        return fesqlResult;
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult createAndInsert(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
@@ -60,7 +60,7 @@ public class OpenMLDBCommandUtil {
                 }
             }
         }
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
                 InputDesc inputDesc = inputs.get(i);
@@ -93,7 +93,7 @@ public class OpenMLDBCommandUtil {
                 }
             }
         }
-        fesqlResult.setOk(true);
-        return fesqlResult;
+        openMLDBResult.setOk(true);
+        return openMLDBResult;
     }
 }

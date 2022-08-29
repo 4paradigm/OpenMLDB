@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["delete 组合索引"]
+debugs: []
 version: 0.5.0
 cases:
   -
@@ -64,7 +64,7 @@ cases:
         name: pre_{db_name}_{sp_name}_w1_count_c4
         type: bigint
         rows:
-          - ["aa",1577664000000,1577836799999,2,1,null]
+          - ["aa",1577664000000,1577836799999,1,1,null]
           - ["aa",1577836800000,1578009599999,2,2,null]
   -
     id: 2
@@ -348,8 +348,8 @@ cases:
             name: pre_{db_name}_{sp_name}_w1_sum_c4
             type: bigint
             rows:
-              - ["aa",1590738991000,1590738992999,2,61,null]
-              - ["aa",1590738993000,1590738994999,2,65,null]
+              - ["aa",1590738990000,1590738991999,1,30,null]
+              - ["aa",1590738992000,1590738993999,2,63,null]
       - sql: delete from {0} where c1='aa';
         expect:
           preAgg:
@@ -385,8 +385,8 @@ cases:
             name: pre_{db_name}_{sp_name}_w1_sum_c4
             type: bigint
             rows:
-              - ["aa|20",1590738991000,1590738992999,2,61,null]
-              - ["aa|20",1590738993000,1590738994999,2,65,null]
+              - ["aa|20",1590738990000,1590738991999,1,30,null]
+              - ["aa|20",1590738992000,1590738993999,2,63,null]
       - sql: delete from {0} where c1='aa' and c3=20;
         expect:
           preAgg:

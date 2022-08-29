@@ -29,13 +29,16 @@ public class UpgradeClusterByCLI extends ClusterTest {
     private NsClient nsClient;
     private OpenMLDBDevops openMLDBDevops;
     private String openMLDBPath;
+    private SDKClient sdkClient;
     private String newBinPath;
     private String confPath;
     private String upgradePath;
     private OpenMLDBDeploy openMLDBDeploy;
+    private String upgradeVersion;
     @BeforeClass
     @Parameters("upgradeVersion")
     public void beforeClass(@Optional("0.6.0") String upgradeVersion){
+        this.upgradeVersion = upgradeVersion;
         dbName = "test_upgrade";
         memoryTableName = "test_memory";
         ssdTableName = "test_ssd";
@@ -105,19 +108,32 @@ public class UpgradeClusterByCLI extends ClusterTest {
     }
     @Test
     public void testUpgrade(){
-        Map<String,List<Long>> map1 = nsClient.getTableOffset(dbName);
-        log.info("升级前offset："+map1);
+        Map<String,List<Long>> beforeMap;
+        if(version.compareTo("0.6.0")>=0){
+            beforeMap = nsClient.getTableOffset(dbName);
+        }else{
+            beforeMap = cliClient.showTableStatus();
+        }
+        log.info("升级前offset："+beforeMap);
         openMLDBDevops.upgradeNs(newBinPath,confPath);
         openMLDBDevops.upgradeTablet(newBinPath,confPath);
         openMLDBDevops.upgradeApiServer(newBinPath,confPath);
         openMLDBDevops.upgradeTaskManager(openMLDBDeploy);
-        Map<String,List<Long>> map2 = nsClient.getTableOffset(dbName);
-        log.info("升级后offset："+map2);
-        Assert.assertEquals(map1,map2);
-//        CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
-//        if(version.compareTo("0.5.0")>=0) {
-//            CheckUtil.addDataCheck(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
-//        }
+        Map<String,List<Long>> afterMap;
+        if(version.compareTo("0.6.0")>=0){
+            afterMap = nsClient.getTableOffset(dbName);
+        }else{
+            afterMap = cliClient.showTableStatus();
+        }
+        log.info("升级后offset："+afterMap);
+        Assert.assertEquals(beforeMap,afterMap);
+        sdkClient = SDKClient.of(executor);
+        sdkClient.useDB(dbName);
+        if(upgradeVersion.compareTo("0.6.0")>=0) {
+            CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+        }else{
+            CheckUtil.addDataCheckByCount(sdkClient, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+        }
     }
 
 //    @AfterClass

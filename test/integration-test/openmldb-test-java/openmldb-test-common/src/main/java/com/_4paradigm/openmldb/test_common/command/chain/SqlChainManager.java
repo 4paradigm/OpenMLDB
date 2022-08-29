@@ -32,11 +32,13 @@ public class SqlChainManager {
         DescHandler descHandler = new DescHandler();
         ShowDeploymentHandler showDeploymentHandler = new ShowDeploymentHandler();
         ShowDeploymentsHandler showDeploymentsHandler = new ShowDeploymentsHandler();
+        ShowTableStatusHandler showTableStatusHandler = new ShowTableStatusHandler();
         queryHandler.setNextHandler(dmlHandler);
         dmlHandler.setNextHandler(ddlHandler);
         ddlHandler.setNextHandler(descHandler);
         descHandler.setNextHandler(showDeploymentHandler);
         showDeploymentHandler.setNextHandler(showDeploymentsHandler);
+        showDeploymentsHandler.setNextHandler(showTableStatusHandler);
         return queryHandler;
     }
 

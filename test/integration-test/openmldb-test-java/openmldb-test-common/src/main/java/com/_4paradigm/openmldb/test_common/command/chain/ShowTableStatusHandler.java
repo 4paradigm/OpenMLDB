@@ -25,11 +25,10 @@ import com.google.common.base.Joiner;
 
 import java.util.List;
 
-public class ShowDeploymentHandler extends AbstractSQLHandler{
+public class ShowTableStatusHandler extends AbstractSQLHandler{
     @Override
     public boolean preHandle(String sql) {
-        String lowerSql = sql.toLowerCase();
-        return lowerSql.startsWith("show deployment ");
+        return sql.toLowerCase().startsWith("show table status");
     }
 
     @Override
@@ -40,8 +39,8 @@ public class ShowDeploymentHandler extends AbstractSQLHandler{
         openMLDBResult.setMsg(Joiner.on("\n").join(result));
         openMLDBResult.setOk(ok);
         openMLDBResult.setDbName(dbName);
-        if (ok && result.size()>9) {
-            openMLDBResult.setDeployment(CommandResultUtil.parseDeployment(result));
+        if (ok) {
+            CommandResultUtil.parseResult(result,openMLDBResult);
         }
         return openMLDBResult;
     }
