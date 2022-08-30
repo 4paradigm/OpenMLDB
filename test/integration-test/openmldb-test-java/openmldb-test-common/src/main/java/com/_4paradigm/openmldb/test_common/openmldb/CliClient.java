@@ -1,21 +1,12 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.command.CommandUtil;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
-import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
 import com._4paradigm.openmldb.test_common.util.*;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.testng.Assert;
 import org.testng.collections.Lists;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.*;
 
 @Slf4j
@@ -30,12 +21,11 @@ public class CliClient {
     public static CliClient of(OpenMLDBInfo openMLDBInfo,String dbName){
         return new CliClient(openMLDBInfo,dbName);
     }
-    public void createAndUseDB(String dbName){
+    public void create(String dbName){
         List<String> sqlList = new ArrayList<>();
         if (!dbIsExist(dbName)) {
             sqlList.add(String.format("create database %s;", dbName));
         }
-        sqlList.add(String.format("use %s;", dbName));
         OpenMLDBCommandFacade.sqls(openMLDBInfo, dbName, sqlList);
     }
 
@@ -73,7 +63,11 @@ public class CliClient {
     }
     public void insertList(String tableName,List<List<Object>> dataList){
         String sql = SQLUtil.genInsertSQL(tableName,dataList);
-        OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+        execute(sql);
+    }
+    public void setGlobalOnline(){
+        String sql = "set @@global.execute_mode='online';";
+        execute(sql);
     }
     public Map<String,List<Long>> showTableStatus(){
         OpenMLDBResult openMLDBResult = execute("show table status;");

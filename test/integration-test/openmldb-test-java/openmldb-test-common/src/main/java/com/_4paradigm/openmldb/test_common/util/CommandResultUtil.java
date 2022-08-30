@@ -130,9 +130,9 @@ public class CommandResultUtil {
     //  27         auto_AITzyByZ    default_db      ssd            1      0                  473414           2           0                   3         NULL                                                            NULL             NULL
     //  19         auto_GlcndMiH    default_db      hdd            1      0                  515239           2           0                   3         NULL
     public static void parseResult(List<String> lines, OpenMLDBResult openMLDBResult){
-        int count = 0;
-        List<List<Object>> rows = new ArrayList<>();
         if(CollectionUtils.isNotEmpty(lines)&&lines.size()>=2) {
+            int count = 0;
+            List<List<Object>> rows = new ArrayList<>();
             List<String> columnNames = Arrays.asList(lines.get(1).split("\\s+"));
             for (int i = 3; i < lines.size() - 2; i++) {
                 count++;
@@ -140,8 +140,8 @@ public class CommandResultUtil {
                 rows.add(row);
             }
             openMLDBResult.setColumnNames(columnNames);
+            openMLDBResult.setCount(count);
+            openMLDBResult.setResult(rows);
         }
-        openMLDBResult.setCount(count);
-        openMLDBResult.setResult(rows);
     }
 }

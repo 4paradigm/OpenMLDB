@@ -46,10 +46,9 @@ public class UpgradeClusterByCLI extends ClusterTest {
         cliClient = CliClient.of(OpenMLDBGlobalVar.mainInfo,dbName);
         nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
         openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
-
+        cliClient.setGlobalOnline();
         int dataCount = 100;
-
-        cliClient.createAndUseDB(dbName);
+        cliClient.create(dbName);
         String memoryTableDDL = "create table test_memory(\n" +
                 "c1 string,\n" +
                 "c2 smallint,\n" +
