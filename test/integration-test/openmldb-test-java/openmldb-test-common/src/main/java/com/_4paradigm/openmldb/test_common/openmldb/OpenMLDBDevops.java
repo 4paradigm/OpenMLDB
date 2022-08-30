@@ -133,7 +133,7 @@ public class OpenMLDBDevops {
             modifyApiServerConf(apiServerPath, openMLDBInfo.getApiServerEndpoints().get(i-1), openMLDBInfo.getZk_cluster());
             operateApiServer(i-1,"start");
             Tool.sleep(20*1000);
-            log.info("第{}个ns升级结束",i);
+            log.info("第{}个apiserver升级结束",i);
         }
     }
     public void upgradeTaskManager(OpenMLDBDeploy openMLDBDeploy){
@@ -141,7 +141,7 @@ public class OpenMLDBDevops {
         int taskManagerNum = openMLDBInfo.getTaskManagerEndpoints().size();
         for(int i=1;i<=taskManagerNum;i++) {
             log.info("开始升级第{}个taskmanager",i);
-            operateTaskManager(i,"stop");
+            operateTaskManager(i-1,"stop");
             String taskManagerPath = basePath + "/openmldb-task_manager-"+i;
             backDirectory(taskManagerPath);
             ExecutorUtil.run("rm -rf "+taskManagerPath);
