@@ -122,9 +122,15 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 ```
 
-以下通过具体例子来描述 WINDOW UNION 的拼接窗口定义操作。对于前面所述为用户交易表 t1，我们需要定义商户流水表 t2 的副表上拼接窗口，该拼接是基于 `mid` 进行。由于 t1 和 t2 的schema不同，所以我们首先分别从 t1 和 t2 抽取相同的列，对于不存在的列，可以配置缺省值。其中，`mid` 列用于两个表的拼接，所以是必须的；其次，时间戳的列（t1 中的 `trans_time`，t2 中的 `purchase_time`）包含时序信息，在定义时间窗口时候也是必须的；其余列按照聚合函数需要，进行必要的筛选保留。
+### 示例
 
-以下 SQL 和示意图为从 t1 抽取必要列，生成 t11。
+以下通过具体例子来展示 WINDOW UNION 的定义方式。
+
+对于上文的用户交易表 t1，我们需要定义在商户流水表 t2 的副表上拼接窗口，该拼接基于 `mid` 进行。
+由于 t1 和 t2 的schema不同，所以我们首先分别从 t1 和 t2 抽取相同的列，对于在某个表中不存在的列，可以配置缺省值。
+其中，`mid` 列用于两个表的拼接，所以是必须的； 其次，作为时间戳的列（t1 中的 `trans_time`，t2 中的 `purchase_time`）包含时序信息， 在定义时间窗口时候也是必须的；其余列按照聚合函数需要，进行必要的筛选保留。
+
+以下 SQL 和示意图展示了从 t1 抽取必要列，生成 t11。
 
 ```sql
 (select id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchase_type from t1) as t11
@@ -132,10 +138,10 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 ![img](images/t1_to_t11.jpg)
 
-以下 SQL 和示意图为从 t2 抽取必要列，生成 t22。
+以下 SQL 和示意图展示了从 t2 抽取必要列，生成 t22。
 
 ```sql
-(select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
+(select 0 as uid, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
 ![img](images/t2_to_t22.jpg)
