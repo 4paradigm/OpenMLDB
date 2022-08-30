@@ -79,8 +79,12 @@ public class OpenMLDBDevops {
         String command = String.format("sh %s/openmldb-task_manager-%d/bin/start.sh %s taskmanager",basePath,taskManagerIndex+1,operator);
         ExecutorUtil.run(command);
         Tool.sleep(5*1000);
-        String checkStatus = operator.equals("stop")?"offline":"online";
-        sdkClient.checkComponentStatus(openMLDBInfo.getTaskManagerEndpoints().get(taskManagerIndex), checkStatus);
+        String taskManagerEndpoint = openMLDBInfo.getTaskManagerEndpoints().get(taskManagerIndex);
+        if(operator.equals("stop")){
+            sdkClient.checkComponentNotExist(taskManagerEndpoint);
+        }else {
+            sdkClient.checkComponentStatus(taskManagerEndpoint, "online");
+        }
     }
     public void operateZKOne(String operator){
         String command = String.format("sh %s/zookeeper-3.4.14/bin/zkServer.sh %s",basePath,operator);
@@ -145,6 +149,7 @@ public class OpenMLDBDevops {
             String taskManagerPath = basePath + "/openmldb-task_manager-"+i;
             backDirectory(taskManagerPath);
             ExecutorUtil.run("rm -rf "+taskManagerPath);
+            ExecutorUtil.run("rm -rf "+openMLDBInfo.getSparkHome());
             String ipPort = openMLDBInfo.getTaskManagerEndpoints().get(i-1);
             String[] ss = ipPort.split(":");
             String ip = ss[0];

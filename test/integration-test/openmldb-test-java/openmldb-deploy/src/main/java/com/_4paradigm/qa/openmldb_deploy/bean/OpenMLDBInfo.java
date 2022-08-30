@@ -53,6 +53,7 @@ public class OpenMLDBInfo {
     private List<String> apiServerNames = new ArrayList<>();
     private List<String> taskManagerEndpoints = new ArrayList<>();
     private String runCommand;
+    private String sparkHome;
 
     public String getRunCommand(){
         if(deployType==OpenMLDBDeployType.CLUSTER) {

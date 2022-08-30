@@ -40,6 +40,7 @@ public class OpenMLDBDeploy {
     private String version;
     private String openMLDBUrl;
     private String openMLDBDirectoryName;
+    private String sparkHome;
     private String openMLDBPath;
     private boolean useName;
     private boolean isCluster = true;
@@ -103,17 +104,17 @@ public class OpenMLDBDeploy {
         builder.taskManagerEndpoints(Lists.newArrayList());
         builder.openMLDBPath(testPath+"/openmldb-ns-1/bin/openmldb");
         builder.openMLDBDirectoryName(openMLDBDirectoryName);
-        OpenMLDBInfo fedbInfo = builder.build();
+        OpenMLDBInfo openMLDBInfo = builder.build();
         for(int i=1;i<=tablet;i++) {
             int tablet_port ;
             if(useName){
                 String tabletName = clusterName+"-tablet-"+i;
                 tablet_port = deployTablet(testPath,null, i, zk_point,tabletName);
-                fedbInfo.getTabletNames().add(tabletName);
+                openMLDBInfo.getTabletNames().add(tabletName);
             }else {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
+            openMLDBInfo.getTabletEndpoints().add(ip+":"+tablet_port);
             Tool.sleep(SLEEP_TIME);
         }
         for(int i=1;i<=ns;i++){
@@ -121,11 +122,11 @@ public class OpenMLDBDeploy {
             if(useName){
                 String nsName = clusterName+"-ns-"+i;
                 ns_port = deployNS(testPath,null, i, zk_point,nsName);
-                fedbInfo.getNsNames().add(nsName);
+                openMLDBInfo.getNsNames().add(nsName);
             }else {
                 ns_port = deployNS(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
+            openMLDBInfo.getNsEndpoints().add(ip+":"+ns_port);
             Tool.sleep(SLEEP_TIME);
         }
 
@@ -134,21 +135,22 @@ public class OpenMLDBDeploy {
             if(useName){
                 String apiserverName = clusterName+"-apiserver-"+i;
                 apiserver_port = deployApiserver(testPath,null, i, zk_point,apiserverName);
-                fedbInfo.getApiServerNames().add(apiserverName);
+                openMLDBInfo.getApiServerNames().add(apiserverName);
             }else {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
+            openMLDBInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
             Tool.sleep(SLEEP_TIME);
         }
         if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
             for (int i = 1; i <= 1; i++) {
                 int task_manager_port = deployTaskManager(testPath, ip, i, zk_point);
-                fedbInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+                openMLDBInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+                openMLDBInfo.setSparkHome(sparkHome);
             }
         }
-        log.info("openmldb-info:"+fedbInfo);
-        return fedbInfo;
+        log.info("openmldb-info:"+openMLDBInfo);
+        return openMLDBInfo;
     }
 
     public String downloadOpenMLDB(String testPath){
@@ -362,8 +364,9 @@ public class OpenMLDBDeploy {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
             String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
-            String sparkHome = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
-            String sparkPath = testPath+"/"+sparkHome;
+            String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
+            String sparkPath = testPath+"/"+sparkDirectoryName;
+            this.sparkHome = sparkPath;
             return sparkPath;
         }catch (Exception e){
             e.printStackTrace();
