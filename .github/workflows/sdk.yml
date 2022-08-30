@@ -135,7 +135,7 @@ jobs:
 
       - name: stop services
         run: |
-          cd onebox && sh stop_all.sh && cd - || exit
+          cd onebox && ./stop_all.sh && cd - || exit
           sh steps/ut_zookeeper.sh stop
 
 
