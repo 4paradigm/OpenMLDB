@@ -41,7 +41,7 @@ public class OpenMLDBPerfBenchmark {
     private String database;
     private String deployName;
     private int windowNum;
-    private int windowSize;
+    private long windowSize;
     private int joinNum;
     private int unionNum = 0; // unspport in cluster mode in 0.5.0
     private Map<String, TableSchema> tableSchema = new HashMap<>();

@@ -41,7 +41,7 @@ public class OpenMLDBLongWindowBenchmark {
     private String database;
     @Param ({"demo", "demo_long"})
     private String deployName = "demo_long";
-    private int windowSize;
+    private long windowSize;
     private int pkNum = 1;
     private Map<String, TableSchema> tableSchema = new HashMap<>();
 

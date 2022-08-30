@@ -64,7 +64,36 @@ public class Util {
         return builder.toString();
     }
 
-    public static String genScript(int windowNum, int windowSize, int unionNum, int joinNum) {
+    public static String genStreamDDL(String name, int indexNum) {
+        int stringNum = 1;
+        int doubleNum= 1;
+        int timestampNum = 1;
+        int bigintNum = 0;
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("CREATE TABLE ").append(name).append(" (");
+        builder.append("\n");
+        for (int i = 0; i < stringNum; i++) {
+            builder.append("col_s").append(i).append(" string,");
+        }
+        for (int i = 0; i < doubleNum; i++) {
+            builder.append("col_d").append(i).append(" double,");
+        }
+        for (int i = 0; i < timestampNum; i++) {
+            builder.append("col_t").append(i).append(" timestamp,");
+        }
+        for (int i = 0; i < bigintNum; i++) {
+            builder.append("col_i").append(i).append(" bigint,");
+        }
+        for (int i = 0; i < indexNum; i++) {
+            builder.append("index(key = ").append("col_s").append(i).append( ", ttl=0m, ttl_type=absolute, ts = col_t0),");
+        }
+        builder.delete(builder.length() - 1, builder.length() - 1);
+        builder.append(") OPTIONS (REPLICANUM = 1);");
+        return builder.toString();
+    }
+
+    public static String genScript(int windowNum, long windowSize, int unionNum, int joinNum) {
         StringBuilder builder = new StringBuilder();
         if (joinNum > 0) {
             builder.append("SELECT * FROM \n");
@@ -128,7 +157,26 @@ public class Util {
         return builder.toString();
     }
 
-    public static boolean putData(List<Integer> pkList, int pkNum, TableSchema tableSchema, int windowSize, SqlExecutor executor) {
+    public static String genStreamScript(String baseName, String probeName, long windowSize) {
+        StringBuilder builder = new StringBuilder();
+        int i = 0;
+        builder.append("SELECT \n");
+        builder.append("col_s0,\n");
+        builder.append("col_t0,\n");
+        builder.append("sum(col_d0) OVER w").append(i).append(" AS sum_w").append(i).append("_col_d0,\n");
+        builder.append("count(col_d0) OVER w").append(i).append(" AS count_w").append(i).append("_col_d0,\n");
+
+        builder.append(" from ").append(baseName).append("\n");
+        builder.append("window ");
+        builder.append("w").append(i).append(" as (");
+        builder.append("UNION ").append(probeName);
+        builder.append(" partition by ").append("col_s").append(i)
+                .append(" order by col_t0 rows_range between ").append(windowSize)
+                .append(" PRECEDING AND CURRENT ROW MAXSIZE ").append(windowSize).append(" INSTANCE_NOT_IN_WINDOW);");
+        return builder.toString();
+    }
+
+    public static boolean putData(List<Integer> pkList, int pkNum, TableSchema tableSchema, long windowSize, SqlExecutor executor) {
         String dbName = tableSchema.getDataBase();
         String tableName = tableSchema.getTableName();
         List<Type.DataType> schema = tableSchema.getSchema();
@@ -225,6 +273,85 @@ public class Util {
         return true;
     }
 
+    public static boolean putData(String key, long ts, double val, TableSchema tableSchema, SqlExecutor executor) {
+        String dbName = tableSchema.getDataBase();
+        String tableName = tableSchema.getTableName();
+        List<Type.DataType> schema = tableSchema.getSchema();
+        Set<Integer> index = tableSchema.getIndex();
+        Set<Integer> tsIndex = tableSchema.getTsIndex();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("insert into ").append(tableName).append(" values(");
+        List<Integer> genColIndex = new ArrayList<>();
+        for (int pos = 0; pos < schema.size(); pos++) {
+            if (pos > 0) {
+                builder.append(", ");
+            }
+            if (index.contains(pos) || tsIndex.contains(pos)) {
+                builder.append("?");
+                genColIndex.add(pos);
+                continue;
+            }
+            Type.DataType type = schema.get(pos);
+            if (type.equals(Type.DataType.kString) || type.equals(Type.DataType.kVarchar)) {
+                builder.append("'val").append(BenchmarkConfig.PK_BASE).append("'");
+            } else if (type.equals(Type.DataType.kFloat)) {
+                builder.append(1.3);
+            } else if (type.equals(Type.DataType.kDouble)) {
+                builder.append(val);
+            } else if (type.equals(Type.DataType.kBigInt) || type.equals(Type.DataType.kInt) ||
+                    type.equals(Type.DataType.kSmallInt)) {
+                builder.append(pos);
+            } else if (type.equals(Type.DataType.kTimestamp)) {
+                builder.append(BenchmarkConfig.TS_BASE);
+            } else if (type.equals(Type.DataType.kBool)) {
+                builder.append(true);
+            } else if (type.equals(Type.DataType.kDate)) {
+                builder.append("'2022-05-11'");
+            } else {
+                System.out.println("invalid type");
+            }
+
+        }
+        builder.append(");");
+        String insertSQL = builder.toString();
+        PreparedStatement state = null;
+        try {
+            state = executor.getInsertPreparedStmt(dbName, insertSQL);
+            for (int idx = 0; idx < genColIndex.size(); idx++) {
+                int pos = genColIndex.get(idx);
+                Type.DataType type = schema.get(pos);
+                if (type.equals(Type.DataType.kString) || type.equals(Type.DataType.kVarchar)) {
+                    state.setString(idx + 1, key);
+                } else if (type.equals(Type.DataType.kBigInt)) {
+                    state.setLong(idx + 1, ts);
+                } else if (type.equals(Type.DataType.kTimestamp)) {
+                    if (tsIndex.contains(pos)) {
+                        state.setTimestamp(idx + 1, new Timestamp(ts));
+                    } else {
+                        state.setTimestamp(idx + 1, new Timestamp(ts));
+                    }
+                } else if (type.equals(Type.DataType.kInt)) {
+                    state.setInt(idx + 1, (int)ts);
+                } else {
+                    System.out.println("invalid type");
+                }
+            }
+            state.execute();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (state != null) {
+                try {
+                    state.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return true;
+    }
+
     public static PreparedStatement getPreparedStatement(String deployName, int numberKey,
                                                          TableSchema tableSchema,
                                                          SqlExecutor executor) throws SQLException {
@@ -275,6 +402,56 @@ public class Util {
         return  requestPs;
     }
 
+    public static PreparedStatement getStreamPreparedStatement(String deployName, String key, long ts,
+                                                         TableSchema tableSchema,
+                                                         SqlExecutor executor) throws SQLException {
+
+        String dbName = tableSchema.getDataBase();
+        List<Type.DataType> schema = tableSchema.getSchema();
+        Set<Integer> index = tableSchema.getIndex();
+        Set<Integer> tsIndex = tableSchema.getTsIndex();
+        PreparedStatement requestPs = executor.getCallablePreparedStmt(dbName, deployName);
+        ResultSetMetaData metaData = requestPs.getMetaData();
+        if (schema.size() != metaData.getColumnCount()) {
+            return null;
+        }
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            int columnType = metaData.getColumnType(i + 1);
+            if (columnType == Types.VARCHAR) {
+                if (index.contains(i)) {
+                    requestPs.setString(i + 1, key);
+                } else {
+                    requestPs.setString(i + 1, "val_" + String.valueOf(key));
+                }
+            } else if (columnType == Types.DOUBLE) {
+                requestPs.setDouble(i + 1, 1.4d);
+            } else if (columnType == Types.FLOAT) {
+                requestPs.setFloat(i + 1, 1.3f);
+            } else if (columnType == Types.INTEGER) {
+                if (index.contains(i)) {
+                    requestPs.setInt(i + 1, (int)ts);
+                } else {
+                    requestPs.setInt(i + 1, i);
+                }
+            } else if (columnType == Types.BIGINT) {
+                if (index.contains(i)) {
+                    requestPs.setLong(i + 1, ts);
+                } else if (tsIndex.contains(i)) {
+                    requestPs.setLong(i + 1, System.currentTimeMillis());
+                } else {
+                    requestPs.setLong(i + 1, i);
+                }
+            } else if (columnType == Types.TIMESTAMP) {
+                requestPs.setTimestamp(i + 1, new Timestamp(ts));
+            } else if (columnType == Types.DATE) {
+                requestPs.setDate(i + 1, new Date(ts));
+            } else if (columnType == Types.BOOLEAN) {
+                requestPs.setBoolean(i + 1, true);
+            }
+        }
+        return  requestPs;
+    }
+
     public static Map<String, String> extractResultSet(ResultSet resultSet) {
         Map<String, String> val = new HashMap<>();
         try {
@@ -293,7 +470,7 @@ public class Util {
                 } else if (columnType == Types.BIGINT) {
                     val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
                 } else if (columnType == Types.TIMESTAMP) {
-                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1).getTime()));
                 }
             }
         } catch (Exception e) {

@@ -28,11 +28,20 @@ public class BenchmarkConfig {
 
     public static String DATABASE = "";
     public static int WINDOW_NUM = 2;
-    public static int WINDOW_SIZE = 1000;
+    public static long WINDOW_SIZE = 1000;
     public static int JOIN_NUM = 2;
     public static int PK_BASE = 1000000;
     public static long TS_BASE = 1652232079000l;
     public static String DEPLOY_NAME;
+
+    // stream benchmark related config
+    public static String STREAM_BASE_FILE;
+    public static String STREAM_PROBE_FILE;
+    public static String STREAM_BASE_KEY;
+    public static String STREAM_BASE_TS;
+    public static String STREAM_PROBE_KEY;
+    public static String STREAM_PROBE_TS;
+    public static String STREAM_PROBE_VAL;
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
@@ -50,11 +59,18 @@ public class BenchmarkConfig {
             DATABASE = prop.getProperty("DATABASE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
             WINDOW_NUM = Integer.valueOf(prop.getProperty("WINDOW_NUM"));
-            WINDOW_SIZE = Integer.valueOf(prop.getProperty("WINDOW_SIZE"));
+            WINDOW_SIZE = Long.valueOf(prop.getProperty("WINDOW_SIZE"));
             JOIN_NUM = Integer.valueOf(prop.getProperty("JOIN_NUM"));
             PK_NUM = Integer.valueOf(prop.getProperty("PK_NUM", "100000"));
             PK_MAX = Integer.valueOf(prop.getProperty("PK_MAX", "0"));
 
+            STREAM_BASE_FILE = prop.getProperty("STREAM_BASE_FILE");
+            STREAM_PROBE_FILE = prop.getProperty("STREAM_PROBE_FILE");
+            STREAM_BASE_KEY = prop.getProperty("STREAM_BASE_KEY");
+            STREAM_BASE_TS = prop.getProperty("STREAM_BASE_TS");
+            STREAM_PROBE_KEY = prop.getProperty("STREAM_PROBE_KEY");
+            STREAM_PROBE_TS = prop.getProperty("STREAM_PROBE_TS");
+            STREAM_PROBE_VAL = prop.getProperty("STREAM_PROBE_VAL");
         } catch (Exception e) {
             e.printStackTrace();
         }
