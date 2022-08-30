@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 sqlDialect: ["HybridSQL"]
 cases:
   - id: 0
@@ -775,3 +776,67 @@ cases:
           - [4, "Ta_sub"]
           - [5, "lamrb"]
           - [6, null]
+  - id: rlike_predicate_1
+    desc: rlike predicate
+    inputs:
+      - columns: ["id int", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1590115420000 ]
+          - [2, 1590115430000 ]
+          - [3, 1590115440000 ]
+          - [4, 1590115450000 ]
+          - [5, 1590115460000 ]
+          - [6, 1590115470000 ]
+      - columns: ["id int", "ts timestamp", "col2 string"]
+        indexs: ["idx:id:ts"]
+        rows:
+          - [1, 1590115420000, John]
+          - [2, 1590115430000, Mary]
+          - [3, 1590115440000, mike]
+          - [4, 1590115450000, Dan]
+          - [5, 1590115460000, Evan_W]
+          - [6, 1590115470000, M]
+    dataProvider:
+      - ["RLIKE", "NOT RLIKE"] # RLIKE / NOT RLIKE
+      - ["m[A-za-z]+", "M.ry" ] # match pattern
+    sql: |
+      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] 'd[1]';
+    expect:
+      columns: ["id int", "col2 string"]
+      order: id
+    expectProvider:
+      0:
+        0:
+          rows:
+            - [1, null]
+            - [2, null]
+            - [3, mike]
+            - [4, null]
+            - [5, null]
+            - [6, null]
+        1:
+          rows:
+            - [1, null]
+            - [2, Mary]
+            - [3, null]
+            - [4, null]
+            - [5, null]
+            - [6, null]
+      1:
+        0:
+          rows:
+            - [1, John]
+            - [2, Mary]
+            - [3, null]
+            - [4, Dan]
+            - [5, Evan_W]
+            - [6, M]
+        1:
+          rows:
+            - [1, John]
+            - [2, null]
+            - [3, mike]
+            - [4, Dan]
+            - [5, Evan_W]
+            - [6, M]

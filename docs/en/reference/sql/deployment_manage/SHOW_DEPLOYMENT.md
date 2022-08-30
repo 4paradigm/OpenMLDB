@@ -64,14 +64,14 @@ FROM
  --- ------- ---------- ------------ 
   #   Field   Type       IsConstant  
  --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
+  1   col0    Varchar   NO          
  --- ------- ---------- ------------ 
 
 # Output Schema
  --- ------- ---------- ------------ 
   #   Field   Type       IsConstant  
  --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
+  1   col0    Varchar   NO          
  --- ------- ---------- ------------ 
 
 ```

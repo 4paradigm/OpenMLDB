@@ -35,7 +35,12 @@ extensions = [
 'myst_parser',
 'sphinx_multiversion',
 'sphinx_copybutton',
+'sphinx.ext.autosectionlabel',
 ]
+
+autosectionlabel_prefix_document = True
+
+myst_heading_anchors = 6
 
 myst_enable_extensions = [
     "amsmath",
@@ -119,3 +124,4 @@ master_doc = "index"
 html_static_path = []
 
 html_logo = "about/images/openmldb_logo.png"
+

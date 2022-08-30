@@ -126,6 +126,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "LIKE";
         case kFnOpILike:
             return "ILIKE";
+        case kFnOpRLike:
+            return "RLIKE";
         case kFnOpIn:
             return "IN";
         case kFnOpBracket:
@@ -561,6 +563,9 @@ class ExprNode : public SqlNode {
                                     const TypeNode* high, const TypeNode** output_type);
 
     static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                 const TypeNode** output);
+
+    static Status RlikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
                                  const TypeNode** output);
 
  private:

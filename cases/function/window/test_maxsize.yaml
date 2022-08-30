@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   -
     id: 0
@@ -140,6 +141,7 @@ cases:
   -
     id: 6
     desc: 纯历史窗口-maxsize
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -164,6 +166,7 @@ cases:
   -
     id: 7
     desc: 没有数据进入maxsize的窗口
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
