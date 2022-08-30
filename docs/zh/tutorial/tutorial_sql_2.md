@@ -53,7 +53,6 @@ OpenMLDB 目前支持`LAST JOIN`来进行类似数据库的 join 操作。LAST J
 那么，我们可以做这样的join操作：
 
 ```sql
--- des c: 基于 ORDER BY 的有序 LAST JOIN 拼接
 SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
 ```
 
@@ -72,7 +71,7 @@ OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了
 
 ## 3.1 步骤一： 定义副表拼接窗口
 
-主表的每一个样本行都可以从副表中按某列拼接多行数据，并允许定义拼接数据的时间区间或者条数区间。我们通过特殊的窗口语法 WINDOW UNION 来定义副表拼接条件和区间范围。为了方便理解，我们将这种窗口称之为**副表拼接窗口**。
+主表的每一个样本行都可以从副表中按某列拼接多行数据，并允许定义拼接数据的时间区间或者条数区间。我们通过特殊的窗口语法 WINDOW UNION 来定义副表拼接条件和区间范围。为了便于理解，我们将这种窗口称之为**副表拼接窗口**。
 
 副表拼接窗口的语法定义为：
 
@@ -80,47 +79,48 @@ OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了
 window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
 ```
 
-其中，最基本的不可或缺的语法元素包括：
+其中，不可或缺的语法元素包括：
 
 - `UNION other_table`： `other_table` 是指进行 WINDOW UNION 的副表。 主表和副表需要保持schema一致。大部分情况下，主表和副表的schema都是不同的。因此，我们可以通过对主表和副表进行列筛选和默认列配置来保证参与窗口计算的主表和副表schema一致。列筛选还可以去掉无用列，只在关键列上做 WINDOW UNION 和聚合。
 
 - `PARTITION BY key_col`: 表示按列 `key_col` 从副表拼接匹配数据。
 
-- `ORDER BY order_col`: 表示副表拼接数据集按照`order_col`列进行排序
+- `ORDER BY order_col`: 表示副表拼接数据集按照`order_col`列进行排序。
 
 - `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: 表示副表拼接窗口的时间区间
 
-- - `StartFrameBound`表示该窗口的上界。
+  - `StartFrameBound`表示该窗口的上界。
 
-  - - `UNBOUNDED PRECEDING`: 无上界。
-    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`30d preceding`表示窗口上界为当前行的时间-30天。
-
-  - `EndFrameBound`表示该时间窗口的下界。
-
-  - - `CURRENT ROW`： 当前行
-    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间-1天。
-
-- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: 表示副表拼接窗口的时间区间
-
-- - `StartFrameBound`表示该窗口的上界。
-
-  - - `UNBOUNDED PRECEDING`: 无上界。
-    - `number PRECEDING`: 如果是条数区间，可以定义时间条数。如，`100 PRECEDING`表示窗口上界为的当前行的前100行。
+    - `UNBOUNDED PRECEDING`: 无上界。
+    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`30d preceding`表示窗口上界为当前行的时间的前30天。
 
   - `EndFrameBound`表示该时间窗口的下界。
 
-  - - `CURRENT ROW`： 当前行
-    - `number PRECEDING`: 如果是条数窗口，可以定义时间条数。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
+    - `CURRENT ROW`： 当前行
+    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间的前1天。
 
+- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: 表示副表拼接窗口的条数区间
+
+  - `StartFrameBound`表示该窗口的上界。
+
+    - `UNBOUNDED PRECEDING`: 无上界。
+    - `number PRECEDING`: 如果是条数区间，可以定义条数。如，`100 PRECEDING`表示窗口上界为的当前行的前100行。
+
+  - `EndFrameBound`表示该时间窗口的下界。
+
+    - `CURRENT ROW`： 当前行
+    - `number PRECEDING`: 如果是条数窗口，可以定义条数。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
+    
+
+```{note}
 - 配置窗口区间界时，请注意:
-
-- - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。
+  - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界的条数必须<=上界条数
-
 - `INSTANCE_NOT_IN_WINDOW`: 标记为副表拼接窗口。主表除了当前行以外，其他数据不进入窗口。
+- 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../reference/sql/dql/WINDOW_CLAUSE.md)。
 
-更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](https://link.zhihu.com/?target=http%3A//docs-cn.openmldb.ai/2620896)。
+```
 
 以下通过具体例子来描述 WINDOW UNION 的拼接窗口定义操作。对于前面所述为用户交易表 t1，我们需要定义商户流水表 t2 的副表上拼接窗口，该拼接是基于 `mid` 进行。由于 t1 和 t2 的schema不同，所以我们首先分别从 t1 和 t2 抽取相同的列，对于不存在的列，可以配置缺省值。其中，`mid` 列用于两个表的拼接，所以是必须的；其次，时间戳的列（t1 中的 `trans_time`，t2 中的 `purchase_time`）包含时序信息，在定义时间窗口时候也是必须的；其余列按照聚合函数需要，进行必要的筛选保留。
 
