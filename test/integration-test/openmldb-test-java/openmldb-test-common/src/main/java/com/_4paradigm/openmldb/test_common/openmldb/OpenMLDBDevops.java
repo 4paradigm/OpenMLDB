@@ -189,9 +189,10 @@ public class OpenMLDBDevops {
             path = path.substring(0,path.length()-1);
         }
         String directoryName = path.substring(path.lastIndexOf("/")+1);
+        String parentName = path.substring(0,path.lastIndexOf("/"));
         String command = "cp -rf "+path +" "+path+"-back";
         ExecutorUtil.run(command);
-        command = "ls "+path+" | grep "+directoryName+"-back";
+        command = "ls "+parentName+" | grep "+directoryName+"-back";
         List<String> result = ExecutorUtil.run(command);
         Assert.assertEquals(result.get(0),directoryName+"-back");
     }
