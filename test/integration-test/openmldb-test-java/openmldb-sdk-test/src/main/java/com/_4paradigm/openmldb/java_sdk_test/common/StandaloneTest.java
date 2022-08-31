@@ -48,17 +48,21 @@ public class StandaloneTest extends BaseTest {
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployStandalone();
         }else{
-            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/wangkaidong/fedb-auto-test/standalone")
-                    .openMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
-                    .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30013"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30014"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"))
-                    .host("172.24.4.55")
-                    .port(30013)
-                    .build();
+            OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+            openMLDBInfo.setDeployType(OpenMLDBDeployType.STANDALONE);
+            openMLDBInfo.setHost("172.24.4.55");
+            openMLDBInfo.setPort(30013);
+            openMLDBInfo.setNsNum(1);
+            openMLDBInfo.setTabletNum(1);
+            openMLDBInfo.setBasePath("/home/wangkaidong/fedb-auto-test/standalone");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_root_path("/openmldb");
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30013"));
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30014"));
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"));
+            openMLDBInfo.setOpenMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb");
+
+            OpenMLDBGlobalVar.mainInfo = openMLDBInfo;
         }
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {

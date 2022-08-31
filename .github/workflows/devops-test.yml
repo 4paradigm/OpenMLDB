@@ -43,6 +43,58 @@ jobs:
           check_name: "node-failure-test-cluster Report"
           comment_title: "node-failure-test-cluster Report"
 
+  node-failure-test-single:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'node_failure' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-node-failure-test.sh -c test_single.xml -d single
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
+          check_name: "node-failure-test-cluster Report"
+          comment_title: "node-failure-test-cluster Report"
+
+  node-expansion-test-cluster:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'node_expansion' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-node-failure-test.sh -c test_node_expansion.xml -d cluster
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
+          check_name: "node-failure-test-cluster Report"
+          comment_title: "node-failure-test-cluster Report"
+
 #  upgrade-test-cluster:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'upgrade' }}
 #    runs-on: ubuntu-latest

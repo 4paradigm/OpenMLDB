@@ -16,6 +16,7 @@
 package com._4paradigm.openmldb.http_test.common;
 
 
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -43,17 +44,21 @@ public class StandaloneTest extends BaseTest{
             fedbDeploy.setOpenMLDBPath(fedbPath);
             RestfulGlobalVar.mainInfo = fedbDeploy.deployStandalone();
         }else{
-            RestfulGlobalVar.mainInfo = OpenMLDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
-                    .openMLDBPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
-                    .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10013"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10014"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10015"))
-                    .host("172.24.4.55")
-                    .port(10018)
-                    .build();
+            OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+            openMLDBInfo.setDeployType(OpenMLDBDeployType.STANDALONE);
+            openMLDBInfo.setHost("172.24.4.55");
+            openMLDBInfo.setPort(30013);
+            openMLDBInfo.setNsNum(1);
+            openMLDBInfo.setTabletNum(1);
+            openMLDBInfo.setBasePath("/home/wangkaidong/fedb-auto-test/standalone");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_root_path("/openmldb");
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30013"));
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30014"));
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"));
+            openMLDBInfo.setOpenMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb");
+
+            RestfulGlobalVar.mainInfo = openMLDBInfo;
         }
     }
 }
