@@ -13,7 +13,7 @@ SHOW COMPONENTS;
 | Role         | It indicates the role of the component, which is the same as the `--role` flag in configuration files. <br/> There are four types of role: `tablet`, `nameserver`, `taskmanager` and `apiserver`. |
 | Connect_time | It shows the connecting momment of the component by timestamp in milliseconds.                                                                                                                    |
 | Status       | It shows the status of the component. There are three kinds of status: `online`, `offline` and `NULL`.                                                                                            |
-| Ns_role      | It shows the role of the Namserver: `master` or `standby`.                                                                                                                                        |
+| Ns_role      | It shows the role of the Namserver: `master` or `standby`. For other component role, Ns_role is `NULL`.                                                                                           |
 
 
 ```{note}
