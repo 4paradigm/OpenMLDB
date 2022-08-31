@@ -26,7 +26,6 @@
 
 #include "base/glog_wapper.h"
 #include "codec/schema_codec.h"
-#include "nameserver/system_table.h"
 #include "proto/name_server.pb.h"
 
 using ::openmldb::codec::SchemaCodec;

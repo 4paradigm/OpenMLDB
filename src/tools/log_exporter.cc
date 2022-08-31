@@ -48,7 +48,7 @@ using ::openmldb::log::Status;
 namespace openmldb {
 namespace tools {
 
-void Exporter::ReadManifest() {
+void LogExporter::ReadManifest() {
     std::string manifest_path = table_dir_path_ + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
     if (::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest)) {
@@ -61,13 +61,12 @@ void Exporter::ReadManifest() {
     PDLOG(INFO, "Snapshot's offset: %lu, path: %s.", offset_, snapshot_path_.c_str());
 }
 
-void Exporter::ExportTable() {
+void LogExporter::ExportTable() {
     std::vector<std::string> file_path;
     // Add all binlog files to file_path lists
-    struct dirent *ptr;
-    DIR *dir;
+    struct dirent* ptr;
     std::string log_dir = table_dir_path_ + "/binlog/";
-    dir = opendir(log_dir.c_str());
+    DIR* dir = opendir(log_dir.c_str());
     while ((ptr = readdir(dir)) != NULL) {
         if (ptr->d_name[0] == '.')
             continue;
@@ -77,7 +76,7 @@ void Exporter::ExportTable() {
     if (snapshot_path_.length()) {
         ReadSnapshot();
     }
-
+    (void) closedir(dir);
     // Sorts binlog files and performs binary search
     std::sort(file_path.begin(), file_path.end());
     int left = 0, right = file_path.size() - 1;
@@ -101,7 +100,7 @@ void Exporter::ExportTable() {
     }
 }
 
-uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
+uint64_t LogExporter::GetLogStartOffset(std::string &log_path) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         PDLOG(ERROR, "fopen failed: %s", log_path.c_str());
@@ -129,7 +128,7 @@ uint64_t Exporter::GetLogStartOffset(std::string &log_path) {
     return first_entry.log_index();
 }
 
-void Exporter::ReadLog(const std::string &log_path) {
+void LogExporter::ReadLog(const std::string &log_path) {
     FILE* fd_r = fopen(log_path.c_str(), "rb");
     if (fd_r == NULL) {
         PDLOG(ERROR, "fopen failed: %s", log_path.c_str());
@@ -160,8 +159,7 @@ void Exporter::ReadLog(const std::string &log_path) {
         if (entry.dimensions_size() != 0 && entry.log_index() > offset_) {
             for (int i = 0; i < entry.dimensions_size(); i++) {
                 if (entry.dimensions(i).idx() == 0) {
-                    std::string row;
-                    row = entry.value();
+                    std::string row = entry.value();
                     view.Reset(reinterpret_cast<int8_t*>(&(row[0])), row.size());
                     WriteToFile(view);
                     success_cnt++;
@@ -174,7 +172,7 @@ void Exporter::ReadLog(const std::string &log_path) {
     offset_ += success_cnt;
 }
 
-void Exporter::ReadSnapshot() {
+void LogExporter::ReadSnapshot() {
     FILE* fd_r = fopen(snapshot_path_.c_str(), "rb");
     if (fd_r == NULL) {
         PDLOG(ERROR, "fopen failed: %s", snapshot_path_.c_str());
@@ -217,16 +215,18 @@ void Exporter::ReadSnapshot() {
     } while (status.ok());
 }
 
-void Exporter::WriteToFile(::openmldb::codec::RowView& view) {
+void LogExporter::WriteToFile(::openmldb::codec::RowView& view) {
     // Gets the values for each column, then writes the row to the csv file.
-    for (int i = 0; i< schema_.size() - 1; ++i) {
+    for (int i = 0; i < schema_.size(); ++i) {
         std::string col;
         view.GetStrValue(i, &col);
-        table_cout_ << col << FLAGS_delimiter;
+        table_cout_ << col;
+        if (i < schema_.size() - 1) {
+            table_cout_ << FLAGS_delimiter;
+        } else {
+            table_cout_ << "\n";
+        }
     }
-    std::string col;
-    view.GetStrValue(schema_.size() - 1, &col);
-    table_cout_ << col << "\n";
 }
 
 }  // namespace tools

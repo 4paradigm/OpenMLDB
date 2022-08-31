@@ -33,13 +33,13 @@ using ::openmldb::codec::RowView;
 namespace openmldb {
 namespace tools {
 
-class Exporter {
+class LogExporter {
  public:
-    explicit Exporter(const std::string& file_path, std::ofstream& table_cout) : table_dir_path_(file_path),
+    explicit LogExporter(const std::string& file_path, std::ofstream& table_cout) : table_dir_path_(file_path),
                                                                                  table_cout_(table_cout),
                                                                                  offset_(0) {}
 
-    ~Exporter() {}
+    ~LogExporter() {}
 
     void ExportTable();
 

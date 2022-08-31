@@ -33,6 +33,8 @@
 
 DEFINE_string(db_name, "", "database name");
 DEFINE_string(table_name, "", "table name");
+DEFINE_string(config_path, "", "the path of the config file");
+DECLARE_string(delimiter);
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 
@@ -68,25 +70,27 @@ void ReadZKFromYaml(const std::string& yaml_path, std::string* zk_cluster, std::
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_db_name.empty() || FLAGS_table_name.empty()) {
-        std::cout << "Error. db_name or table_name not set." << std::endl;
+        PDLOG(ERROR, "db_name or table_name not set");
+        return -1;
+    }
+    if (FLAGS_config_path.empty()) {
+        PDLOG(ERROR, "config_path not set");
         return -1;
     }
     std::unordered_map<std::string, std::string> tablet_map;
-    std::string mode = ReadConfigYaml("./conf.yaml", &tablet_map);
+    std::string mode = ReadConfigYaml(FLAGS_config_path, &tablet_map);
     Schema table_schema;
     std::string tmp_path;
     ::openmldb::tools::TablemetaReader *tablemeta_reader;
     if (mode == "standalone") {
-        std::cout << "Data Exporter starts in stand-alone mode." << std::endl;
         std::string host;
         int port;
-        ReadHostAndPortFromYaml("./conf.yaml", &host, &port);
+        ReadHostAndPortFromYaml(FLAGS_config_path, &host, &port);
         tablemeta_reader = new ::openmldb::tools::StandaloneTablemetaReader(FLAGS_db_name, FLAGS_table_name,
                                                                 tablet_map, host, port);
     } else {
-        std::cout << "Data Exporter starts in cluster mode." << std::endl;
         std::string zk_cluster, zk_root_path;
-        ReadZKFromYaml("./conf.yaml", &zk_cluster, &zk_root_path);
+        ReadZKFromYaml(FLAGS_config_path, &zk_cluster, &zk_root_path);
         ::openmldb::sdk::ClusterOptions cluster_options;
         cluster_options.zk_cluster = zk_cluster;
         cluster_options.zk_path = zk_root_path;
@@ -113,22 +117,28 @@ int main(int argc, char* argv[]) {
     while ((ptr = readdir(dir)) != NULL) {
         if (ptr->d_name[0] == '.' || !isdigit(ptr->d_name[0]))
             continue;
-        std::string table = tmp_path + "/" + ptr->d_name;
-        int table_num = ptr->d_name[0] - '0';
+        std::string table_name = ptr->d_name;
+        std::string table_path = tmp_path + "/" + table_name;
+
+        int table_num = std::stoi(table_name.substr(0, table_name.find("_")));
         if  (filepath_map.find(table_num) == filepath_map.end()) {
             filepath_map[table_num] = std::vector<std::string>();
         }
-        filepath_map[table_num].emplace_back(table);
+        filepath_map[table_num].emplace_back(table_path);
     }
     for (const auto& filepath_pair : filepath_map) {
         PDLOG(INFO, "Starting export table %d.", filepath_pair.first);
         std::ofstream table_cout(std::to_string(filepath_pair.first) + "_result.csv");
-        for (int i = 0; i < table_schema.size() - 1; ++i) {
-            table_cout << table_schema.Get(i).name() << ",";
+        for (int i = 0; i < table_schema.size(); ++i) {
+            table_cout << table_schema.Get(i).name();
+            if (i < table_schema.size() - 1) {
+                table_cout << FLAGS_delimiter;
+            } else {
+                table_cout << "\n";
+            }
         }
-        table_cout << table_schema.Get(table_schema.size() - 1).name() << "\n";
         for (const auto& table : filepath_pair.second) {
-            ::openmldb::tools::Exporter exporter = ::openmldb::tools::Exporter(table, table_cout);
+            ::openmldb::tools::LogExporter exporter = ::openmldb::tools::LogExporter(table, table_cout);
             exporter.SetSchema(table_schema);
             exporter.ReadManifest();
             exporter.ExportTable();
