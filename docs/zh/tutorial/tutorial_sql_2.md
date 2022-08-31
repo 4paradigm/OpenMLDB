@@ -50,7 +50,7 @@ OpenMLDB 目前支持`LAST JOIN`来进行类似数据库的 join 操作。LAST J
 (id int, col1 string, std_ts timestamp)
 ```
 
-那么，我们可以做这样的join操作：
+那么，可以进行如下JOIN操作：
 
 ```sql
 SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
@@ -141,16 +141,17 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 以下 SQL 和示意图展示了从 t2 抽取必要列，生成 t22。
 
 ```sql
-(select 0 as uid, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
+(select 0 as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
 ![img](images/t2_to_t22.jpg)
 
-可以看到，分别完成抽取以后生成的表格 t11 和 t22，已经具有了相同的 schema，两者可以进行逻辑上的 UNION 操作。但是在 OpenMLDB 中，WINDOW UNION 并不是真的为了进行传统数据库中的 UNION 操作，而是为了对于 t11 中的每一个样本行，去构建副表 t22 上的时间窗口。我们按照商户ID `mid` ，对 t11 中的每一行数据，从 t22 中获取对应的拼接数据，然后按消费时间(`purchase_time`) 排序，构造副表拼接窗口。比如我们定义一个 `w_t2_10d` 的窗口：不包含主表除了当前行以外的数据行，加上副表通过 `mid` 拼接上的十天以内的数据，示意图如下所示。可以看到，黄色和蓝色阴影部分，分别定义了样本 6 和样本 9 的副表拼接窗口。
+可以看到，抽取以后生成的表格 t11 和 t22，已经具有了相同的 schema，两者可以进行逻辑上的 UNION 操作。但是在 OpenMLDB 中，WINDOW UNION 并不是真的为了进行传统数据库中的 UNION 操作，而是为了对于 t11 中的每一个样本行，去构建副表 t22 上的时间窗口。
+我们按照商户ID `mid` ，对 t11 中的每一行数据，从 t22 中获取对应的拼接数据，然后按消费时间(`purchase_time`) 排序，构造副表拼接窗口。 比如定义一个 `w_t2_10d` 的窗口：不包含主表除了当前行以外的数据行，加上副表通过 `mid` 拼接上的十天以内的数据，示意图如下所示。 可以看到，黄色和蓝色阴影部分，分别定义了样本 6 和样本 9 的副表拼接窗口。
 
 ![img](images/t11_t22.jpg)
 
-该窗口定义过程的 SQL 脚本如下所示（注意，这还不是一个完整的 SQL）：
+该窗口定义的 SQL 脚本如下所示（注意，这还不是一个完整的 SQL）：
 
 ```sql
 (SELECT id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchage_type FROM t1) as t11
@@ -162,7 +163,7 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 3.2 步骤二：构建副表多行聚合特征
 
-对于副表拼接窗口进行多行聚合函数加工，构造多行副表聚合特征，使得最后生成的行数和主表相同。以简单聚合函数为例，我们可以构造样本的副表拼接特征：商户的最近10天的零售总额`w10d_merchant_purchase_amt_sum`，商户的最近10天消费总次数`w10d_merchant_purchase_count`。以下 SQL 基于上面 3.1 中所定义的副表拼接窗口，构建多行聚合特征。
+对于副表拼接窗口进行多行聚合函数加工，构造多行副表聚合特征，使得最后生成的行数和主表相同。以简单聚合函数为例，我们可以构造样本的副表拼接特征：商户的最近10天的零售总额`w10d_merchant_purchase_amt_sum`，商户的最近10天消费总次数`w10d_merchant_purchase_count`。以下 SQL 基于 [3.1](#31-步骤一-定义副表拼接窗口) 中所定义的副表拼接窗口，构建多行聚合特征。
 
 ```sql
 SELECT 
@@ -181,7 +182,7 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 4. 特征组构建
 
-一般而言，一个完整特征抽取脚本将抽取几十、上百，甚至几百个特征。我们可以根据特征类型、特征关联的表和窗口将这些特征分成若干组，然后将每一组特征放置到不同的SQL子查询里；最后将这些子查询按主表ID拼接在一起。本节，我们将承接前面的例子，演示如果将各种特征拼接在一起形成一个特征大宽表。
+一般而言，一个完整特征抽取脚本将抽取几十、上百，甚至几百个特征。我们可以根据特征类型、特征关联的表和窗口将这些特征分成若干组，然后将每一组特征放置到不同的SQL子查询里； 最后将这些子查询按主表ID拼接在一起。本节，我们将接着前面的例子，演示如何将各种特征拼接在一起形成一个特征大宽表。
 
 首先，我们将特征分成3组：
 
