@@ -35,7 +35,7 @@ namespace openmldb::sdk {
 
 using hybridse::plan::PlanAPI;
 
-bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
+bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
                                       ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                       bool is_cluster_mode, hybridse::base::Status* status) {
     if (create_node == nullptr || table == nullptr || status == nullptr) return false;
@@ -71,12 +71,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     break;
                 }
                 case hybridse::node::kDistributions: {
-                    auto d_list = dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
-                    if (d_list != nullptr) {
-                        for (auto meta_ptr : d_list->GetList()) {
-                            distribution_list.push_back(meta_ptr);
-                        }
-                    }
+                    distribution_list = dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
                     break;
                 }
                 default: {
@@ -168,7 +163,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
                 if (column_index->GetKey().empty()) {
-                    if (allow_empty_col_index && !has_generate_index && !column_index->GetTs().empty()) {
+                    if (!has_generate_index && !column_index->GetTs().empty()) {
                         const auto& ts_name = column_index->GetTs();
                         for (const auto& col : table->column_desc()) {
                             if (col.name() != ts_name && col.data_type() != openmldb::type::DataType::kFloat &&
@@ -206,44 +201,50 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         }
     }
     if (!distribution_list.empty()) {
-        if (replica_num != static_cast<int32_t>(distribution_list.size())) {
-            status->msg = "CREATE common: replica_num should equal to partition meta size";
-            status->code = hybridse::common::kUnsupportSql;
-            return false;
-        }
-        ::openmldb::nameserver::TablePartition* table_partition = table->add_table_partition();
-        table_partition->set_pid(0);
-        std::vector<std::string> ep_vec;
-        for (auto partition_meta : distribution_list) {
-            switch (partition_meta->GetType()) {
-                case hybridse::node::kPartitionMeta: {
-                    auto* p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
-                    const std::string& ep = p_meta_node->GetEndpoint();
-                    if (std::find(ep_vec.begin(), ep_vec.end(), ep) != ep_vec.end()) {
-                        status->msg = "CREATE common: partition meta endpoint duplicate";
+        table->set_partition_num(distribution_list.size());
+        for (size_t idx = 0; idx < distribution_list.size(); idx++) {
+            auto table_partition = table->add_table_partition();
+            table_partition->set_pid(idx);
+            auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.at(idx));
+            if (idx == 0) {
+                table->set_replica_num(partition_mata_nodes->GetSize());
+            } else if (static_cast<int>(table->replica_num()) != partition_mata_nodes->GetSize()) {
+                status->msg = "CREATE common: replica num is inconsistency";
+                status->code = hybridse::common::kUnsupportSql;
+                return false;
+            }
+            std::set<std::string> endpoint_set;
+            for (auto partition_meta : partition_mata_nodes->GetList()) {
+                switch (partition_meta->GetType()) {
+                    case hybridse::node::kPartitionMeta: {
+                        auto p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
+                        const std::string& ep = p_meta_node->GetEndpoint();
+                        if (endpoint_set.count(ep) > 0) {
+                            status->msg = "CREATE common: partition meta endpoint duplicate";
+                            status->code = hybridse::common::kUnsupportSql;
+                            return false;
+                        }
+                        endpoint_set.insert(ep);
+                        auto meta = table_partition->add_partition_meta();
+                        meta->set_endpoint(ep);
+                        if (p_meta_node->GetRoleType() == hybridse::node::kLeader) {
+                            meta->set_is_leader(true);
+                        } else if (p_meta_node->GetRoleType() == hybridse::node::kFollower) {
+                            meta->set_is_leader(false);
+                        } else {
+                            status->msg = "CREATE common: role_type " +
+                                          hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
+                            status->code = hybridse::common::kUnsupportSql;
+                            return false;
+                        }
+                        break;
+                    }
+                    default: {
+                        status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType()) +
+                                      " when CREATE TABLE";
                         status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
-                    ep_vec.push_back(ep);
-                    ::openmldb::nameserver::PartitionMeta* meta = table_partition->add_partition_meta();
-                    meta->set_endpoint(ep);
-                    if (p_meta_node->GetRoleType() == hybridse::node::kLeader) {
-                        meta->set_is_leader(true);
-                    } else if (p_meta_node->GetRoleType() == hybridse::node::kFollower) {
-                        meta->set_is_leader(false);
-                    } else {
-                        status->msg = "CREATE common: role_type " +
-                                      hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
-                        status->code = hybridse::common::kUnsupportSql;
-                        return false;
-                    }
-                    break;
-                }
-                default: {
-                    status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType()) +
-                                  " when CREATE TABLE 2";
-                    status->code = hybridse::common::kUnsupportSql;
-                    return false;
                 }
             }
         }
