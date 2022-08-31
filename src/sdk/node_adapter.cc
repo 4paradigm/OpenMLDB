@@ -71,7 +71,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     break;
                 }
                 case hybridse::node::kDistributions: {
-                    distribution_list = dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
+                    distribution_list =
+                        dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
                     break;
                 }
                 default: {
@@ -240,8 +241,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         break;
                     }
                     default: {
-                        status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType()) +
-                                      " when CREATE TABLE";
+                        status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType())
+                                        + " when CREATE TABLE";
                         status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
