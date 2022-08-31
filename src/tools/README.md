@@ -47,8 +47,3 @@ An example of the config file:
     - 
         endpoint: 172.17.0.2:10922
         path: /work/openmldb
-    taskmanager:
-    - 
-        endpoint: 172.17.0.2:9902
-        path: /work/tablet2
-        spark_master: local
