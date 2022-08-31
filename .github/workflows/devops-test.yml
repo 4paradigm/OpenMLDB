@@ -24,7 +24,7 @@ on:
         required: false
         default: '0.4.0'
       EXEC_TEST_TYPE:
-        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
+        description: 'Which tests need to be executed? The options are all, upgrade, node_failure, node_expansion'
         required: true
         default: 'all'
 

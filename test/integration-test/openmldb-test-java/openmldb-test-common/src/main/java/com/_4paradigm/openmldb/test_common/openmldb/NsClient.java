@@ -31,7 +31,7 @@ public class NsClient {
     }
     public String genNsCommand(String openMLDBPath,String zkCluster,String zkRootPath,String dbName,String command){
         String dbStr = StringUtils.isNotEmpty(dbName)?"--database="+dbName:"";
-        String line = "%s --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false %s --cmd='%s'";
+        String line = "%s --zk_session_timeout=10000 --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false %s --cmd='%s'";
         line = String.format(line,openMLDBPath,zkCluster,zkRootPath,dbStr,command);
         log.info("ns command:"+line);
         return line;
