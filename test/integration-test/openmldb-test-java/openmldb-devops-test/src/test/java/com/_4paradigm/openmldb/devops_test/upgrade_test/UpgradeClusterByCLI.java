@@ -131,9 +131,17 @@ public class UpgradeClusterByCLI extends ClusterTest {
         sdkClient = SDKClient.of(executor);
         sdkClient.useDB(dbName);
         if(upgradeVersion.compareTo("0.6.0")>=0) {
-            CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+            if(version.compareTo("0.5.0")>=0) {
+                CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName, ssdTableName, hddTableName), 100, 10);
+            }else{
+                CheckUtil.addDataCheckByOffset(sdkClient, nsClient, dbName, Lists.newArrayList(memoryTableName), 100, 10);
+            }
         }else{
-            CheckUtil.addDataCheckByCount(sdkClient, Lists.newArrayList(ssdTableName, hddTableName), 100, 10);
+            if(version.compareTo("0.5.0")>=0) {
+                CheckUtil.addDataCheckByCount(sdkClient, Lists.newArrayList(memoryTableName, ssdTableName, hddTableName), 100, 10);
+            }else{
+                CheckUtil.addDataCheckByCount(sdkClient, Lists.newArrayList(memoryTableName), 100, 10);
+            }
         }
     }
 

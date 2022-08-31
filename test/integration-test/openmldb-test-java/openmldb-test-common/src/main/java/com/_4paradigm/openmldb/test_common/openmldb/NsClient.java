@@ -1,5 +1,6 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.command.CommandUtil;
 import com._4paradigm.openmldb.test_common.util.NsResultUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
@@ -75,6 +76,23 @@ public class NsClient {
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         List<String> lines = runNs(dbName,command);
         return lines;
+    }
+    public long getTableRowCount(String dbName,String tableName){
+        List<String> lines = showTableHaveTable(dbName,tableName);
+        long count = 0;
+        for(int i=2;i<lines.size();i++) {
+            String[] infos = lines.get(i).split("\\s+");
+            String role = infos[4];
+            long offset = 0;
+            String offsetStr = infos[7].trim();
+            if (!offsetStr.equals("-") && !offsetStr.equals("")) {
+                offset = Long.parseLong(offsetStr);
+            }
+            if (role.equals("leader")) {
+                count += offset;
+            }
+        }
+        return count;
     }
 
     public void checkTableIsAlive(String dbName,String tableName){

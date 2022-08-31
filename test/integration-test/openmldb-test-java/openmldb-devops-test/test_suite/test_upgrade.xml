@@ -3,7 +3,7 @@
 <suite name="test_upgrade" parallel="false" thread-count="2">
     <test name="openmldb-upgrade-test">
         <parameter name="env" value="cluster"/>
-        <parameter name="version" value="0.5.0"/>
+        <parameter name="version" value="0.5.3"/>
         <parameter name="upgradeVersion" value="0.6.0"/>
         <classes>
             <class name="com._4paradigm.openmldb.devops_test.upgrade_test.UpgradeClusterByCLI">
