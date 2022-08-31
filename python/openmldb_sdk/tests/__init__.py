@@ -13,9 +13,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-OpenMLDB address used in test
-"""
-
-OpenMLDB_ZK_CLUSTER = "127.0.0.1:6181"
-OpenMLDB_ZK_PATH = "/onebox"

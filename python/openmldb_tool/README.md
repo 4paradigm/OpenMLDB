@@ -1,4 +1,7 @@
 # Diag Tool
+
+In `diagnostic_tool/`:
+
 main: diagnose.py
 
 ssh/scp by connections.py
@@ -6,6 +9,7 @@ ssh/scp by connections.py
 read distribution yaml by dist_conf.py
 
 ## Collector
+
 collector.py collects config, log and version
 
 TODO: `<cluster-name>-conf` is better than custom dest name?
@@ -54,4 +58,5 @@ find spark home from remote taskmanager config file.
 ## analysis
 
 log_analysis.py read logs from local path `<dest>`. 
+
 NOTE: if diag local cluster/standalone, directory structure is different.

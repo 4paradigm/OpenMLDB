@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import os
-import case_conf
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 import time
 
 # fmt:off
@@ -30,8 +30,7 @@ import pytest
 
 
 def test_sdk_smoke():
-    options = sdk_module.OpenMLDBClusterSdkOptions(
-        case_conf.OpenMLDB_ZK_CLUSTER, case_conf.OpenMLDB_ZK_PATH)
+    options = sdk_module.OpenMLDBClusterSdkOptions(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH)
     sdk = sdk_module.OpenMLDBSdk(options, True)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns() % 100000)

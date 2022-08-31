@@ -19,7 +19,7 @@ import openmldb
 import pytest
 import logging
 
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 

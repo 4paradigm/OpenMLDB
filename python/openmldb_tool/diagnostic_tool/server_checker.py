@@ -21,17 +21,21 @@ import openmldb.dbapi
 log = logging.getLogger(__name__)
 
 class ServerChecker:
-    def __init__(self, conf_dict):
+    def __init__(self, conf_dict, print_sdk_log):
         self.conf_dict = conf_dict
         self.db_name = '__test_db_xxx_aaa_diagnostic_tool__'
         self.table_name = '__test_table_xxx_aaa_diagnostic_tool__'
+        if print_sdk_log:
+            zkLogLevel=None # None means default, zk INFO level
+        else:
+            zkLogLevel=0
         if conf_dict['mode'] == 'cluster':
             zk_cluster = conf_dict['zookeeper']['zk_cluster']
             zk_root_path = conf_dict['zookeeper']['zk_root_path']
-            self.db = openmldb.dbapi.connect(self.db_name, zk_cluster, zk_root_path)
+            self.db = openmldb.dbapi.connect(self.db_name, zk_cluster, zk_root_path, zkLogLevel=zkLogLevel)
         else:
             host, port = conf_dict['nameserver'][0]['endpoint'].split(":")
-            self.db = openmldb.dbapi.connect(self.db_name, None, None, host, int(port))
+            self.db = openmldb.dbapi.connect(self.db_name, None, None, host, int(port), zkLogLevel=zkLogLevel)
         self.cursor = self.db.cursor()
 
     def parse_component(self, component_list):
