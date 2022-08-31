@@ -20,7 +20,7 @@ public class TestCluster extends ClusterTest {
     private OpenMLDBDevops openMLDBDevops;
     @BeforeClass
     public void beforeClass(){
-        dbName = "test_devops2";
+        dbName = "test_devops";
         sdkClient = SDKClient.of(executor);
         nsClient = NsClient.of(OpenMLDBGlobalVar.mainInfo);
         openMLDBDevops = OpenMLDBDevops.of(OpenMLDBGlobalVar.mainInfo,dbName);
