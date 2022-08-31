@@ -35,6 +35,7 @@ public class UpgradeClusterByCLI extends ClusterTest {
     private String upgradePath;
     private OpenMLDBDeploy openMLDBDeploy;
     private String upgradeVersion;
+    private String upgradeDirectoryName;
     @BeforeClass
     @Parameters("upgradeVersion")
     public void beforeClass(@Optional("0.6.0") String upgradeVersion){
@@ -100,7 +101,7 @@ public class UpgradeClusterByCLI extends ClusterTest {
             file.mkdirs();
         }
         openMLDBDeploy = new OpenMLDBDeploy(upgradeVersion);
-        String upgradeDirectoryName = openMLDBDeploy.downloadOpenMLDB(upgradePath);
+        upgradeDirectoryName = openMLDBDeploy.downloadOpenMLDB(upgradePath);
         openMLDBPath = upgradePath+"/"+upgradeDirectoryName+"/bin/openmldb";
         newBinPath = upgradePath+"/"+upgradeDirectoryName+"/bin/";
         confPath = upgradePath+"/"+upgradeDirectoryName+"/conf";
@@ -117,6 +118,7 @@ public class UpgradeClusterByCLI extends ClusterTest {
         openMLDBDevops.upgradeNs(newBinPath,confPath);
         openMLDBDevops.upgradeTablet(newBinPath,confPath);
         openMLDBDevops.upgradeApiServer(newBinPath,confPath);
+        ExecutorUtil.run("cp -r " + upgradePath+"/"+upgradeDirectoryName + " " + OpenMLDBGlobalVar.mainInfo.getBasePath());
         openMLDBDevops.upgradeTaskManager(openMLDBDeploy);
         Map<String,List<Long>> afterMap;
         if(version.compareTo("0.6.0")>=0){

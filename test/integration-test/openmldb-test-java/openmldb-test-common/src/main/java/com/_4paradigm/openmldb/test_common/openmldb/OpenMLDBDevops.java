@@ -150,6 +150,7 @@ public class OpenMLDBDevops {
             backDirectory(taskManagerPath);
             ExecutorUtil.run("rm -rf "+taskManagerPath);
             ExecutorUtil.run("rm -rf "+openMLDBInfo.getSparkHome());
+            ExecutorUtil.run("rm -rf "+basePath + "/spark-*.tgz");
             String ipPort = openMLDBInfo.getTaskManagerEndpoints().get(i-1);
             String[] ss = ipPort.split(":");
             String ip = ss[0];
