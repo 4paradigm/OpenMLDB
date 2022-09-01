@@ -3687,7 +3687,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
+                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
