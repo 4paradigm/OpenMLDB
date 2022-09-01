@@ -118,5 +118,5 @@ desc t1;
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
 - 窗口`PARTITION BY`只支持列表达式，并且列需要命中索引
 - 窗口`ORDER BY`只支持列表达式，并且列需要命中索引的时间列
-- OpenMLDB 支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制。
+- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制。
 
