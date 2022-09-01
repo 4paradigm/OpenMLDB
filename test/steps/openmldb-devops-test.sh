@@ -21,16 +21,23 @@
 #-d 部署模式，有cluster和standalone两种，默认cluster
 #-l 测试的case级别，有0，1，2，3，4，5六个级别，默认为0，也可以同时跑多个级别的case，例如：1,2,3,4,5
 
-while getopts ":c:d:l:s:" opt
+while getopts ":c:t:s:v:" opt
 do
    case $opt in
         c)
         echo "参数c的值:$OPTARG"
         CASE_XML=$OPTARG
         ;;
-        d)
-        echo "参数d的值:$OPTARG"
-        DEPLOY_MODE=$OPTARG
+        t)
+        echo "参数t的值:$OPTARG"
+        TEST_TYPE=$OPTARG
+        ;;
+        s) echo "参数s的值:$OPTARG"
+        TABLE_STORAGE_MODE=$OPTARG
+        ;;
+        ;;
+        v) echo "参数v的值:$OPTARG"
+        PRE_UPGRADE_VERSION=$OPTARG
         ;;
         ?) echo "未知参数"
            exit 1
@@ -40,12 +47,13 @@ done
 if [[ "${CASE_XML}" == "" ]]; then
     CASE_XML="test_all.xml"
 fi
-if [[ "${DEPLOY_MODE}" == "" ]]; then
-    DEPLOY_MODE="cluster"
+if [[ "${TEST_TYPE}" == "" ]]; then
+    TEST_TYPE="upgrade"
 fi
 
 echo "CASE_XML:${CASE_XML}"
-echo "DEPLOY_MODE:${DEPLOY_MODE}"
+echo "TEST_TYPE:${TEST_TYPE}"
+echo "TABLE_STORAGE_MODE:${TABLE_STORAGE_MODE}"
 
 ROOT_DIR=$(pwd)
 # 安装wget
@@ -78,7 +86,7 @@ cd test/test-tool/command-tool || exit
 mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # modify config
-sh test/steps/modify_devops_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}"
+sh test/steps/modify_devops_config.sh "${CASE_XML}" "${PRE_UPGRADE_VERSION}" "${JAVA_SDK_VERSION}" "" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}" "${TABLE_STORAGE_MODE}"
 
 # install jar
 cd test/integration-test/openmldb-test-java || exit
@@ -87,3 +95,15 @@ cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-devops-test || exit
 mvn clean test -e -U -Dsuite=test_suite/"${CASE_XML}"
+
+if [[ "${TABLE_STORAGE_MODE}" == "memory" ]]; then
+  SDK_CASE_XML="test_cluster.xml"
+else
+  SDK_CASE_XML="test_cluster_disk.xml"
+fi
+echo "SDK_CASE_XML:${SDK_CASE_XML}"
+if [[ "${TEST_TYPE}" == "upgrade" ]]; then
+  # run case
+  cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
+  mvn clean test -e -U -DsuiteXmlFile=test_suite/"${SDK_CASE_XML}" -DcaseLevel="0"
+fi

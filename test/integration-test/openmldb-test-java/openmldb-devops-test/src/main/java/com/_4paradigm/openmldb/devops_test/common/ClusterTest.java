@@ -20,6 +20,7 @@ package com._4paradigm.openmldb.devops_test.common;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -30,6 +31,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
+import java.io.File;
 import java.sql.Statement;
 
 /**
@@ -77,36 +79,12 @@ public class ClusterTest {
 
             OpenMLDBGlobalVar.mainInfo = openMLDBInfo;
             OpenMLDBGlobalVar.env = "cluster";
-
-//            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-//                    .openMLDBDirectoryName("openmldb-0.5.2-linux")
-//                    .deployType(OpenMLDBDeployType.CLUSTER)
-//                    .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
-//                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-//                    .zk_cluster("172.24.4.55:30000")
-//                    .zk_root_path("/openmldb")
-//                    .nsNum(2).tabletNum(3)
-//                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
-//                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
-//                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
-//                    .build();
-//            OpenMLDBGlobalVar.env = "cluster";
-
-//            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-//                    .deployType(OpenMLDBDeployType.CLUSTER)
-//                    .basePath("/home/zhaowei01/openmldb-auto-test/single")
-//                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/single/openmldb-ns-1/bin/openmldb")
-//                    .zk_cluster("172.24.4.55:30008")
-//                    .zk_root_path("/openmldb")
-//                    .nsNum(1).tabletNum(1)
-//                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30010"))
-//                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30009"))
-//                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30011"))
-//                    .taskManagerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
-//                    .build();
-//            OpenMLDBGlobalVar.env = "cluster";
-
         }
+        File outFile = new File("out");
+        if(!outFile.exists()){
+            outFile.mkdir();
+        }
+        YamlUtil.writeYamlFile(OpenMLDBGlobalVar.mainInfo,"out/openmldb_info.yaml");
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
             OpenMLDBGlobalVar.env = caseEnv;

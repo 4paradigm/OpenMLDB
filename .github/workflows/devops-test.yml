@@ -6,7 +6,7 @@ on:
       PRE_UPGRADE_VERSION:
         description: 'version before upgrade'
         required: true
-        default: '0.5.0'
+        default: ''
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, upgrade, node_failure, node_expansion'
         required: true
@@ -34,7 +34,7 @@ jobs:
           echo "openmldb-pkg:"
           ls -al
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-node-failure-test.sh -c test_cluster.xml -d cluster
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -c test_cluster.xml -t node_failure
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -60,14 +60,14 @@ jobs:
           echo "openmldb-pkg:"
           ls -al
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-node-failure-test.sh -c test_single.xml -d single
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -c test_single.xml -t node_failure
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
-          check_name: "node-failure-test-cluster Report"
-          comment_title: "node-failure-test-cluster Report"
+          check_name: "node-failure-test-single Report"
+          comment_title: "node-failure-test-single Report"
 
   node-expansion-test-cluster:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'node_expansion' }}
@@ -86,36 +86,111 @@ jobs:
           echo "openmldb-pkg:"
           ls -al
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-node-failure-test.sh -c test_node_expansion.xml -d cluster
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -c test_node_expansion.xml -t node_expansion
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
-          check_name: "node-failure-test-cluster Report"
-          comment_title: "node-failure-test-cluster Report"
+          check_name: "node-expansion-test-cluster Report"
+          comment_title: "node-expansion-test-cluster Report"
 
-#  upgrade-test-cluster:
-#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'upgrade' }}
-#    runs-on: ubuntu-latest
-#    container:
-#      image: ghcr.io/4paradigm/hybridsql:latest
-#    env:
-#      OS: linux
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: modify-properties
-#        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
-#      - name: test
-#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "0"
-#      - name: TEST Results
-#        if: always()
-#        uses: EnricoMi/publish-unit-test-result-action@v1
-#        with:
-#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-#          comment_mode: "create new"
-#          check_name: Java SDK Test Cluster0 PKG Report
-#          comment_title: Java SDK Test Cluster0 PKG Report
+  upgrade-test-cluster:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'upgrade' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test-memory
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -v ${{ github.event.inputs.PRE_UPGRADE_VERSION }} -c test_upgrade.xml -t upgrade -s "memory"
+      - name: upgrade results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
+          check_name: "upgrade-test-cluster Report"
+          comment_title: "upgrade-test-cluster Report"
+      - name: sdk results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "java-sdk-cluster-memory-0 Report"
+          comment_title: "java-sdk-cluster-memory-0 Report"
+  upgrade-test-single:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'upgrade' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test-memory
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -v ${{ github.event.inputs.PRE_UPGRADE_VERSION }} -c test_upgrade_single.xml -t upgrade -s "memory"
+      - name: upgrade results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
+          check_name: "upgrade-test-single Report"
+          comment_title: "upgrade-test-single Report"
+      - name: sdk results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "single-java-sdk-cluster-memory-0 Report"
+          comment_title: "single-java-sdk-cluster-memory-0 Report"
+  upgrade-test-cluster-SSD:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'upgrade' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test-memory
+        run: source /root/.bashrc && bash test/steps/openmldb-devops-test.sh -v ${{ github.event.inputs.PRE_UPGRADE_VERSION }} -c test_upgrade.xml -t upgrade -s "ssd"
+      - name: upgrade results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-devops-test/target/surefire-reports/TEST-*.xml
+          check_name: "upgrade-test-cluster ssd Report"
+          comment_title: "upgrade-test-cluster ssd Report"
+      - name: sdk results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "java-sdk-cluster-ssd-0 Report"
+          comment_title: "java-sdk-cluster-ssd-0 Report"
 
 
 

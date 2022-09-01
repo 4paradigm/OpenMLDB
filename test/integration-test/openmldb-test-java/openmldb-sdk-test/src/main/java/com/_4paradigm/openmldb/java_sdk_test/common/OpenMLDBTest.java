@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.common.BaseTest;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
+import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -31,6 +32,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
+import java.io.File;
+import java.lang.reflect.Field;
 import java.sql.Statement;
 
 /**
@@ -55,6 +58,8 @@ public class OpenMLDBTest extends BaseTest {
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(false);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+        }else if(env.equalsIgnoreCase("deploy")){
+            OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject("out/openmldb_info.yaml",OpenMLDBInfo.class);
         }else{
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
             openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
