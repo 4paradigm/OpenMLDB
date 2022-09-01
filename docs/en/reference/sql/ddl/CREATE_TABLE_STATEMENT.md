@@ -453,13 +453,15 @@ StorageMode
 | `DISTRIBUTION` | Configure the distributed node endpoint configuration. Generally, it contains a Leader node and several follower nodes. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and node.                               | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE` | The storage mode of the table. The supported modes are `Memory`, `HDD` or `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file conf/tablet.flags](../../../deploy/ conf.md). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
-##### Disk Table（`STORAGE_MODE` == `HDD`|`SSD`）With Memory Table（`STORAGE_MODE` == `Memory`）The Difference
+##### Disk Table（`STORAGE_MODE` = `HDD`|`SSD`）With Memory Table（`STORAGE_MODE` = `Memory`）The Difference
 - Currently disk tables do not support GC operations
 - When inserting data into a disk table, if (`key`, `ts`) are the same under the same index, the old data will be overwritten; a new piece of data will be inserted into the memory table
 - Disk tables do not support `addindex` and `deleteindex` operations, so you need to define all required indexes when creating a disk table
 (The `deploy` command will automatically add the required indexes, so for a disk table, if the corresponding index is missing when it is created, `deploy` will fail)
 
-##### Example: Create A Band Table, Configure The Number Of Partions As 8, The Number Of Replicas As 3, And The Storage Mode As HDD
+##### Example
+
+Create a table `t1`, configure the number of partions as 8, the number of replicas as 3, and the storage mode as `HDD`.
 
 ```sql
 USE db1;
@@ -485,6 +487,11 @@ DESC t1;
  --------------
   HDD
  --------------
+```
+Create a table `t1` with specified distribution.
+```sql
+create table t1 (col0 string, col1 int) options (DISTRIBUTION=[('127.0.0.1:30921', ['127.0.0.1:30922', '127.0.0.1:30923']), ('127.0.0.1:30922', ['127.0.0.1:30921', '127.0.0.1:30923'])]);
+--SUCCEED
 ```
 
 ## Related SQL
