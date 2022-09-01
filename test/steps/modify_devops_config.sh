@@ -54,7 +54,7 @@ fi
 echo "run_case config:"
 cat src/main/resources/run_case.properties
 # modify pom
-cd "${ROOT_DIR}"
+cd "${ROOT_DIR}" || exit
 cd test/integration-test/openmldb-test-java/openmldb-test-common || exit
 sed -i "s#<openmldb.jdbc.version>.*</oopenmldb.jdbc.version>#<openmldb.jdbc.version>${OPENMLDB_SDK_VERSION}</openmldb.jdbc.version>#" pom.xml
 sed -i "s#<openmldb.navtive.version>.*</openmldb.navtive.version>#<openmldb.navtive.version>${JAVA_NATIVE_VERSION}</openmldb.navtive.version>#" pom.xml
