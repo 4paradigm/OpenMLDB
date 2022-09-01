@@ -144,7 +144,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 (select 0 as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
-![img](images/t2_to_t22.jpg)
+![img](images/t2_to_t22.png)
 
 可以看到，抽取以后生成的表格 t11 和 t22，已经具有了相同的 schema，两者可以进行逻辑上的 UNION 操作。但是在 OpenMLDB 中，WINDOW UNION 并不是真的为了进行传统数据库中的 UNION 操作，而是为了对于 t11 中的每一个样本行，去构建副表 t22 上的时间窗口。
 我们按照商户ID `mid` ，对 t11 中的每一行数据，从 t22 中获取对应的拼接数据，然后按消费时间(`purchase_time`) 排序，构造副表拼接窗口。 比如定义一个 `w_t2_10d` 的窗口：不包含主表除了当前行以外的数据行，加上副表通过 `mid` 拼接上的十天以内的数据，示意图如下所示。 可以看到，黄色和蓝色阴影部分，分别定义了样本 6 和样本 9 的副表拼接窗口。
