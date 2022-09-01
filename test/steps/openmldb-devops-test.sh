@@ -32,11 +32,12 @@ do
         echo "参数t的值:$OPTARG"
         TEST_TYPE=$OPTARG
         ;;
-        s) echo "参数s的值:$OPTARG"
+        s)
+        echo "参数s的值:$OPTARG"
         TABLE_STORAGE_MODE=$OPTARG
         ;;
-        ;;
-        v) echo "参数v的值:$OPTARG"
+        v)
+        echo "参数v的值:$OPTARG"
         PRE_UPGRADE_VERSION=$OPTARG
         ;;
         ?) echo "未知参数"
