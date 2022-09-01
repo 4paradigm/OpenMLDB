@@ -1,6 +1,5 @@
 package com._4paradigm.openmldb.test_common.openmldb;
 
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.command.CommandUtil;
 import com._4paradigm.openmldb.test_common.util.NsResultUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
@@ -31,7 +30,7 @@ public class NsClient {
     }
     public String genNsCommand(String openMLDBPath,String zkCluster,String zkRootPath,String dbName,String command){
         String dbStr = StringUtils.isNotEmpty(dbName)?"--database="+dbName:"";
-        String line = "%s --zk_session_timeout=10000 --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false %s --cmd='%s'";
+        String line = "%s --zk_cluster=%s --zk_root_path=%s --role=ns_client --interactive=false %s --cmd='%s'";
         line = String.format(line,openMLDBPath,zkCluster,zkRootPath,dbStr,command);
         log.info("ns command:"+line);
         return line;
@@ -62,7 +61,7 @@ public class NsClient {
     public List<String> showTableHaveTable(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         String nsCommand = genNsCommand(dbName,command);
-        Tool.sleep(3*1000);
+        Tool.sleep(10*1000);
         List<String> result = WaitUtil.waitCondition(() -> {
             List<String> lines = CommandUtil.run(nsCommand);
             if (lines.size() <= 2) {
@@ -77,7 +76,7 @@ public class NsClient {
         List<String> lines = runNs(dbName,command);
         return lines;
     }
-    public long getTableRowCount(String dbName,String tableName){
+    public long getTableCount(String dbName, String tableName){
         List<String> lines = showTableHaveTable(dbName,tableName);
         long count = 0;
         for(int i=2;i<lines.size();i++) {

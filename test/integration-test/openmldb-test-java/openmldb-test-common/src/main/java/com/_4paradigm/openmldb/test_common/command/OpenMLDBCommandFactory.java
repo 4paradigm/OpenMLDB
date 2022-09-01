@@ -33,9 +33,9 @@ public class OpenMLDBCommandFactory {
         return line;
     }
     private static String getNoInteractiveCommandByCLuster(String rtidbPath,String zkEndPoint,String zkRootPath,String dbName,String command){
-        String line = "%s --zk_session_timeout=10000 --zk_cluster=%s --zk_root_path=%s --role=sql_client --interactive=false --database=%s --cmd='%s'";
+        String line = "%s --zk_cluster=%s --zk_root_path=%s --role=sql_client --interactive=false --database=%s --cmd='%s'";
         if(command.contains("'")){
-            line = "%s --zk_session_timeout=10000 --zk_cluster=%s --zk_root_path=%s --role=sql_client --interactive=false --database=%s --cmd=\"%s\"";
+            line = "%s --zk_cluster=%s --zk_root_path=%s --role=sql_client --interactive=false --database=%s --cmd=\"%s\"";
         }
         line = String.format(line,rtidbPath,zkEndPoint,zkRootPath,dbName,command);
         // logger.info("generate rtidb no interactive command:{}",line);

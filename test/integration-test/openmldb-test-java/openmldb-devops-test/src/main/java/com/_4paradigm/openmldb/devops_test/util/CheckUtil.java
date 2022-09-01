@@ -1,6 +1,5 @@
 package com._4paradigm.openmldb.devops_test.util;
 
-import com._4paradigm.openmldb.test_common.openmldb.CliClient;
 import com._4paradigm.openmldb.test_common.openmldb.NsClient;
 import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
@@ -27,7 +26,7 @@ public class CheckUtil {
                 Tool.sleep(10*1000);
             }
             Assert.assertEquals(sdkClient.getTableRowCount(tableName),originalCount+addCount,msg);
-            Assert.assertEquals(nsClient.getTableRowCount(dbName,tableName),originalCount+addCount,msg);
+            Assert.assertEquals(nsClient.getTableCount(dbName,tableName),originalCount+addCount,msg);
         }
         nsClient.checkTableOffSet(dbName,null);
     }
