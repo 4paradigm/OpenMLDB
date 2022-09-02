@@ -1,166 +1,232 @@
-//
-// Created by xldream on 2022/8/19.
-//
+
 #pragma once
+#include <assert.h>
 #include <memory>
 #include <atomic>
 
-constexpr uint16_t MAX_ARRAY_LIST_LEN = 1000;
-namespace ConcurrentList {
-template <typename ValueType>
-class ConcurrentList {
- public:
-    struct ListNode {
-        ValueType data;
-        std::atomic<ListNode*> next;
-        ListNode(const ValueType& __data) {
-            this->data = __data;
-            this->next = nullptr;
-        }
-    };
+namespace hybridse {
+    namespace storage {
 
-    struct iterator {
-        ~iterator() = default;
+        constexpr uint16_t MAX_LIST_LEN = 1000;
+        template <class K, class V>
+        class ListNode {
+        public:
+            ListNode(const K& key, V& value)  // NOLINT
+                    : key_(key), value_(value), next_(NULL) {}
+            ListNode() : key_(), value_(), next_(NULL) {}
+            ~ListNode() = default;
 
-        iterator(const iterator& __iter) noexcept {
-            node_ptr = __iter.get_node_ptr();
-        }
-
-        iterator(iterator&& __iter) noexcept {
-            node_ptr = __iter.node_ptr;
-            __iter.node_ptr = nullptr;
-        }
-
-        iterator& operator=(const iterator& __iter) noexcept {
-            node_ptr = __iter.node_ptr;
-            return *this;
-        }
-
-
-        iterator& operator=(iterator&& __iter) noexcept {
-            node_ptr = __iter.node_ptr;
-            __iter.node_ptr = nullptr;
-            return *this;
-        }
-
-        iterator()
-            : node_ptr(nullptr)
-        {}
-
-        explicit iterator(std::nullptr_t)
-            : node_ptr(nullptr)
-        {}
-
-        explicit iterator(ListNode* __node_ptr)
-            : node_ptr(__node_ptr)
-        {}
-
-        ValueType& operator*() {
-            return (node_ptr->data);
-        }
-
-        iterator& operator++(int) {
-            iterator copy(*this);
-            node_ptr = node_ptr->next.load();
-            return copy;
-        }
-
-        iterator& operator++() {
-            node_ptr = node_ptr->next.load();
-            return *this;
-        }
-
-        iterator& operator+(int __n) {
-            int node_count = 0;
-            while(node_count < __n) {
-                node_ptr = node_ptr->next.load();
-                ++node_count;
+            // Set the next node with memory barrier
+            void SetNext(ListNode<K, V>* node) {
+                next_.store(node, std::memory_order_release);
             }
-            return *this;
-        }
 
-        bool operator==(const iterator& __iter) {
-            return node_ptr == __iter.node_ptr;
-        }
-
-        bool operator!=(const iterator& __iter) {
-            return node_ptr != __iter.node_ptr;
-        }
-
-        ListNode* node_ptr;
-    };
-
-    ConcurrentList(): _m_head(nullptr)
-    {}
-
-    void push_back(ValueType& __data) {
-        _push(__data);
-    }
-
-    iterator begin() {
-        return iterator(_m_head);
-    }
-
-    iterator end() {
-        return iterator(nullptr);
-    }
-
-    uint32_t GetSize() {
-        uint32_t cnt = 0;
-        ListNode* node = _m_head.load();
-        while (node != NULL) {
-            cnt++;
-            ListNode* tmp = node->next;
-            if (tmp == NULL) {
-                break;
+            // Set the next node without memory barrier
+            void SetNextNoBarrier(ListNode<K, V>* node) {
+                next_.store(node, std::memory_order_relaxed);
             }
-            node = tmp;
-        }
-        return cnt;
-    }
 
-    void GC() {
-        if (GetSize() > MAX_ARRAY_LIST_LEN) {
-            uint32_t cnt = 0;
-            ListNode* node = _m_head.load();
-            while(node != NULL) {
-                if (cnt > MAX_ARRAY_LIST_LEN) {
-                    ListNode* delete_node = node->next;
-                    node->next = nullptr;
-                    while (delete_node != NULL) {
-                        ListNode* tmp1 = delete_node;
-                        delete_node = delete_node->next;
-                        delete tmp1;
+            ListNode<K, V>* GetNext() {
+                return next_.load(std::memory_order_acquire);
+            }
+
+            ListNode<K, V>* GetNextNoBarrier() {
+                return next_.load(std::memory_order_relaxed);
+            }
+
+            V& GetValue() { return value_; }
+
+            const K& GetKey() const { return key_; }
+
+        public:
+            K const key_;
+            V value_;
+            std::atomic<ListNode<K, V>*> next_;
+        };
+
+        template <class K, class V, class Comparator>
+        class ConcurrentList {
+        public:
+            explicit ConcurrentList(Comparator cmp) : compare_(cmp) {
+                head_ = new ListNode<K, V>();
+            }
+            ~ConcurrentList() { delete head_; }
+
+            virtual void Insert(const K& key, V value) {  // NOLINT
+                ListNode<K, V>* node = new ListNode<K, V>(key, value);
+                ListNode<K, V>* pre;
+                ListNode<K, V>* temp;
+                do {
+                    pre = FindLessOrEqual(key);
+                    node->SetNext(pre->GetNext());
+                    temp = node->GetNext();
+                }while (!pre->next_.compare_exchange_weak(temp, node));
+            }
+
+            // 找到K值小于key的节点，并返回
+            ListNode<K, V>* FindLessThan(const K& key) {
+                ListNode<K, V>* node = head_;
+                while (true) {
+                    ListNode<K, V>* next = node->GetNext();  // 头结点没有保存数据 从头节点下一个节点开始查找
+                    if (next == NULL || compare_(next->GetKey(), key) > 0) {
+                        return node;
+                    } else {
+                        node = next;
                     }
                 }
-                cnt++;
-                ListNode* tmp = node->next;
-                node = tmp;
             }
-        }
+
+            ListNode<K, V>* FindLessOrEqual(const K& key) {
+                ListNode<K, V>* node = head_;
+                while (node != NULL) {
+                    ListNode<K, V>* next = node->GetNext();
+                    if (next == NULL) {
+                        return node;
+                    } else if (IsAfterNode(key, next)) {
+                        node = next;
+                    } else {
+                        return node;
+                    }
+                }
+                return NULL;
+            }
+
+            class ListIterator {
+            public:
+                ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
+                ListIterator(const ListIterator&) = default;
+                ListIterator& operator=(const ListIterator&) = delete;
+                ~ListIterator() = default;
+
+                ListIterator& operator=(ListIterator&& __iter) noexcept {
+                    node_ = __iter.node_;
+                    __iter.node_ = nullptr;
+                    return *this;
+                }
+
+                ListIterator()
+                        : node_(nullptr), list_(nullptr)
+                {}
+
+                explicit ListIterator(std::nullptr_t)
+                        : node_(nullptr), list_(nullptr) {}
+
+                explicit ListIterator(ListNode<K, V>* __node_ptr)
+                        : node_(__node_ptr), list_(nullptr) {}
+
+                ListIterator& operator++(int) {
+                    ListIterator copy(*this);
+                    node_ = node_->GetNext();
+                    return copy;
+                }
+
+                ListIterator& operator++() {
+                    node_ = node_->GetNext();
+                    return *this;
+                }
+
+                ListIterator& operator+(int __n) {
+                    int node_count = 0;
+                    while(node_count < __n) {
+                        node_ = node_->GetNext();
+                        ++node_count;
+                    }
+                    return *this;
+                }
+
+                bool operator==(const ListIterator& __iter) {
+                    return node_ == __iter.node_;
+                }
+
+                bool operator!=(const ListIterator& __iter) {
+                    return node_ != __iter.node_;
+                }
+                bool Valid() const { return node_ != NULL; }
+
+                void Next() {
+                    assert(Valid());
+                    node_ = node_->GetNext();
+                }
+
+                const K& GetKey() const {
+                    assert(Valid());
+                    return node_->GetKey();
+                }
+
+                V& GetValue() {
+                    assert(Valid());
+                    return node_->GetValue();
+                }
+
+                void Seek(const K& k) {
+                    node_ = list_->FindLessThan(k);
+                    Next();
+                }
+
+                void SeekToFirst() {
+                    node_ = list_->head_;
+                    Next();
+                }
+
+                uint32_t GetSize() { return list_->GetSize(); }
+
+            private:
+                ListNode<K, V>* node_;
+                ConcurrentList<K, V, Comparator>* const list_;
+            };
+
+            ListIterator begin() {
+                return ListIterator(head_);
+            }
+
+            ListIterator end() {
+                return ListIterator(nullptr);
+            }
+
+            uint32_t GetSize() {
+                uint32_t cnt = 0;
+                ListNode<K, V>* node = head_.load();
+                while (node != NULL) {
+                    cnt++;
+                    ListNode<K, V>* tmp = node->GetNext();
+                    // find the end
+                    if (tmp == NULL) {
+                        break;
+                    }
+                    node = tmp;
+                }
+                return cnt;
+            }
+
+            void GC() {
+                if (GetSize() > MAX_LIST_LEN) {
+                    uint32_t cnt = 0;
+                    ListNode<K, V> *node = head_.load();
+                    while (node != NULL) {
+                        if (cnt >= MAX_LIST_LEN) {
+                            ListNode<K, V> *delete_node = node->GetNext();
+                            node->SetNext(nullptr);
+                            while (delete_node != NULL) {
+                                ListNode<K, V> *tmp1 = delete_node;
+                                delete_node = delete_node->GetNext();
+                                delete tmp1;
+                            }
+                        }
+                        cnt++;
+                        ListNode<K, V> *tmp = node->GetNext();
+                        node = tmp;
+                    }
+                }
+            }
+
+            ListIterator* NewIterator() { return new ListIterator(this); }
+        private:
+            bool IsAfterNode(const K& key, const ListNode<K, V>* node) const {
+                return compare_(key, node->GetKey()) > 0;
+            }
+        private:
+            Comparator const compare_;
+            std::atomic<ListNode<K, V> *> head_;
+        };
     }
-
-
- public:
-    ~ConcurrentList() = default;
-    ConcurrentList(const ConcurrentList&) noexcept = delete;
-    ConcurrentList& operator=(const ConcurrentList&) noexcept = delete;
-    ConcurrentList(ConcurrentList&&) noexcept = delete;
-    ConcurrentList& operator=(ConcurrentList &&) noexcept = delete;
-
- private:
-    template<typename T>
-    void _push(T v) {
-        auto new_node = new ListNode(v);
-
-        auto curr_head = _m_head.load();
-        new_node->next = curr_head;
-        while(!_m_head.compare_exchange_weak(curr_head, new_node,
-                                              std::memory_order_acq_rel)) {
-            curr_head = _m_head.load();
-            new_node->next = curr_head;
-        }
-    }
-    std::atomic<ListNode*> _m_head;
-};
 }
