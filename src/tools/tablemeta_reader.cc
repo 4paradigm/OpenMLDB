@@ -28,6 +28,8 @@
 #include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 
+DEFINE_string(user_name, "", "the user name of deploy machine");
+
 using ::openmldb::codec::SchemaCodec;
 
 namespace openmldb {
@@ -35,11 +37,21 @@ namespace tools {
 
 void TablemetaReader::CopyFromRemote(const std::string& host, const std::string& source,
                                      const std::string& dest, int type) {
-    char exec[200];
+    char exec[MAX_COMMAND_LEN];
     if (type == TYPE_FILE) {
-        snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+        if (FLAGS_user_name.empty()) {
+            snprintf(exec, sizeof(exec), "scp %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+        } else {
+            snprintf(exec, sizeof(exec), "scp %s@%s:%s %s", FLAGS_user_name.c_str(),
+                                                        host.c_str(), source.c_str(), dest.c_str());
+        }
     } else {
-        snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+        if (FLAGS_user_name.empty()) {
+            snprintf(exec, sizeof(exec), "scp -r %s:%s %s", host.c_str(), source.c_str(), dest.c_str());
+        } else {
+            snprintf(exec, sizeof(exec), "scp -r %s@%s:%s %s", FLAGS_user_name.c_str(),
+                                                        host.c_str(), source.c_str(), dest.c_str());
+        }
     }
     if (system(exec) == 0) {
         PDLOG(INFO, "SCP command: %s successfully executed.", exec);

@@ -29,6 +29,7 @@
 
 constexpr int TYPE_FILE = 0;
 constexpr int TYPE_DIRECTORY = 1;
+constexpr int MAX_COMMAND_LEN = 300;
 
 using ::openmldb::sdk::ClusterOptions;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;

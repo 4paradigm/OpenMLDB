@@ -34,6 +34,7 @@
 DEFINE_string(db_name, "", "database name");
 DEFINE_string(table_name, "", "table name");
 DEFINE_string(config_path, "", "the path of the config file");
+DECLARE_string(user_name);
 DECLARE_string(delimiter);
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
