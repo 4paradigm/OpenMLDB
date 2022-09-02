@@ -118,7 +118,7 @@ class ConcurrentList {
 
     class ListIterator {
      public:
-        ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
+        explicit ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
         ~ListIterator() = default;

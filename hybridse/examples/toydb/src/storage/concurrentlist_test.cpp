@@ -1,8 +1,8 @@
-#include "gtest/gtest.h"
-#include "storage/skiplist.h"
 #include "storage/concurrentlist.h"
 #include <vector>
 #include <thread>
+#include "gtest/gtest.h"
+#include "storage/skiplist.h"
 
 namespace hybridse {
 namespace storage {
@@ -19,13 +19,12 @@ TEST(ConcurrentListTest, ShouldPushNewValue) {
             for (int i = start; i < end; ++i) list.Insert(i, 5);
         });
     }
-    for (auto &t: threads_vec) {
+    for (auto &t : threads_vec) {
         t.join();
     }
     std::vector<int> values;
     for (auto it = list.begin(); it != list.end(); ++it) {
         values.push_back(it.GetValue());
-
     }
     std::cout << values.size() << std::endl;
     ASSERT_EQ(values.size(), 40001);
