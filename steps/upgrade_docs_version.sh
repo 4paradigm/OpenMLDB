@@ -39,11 +39,8 @@ then
     exit 0
 fi
 echo "new version is ${VERSION}"
-OLD_IFS="$IFS"
-IFS="."
-array=(${VERSION})
-IFS="$OLD_IFS"
-MAIN_VERSION="${array[0]}.${array[1]}"
+MAIN_VERSION=$(echo "${VERSION}" | awk -F '.' '{print $1"."$2}')
+echo "main version is ${MAIN_VERSION}"
 
 upgrade_docker() {
     sed -i"" -e "s/4pdosc\/openmldb:[0-9]\.[0-9]\.[0-9]/4pdosc\/openmldb:${VERSION}/g" "$1"
