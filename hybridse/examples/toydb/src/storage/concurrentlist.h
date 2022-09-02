@@ -63,11 +63,10 @@ namespace hybridse {
                 }while (!pre->next_.compare_exchange_weak(temp, node));
             }
 
-            // 找到K值小于key的节点，并返回
             ListNode<K, V>* FindLessThan(const K& key) {
                 ListNode<K, V>* node = head_;
                 while (true) {
-                    ListNode<K, V>* next = node->GetNext();  // 头结点没有保存数据 从头节点下一个节点开始查找
+                    ListNode<K, V>* next = node->GetNext();  
                     if (next == NULL || compare_(next->GetKey(), key) > 0) {
                         return node;
                     } else {
@@ -89,6 +88,32 @@ namespace hybridse {
                     }
                 }
                 return NULL;
+            }
+           
+            LinkListNode<K, V>* Split(const K& key) {
+                LinkListNode<K, V>* target = FindLessOrEqual(key);
+                if (target == NULL) {
+                    return NULL;
+                }
+                LinkListNode<K, V>* result = target->GetNext();
+                target->SetNext(NULL);
+                return result;
+            }
+
+            LinkListNode<K, V>* SplitByPos(uint64_t pos) {
+                LinkListNode<K, V>* pos_node = head_;
+                for (uint64_t idx = 0; idx < pos; idx++) {
+                    if (pos_node == NULL) {
+                        break;
+                    }
+                    pos_node = pos_node->GetNext();
+                }
+                if (pos_node == NULL) {
+                    return NULL;
+                }
+                LinkListNode<K, V>* result = pos_node->GetNext();
+                pos_node->SetNext(NULL);
+                return result;
             }
 
             class ListIterator {
