@@ -90,18 +90,18 @@ namespace hybridse {
                 return NULL;
             }
            
-            LinkListNode<K, V>* Split(const K& key) {
-                LinkListNode<K, V>* target = FindLessOrEqual(key);
+            ListNode<K, V>* Split(const K& key) {
+                ListNode<K, V>* target = FindLessOrEqual(key);
                 if (target == NULL) {
                     return NULL;
                 }
-                LinkListNode<K, V>* result = target->GetNext();
+                ListNode<K, V>* result = target->GetNext();
                 target->SetNext(NULL);
                 return result;
             }
 
-            LinkListNode<K, V>* SplitByPos(uint64_t pos) {
-                LinkListNode<K, V>* pos_node = head_;
+            ListNode<K, V>* SplitByPos(uint64_t pos) {
+                ListNode<K, V>* pos_node = head_;
                 for (uint64_t idx = 0; idx < pos; idx++) {
                     if (pos_node == NULL) {
                         break;
@@ -111,7 +111,7 @@ namespace hybridse {
                 if (pos_node == NULL) {
                     return NULL;
                 }
-                LinkListNode<K, V>* result = pos_node->GetNext();
+                ListNode<K, V>* result = pos_node->GetNext();
                 pos_node->SetNext(NULL);
                 return result;
             }
