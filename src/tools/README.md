@@ -20,10 +20,13 @@ OpenMLDB Online Data Exporter is used for exporting the data of a specific table
 2. Run Data Exporter
     ```
     cd /build/bin
-    ./data_exporter  --db_name=<database_name> --table_name=<table_name> --config_path=<config_path>
+    ./data_exporter  --db_name=<database_name> --table_name=<table_name> --config_path=<config_path> --user_name=<user_name> --delimiter=<delimiter>
     ```
 
-The user needs to specify the db_name, table_name and config_path in the command line.  
+To run the data exporter, users must specify the db_name, table_name and config_path in the command line.  
+Users may specify the user name of deploy machines by setting the optional flag user_name. The default user_name is an empty string.  
+The default delimiter for generating csv files is ',', users may change it by setting the optional flag delimiter.  
+
 The config path could be either a relative path or an absolute path. The config file should be a yaml file.  
 The result csvs would be stored at the current working directory.  
 
