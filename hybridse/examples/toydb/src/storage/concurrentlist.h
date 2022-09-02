@@ -1,4 +1,3 @@
-
 #pragma once
 #include <assert.h>
 #include <memory>
@@ -13,7 +12,7 @@ template <class K, class V>
 class ListNode {
  public:
     ListNode(const K& key, V& value)  // NOLINT
-            : key_(key), value_(value), next_(NULL) {}
+        : key_(key), value_(value), next_(NULL) {}
     ListNode() : key_(), value_(), next_(NULL) {}
     ~ListNode() = default;
 
@@ -118,7 +117,7 @@ class ConcurrentList {
     }
 
     class ListIterator {
-    public:
+     public:
         ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
@@ -131,19 +130,19 @@ class ConcurrentList {
         }
 
         ListIterator()
-                : node_(nullptr), list_(nullptr)
+            : node_(nullptr), list_(nullptr)
         {}
 
         explicit ListIterator(std::nullptr_t)
-                : node_(nullptr), list_(nullptr) {}
+            : node_(nullptr), list_(nullptr) {}
 
         explicit ListIterator(ListNode<K, V>* __node_ptr)
-                : node_(__node_ptr), list_(nullptr) {}
+            : node_(__node_ptr), list_(nullptr) {}
 
-        ListIterator& operator++(int) {
-            ListIterator copy(*this);
+        ListIterator operator++(int) {
+            ListIterator _copy(*this);
             node_ = node_->GetNext();
-            return copy;
+            return _copy;
         }
 
         ListIterator& operator++() {
@@ -153,7 +152,7 @@ class ConcurrentList {
 
         ListIterator& operator+(int __n) {
             int node_count = 0;
-            while(node_count < __n) {
+            while (node_count < __n) {
                 node_ = node_->GetNext();
                 ++node_count;
             }
@@ -196,7 +195,7 @@ class ConcurrentList {
 
         uint32_t GetSize() { return list_->GetSize(); }
 
-    private:
+     private:
         ListNode<K, V>* node_;
         ConcurrentList<K, V, Comparator>* const list_;
     };
@@ -246,14 +245,16 @@ class ConcurrentList {
     }
 
     ListIterator* NewIterator() { return new ListIterator(this); }
+
  private:
     bool IsAfterNode(const K& key, const ListNode<K, V>* node) const {
         return compare_(key, node->GetKey()) > 0;
     }
+
  private:
     Comparator const compare_;
     std::atomic<ListNode<K, V> *> head_;
 };
 
-}
-}
+}  // namespace storage
+}  // namespace hybridse

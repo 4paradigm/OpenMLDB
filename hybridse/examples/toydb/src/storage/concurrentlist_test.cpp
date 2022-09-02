@@ -1,10 +1,8 @@
-
 #include "gtest/gtest.h"
-#include "skiplist.h"
-#include "ConcurrentList.h"
+#include "storage/skiplist.h"
+#include "storage/concurrentlist.h"
 #include <vector>
 #include <thread>
-
 
 namespace hybridse {
 namespace storage {
@@ -39,14 +37,14 @@ TEST(ConcurrentListTest, GC) {
         list.Insert(i, i+5);
     }
     list.GC();
-    for (auto it = list.begin(); it != list.end(); ++it) {
+    for (auto it = list.begin(); it != list.end(); it++) {
         std::cout << it.GetKey() << " : " << it.GetValue() << std::endl;
     }
     ASSERT_EQ(list.GetSize(), 1001);
 }
 
-}
-}
+}  // namespace storage
+}  // namespace hybridse
 
 
 int main(int argc, char **argv) {
