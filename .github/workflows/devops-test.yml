@@ -5,7 +5,7 @@ on:
     inputs:
       PRE_UPGRADE_VERSION:
         description: 'version before upgrade'
-        required: true
+        required: false
         default: ''
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, upgrade, node_failure, node_expansion'
