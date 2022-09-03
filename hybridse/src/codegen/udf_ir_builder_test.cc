@@ -123,6 +123,12 @@ TEST_F(UdfIRBuilderTest, HexStringUdfTest) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("hex", nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, UnhexTest) {
+    CheckUdf<StringRef, StringRef>("unhex", "Spark SQL", StringRef("537061726B2053514C"));
+    
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("unhex", nullptr, nullptr);
+}
+
 TEST_F(UdfIRBuilderTest, DayofmonthDateUdfTest) {
     CheckUdf<int32_t, Date>("dayofmonth", 22, Date(2020, 05, 22));
     CheckUdf<Nullable<int32_t>, Nullable<Date>>("dayofmonth", nullptr, nullptr);

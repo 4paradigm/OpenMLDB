@@ -64,6 +64,28 @@ void hex(StringRef *str, StringRef *output) {
     output->data_ = buffer;
 }
 
+void unhex(StringRef *str, StringRef *output) {
+    std::ostringstream ss;
+    uint32_t arr[str->size_];
+    for (uint32_t i=0; i < str->size_; i++) {
+        uint32_t tmp;  
+        if (str->data_[i] <= 'F' && str->data_[i] >= 'A') {
+            tmp = str->data_[i] - 'A' + 10;
+        } else if (str->data_[i] <= 'z' && str->data_[i] >= 'a') {
+            tmp = str->data_[i] - 'a' + 10;
+        } else if (str->data_[i] <= '9' && str->data_[i] >= '0') {
+            tmp = str->data_[i] - '0';
+        }
+        arr[i] = tmp;
+    }
+    for (uint32_t i=0; i < str->size_; i+=2) {
+        ss << char(arr[i] << 4 | arr[i+1]);
+    }
+    output->size_ = ss.str().size();
+    char *buffer = AllocManagedStringBuf(output->size_);
+    memcpy(buffer, ss.str().data(), output->size_);
+    output->data_ = buffer;
+}
 
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;
