@@ -35,7 +35,7 @@ ls airflow_demo_files
 登录Airflow Web需要对外端口，所以此处暴露容器的端口。并且直接将上一步下载的文件映射到`/work/airflow/dags`，接下来Airflow将加载此文件夹的DAG。
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.0 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.1 bash
 ```
 
 #### 下载安装Airflow与Airflow OpenMLDB Provider
@@ -67,6 +67,10 @@ Airflow standalone运行输出将提示登录用户名和密码，如下图所�
 
 登录Airflow Web界面 `http://localhost:8080`，并输入用户名和密码。
 
+```{caution}
+`airflow standalone`为前台程序，退出即airflow退出。你可以在dag运行完成后再退出airflow进行步骤3的测试，或者将airflow进程放入后台。
+```
+
 ### 步骤2: 运行DAG
 在Airflow Web中点击DAG example_openmldb_complex，可以点击`Code`查看DAG的详情，见下图。
 
@@ -95,6 +99,8 @@ Airflow OpenMLDB Provider是连接OpenMLDB Api Server的，所以此处配置中
 ![dag run](images/dag_run.png)
 
 ### 步骤3: 测试
+
+Airflow如果在容器中是前台运行的，现在可以退出，以下测试将不依赖airflow。
 
 #### 在线导入
 Airflow DAG中完成了SQL和模型的上线。但在线存储中还没有数据，所以我们需要做一次在线数据导入。
