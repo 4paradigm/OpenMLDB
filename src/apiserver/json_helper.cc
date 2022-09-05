@@ -244,7 +244,10 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
     std::set<std::string> _rs{};
     parameter.reset(new openmldb::sdk::SQLRequestRow(schema_shared, _rs));
 
-    if (!parameter->Init(str_length)) goto fast_fail;
+    if (!parameter->Init(str_length)) {
+        error_ = true;
+        return *this;
+    }
     for (auto i = 0; i < size; i++) {
         auto col = schema.Get(i);
         auto& val = values.at(i);
@@ -265,13 +268,16 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
             default:
                 break;
         }
-        if (!ok) goto fast_fail;
+        if (!ok) {
+            error_ = true;
+            return *this;
+        }
     }
-    if (!parameter->Build()) goto fast_fail;
+    if (!parameter->Build()) {
+        error_ = true;
+        return *this;
+    }
 
-    return *this;
-fast_fail:
-    error_ = true;
     return *this;
 }
 
