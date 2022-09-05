@@ -20,6 +20,8 @@
 #include <cstddef>
 #include <string>
 
+#include "sdk/sql_request_row.h"
+
 namespace openmldb {
 namespace apiserver {
 
@@ -64,11 +66,12 @@ class JsonReader {
     JsonReader& StartArray(size_t* size = nullptr);
     JsonReader& EndArray();
 
-    JsonReader& operator&(bool& b);         // NOLINT
-    JsonReader& operator&(unsigned& u);     // NOLINT
-    JsonReader& operator&(int& i);          // NOLINT
-    JsonReader& operator&(double& d);       // NOLINT
-    JsonReader& operator&(std::string& s);  // NOLINT
+    JsonReader& operator&(bool& b);                                                   // NOLINT
+    JsonReader& operator&(unsigned& u);                                               // NOLINT
+    JsonReader& operator&(int& i);                                                    // NOLINT
+    JsonReader& operator&(double& d);                                                 // NOLINT
+    JsonReader& operator&(std::string& s);                                            // NOLINT
+    JsonReader& operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
 
     JsonReader& SetNull();
 

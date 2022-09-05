@@ -104,51 +104,52 @@ std::map<std::string, ExecContext> mode_map{
     {"offsync", {false, true}}, {"offasync", {false, false}}, {"online", {true, false}}};
 
 void APIServerImpl::RegisterQuery() {
-    provider_.post("/dbs/:db_name",
-                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                       auto resp = GeneralResp();
-                       auto db_it = param.find("db_name");
-                       if (db_it == param.end()) {
-                           writer << resp.Set("url has no db_name");
-                           return;
-                       }
-                       auto db = db_it->second;
+    provider_.post("/dbs/:db_name", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
+                                           JsonWriter& writer) {
+        auto resp = GeneralResp();
+        auto db_it = param.find("db_name");
+        if (db_it == param.end()) {
+            writer << resp.Set("url has no db_name");
+            return;
+        }
+        auto db = db_it->second;
 
-                       // default mode is offsync
-                       QueryReq req;
-                       JsonReader query_reader(req_body.to_string().c_str());
-                       query_reader >> req;
-                       if (!query_reader) {
-                           writer << resp.Set("Json parse failed, " + req_body.to_string());
-                           return;
-                       }
-                       auto mode = boost::to_lower_copy(req.mode);
-                       auto it = mode_map.find(mode);
-                       if (it == mode_map.end()) {
-                           writer << resp.Set("Invalid mode " + mode);
-                           return;
-                       }
-                       ExecContext ctx = it->second;
+        // default mode is offsync
+        QueryReq req;
+        JsonReader query_reader(req_body.to_string().c_str());
+        query_reader >> req;
+        if (!query_reader) {
+            writer << resp.Set("Json parse failed, " + req_body.to_string());
+            return;
+        }
+        auto mode = boost::to_lower_copy(req.mode);
+        auto it = mode_map.find(mode);
+        if (it == mode_map.end()) {
+            writer << resp.Set("Invalid mode " + mode);
+            return;
+        }
+        ExecContext ctx = it->second;
 
-                       const auto& sql = req.sql;
-                       VLOG(1) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
-                       // TODO(hw): if api server supports standalone, we should check if cluster mode here
+        const auto& sql = req.sql;
+        const auto parameter = req.parameter;
+        VLOG(1) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
+        // TODO(hw): if api server supports standalone, we should check if cluster mode here
 
-                       hybridse::sdk::Status status;
-                       // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
-                       //  supports ddl http api. It's useful for api server tests(We can create table when we only
-                       //  connect to the api server).
-                       auto rs = sql_router_->ExecuteSQL(db, sql, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
-                       if (!status.IsOK()) {
-                           writer << resp.Set(status.code, status.msg);
-                           LOG(WARNING) << "failed at: code " << status.code << ", msg " << status.msg;
-                           return;
-                       }
+        hybridse::sdk::Status status;
+        // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
+        //  supports ddl http api. It's useful for api server tests(We can create table when we only
+        //  connect to the api server).
+        auto rs = sql_router_->ExecuteSQL(db, sql, parameter, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
+        if (!status.IsOK()) {
+            writer << resp.Set(status.code, status.msg);
+            LOG(WARNING) << "failed at: code " << status.code << ", msg " << status.msg;
+            return;
+        }
 
-                       QueryResp query_resp;
-                       query_resp.rs = rs;
-                       writer << query_resp;
-                   });
+        QueryResp query_resp;
+        query_resp.rs = rs;
+        writer << query_resp;
+    });
 }
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,

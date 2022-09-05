@@ -19,6 +19,9 @@
 #include <stack>
 
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
+#include "sdk/base_impl.h"
+#include "sdk/sql_request_row.h"
+#include "vm/catalog.h"
 
 namespace openmldb {
 namespace apiserver {
@@ -197,6 +200,65 @@ JsonReader& JsonReader::operator&(std::string& s) {  // NOLINT
             error_ = true;
         }
     }
+    return *this;
+}
+
+JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
+    size_t size;
+    this->StartArray(&size);
+    ::hybridse::vm::Schema schema;
+    std::vector<Value> values;
+    for (auto i = 0; i < size; i++) {
+        if (!error_) {
+            auto col = schema.Add();
+            if (CURRENT.IsBool()) {
+                col->set_type(::hybridse::type::kBool);
+                values.push_back(Value(CURRENT.GetBool()));
+            } else if (CURRENT.IsUint()) {
+                col->set_type(::hybridse::type::kInt64);
+                values.push_back(Value(CURRENT.GetUint()));
+            } else if (CURRENT.IsInt()) {
+                col->set_type(::hybridse::type::kInt64);
+                values.push_back(Value(CURRENT.GetInt()));
+            } else if (CURRENT.IsDouble()) {
+                col->set_type(::hybridse::type::kDouble);
+                values.push_back(Value(CURRENT.GetDouble()));
+            } else if (CURRENT.IsString()) {
+                col->set_type(::hybridse::type::kVarchar);
+                values.push_back(Value(CURRENT.GetString(), CURRENT.GetStringLength()));
+            } else {
+                error_ = true;
+            }
+            Next();
+        }
+    }
+    this->EndArray();
+    ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
+    std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
+    std::set<std::string> _rs{};
+    parameter.reset(new openmldb::sdk::SQLRequestRow(schema_shared, _rs));
+    parameter->Init(0);
+    for (auto i = 0; i < size; i++) {
+        auto col = schema.Get(i);
+        auto& val = values.at(i);
+        switch (col.type()) {
+            case ::hybridse::type::kBool:
+                parameter->AppendBool(val.GetBool());
+                break;
+            case ::hybridse::type::kInt64:
+                parameter->AppendInt64(val.GetInt64());
+                break;
+            case ::hybridse::type::kDouble:
+                parameter->AppendDouble(val.GetDouble());
+                break;
+            case ::hybridse::type::kVarchar:
+                parameter->AppendString(val.GetString());
+                break;
+            default:
+                break;
+        }
+    }
+    parameter->Build();
     return *this;
 }
 
