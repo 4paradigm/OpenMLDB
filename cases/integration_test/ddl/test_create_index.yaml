@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["指定ttl_type=absandlat,部分数据过期","key和ts相同"]
+debugs: []
 version: 0.5.0
 cases:
   -
