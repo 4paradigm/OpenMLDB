@@ -1,72 +1,76 @@
-# SQL On-Line Specifications and Requirements
+# Online Specifications and Requirements for SQL
 
-OpenMLDB Online Serving provides real-time feature extraction services. The [DEPLOY](../deployment_manage/DEPLOY_STATEMENT.md) command of OpenMLDB deploys a piece of SQL text to the wire. After the deployment is successful, users can perform feature extraction calculations on the request samples in real time through the Restful API or JDBC API. Not all SQL can be deployed to provide services online. OpenMLDB has a set of specifications for online statements and OP.
+OpenMLDB can provide real-time feature extraction services under *online request* mode. The [DEPLOY](../deployment_manage/DEPLOY_STATEMENT.md) command can deploy a piece of SQL text online. If the deployment is successful, users can perform feature extraction on the requested samples in real time through the Restful API or JDBC API. Note that only some SQL commands can be deployed to provide services online. To deploy these SQL commands please follow the specifications below.
 
-## Online Serving Statement
+## Supported Statements under Online Request Mode 
 
-OpenMLDB only supports online [SELECT query statement](../dql/SELECT_STATEMENT.md).
+Online request mode only supports [SELECT query statement](../dql/SELECT_STATEMENT.md).
 
-## Online Serving Op List
+## Supported `SELECT` Clause by Online Request Mode 
 
-It is worth noting that not all SELECT query statements can be online. In OpenMLDB, only `SELECT`, `WINDOW`, `LAST JOIN` OP can be online, other OP (including `WHERE`, `GROUP`, `HAVING`, `LIMIT`) are all unable to go online.
+It is worth noting that not all SELECT query statements can be deployed online, see [SELECT Statement](../dql/SELECT_STATEMENT.md#select-statement) for detail. 
 
-This section will list the OPs that support Online Serving, and elaborate on the online usage specifications of these OPs.
+The following table shows the `SELECT` clause supported under online request mode.
 
-| SELECT Statement                                  | description                                                         |
-| :----------------------------------------- | :----------------------------------------------------------- |
-| Single sheet simple expression calculation                       | During Online Serving, **simple single-table query** is supported. The so-called simple single-table query is to calculate the column, operation expression, single-row processing function (Scalar Function) and their combined expressions of a table. You need to follow the [Usage Specifications for Online Serving Order Form Query] (#online-serving Order Form Query Usage Specification) |
-| [`JOIN` Clause](../dql/JOIN_CLAUSE.md)     | OpenMLDB currently only supports **LAST JOIN**. In Online Serving, you need to follow [The usage specification of LAST JOIN under Online Serving] (#online-serving usage specification of last-join) |
-| [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md) | The window clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform some analytical calculations (```sql agg_func() over window_name```). In Online Serving, you need to follow the [Usage Specifications of Window under Online Serving] (#the usage specification of window under online-serving) |
+| SELECT Clause                                   | Note                                                                                                                                                                                                                                                                                                                                                              |
+|:------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Simple calculation on single table | The so-called simple single-table query is to process the column of a table, or use operation expressions, single-row processing function (Scalar Function) and their combined expressions on the table. You need to follow the [specifications of Single-table query under Online Request mode](#specifications-of-single-table-query-under-online-request-mode) |
+| [`JOIN` Clause](../dql/JOIN_CLAUSE.md)          | OpenMLDB currently only supports **LAST JOIN**. For Online Request mode, please follow [the specifications of LAST JOIN under Online Request mode](#specifications-of-last-join-under-online-request-mode)                                                                                                                                                        |
+| [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md)      | The window clause is used to define one or several windows. Windows can be named or anonymous. Aggregate functions can be called on the window to perform some analytical computations. For Online Request mode, please follow the [specifications of WINDOW under Online Request mode](#specifications-of-window-under-online-request-mode)                           |
+| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)   | The LIMIT clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data.                                                                                                                                                                                                                                                                                                                  |
 
-## OP's usage specification under Online Serving
+## Specifications of `SELECT` Clause Supported by Online Request Mode
 
-### Online Serving Order Form Query Usage Specifications
+### Specifications of Single-table Query under Online Request Mode
 
-- Only supports column, expression, and single-row processing functions (Scalar Function) and their combined expression operations
-- Single table query does not contain [GROUP BY clause](../dql/JOIN_CLAUSE.md), [WHERE clause](../dql/WHERE_CLAUSE.md), [HAVING clause](../dql/ HAVING_CLAUSE.md) and [WINDOW clause](../dql/WINDOW_CLAUSE.md).
-- Single table query only involves the calculation of a single table, and does not design the calculation of multiple tables [JOIN](../dql/JOIN_CLAUSE.md).
+- Only column computations, expressions, and single-row processing functions (Scalar Function) and their combined expressions are supported. 
+- Single table query does not contain [GROUP BY clause](../dql/JOIN_CLAUSE.md), [WHERE clause](../dql/WHERE_CLAUSE.md), [HAVING clause](../dql/HAVING_CLAUSE.md) and [WINDOW clause](../dql/WINDOW_CLAUSE.md).
+- Single table query only involves the computation of a single table, and does not include the computation of [joined](../dql/JOIN_CLAUSE.md) multiple tables.
 
-#### Example: Example of Simple SELECT Query Statement that Supports Online
+**Example**
 
 ```sql
 -- desc: SELECT all columns
 SELECT * FROM t1;
   
--- desc: SELECT expression renamed
+-- desc: rename expression 1
 SELECT COL1 as c1 FROM t1;
  
--- desc: SELECT expression rename 2
+-- desc: rename expression 2
 SELECT COL1 c1 FROM t1;
 
--- desc: SELECT column expression
+-- desc: SELECT on column expression
 SELECT COL1 FROM t1;
 SELECT t1.COL1 FROM t1;
  
--- desc: SELECT unary expression
+-- desc: unary expression
 SELECT -COL2 as COL2_NEG FROM t1;
   
--- desc: SELECT binary expression
+-- desc: binary expression
 SELECT COL1 + COL2 as COL12_ADD FROM t1;
  
--- desc: SELECT type cast
+-- desc: type cast
 SELECT CAST(COL1 as BIGINT) as COL_BIGINT FROM t1;
   
--- desc: SELECT function expression
+-- desc: function expression
 SELECT substr(COL7, 3, 6) FROM t1;
 ```
 
-### The Usage Specification of LAST JOIN Under Online Serving
+### Specifications of LAST JOIN under Online Request Mode
 
-- Join type only supports `LAST JOIN` type
-- At least one JOIN condition is an EQUAL condition of the form `left_table.column=right_table.column`, and the `rgith_table.column` column needs to hit the index of the right table
-- In the case of LAST JOIN with sorting, `ORDER BY` can only support column expressions, and the column needs to hit the time column of the right table index
+- Only `LAST JOIN` is supported.
+- At least one JOIN condition is an EQUAL condition like `left_table.column=right_table.column`, and the `rgith_table.column` needs to hit the index of the right table.
+- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, and the column needs to hit the time column of the right table's index.
 
-#### Example: Example of Simple SELECT Query Statement that Supports Online
+**Example**
 
 ```sql
 CREATE DATABASE db1;
-
+-- SUCCEED
+    
 USE db1;
+-- SUCCEED: Database changed
+    
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
 -- SUCCEED
 
@@ -86,27 +90,12 @@ desc t1;
  --- -------------------- ------ ---------- ---------- --------------- 
   1   INDEX_0_1639524729   col1   std_time   43200min   kAbsoluteTime  
  --- -------------------- ------ ---------- ---------- --------------- 
-
- -- last join without order by, 'col1' hit index
- SELECT
-   t1.col1 as id,
-   t1.col0 as t1_col0,
-   t1.col1 + t2.col1 + 1 as test_col1,
- FROM t1
- LAST JOIN t2 ON t1.col1=t2.col1;
- 
- -- last join wit order by, 'col1:std_time' hit index
- SELECT
-   t1.col1 as id,
-   t1.col0 as t1_col0,
-   t1.col1 + t2.col1 + 1 as test_col1,
- FROM t1
- LAST JOIN t2	ORDER BY t2.std_time ON t1.col1=t2.col1;
 ```
-### Window Usage Specification Under Online Serving
+### Specifications of WINDOW under Online Request Mode
 
-- Window borders only support `PRECEDING` and `CURRENT ROW`
-- Window types only support `ROWS` and `ROWS_RANGE`
-- The window `PARTITION BY` can only support column expressions, and the column needs to hit the index
-- The window `ORDER BY` can only support column expressions, and the column needs to hit the time column of the index
+- Window boundary: only `PRECEDING` and `CURRENT ROW` are supported.
+- Window type: only `ROWS` and `ROWS_RANGE` are supported.
+- `PARTITION BY` only supports column expressions, and the column needs to hit the index.
+- `ORDER BY` only support column expressions, and the column needs to hit the time column of the index.
+- Another supported restrictions: `EXCLUDE CURRENT_ROW`, `EXCLUDE CURRENT_TIME`, `MAXSIZE` and `INSTANCE_NOT_IN_WINDOW`. See [WindowSpec elements specifically designed by OpenMLDB](../dql/WINDOW_CLAUSE.md#windowspec-elements-specifically-designed-by-openmldb) for detail.
 
