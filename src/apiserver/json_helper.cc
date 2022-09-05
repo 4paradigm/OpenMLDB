@@ -16,7 +16,10 @@
 
 #include "apiserver/json_helper.h"
 
+#include <memory>
+#include <set>
 #include <stack>
+#include <vector>
 
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 #include "sdk/base_impl.h"
