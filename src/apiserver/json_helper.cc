@@ -235,32 +235,40 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
         }
     }
     this->EndArray();
+
     ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
     std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     std::set<std::string> _rs{};
     parameter.reset(new openmldb::sdk::SQLRequestRow(schema_shared, _rs));
-    parameter->Init(str_length);
+
+    if (!parameter->Init(str_length)) goto fast_fail;
     for (auto i = 0; i < size; i++) {
         auto col = schema.Get(i);
         auto& val = values.at(i);
+        bool ok = false;
         switch (col.type()) {
             case ::hybridse::type::kBool:
-                parameter->AppendBool(val.GetBool());
+                ok = parameter->AppendBool(val.GetBool());
                 break;
             case ::hybridse::type::kInt64:
-                parameter->AppendInt64(val.GetInt64());
+                ok = parameter->AppendInt64(val.GetInt64());
                 break;
             case ::hybridse::type::kDouble:
-                parameter->AppendDouble(val.GetDouble());
+                ok = parameter->AppendDouble(val.GetDouble());
                 break;
             case ::hybridse::type::kVarchar:
-                parameter->AppendString(val.GetString());
+                ok = parameter->AppendString(val.GetString());
                 break;
             default:
                 break;
         }
+        if (!ok) goto fast_fail;
     }
-    parameter->Build();
+    if (!parameter->Build()) goto fast_fail;
+
+    return *this;
+fast_fail:
+    error_ = true;
     return *this;
 }
 
