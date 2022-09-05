@@ -208,6 +208,7 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
     this->StartArray(&size);
     ::hybridse::vm::Schema schema;
     std::vector<Value> values;
+    int32_t str_length = 0;
     for (auto i = 0; i < size; i++) {
         if (!error_) {
             auto col = schema.Add();
@@ -226,6 +227,7 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
             } else if (CURRENT.IsString()) {
                 col->set_type(::hybridse::type::kVarchar);
                 values.push_back(Value(CURRENT.GetString(), CURRENT.GetStringLength()));
+                str_length += CURRENT.GetStringLength();
             } else {
                 error_ = true;
             }
@@ -237,7 +239,7 @@ JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>&
     std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
     std::set<std::string> _rs{};
     parameter.reset(new openmldb::sdk::SQLRequestRow(schema_shared, _rs));
-    parameter->Init(0);
+    parameter->Init(str_length);
     for (auto i = 0; i < size; i++) {
         auto col = schema.Get(i);
         auto& val = values.at(i);
