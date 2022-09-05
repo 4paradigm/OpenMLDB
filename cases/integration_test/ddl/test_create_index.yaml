@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["指定ttl_type=absandlat,部分数据过期","key和ts相同"]
 version: 0.5.0
 cases:
   -
@@ -462,7 +462,6 @@ cases:
   -
     id: 22
     desc: 指定ttl_type=latest,部分数据过期
-    tags: ["TODO","latest的过期数据比预期多了一条，@denglong"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -484,7 +483,6 @@ cases:
   -
     id: 23
     desc: 指定ttl_type=absandlat,部分数据过期
-    tags: ["TODO","latest的过期数据比预期多了一条，@denglong"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -500,8 +498,8 @@ cases:
       columns: ["id int","c1 string","c2 int","c3 timestamp","c4 timestamp"]
       order: id
       rows:
-        - [2,"aa", 1, 1590738990000,1590738990000]
-        - [3,"aa", 1, 1590738990000,1590738990000]
+        - [2,"aa", 1, 1590738990000,1590738991000]
+        - [3,"aa", 1, 1590738990000,1590738992000]
   -
     id: 24
     desc: 指定ttl_type=absorlat,部分数据过期
@@ -521,7 +519,6 @@ cases:
   -
     id: 25
     desc: 指定ttl_type=absandlat,部分数据过期-边界
-    tags: ["TODO","latest的过期数据比预期多了一条，@denglong"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -588,7 +585,6 @@ cases:
   -
     id: 28
     desc: 指定ttl_type=absorlat,部分数据过期-边界2
-    tags: ["TODO","latest的过期数据比预期多了一条，@denglong"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -634,7 +630,6 @@ cases:
   -
     id: 30
     desc: 先创建索引，在插入数据，测试过期-latest
-    tags: ["TODO","latest的过期数据比预期多了一条，@denglong"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -704,7 +699,6 @@ cases:
   -
     id: 33
     desc: key和ts相同
-    tags: ["TODO","key和ts相同,认为是相同的索引要添加失败，目前添加成功，@denglong"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
@@ -713,7 +707,6 @@ cases:
           - [aa,1,1590738990000,1590738989000]
     sqls:
       - CREATE INDEX index1 ON {0} (c1) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
-      - desc {0};
     expect:
       success: false
   -

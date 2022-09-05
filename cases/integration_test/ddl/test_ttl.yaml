@@ -221,7 +221,6 @@ cases:
   -
     id: 24
     desc: 指定ttl_type=absolute，部分数据过期
-    tags: ["TODO","边界case，待离线和c++支持后，在使用"]
     inputs:
       -
         columns: ["c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -237,7 +236,6 @@ cases:
   -
     id: 25
     desc: 指定ttl_type=absandlat,部分数据过期-边界
-    tags: ["TODO","边界case，待离线和c++支持后，在使用"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -257,7 +255,6 @@ cases:
   -
     id: 26
     desc: 指定ttl_type=absandlat,部分数据过期-边界2
-    tags: ["TODO","边界case，待离线和c++支持后，在使用"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -278,7 +275,6 @@ cases:
   -
     id: 27
     desc: 指定ttl_type=absorlat,部分数据过期-边界
-    tags: ["TODO","边界case，待离线和c++支持后，在使用"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
@@ -296,7 +292,6 @@ cases:
   -
     id: 28
     desc: 指定ttl_type=absorlat,部分数据过期-边界2
-    tags: ["TODO","边界case，待离线和c++支持后，在使用"]
     inputs:
       -
         columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
