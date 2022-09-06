@@ -234,10 +234,13 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
 
         for (const auto& index_def : inner_index->GetIndex()) {
-            if (!index_def || !index_def->IsReady()) {
+            if (!index_def) {
                 PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
                       it->idx(), id_, pid_);
                 return false;
+            }
+            if (!index_def->IsReady()) {
+                continue;
             }
             auto ts_col = index_def->GetTsColumn();
             std::string combine_key;
