@@ -62,19 +62,34 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject("out/openmldb_info.yaml",OpenMLDBInfo.class);
         }else{
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+//            openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
+//            openMLDBInfo.setNsNum(2);
+//            openMLDBInfo.setTabletNum(3);
+//            openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
+//            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+//            openMLDBInfo.setZk_root_path("/openmldb");
+//            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
+//            openMLDBInfo.setNsNames(Lists.newArrayList());
+//            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"));
+//            openMLDBInfo.setTabletNames(Lists.newArrayList());
+//            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"));
+//            openMLDBInfo.setApiServerNames(Lists.newArrayList());
+//            openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList("172.24.4.55:30007"));
+//            openMLDBInfo.setOpenMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb");
+
             openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
             openMLDBInfo.setNsNum(2);
             openMLDBInfo.setTabletNum(3);
             openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
-            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30008");
             openMLDBInfo.setZk_root_path("/openmldb");
-            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30012", "172.24.4.55:30013"));
             openMLDBInfo.setNsNames(Lists.newArrayList());
-            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"));
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30009", "172.24.4.55:30010", "172.24.4.55:30011"));
             openMLDBInfo.setTabletNames(Lists.newArrayList());
-            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"));
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30014"));
             openMLDBInfo.setApiServerNames(Lists.newArrayList());
-            openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList("172.24.4.55:30007"));
+            openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList("172.24.4.55:30015"));
             openMLDBInfo.setOpenMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb");
 
             OpenMLDBGlobalVar.mainInfo = openMLDBInfo;

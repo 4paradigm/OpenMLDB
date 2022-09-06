@@ -389,13 +389,12 @@ cases:
   - id: 36
     desc: create col with __prefix
     sqlDialect: ["HybridSQL"]
-    tags: ["TODO", "@chenjing create with __prefix"]
     sql: |
       create table {auto} (
       __c1 string, __c3 int, __ts bigint,
       index(key=__c1, ts=__ts));
     expect:
-      columns: ["__c1 string","__c3 int", "__ts bigint"]
+      success: true
   -
     id: 37
     desc: create with replica num

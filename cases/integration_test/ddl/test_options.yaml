@@ -56,7 +56,7 @@ cases:
       name: t3
       success: true
       options:
-        partitionNum: 8
+        partitionNum: 1
         replicaNum: 1
   -
     id: 3
@@ -107,11 +107,14 @@ cases:
       distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
       );
     expect:
-      success: false
+      name: t3
+      success: true
+      options:
+        partitionNum: 2
+        replicaNum: 3
   -
     id: 6
     desc: partitionnum=0，指定distribution
-    tags: ["TODO","bug修复后验证"]
     mode: standalone-unsupport
     inputs:
       - name: t3
@@ -123,11 +126,7 @@ cases:
       distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
       );
     expect:
-      name: t3
-      success: true
-      options:
-        partitionNum: 1
-        replicaNum: 3
+      success: false
   -
     id: 7
     desc: partitionnum=10
@@ -195,21 +194,21 @@ cases:
       success: false
   -
     id: 11
-    desc: distribution没有指定follower
+    desc: distribution小于replicanum
     inputs:
       - name: t3
     sql: |
       create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
       options (
       partitionnum = 1,
-      replicanum = 1,
+      replicanum = 2,
       distribution = [ ('{tb_endpoint_0}')]
       );
     expect:
       success: false
   -
     id: 12
-    desc: distribution的个数和replicanum对不上
+    desc: distribution大于replicanum
     mode: standalone-unsupport
     inputs:
       - name: t3
@@ -322,7 +321,11 @@ cases:
       distribution = [ ('{tb_endpoint_0}', [])]
       );
     expect:
-      success: false
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 1
   -
     id: 20
     desc: distribution指定的tablet不存在
@@ -351,11 +354,7 @@ cases:
       distribution = [ ('{tb_endpoint_0}',[])]
       );
     expect:
-      name: t3
-      success: true
-      options:
-        partitionNum: 4
-        replicaNum: 1
+      success: false
   -
     id: 22
     desc: test-case
@@ -383,7 +382,6 @@ cases:
         replicaNum: 3
   -
     id: 23
-    tags: ["TODO","bug修复后验证"]
     desc: partitionnum=0，没有指定distribution
     mode: standalone-unsupport
     inputs:
@@ -399,7 +397,6 @@ cases:
   -
     id: 24
     desc: 没有partitionnum和replicanum，指定distribution
-    tags: ["TODO","bug修复后验证"]
     mode: standalone-unsupport
     inputs:
       - name: t3
@@ -414,8 +411,36 @@ cases:
       options:
         partitionNum: 1
         replicaNum: 3
-
-
+  -
+    id: 25
+    desc: distribution多于partitionnum
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      success: false
+  -
+    id: 26
+    desc: distribution小于partitionnum
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 3,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      success: false
 
 
 

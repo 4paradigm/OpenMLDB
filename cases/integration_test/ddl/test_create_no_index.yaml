@@ -240,7 +240,6 @@ cases:
   -
     id: 11
     desc: 不指定索引创建表，然后增加索引
-    tags: ["TODO","还不支持增加索引时指定新的ts列"]
     inputs:
       -
         create: |

@@ -49,6 +49,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     // different default value for cluster and standalone mode
     int replica_num = 1;
     int partition_num = 1;
+    bool setted_replica_num = false;
+    bool setted_partition_num = false;
     if (is_cluster_mode) {
         replica_num = default_replica_num;
         partition_num = FLAGS_partition_num;
@@ -59,11 +61,13 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             switch (table_option->GetType()) {
                 case hybridse::node::kReplicaNum: {
                     replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+                    setted_replica_num = true;
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
                     partition_num =
                         dynamic_cast<hybridse::node::PartitionNumNode*>(table_option)->GetPartitionNum();
+                    setted_partition_num = true;
                     break;
                 }
                 case hybridse::node::kStorageMode: {
@@ -82,11 +86,11 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             }
         }
     }
-    if (replica_num == 0) {
+    if (replica_num <= 0) {
         *status = {hybridse::common::kUnsupportSql, "replicanum should be great than 0"};
         return false;
     }
-    if (partition_num == 0) {
+    if (partition_num <= 0) {
         *status = {hybridse::common::kUnsupportSql, "partitionnum should be great than 0"};
         return false;
     }
@@ -202,16 +206,15 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         }
     }
     if (!distribution_list.empty()) {
-        table->set_partition_num(distribution_list.size());
+        int cur_replica_num = 0;
         for (size_t idx = 0; idx < distribution_list.size(); idx++) {
             auto table_partition = table->add_table_partition();
             table_partition->set_pid(idx);
             auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.at(idx));
             if (idx == 0) {
-                table->set_replica_num(partition_mata_nodes->GetSize());
-            } else if (static_cast<int>(table->replica_num()) != partition_mata_nodes->GetSize()) {
-                status->msg = "CREATE common: replica num is inconsistency";
-                status->code = hybridse::common::kUnsupportSql;
+                cur_replica_num = partition_mata_nodes->GetSize();
+            } else if (cur_replica_num != partition_mata_nodes->GetSize()) {
+                *status = {hybridse::common::kUnsupportSql, "replica num is inconsistency"};
                 return false;
             }
             std::set<std::string> endpoint_set;
@@ -249,6 +252,16 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
             }
         }
+        if (setted_partition_num && table->partition_num() != distribution_list.size()) {
+            *status = {hybridse::common::kUnsupportSql, "distribution_list size and partition_num is not match"};
+            return false;
+        }
+        table->set_partition_num(distribution_list.size());
+        if (setted_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
+            *status = {hybridse::common::kUnsupportSql, "replica in distribution_list and replica_num is not match"};
+            return false;
+        }
+        table->set_replica_num(cur_replica_num);
     }
     return true;
 }

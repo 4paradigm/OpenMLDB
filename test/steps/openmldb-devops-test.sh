@@ -97,13 +97,13 @@ cd "${ROOT_DIR}" || exit
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-devops-test || exit
 mvn clean test -e -U -Dsuite=test_suite/"${CASE_XML}"
 
-if [[ "${TABLE_STORAGE_MODE}" == "memory" ]]; then
-  SDK_CASE_XML="test_cluster.xml"
-else
-  SDK_CASE_XML="test_cluster_disk.xml"
-fi
-echo "SDK_CASE_XML:${SDK_CASE_XML}"
 if [[ "${TEST_TYPE}" == "upgrade" ]]; then
+  if [[ "${TABLE_STORAGE_MODE}" == "memory" ]]; then
+    SDK_CASE_XML="test_cluster.xml"
+  else
+    SDK_CASE_XML="test_cluster_disk.xml"
+  fi
+  echo "SDK_CASE_XML:${SDK_CASE_XML}"
   # run case
   cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
   mvn clean test -e -U -DsuiteXmlFile=test_suite/"${SDK_CASE_XML}" -DcaseLevel="0"

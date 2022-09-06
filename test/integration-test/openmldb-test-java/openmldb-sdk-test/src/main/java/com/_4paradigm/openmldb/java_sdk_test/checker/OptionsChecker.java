@@ -58,7 +58,7 @@ public class OptionsChecker extends BaseChecker {
         Object partitionNum = JsonPath.read(resultData, "$.table.partition_num");
         Object replicaNum = JsonPath.read(resultData, "$.table.replica_num");
         Map<String, Object> options = expect.getOptions();
-        Assert.assertEquals(options.get("partitionNum"),partitionNum,"partitionNum不一致");
-        Assert.assertEquals(options.get("replicaNum"),replicaNum,"replicaNum不一致");
+        Assert.assertEquals(partitionNum,options.get("partitionNum"),"partitionNum不一致,resultData:"+resultData);
+        Assert.assertEquals(replicaNum,options.get("replicaNum"),"replicaNum不一致,resultData:"+resultData);
     }
 }

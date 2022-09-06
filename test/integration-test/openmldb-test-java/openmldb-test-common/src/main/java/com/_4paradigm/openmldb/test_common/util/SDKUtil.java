@@ -276,7 +276,7 @@ public class SDKUtil {
         try {
             createOk = executor.getStatement().execute(sql);
             openMLDBResult.setOk(true);
-            Thread.sleep(10000);
+            Tool.sleep(20*1000);
         } catch (Exception e) {
             e.printStackTrace();
             openMLDBResult.setOk(false);
