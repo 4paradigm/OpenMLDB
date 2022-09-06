@@ -4139,7 +4139,6 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandle
     }
 
     auto rs = std::make_shared<TableFilterWrapper>(table, parameter, this);
-    rs->SetLimitCnt(limit);
 
     return rs;
 }
