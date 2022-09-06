@@ -2611,12 +2611,11 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     // build window with start and end offset
     switch (input->GetHandlerType()) {
         case kTableHandler: {
-            return filter_gen_.Filter(
-                std::dynamic_pointer_cast<TableHandler>(input), parameter);
+            // FIXME(ace): limit = 0 and without limit is different
+            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter, limit_cnt_);
         }
         case kPartitionHandler: {
-            return filter_gen_.Filter(
-                std::dynamic_pointer_cast<PartitionHandler>(input), parameter);
+            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter, limit_cnt_);
         }
         default: {
             LOG(WARNING) << "fail to filter when input is row";
@@ -4111,14 +4110,14 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     }
 }
 
-std::shared_ptr<DataHandler> FilterGenerator::Filter(
-    std::shared_ptr<PartitionHandler> partition, const Row& parameter) {
+std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<PartitionHandler> partition, const Row& parameter,
+                                                     std::optional<int32_t> limit) {
     if (!partition) {
         LOG(WARNING) << "fail to filter table: input is empty";
         return std::shared_ptr<DataHandler>();
     }
     if (index_seek_gen_.Valid()) {
-        return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter);
+        return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter, limit);
     } else {
         if (!condition_gen_.Valid()) {
             return partition;
@@ -4126,9 +4125,9 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(
         return std::shared_ptr<PartitionHandler>(new PartitionFilterWrapper(partition, parameter, this));
     }
 }
-std::shared_ptr<DataHandler> FilterGenerator::Filter(
-    std::shared_ptr<TableHandler> table,
-    const Row& parameter) {
+
+std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandler> table, const Row& parameter,
+                                                     std::optional<int32_t> limit) {
     auto fail_ptr = std::shared_ptr<TableHandler>();
     if (!table) {
         LOG(WARNING) << "fail to filter table: input is empty";
@@ -4138,7 +4137,11 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(
     if (!condition_gen_.Valid()) {
         return table;
     }
-    return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, parameter, this));
+
+    auto rs = std::make_shared<TableFilterWrapper>(table, parameter, this);
+    rs->SetLimitCnt(limit);
+
+    return rs;
 }
 
 std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(
