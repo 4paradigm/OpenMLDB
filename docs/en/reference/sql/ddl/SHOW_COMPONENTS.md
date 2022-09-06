@@ -1,5 +1,5 @@
 # SHOW COMPONENTS
-`SHOW COMPONENTS` is used to check the information of components in current system.
+`SHOW COMPONENTS` is used to show the information of components.
 
 ```sql
 SHOW COMPONENTS;
@@ -10,17 +10,17 @@ SHOW COMPONENTS;
 | Column       | Note                                                                                                                                                                                              |
 | ------------ |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Endpoint     | It shows the endpoint of the component by providing the IP and the port, which is the same as the `--endpoint` flag in configuration files.                                                       |
-| Role         | It indicates the role of the component, which is the same as the `--role` flag in configuration files. <br/> There are four types of role: `tablet`, `nameserver`, `taskmanager` and `apiserver`. |
-| Connect_time | It shows the connecting momment of the component by timestamp in milliseconds.                                                                                                                    |
+| Role         | It indicates the role of the component, which is the same as the `--role` flag in configuration files. <br/> There are four types of roles: `tablet`, `nameserver`, `taskmanager` and `apiserver`. |
+| Connect_time | It shows the timestamp (in milliseconds) of connection establishment of the component.                                                                                                                    |
 | Status       | It shows the status of the component. There are three kinds of status: `online`, `offline` and `NULL`.                                                                                            |
-| Ns_role      | It shows the role of the Namserver: `master` or `standby`. For other component role, Ns_role is `NULL`.                                                                                           |
+| Ns_role      | It shows the role of the Namserver: `master` or `standby`. For other components, Ns_role is `NULL`.                                                                                           |
 
 
 ```{note}
-There are still some unfinished features of `SHOW COMPONETS`:
-- It doesn't include the information of the api server.
-- It can only shows the information of one leader task manager but can not shows the information of followers. 
-- The `Connect_time` of nameserver in standalone version is inaccurate.  
+Currently, there are certain limitations of `SHOW COMPONETS`:
+- It does not include the information of the APIServer.
+- It can only shows the information of one leader task manager, but is not working for followers.
+- The `Connect_time` of nameserver in tha standalone version is inaccurate.  
 ```
 ## Example
 
