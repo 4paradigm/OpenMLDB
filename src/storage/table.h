@@ -170,6 +170,8 @@ class Table {
 
     bool CheckFieldExist(const std::string& name);
 
+    bool CheckTsInIndex(uint32_t idx, uint32_t* ts_id);
+
     virtual bool DeleteIndex(const std::string& idx_name) = 0;
 
     virtual uint64_t GetRecordIdxCnt() = 0;

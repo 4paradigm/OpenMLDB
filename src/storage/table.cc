@@ -196,5 +196,15 @@ bool Table::CheckFieldExist(const std::string& name) {
     return false;
 }
 
+bool Table::CheckTsInIndex(uint32_t idx, uint32_t* ts_id) {
+    auto indexs = table_index_.GetAllIndex();
+    auto ts_col = indexs[idx]->GetTsColumn();
+    if (ts_col && !ts_col->IsAutoGenTs()) {
+        *ts_id = ts_col->GetId();
+        return true;
+    }
+    return false;
+}
+
 }  // namespace storage
 }  // namespace openmldb

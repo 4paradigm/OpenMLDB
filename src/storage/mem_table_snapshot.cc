@@ -235,7 +235,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
             has_error = true;
             break;
         }
-        int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+        int ret = RemoveDeletedKey(table, entry, deleted_index, &tmp_buf);
         if (ret == 1) {
             deleted_key_num++;
             continue;
@@ -429,7 +429,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
             if (entry.has_term()) {
                 last_term = entry.term();
             }
-            int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+            int ret = RemoveDeletedKey(table, entry, deleted_index, &tmp_buf);
             if (ret == 1) {
                 deleted_key_num++;
                 continue;
@@ -515,7 +515,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     return ret;
 }
 
-int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
+int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::openmldb::api::LogEntry& entry,
+                                       const std::set<uint32_t>& deleted_index,
                                        std::string* buffer) {
     uint64_t cur_offset = entry.log_index();
     if (entry.dimensions_size() == 0) {
@@ -529,10 +530,36 @@ int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, c
             return 1;
         }
     } else {
+        uint32_t ts_index = UINT32_MAX;
         std::set<int> deleted_pos_set;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+            bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
             std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
-            if (entry.has_ts()) {
+            if (!use_ts) {
+                std::string buff;
+                openmldb::base::Slice data;
+                if (table->GetCompressType() == openmldb::type::kSnappy) {
+                    snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
+                    data.reset(buff.data(), buff.size());
+                } else {
+                    data.reset(entry.value().data(), entry.value().size());
+                }
+                const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
+                uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
+                std::vector<std::string> value_vec;
+                std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
+                if (schema == nullptr) {
+                    LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
+                    return 0;
+                }
+                // TODO(XLC-2): decode only required properties.
+                bool ok = openmldb::codec::RowCodec::DecodeRow(*schema, data, value_vec);
+                if (!ok) {
+                    DLOG(WARNING) << "decode data error";
+                    return 0;
+                }
+                combined_key += "|" + value_vec[ts_index];
+            } else if (entry.has_ts()) {
                 combined_key += "|" + std::to_string(entry.ts());
             }
             auto iter = deleted_keys_.find(combined_key);

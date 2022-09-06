@@ -1168,6 +1168,271 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     ASSERT_EQ(7, (int64_t)manifest.term());
 }
 
+TEST_F(SnapshotTest, MakeSnapshot_with_delete_ts_in_index) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/4_3/snapshot";
+    std::string binlog_dir = FLAGS_db_root_path + "/4_3/binlog";
+
+    ::openmldb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20220905.sdb";
+    ::openmldb::api::TableMeta* table_meta = new ::openmldb::api::TableMeta();
+    table_meta->set_name("test");
+    table_meta->set_tid(4);
+    table_meta->set_pid(2);
+    table_meta->set_seg_cnt(8);
+    table_meta->set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts", ::openmldb::type::kTimestamp);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "ts", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "ts", ::openmldb::type::kAbsoluteTime, 0,
+                          0);
+    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
+    {
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1.append(".");
+            snapshot1.append(FLAGS_snapshot_compression);
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
+        {
+            ::openmldb::api::LogEntry entry;
+            std::string result;
+            sdk_codec.EncodeRow({"card0", "merchant0", "test1", "9527"}, &result);
+            entry.set_value(result);
+            entry.set_log_index(1);
+            ::openmldb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::openmldb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            ::openmldb::api::TSDimension* ts_dim = entry.add_ts_dimensions();
+            ts_dim->set_ts(9527);
+            ts_dim->set_idx(0);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            ::openmldb::log::Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+        {
+            ::openmldb::api::LogEntry entry;
+            std::string result;
+            sdk_codec.EncodeRow({"card0", "merchant0", "test2", "9528"}, &result);
+            entry.set_value(result);
+            entry.set_log_index(2);
+            ::openmldb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::openmldb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            ::openmldb::api::TSDimension* ts_dim = entry.add_ts_dimensions();
+            ts_dim->set_ts(9528);
+            ts_dimm->set_idx(0);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            ::openmldb::log::Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+        writer.EndLog();
+    }
+
+    {
+        std::string snapshot2 = "20200310.sdb.tmp";
+        std::string full_path = snapshot_dir + "/" + snapshot2;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot2, fd_w);
+        ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
+        ::openmldb::api::LogEntry entry;
+        entry.set_pk("test1");
+        entry.set_ts(9527);
+        entry.set_value("test1");
+        std::string val;
+        bool ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval(val.c_str(), val.size());
+        ::openmldb::log::Status status = writer.AddRecord(sval);
+        ASSERT_TRUE(status.ok());
+        entry.set_pk("test1");
+        entry.set_ts(9528);
+        entry.set_value("test2");
+        ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval2(val.c_str(), val.size());
+        status = writer.AddRecord(sval2);
+        ASSERT_TRUE(status.ok());
+        writer.EndLog();
+    }
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    table->Init();
+    table->Delete("test1", 0, 9527);
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(4, 2, log_part, FLAGS_db_root_path);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.GenManifest(snapshot1, 4, 2, 5);
+    ASSERT_EQ(0, ret);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(2u, latest_offset);
+    {
+        Ticket ticket;
+        TableIterator* it = table->NewIterator(0, "card0", ticket);
+        it->Seek(9528);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9528u, it->GetKey());
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value2_str, &row);
+        ASSERT_EQ("test2", row[2]);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    ASSERT_EQ(1u, table->GetRecordCnt());
+    ASSERT_EQ(2u, table->GetRecordIdxCnt());
+}
+
+TEST_F(SnapshotTest. MakeSnapshot_with_delete_ts) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/4_4/snapshot";
+    std::string binlog_dir = FLAGS_db_root_path + "/4_4/binlog";
+
+    ::openmldb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20220906.sdb";
+    ::openmldb::api::TableMeta* table_meta = new ::openmldb::api::TableMeta();
+    table_meta->set_name("test");
+    table_meta->set_tid(4);
+    table_meta->set_pid(2);
+    table_meta->set_seg_cnt(8);
+    table_meta->set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "merchant", "merchant", "", ::openmldb::type::kAbsoluteTime, 0,
+                          0);
+    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
+    {
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1.append(".");
+            snapshot1.append(FLAGS_snapshot_compression);
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
+        {
+            ::openmldb::api::LogEntry entry;
+            std::string result;
+            entry,set_ts(9527);
+            sdk_codec.EncodeRow({"card0", "merchant0", "test1"}, &result);
+            entry.set_value(result);
+            entry.set_log_index(1);
+            ::openmldb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::openmldb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            ::openmldb::log::Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+        {
+            ::openmldb::api::LogEntry entry;
+            std::string result;
+            entry.set_ts(9528);
+            sdk_codec.EncodeRow({"card0", "merchant0", "test2"}, &result);
+            entry.set_value(result);
+            entry.set_log_index(2);
+            ::openmldb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::openmldb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            ::openmldb::log::Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+        writer.EndLog();
+    }
+
+    {
+        std::string snapshot2 = "20200310.sdb.tmp";
+        std::string full_path = snapshot_dir + "/" + snapshot2;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot2, fd_w);
+        ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
+        ::openmldb::api::LogEntry entry;
+        entry.set_pk("test1");
+        entry.set_ts(9527);
+        entry.set_value("test1");
+        std::string val;
+        bool ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval(val.c_str(), val.size());
+        ::openmldb::log::Status status = writer.AddRecord(sval);
+        ASSERT_TRUE(status.ok());
+        entry.set_pk("test1");
+        entry.set_ts(9528);
+        entry.set_value("test2");
+        ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval2(val.c_str(), val.size());
+        status = writer.AddRecord(sval2);
+        ASSERT_TRUE(status.ok());
+        writer.EndLog();
+    }
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    table->Init();
+    table->Delete("test1", 0, 9527);
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(4, 2, log_part, FLAGS_db_root_path);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.GenManifest(snapshot1, 4, 2, 5);
+    ASSERT_EQ(0, ret);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(2u, latest_offset);
+    {
+        Ticket ticket;
+        TableIterator* it = table->NewIterator(0, "card0", ticket);
+        it->Seek(9528);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9528u, it->GetKey());
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
+        std::vector<std::string> row;
+        sdk_codec.DecodeRow(value2_str, &row);
+        ASSERT_EQ("test2", row[2]);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    ASSERT_EQ(1u, table->GetRecordCnt());
+    ASSERT_EQ(2u, table->GetRecordIdxCnt());
+}
+
 TEST_F(SnapshotTest, RecordOffset) {
     std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
     MemTableSnapshot snapshot(1, 1, NULL, FLAGS_db_root_path);

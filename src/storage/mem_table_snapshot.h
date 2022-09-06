@@ -112,7 +112,8 @@ class MemTableSnapshot : public Snapshot {
                            uint32_t max_idx, uint32_t idx, uint32_t partition_num, ::openmldb::api::LogEntry* entry,
                            uint32_t* index_pid);
 
-    int RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
+    int RemoveDeletedKey(std::shared_ptr<Table> table, const ::openmldb::api::LogEntry& entry,
+                         const std::set<uint32_t>& deleted_index,
                          std::string* buffer);
 
  private:

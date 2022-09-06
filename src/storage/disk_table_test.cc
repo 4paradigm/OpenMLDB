@@ -387,6 +387,53 @@ TEST_F(DiskTableTest, Delete) {
     RemoveData(table_path);
 }
 
+TEST_F(DiskTableTest, TsDelete) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    mapping.insert(std::make_pair("idx2", 2));
+    std::string table_path = FLAGS_hdd_root_path + "/4_1";
+    DiskTable* table = new DiskTable("yjtable4", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
+    uint64_t base_ts = 9537;
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 10; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, base_ts + k, "value", 5));
+        }
+    }
+    Ticket ticket;
+    TableIterator* it = table->NewIterator("test6", ticket);
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();
+        ASSERT_EQ("test6", pk);
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 10);
+    delete it;
+    
+    table->Delete("test6", 0, base_ts);
+    it = table->NewIterator("test6", ticket);
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();
+        ASSERT_EQ("test6", pk);
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 9);
+    delete it;
+
+    delete table;
+    RemoveData(table_path);
+}
+
 TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
