@@ -516,6 +516,7 @@ static bool CheckUnionAvailable(const PhysicalOpNode* left,
     return true;
 }
 
+// TODO: read this
 Status BatchModeTransformer::CreateRequestUnionNode(
     PhysicalOpNode* request, PhysicalOpNode* right,
     const std::string& db_name,
@@ -763,8 +764,7 @@ Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
             break;
         }
         default: {
-            return Status(kPlanError, "Do not support window on " +
-                                          depend->GetTreeString());
+            FAIL_STATUS(kPlanError, "Do not support window on " + depend->GetTreeString());
         }
     }
     return Status::OK();
