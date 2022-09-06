@@ -69,7 +69,7 @@ void CheckTablePartition(const ::openmldb::nameserver::TableInfo& table_info,
 
 TEST_P(NodeAdapterTest, TransformToTableInfo) {
     std::string base_sql = "CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time)) "
-        "OPTIONS (DISTRIBUTION = ";
+        "OPTIONS (";
     auto& c = GetParam();
     std::string sql = base_sql + c.distribution + ");";
     hybridse::node::NodeManager node_manager;
@@ -94,25 +94,28 @@ TEST_P(NodeAdapterTest, TransformToTableInfo) {
     }
 }
 
-
 static std::vector<TestInfo> cases = {
-    { "[('127.0.0.1:6527')]", true, true, {{"127.0.0.1:6527"}} },
-    { "[('127.0.0.1:6527', [])]", true, true, {{"127.0.0.1:6527"}} },
-    { "[('127.0.0.1:6527', ['127.0.0.1:6528'])]", true, true, {{"127.0.0.1:6527", "127.0.0.1:6528"}}},
-    { "[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529'])]", true, true,
+    { "DISTRIBUTION=[('127.0.0.1:6527')]", true, true, {{"127.0.0.1:6527"}} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', [])]", true, true, {{"127.0.0.1:6527"}} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528'])]", true, true, {{"127.0.0.1:6527", "127.0.0.1:6528"}}},
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529'])]", true, true,
         {{"127.0.0.1:6527", "127.0.0.1:6528", "127.0.0.1:6529"}} },
-    { "[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529']), "
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529']), "
         "('127.0.0.1:6528', ['127.0.0.1:6527','127.0.0.1:6529'])]", true, true,
         {{"127.0.0.1:6527", "127.0.0.1:6528", "127.0.0.1:6529"},
             {"127.0.0.1:6528", "127.0.0.1:6527", "127.0.0.1:6529"}} },
-    { "[('127.0.0.1:6527', ['127.0.0.1:6527'])]", true, false, {} },
-    { "[('127.0.0.1:6527', ['127.0.0.1:6527')]", false, false, {} },
-    { "[()]", false, false, {{}} },
-    { "[]", false, false, {{}} },
-    { "['127.0.0.1:6527']", true, true, {{"127.0.0.1:6527"}} },
-    { "[('127.0.0.1:6527', '127.0.0.1:6527')]", false, false, {} },
-    { "['127.0.0.1:6527', '127.0.0.1:6528']", true, true, {{"127.0.0.1:6527"}, {"127.0.0.1:6528"}} },
-    { "[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6528'])]", true, false, {} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6527'])]", true, false, {} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6527')]", false, false, {} },
+    { "DISTRIBUTION=[()]", false, false, {{}} },
+    { "DISTRIBUTION=[]", false, false, {{}} },
+    { "DISTRIBUTION=['127.0.0.1:6527']", true, true, {{"127.0.0.1:6527"}} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', '127.0.0.1:6527')]", false, false, {} },
+    { "DISTRIBUTION=['127.0.0.1:6527', '127.0.0.1:6528']", true, true, {{"127.0.0.1:6527"}, {"127.0.0.1:6528"}} },
+    { "DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6528'])]", true, false, {} },
+    { "REPLICANUM=2, DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529'])]", true, false, {} },
+    { "PARTITIONNUM=2, DISTRIBUTION=[('127.0.0.1:6527', ['127.0.0.1:6528','127.0.0.1:6529'])]", true, false, {} },
+    { "REPLICANUM=2, PARTITIONNUM=0", true, false, {} },
+    { "REPLICANUM=0, PARTITIONNUM=8", true, false, {} },
 };
 
 INSTANTIATE_TEST_SUITE_P(NodeAdapter, NodeAdapterTest, testing::ValuesIn(cases));
