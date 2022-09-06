@@ -203,7 +203,10 @@ TEST_F(APIServerTest, parameterizedQuery) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
         cntl.request_attachment().append(R"({
-            "sql": "select c1, c2 from demo where c2 = ?;", "mode": "online", "parameters": ["bb"]
+            "sql": "select c1, c2 from demo where c2 = ?;", "mode": "online", "parameters": {
+                "schema": ["STRING"],
+                "data": ["bb"]
+            }
         })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
@@ -230,7 +233,10 @@ TEST_F(APIServerTest, parameterizedQuery) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
         cntl.request_attachment().append(R"({
-            "sql": "select c1, c2 from demo where c2 = ? and c1 = ?;", "mode": "online", "parameters": ["bb", 1]
+            "sql": "select c1, c2 from demo where c2 = ? and c1 = ?;", "mode": "online", "parameters": {
+                "schema": ["STRING", "INT"],
+                "data": ["bb", 1]
+            }
         })");
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
