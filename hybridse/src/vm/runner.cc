@@ -4119,10 +4119,16 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<PartitionHa
     if (index_seek_gen_.Valid()) {
         return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter, limit);
     } else {
-        if (!condition_gen_.Valid()) {
-            return partition;
+        std::shared_ptr<TableHandler> rs = partition;
+        if (condition_gen_.Valid()) {
+            rs = std::make_shared<PartitionFilterWrapper>(partition, parameter, this);
         }
-        return std::shared_ptr<PartitionHandler>(new PartitionFilterWrapper(partition, parameter, this));
+
+        if (!limit.has_value()) {
+            return rs;
+        }
+
+        return std::make_shared<LimitTableHandler>(rs, limit.value());
     }
 }
 
@@ -4140,7 +4146,11 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandle
 
     auto rs = std::make_shared<TableFilterWrapper>(table, parameter, this);
 
-    return rs;
+    if (!limit.has_value()) {
+        return rs;
+    }
+
+    return std::make_shared<LimitTableHandler>(rs, limit.value());
 }
 
 std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(
