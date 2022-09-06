@@ -33,8 +33,10 @@ public class SQLCase implements Serializable{
     private String id;
     private String desc;
     private String mode;
+    private String json;
     private String db;
     private String version;
+    private String longWindow;
     private String sql;
     private List<List<String>> dataProvider;
     private List<String> sqls;
@@ -58,6 +60,7 @@ public class SQLCase implements Serializable{
     private List<String> tearDown;
     private List<String> excludes;
     private String only;
+    private List<SQLCase> steps;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);
@@ -93,7 +96,7 @@ public class SQLCase implements Serializable{
             return false;
         }
         for(InputDesc input:inputs){
-            if (CollectionUtils.isNotEmpty(input.getColumns())&& StringUtils.isEmpty(input.getCreate())) {
+            if (CollectionUtils.isNotEmpty(input.getColumns())&& StringUtils.isEmpty(input.getCreate())&&StringUtils.isEmpty(input.getStorage())) {
                 return true;
             }
         }

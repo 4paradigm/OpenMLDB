@@ -35,7 +35,7 @@ public class MessageChecker extends BaseChecker {
     public void check() throws Exception {
         log.info("message check");
         String expectMsg = expect.getMsg();
-        String actualMsg = fesqlResult.getMsg();
+        String actualMsg = openMLDBResult.getMsg();
         Assert.assertTrue(actualMsg.contains(expectMsg),"msg验证失败,actualMsg="+actualMsg+",expectMsg="+expectMsg);
     }
 }

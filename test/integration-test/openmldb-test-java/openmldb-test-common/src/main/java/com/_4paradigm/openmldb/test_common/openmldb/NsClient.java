@@ -7,6 +7,7 @@ import com._4paradigm.openmldb.test_common.util.WaitUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.testng.Assert;
 
 import java.util.*;
@@ -57,10 +58,40 @@ public class NsClient {
         });
         Assert.assertTrue(b,"check op done failed.");
     }
+    public List<String> showTableHaveTable(String dbName,String tableName){
+        String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
+        String nsCommand = genNsCommand(dbName,command);
+        Tool.sleep(10*1000);
+        List<String> result = WaitUtil.waitCondition(() -> {
+            List<String> lines = CommandUtil.run(nsCommand);
+            if (lines.size() <= 2) {
+                return Pair.of(false, lines);
+            }
+            return Pair.of(true, lines);
+        });
+        return result;
+    }
     public List<String> showTable(String dbName,String tableName){
         String command = StringUtils.isNotEmpty(tableName) ?"showtable "+tableName:"showtable";
         List<String> lines = runNs(dbName,command);
         return lines;
+    }
+    public long getTableCount(String dbName, String tableName){
+        List<String> lines = showTableHaveTable(dbName,tableName);
+        long count = 0;
+        for(int i=2;i<lines.size();i++) {
+            String[] infos = lines.get(i).split("\\s+");
+            String role = infos[4];
+            long offset = 0;
+            String offsetStr = infos[7].trim();
+            if (!offsetStr.equals("-") && !offsetStr.equals("")) {
+                offset = Long.parseLong(offsetStr);
+            }
+            if (role.equals("leader")) {
+                count += offset;
+            }
+        }
+        return count;
     }
 
     public void checkTableIsAlive(String dbName,String tableName){
@@ -172,6 +203,32 @@ public class NsClient {
             map.put(pid,values);
         }
         return map;
+    }
+
+    public Map<String,List<Long>> getTableOffset(String dbName){
+        List<String> lines = showTableHaveTable(dbName,null);
+        Map<String,List<Long>> offsets = new HashMap<>();
+        for(int i=2;i<lines.size();i++){
+            String[] infos = lines.get(i).split("\\s+");
+            String key = infos[0]+"_"+infos[2];
+            List<Long> value = offsets.get(key);
+            String role = infos[4];
+            long offset = 0;
+            String offsetStr = infos[7].trim();
+            if(!offsetStr.equals("-")&&!offsetStr.equals("")){
+                offset = Long.parseLong(offsetStr);
+            }
+            if(value==null){
+                value = new ArrayList<>();
+                offsets.put(key,value);
+            }
+            if(role.equals("leader")){
+                value.add(0,offset);
+            }else {
+                value.add(offset);
+            }
+        }
+        return offsets;
     }
 
 }

@@ -35,4 +35,6 @@ public class ExpectDesc extends Table {
     private List<String> diffTables;
     private CatFile cat;
     private String msg;
+    private PreAggTable preAgg;
+    private List<PreAggTable> preAggList;
 }

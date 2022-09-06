@@ -224,12 +224,14 @@ public class CaseFile {
                             String order = expectDesc.getOrder();
                             List<String> columns = expectDesc.getColumns();
                             List<List<Object>> rows = expectDesc.getRows();
+                            PreAggTable preAgg = expectDesc.getPreAgg();
                             int count = expectDesc.getCount();
                             if (success == false) newExpectDesc.setSuccess(success);
                             if (count > 0) newExpectDesc.setCount(count);
                             if (CollectionUtils.isNotEmpty(columns)) newExpectDesc.setColumns(columns);
                             if (StringUtils.isNotEmpty(order)) newExpectDesc.setOrder(order);
                             if (CollectionUtils.isNotEmpty(rows)) newExpectDesc.setRows(rows);
+                            if(preAgg != null) newExpectDesc.setPreAgg(preAgg);
                         }
                     }
                 }

@@ -1,0 +1,314 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: mybug
+version: 0.5.0
+cases:
+- id: 0
+  desc: mybug test
+  mode: rtidb-batch-unsupport
+  inputs:
+    -
+      columns: ["reqId string","eventTime timestamp","uUserId string","zUserId string",
+        "uSex string","zSex string","zChannel string","uPlayGame string",
+        "uHasJoinedGroup string","uWatchMorning double","uWatchEvening double",
+        "uWatchAvgLength double","zSWihsperNum double" ]
+      indexs: [
+          "index1:uUserId:eventTime",
+          "index2:zChannel:eventTime",
+          "index3:uSex:eventTime",
+          "index4:zUserId:eventTime",
+          "index5:uPlayGame:eventTime",
+          "index6:uHasJoinedGroup:eventTime",
+          "index7:zUserId|uUserId:eventTime" ]
+      repeat: 100
+      name: flattenRequest
+      rows:
+        - [reqId1, 1609894067190, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
+        - [reqId2, 1609894067190, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+        - [NULL, 1609894067190, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
+    - columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "ingestionTime timestamp",
+        "actionValue double"]
+      indexs: ["index1:reqId:eventTime"]
+      name: action
+      rows:
+        - [reqId1, 1609894067191, 1609894067191, 1.1]
+        - [NULL, 1609894067191, 1609894067191, 3.3]
+    - columns: [ "ingestionTime timestamp",
+                 "zUserId string",
+                 "uUserId string",
+                 "nRequestTime timestamp",
+                 "fWatchedTimeLen double" ]
+      indexs: [ "index1:zUserId|uUserId:ingestionTime" ]
+      name: bo_hislabel
+      rows:
+        - [ 1609894067191, zUserId1, uUserId1, 1609894067191, 1.0 ]
+        - [ 1609894067191, zUserId2, uUserId2, 1609894067191, 1.0 ]
+        - [ 1609894067191, zUserIdNull, uUserIdNull, 1609894067191, 1.0 ]
+  sql: |
+    select * from
+    (
+    select
+        `reqId` as reqId_1,
+        `reqId` as flattenRequest_reqId_original_0,
+        `eventTime` as flattenRequest_eventTime_original_1,
+        `uUserId` as flattenRequest_uUserId_original_2,
+        `zUserId` as flattenRequest_zUserId_original_3,
+        `uSex` as flattenRequest_uSex_combine_77,
+        `zSex` as flattenRequest_zSex_original_8,
+        `zChannel` as flattenRequest_zChannel_original_14,
+        `uPlayGame` as flattenRequest_uPlayGame_original_67,
+        `uHasJoinedGroup` as flattenRequest_uHasJoinedGroup_original_46,
+
+        `uWatchMorning` as flattenRequest_uWatchMorning_original_60,
+        `uWatchEvening` as flattenRequest_uWatchEvening_original_62,
+        `uWatchAvgLength` as flattenRequest_uWatchAvgLength_original_63,
+        `zSWihsperNum` as flattenRequest_zSWihsperNum_original_23,
+
+        sum(`uWatchAvgLength`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchAvgLength_window_sum_76,
+        avg(`uWatchMorning`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchMorning_window_avg_78,
+        avg(`uWatchEvening`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchEvening_window_avg_79,
+        sum(`zSWihsperNum`) over flattenRequest_zChannel_eventTime_0s_172801s as flattenRequest_zSWihsperNum_window_sum_80,
+        avg(`uWatchAvgLength`) over flattenRequest_uUserId_eventTime_0_10 as flattenRequest_uWatchAvgLength_window_avg_81,
+
+        case when !isnull(lag(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0s_36001s then count(`zUserId`) over flattenRequest_uUserId_eventTime_0s_36001s else null end as flattenRequest_zUserId_window_count_82,
+        case when !isnull(lag(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0s_172801s then count(`zUserId`) over flattenRequest_uUserId_eventTime_0s_172801s else null end as flattenRequest_zUserId_window_count_83,
+        case when !isnull(lag(`zUserId`, 0)) over flattenRequest_uSex_eventTime_0_10 then count(`zUserId`) over flattenRequest_uSex_eventTime_0_10 else null end as flattenRequest_zUserId_window_count_84,
+        case when !isnull(lag(`zUserId`, 0)) over flattenRequest_uUserId_eventTime_0_10 then count(`zUserId`) over flattenRequest_uUserId_eventTime_0_10 else null end as flattenRequest_zUserId_window_count_85,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_zUserId_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_zUserId_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_86,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_zUserId_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_zUserId_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_87,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_uPlayGame_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uPlayGame_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_88,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_uHasJoinedGroup_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uHasJoinedGroup_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_89,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_uHasJoinedGroup_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_uHasJoinedGroup_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_90,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_uSex_eventTime_0s_172801s then count(`uUserId`) over flattenRequest_uSex_eventTime_0s_172801s else null end as flattenRequest_uUserId_window_count_91,
+        case when !isnull(lag(`uUserId`, 0)) over flattenRequest_uSex_eventTime_0s_36001s then count(`uUserId`) over flattenRequest_uSex_eventTime_0s_36001s else null end as flattenRequest_uUserId_window_count_92
+    from
+        `flattenRequest`
+        window flattenRequest_uUserId_eventTime_0_10 as (partition by `uUserId` order by `eventTime` rows between 10 preceding and 0 preceding),
+        flattenRequest_zChannel_eventTime_0s_172801s as (partition by `zChannel` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
+        flattenRequest_uUserId_eventTime_0s_36001s as (partition by `uUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
+        flattenRequest_uUserId_eventTime_0s_172801s as (partition by `uUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
+        flattenRequest_uSex_eventTime_0_10 as (partition by `uSex` order by `eventTime` rows between 10 preceding and 0 preceding),
+        flattenRequest_zUserId_eventTime_0s_36001s as (partition by `zUserId` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
+        flattenRequest_zUserId_eventTime_0s_172801s as (partition by `zUserId` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
+        flattenRequest_uPlayGame_eventTime_0s_36001s as (partition by `uPlayGame` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
+        flattenRequest_uHasJoinedGroup_eventTime_0s_36001s as (partition by `uHasJoinedGroup` order by `eventTime` rows_range between 36001s preceding and 0s preceding),
+        flattenRequest_uHasJoinedGroup_eventTime_0s_172801s as (partition by `uHasJoinedGroup` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
+        flattenRequest_uSex_eventTime_0s_172801s as (partition by `uSex` order by `eventTime` rows_range between 172801s preceding and 0s preceding),
+        flattenRequest_uSex_eventTime_0s_36001s as (partition by `uSex` order by `eventTime` rows_range between 36001s preceding and 0s preceding))
+    as out0
+    last join
+    (
+    select
+        flattenRequest.reqId as reqId_74,
+        `action_reqId`.`actionValue` as action_actionValue_multi_direct_73
+    from
+        `flattenRequest`
+        last join `action` as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`)
+    as out1
+    on out0.reqId_1 = out1.reqId_74
+    last join
+    (
+    select
+        reqId as reqId_75,
+        max(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_max_74,
+        avg(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_avg_75
+    from
+        (select `eventTime` as `ingestionTime`, `zUserId` as `zUserId`, `uUserId` as `uUserId`, timestamp('2019-07-18 09:20:20') as `nRequestTime`, double(0) as `fWatchedTimeLen`, reqId from `flattenRequest`)
+        window bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as (
+    UNION (select `ingestionTime`, `zUserId`, `uUserId`, `nRequestTime`, `fWatchedTimeLen`, '' as reqId from `bo_hislabel`) partition by `zUserId`,`uUserId` order by `ingestionTime` rows_range between 172801s preceding and 1s preceding INSTANCE_NOT_IN_WINDOW))
+    as out2
+    on out0.reqId_1 = out2.reqId_75
+    ;
+  batch_request:
+    columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "uUserId string",
+        "zUserId string",
+        "uSex string",
+        "zSex string",
+        "zChannel string",
+        "uPlayGame string",
+        "uHasJoinedGroup string",
+        "uWatchMorning double",
+        "uWatchEvening double",
+        "uWatchAvgLength double",
+        "zSWihsperNum double"]
+    rows:
+      - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
+      - [reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+      - [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+      - [NULL,   1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
+  expect:
+    schema: >
+      reqId_1:string, flattenRequest_reqId_original_0:string, flattenRequest_eventTime_original_1:timestamp, flattenRequest_uUserId_original_2:string,
+      flattenRequest_zUserId_original_3:string, flattenRequest_uSex_combine_77:string, flattenRequest_zSex_original_8:string,
+      flattenRequest_zChannel_original_14:string, flattenRequest_uPlayGame_original_67:string, flattenRequest_uHasJoinedGroup_original_46:string,
+      flattenRequest_uWatchMorning_original_60:double, flattenRequest_uWatchEvening_original_62:double, flattenRequest_uWatchAvgLength_original_63:double,
+      flattenRequest_zSWihsperNum_original_23:double, flattenRequest_uWatchAvgLength_window_sum_76:double, flattenRequest_uWatchMorning_window_avg_78:double,
+      flattenRequest_uWatchEvening_window_avg_79:double, flattenRequest_zSWihsperNum_window_sum_80:double, flattenRequest_uWatchAvgLength_window_avg_81:double,
+      flattenRequest_zUserId_window_count_82:bigint, flattenRequest_zUserId_window_count_83:bigint, flattenRequest_zUserId_window_count_84:bigint,
+      flattenRequest_zUserId_window_count_85:bigint, flattenRequest_uUserId_window_count_86:bigint, flattenRequest_uUserId_window_count_87:bigint,
+      flattenRequest_uUserId_window_count_88:bigint, flattenRequest_uUserId_window_count_89:bigint, flattenRequest_uUserId_window_count_90:bigint,
+      flattenRequest_uUserId_window_count_91:bigint, flattenRequest_uUserId_window_count_92:bigint, reqId_74:string, action_actionValue_multi_direct_73:double,
+      reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
+    rows:
+    - [ reqId1, reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1,
+       1.000000, 2.000000, 3.000000, 4.000000,
+       33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
+       101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
+       reqId1, 1.1, reqId1, NULL, NULL ]
+    - [ reqId2, reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2,
+       1.000000, 2.000000, 3.000000, 4.000000,
+       33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
+       101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
+        reqId2, NULL, reqId2, 1.000000, 1.000000 ]
+    - [ reqId2, reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2,
+        1.000000, 2.000000, 3.000000, 4.000000,
+        33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
+        NULL, NULL, NULL, NULL, 1, 1, 101, 101, 101, 101, 101,
+        reqId2, NULL, reqId2, NULL, NULL ]
+    - [ NULL, NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull,
+        1.000000, 2.000000, 3.000000, 4.000000,
+        33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
+        101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
+        NULL, 3.3, NULL, 1.000000, 1.000000 ]
+- id: 1
+  desc: mybug bo_hislabel_fWatchedTimeLen_multi_max_74
+  mode: rtidb-batch-unsupport
+  inputs:
+    - columns: [ "reqId string",
+                 "eventTime timestamp",
+                 "uUserId string",
+                 "zUserId string",
+                 "uSex string",
+                 "zSex string",
+                 "zChannel string",
+                 "uPlayGame string",
+                 "uHasJoinedGroup string",
+                 "uWatchMorning double",
+                 "uWatchEvening double",
+                 "uWatchAvgLength double",
+                 "zSWihsperNum double" ]
+      indexs: [
+          "index1:uUserId:eventTime",
+          "index2:zChannel:eventTime",
+          "index3:uSex:eventTime",
+          "index4:zUserId:eventTime",
+          "index5:uPlayGame:eventTime",
+          "index6:uHasJoinedGroup:eventTime",
+          "index7:zUserId|uUserId:eventTime" ]
+      name: flattenRequest
+      rows:
+        - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
+    - columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "ingestionTime timestamp",
+        "actionValue double"]
+      indexs: ["index1:reqId:eventTime"]
+      name: action
+      rows:
+        - [reqId1, 1609894067191, 1609894067191, 1.1]
+        - [NULL, 1609894067191, 1609894067191, 3.3]
+    - columns: [ "ingestionTime timestamp",
+                 "zUserId string",
+                 "uUserId string",
+                 "nRequestTime timestamp",
+                 "fWatchedTimeLen double"]
+      indexs: ["index1:zUserId|uUserId:ingestionTime"]
+      name: bo_hislabel
+      repeat: 100
+      rows:
+        - [ 1609894067191, zUserId1, uUserId1, 1609894067191, 1.0 ]
+        - [ 1609894067191, zUserId2, uUserId2, 1609894067191, 1.0 ]
+        - [ 1609894067191, NULL, NULL, 1609894067191, 1.0 ]
+  sql: |-
+    select * from
+    (
+    select
+        `reqId` as reqId_1
+    from `flattenRequest`) as out0
+    last join
+    (
+    select
+        flattenRequest.reqId as reqId_74,
+        `action_reqId`.`actionValue` as action_actionValue_multi_direct_73
+    from
+        `flattenRequest`
+        last join `action` as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`)
+    as out1
+    on out0.reqId_1 = out1.reqId_74
+    last join
+    (
+    select
+        reqId as reqId_75,
+        sum(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_sum_73,
+        max(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_max_74,
+        avg(`fWatchedTimeLen`) over bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as bo_hislabel_fWatchedTimeLen_multi_avg_75
+    from
+        (select `eventTime` as `ingestionTime`, `zUserId` as `zUserId`, `uUserId` as `uUserId`, timestamp('2019-07-18 09:20:20') as `nRequestTime`, double(0) as `fWatchedTimeLen`, reqId from `flattenRequest`)
+        window bo_hislabel_zUserId_uUserId_ingestionTime_1s_172801s as (
+    UNION (select `ingestionTime`, `zUserId`, `uUserId`, `nRequestTime`, `fWatchedTimeLen`, '' as reqId from `bo_hislabel`) partition by `zUserId`,`uUserId` order by `ingestionTime` rows_range between 172801s preceding and 1s preceding INSTANCE_NOT_IN_WINDOW))
+    as out2
+    on out0.reqId_1 = out2.reqId_75
+    ;
+  tags: ["@baoxinqi, avg 空表处理需要对齐feql/mysql"]
+  batch_request:
+    columns: [
+        "reqId string",
+        "eventTime timestamp",
+        "uUserId string",
+        "zUserId string",
+        "uSex string",
+        "zSex string",
+        "zChannel string",
+        "uPlayGame string",
+        "uHasJoinedGroup string",
+        "uWatchMorning double",
+        "uWatchEvening double",
+        "uWatchAvgLength double",
+        "zSWihsperNum double" ]
+    indexs: [
+        "index1:uUserId:eventTime",
+        "index2:zChannel:eventTime",
+        "index3:uSex:eventTime",
+        "index4:zUserId:eventTime",
+        "index5:uPlayGame:eventTime",
+        "index6:uHasJoinedGroup:eventTime",
+        "index7:zUserId|uUserId:eventTime",
+        "index8:uUserId:eventTime",
+        "index9:uUserId:eventTime" ]
+    name: flattenRequest
+    rows:
+      # pure history window is empty: rows out of time range
+      - [reqId1, 1609894067191, uUserId1, zUserId1, uSex1, zSex1, zChannel1, uPlayGame1, uHasJoinedGroup1, 1.0, 2.0, 3.0, 4.0]
+      # pure history window isn't empty
+      - [reqId2, 1609894068191, uUserId2, zUserId2, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+      # last join key is NULL
+      - [NULL, 1609894068191, uUserIdNull, zUserIdNull, uSexNull, zSexNull, zChannelNull, uPlayGameNull, uHasJoinedGroupNull, 1.0, 2.0, 3.0, 4.0]
+      - [reqId2, 1609894068191, uUserId2, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+      - [reqId2, 1609894068191, NULL, NULL, uSex2, zSex2, zChannel2, uPlayGame2, uHasJoinedGroup2, 1.0, 2.0, 3.0, 4.0]
+  expect:
+    schema: reqId_1:string, reqId_74:string, action_actionValue_multi_direct_73:double, reqId_75:string, bo_hislabel_fWatchedTimeLen_multi_sum_73:double, bo_hislabel_fWatchedTimeLen_multi_max_74:double, bo_hislabel_fWatchedTimeLen_multi_avg_75:double
+    rows:
+      - [ reqId1, reqId1, 1.1,  reqId1, NULL,   NULL, NULL ]
+      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]
+      - [ NULL,   NULL,   3.3,  NULL,   NULL,   NULL, NULL]
+      - [ reqId2, reqId2, NULL, reqId2, NULL,   NULL, NULL ]
+      - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]

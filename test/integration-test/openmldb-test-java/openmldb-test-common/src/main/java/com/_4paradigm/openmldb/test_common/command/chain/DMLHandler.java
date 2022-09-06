@@ -32,12 +32,12 @@ public class DMLHandler extends AbstractSQLHandler{
 
     @Override
     public OpenMLDBResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         List<String> result = OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
-        fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(CommandResultUtil.success(result));
-        fesqlResult.setDbName(dbName);
-        return fesqlResult;
+        openMLDBResult.setMsg(Joiner.on("\n").join(result));
+        openMLDBResult.setOk(CommandResultUtil.success(result));
+        openMLDBResult.setDbName(dbName);
+        return openMLDBResult;
     }
 
 }

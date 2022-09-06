@@ -2,13 +2,18 @@ package com._4paradigm.openmldb.test_common.util;
 
 
 import com._4paradigm.openmldb.test_common.common.Condition;
+import com._4paradigm.openmldb.test_common.common.ConditionResult;
 import lombok.extern.log4j.Log4j;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 
 
 @Slf4j
 public class WaitUtil {
     public static boolean waitCondition(Condition condition) {
+        return waitCondition(condition,10,1200);
+    }
+    public static <T> T waitCondition(ConditionResult<T> condition) {
         return waitCondition(condition,10,1200);
     }
     public static boolean waitCondition(Condition condition,Condition fail) {
@@ -37,6 +42,21 @@ public class WaitUtil {
         }
         log.info("wait timeout!");
         return false;
+    }
+    private static <T> T waitCondition(ConditionResult<T> condition, int interval, int timeout) {
+        int count = 1;
+        while (timeout > 0){
+            log.info("retry count:{}",count);
+            Pair<Boolean, T> execute = condition.execute();
+            if (execute.getLeft()){
+                return execute.getRight();
+            }else {
+                timeout -= interval;
+                Tool.sleep(interval*1000);
+            }
+            count++;
+        }
+        throw new IllegalStateException("wait result timeout!");
     }
     /**
      *

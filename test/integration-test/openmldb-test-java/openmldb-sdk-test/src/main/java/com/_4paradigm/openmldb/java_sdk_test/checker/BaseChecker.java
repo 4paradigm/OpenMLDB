@@ -27,17 +27,17 @@ import java.util.Map;
  * @date 2020/6/16 3:37 PM
  */
 public abstract class BaseChecker implements Checker {
-    protected OpenMLDBResult fesqlResult;
+    protected OpenMLDBResult openMLDBResult;
     protected Map<String, OpenMLDBResult> resultMap;
     protected ExpectDesc expect;
 
-    public BaseChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
+    public BaseChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
         this.expect = expect;
-        this.fesqlResult = fesqlResult;
+        this.openMLDBResult = openMLDBResult;
     }
 
-    public BaseChecker(OpenMLDBResult fesqlResult, Map<String, OpenMLDBResult> resultMap){
-        this.fesqlResult = fesqlResult;
+    public BaseChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        this.openMLDBResult = openMLDBResult;
         this.resultMap = resultMap;
     }
 }
