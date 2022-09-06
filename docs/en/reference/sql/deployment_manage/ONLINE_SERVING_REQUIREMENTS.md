@@ -1,6 +1,6 @@
 # Online Specifications and Requirements for SQL
 
-OpenMLDB can provide real-time feature extraction services under *online request* mode. The [DEPLOY](../deployment_manage/DEPLOY_STATEMENT.md) command can deploy a piece of SQL text online. If the deployment is successful, users can perform feature extraction on the requested samples in real time through the Restful API or JDBC API. Note that only some SQL commands can be deployed to provide services online. To deploy these SQL commands please follow the specifications below.
+OpenMLDB can provide real-time feature extraction services under *online request* mode. The [DEPLOY](../deployment_manage/DEPLOY_STATEMENT.md) command can deploy a SQL script feature extraction on the requested sample online. If the deployment is successful, users can perform real-time feature extraction through the Restful API or JDBC API. Note that only some SQL commands can be deployed to provide services online. To deploy these SQL commands please follow the specifications below.
 
 ## Supported Statements under Online Request Mode 
 
@@ -59,8 +59,8 @@ SELECT substr(COL7, 3, 6) FROM t1;
 ### Specifications of LAST JOIN under Online Request Mode
 
 - Only `LAST JOIN` is supported.
-- At least one JOIN condition is an EQUAL condition like `left_table.column=right_table.column`, and the `rgith_table.column` needs to hit the index of the right table.
-- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, and the column needs to hit the time column of the right table's index.
+- At least one JOIN condition is an EQUAL condition like `left_table.column=right_table.column`, and the `rgith_table.column` needs to be indexed as a `KEY` of the right table.
+- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, and the column needs to be indexed as a timestamp (TS) of the right table.
 
 **Example**
 
@@ -95,7 +95,7 @@ desc t1;
 
 - Window boundary: only `PRECEDING` and `CURRENT ROW` are supported.
 - Window type: only `ROWS` and `ROWS_RANGE` are supported.
-- `PARTITION BY` only supports column expressions, and the column needs to hit the index.
-- `ORDER BY` only support column expressions, and the column needs to hit the time column of the index.
-- Another supported restrictions: `EXCLUDE CURRENT_ROW`, `EXCLUDE CURRENT_TIME`, `MAXSIZE` and `INSTANCE_NOT_IN_WINDOW`. See [WindowSpec elements specifically designed by OpenMLDB](../dql/WINDOW_CLAUSE.md#windowspec-elements-specifically-designed-by-openmldb) for detail.
+- `PARTITION BY` only supports column expressions, and the column needs to be indexed as a `KEY`.
+- `ORDER BY` only support column expressions, and the column needs to be indexed as a timestamp (`TS`).
+- Other supported keywords: `EXCLUDE CURRENT_ROW`, `EXCLUDE CURRENT_TIME`, `MAXSIZE` and `INSTANCE_NOT_IN_WINDOW`. See [WindowSpec elements specifically designed by OpenMLDB](../dql/WINDOW_CLAUSE.md#windowspec-elements-specifically-designed-by-openmldb) for detail.
 
