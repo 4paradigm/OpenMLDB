@@ -1,0 +1,287 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+db: multi_insert_db
+debugs: []
+version: 0.5.0
+cases:
+  - id: 0
+    desc: 简单INSERT
+    inputs:
+      -
+        create: |
+          create table {0} (
+          col0 string not null,
+          col1 int not null,
+          col2 smallint not null,
+          col3 float not null,
+          col4 double not null,
+          col5 bigint not null,
+          col6 string not null,
+          col7 timestamp not null,
+          col8 date not null,
+          col9 bool not null,
+          index(key=(col2), ts=col5)
+          );
+        insert: insert into {0} values("hello", 1, 2, 3.3f, 4.4, 5L, "world", 12345678L, "2020-05-21", true);
+    sql: select * from {0};
+    expect:
+      columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64",
+          "col6 string", "col7 timestamp", "col8 date", "col9 bool"]
+      order: col1
+      rows:
+        - [hello, 1, 2, 3.3, 4.4, 5, world, 12345678, "2020-05-21", true]
+  - id: 1
+    desc: 简单INSERT 多行
+    inputs:
+      -
+        create: |
+            create table {0} (
+            col0 string not null,
+            col1 int not null,
+            col2 smallint not null,
+            col3 float not null,
+            col4 double not null,
+            col5 bigint not null,
+            col6 string not null,
+            index(key=(col2), ts=col5)
+            );
+        insert: |
+            insert into {0} values
+            ("hello", 1, 2, 3.3, 4.4, 5, "world"),
+            ("hello", 11, 22, 33.3, 44.4, 55, "fesql");
+
+    sql: select * from {0};
+    expect:
+      columns: [ "col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64",
+                 "col6 string"]
+      order: col1
+      rows:
+        - [hello, 1, 2, 3.3, 4.4, 5, world]
+        - [hello, 11, 22, 33.3, 44.4, 55, fesql]
+
+  - id: 2
+    desc: 简单INSERT timestamp
+    inputs:
+      - create: |
+          create table {0} (
+          col1 int not null,
+          col5 bigint not null,
+          std_ts timestamp not null,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into {0} values
+            (1, 10000L, 1590738987000L),
+            (2, 20000L, 1590738988000L);
+    sql: select * from {0};
+    expect:
+      columns: ["col1 int", "col5 bigint", "std_ts timestamp"]
+      order: col1
+      rows:
+        - [1, 10000, 1590738987000]
+        - [2, 20000, 1590738988000]
+
+  - id: 3
+    desc: insert 指定列,其他列默认为NULL
+    inputs:
+      -
+        create: |
+          create table {0} (
+          col1 int not null,
+          col2 smallint,
+          col3 float,
+          col4 double,
+          col5 bigint not null,
+          std_ts timestamp not null,
+          str string,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into {0} (col1, col5, std_ts) values
+            (1, 10000L, 1590738987000L),
+            (2, 20000L, 1590738988000L);
+    sql: select * from {0};
+    expect:
+      columns: ["col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "std_ts timestamp", "str string"]
+      order: col1
+      rows:
+        - [1, NULL, NULL, NULL, 10000, 1590738987000, NULL]
+        - [2, NULL, NULL, NULL, 20000, 1590738988000, NULL]
+  - id: 4
+    desc: Insert date
+    inputs:
+      - create: |
+          create table {0} (
+          col1 int not null,
+          col2 smallint,
+          col3 float,
+          col4 double,
+          col5 bigint not null,
+          std_date date not null,
+          str string,
+          index(key=(col1), ts=col5)
+          );
+        insert: |
+            insert into {0} (col1, col5, std_date) values
+            (1, 10000L, '2020-05-27'),
+            (2, 20000L, '2020-05-28');
+
+    sql: select * from {0};
+    expect:
+      columns: [ "col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "std_date date", "str string" ]
+      order: col1
+      rows:
+        - [1, NULL, NULL, NULL, 10000, "2020-05-27", NULL]
+        - [2, NULL, NULL, NULL, 20000, "2020-05-28", NULL]
+  - id: 5
+    desc: 简单INSERT NULL value
+    inputs:
+      -
+        create: |
+          create table {0} (
+          col0 string not null,
+          col1 int not null,
+          col2 smallint,
+          col3 float not null,
+          col4 double not null,
+          col5 bigint not null,
+          col6 string not null,
+          index(key=(col2), ts=col5)
+          );
+        insert: |
+          insert into {0} values ("hello", 1, NULL, 3.3f, 4.4, 5L, "world"),
+          ("hi", 2, NULL, 33.3f, 44.4, 55L, "db");
+    sql: select * from {0};
+    expect:
+      columns: [ "col0 string", "col1 int", "col2 int16", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      order: col1
+      rows:
+        - [hello, 1, NULL, 3.3, 4.4, 5, world]
+        - [hi, 2, NULL, 33.3, 44.4, 55, db]
+  -
+    id: 6
+    desc: 所有列插入多条
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int not null,
+          c1 int not null,
+          c2 smallint not null,
+          c3 float not null,
+          c4 double not null,
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null,
+          index(key=(c1), ts=c5)
+          );
+        insert: |
+          insert into {0} values
+            (1, 1, 2, 3.3f, 4.4, 5L, "aa", 12345678L, "2020-05-21", true),
+            (2, 10, 20, 3.31f, 4.41, 50L, "bb", 12345679L, "2020-05-22", false);
+    sql: select * from {0};
+    expect:
+      columns : ["id int","c1 int","c2 smallint","c3 float","c4 double","c5 bigint","c6 string","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,1,2,3.3,4.4,5,"aa",12345678,"2020-05-21",true]
+        - [2,10,20,3.31,4.41,50,"bb",12345679,"2020-05-22",false]
+  -
+    id: 7
+    desc: 其中一条数据类型不兼容
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int,
+          c1 int,
+          c2 smallint,
+          c3 float,
+          c5 bigint,
+          index(key=(c1), ts=c5)
+          );
+    sql: |
+      insert into {0} (id,c3,c5)values
+                  (1, 3.3,12345678),
+                  (2, "aa",12345679);
+    expect:
+      success: false
+  -
+    id: 8
+    desc: 插入多条空串
+    mode: cli-unsupport
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int,
+          c1 int,
+          c2 string,
+          c3 float,
+          c5 bigint,
+          index(key=(c1), ts=c5)
+          );
+        insert: |
+          insert into {0} (id,c2,c3,c5)values
+            (1, "",null,12345678),
+            (2, "",null,12345679);
+    sql: select * from {0};
+    expect:
+      columns : ["id int","c1 int","c2 string","c3 float","c5 bigint"]
+      order: id
+      rows:
+        - [1,null,"",null,12345678]
+        - [2,null,"",null,12345679]
+  -
+    id: 9
+    desc: 插入数据和列的数量不匹配
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int,
+          c1 int,
+          c2 smallint,
+          c3 float,
+          c5 bigint,
+          index(key=(c1), ts=c5)
+          );
+    sql: |
+      insert into {0} (id,c3,c5)values
+                  (1,12345678),
+                  (2,12345679);
+    expect:
+      success: false
+  -
+    id: 10
+    desc: 其中一条数据少一列
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int,
+          c1 int,
+          c2 smallint,
+          c3 float,
+          c5 bigint,
+          index(key=(c1), ts=c5)
+          );
+    sql: |
+      insert into {0} (id,c3,c5)values
+                  (1, 3.3,12345678),
+                  (2,12345679);
+    expect:
+      success: false

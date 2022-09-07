@@ -40,6 +40,7 @@ public class OpenMLDBDeploy {
     private String version;
     private String openMLDBUrl;
     private String openMLDBDirectoryName;
+    private String sparkHome;
     private String openMLDBPath;
     private boolean useName;
     private boolean isCluster = true;
@@ -70,16 +71,17 @@ public class OpenMLDBDeploy {
             file.mkdirs();
         }
         downloadOpenMLDB(testPath);
-        OpenMLDBInfo fedbInfo = deployStandalone(testPath,ip);
-        log.info("openmldb-info:"+fedbInfo);
-        return fedbInfo;
+        OpenMLDBInfo openMLDBInfo = deployStandalone(testPath,ip);
+        log.info("openmldb-info:"+openMLDBInfo);
+        return openMLDBInfo;
     }
     public OpenMLDBInfo deployCluster(int ns, int tablet){
         return deployCluster(null,ns,tablet);
     }
     public OpenMLDBInfo deployCluster(String clusterName, int ns, int tablet){
-        OpenMLDBInfo.OpenMLDBInfoBuilder builder = OpenMLDBInfo.builder();
-        builder.deployType(OpenMLDBDeployType.CLUSTER);
+        OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+//        OpenMLDBInfo.OpenMLDBInfoBuilder builder = OpenMLDBInfo.builder();
+        openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
         String testPath = DeployUtil.getTestPath(version);
         if(StringUtils.isNotEmpty(installPath)){
             testPath = installPath+"/"+version;
@@ -87,7 +89,10 @@ public class OpenMLDBDeploy {
         if(StringUtils.isNotEmpty(clusterName)) {
             testPath = testPath + "/" + clusterName;
         }
-        builder.nsNum(ns).tabletNum(tablet).basePath(testPath);
+        openMLDBInfo.setNsNum(ns);
+        openMLDBInfo.setTabletNum(tablet);
+        openMLDBInfo.setBasePath(testPath);
+//        builder.nsNum(ns).tabletNum(tablet).basePath(testPath);
         String ip = LinuxUtil.hostnameI();
         File file = new File(testPath);
         if(!file.exists()){
@@ -96,24 +101,35 @@ public class OpenMLDBDeploy {
         int zkPort = deployZK(testPath);
         String openMLDBDirectoryName = downloadOpenMLDB(testPath);
         String zk_point = ip+":"+zkPort;
-        builder.zk_cluster(zk_point).zk_root_path("/openmldb");
-        builder.nsEndpoints(Lists.newArrayList()).nsNames(Lists.newArrayList());
-        builder.tabletEndpoints(Lists.newArrayList()).tabletNames(Lists.newArrayList());
-        builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
-        builder.taskManagerEndpoints(Lists.newArrayList());
-        builder.openMLDBPath(testPath+"/openmldb-ns-1/bin/openmldb");
-        builder.openMLDBDirectoryName(openMLDBDirectoryName);
-        OpenMLDBInfo fedbInfo = builder.build();
+        openMLDBInfo.setZk_cluster(zk_point);
+        openMLDBInfo.setZk_root_path("/openmldb");
+        openMLDBInfo.setNsEndpoints(Lists.newArrayList());
+        openMLDBInfo.setNsNames(Lists.newArrayList());
+        openMLDBInfo.setTabletEndpoints(Lists.newArrayList());
+        openMLDBInfo.setTabletNames(Lists.newArrayList());
+        openMLDBInfo.setApiServerEndpoints(Lists.newArrayList());
+        openMLDBInfo.setApiServerNames(Lists.newArrayList());
+        openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList());
+        openMLDBInfo.setOpenMLDBPath(testPath+"/openmldb-ns-1/bin/openmldb");
+        openMLDBInfo.setOpenMLDBDirectoryName(openMLDBDirectoryName);
+//        builder.zk_cluster(zk_point).zk_root_path("/openmldb");
+//        builder.nsEndpoints(Lists.newArrayList()).nsNames(Lists.newArrayList());
+//        builder.tabletEndpoints(Lists.newArrayList()).tabletNames(Lists.newArrayList());
+//        builder.apiServerEndpoints(Lists.newArrayList()).apiServerNames(Lists.newArrayList());
+//        builder.taskManagerEndpoints(Lists.newArrayList());
+//        builder.openMLDBPath(testPath+"/openmldb-ns-1/bin/openmldb");
+//        builder.openMLDBDirectoryName(openMLDBDirectoryName);
+//        OpenMLDBInfo openMLDBInfo = builder.build();
         for(int i=1;i<=tablet;i++) {
             int tablet_port ;
             if(useName){
                 String tabletName = clusterName+"-tablet-"+i;
                 tablet_port = deployTablet(testPath,null, i, zk_point,tabletName);
-                fedbInfo.getTabletNames().add(tabletName);
+                openMLDBInfo.getTabletNames().add(tabletName);
             }else {
                 tablet_port = deployTablet(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getTabletEndpoints().add(ip+":"+tablet_port);
+            openMLDBInfo.getTabletEndpoints().add(ip+":"+tablet_port);
             Tool.sleep(SLEEP_TIME);
         }
         for(int i=1;i<=ns;i++){
@@ -121,11 +137,11 @@ public class OpenMLDBDeploy {
             if(useName){
                 String nsName = clusterName+"-ns-"+i;
                 ns_port = deployNS(testPath,null, i, zk_point,nsName);
-                fedbInfo.getNsNames().add(nsName);
+                openMLDBInfo.getNsNames().add(nsName);
             }else {
                 ns_port = deployNS(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getNsEndpoints().add(ip+":"+ns_port);
+            openMLDBInfo.getNsEndpoints().add(ip+":"+ns_port);
             Tool.sleep(SLEEP_TIME);
         }
 
@@ -134,24 +150,25 @@ public class OpenMLDBDeploy {
             if(useName){
                 String apiserverName = clusterName+"-apiserver-"+i;
                 apiserver_port = deployApiserver(testPath,null, i, zk_point,apiserverName);
-                fedbInfo.getApiServerNames().add(apiserverName);
+                openMLDBInfo.getApiServerNames().add(apiserverName);
             }else {
                 apiserver_port = deployApiserver(testPath, ip, i, zk_point,null);
             }
-            fedbInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
+            openMLDBInfo.getApiServerEndpoints().add(ip+":"+apiserver_port);
             Tool.sleep(SLEEP_TIME);
         }
         if(version.equals("tmp")||version.compareTo("0.4.0")>=0) {
             for (int i = 1; i <= 1; i++) {
                 int task_manager_port = deployTaskManager(testPath, ip, i, zk_point);
-                fedbInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+                openMLDBInfo.getTaskManagerEndpoints().add(ip + ":" + task_manager_port);
+                openMLDBInfo.setSparkHome(sparkHome);
             }
         }
-        log.info("openmldb-info:"+fedbInfo);
-        return fedbInfo;
+        log.info("openmldb-info:"+openMLDBInfo);
+        return openMLDBInfo;
     }
 
-    private String downloadOpenMLDB(String testPath){
+    public String downloadOpenMLDB(String testPath){
         try {
             String command;
             log.info("openMLDBUrl:{}",openMLDBUrl);
@@ -362,19 +379,22 @@ public class OpenMLDBDeploy {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
             String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
-            String sparkHome = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
-            String sparkPath = testPath+"/"+sparkHome;
+            String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
+            String sparkPath = testPath+"/"+sparkDirectoryName;
+            this.sparkHome = sparkPath;
             return sparkPath;
         }catch (Exception e){
             e.printStackTrace();
         }
         throw new RuntimeException("spark 部署失败");
     }
-
     public int deployTaskManager(String testPath, String ip, int index, String zk_endpoint){
+        int port = LinuxUtil.getNoUsedPort();
+        return deployTaskManager(testPath,ip,port,index,zk_endpoint);
+    }
+    public int deployTaskManager(String testPath, String ip, int port, int index, String zk_endpoint){
         try {
             String sparkHome = deploySpark(testPath);
-            int port = LinuxUtil.getNoUsedPort();
             String task_manager_name = "/openmldb-task_manager-"+index;
             ExecutorUtil.run("cp -r " + testPath + "/" + openMLDBDirectoryName + " " + testPath + task_manager_name);
             if(batchJobJarPath==null) {
@@ -445,20 +465,35 @@ public class OpenMLDBDeploy {
             boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);
             if(nsOk&&tabletOk&&apiServerOk){
                 log.info(String.format("standalone 部署成功,nsPort：{},tabletPort:{},apiServerPort:{}",nsPort,tabletPort,apiServerPort));
-                OpenMLDBInfo fedbInfo = OpenMLDBInfo.builder()
-                        .deployType(OpenMLDBDeployType.STANDALONE)
-                        .openMLDBPath(testPath+"/openmldb-standalone/bin/openmldb")
-                        .apiServerEndpoints(Lists.newArrayList())
-                        .basePath(testPath)
-                        .nsEndpoints(Lists.newArrayList(nsEndpoint))
-                        .nsNum(1)
-                        .host(ip)
-                        .port(nsPort)
-                        .tabletNum(1)
-                        .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
-                        .apiServerEndpoints(Lists.newArrayList(apiServerEndpoint))
-                        .build();
-                return fedbInfo;
+                OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+                openMLDBInfo.setDeployType(OpenMLDBDeployType.STANDALONE);
+                openMLDBInfo.setNsNum(1);
+                openMLDBInfo.setTabletNum(1);
+                openMLDBInfo.setBasePath(testPath);
+                openMLDBInfo.setHost(ip);
+                openMLDBInfo.setPort(nsPort);
+                openMLDBInfo.setNsEndpoints(Lists.newArrayList(nsEndpoint));
+                openMLDBInfo.setNsNames(Lists.newArrayList());
+                openMLDBInfo.setTabletEndpoints(Lists.newArrayList(tabletEndpoint));
+                openMLDBInfo.setTabletNames(Lists.newArrayList());
+                openMLDBInfo.setApiServerEndpoints(Lists.newArrayList(apiServerEndpoint));
+                openMLDBInfo.setApiServerNames(Lists.newArrayList());
+                openMLDBInfo.setOpenMLDBPath(testPath+"/openmldb-standalone/bin/openmldb");
+
+//                OpenMLDBInfo openMLDBInfo = OpenMLDBInfo.builder()
+//                        .deployType(OpenMLDBDeployType.STANDALONE)
+//                        .openMLDBPath(testPath+"/openmldb-standalone/bin/openmldb")
+//                        .apiServerEndpoints(Lists.newArrayList())
+//                        .basePath(testPath)
+//                        .nsEndpoints(Lists.newArrayList(nsEndpoint))
+//                        .nsNum(1)
+//                        .host(ip)
+//                        .port(nsPort)
+//                        .tabletNum(1)
+//                        .tabletEndpoints(Lists.newArrayList(tabletEndpoint))
+//                        .apiServerEndpoints(Lists.newArrayList(apiServerEndpoint))
+//                        .build();
+                return openMLDBInfo;
             }
         }catch (Exception e){
             e.printStackTrace();

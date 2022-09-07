@@ -40,7 +40,7 @@ public class DiffVersionChecker extends BaseChecker{
         resultMap.entrySet().stream().forEach(e->{
             String version = e.getKey();
             OpenMLDBResult result = e.getValue();
-            Assert.assertTrue(fesqlResult.equals(result),"版本结果对比不一致\nmainVersion:\n"+fesqlResult+"\nversion:"+version+"\n"+result);
+            Assert.assertTrue(openMLDBResult.equals(result),"版本结果对比不一致\nmainVersion:\n"+ openMLDBResult +"\nversion:"+version+"\n"+result);
         });
     }
 }

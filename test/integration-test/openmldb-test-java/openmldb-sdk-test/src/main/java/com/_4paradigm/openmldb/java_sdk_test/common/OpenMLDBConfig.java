@@ -35,43 +35,11 @@ import java.util.stream.Collectors;
 public class OpenMLDBConfig {
     public static final List<String> VERSIONS;
     public static boolean INIT_VERSION_ENV = true;
-    public static final List<Integer> FESQL_CASE_LEVELS;
-    public static final String FESQL_CASE_PATH;
-    public static final String FESQL_CASE_NAME;
-    public static final String FESQL_CASE_ID;
-    public static final String FESQL_CASE_DESC;
-    public static final String YAML_CASE_BASE_DIR;
     public static final boolean ADD_REPORT_LOG;
-
 
     public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 
     static {
-        String levelStr = System.getProperty("caseLevel");
-        levelStr = StringUtils.isEmpty(levelStr) ? "0" : levelStr;
-        FESQL_CASE_LEVELS = Arrays.stream(levelStr.split(",")).map(Integer::parseInt).collect(Collectors.toList());
-        FESQL_CASE_NAME = System.getProperty("caseName");
-        FESQL_CASE_ID = System.getProperty("caseId");
-        FESQL_CASE_DESC = System.getProperty("caseDesc");
-        FESQL_CASE_PATH = System.getProperty("casePath");
-        YAML_CASE_BASE_DIR = System.getProperty("yamlCaseBaseDir");
-        log.info("FESQL_CASE_LEVELS {}", FESQL_CASE_LEVELS);
-        if (!StringUtils.isEmpty(FESQL_CASE_NAME)) {
-            log.info("FESQL_CASE_NAME {}", FESQL_CASE_NAME);
-        }
-        if (!StringUtils.isEmpty(FESQL_CASE_ID)) {
-            log.info("FESQL_CASE_ID {}", FESQL_CASE_ID);
-        }
-        if (!StringUtils.isEmpty(FESQL_CASE_PATH)) {
-            log.info("FESQL_CASE_PATH {}", FESQL_CASE_PATH);
-        }
-        if (!StringUtils.isEmpty(FESQL_CASE_DESC)) {
-            log.info("FESQL_CASE_DESC {}", FESQL_CASE_DESC);
-        }
-        if (!StringUtils.isEmpty(YAML_CASE_BASE_DIR)) {
-            log.info("YAML_CASE_BASE_DIR {}", YAML_CASE_BASE_DIR);
-        }
-
         String versionStr = System.getProperty("diffVersion");
         if (StringUtils.isEmpty(versionStr)) {
             versionStr = CONFIG.getProperty(OpenMLDBGlobalVar.env + "_versions");
@@ -92,11 +60,7 @@ public class OpenMLDBConfig {
         if (StringUtils.isNotEmpty(init_env)) {
             INIT_VERSION_ENV = Boolean.parseBoolean(init_env);
         }
-        String tableStorageMode = CONFIG.getProperty("table_storage_mode");
-        if(StringUtils.isNotEmpty(tableStorageMode)){
-            OpenMLDBGlobalVar.tableStorageMode = tableStorageMode;
-        }
-        log.info("test tableStorageMode: {}", OpenMLDBGlobalVar.tableStorageMode);
+
         String version = CONFIG.getProperty("version");
         if(StringUtils.isNotEmpty(version)){
             OpenMLDBGlobalVar.version = version;

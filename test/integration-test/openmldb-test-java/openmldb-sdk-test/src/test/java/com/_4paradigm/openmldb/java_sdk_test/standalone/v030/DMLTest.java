@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
 
-import com._4paradigm.openmldb.test_common.command.OpenMLDBComamndFacade;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
@@ -67,7 +67,7 @@ public class DMLTest extends StandaloneTest {
                 "          c8 date not null,\n" +
                 "          c9 bool not null,\n" +
                 "          index(key=(c1), ts=c5));";
-        OpenMLDBComamndFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,createSql);
+        OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,createSql);
         StringBuilder sb = new StringBuilder("insert into auto_multi_insert_1000 values ");
         int total = 1000;
         for(int i=0;i<total;i++){
@@ -75,9 +75,9 @@ public class DMLTest extends StandaloneTest {
         }
         sb.deleteCharAt(sb.length()-1);
         sb.append(";");
-        OpenMLDBComamndFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,sb.toString());
+        OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,sb.toString());
         String query = "select * from auto_multi_insert_1000;";
-        OpenMLDBResult result = OpenMLDBComamndFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName, query);
+        OpenMLDBResult result = OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName, query);
         Assert.assertEquals(total,result.getCount());
     }
 

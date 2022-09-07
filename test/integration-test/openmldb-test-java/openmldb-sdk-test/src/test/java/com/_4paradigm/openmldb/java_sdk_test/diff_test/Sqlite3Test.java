@@ -17,7 +17,7 @@ package com._4paradigm.openmldb.java_sdk_test.diff_test;
 
 
 import com._4paradigm.openmldb.java_sdk_test.common.JDBCTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBCaseFileList;
+import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;

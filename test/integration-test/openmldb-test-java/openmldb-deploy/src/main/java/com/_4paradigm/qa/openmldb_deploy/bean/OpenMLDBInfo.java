@@ -18,6 +18,7 @@ package com._4paradigm.qa.openmldb_deploy.bean;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.List;
  * @date 2021/2/7 12:10 PM
  */
 @Data
-@Builder
+//@Builder
 public class OpenMLDBInfo {
     private OpenMLDBDeployType deployType;
     private String host;
@@ -53,6 +54,7 @@ public class OpenMLDBInfo {
     private List<String> apiServerNames = new ArrayList<>();
     private List<String> taskManagerEndpoints = new ArrayList<>();
     private String runCommand;
+    private String sparkHome;
 
     public String getRunCommand(){
         if(deployType==OpenMLDBDeployType.CLUSTER) {

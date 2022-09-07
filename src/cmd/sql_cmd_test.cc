@@ -2549,6 +2549,10 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("create table t4 (id string) options (partitionnum = 1, replicanum = 0);", &status);
+    ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL("create table t4 (id string) options (partitionnum = 0, replicanum = 1);", &status);
+    ASSERT_FALSE(status.IsOK());
 
     // Run create again and do not get error
     sr->ExecuteSQL(create_sql, &status);
