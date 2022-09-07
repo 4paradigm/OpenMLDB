@@ -36,7 +36,7 @@ fi
 
 echo "devops test suite xml:"
 cat test_suite/"${CASE_XML}"
-
+cd "${ROOT_DIR}" || exit
 cd test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
 # modify suite_xml
 sed -i "s#<parameter name=\"version\" value=\".*\"/>#<parameter name=\"version\" value=\"${OPENMLDB_SERVER_VERSION}\"/>#"  test_suite/test_cluster.xml
