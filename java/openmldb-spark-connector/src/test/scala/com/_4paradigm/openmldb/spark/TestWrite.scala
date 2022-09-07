@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package com._4paradigm.openmldb.spark
+
 import java.lang.Thread.currentThread
 
 import com._4paradigm.openmldb.sdk.SdkOption
@@ -40,8 +42,8 @@ class TestWrite extends FunSuite {
       assert(nullRow.isNullAt(i))
     }
 
-    val zkCluster = "127.0.0.1:6181"
-    val zkPath = "/onebox"
+    val zkCluster = "127.0.0.1:8181"
+    val zkPath = "/hw"
     val db = "db"
     val table = "spark_write_test"
     val options = Map("db" -> db, "table" -> table, "zkCluster" -> zkCluster, "zkPath" -> zkPath)
