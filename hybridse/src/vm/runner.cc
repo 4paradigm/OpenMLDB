@@ -2661,9 +2661,6 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
         iter->SeekToFirst();
         int32_t cnt = 0;
         while (iter->Valid()) {
-            if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
-                break;
-            }
             auto key = iter->GetKey().ToString();
             auto segment = partition->GetSegment(key);
             if (!segment) {
@@ -2672,6 +2669,9 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
             }
             if (!having_condition_.Valid() || having_condition_.Gen(segment, parameter)) {
                 output_table->AddRow(agg_gen_.Gen(parameter, segment));
+                if (limit_cnt_ > 0 && ++cnt >= limit_cnt_) {
+                    break;
+                }
             }
             iter->Next();
         }
@@ -4119,16 +4119,15 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<PartitionHa
     if (index_seek_gen_.Valid()) {
         return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter, limit);
     } else {
-        std::shared_ptr<TableHandler> rs = partition;
         if (condition_gen_.Valid()) {
-            rs = std::make_shared<PartitionFilterWrapper>(partition, parameter, this);
+            partition = std::make_shared<PartitionFilterWrapper>(partition, parameter, this);
         }
 
         if (!limit.has_value()) {
-            return rs;
+            return partition;
         }
 
-        return std::make_shared<LimitTableHandler>(rs, limit.value());
+        return std::make_shared<LimitTableHandler>(partition, limit.value());
     }
 }
 
@@ -4140,17 +4139,15 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandle
         return fail_ptr;
     }
 
-    if (!condition_gen_.Valid()) {
+    if (condition_gen_.Valid()) {
+        table = std::make_shared<TableFilterWrapper>(table, parameter, this);
+    }
+
+    if (!limit.has_value()) {
         return table;
     }
 
-    auto rs = std::make_shared<TableFilterWrapper>(table, parameter, this);
-
-    if (!limit.has_value()) {
-        return rs;
-    }
-
-    return std::make_shared<LimitTableHandler>(rs, limit.value());
+    return std::make_shared<LimitTableHandler>(table, limit.value());
 }
 
 std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(

@@ -251,29 +251,3 @@ cases:
       rows: 
         - [3, 2, 2, 1, 1.5]
 
-  - id: 7
-    mode: request-unsupport
-    inputs:
-      - name: actions
-        columns:
-          - userId string
-          - itemId int
-          - actionTime timestamp
-        indexs:
-          - index2:itemId:actionTime
-        data: |
-          a, 1, 1000
-          a, 2, 2000
-          b, 3, 3000
-          b, 3, 3000
-
-    sql: |
-      select * from actions where itemId != 3 limit 1
-    expect:
-      order: itemId
-      columns:
-        - userId string
-        - itemId int
-        - actionTime timestamp
-      data: |
-        a, 1, 1000
