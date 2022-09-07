@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["两个窗口，一个rows，一个rows_range，current_row"]
+debugs: []
 version: 0.6.0
 cases:
   - id: 0
@@ -307,7 +307,7 @@ cases:
         - [ "aa",23,63 ]
         - [ "bb",24,null ]
   - id: 13
-    desc: rows_range-open-current_row
+    desc: rows_range-open-current_row-ts=0
     tags: ["TODO","bug,修复后验证"]
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]

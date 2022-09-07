@@ -332,7 +332,6 @@ cases:
   -
     id: 11
     desc: 子查询使列别名重名,并同时select
-    tags: ["TODO", "@baoxinqi", "bug-期望子查询别名不可以一致FEX-1009"]
     inputs:
       -
         columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
