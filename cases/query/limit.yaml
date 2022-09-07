@@ -25,27 +25,27 @@ cases:
     mode: request-unsupport
     inputs:
       - columns:
-          - userId string
+          - userId int
           - itemId int
           - actionTime timestamp
         indexs:
           - index2:itemId:actionTime
         data: |
-          a, 1, 1000
-          a, 2, 2000
-          b, 3, 3000
-          b, 3, 4000
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
     sql: |
       select * from {0} limit 2
     expect:
-      order: itemId
+      order: userId
       columns:
-        - userId string
+        - userId int
         - itemId int
         - actionTime timestamp
       data: |
-        b, 3, 4000
-        b, 3, 3000
+        3, 3, 3000
+        4, 3, 4000
 
 
   - id: 1-0
