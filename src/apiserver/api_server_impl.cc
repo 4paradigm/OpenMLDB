@@ -633,6 +633,148 @@ std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
     return out;
 }
 
+JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
+    ar.StartObject();
+    // mode is not optional
+    ar.Member("mode") & s.mode;
+    ar.Member("sql") & s.sql;
+    if (ar.HasMember("parameters")) {
+        ar.Member("parameters") & s.parameter;
+    }
+    return ar.EndObject();
+}
+
+JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
+    ar.StartObject();                                                                              // start "parameter"
+    if (!ar.HasMember("schema") || !ar.HasMember("data")) return ar;
+
+    ::hybridse::vm::Schema schema;
+    {
+        ar.Member("schema");
+        size_t size;
+        ar.StartArray(&size);  // start "schema"
+        for (auto i = 0; i < size; i++) {
+            std::string type;
+            ar& type;
+            // uppercase
+            std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return std::toupper(c); });
+
+            auto col = schema.Add();
+            if (type == "BOOL") {
+                col->set_type(::hybridse::type::kBool);
+            } else if (type == "SMALLINT" || type == "INT16") {
+                col->set_type(::hybridse::type::kInt16);
+            } else if (type == "INT" || type == "INT32") {
+                col->set_type(::hybridse::type::kInt32);
+            } else if (type == "BIGINT" || type == "INT64") {
+                col->set_type(::hybridse::type::kInt64);
+            } else if (type == "FLOAT") {
+                col->set_type(::hybridse::type::kFloat);
+            } else if (type == "DOUBLE") {
+                col->set_type(::hybridse::type::kDouble);
+            } else if (type == "STRING") {
+                col->set_type(::hybridse::type::kVarchar);
+            } else if (type == "DATE") {
+                col->set_type(::hybridse::type::kDate);
+            } else if (type == "TIMESTAMP") {
+                col->set_type(::hybridse::type::kTimestamp);
+            } else {
+                return ar;
+            }
+        }
+        ar.EndArray();  // end "schema"
+    }
+
+    int32_t str_length = 0;
+    {
+        ar.Member("data");
+        size_t size;
+        ar.StartArray(&size);  // start first iter "data"
+        if (size != schema.size()) return ar;
+
+        for (auto col = schema.begin(); col != schema.end(); col++) {
+            if (col->type() == ::hybridse::type::kVarchar) {
+                std::string str;
+                ar& str;
+                str_length += str.length();
+            } else {
+                ar.Next();
+            }
+        }
+        ar.EndArray();  // end first iter "data"
+    }
+    {
+        ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
+        parameter.reset(new openmldb::sdk::SQLRequestRow(std::shared_ptr<::hybridse::sdk::Schema>(schema_impl),
+                                                         std::set<std::string>({})));
+
+        ar.Member("data");
+        size_t size;
+        ar.StartArray(&size);  // start second iter "data"
+        if (!parameter->Init(str_length)) return ar;
+
+        for (auto col = schema.begin(); col != schema.end(); col++) {
+            bool ok;
+            switch (col->type()) {
+                case ::hybridse::type::kBool: {
+                    bool b;
+                    ar& b;
+                    ok = parameter->AppendBool(b);
+                } break;
+                case ::hybridse::type::kInt16: {
+                    int16_t i;
+                    ar& i;
+                    ok = parameter->AppendInt16(i);
+                } break;
+                case ::hybridse::type::kInt32: {
+                    int32_t i;
+                    ar& i;
+                    ok = parameter->AppendInt32(i);
+                } break;
+                case ::hybridse::type::kInt64: {
+                    int64_t i;
+                    ar& i;
+                    ok = parameter->AppendInt64(i);
+                } break;
+                case ::hybridse::type::kFloat: {
+                    double f;
+                    ar& f;
+                    ok = parameter->AppendFloat(f);
+                } break;
+                case ::hybridse::type::kDouble: {
+                    double d;
+                    ar& d;
+                    ok = parameter->AppendDouble(d);
+                } break;
+                case ::hybridse::type::kVarchar: {
+                    std::string s;
+                    ar& s;
+                    ok = parameter->AppendString(s.c_str(), s.length());
+                } break;
+                case ::hybridse::type::kDate: {
+                    int32_t date;
+                    ar& date;
+                    ok = parameter->AppendDate(date);
+                } break;
+                case ::hybridse::type::kTimestamp: {
+                    int64_t timestamp;
+                    ar& timestamp;
+                    ok = parameter->AppendTimestamp(timestamp);
+                } break;
+                default:
+                    ok = false;
+            }
+            if (!ok) return ar;
+        }
+
+        if (!parameter->Build()) return ar;
+
+        ar.EndArray();  // end second iter "data"
+    }
+
+    return ar.EndObject();  // end "parameter"
+}
+
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const) {
     ar.Member(name.c_str());

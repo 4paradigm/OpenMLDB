@@ -16,16 +16,9 @@
 
 #include "apiserver/json_helper.h"
 
-#include <algorithm>
-#include <memory>
-#include <set>
 #include <stack>
-#include <vector>
 
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
-#include "sdk/base_impl.h"
-#include "sdk/sql_request_row.h"
-#include "vm/catalog.h"
 
 namespace openmldb {
 namespace apiserver {
@@ -204,137 +197,6 @@ JsonReader& JsonReader::operator&(std::string& s) {  // NOLINT
             error_ = true;
         }
     }
-    return *this;
-}
-
-JsonReader& JsonReader::operator&(std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
-
-    this->StartObject();  // start "parameter"
-    if (!this->HasMember("schema") || !this->HasMember("data")) {
-        error_ = true;
-        return *this;
-    }
-
-    ::hybridse::vm::Schema schema;
-    {
-        this->Member("schema");
-        size_t size;
-        this->StartArray(&size);  // start "schema"
-        for (auto i = 0; i < size; i++) {
-            if (!error_) {
-                auto col = schema.Add();
-                auto type = std::string(CURRENT.GetString());
-
-                // lowercase
-                std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return std::toupper(c); });
-
-                if (type == "BOOL") {
-                    col->set_type(::hybridse::type::kBool);
-                } else if (type == "SMALLINT" || type == "INT16") {
-                    col->set_type(::hybridse::type::kInt16);
-                } else if (type == "INT" || type == "INT32") {
-                    col->set_type(::hybridse::type::kInt32);
-                } else if (type == "BIGINT" || type == "INT64") {
-                    col->set_type(::hybridse::type::kInt64);
-                } else if (type == "FLOAT") {
-                    col->set_type(::hybridse::type::kFloat);
-                } else if (type == "DOUBLE") {
-                    col->set_type(::hybridse::type::kDouble);
-                } else if (type == "STRING") {
-                    col->set_type(::hybridse::type::kVarchar);
-                } else if (type == "DATE") {
-                    col->set_type(::hybridse::type::kDate);
-                } else if (type == "TIMESTAMP") {
-                    col->set_type(::hybridse::type::kTimestamp);
-                } else {
-                    error_ = true;
-                }
-                Next();
-            }
-        }
-        this->EndArray();  // end "schema"
-    }
-
-    int32_t str_length = 0;
-    {
-        this->Member("data");
-        size_t size;
-        this->StartArray(&size);  // start first iter "data"
-        if (size != schema.size()) {
-            error_ = true;
-            return *this;
-        }
-
-        for (auto col = schema.begin(); col != schema.end(); col++) {
-            if (!error_ && col->type() == ::hybridse::type::kVarchar) {
-                str_length += CURRENT.GetStringLength();
-            }
-            Next();
-        }
-        this->EndArray();  // end first iter "data"
-    }
-    {
-        ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
-        std::shared_ptr<::hybridse::sdk::Schema> schema_shared(schema_impl);
-        std::set<std::string> _rs{};
-        parameter.reset(new openmldb::sdk::SQLRequestRow(schema_shared, _rs));
-
-        this->Member("data");
-        size_t size;
-        this->StartArray(&size);  // start second iter "data"
-        if (!parameter->Init(str_length)) {
-            error_ = true;
-            return *this;
-        }
-
-        for (auto col = schema.begin(); col != schema.end(); col++) {
-            bool ok = false;
-            switch (col->type()) {
-                case ::hybridse::type::kBool:
-                    ok = parameter->AppendBool(CURRENT.GetBool());
-                    break;
-                case ::hybridse::type::kInt16:
-                    ok = parameter->AppendInt16(CURRENT.GetInt());
-                    break;
-                case ::hybridse::type::kInt32:
-                    ok = parameter->AppendInt32(CURRENT.GetInt());
-                    break;
-                case ::hybridse::type::kInt64:
-                    ok = parameter->AppendInt64(CURRENT.GetInt64());
-                    break;
-                case ::hybridse::type::kFloat:
-                    ok = parameter->AppendFloat(CURRENT.GetDouble());
-                    break;
-                case ::hybridse::type::kDouble:
-                    ok = parameter->AppendDouble(CURRENT.GetDouble());
-                    break;
-                case ::hybridse::type::kVarchar:
-                    ok = parameter->AppendString(CURRENT.GetString(), CURRENT.GetStringLength());
-                    break;
-                case ::hybridse::type::kDate:
-                    ok = parameter->AppendDate(CURRENT.GetInt());
-                    break;
-                case ::hybridse::type::kTimestamp:
-                    ok = parameter->AppendTimestamp(CURRENT.GetInt64());
-                    break;
-            }
-            if (!ok) {
-                error_ = true;
-                return *this;
-            }
-            Next();
-        }
-
-        if (!parameter->Build()) {
-            error_ = true;
-            return *this;
-        }
-
-        this->EndArray();  // end second iter "data"
-    }
-
-    this->EndObject();  // end "parameter"
-
     return *this;
 }
 

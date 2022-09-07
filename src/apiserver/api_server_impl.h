@@ -88,17 +88,9 @@ struct QueryReq {
     std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
 };
 
-template <typename Archiver>
-Archiver& operator&(Archiver& ar, QueryReq& s) {  // NOLINT
-    ar.StartObject();
-    // mode is not optional
-    ar.Member("mode") & s.mode;
-    ar.Member("sql") & s.sql;
-    if (ar.HasMember("parameters")) {
-        ar.Member("parameters") & s.parameter;
-    }
-    return ar.EndObject();
-}
+JsonReader& operator&(JsonReader& ar, QueryReq& s);  // NOLINT
+
+JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
 
 struct ExecSPResp {
     ExecSPResp() = default;
