@@ -2612,10 +2612,12 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     switch (input->GetHandlerType()) {
         case kTableHandler: {
             // FIXME(ace): limit = 0 and without limit is different
-            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter, limit_cnt_);
+            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter,
+                                      limit_cnt_ == 0 ? std::nullopt : std::make_optional(limit_cnt_));
         }
         case kPartitionHandler: {
-            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter, limit_cnt_);
+            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter,
+                                      limit_cnt_ == 0 ? std::nullopt : std::make_optional(limit_cnt_));
         }
         default: {
             LOG(WARNING) << "fail to filter when input is row";
