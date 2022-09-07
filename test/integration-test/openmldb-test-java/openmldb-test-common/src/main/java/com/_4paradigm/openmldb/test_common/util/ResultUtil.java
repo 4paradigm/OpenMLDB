@@ -36,6 +36,14 @@ public class ResultUtil {
             openMLDBResult.setMsg(e.getMessage());
         }
     }
+    public static String parseJobId(OpenMLDBResult openMLDBResult){
+        List<List<Object>> result = openMLDBResult.getResult();
+        String line = String.valueOf(result.get(0).get(0));
+        String[] ss = line.split("\n");
+        String jobId = ss[3].split(" ")[2];
+        log.info("jobId = " + jobId);
+        return jobId;
+    }
     public static OpenmldbDeployment parseDeployment(List<String> lines){
         OpenmldbDeployment deployment = new OpenmldbDeployment();
         List<String> inColumns = new ArrayList<>();
