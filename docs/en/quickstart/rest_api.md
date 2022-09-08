@@ -1,5 +1,9 @@
 # REST APIs
 
+## Important Information
+
+
+
 ## Data Insertion
 
 The request URL: http://ip:port/dbs/{db_name}/tables/{table_name}
