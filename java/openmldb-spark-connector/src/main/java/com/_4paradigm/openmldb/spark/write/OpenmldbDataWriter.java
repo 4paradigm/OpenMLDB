@@ -73,7 +73,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             addRow(record, preparedStatement);
             preparedStatement.addBatch();
         } catch (Exception e) {
-            throw new IOException("convert to openmldb row failed", e);
+            throw new IOException("convert to openmldb row failed on " + record + ", err: "+ e, e);
         }
     }
 
