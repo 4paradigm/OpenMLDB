@@ -95,7 +95,9 @@ class IteratorFilterWrapper : public RowIterator {
 class LimitIterator : public RowIterator {
  public:
     explicit LimitIterator(std::unique_ptr<RowIterator>&& iter, int32_t limit)
-        : RowIterator(), iter_(std::move(iter)), limit_(limit) {}
+        : RowIterator(), iter_(std::move(iter)), limit_(limit) {
+        SeekToFirst();
+    }
     virtual ~LimitIterator() {}
 
     bool Valid() const override {
@@ -117,9 +119,16 @@ class LimitIterator : public RowIterator {
         return false;
     };
 
-    void Seek(const uint64_t& key) override {}
+    void Seek(const uint64_t& key) override {
+        LOG(ERROR) << "LimitIterator is not seekable";
+    }
 
-    void SeekToFirst() override {};
+    void SeekToFirst() override {
+        // not lazy
+        // seek to the first valid row
+        // so it correctly handle limit(filter iterator)
+        iter_->SeekToFirst();
+    };
 
  private:
     std::unique_ptr<RowIterator> iter_;
@@ -428,16 +437,13 @@ class LimitTableHandler : public TableHandler {
         if (!iter) {
             return std::unique_ptr<RowIterator>();
         } else {
-            // not lazy
-            // seek to the first valid row
-            // so it correctly handle limit(filter iterator)
-            iter->SeekToFirst();
             return std::make_unique<LimitIterator>(std::move(iter), limit_);
         }
     }
 
     // FIXME(ace): do not use this, not implemented
     std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
+        LOG(ERROR) << "window iterator for LimitTableHandler is not implemented, don't use";
         return table_hander_->GetWindowIterator(idx_name);
     }
 
@@ -453,6 +459,7 @@ class LimitTableHandler : public TableHandler {
 
     // FIXME(ace): do not use this, not implemented
     std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override {
+        LOG(ERROR) << "Get partition for LimitTableHandler is not implemented, don't use";
         return table_hander_->GetPartition(index_name);
     }
 
