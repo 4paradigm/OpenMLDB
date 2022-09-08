@@ -152,6 +152,9 @@ bool ConvertTableInfo(const ::openmldb::rtidb_nameserver::TableInfo& table_info,
             if (table_ttl.has_abs_ttl() || table_ttl.has_lat_ttl()) {
                 ttl_map.emplace(column_desc->name(), table_ttl);
             }
+            if (table_info.column_desc_v1(idx).add_ts_idx()) {
+                index_cols.emplace_back(column_desc->name());
+            }
         }
     } else {
         for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
