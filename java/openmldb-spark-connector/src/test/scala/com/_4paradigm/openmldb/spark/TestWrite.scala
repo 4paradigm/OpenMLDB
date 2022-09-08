@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package com._4paradigm.openmldb.spark
+
 import java.lang.Thread.currentThread
 
 import com._4paradigm.openmldb.sdk.SdkOption

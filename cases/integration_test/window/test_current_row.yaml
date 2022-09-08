@@ -62,6 +62,7 @@ cases:
         - [ "bb",24,null ]
   - id: 2
     desc: rows-current_row-有和当前行ts一致的数据
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -84,6 +85,7 @@ cases:
         - [ "bb",24,null ]
   - id: 3
     desc: rows_range-current_row-有和当前行ts一致的数据
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -150,6 +152,7 @@ cases:
         - [ "bb",24,null ]
   - id: 6
     desc: rows-current_row-ts=0
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -286,6 +289,7 @@ cases:
         - [ "bb",24,null ]
   - id: 12
     desc: rows-open-current_row
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -375,6 +379,7 @@ cases:
         - [ "bb",24,null ]
   - id: 16
     desc: rows-current_row-current_time
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -397,6 +402,7 @@ cases:
         - [ "bb",24,null ]
   - id: 17
     desc: rows_range-current_row-current_time
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -714,6 +720,7 @@ cases:
       success: false
   - id: 31
     desc: rows-纯历史窗口-current_row-ts=0
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -832,7 +839,7 @@ cases:
   - id: 21
     desc: |
       rows_range window union with exclude current_row and exclude current_time
-    mode: batch-unsupport
+    mode: batch-unsupport,disk-unsupport
     inputs:
       - name: t1
         columns:
@@ -1041,6 +1048,7 @@ cases:
   - id: 24
     desc: |
       rows_range union window with exclude_current_row
+    mode: disk-unsupport
     inputs:
       - name: t1
         columns:
@@ -1107,6 +1115,7 @@ cases:
   - id: 25
     desc: |
       rows_range union window with exclude_current_row and exclude_current_time
+    mode: disk-unsupport
     inputs:
       - name: t1
         columns:
@@ -1440,6 +1449,7 @@ cases:
   - id: 30
     desc: |
       rows_range union window with exclude_current_row, exclude_current_time and maxsize
+    mode: disk-unsupport
     inputs:
       - name: t1
         columns:

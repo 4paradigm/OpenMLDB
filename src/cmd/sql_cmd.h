@@ -139,6 +139,9 @@ void HandleSQL(const std::string& sql) {
 // cluster mode: if zk_cluster is not empty,
 // standalone mode:
 void Shell() {
+    if (!FLAGS_cmd.empty()) {
+        FLAGS_interactive = false;
+    }
     DCHECK(cs);
     DCHECK(sr);
     if (FLAGS_interactive) {
