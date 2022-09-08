@@ -459,3 +459,33 @@ cases:
         - cnt int64
       data: |
         2, 1
+  - id: 6
+    mode: request-unsupport
+    desc: |
+      limit (as subquery to window project)
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, itemId, count(actionTime) over w as cnt from
+      (select * from {0} where userId != 5 limit 2)
+      window w as (partition by itemId order by actionTime
+      rows_range between 1s preceding and current row)
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - cnt int64
+      data: |
+        3, 3, 1
+        4, 3, 2

@@ -1082,7 +1082,6 @@ cases:
   -
     id: 32
     desc: no partition by
-    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1100,7 +1099,6 @@ cases:
   -
     id: 33
     desc: int为order by
-    tags: ["TODO"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1114,7 +1112,14 @@ cases:
     sql: |
       SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c7 ORDER BY {0}.c3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
-      success: false
+      order: id
+      columns: ["id int","c1 string","c2 bool","w1_c4_sum bigint"]
+      rows:
+        - [1,"aa",true,30]
+        - [2,"bb",true,61]
+        - [3,"cc",true,93]
+        - [4,"dd",true,96]
+        - [5,"ee",false,34]
   -
     id: 34
     desc: smallint为order by
@@ -1154,7 +1159,6 @@ cases:
   -
     id: 36
     desc: no order by
-    tags: ["TODO","bug待修复"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
