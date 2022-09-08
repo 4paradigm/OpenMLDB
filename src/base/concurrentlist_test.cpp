@@ -1,8 +1,8 @@
-#include "storage/concurrentlist.h"
+#include "base/concurrentlist.h"
 #include <vector>
 #include <thread>
 #include "gtest/gtest.h"
-#include "storage/skiplist.h"
+#include "base/skiplist.h"
 
 namespace hybridse {
 namespace storage {
