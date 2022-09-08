@@ -147,6 +147,14 @@ public class SQLDriver implements Driver {
         if (prop != null) {
             option.setRequestTimeout(Long.parseLong(prop));
         }
+        prop = properties.getProperty("zkLogLevel");
+        if (prop != null) {
+            option.setZkLogLevel(Integer.parseInt(prop));
+        }
+        prop = properties.getProperty("zkLogFile");
+        if (prop != null) {
+            option.setZkLogFile(prop);
+        }
         return option;
     }
 
