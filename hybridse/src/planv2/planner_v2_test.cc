@@ -575,7 +575,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
     ASSERT_EQ("db1", createStmt->GetDatabase());
     auto table_option_list = createStmt->GetTableOptionList();
-    node::NodePointVector partition_meta_list;
+    node::NodePointVector distribution_list;
     for (auto table_option : table_option_list) {
         switch (table_option->GetType()) {
             case node::kReplicaNum: {
@@ -587,12 +587,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
                 break;
             }
             case node::kDistributions: {
-                auto d_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
-                if (d_list != nullptr) {
-                    for (auto meta_ptr : d_list->GetList()) {
-                        partition_meta_list.push_back(meta_ptr);
-                    }
-                }
+                distribution_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
                 break;
             }
             case hybridse::node::kStorageMode: {
@@ -606,6 +601,9 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
             }
         }
     }
+    ASSERT_EQ(1, distribution_list.size());
+    auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.front());
+    const auto& partition_meta_list = partition_mata_nodes->GetList();
     ASSERT_EQ(3, partition_meta_list.size());
     {
         ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());

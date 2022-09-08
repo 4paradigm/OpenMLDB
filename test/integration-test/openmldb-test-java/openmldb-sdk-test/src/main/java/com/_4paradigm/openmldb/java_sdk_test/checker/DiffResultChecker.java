@@ -51,12 +51,12 @@ public class DiffResultChecker extends BaseChecker{
     public void checkMysql(OpenMLDBResult mysqlResult) throws Exception {
         log.info("diff mysql check");
         //验证success
-        boolean fesqlOk = fesqlResult.isOk();
+        boolean fesqlOk = openMLDBResult.isOk();
         boolean sqlite3Ok = mysqlResult.isOk();
         Assert.assertEquals(fesqlOk,sqlite3Ok,"success 不一致，fesql："+fesqlOk+",sqlite3："+sqlite3Ok);
         if(!fesqlOk) return;
         //验证result
-        List<List<Object>> fesqlRows = fesqlResult.getResult();
+        List<List<Object>> fesqlRows = openMLDBResult.getResult();
         List<List<Object>> mysqlRows = mysqlResult.getResult();
         log.info("fesqlRows:{}", fesqlRows);
         log.info("mysqlRows:{}", mysqlRows);
@@ -67,12 +67,12 @@ public class DiffResultChecker extends BaseChecker{
     public void checkSqlite3(OpenMLDBResult sqlite3Result) throws Exception {
         log.info("diff sqlite3 check");
         //验证success
-        boolean fesqlOk = fesqlResult.isOk();
+        boolean fesqlOk = openMLDBResult.isOk();
         boolean sqlite3Ok = sqlite3Result.isOk();
         Assert.assertEquals(fesqlOk,sqlite3Ok,"success 不一致，fesql："+fesqlOk+",sqlite3："+sqlite3Ok);
         if(!fesqlOk) return;
         //验证result
-        List<List<Object>> fesqlRows = fesqlResult.getResult();
+        List<List<Object>> fesqlRows = openMLDBResult.getResult();
         List<List<Object>> sqlite3Rows = sqlite3Result.getResult();
         log.info("fesqlRows:{}", fesqlRows);
         log.info("sqlite3Rows:{}", sqlite3Rows);
@@ -98,7 +98,7 @@ public class DiffResultChecker extends BaseChecker{
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 }else if (sqlite3_val != null && sqlite3_val instanceof Double) {
                     // Assert.assertTrue(expect_val != null && expect_val instanceof Double);
                     if(fesql_val instanceof Float){
@@ -113,7 +113,7 @@ public class DiffResultChecker extends BaseChecker{
                             String.format("ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                                     i, j, sqlite3_val, fesql_val,
                                     sqlite3Result.toString(),
-                                    fesqlResult.toString())
+                                    openMLDBResult.toString())
                     );
 
                 } else if(fesql_val != null && fesql_val instanceof Timestamp){
@@ -122,13 +122,13 @@ public class DiffResultChecker extends BaseChecker{
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 } else{
                     Assert.assertEquals(String.valueOf(fesql_val), String.valueOf(sqlite3_val), String.format(
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 }
             }
         }

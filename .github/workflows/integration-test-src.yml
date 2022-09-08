@@ -86,7 +86,6 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-memory-0 Report"
           comment_title: "SRC java-sdk-cluster-memory-0 Report"
       - name: tar test report
@@ -173,7 +172,6 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-ssd-0 Report"
           comment_title: "SRC java-sdk-cluster-ssd-0 Report"
       - name: tar test report

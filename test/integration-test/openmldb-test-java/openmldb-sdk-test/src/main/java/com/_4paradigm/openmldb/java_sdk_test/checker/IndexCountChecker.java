@@ -40,7 +40,7 @@ public class IndexCountChecker extends BaseChecker {
     public void check() throws Exception {
         logger.info("index count check");
         int expectCount = expect.getIndexCount();
-        int actual = fesqlResult.getSchema().getIndexs().size();
+        int actual = openMLDBResult.getSchema().getIndexs().size();
         Assert.assertEquals(actual,expectCount,"index count验证失败");
     }
 

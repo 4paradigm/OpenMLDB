@@ -20,6 +20,7 @@ package com._4paradigm.openmldb.devops_test.common;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -30,6 +31,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
+import java.io.File;
 import java.sql.Statement;
 
 /**
@@ -56,56 +58,38 @@ public class ClusterTest {
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(true);
+            openMLDBDeploy.setSystemTableReplicaNum(1);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(1, 1);
         }else{
-//            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-//                    .deployType(OpenMLDBDeployType.CLUSTER)
-//                    .openMLDBDirectoryName("openmldb-0.5.2-darwin")
-//                    .basePath("/Users/zhaowei/openmldb-auto-test/tmp_mac")
-//                    .openMLDBPath("/Users/zhaowei/openmldb-auto-test/tmp_mac/openmldb-ns-1/bin/openmldb")
-//                    .zk_cluster("127.0.0.1:30000")
-//                    .zk_root_path("/openmldb")
-//                    .nsNum(2).tabletNum(3)
-//                    .nsEndpoints(Lists.newArrayList("127.0.0.1:30004", "127.0.0.1:30005"))
-//                    .tabletEndpoints(Lists.newArrayList("127.0.0.1:30001", "127.0.0.1:30002", "127.0.0.1:30003"))
-//                    .apiServerEndpoints(Lists.newArrayList("127.0.0.1:30006"))
-//                    .build();
-//            OpenMLDBGlobalVar.env = "cluster";
+            OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+            openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
+            openMLDBInfo.setNsNum(2);
+            openMLDBInfo.setTabletNum(3);
+            openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_root_path("/openmldb");
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
+            openMLDBInfo.setNsNames(Lists.newArrayList());
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"));
+            openMLDBInfo.setTabletNames(Lists.newArrayList());
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"));
+            openMLDBInfo.setApiServerNames(Lists.newArrayList());
+            openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList("172.24.4.55:30007"));
+            openMLDBInfo.setOpenMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb");
 
-//            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-//                    .openMLDBDirectoryName("openmldb-0.5.2-linux")
-//                    .deployType(OpenMLDBDeployType.CLUSTER)
-//                    .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
-//                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-//                    .zk_cluster("172.24.4.55:30000")
-//                    .zk_root_path("/openmldb")
-//                    .nsNum(2).tabletNum(3)
-//                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
-//                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
-//                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"))
-//                    .build();
-//            OpenMLDBGlobalVar.env = "cluster";
-
-            OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.CLUSTER)
-                    .basePath("/home/zhaowei01/openmldb-auto-test/single")
-                    .openMLDBPath("/home/zhaowei01/openmldb-auto-test/single/openmldb-ns-1/bin/openmldb")
-                    .zk_cluster("172.24.4.55:30008")
-                    .zk_root_path("/openmldb")
-                    .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:30010"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:30009"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:30011"))
-                    .taskManagerEndpoints(Lists.newArrayList("172.24.4.55:30012"))
-                    .build();
+            OpenMLDBGlobalVar.mainInfo = openMLDBInfo;
             OpenMLDBGlobalVar.env = "cluster";
-
         }
+        File outFile = new File("out");
+        if(!outFile.exists()){
+            outFile.mkdir();
+        }
+        YamlUtil.writeYamlFile(OpenMLDBGlobalVar.mainInfo,"out/openmldb_info.yaml");
         String caseEnv = System.getProperty("caseEnv");
         if (!StringUtils.isEmpty(caseEnv)) {
             OpenMLDBGlobalVar.env = caseEnv;
         }
-        log.info("fedb global var env: {}", env);
+        log.info("openmldb global var env: {}", env);
         OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
         executor = openMLDBClient.getExecutor();
         log.info("executor:{}",executor);

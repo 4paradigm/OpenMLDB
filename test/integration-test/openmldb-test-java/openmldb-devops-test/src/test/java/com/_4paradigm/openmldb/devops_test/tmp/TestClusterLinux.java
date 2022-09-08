@@ -25,17 +25,23 @@ public class TestClusterLinux {
     private SqlExecutor executor;
     @BeforeClass
     public void init() throws SQLException {
-        OpenMLDBGlobalVar.mainInfo = OpenMLDBInfo.builder()
-                .deployType(OpenMLDBDeployType.CLUSTER)
-                .basePath("/home/zhaowei01/openmldb-auto-test/tmp")
-                .openMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb")
-                .zk_cluster("172.24.4.55:30000")
-                .zk_root_path("/openmldb")
-                .nsNum(2).tabletNum(3)
-                .nsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"))
-                .tabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"))
-                .apiServerEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30006"))
-                .build();
+        OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+        openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
+        openMLDBInfo.setNsNum(2);
+        openMLDBInfo.setTabletNum(3);
+        openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
+        openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+        openMLDBInfo.setZk_root_path("/openmldb");
+        openMLDBInfo.setNsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
+        openMLDBInfo.setNsNames(com.google.common.collect.Lists.newArrayList());
+        openMLDBInfo.setTabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"));
+        openMLDBInfo.setTabletNames(com.google.common.collect.Lists.newArrayList());
+        openMLDBInfo.setApiServerEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30006"));
+        openMLDBInfo.setApiServerNames(com.google.common.collect.Lists.newArrayList());
+        openMLDBInfo.setTaskManagerEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:30007"));
+        openMLDBInfo.setOpenMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb");
+
+        OpenMLDBGlobalVar.mainInfo = openMLDBInfo;
         OpenMLDBGlobalVar.env = "cluster";
         OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
         executor = openMLDBClient.getExecutor();

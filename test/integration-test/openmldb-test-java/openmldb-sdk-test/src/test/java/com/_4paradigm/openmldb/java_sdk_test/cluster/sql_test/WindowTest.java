@@ -36,33 +36,33 @@ public class WindowTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/",
-            "function/cluster/",
-            "function/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/window/",
+            "integration_test/cluster/",
+            "integration_test/test_index_optimized.yaml"})
     public void testWindowBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/",
-            "function/cluster/",
-            "function/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/window/",
+            "integration_test/cluster/",
+            "integration_test/test_index_optimized.yaml"})
     public void testWindowRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/",
-            "function/cluster/",
-            "function/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/window/",
+            "integration_test/cluster/",
+            "integration_test/test_index_optimized.yaml"})
     public void testWindowRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/window/",
-            "function/cluster/",
-            "function/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/window/",
+            "integration_test/cluster/",
+            "integration_test/test_index_optimized.yaml"})
     public void testWindowRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

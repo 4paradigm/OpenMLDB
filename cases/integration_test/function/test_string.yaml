@@ -1,0 +1,290 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  - id: 0
+    desc: "concat_各种类型组合"
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+          - [2,2,null,null,null,null,null,null,null,null,null]
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+          - [2,2,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+    dataProvider:
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+    sql: |
+      select
+        concat(d[0],{1}.c1) as b1,
+        concat(d[0],{1}.c2) as b2,
+        concat(d[0],{1}.c3) as b3,
+        concat(d[0],{1}.c4) as b4,
+        concat(d[0],{1}.c5) as b5,
+        concat(d[0],{1}.c6) as b6,
+        concat(d[0],{1}.c7) as b7,
+        concat(d[0],{1}.c8) as b8,
+        concat(d[0],{1}.c9) as b9
+      from {0} last join {1} ORDER BY {1}.ts1 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 string","b2 string","b3 string","b4 string","b5 string","b6 string","b7 string","b8 string","b9 string"]
+    expectProvider:
+      0:
+        rows:
+          - ["aa","aa0","aa20","aa30","aa11.1","aa12.1","aa2020-05-29 15:56:29","aa2020-05-02","aatrue"]
+          - [null,null,null,null,null,null,null,null,null]
+      1:
+        rows:
+          - ["30","300","3020","3030","3011.1","3012.1","302020-05-29 15:56:29","302020-05-02","30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      2:
+        rows:
+          - ["30","300","3020","3030","3011.1","3012.1","302020-05-29 15:56:29","302020-05-02","30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      3:
+        rows:
+          - ["30","300","3020","3030","3011.1","3012.1","302020-05-29 15:56:29","302020-05-02","30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      4:
+        rows:
+          - ["30","300","3020","3030","3011.1","3012.1","302020-05-29 15:56:29","302020-05-02","30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      5:
+        rows:
+          - ["30","300","3020","3030","3011.1","3012.1","302020-05-29 15:56:29","302020-05-02","30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      6:
+        rows:
+          - ["2020-05-29 15:56:29","2020-05-29 15:56:290","2020-05-29 15:56:2920","2020-05-29 15:56:2930","2020-05-29 15:56:2911.1","2020-05-29 15:56:2912.1","2020-05-29 15:56:292020-05-29 15:56:29","2020-05-29 15:56:292020-05-02","2020-05-29 15:56:29true"]
+          - [null,null,null,null,null,null,null,null,null]
+      7:
+        rows:
+          - ["2020-05-01","2020-05-010","2020-05-0120","2020-05-0130","2020-05-0111.1","2020-05-0112.1","2020-05-012020-05-29 15:56:29","2020-05-012020-05-02","2020-05-01true"]
+          - [null,null,null,null,null,null,null,null,null]
+      8:
+        rows:
+          - ["false","false0","false20","false30","false11.1","false12.1","false2020-05-29 15:56:29","false2020-05-02","falsetrue"]
+          - [null,null,null,null,null,null,null,null,null]
+  - id: 1
+    desc: concat三个字符串
+    sqlDialect: ["HybridSQL","MYSQL"]
+    inputs:
+      - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa","bbb",1590738989000]
+    sql: select id, c1, c2, concat(c1, c2,"cc") as c12 from {0};
+    expect:
+      columns: ["id int", "c1 string","c2 string", "c12 string"]
+      rows:
+        - [1, "aa", "bbb", "aabbbcc"]
+
+  - id: 2
+    desc: concat_ws一个字符串和三个字符串
+    sqlDialect: ["HybridSQL","MYSQL"]
+    inputs:
+      - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa","bbb",1590738989000]
+    sql: select id, c1, concat_ws("-",c2) as c2, concat_ws("-", c1, c2,"cc") as c1_2 from {0};
+    expect:
+      columns: ["id int", "c1 string","c2 string","c1_2 string"]
+      rows:
+        - [1, "aa", "bbb", "aa-bbb-cc"]
+  - id: 3
+    mode: cli-unsupport
+    desc: "concat_ws-所有类型"
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+          - [2,2,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+          - [2,2,null,null,null,null,null,null,null,null,null]
+    dataProvider:
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+    sql: |
+      select
+        concat_ws(d[0],{0}.c1,{1}.c1) as b1,
+        concat_ws(d[0],{0}.c1,{1}.c2) as b2,
+        concat_ws(d[0],{0}.c1,{1}.c3) as b3,
+        concat_ws(d[0],{0}.c1,{1}.c4) as b4,
+        concat_ws(d[0],{0}.c1,{1}.c5) as b5,
+        concat_ws(d[0],{0}.c1,{1}.c6) as b6,
+        concat_ws(d[0],{0}.c1,{1}.c7) as b7,
+        concat_ws(d[0],{0}.c1,{1}.c8) as b8,
+        concat_ws(d[0],{0}.c1,{1}.c9) as b9
+      from {0} last join {1} ORDER BY {1}.ts1 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 string","b2 string","b3 string","b4 string","b5 string","b6 string","b7 string","b8 string","b9 string"]
+    expectProvider:
+      0:
+        rows:
+          - ["aaaa","aaaa0","aaaa20","aaaa30","aaaa11.1","aaaa12.1","aaaa2020-05-29 15:56:29","aaaa2020-05-02","aaaatrue"]
+          - [null,null,null,null,null,null,null,null,null]
+      1:
+        rows:
+          - ["aa30","aa300","aa3020","aa3030","aa3011.1","aa3012.1","aa302020-05-29 15:56:29","aa302020-05-02","aa30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      2:
+        rows:
+          - ["aa30","aa300","aa3020","aa3030","aa3011.1","aa3012.1","aa302020-05-29 15:56:29","aa302020-05-02","aa30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      3:
+        rows:
+          - ["aa30","aa300","aa3020","aa3030","aa3011.1","aa3012.1","aa302020-05-29 15:56:29","aa302020-05-02","aa30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      4:
+        rows:
+          - ["aa30","aa300","aa3020","aa3030","aa3011.1","aa3012.1","aa302020-05-29 15:56:29","aa302020-05-02","aa30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      5:
+        rows:
+          - ["aa30","aa300","aa3020","aa3030","aa3011.1","aa3012.1","aa302020-05-29 15:56:29","aa302020-05-02","aa30true"]
+          - [null,null,null,null,null,null,null,null,null]
+      6:
+        rows:
+          - ["aa2020-05-29 15:56:29","aa2020-05-29 15:56:290","aa2020-05-29 15:56:2920","aa2020-05-29 15:56:2930","aa2020-05-29 15:56:2911.1","aa2020-05-29 15:56:2912.1","aa2020-05-29 15:56:292020-05-29 15:56:29","aa2020-05-29 15:56:292020-05-02","aa2020-05-29 15:56:29true"]
+          - [null,null,null,null,null,null,null,null,null]
+      7:
+        rows:
+          - ["aa2020-05-01","aa2020-05-010","aa2020-05-0120","aa2020-05-0130","aa2020-05-0111.1","aa2020-05-0112.1","aa2020-05-012020-05-29 15:56:29","aa2020-05-012020-05-02","aa2020-05-01true"]
+          - [null,null,null,null,null,null,null,null,null]
+      8:
+        rows:
+          - ["aafalse","aafalse0","aafalse20","aafalse30","aafalse11.1","aafalse12.1","aafalse2020-05-29 15:56:29","aafalse2020-05-02","aafalsetrue"]
+          - [null,null,null,null,null,null,null,null,null]
+  - id: 4
+    desc: strcmp 两个字符串
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "text","text2",1590738989000]
+          - [2, "text","text",1590738989000]
+          - [3, "text2","text",1590738989000]
+          - [4, null,"text",1590738989000]
+          - [5, "text",null,1590738989000]
+          - [6, null,null,1590738989000]
+    sql: select id, c1, c2, strcmp(c1, c2) as cmp_c1c2 from {0};
+    expect:
+      columns: ["id int", "c1 string","c2 string","cmp_c1c2 int"]
+      order: id
+      rows:
+        - [1, "text", "text2", -1]
+        - [2, "text", "text", 0]
+        - [3, "text2", "text", 1]
+        - [4, null,"text",null]
+        - [5, "text",null,null]
+        - [6, null,null,null]
+  - id: 5
+    desc: "strcmp-fail"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"123456789",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+    dataProvider:
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+    sql: select strcmp(d[0],d[1]) from {0};
+    expect:
+      success: false
+  - id: 6
+    desc: "strcmp-string-fail"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"123456789",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+    dataProvider:
+      - ["{0}.c1"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+    sql: select strcmp(d[0],d[1]) from {0};
+    expect:
+      success: false
+  - id: 7
+    desc: "substr-normal"
+    mode: cli-unsupport
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"123456789",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+          - [2,2,null,null,null,null,null,null,null,null,null]
+    dataProvider:
+      - ["substr","substring"]
+    sql: |
+      select
+        d[0](c1,3) as b1,
+        d[0](c1,3,2) as b2,
+        d[0](c1,3,20) as b3,
+        d[0](c1,30,2) as b4,
+        d[0](c1,30) as b5
+      from {0};
+    expect:
+      columns: ["b1 string","b2 string","b3 string","b4 string","b5 string"]
+    expectProvider:
+      0:
+        rows:
+          - ["3456789","34","3456789","",""]
+          - [null,null,null,null,null]
+      1:
+        rows:
+          - ["3456789","34","3456789","",""]
+          - [null,null,null,null,null]
+
+  - id: 8
+    desc: "substr-fail"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"123456789",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+          - [2,2,null,null,null,null,null,null,null,null,null]
+    dataProvider:
+      - ["substr","substring"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c7","{0}.c8","{0}.c9"]
+    sql: select d[0](d[1],1) from {0};
+    expect:
+      success: false

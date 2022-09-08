@@ -15,6 +15,7 @@
         <module>openmldb-tool-test</module>
         <module>openmldb-deploy</module>
         <module>openmldb-devops-test</module>
+        <module>openmldb-ecosystem</module>
     </modules>
 
     <properties>

@@ -1,0 +1,762 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+version: 0.5.0
+debugs: []
+cases:
+  - id: 0
+    mode: disk-unsupport
+    desc: ROWS_RANGE Window OPEN PRECEDING EXCLUDE CURRENT_TIME
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",-2, 1.0, 0 ]
+          - [ "aa",-1, 1.0, 0 ]
+          - [ "aa",0, 1.0, 0 ]
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
+      rows:
+        - [ "aa", -2, 0, 1.0 ]
+        - [ "aa", -1, 0, 1.0 ]
+        - [ "aa", 0, 0, 1.0 ]
+        - [ "aa", 1, 1590738990000, 1.0 ]
+        - [ "aa", 2, 1590738990000, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0 ]
+        - [ "aa", 6, 1590738994000, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0 ]
+  - id: 1
+    desc: ROWS_RANGE Window with MaxSize 2 OPEN PRECEDING EXCLUDE CURRENT_TIME
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0 ]
+        - [ "aa", 2, 1590738990000, 1.0 ]
+        - [ "aa", 3, 1590738992000, 2.0 ]
+        - [ "aa", 4, 1590738993000, 2.0 ]
+        - [ "aa", 5, 1590738994000, 2.0 ]
+        - [ "aa", 6, 1590738994000, 2.0 ]
+        - [ "aa", 7, 1590738999000, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0 ]
+        - [ "aa", 9, 1590739002000, 2.0 ]
+  - id: 2
+    desc: ROWS_RANGE Window with MaxSize 10 OPEN PRECEDING EXCLUDE CURRENT_TIME
+    mode: disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",-1, 1.0, 0 ]
+          - [ "aa", 0, 1.0, 0 ]
+          - [ "aa", 1, 1.0, 1590738990000 ]
+          - [ "aa", 2, 1.0, 1590738990000 ]
+          - [ "aa", 3, 1.0, 1590738992000 ]
+          - [ "aa", 4, 1.0, 1590738993000 ]
+          - [ "aa", 5, 1.0, 1590738994000 ]
+          - [ "aa", 6, 1.0, 1590738994000 ]
+          - [ "aa", 7, 1.0, 1590738999000 ]
+          - [ "aa", 8, 1.0, 1590739001000 ]
+          - [ "aa", 9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 10 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
+      rows:
+        - [ "aa",-1, 0, 1.0 ]
+        - [ "aa", 0, 0, 1.0 ]
+        - [ "aa", 1, 1590738990000, 1.0 ]
+        - [ "aa", 2, 1590738990000, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0 ]
+        - [ "aa", 6, 1590738994000, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0 ]
+  - id: 3
+    desc: ROWS Window OPEN PRECEDING EXCLUDE CURRENT_TIME
+    mode: disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",-1, 1.0, 0]
+          - [ "aa", 0, 1.0, 0]
+          - [ "aa", 1, 1.0, 1590738990000 ]
+          - [ "aa", 2, 1.0, 1590738990000 ]
+          - [ "aa", 3, 1.0, 1590738992000 ]
+          - [ "aa", 4, 1.0, 1590738993000 ]
+          - [ "aa", 5, 1.0, 1590738994000 ]
+          - [ "aa", 6, 1.0, 1590738994000 ]
+          - [ "aa", 7, 1.0, 1590738999000 ]
+          - [ "aa", 8, 1.0, 1590739001000 ]
+          - [ "aa", 9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double" ]
+      rows:
+        - [ "aa",-1, 0, 1.0 ]
+        - [ "aa", 0, 0, 1.0 ]
+        - [ "aa", 1, 1590738990000, 3.0 ]
+        - [ "aa", 2, 1590738990000, 3.0 ]
+        - [ "aa", 3, 1590738992000, 5.0 ]
+        - [ "aa", 4, 1590738993000, 6.0 ]
+        - [ "aa", 5, 1590738994000, 7.0 ]
+        - [ "aa", 6, 1590738994000, 7.0 ]
+        - [ "aa", 7, 1590738999000, 7.0 ]
+        - [ "aa", 8, 1590739001000, 7.0 ]
+        - [ "aa", 9, 1590739002000, 7.0 ]
+  - id: 4
+    desc: ROWS and ROWS Window OPEN PRECEDING EXCLUDE CURRENT_TIME
+    mode: disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 3.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 7.0 ]
+
+  - id: 5
+    mode: offline-unsupport,disk-unsupport
+    desc: ROWS_RANGE Window and EXCLUDE CURRENT_TIME Window
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
+  - id: 6
+    desc: ROWS_RANGE Window with MaxSize 2 and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 2.0, 2.0 ]
+        - [ "aa", 4, 1590738993000, 2.0, 2.0 ]
+        - [ "aa", 5, 1590738994000, 2.0, 2.0 ]
+        - [ "aa", 6, 1590738994000, 2.0, 2.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
+  - id: 7
+    desc: ROWS_RANGE Window with MaxSize 10 and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 10),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 10 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
+  - id: 8
+    desc: ROWS Window and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 5.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 6.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 7.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 7.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
+  - id: 9
+    desc: ROWS and ROWS Window and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum,
+      sum(c4) OVER w3 as w3_c4_sum,
+      sum(c4) OVER w4 as w4_c4_sum,
+      sum(c4) OVER w5 as w5_c4_sum,
+      sum(c4) OVER w6 as w6_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w4 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME),
+      w5 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),
+      w6 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double",
+                 "w3_c4_sum double",  "w4_c4_sum double",
+                 "w5_c4_sum double",  "w6_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0, 2.0, 2.0, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0, 2.0, 2.0, 5.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0, 2.0, 2.0, 6.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0, 1.0, 1.0, 7.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
+
+  - id: 10
+    desc: ROWS_RANGE Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
+  - id: 11
+    desc: ROWS_RANGE Window with MaxSize 2 OPEN PRECEDING amd EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 2.0, 2.0 ]
+        - [ "aa", 4, 1590738993000, 2.0, 2.0 ]
+        - [ "aa", 5, 1590738994000, 2.0, 2.0 ]
+        - [ "aa", 6, 1590738994000, 2.0, 2.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 2.0, 2.0 ]
+  - id: 12
+    desc: ROWS_RANGE Window with MaxSize 10 OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 10),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 10 EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0 ]
+  - id: 13
+    desc: ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 5.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 6.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 7.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 7.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 7.0, 7.0 ]
+  - id: 14
+    desc: ROWS and ROWS Window OPEN PRECEDING and EXCLUDE CURRENT_TIME Window
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum,
+      sum(c4) OVER w3 as w3_c4_sum,
+      sum(c4) OVER w4 as w4_c4_sum,
+      sum(c4) OVER w5 as w5_c4_sum,
+      sum(c4) OVER w6 as w6_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w4 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME),
+      w5 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW),
+      w6 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double",
+                 "w3_c4_sum double",  "w4_c4_sum double",
+                 "w5_c4_sum double",  "w6_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0, 2.0, 2.0, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0, 2.0, 2.0, 5.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0, 2.0, 2.0, 6.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0, 1.0, 1.0, 7.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
+  - id: 16
+    desc: ROWS and ROWS Window 各类窗口混合
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738992000 ]
+          - [ "aa",4, 1.0, 1590738993000 ]
+          - [ "aa",5, 1.0, 1590738994000 ]
+          - [ "aa",6, 1.0, 1590738994000 ]
+          - [ "aa",7, 1.0, 1590738999000 ]
+          - [ "aa",8, 1.0, 1590739001000 ]
+          - [ "aa",9, 1.0, 1590739002000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum,
+      sum(c4) OVER w3 as w3_c4_sum,
+      sum(c4) OVER w4 as w4_c4_sum,
+      sum(c4) OVER w5 as w5_c4_sum,
+      sum(c4) OVER w6 as w6_c4_sum,
+      sum(c4) OVER w7 as w7_c4_sum,
+      sum(c4) OVER w8 as w8_c4_sum,
+      sum(c4) OVER w9 as w9_c4_sum,
+      sum(c4) OVER w10 as w10_c4_sum,
+      sum(c4) OVER w11 as w11_c4_sum,
+      sum(c4) OVER w12 as w12_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w4 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME),
+      w5 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),
+      w6 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 6 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w7 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW),
+      w8 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w9 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2),
+      w10 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 4s OPEN PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_TIME),
+      w11 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW),
+      w12 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 7 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp",
+                 "w1_c4_sum double",  "w2_c4_sum double",
+                 "w3_c4_sum double",  "w4_c4_sum double",
+                 "w5_c4_sum double",  "w6_c4_sum double",
+                 "w7_c4_sum double",  "w8_c4_sum double",
+                 "w9_c4_sum double",  "w10_c4_sum double",
+                 "w11_c4_sum double",  "w12_c4_sum double" ]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+        - [ "aa", 2, 1590738990000, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0 ]
+        - [ "aa", 3, 1590738992000, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0 ]
+        - [ "aa", 4, 1590738993000, 4.0, 4.0, 2.0, 2.0, 4.0, 4.0, 4.0, 4.0, 2.0, 2.0, 4.0, 4.0 ]
+        - [ "aa", 5, 1590738994000, 3.0, 3.0, 2.0, 2.0, 5.0, 5.0, 3.0, 3.0, 2.0, 2.0, 5.0, 5.0 ]
+        - [ "aa", 6, 1590738994000, 4.0, 3.0, 2.0, 2.0, 6.0, 5.0, 4.0, 3.0, 2.0, 2.0, 6.0, 5.0 ]
+        - [ "aa", 7, 1590738999000, 1.0, 1.0, 1.0, 1.0, 7.0, 7.0, 1.0, 1.0, 1.0, 1.0, 7.0, 7.0 ]
+        - [ "aa", 8, 1590739001000, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0, 2.0, 2.0, 2.0, 2.0, 7.0, 7.0 ]
+        - [ "aa", 9, 1590739002000, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0, 3.0, 3.0, 2.0, 2.0, 7.0, 7.0 ]
+  - id: 17
+    desc: ROWS Window with same timestamp
+    mode: offline-unsupport,disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738990000 ]
+          - [ "aa",4, 1.0, 1590738990000 ]
+          - [ "aa",5, 1.0, 1590738990000 ]
+          - [ "aa",6, 1.0, 1590738990000 ]
+          - [ "aa",7, 1.0, 1590738991000 ]
+          - [ "aa",8, 1.0, 1590738992000 ]
+          - [ "aa",9, 1.0, 1590738993000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double"]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0]
+        - [ "aa", 2, 1590738990000, 2.0]
+        - [ "aa", 3, 1590738990000, 3.0]
+        - [ "aa", 4, 1590738990000, 4.0]
+        - [ "aa", 5, 1590738990000, 4.0]
+        - [ "aa", 6, 1590738990000, 4.0]
+        - [ "aa", 7, 1590738991000, 4.0]
+        - [ "aa", 8, 1590738992000, 4.0]
+        - [ "aa", 9, 1590738993000, 4.0]
+  - id: 18
+    desc: ROWS Window with same timestamp Exclude CurretTime
+    mode: disk-unsupport
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738990000 ]
+          - [ "aa",4, 1.0, 1590738990000 ]
+          - [ "aa",5, 1.0, 1590738990000 ]
+          - [ "aa",6, 1.0, 1590738990000 ]
+          - [ "aa",7, 1.0, 1590738991000 ]
+          - [ "aa",8, 1.0, 1590738992000 ]
+          - [ "aa",9, 1.0, 1590738993000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double"]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0]
+        - [ "aa", 2, 1590738990000, 1.0]
+        - [ "aa", 3, 1590738990000, 1.0]
+        - [ "aa", 4, 1590738990000, 1.0]
+        - [ "aa", 5, 1590738990000, 1.0]
+        - [ "aa", 6, 1590738990000, 1.0]
+        - [ "aa", 7, 1590738991000, 4.0]
+        - [ "aa", 8, 1590738992000, 4.0]
+        - [ "aa", 9, 1590738993000, 4.0]
+  - id: 19
+    desc: ROWS, ROWS_RANGE  Window, Normal Window, OPEN Window,  EXCLUDE CURRENT TIME Window
+    mode: batch-unsupport,disk-unsupport
+    tags: ["@chendihao, @baoxinqi, 测试的时候spark需要保证输入数据滑入顺序"]
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",1, 1.0, 1590738990000 ]
+          - [ "aa",2, 1.0, 1590738990000 ]
+          - [ "aa",3, 1.0, 1590738990000 ]
+          - [ "aa",4, 1.0, 1590738990000 ]
+          - [ "aa",5, 1.0, 1590738990000 ]
+          - [ "aa",6, 1.0, 1590738990000 ]
+          - [ "aa",7, 1.0, 1590738991000 ]
+          - [ "aa",8, 1.0, 1590738992000 ]
+          - [ "aa",9, 1.0, 1590738993000 ]
+    sql: |
+      SELECT c1, c3, c7,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w2 as w2_c4_sum,
+      sum(c4) OVER w3 as w3_c4_sum,
+      sum(c4) OVER w4 as w4_c4_sum,
+      sum(c4) OVER w5 as w5_c4_sum,
+      sum(c4) OVER w6 as w6_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 OPEN PRECEDING AND CURRENT ROW),
+      w3 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 3 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
+      w4 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW),
+      w5 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s OPEN PRECEDING AND CURRENT ROW),
+      w6 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 3s OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+
+    expect:
+      order: c3
+      columns: [ "c1 string", "c3 int", "c7 timestamp", "w1_c4_sum double",  "w2_c4_sum double", "w3_c4_sum double",
+                 "w4_c4_sum double",  "w5_c4_sum double", "w6_c4_sum double"]
+      rows:
+        - [ "aa", 1, 1590738990000, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        - [ "aa", 2, 1590738990000, 2.0, 2.0, 1.0, 2.0, 2.0, 1.0]
+        - [ "aa", 3, 1590738990000, 3.0, 3.0, 1.0, 3.0, 3.0, 1.0]
+        - [ "aa", 4, 1590738990000, 4.0, 3.0, 1.0, 4.0, 4.0, 1.0]
+        - [ "aa", 5, 1590738990000, 4.0, 3.0, 1.0, 5.0, 5.0, 1.0]
+        - [ "aa", 6, 1590738990000, 4.0, 3.0, 1.0, 6.0, 6.0, 1.0]
+        - [ "aa", 7, 1590738991000, 4.0, 3.0, 3.0, 7.0, 7.0, 7.0]
+        - [ "aa", 8, 1590738992000, 4.0, 3.0, 3.0, 8.0, 8.0, 8.0]
+        - [ "aa", 9, 1590738993000, 4.0, 3.0, 3.0, 9.0, 3.0, 3.0]

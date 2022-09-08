@@ -2741,17 +2741,17 @@ class PartitionNumNode : public SqlNode {
 
 class DistributionsNode : public SqlNode {
  public:
-    explicit DistributionsNode(SqlNodeList *distribution_list)
+    explicit DistributionsNode(const NodePointVector& distribution_list)
         : SqlNode(kDistributions, 0, 0), distribution_list_(distribution_list) {}
 
     ~DistributionsNode() {}
 
-    const SqlNodeList *GetDistributionList() const { return distribution_list_; }
+    const NodePointVector& GetDistributionList() const { return distribution_list_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
-    SqlNodeList *distribution_list_;
+    NodePointVector distribution_list_;
 };
 
 class CreateSpStmt : public SqlNode {

@@ -33,15 +33,15 @@ public class DescHandler extends AbstractSQLHandler{
 
     @Override
     public OpenMLDBResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         List<String> result = OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
         boolean ok = CommandResultUtil.success(result);
-        fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(ok);
-        fesqlResult.setDbName(dbName);
+        openMLDBResult.setMsg(Joiner.on("\n").join(result));
+        openMLDBResult.setOk(ok);
+        openMLDBResult.setDbName(dbName);
         if (ok) {
-            fesqlResult.setSchema(CommandResultUtil.parseSchema(result));
+            openMLDBResult.setSchema(CommandResultUtil.parseSchema(result));
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 }

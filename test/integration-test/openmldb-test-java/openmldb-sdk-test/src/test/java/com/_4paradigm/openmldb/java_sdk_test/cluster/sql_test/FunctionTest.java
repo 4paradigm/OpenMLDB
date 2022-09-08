@@ -36,25 +36,25 @@ public class FunctionTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/function/")
+    @Yaml(filePaths = "integration_test/function/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/function/")
+    @Yaml(filePaths = "integration_test/function/")
     public void testFunctionRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/function/")
+    @Yaml(filePaths = "integration_test/function/")
     public void testFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/function/")
+    @Yaml(filePaths = "integration_test/function/")
     public void testFunctionRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }
