@@ -505,12 +505,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
-            if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
+            if (!op->GetLimitCnt().has_value() || op->GetLimitOptimized()) {
                 return RegisterTask(node, cluster_task);
             }
             LimitRunner* runner = nullptr;
-            CreateRunner<LimitRunner>(&runner, id_++, node->schemas_ctx(),
-                                      op->GetLimitCnt());
+            // limit runner always expect limit not empty
+            CreateRunner<LimitRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt().value());
             return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
         }
         case kPhysicalOpRename: {
@@ -1309,7 +1309,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(
     iter->SeekToFirst();
     int32_t cnt = 0;
     while (iter->Valid()) {
-        if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+        if (limit_cnt_.has_value() && cnt++ >= limit_cnt_) {
             break;
         }
         output_table->AddRow(project_gen_.Gen(iter->GetValue(), parameter));
@@ -1521,7 +1521,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     window.set_exclude_current_row(exclude_current_row_);
 
     while (instance_segment_iter->Valid()) {
-        if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
+        if (limit_cnt_.has_value() && cnt >= limit_cnt_) {
             break;
         }
         const Row& instance_row = instance_segment_iter->GetValue();
@@ -2567,21 +2567,8 @@ std::shared_ptr<DataHandler> LimitRunner::Run(
     }
     switch (input->GetHandlerType()) {
         case kTableHandler: {
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
-            if (!iter) {
-                LOG(WARNING) << "fail to get table it";
-                return fail_ptr;
-            }
-            iter->SeekToFirst();
-            auto output_table = std::shared_ptr<MemTableHandler>(
-                new MemTableHandler(input->GetSchema()));
-            int32_t cnt = 0;
-            while (cnt++ < limit_cnt_ && iter->Valid()) {
-                output_table->AddRow(iter->GetValue());
-                iter->Next();
-            }
-            return output_table;
+            return std::make_shared<LimitTableHandler>(std::dynamic_pointer_cast<TableHandler>(input),
+                                                       limit_cnt_.value());
         }
         case kRowHandler: {
             DLOG(INFO) << "limit row handler";
@@ -2611,13 +2598,10 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     // build window with start and end offset
     switch (input->GetHandlerType()) {
         case kTableHandler: {
-            // FIXME(ace): limit = 0 and without limit is different
-            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter,
-                                      limit_cnt_ == 0 ? std::nullopt : std::make_optional(limit_cnt_));
+            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter, limit_cnt_);
         }
         case kPartitionHandler: {
-            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter,
-                                      limit_cnt_ == 0 ? std::nullopt : std::make_optional(limit_cnt_));
+            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter, limit_cnt_);
         }
         default: {
             LOG(WARNING) << "fail to filter when input is row";
@@ -2670,10 +2654,10 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
                 return std::shared_ptr<DataHandler>();
             }
             if (!having_condition_.Valid() || having_condition_.Gen(segment, parameter)) {
-                output_table->AddRow(agg_gen_.Gen(parameter, segment));
-                if (limit_cnt_ > 0 && ++cnt >= limit_cnt_) {
+                if (limit_cnt_.has_value() && cnt++ >= limit_cnt_) {
                     break;
                 }
+                output_table->AddRow(agg_gen_.Gen(parameter, segment));
             }
             iter->Next();
         }

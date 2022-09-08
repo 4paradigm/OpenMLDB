@@ -348,7 +348,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         : type_(type),
           is_block_(is_block),
           output_type_(kSchemaTypeTable),
-          limit_cnt_(0),
+          limit_cnt_(std::nullopt),
           schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
@@ -431,9 +431,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
                    : nullptr;
     }
 
-    void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
+    void SetLimitCnt(std::optional<int32_t> limit_cnt) { limit_cnt_ = limit_cnt; }
 
-    const int32_t GetLimitCnt() const { return limit_cnt_; }
+    const auto GetLimitCnt() const { return limit_cnt_; }
 
     bool IsSameSchema(const vm::Schema &schema,
                       const vm::Schema &exp_schema) const;
@@ -458,7 +458,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     PhysicalSchemaType output_type_;
 
     std::vector<const FnInfo *> fn_infos_;
-    int32_t limit_cnt_;
+
+    // all physical node has limit property, default to empty (not set)
+    std::optional<int32_t> limit_cnt_ = std::nullopt;
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
