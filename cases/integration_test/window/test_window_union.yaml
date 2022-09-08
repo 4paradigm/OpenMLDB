@@ -219,6 +219,7 @@ cases:
         - [6,"ee",21,34]
   - id: 9
     desc: 结合limit
+    mode: request-unsupport
     tags: ["TODO", "@zhaowei remove limit case here"]
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

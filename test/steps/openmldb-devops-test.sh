@@ -92,7 +92,6 @@ sh test/steps/modify_devops_config.sh "${CASE_XML}" "${PRE_UPGRADE_VERSION}" "${
 # install jar
 cd test/integration-test/openmldb-test-java || exit
 mvn clean install -Dmaven.test.skip=true
-cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-devops-test || exit
 mvn clean test -e -U -Dsuite=test_suite/"${CASE_XML}"

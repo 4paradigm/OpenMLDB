@@ -936,7 +936,7 @@ public class SDKUtil {
             }
         }
 
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
                 String tableName = inputs.get(i).getName();
@@ -965,8 +965,8 @@ public class SDKUtil {
                 }
             }
         }
-        fesqlResult.setOk(true);
-        return fesqlResult;
+        openMLDBResult.setOk(true);
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult createAndInsertWithPrepared(SqlExecutor executor, String defaultDBName, List<InputDesc> inputs, boolean useFirstInputAsRequests) {

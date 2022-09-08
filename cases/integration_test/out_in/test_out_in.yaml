@@ -846,7 +846,6 @@ cases:
   -
     id: 37
     desc: 表删除后再次导入
-#    tags: ["TODO","下个版本修复，@huangwei"]
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
