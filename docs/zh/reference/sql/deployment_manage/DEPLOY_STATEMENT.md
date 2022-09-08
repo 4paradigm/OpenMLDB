@@ -4,23 +4,25 @@
 
 ```sql
 CreateDeploymentStmt
-						::= 'DEPLOY' [DeployOptions] DeploymentName SelectStmt
+				::= 'DEPLOY' [DeployOptionList] DeploymentName SelectStmt
 
-DeployOptions（可选）
-						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
-
+DeployOptionList
+				::= DeployOption*
+				    
+DeployOption
+				::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
+				    
 DeploymentName
-						::= identifier
-```
-`DeployOptions`的定义详见[DEPLOYMENT属性DeployOptions（可选）](#DEPLOYMENT属性DeployOptions（可选）).
-
-`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署[Select查询语句](../dql/SELECT_STATEMENT.md)，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
-
-```SQL
-DEPLOY deployment_name SELECT clause
+				::= identifier
 ```
 
-### Example: 部署一个SQL到online serving
+`DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#DEPLOYMENT属性DeployOption可选)。
+`SelectStmt`的定义详见[Select查询语句](../dql/SELECT_STATEMENT.md)。
+`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
+
+
+### Example
+在集群版的在线请求模式下，部署上线一个SQL脚本。
 
 ```sql
 CREATE DATABASE db1;
@@ -83,10 +85,10 @@ WINDOW w1 AS (PARTITION BY demo_table1.c1
 ```
 
 
-### DEPLOYMENT属性DeployOptions（可选）
+### DeployOption（可选）
 
 ```sql
-DeployOptions
+DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
@@ -98,7 +100,7 @@ LongWindowOption
 目前只支持长窗口`LONG_WINDOWS`的优化选项。
 
 #### 长窗口优化
-##### 长窗口优化选项格式
+##### 格式
 ```sql
 LongWindowDefinitions
 						::= 'LongWindowDefinition (, LongWindowDefinition)*'
