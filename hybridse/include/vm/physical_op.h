@@ -433,7 +433,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     void SetLimitCnt(std::optional<int32_t> limit_cnt) { limit_cnt_ = limit_cnt; }
 
-    const auto GetLimitCnt() const { return limit_cnt_; }
+    std::optional<int32_t> GetLimitCnt() const { return limit_cnt_; }
 
     bool IsSameSchema(const vm::Schema &schema,
                       const vm::Schema &exp_schema) const;
