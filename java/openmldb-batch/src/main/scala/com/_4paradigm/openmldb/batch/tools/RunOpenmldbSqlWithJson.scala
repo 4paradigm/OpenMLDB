@@ -73,7 +73,7 @@ object RunOpenmldbSqlWithJson {
       })
     }
 
-    val spark = sparkBuilder.master("local").getOrCreate()
+    val spark = sparkBuilder.getOrCreate()
     val sess = new OpenmldbSession(spark)
 
     // Read tables
