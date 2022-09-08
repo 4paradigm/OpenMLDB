@@ -1,11 +1,14 @@
 # SQL for Feature Extraction (Part 1)
 
 
-## 1. What is the Feature Engineering of Machine Learning
+## 1. The Feature Engineering of Machine Learning
 
-A real-world machine learning application generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model. For example, from the classic logistic regression and decision tree models to the deep learning models, we all focus on how to develop high-quality models. We may pay less attention to feature engineering. However, you must have heard a famous saying that data and features determine the upper limit of machine learning, while models and algorithms only approach this upper limit. It can be seen that we have long agreed on the importance of Feature Engineering.
+A real-world machine learning application generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model, from the classic logistic regression and decision tree models to the deep learning models, we all focus on how to develop high-quality models. We may pay less attention to feature engineering. 
+However, as the saying goes, data and features determine the upper limit of machine learning, while models and algorithms only approach this limit. It can be seen that we have long agreed on the importance of Feature Engineering.
 
-In one sentence, Feature Engineering is defined as: using domain knowledge to extract useful feature information from the original data. It emphasizes domain knowledge, that is to say, feature extraction is not a standardized process, but has different experience and methodology based on different scenarios. For a simple example, for the real-time recommendation system, the original data may only be the search keywords entered by users, such as "washing machine", and the corresponding user and commodity data tables stored in the database. In order to make better real-time recommendation, the following more meaningful features can be produced:
+In one sentence, Feature Engineering is defined as: using domain knowledge to extract useful information (feature) from the original data. 
+It emphasizes domain knowledge, that is to say, feature extraction is not a standardized process, it needs different experience and methodology in different scenarios. 
+For example, for the real-time recommendation system, the original data may only be the keywords entered by users, such as "washing machine", and the corresponding user and commodity data tables stored in the database. In order to make better real-time recommendation, the following more meaningful features can be produced:
 
 - The home appliance brand that the user purchased the most in the past year
 - The average consumption level of the user in the past three years
