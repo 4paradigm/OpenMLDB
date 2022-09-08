@@ -350,7 +350,7 @@ class Collector:
             log_dir = os.path.normpath(log_dir)
             log.debug('get logs name from %s, %s', log_dir, host)
             # if no the log dir, let it crash
-            logs = [] # [attr.__dict__ for attr in sftp.listdir_attr(log_dir)]
+            logs = [attr.__dict__ for attr in sftp.listdir_attr(log_dir)]
         return logs
 
     def filter_file_list(self, logs, filter_func, last_n):
