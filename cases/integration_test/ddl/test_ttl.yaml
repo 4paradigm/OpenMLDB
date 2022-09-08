@@ -261,7 +261,7 @@ cases:
         indexs: ["index1:c1:c4:(10m,2):absandlat"]
         rows:
           - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
-          - [2,"aa", 2, 1590738990000,"{currentTime}-500000"]
+          - [2,"aa", 2, 1590738990000,"{currentTime}-550000"]
           - [3,"aa", 3, 1590738990000,"{currentTime}-500000"]
           - [4,"aa", 4, 1590738990000,"{currentTime}"]
     sql: select id,c1,c2,c3 from {0};

@@ -457,7 +457,7 @@ cases:
   - id: 13
     desc: 拼接条件-float-未命中索引
     mode: rtidb-unsupport, performance-sensitive-unsupport
-    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
+#    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
     inputs:
       - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
         indexs: [ "index1:c1:c4" ]
@@ -481,7 +481,7 @@ cases:
   - id: 13-2
     desc: 拼接条件-double
     mode: rtidb-unsupport, performance-sensitive-unsupport
-    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
+#    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
     inputs:
       - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
         indexs: [ "index1:c1:c4" ]
@@ -710,7 +710,6 @@ cases:
         - [ "bb",21,31,1590738992000 ]
   - id: 19
     desc: 拼接条件中有null
-    tags: [ "TODO", "@chenjing, @baoxinqi" ]
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -919,7 +918,6 @@ cases:
 
   - id: 28
     desc: orderby-smallint
-    tags: ["offline-unsupport", "TODO"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c1:c4"]
@@ -979,7 +977,6 @@ cases:
         - ["bb",21,31,1590738992000]
   - id: 31
     desc: 拼接条件-bool
-    tags: ["TODO", "bug"]
     inputs:
       - columns: ["c1 string","c2 bool","c3 bigint","c4 timestamp"]
         indexs: ["index1:c2:c4"]
