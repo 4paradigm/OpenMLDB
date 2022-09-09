@@ -99,13 +99,18 @@ class SchemaCodec {
     }
 
     static bool TTLTypeParse(const std::string& type_str, ::openmldb::type::TTLType* type) {
-        if (type_str == "absolute") {
+        std::string cur_type = type_str;
+        std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+        if (cur_type.front() == 'k') {
+            cur_type = cur_type.substr(1);
+        }
+        if (cur_type == "absolute" || cur_type == "absolutetime") {
             *type = openmldb::type::kAbsoluteTime;
-        } else if (type_str == "latest") {
+        } else if (cur_type  == "latest" || cur_type == "latesttime") {
             *type = openmldb::type::kLatestTime;
-        } else if (type_str == "absorlat") {
+        } else if (cur_type == "absorlat") {
             *type = openmldb::type::kAbsOrLat;
-        } else if (type_str == "absandlat") {
+        } else if (cur_type == "absandlat") {
             *type = openmldb::type::kAbsAndLat;
         } else {
             return false;
