@@ -34,8 +34,8 @@ option(WITH_ZETASQL "Download and build zetasql" ON)
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_GTEST "Build google test from source" ${BUILD_BUNDLED})
-option(BUILD_BUNDLED_GLOG "build glog from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_GFLAGS "Build gflags from source" ${BUILD_BUNDLED})
+option(BUILD_BUNDLED_GLOG "build glog from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_GPERF "Build gerftools from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_BENCHMARK "Build benchmark from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ZLIB "Build zlib from source" ${BUILD_BUNDLED})
@@ -133,12 +133,13 @@ if (BUILD_BUNDLED_GTEST)
   include(FetchGoogleTest)
 endif()
 
-if (BUILD_BUNDLED_GLOG)
-  include(FetchGlog)
-endif()
-
+# It's better that glog depends on gflags
 if (BUILD_BUNDLED_GFLAGS)
   include(FetchGflags)
+endif()
+
+if (BUILD_BUNDLED_GLOG)
+  include(FetchGlog)
 endif()
 
 if (BUILD_BUNDLED_GPERF)

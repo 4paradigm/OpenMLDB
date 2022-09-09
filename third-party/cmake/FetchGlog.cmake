@@ -27,6 +27,6 @@ ExternalProject_Add(
   BUILD_IN_SOURCE TRUE
   CONFIGURE_COMMAND
     ./autogen.sh
-    COMMAND CXXFLAGS=-fPIC ./configure --prefix=<INSTALL_DIR> --enable-shared=no
+    COMMAND CXXFLAGS=-fPIC ./configure --prefix=<INSTALL_DIR> --enable-shared=no --with-gflags=<INSTALL_DIR>
   BUILD_COMMAND ${MAKE_EXE}
   INSTALL_COMMAND ${MAKE_EXE} install)
