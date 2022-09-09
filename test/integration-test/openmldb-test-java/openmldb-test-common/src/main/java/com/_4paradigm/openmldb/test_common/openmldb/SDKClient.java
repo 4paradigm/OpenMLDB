@@ -5,12 +5,10 @@ import com._4paradigm.openmldb.test_common.bean.OpenMLDBJob;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.util.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.testng.Assert;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +35,11 @@ public class SDKClient {
             openMLDBResult.setOk(true);
             if(ok){
                 ResultUtil.parseResultSet(statement,openMLDBResult);
+                if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
+                    String jobId = ResultUtil.parseJobId(openMLDBResult);
+                    OpenMLDBJob finishJobInfo = getFinishJobInfo(jobId);
+                    openMLDBResult.setOpenMLDBJob(finishJobInfo);
+                }
             }
 //            ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
         } catch (SQLException e) {
@@ -44,7 +47,7 @@ public class SDKClient {
             openMLDBResult.setMsg(e.getMessage());
             e.printStackTrace();
         }
-        log.info(openMLDBResult.toString());
+        log.info("openMLDBResult:{}",openMLDBResult);
         return openMLDBResult;
     }
     public OpenMLDBResult execute(List<String> sqlList) {
@@ -97,8 +100,10 @@ public class SDKClient {
     }
     public void createAndUseDB(String dbName){
         List<String> sqlList = new ArrayList<>();
-        if (!SDKUtil.dbIsExist(statement,dbName)) {
-            sqlList.add(String.format("create database %s;", dbName));
+        if(!OpenMLDBGlobalVar.CREATE_DB_NAMES.contains(dbName)){
+            if (!SDKUtil.dbIsExist(statement,dbName)) {
+                sqlList.add(String.format("create database %s;", dbName));
+            }
         }
         sqlList.add(String.format("use %s;", dbName));
         execute(sqlList);
@@ -118,6 +123,8 @@ public class SDKClient {
         return openMLDBResult.getCount();
     }
     public OpenMLDBJob getJobInfo(String id){
+        // id int,job_type string,state string,start_time timestamp,end_time timestamp,parameter string,cluster string,application_id string,error string,
+        //3,ImportOnlineData,Submitted,2022-09-09 14:10:09.637,null(obj),/tmp/sql-3189165767685976831,local,,
         setOnline();
         OpenMLDBJob openMLDBJob = new OpenMLDBJob();
         String sql = String.format("SELECT * FROM __INTERNAL_DB.JOB_INFO where id = %s",id);
@@ -126,8 +133,8 @@ public class SDKClient {
         openMLDBJob.setId(Integer.parseInt(String.valueOf(row.get(0))));
         openMLDBJob.setJobType(String.valueOf(row.get(1)));
         openMLDBJob.setState(String.valueOf(row.get(2)));
-        openMLDBJob.setStartTime(Long.parseLong(String.valueOf(row.get(3))));
-        openMLDBJob.setEndTime(Long.parseLong(String.valueOf(row.get(4))));
+        openMLDBJob.setStartTime((Timestamp)row.get(3));
+        openMLDBJob.setEndTime((Timestamp)row.get(4));
         openMLDBJob.setParameter(String.valueOf(row.get(5)));
         openMLDBJob.setCluster(String.valueOf(row.get(6)));
         openMLDBJob.setApplicationId(String.valueOf(row.get(7)));
@@ -137,8 +144,8 @@ public class SDKClient {
     public OpenMLDBJob getFinishJobInfo(String jobId){
         while (true){
             OpenMLDBJob openMLDBJob = getJobInfo(jobId);
-            log.info("openMLDBJob:{}",openMLDBJob);
             String state = openMLDBJob.getState();
+            log.info("job state:{}",state);
             if("FINISHED".equals(state)){
                 log.info("job to finish");
                 Tool.sleep(POLLING_TIME);

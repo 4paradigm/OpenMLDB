@@ -17,13 +17,15 @@ package com._4paradigm.openmldb.test_common.bean;
 
 import lombok.Data;
 
+import java.sql.Timestamp;
+
 @Data
 public class OpenMLDBJob {
     private int id;
     private String jobType;
     private String state;
-    private long startTime;
-    private long endTime;
+    private Timestamp startTime;
+    private Timestamp endTime;
     private String parameter;
     private String cluster;
     private String applicationId;

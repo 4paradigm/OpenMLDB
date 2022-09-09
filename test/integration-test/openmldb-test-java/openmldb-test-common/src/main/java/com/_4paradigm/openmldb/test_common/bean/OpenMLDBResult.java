@@ -44,6 +44,7 @@ public class OpenMLDBResult {
     private OpenmldbDeployment deployment;
     private List<OpenmldbDeployment> deployments;
     private Integer deploymentCount;
+    private OpenMLDBJob openMLDBJob;
 
     @Override
     public String toString() {
@@ -54,6 +55,7 @@ public class OpenMLDBResult {
             builder.append(", msg=").append(msg);
         }
         builder.append(", count=").append(count);
+        builder.append(", openMLDBJob=").append(openMLDBJob);
         builder.append("}");
         if (result != null) {
             builder.append("result=" + result.size() + ":\n");

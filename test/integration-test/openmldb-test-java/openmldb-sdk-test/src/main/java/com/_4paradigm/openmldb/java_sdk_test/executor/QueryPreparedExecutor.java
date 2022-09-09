@@ -38,8 +38,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class QueryPreparedExecutor extends BatchSQLExecutor {
 
-    public QueryPreparedExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    public QueryPreparedExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
     }
     public QueryPreparedExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
         super(fesqlCase, executor, executorMap, openMLDBInfoMap, executorType);

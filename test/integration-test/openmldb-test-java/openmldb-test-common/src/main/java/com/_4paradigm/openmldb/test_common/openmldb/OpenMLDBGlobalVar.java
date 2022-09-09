@@ -47,6 +47,7 @@ public class OpenMLDBGlobalVar {
     public static final String CASE_DESC;
     public static final String CASE_PATH;
     public static final String YAML_CASE_BASE_DIR;
+    public static final List<String> CREATE_DB_NAMES = Lists.newArrayList();
 
     public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 

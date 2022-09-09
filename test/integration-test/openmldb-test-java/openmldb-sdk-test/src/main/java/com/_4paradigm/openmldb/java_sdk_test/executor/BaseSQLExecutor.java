@@ -20,6 +20,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -52,7 +53,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         this.executor = executor;
         this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = Objects.isNull(sqlCase.getDb()) ? "" : sqlCase.getDb();
+        dbName = Objects.isNull(sqlCase.getDb()) ? OpenMLDBConfig.TEST_DB : sqlCase.getDb();
         if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
             for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
@@ -133,7 +134,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
-                SDKUtil.ddl(executor, tableDBName, drop);
+//                SDKUtil.ddl(executor, tableDBName, drop);
             }
         }
     }

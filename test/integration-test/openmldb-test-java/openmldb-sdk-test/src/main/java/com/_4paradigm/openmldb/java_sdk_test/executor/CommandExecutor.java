@@ -44,12 +44,12 @@ public class CommandExecutor extends BaseExecutor{
     protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, OpenMLDBResult> resultMap;
 
-    public CommandExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
-        this.sqlCase = fesqlCase;
+    public CommandExecutor(SQLCase sqlCase, SQLCaseType executorType) {
+        this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = fesqlCase.getDb();
-        if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
-            for (InputDesc inputDesc : fesqlCase.getInputs()) {
+        dbName = sqlCase.getDb();
+        if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
+            for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
             }
         }

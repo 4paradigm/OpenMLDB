@@ -4,10 +4,12 @@ import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -84,7 +86,6 @@ public class SQLUtil {
         builder.append(");");
         return builder.toString();
     }
-
     public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo openMLDBInfo) {
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
@@ -106,6 +107,9 @@ public class SQLUtil {
             sql = sql.replace("{tb_endpoint_2}", openMLDBInfo.getTabletEndpoints().get(2));
         }
         return sql;
+    }
+    public static String formatSql(String sql) {
+        return sql.replace("{root_path}", Tool.openMLDBDir().getAbsolutePath());
     }
 
     public static String formatSql(String sql, List<String> tableNames) {

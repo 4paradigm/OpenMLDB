@@ -66,7 +66,6 @@ public class BaseTest implements ITest {
                 testData[0], "fail to run openmldb test with null SQLCase: check yaml case");
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
-            System.out.println("AAAAAA");
             log.info(sqlCase.getDesc());
             System.out.println(sqlCase.getDesc());
             Assert.assertNotEquals(CaseFile.FAIL_SQL_CASE,
