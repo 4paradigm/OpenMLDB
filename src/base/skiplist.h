@@ -251,7 +251,7 @@ class Skiplist {
         return -1;
     }
 
-    Node<K, V>* GetLast() { return tail_.load(std::memory_order_acquire); }
+    Node<K, V>* GetLast() const { return tail_.load(std::memory_order_acquire); }
 
     uint32_t GetSize() {
         uint32_t cnt = 0;
@@ -320,7 +320,7 @@ class Skiplist {
 
     class Iterator {
      public:
-        Iterator(Skiplist<K, V, Comparator>* list) : node_(NULL), list_(list) {}  // NOLINT
+        Iterator(const Skiplist<K, V, Comparator>* list) : node_(NULL), list_(list) {}  // NOLINT
         ~Iterator() {}
 
         bool Valid() const { return node_ != NULL; }
@@ -335,7 +335,7 @@ class Skiplist {
             return node_->GetKey();
         }
 
-        V& GetValue() {
+        V& GetValue() const {
             assert(Valid());
             return node_->GetValue();
         }
@@ -352,15 +352,15 @@ class Skiplist {
 
         void SeekToLast() { node_ = list_->GetLast(); }
 
-        uint32_t GetSize() { return list_->GetSize(); }
+        uint32_t GetSize() const { return list_->GetSize(); }
 
      private:
         Node<K, V>* node_;
-        Skiplist<K, V, Comparator>* const list_;
+        const Skiplist<K, V, Comparator>* list_;
     };
 
     // delete the iterator after it's used
-    Iterator* NewIterator() { return new Iterator(this); }
+    Iterator* NewIterator() const { return new Iterator(this); }
 
  private:
     Node<K, V>* NewNode(const K& key, V& value, uint8_t height) {  // NOLINT
@@ -376,7 +376,7 @@ class Skiplist {
         return height;
     }
 
-    Node<K, V>* FindLessOrEqual(const K& key, Node<K, V>** nodes) {
+    Node<K, V>* FindLessOrEqual(const K& key, Node<K, V>** nodes) const {
         assert(nodes != NULL);
         Node<K, V>* node = head_;
         uint8_t level = GetMaxHeight() - 1;
@@ -410,7 +410,7 @@ class Skiplist {
         }
     }
 
-    Node<K, V>* FindLessThan(const K& key) {
+    Node<K, V>* FindLessThan(const K& key) const {
         Node<K, V>* node = head_;
         uint8_t level = GetMaxHeight() - 1;
         while (true) {

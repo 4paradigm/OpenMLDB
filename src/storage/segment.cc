@@ -767,7 +767,7 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
 }
 
 // Iterator
-MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) const {
     if (entries_ == NULL || ts_cnt_ > 1) {
         return new MemTableIterator(NULL);
     }
@@ -779,7 +779,7 @@ MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     return new MemTableIterator(((KeyEntry*)entry)->entries.NewIterator());  // NOLINT
 }
 
-MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) const {
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return new MemTableIterator(NULL);

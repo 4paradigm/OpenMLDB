@@ -189,9 +189,9 @@ class Segment {
     void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
                    uint64_t& gc_record_cnt,                                            // NOLINT
                    uint64_t& gc_record_byte_size);                                     // NOLINT
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket) const;             // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
-                                  Ticket& ticket);  // NOLINT
+                                  Ticket& ticket) const;  // NOLINT
 
     inline uint64_t GetIdxCnt() {
         return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
@@ -253,8 +253,10 @@ class Segment {
                    uint64_t& gc_record_cnt,         // NOLINT
                    uint64_t& gc_record_byte_size);  // NOLINT
 
- private:
+ protected:
     KeyEntries* entries_;
+
+ private:
     // only Put need mutex
     std::mutex mu_;
     std::mutex gc_mu_;

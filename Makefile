@@ -274,3 +274,6 @@ pylint:
 	    else \
 	    echo "SKIP: pylint (pylint not found)"; \
 	    fi
+
+stream: configure
+	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target interval_join -- -j$(NPROC)
