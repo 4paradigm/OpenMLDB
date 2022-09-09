@@ -60,7 +60,7 @@ For example, the following user transaction table (hereinafter referred as data 
 | city       | STRING    | City                                   |
 | label      | BOOL      | Sample label, true\|false              |
 
-In addition to the primary table, there may also be data tables in the database that store relevant auxiliary information, which can be spliced with the primary table through the join operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table to store the merchant flow history. In the process of feature engineering, more valuable information can be obtained by splicing the information of primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the next part of this series.
+In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be spliced with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by splicing the information of primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the next part of this series.
 
 ### 3.1.2. Types of Features
 
