@@ -2,7 +2,8 @@
 
 ## Important Information
 
-
+- As REST APIs interact with the OpenMLDB servers via APIServer, the APIServer must be deployed. The APIServer is an optional module, please refer to [this document](../deploy/install_deploy.md#Deploy-APIServer) for the deployment.
+- Currently, APIServer is mainly designed for function development and testing, thus it is not suggested to use it for performance benchmarking and deployed in production. There is no high-availability for the APIServer, and it also introduces overhead of networking and encoding/decoding.
 
 ## Data Insertion
 
