@@ -6,15 +6,16 @@
 A real-world machine learning application generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model, from the classic logistic regression and decision tree models to the deep learning models, we all focus on how to develop high-quality models. We may pay less attention to feature engineering. 
 However, as the saying goes, data and features determine the upper limit of machine learning, while models and algorithms only approach this limit. It can be seen that we have long agreed on the importance of Feature Engineering.
 
-In one sentence, Feature Engineering is defined as: using domain knowledge to extract useful information (feature) from the original data. 
-It emphasizes domain knowledge, that is to say, feature extraction is not a standardized process, it needs different experience and methodology in different scenarios. 
-For example, for the real-time recommendation system, the original data may only be the keywords entered by users, such as "washing machine", and the corresponding user and commodity data tables stored in the database. In order to make better real-time recommendation, the following more meaningful features can be produced:
+In one sentence, Feature Engineering is defined as: using domain knowledge to extract useful information (features) from the original data. It emphasizes domain knowledge, that is to say, feature extraction is not a standardized process, it needs different experience and methodology in different scenarios. 
+For example, for the real-time recommendation system, the original data may only be the keywords entered by users, such as "washing machine", and the corresponding user and commodity data tables stored in the database. 
+In order to make better real-time recommendation, the following features may be more helpful:
 
-- The home appliance brand that the user purchased the most in the past year
-- The average consumption level of the user in the past three years
-- In the past hour, the discount on the platform has been more than 70%, which is in line with the top three washing machine models purchased by users in this user gender and age group
+- The home appliance brand that the user purchased the most in the past year.
+- The average consumption level of the user in the past three years.
+- The top three kinds washing machines purchased most by clients of the same gender and the same age group as the user, and were over 30% off in the past one hour.
 
-As can be seen from the above example, features can be made quite complex and can have very high timeliness. So how to extract good features according to specific scenes is what data scientists need. At the same time, they need to be equipped with powerful tools to do feature engineering well. This tutorial will introduce you to how to do feature engineering in practice.
+As can be seen from the above example, features can be made quite complex and can have very high timeliness. So extracting good features according to specific problems is the ability that data scientists need and powerful feature extracting tools can play very important roles helping scientists accomplish this task. 
+This tutorial will introduce how to do feature engineering in practice.
 
 ## 2. Feature Engineering Development Tool – OpenMLDB
 
@@ -89,7 +90,7 @@ hour(trans_time) as f_trans_hour,
 minute(trans_time) as f_trans_minute FROM t1;
 ```
 
-Other related functions also include numerical feature calculation (such as `ceiling`) and string feature calculation (such as `substr`).
+Other related functions also include numerical feature computation (such as `ceiling`) and string feature processing (such as `substr`).
 
 ### 3.3. Time-Series Features on the Primary Table
 
