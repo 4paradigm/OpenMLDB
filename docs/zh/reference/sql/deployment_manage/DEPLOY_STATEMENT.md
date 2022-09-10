@@ -36,9 +36,7 @@ CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 t
 
 DEPLOY demo_deploy SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 
-I0908 07:57:48.734365   398 zk_client.cc:58] node watcher with event type 3, state 3
-I0908 07:57:48.823022   398 zk_client.cc:58] node watcher with event type 3, state 3
-SUCCEED
+-- SUCCEED
 ```
 
 我们可以使用 `SHOW DEPLOYMENT demo_deploy;` 命令查看部署的详情，执行结果如下：
@@ -146,11 +144,7 @@ interval_literal ::= int_literal 's'|'m'|'h'|'d'
 ```sql
 DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM demo_table1
     WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
-
-I0908 08:06:15.512660  1091 zk_client.cc:58] node watcher with event type 3, state 3
-I0908 08:06:15.566116  1091 zk_client.cc:58] node watcher with event type 3, state 3
-I0908 08:06:15.658560  1091 zk_client.cc:58] node watcher with event type 3, state 3
-SUCCEED
+-- SUCCEED
 ```
 
 ## 相关SQL
