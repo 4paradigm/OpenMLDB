@@ -140,8 +140,9 @@ uint64_t Segment::Release() {
             delete node->GetValue();
             delete node;
         }
-        f_it->Next();
+        ts_f_it->Next();
     }
+    delete ts_f_it;
     entry_free_list_->Clear();
     idx_cnt_vec_.clear();
     ts_entry_free_list_->Clear();
@@ -335,6 +336,7 @@ bool Segment::Delete(const Slice& key) {
 bool Segment::Delete(const Slice& key, uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
     {
+        std::lock_guard<std::mutex> lock(mu_);
         if (ts_cnt_ > 1) {
             return false;
         }
@@ -357,7 +359,6 @@ bool Segment::Delete(const Slice& key, uint64_t time) {
 bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
     {
-        std::lock_guard<std::mutex> lock(mu_);
         auto pos = ts_idx_map_.find(idx);
         if (pos == ts_idx_map_.end()) {
             return false;
@@ -365,6 +366,7 @@ bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
         if (ts_cnt_ == 1) {
             return Delete(key, time);
         } else {
+            std::lock_guard<std::mutex> lock(mu_);
             void* entry = NULL;
             if (entries_->Get(key, entry) < 0 || entry == NULL) {
                 return false;
@@ -473,7 +475,9 @@ void Segment::FreeTsEntry(::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry
     if (ts_entry_node == NULL) {
         return;
     }
-    delete ts_entry_node->GetValue();
+    if (ts_entry_node->GetValue()->dim_cnt_down <= 1) {
+        delete ts_entry_node->GetValue();
+    }
     // TODO(XLC-2): record statistics.
 }
 

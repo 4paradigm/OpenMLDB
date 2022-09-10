@@ -307,18 +307,15 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx, uint64_t time) {
     }
     auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
     if (inner_index && inner_index->GetIndex().size() > 1) {
+        const auto& ts_idxs = inner_index->GetTsIdx();
         const auto& indexs = inner_index->GetIndex();
-        for (const auto& index : indexs) {
-            auto ts_col = index->GetTsColumn();
-            if (!ts_col) {
-                return false;
-            }
-            uint64_t ts = 0;
+        for (const auto& ts_idx : ts_idxs) {
+            auto ts_col = indexs.at(ts_idx)->GetTsColumn();
             std::string combine_key;
             if (inner_index->GetIndex().size() > 1) {
-                combine_key = CombineKeyTs(pk, ts, ts_col->GetId());
+                combine_key = CombineKeyTs(pk, time, ts_col->GetId());
             } else {
-                combine_key = CombineKeyTs(pk, ts);
+                combine_key = CombineKeyTs(pk, time);
             }
             rocksdb::Slice spk = rocksdb::Slice(combine_key);
             batch.Delete(cf_hs_[idx + 1], spk);

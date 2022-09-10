@@ -1234,7 +1234,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_ts_in_index) {
             d2->set_idx(1);
             ::openmldb::api::TSDimension* ts_dim = entry.add_ts_dimensions();
             ts_dim->set_ts(9528);
-            ts_dimm->set_idx(0);
+            ts_dim->set_idx(0);
             std::string val;
             bool ok = entry.SerializeToString(&val);
             ASSERT_TRUE(ok);
@@ -1303,7 +1303,7 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_ts_in_index) {
     ASSERT_EQ(2u, table->GetRecordIdxCnt());
 }
 
-TEST_F(SnapshotTest. MakeSnapshot_with_delete_ts) {
+TEST_F(SnapshotTest, MakeSnapshot_with_delete_ts) {
     std::string snapshot_dir = FLAGS_db_root_path + "/4_4/snapshot";
     std::string binlog_dir = FLAGS_db_root_path + "/4_4/binlog";
 
@@ -1335,7 +1335,7 @@ TEST_F(SnapshotTest. MakeSnapshot_with_delete_ts) {
         {
             ::openmldb::api::LogEntry entry;
             std::string result;
-            entry,set_ts(9527);
+            entry.set_ts(9527);
             sdk_codec.EncodeRow({"card0", "merchant0", "test1"}, &result);
             entry.set_value(result);
             entry.set_log_index(1);
