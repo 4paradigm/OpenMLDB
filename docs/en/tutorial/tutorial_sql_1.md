@@ -33,7 +33,7 @@ From the table, we can see that OpenMLDB has unique advantages for feature engin
 
 ## 3. From 0 to 1, Feature Engineering Practice
 
-We will introduce the common processing methods of feature engineering in two parts. This part will focus on single table feature processing, and the next part will focus on more complex multi-table feature computing. 
+We will introduce the common processing methods of feature engineering in two parts. This part will focus on single table feature processing, and the [next part](tutorial_sql_2.md) will focus on more complex multi-table feature computing. 
 This tutorial will use the anti-fraud dataset, which is common in the financial field, as an example.
 
 Note that if you want to run the SQL in this tutorial, please follow these two steps:
@@ -60,32 +60,37 @@ For example, the following user transaction table (hereinafter referred as data 
 | city       | STRING    | City                                   |
 | label      | BOOL      | Sample label, true\|false              |
 
-In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be spliced with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by splicing the primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the next part of this series.
+In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be spliced with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by splicing the primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the  [next part](tutorial_sql_2.md) of this series.
 
 ### 3.1.2. Types of Features
 
-Before discussing the details of feature construction in depth, we can categorize the features commonly used in machine learning. From the perspective of building feature data sets and aggregation methods, there are four common features in machine learning:
+Before discussing the details of feature extraction, we can categorize the features commonly used in machine learning. There are four common features in machine learning according to feature datasets' building and data aggregation methods:
 
 - Single-row features on the primary table: Computing expressions and functions for one or more columns on the primary table.
-- Time-series features on the primary table: Building sliding time-series windows for the primary table and performing aggregate functions over the windows.
-- Single-row features on multiple tables: The primary table joins the secondary tables, and then it performs the single-row features on the joined table.
-- Time-series features on multiple tables: A row of the primary table matches multiple rows from a secondary table, and then it performs time-series features on the matched rows.
+- Time-series features on the primary table: Building sliding time-series windows for the primary table and extracting time-series features over the windows.
+- Single-row features on multiple tables: The primary table joins the secondary tables, and then single-row features are extracted on the joined table.
+- Time-series features on multiple tables: A row of the primary table matches multiple rows from a secondary table, and then time-series features are extracted on the matched rows.
 
-The first part of this tutorial will focus on the single-row and time-series features on the primary table. The next part will specifically introduce the single-row and time-series features on multiple tables.
+The first part of this tutorial will focus on the single-row and time-series features on the primary table. The  [next part](tutorial_sql_2.md) will specifically introduce the single-row and time-series features on multiple tables.
 
 ### 3.2. Single-Row Features on the Primary Table
 
 **In-line Extraction**
 
-Some columns of the main table can be directly used as features to participate in model training.
-
+Some columns of the main table can be directly used as features in training.
 ```sql
 SELECT uid, trans_type FROM t1;
+```
+**Multiple Columns  Processing**
+
+Several columns of the main table can be processed into a feature using expressions or functions, such as the following example where 'province' and 'city' are concatenated together into a string as a new feature.
+```sql
+SELECT concat(province, city) as province_city FROM t1
 ```
 
 **Functions or UDFs**
 
-Features can be extracted through built-in functions or UDFs, for example, days, hours and minutes are extracted as features.
+Features can be extracted through built-in functions or UDFs, such as the following example where days, hours and minutes are extracted as features.
 
 ```sql
 SELECT 
@@ -98,24 +103,24 @@ Other related functions also include numerical feature computation (such as `cei
 
 ### 3.3. Time-Series Features on the Primary Table
 
-In many scenarios, the more commonly used feature construction method is based on the feature construction of time window. For example, transaction data and user behavior are time-series data with time stamp. Two steps need to be completed to construct the time-series features on the primary table:
+In many scenarios, feature construction is based on the time window. Two steps need to be completed to construct the time-series features on the primary table:
 
-- Step 1: Define time windows
-- Step 2: Construct features based on time windows
+- Step 1: Define time windows.
+- Step 2: Extract features based on time windows.
 
-### 3.3.1. Step 1: Define Window
+### 3.3.1. Step 1: Define the Window
 
-We can define a specific window size either through the time interval (such as a month) or through the number of rows in the window (such as 100). The most basic definition of timing window:
+The window size can either be the time interval (such as a month) or the number of rows in the window (such as 100). The most basic definition of timing window:
 
 ```sql
 window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
 ```
 
-Among them, the important parameters include：
+Important parameters include:
 
-- `PARTITION BY partition_col`: Indicates that the window is in accordance with`partition_col`column grouping
+- `PARTITION BY partition_col`: The data is grouped by `partition_col`column.
 
-- `ORDER BY order_col`: Indicates that the window is in accordance with`order_col`sorting columns
+- `ORDER BY order_col`: The data in the window is sorted by `order_col` columns.
 
 - `ROWS_RANGE`: Indicates that the window slides by time；`ROWS` Indicates that the window slides by the number of rows
 
