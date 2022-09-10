@@ -58,7 +58,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 和很多关系型数据库系统不同，`SELECT`命令在离线模式下默认为异步执行，如需设置为同步执行，见[设置离线模式下命令的同步执行](../reference/sql/ddl/SET_STATEMENT.md#id4)因此在离线特征开发阶段，如果使用异步执行，强烈建议使用`SELECT INTO`语句进行开发调试，可以将结果导出到文件，方便查看。
 :::
 
-用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](../reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
+用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](../reference/sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS .md)。
 
 离线模式可以通过以下方式设置：
 
