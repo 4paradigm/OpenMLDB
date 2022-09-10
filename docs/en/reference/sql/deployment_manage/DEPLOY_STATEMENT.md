@@ -14,7 +14,7 @@ DeploymentName
 ```
 Please refer to [DEPLOYMENT Property DeployOptions (optional)](#DEPLOYMENT Property DeployOptions (optional)) for the definition of `DeployOptions`.
 
-The `DEPLOY` statement is used to deploy SQL to online. It supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md)，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+The `DEPLOY` statement is used to deploy SQL to online. It supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md)，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)
 
 ```SQL
 DEPLOY deployment_name SELECT clause
