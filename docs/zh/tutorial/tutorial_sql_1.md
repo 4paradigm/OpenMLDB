@@ -136,7 +136,7 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE 
 
   - `CURRENT ROW`： 当前行
   - `time_expression PRECEDING`: 一定的时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间-1天。
-  - `number PRECEDING`: 如果是条数窗口，可以定义条数偏移。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
+  - `number PRECEDING`: 如果是条数窗口，可以定义条数偏移。如，`1 PRECEDING`表示窗口下界为当前行的前1行。
 
 - 配置窗口上下界时，请注意:
   - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。

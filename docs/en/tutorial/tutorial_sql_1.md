@@ -122,23 +122,23 @@ Important parameters include:
 
 - `ORDER BY order_col`: The data in the window is sorted by `order_col` columns.
 
-- `ROWS_RANGE`: Indicates that the window slides by time；`ROWS` Indicates that the window slides by the number of rows
+- `ROWS_RANGE`: Indicates that the window slides by time; `ROWS`: Indicates that the window slides by the number of rows.
 
-- `StartFrameBound`: Represents the upper bound of the window. In OpenMLDB, we can generally define the upper bound of the window as:
+- `StartFrameBound`: Represents the upper bound of the window. In OpenMLDB, the upper bound of the window can be:
 
-- - `UNBOUNDED PRECEDING`: No upper bound.
-  - `time_expression PRECEDING`: If it is a time window, you can define a time offset. For example, '30d predicting' means that the upper bound of the window is the time of the current line - 30 days.
-  - `number PRECEDING`: If it is the number of rows, you can define the number of rows offset. For example, '100 predicting' indicates the first 100 lines of the current line whose upper bound is.
+  - `UNBOUNDED PRECEDING`: No upper bound.
+  - `time_expression PRECEDING`: If it is a `ROWS_RANGE` window, you can define a time offset. For example, `30d predicting` means that the upper bound of the window is 30 days before the time of the current row.
+  - `number PRECEDING`: If it is a `ROWS` window, you can define the number of rows offset. For example, `100 predicting` indicates that the upper bound of the window is 100 lines before the current line.
 
-- `EndFrameBound`: Represents the lower bound of the time window. In OpenMLDB, we can generally define the lower bound of the window as:
+- `EndFrameBound`: Represents the lower bound of the window. In OpenMLDB, the lower bound of the window can be:
 
-- - `CURRENT ROW`： Current row
-  - `time_expression PRECEDING`: A certain time offset, such as' 1D forecasting '. This indicates that the lower bound of the window is the time of the current line - 1 day.
-  - `number PRECEDING`: If it is the number of rows, you can define the number of rows offset. For example,`1 PRECEDING` represents the first row of the current row whose upper bound of the window is.
+  - `CURRENT ROW`： Current row
+  - `time_expression PRECEDING`: A certain time offset, such as `1D forecasting` which indicates that the lower bound of the window is 1 day before the time of the current row.
+  - `number PRECEDING`: If it is a `ROWS` window, you can define the number of rows offset. For example,`1 PRECEDING` represents that the lower bound of the window is 1 line before the current line.
 
-- When configuring the upper and lower boundaries of the window, please note:
+- When configuring the upper and lower boundaries of the window, please note that:
 
-- - At present, OpenMLDB cannot support the time after the current row as the upper and lower bounds. For example,`1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
+  - At present, OpenMLDB cannot support using the time after the current row as the upper or lower bounds, such as,`1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
   - Lower bound time of OpenMLDB must be > = Upper bound time
   - The number of lower bound entries of OpenMLDB must be < = The number of upper bound entries
 
