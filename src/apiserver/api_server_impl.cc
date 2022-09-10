@@ -1113,19 +1113,68 @@ JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
     if (s.rs) {
-        ar.Member("data");
-        ar.StartArray();
-        auto& rs = s.rs;
-        rs->Reset();
-        auto& schema = *rs->GetSchema();
-        while (rs->Next()) {
+        ar.Member("result");
+        ar.StartObject();  // start result
+        {
+            ar.Member("schema");
+            ar.StartArray();  // start schema
+            auto& rs = s.rs;
+            rs->Reset();
+            auto& schema = *rs->GetSchema();
+            for (auto n = schema.GetColumnCnt(), i = 0; i < n; i++) {
+                std::string type;
+                switch (schema.GetColumnType(i)) {
+                    case hybridse::sdk::kTypeBool:
+                        type = "Bool";
+                        break;
+                    case hybridse::sdk::kTypeInt16:
+                        type = "Int16";
+                        break;
+                    case hybridse::sdk::kTypeInt32:
+                        type = "Int32";
+                        break;
+                    case hybridse::sdk::kTypeInt64:
+                        type = "Int64";
+                        break;
+                    case hybridse::sdk::kTypeFloat:
+                        type = "Float";
+                        break;
+                    case hybridse::sdk::kTypeDouble:
+                        type = "Double";
+                        break;
+                    case hybridse::sdk::kTypeString:
+                        type = "String";
+                        break;
+                    case hybridse::sdk::kTypeDate:
+                        type = "Date";
+                        break;
+                    case hybridse::sdk::kTypeTimestamp:
+                        type = "Timestamp";
+                        break;
+                    default:
+                        type = "Unknown";
+                        break;
+                }
+                ar& type;
+            }
+            ar.EndArray();  // end schema
+        }
+        {
+            ar.Member("data");
             ar.StartArray();
-            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-                WriteValue(ar, rs, i);
+            auto& rs = s.rs;
+            rs->Reset();
+            auto& schema = *rs->GetSchema();
+            while (rs->Next()) {
+                ar.StartArray();
+                for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                    WriteValue(ar, rs, i);
+                }
+                ar.EndArray();
             }
             ar.EndArray();
         }
-        ar.EndArray();
+        ar.EndObject();  // end result
     }
     return ar.EndObject();
 }

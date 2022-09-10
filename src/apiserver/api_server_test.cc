@@ -173,12 +173,26 @@ TEST_F(APIServerTest, query) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
                                << ", raw resp: " << cntl.response_attachment().to_string();
         }
+
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "result": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"]]
+            }
+        }
+        */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(1, document["data"].Size());
-        ASSERT_EQ(2, document["data"][0].Size());
-        ASSERT_EQ(1, document["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["data"][0][1].GetString());
+        ASSERT_EQ(2, document["result"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["result"]["data"].Size());
+        ASSERT_EQ(2, document["result"]["data"][0].Size());
+        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
@@ -218,15 +232,28 @@ TEST_F(APIServerTest, parameterizedQuery) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
                                << ", raw resp: " << cntl.response_attachment().to_string();
         }
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "result": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"], [2, "bb"]]
+            }
+        }
+        */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(2, document["data"].Size());
-        ASSERT_EQ(2, document["data"][0].Size());
-        ASSERT_EQ(1, document["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["data"][0][1].GetString());
-        ASSERT_EQ(2, document["data"][1].Size());
-        ASSERT_EQ(2, document["data"][1][0].GetInt());
-        ASSERT_STREQ("bb", document["data"][1][1].GetString());
+        ASSERT_EQ(2, document["result"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
+        ASSERT_EQ(2, document["result"]["data"].Size());
+        ASSERT_EQ(2, document["result"]["data"][0].Size());
+        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
+        ASSERT_EQ(2, document["result"]["data"][1].Size());
+        ASSERT_EQ(2, document["result"]["data"][1][0].GetInt());
+        ASSERT_STREQ("bb", document["result"]["data"][1][1].GetString());
     }
     {
         brpc::Controller cntl;
@@ -248,12 +275,25 @@ TEST_F(APIServerTest, parameterizedQuery) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
                                << ", raw resp: " << cntl.response_attachment().to_string();
         }
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "result": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"]]
+            }
+        }
+        */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(1, document["data"].Size());
-        ASSERT_EQ(2, document["data"][0].Size());
-        ASSERT_EQ(1, document["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["data"][0][1].GetString());
+        ASSERT_EQ(2, document["result"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["result"]["data"].Size());
+        ASSERT_EQ(2, document["result"]["data"][0].Size());
+        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
