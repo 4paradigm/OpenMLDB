@@ -41,6 +41,7 @@ Note that if you want to run the SQL in this tutorial, please follow these two s
 - It is recommended to use docker image to run this tutorial under the standalone version. For image pulling and CLI operation methods, please refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md). If you want to use the cluster version, please use the offline mode (`SET @@execute_mode='offline'` ). The CLI of cluster version only supports online preview mode and offline mode. And the online preview mode only supports the simple data preview function, so most of the SQL in the tutorial cannot run in the online preview mode.
 - All data and SQL scripts related to this tutorial can be downloaded [here]( https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)
 
+## 3.1. Basic Concepts
 ### 3.1.1. Primary and Secondary Tables
 
 **Primary Table** is the main data table of feature extraction. Intuitively, the primary table is a dataset with label required for training in machine learning. 
@@ -73,7 +74,7 @@ Before discussing the details of feature extraction, we can categorize the featu
 
 The first part of this tutorial will focus on the single-row and time-series features on the primary table. The  [next part](tutorial_sql_2.md) will specifically introduce the single-row and time-series features on multiple tables.
 
-### 3.2. Single-Row Features on the Primary Table
+## 3.2. Single-Row Features on the Primary Table
 
 **In-line Extraction**
 
@@ -101,7 +102,7 @@ minute(trans_time) as f_trans_minute FROM t1;
 
 Other related functions also include numerical feature computation (such as `ceiling`) and string feature processing (such as `substr`).
 
-### 3.3. Time-Series Features on the Primary Table
+## 3.3. Time-Series Features on the Primary Table
 
 In many scenarios, feature construction is based on the time window. Two steps need to be completed to construct the time-series features on the primary table:
 
@@ -139,48 +140,48 @@ Important parameters include:
 - When configuring the upper and lower boundaries of the window, please note that:
 
   - At present, OpenMLDB cannot support using the time after the current row as the upper or lower bounds, such as,`1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
-  - Lower bound time of OpenMLDB must be > = Upper bound time
-  - The number of lower bound entries of OpenMLDB must be < = The number of upper bound entries
+  - The lower bound time must be `>=` the upper bound time.
+  - The lower bound row must follow the upper bound row.
+
+
+#### Example
+
+For the transaction table T1 shown above, we define two `ROWS_RANGE` windows and two `ROWS` windows. The windows of each row are grouped by user ID (' uid ') and sorted by transaction time (' trans_time '). The following figure shows the result of grouping and sorting.
 
 ![img](images/table_t1.png)
 
-The following example shows that for the transaction table t1 shown above, we have two windows defined by time and two defined by number of rows. Note that the following window definitions are not a completed SQL. We will add aggregate functions later to complete runnable SQL.
+Note that the following window definitions are not completed SQL. We will add aggregate functions later to complete runnable SQL.
 
 - w1d: the window within the most recent day
-
+The window of the user's most recent day containing the rows from the current to the most recent day
 ```sql
--- The window of the user's most recent day containing the rows from the current to the most recent day
 window w1d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)
 ```
 
-The `w1d` window shown in the above figure is for the row with `id=9`, and the `w1d` window contains three rows (`id=6`, `id=8`, `id=9`). These three rows fall within the time window [2022-02-07 12:00:00, 2022-02-08 12:00:00] .
+The `w1d` window shown in the above figure is for the row which `id=9`, and the `w1d` window contains three rows (`id=6`, `id=8`, `id=9`). These three rows fall in the time window [2022-02-07 12:00:00, 2022-02-08 12:00:00] .
 
-- w1d_10d: the windows from 1 day ago to the last 10 days
-
+- w1d_10d: the window from 1 day ago to the last 10 days
 ```sql
--- The windows from 1 day ago to the last 10 days
 window w1d_10d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 10d PRECEDING AND 1d PRECEDING)
 ```
 
-The window `w1d_10d` for the row with `id=9` contains three rows, which are with `id=1`, `id=3` and `id=4`. These three rows fall within the time window of [2022-01-29 12:00:00, 2022-02-07 12:00:00]。
+The window `w1d_10d` for the row which `id=9` contains three rows, which are `id=1`, `id=3` and `id=4`. These three rows fall in the time window of [2022-01-29 12:00:00, 2022-02-07 12:00:00]。
 
 - w0_1: the window contains the last 0 ~ 1 rows
-
+The window contains the last 0 ~ 1 rows, including the previous line and the current line.
 ```sql
--- The window contains the last 0 ~ 1 rows, including the previous line and the current line
 window w0_1 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
 ```
 
-The window `w0_1` for the row `id=10` contains 2 rows, which are `id=7` and `id=10`。
+The window `w0_1` for the row `id=10` contains 2 rows, which are `id=7` and `id=10`.
 
 - w2_10: the window contains the last 2 ~ 10 rows
 
 ```sql
--- The window contains the last 2 ~ 10 rows
 window w2_10 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND 2 PRECEDING)
 ```
 
-The window `w2_10` for the row `id=10` contains 2 rows, which are `od=2` and `id=5`.
+The window `w2_10` for the row `id=10` contains 2 rows, which are `id=2` and `id=5`.
 
 ### 3.3.2. Step 2: Construct Features Based on Time Window
 
@@ -188,7 +189,7 @@ After defining the time window, we can apply aggregate functions over windows.
 
 **Aggregate Functions**
 
-The following aggregate functions are currently supported: `count()`, `sum()`, `max()`, `min()`, `avg()`
+Currently, the supported aggregate functions are: `count()`, `sum()`, `max()`, `min()`, `avg()`.
 
 ```sql
 SELECT 
@@ -206,7 +207,7 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 **Aggregate Functions with Filtering**
 
-First, filter the data set according to the conditions, and then apply the aggregate functions. Such functions are defined as  `xxx_where`:
+Such functions are defined as  `xxx_where`:
 
 ```sql
 xxx_where(col, filter_condition) over w
@@ -215,9 +216,9 @@ xxx_where(col, filter_condition) over w
 - `col`：The column to be applied the aggregate function.
 - `filter_condition`：Filter condition expression.
 
-Currently the supported functions are:`count_where`, `sum_where`, `avg_where`, `max_where`, `min_where` .
+Currently, the supported functions are: `count_where`, `sum_where`, `avg_where`, `max_where`, `min_where` .
 
-Relevant examples are as follows:
+Examples are as follows:
 
 ```sql
 SELECT 
@@ -246,7 +247,7 @@ xxx_cate(col, cate) over w
 - `col`: The column to be applied the aggregate function.
 - `cate`: The column for grouping.
 
-Currently the supported functions are: `count_cate`, `sum_cate`, `avg_cate`, `max_cate`, `min_cate`
+Currently, the supported functions are: `count_cate`, `sum_cate`, `avg_cate`, `max_cate`, `min_cate`
 
 Relevant examples are as follows:
 
@@ -268,21 +269,20 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 **Aggregate Functions with Filtering and Grouping**
 
-First, filter the rows according to conditions; then, group the data set according to a column; and finally apply the aggregate functions. The results are saved as a string`"k1:v1,k2:v2,k3:v3"`.
-
-Such functions are define as `xxx_cate_where`:
+These functions will filter, group, and finally aggregate the data.
+Such functions are defined as `xxx_cate_where`:
 
 ```text
 xxx_cate_where(col, filter_condition, cate) over w
 ```
 
-- `col`：The column to be applied the aggregate function.
-- `filter_condition`：Filter condition expression.
+- `col`: The column to be applied the aggregate function.
+- `filter_condition`: Filter condition expression.
 - `cate`: The column for grouping.
 
-Currently, the supported statistical functions of grouping and aggregation after filtering are:`count_cate_where`, `sum_cate_where`, `avg_cate_where`, `max_cate_where`, `min_cate_where`
+Currently, the supported functions are:`count_cate_where`, `sum_cate_where`, `avg_cate_where`, `max_cate_where`, `min_cate_where`.
 
-Relevant examples are as follows:
+Examples are as follows:
 
 ```sql
 SELECT 
@@ -302,13 +302,13 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 **Frequency Statistics**
 
-We make frequency statistics for a given column. 
+We make frequency statistics for a given column as we may need to know the type of the highest frequency, the proportion of the type with the largest number, etc., in each category.
 
-`fz_top1_ratio`：Find the ratio of the maximum count of a category in the window to the total count of the window.
+`fz_top1_ratio`: Find out the type with the largest number and compute the proportion of its number in the window.
 
+The following SQL uses `fz_top1_ratio` to find out the city with the most transactions in the last 30 days and compute the proportion of the number of transactions of the city to the total number of transactions in t1.
 ```sql
 SELECT 
--- Ratio of transactions in cities with the largest number of transactions in the last 30 days
 fz_top1_ratio(city) over w30d as top_city_ratio 
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
@@ -316,9 +316,9 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 `fz_topn_frequency(col, top_n)`: Find the `top_n` categories with the highest frequency in the window
 
+The following SQL uses `fz_topn_frequency` to find out the top 2 cities with the highest number of transactions in the last 30 days in t1.
 ```sql
 SELECT 
--- Two cities with the largest number of transactions in the last 30 days, "beijing,shanghai"
 fz_topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
