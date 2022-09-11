@@ -72,3 +72,37 @@ response:
     }
 }
 ```
+
+## 查询
+
+The request URL: http://ip:port/dbs/{db_name}
+
+HTTP method: POST
+
+The request body example: 
+
+```json
+{
+    "mode": "online",
+    "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+    "parameter": {
+      "schema": ["Int32", "String"],
+      "data": [1, "aaa"]
+    }
+}
+```
+
+mode: "offsync", "offasync", "online"
+
+The response:
+
+```json
+{
+    "code":0,
+    "msg":"ok",
+    "result": {
+      "schema": ["Int32", "String", "Float"],
+      "data": [[1, "aaa", 1.2], [1, "aaa", 3.4]]
+    }
+}
+```
