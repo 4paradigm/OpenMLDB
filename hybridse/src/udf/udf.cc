@@ -99,7 +99,7 @@ void unhex(StringRef *str, StringRef *output) {
     } else {
         output->size_ = 4;
         output->data_ = "NULL";
-    } 
+    }
 }
 
 // TODO(chenjing): 时区统一配置
