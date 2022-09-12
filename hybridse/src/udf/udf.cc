@@ -67,24 +67,39 @@ void hex(StringRef *str, StringRef *output) {
 void unhex(StringRef *str, StringRef *output) {
     std::ostringstream ss;
     uint32_t arr[str->size_];
+    uint32_t flag = 0;
     for (uint32_t i=0; i < str->size_; i++) {
-        uint32_t tmp;  
+        // only recognize 'A' to 'F' and 'a' to 'f' and '0' to '9', otherwise return null.
         if (str->data_[i] <= 'F' && str->data_[i] >= 'A') {
-            tmp = str->data_[i] - 'A' + 10;
-        } else if (str->data_[i] <= 'z' && str->data_[i] >= 'a') {
-            tmp = str->data_[i] - 'a' + 10;
+            arr[i] = str->data_[i] - 'A' + 10;
+        } else if (str->data_[i] <= 'f' && str->data_[i] >= 'a') {
+            arr[i] = str->data_[i] - 'a' + 10;
         } else if (str->data_[i] <= '9' && str->data_[i] >= '0') {
-            tmp = str->data_[i] - '0';
+            arr[i] = str->data_[i] - '0';
+        } else {
+            flag = 1;
+            break;
         }
-        arr[i] = tmp;
     }
-    for (uint32_t i=0; i < str->size_; i+=2) {
-        ss << char(arr[i] << 4 | arr[i+1]);
-    }
-    output->size_ = ss.str().size();
-    char *buffer = AllocManagedStringBuf(output->size_);
-    memcpy(buffer, ss.str().data(), output->size_);
-    output->data_ = buffer;
+    if (flag == 0) {
+        if (str->size_ % 2 == 0) {
+            for (uint32_t i=0; i < str->size_; i+=2) {
+                ss << char(arr[i] << 4 | arr[i+1]);
+            }
+        } else {
+            ss << char(arr[0]);
+            for (uint32_t i=1; i < str->size_; i+=2) {
+                ss << char(arr[i] << 4 | arr[i+1]);
+            }
+        }
+        output->size_ = ss.str().size();
+        char *buffer = AllocManagedStringBuf(output->size_);
+        memcpy(buffer, ss.str().data(), output->size_);
+        output->data_ = buffer;
+    } else {
+        output->size_ = 4;
+        output->data_ = "NULL";
+    } 
 }
 
 // TODO(chenjing): 时区统一配置

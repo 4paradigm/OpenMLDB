@@ -596,6 +596,12 @@ void DefaultUdfLibrary::InitStringUdf() {
             @code{.sql}
                 select unhex("537061726B2053514C");
                 --output "Spark SQL"
+
+                select unhex("zfk");
+                --output "NULL"
+
+                select unhex("7B");
+                --output "{"
             @endcode
             @since 0.6.0)");
 
