@@ -61,7 +61,7 @@ taskmanager:
 ```bash
 openmldb_tool --dist_conf=/tmp/standalone_dist.yml
 ```
-诊断工具所有参数如下:
+诊断工具主要参数如下:
 
 - --dist_conf OpenMLDB节点分布的配置文件
 - --data_dir 数据存放路径。会把远端的配置文件和日志等放在这个目录里，默认为/tmp/diagnose_tool_data
@@ -77,3 +77,5 @@ openmldb_tool --dist_conf=/tmp/cluster_dist.yml --check=conf --log_dir=./
 ```
 
 **注**: 如果是单机版，诊断工具必须在单机版部署节点上执行  
+
+可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。

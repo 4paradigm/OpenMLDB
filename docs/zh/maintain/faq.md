@@ -6,7 +6,7 @@
 虽然有一键启动脚本，但由于配置繁多，可能出现“端口已被占用”，“目录无读写权限”等问题。这些问题都是server进程运行之后才能发现，退出后没有及时反馈。（如果配置了监控，可以通过监控直接检查。）
 所以，请先确认集群的所有server进程都正常运行。
 
-可以通过`ps axu | grep openmldb`来查询。（注意，官方运行脚本中使用`mon`作为守护进程，但`mon`进程运行不代表openmldb server进程正在运行。）
+可以通过`ps axu | grep openmldb`或sql命令`show components;`来查询。（注意，如果你使用了守护进程，openmldb server进程可能是在启动停止的循环中，并不代表持续运行，可以通过日志或`show components;`连接时间来确认。）
 
 如果进程都活着，集群还是表现不正常，需要查询一下server日志。可以优先看WARN和ERROR级日志，很大概率上，它们就是根本原因。
 
@@ -57,8 +57,7 @@ rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 #### 普通请求
 如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
 1. CLI: 启动时配置`--request_timeout_ms`
-2. JAVA: SDK 直连，调整`SdkOption.requestTimeout`; JDBC，调整url中的参数`requestTimeout`
-3. Python: SDK 直连(DBAPI), 调整`connect()`参数`request_timeout`; SQLAlchemy, 调整url中的参数`requestTimeout`
+2. JAVA/Python SDK: Option或url中调整`SdkOption.requestTimeout`
 
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```
@@ -79,3 +78,15 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 ```
 spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
 ```
+
+### 4. 如何配置客户端日志？
+
+客户端日志主要有两种，zk日志和sdk日志，两者是独立的。
+
+zk日志：
+1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
+2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
+
+sdk日志（glog日志）：
+1. CLI：启动时配置`--glog_level`调整level,`--openmldb_log_dir`配置日志保存文件。
+2. JAVA/Python SDK：Option或url中使用`minLogLevel`调整level，`logDir`配置日志保存文件。

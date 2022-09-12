@@ -17,6 +17,7 @@
 import sys
 
 from pathlib import Path
+from typing import overload
 
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
@@ -102,10 +103,6 @@ class OpenmldbDialect(default.DefaultDialect):
 
     def __init__(self, **kw):
         default.DefaultDialect.__init__(self, **kw)
-        self._zkPath = None
-        self._zk = None
-        self._db = None
-        self._requestTimeout = None
 
     @classmethod
     def dbapi(cls):
@@ -115,17 +112,3 @@ class OpenmldbDialect(default.DefaultDialect):
         if schema is not None:
             raise Exception("schema unsupported in OpenMLDB")
         return table_name in connection.connection.cursor().get_all_tables()
-
-    def create_connect_args(self, url, **kwargs):
-        qargs = {}
-        self._db = url.database
-        self._zk = url.query.get("zk")
-        self._zkPath = url.query.get("zkPath")
-        self._requestTimeout = url.query.get("requestTimeout")
-        self._zkLogLevel = url.query.get("zkLogLevel")
-        self._zkLogFile = url.query.get("zkLogFile")
-
-        qargs["db"] = self._db
-        qargs.update(url.query)
-
-        return (), qargs

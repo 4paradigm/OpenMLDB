@@ -72,6 +72,8 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlOpt.setSpark_conf_path(option.getSparkConfPath());
             sqlOpt.setZk_log_level(option.getZkLogLevel());
             sqlOpt.setZk_log_file(option.getZkLogFile());
+            sqlOpt.setMin_glog_level(option.getMinGlogLevel());
+            sqlOpt.setGlog_dir(option.getGlogDir());
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
         } else {
@@ -80,6 +82,8 @@ public class SqlClusterExecutor implements SqlExecutor {
             sqlOpt.setRequest_timeout(option.getRequestTimeout());
             sqlOpt.setHost(option.getHost());
             sqlOpt.setPort(option.getPort());
+            sqlOpt.setMin_glog_level(option.getMinGlogLevel());
+            sqlOpt.setGlog_dir(option.getGlogDir());
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
             sqlOpt.delete();
         }

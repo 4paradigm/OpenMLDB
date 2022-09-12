@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 
 namespace openmldb {
 namespace tablet {

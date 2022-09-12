@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"

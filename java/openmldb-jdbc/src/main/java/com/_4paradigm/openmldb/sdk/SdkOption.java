@@ -35,5 +35,7 @@ public class SdkOption {
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
     private boolean isClusterMode = true;
+    private int minGlogLevel = 0;
+    private String glogDir = "";
 
 }

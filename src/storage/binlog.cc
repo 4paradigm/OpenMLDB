@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"

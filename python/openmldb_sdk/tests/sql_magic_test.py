@@ -27,7 +27,8 @@ logging.basicConfig(level=logging.WARNING)
 class TestSQLMagicOpenMLDB:
 
     def setup_class(self):
-        self.db = openmldb.dbapi.connect('db_test', OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH)
+        self.db = openmldb.dbapi.connect(
+            database='db_test', zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
         self.ip = openmldb.sql_magic.register(self.db, test=True)
 
     def execute(self, magic_name, sql):

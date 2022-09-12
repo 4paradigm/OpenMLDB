@@ -19,7 +19,7 @@
 #include <iostream>
 #include <string>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "gtest/gtest.h"
 #include "storage/record.h"

@@ -43,8 +43,6 @@ import java.util.Random;
 import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
-
-    private final Random random = new Random(System.currentTimeMillis());
     public static SqlExecutor clusterExecutor;
     public static SqlExecutor standaloneExecutor;
 
@@ -72,23 +70,25 @@ public class SQLRouterSmokeTest {
 
     @DataProvider(name = "executor")
     public Object[] executor() {
-        return new Object[]{clusterExecutor, standaloneExecutor};
+        return new Object[] { clusterExecutor, standaloneExecutor };
     }
 
     @Test(dataProvider = "executor")
     public void testSmoke(SqlExecutor router) {
         try {
-            String dbname = "db" + random.nextInt(100000);
+            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
+            String tableName = "tsql1010";
+
             // create db
-            router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010(col1 bigint, col2 string, index(key=col2, ts=col1));";
+            String ddl = String.format("create table %s (col1 bigint, col2 string, index(key=col2, ts=col1));",
+                    tableName);
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
-            NS.TableInfo info = router.getTableInfo(dbname, "tsql1010");
-            Assert.assertEquals(info.getName(), "tsql1010");
+            NS.TableInfo info = router.getTableInfo(dbname, tableName);
+            Assert.assertEquals(info.getName(), tableName);
 
             // insert normal (1000, 'hello')
             String insert = "insert into tsql1010 values(1000, 'hello');";
@@ -116,7 +116,8 @@ public class SQLRouterSmokeTest {
 
             // select
             String select1 = "select * from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select1);
 
             Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
@@ -131,12 +132,14 @@ public class SQLRouterSmokeTest {
             Collections.sort(col1Insert);
             Collections.sort(col2Insert);
 
-            Assert.assertEquals(col1Insert, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
+            Assert.assertEquals(col1Insert,
+                    Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
             Assert.assertEquals(col2Insert, Arrays.asList("hello", "hi", "word", "world"));
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select2);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
 
@@ -145,11 +148,13 @@ public class SQLRouterSmokeTest {
                 col1InsertRes.add(rs2.getLong(1));
             }
             Collections.sort(col1InsertRes);
-            Assert.assertEquals(col1InsertRes, Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
+            Assert.assertEquals(col1InsertRes,
+                    Arrays.asList(Long.valueOf(1000), Long.valueOf(1001), Long.valueOf(1002), Long.valueOf(1003)));
             rs2.close();
 
             String select3 = "select col2 from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select3);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select3);
             Assert.assertEquals(1, rs3.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
 
@@ -168,7 +173,8 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hi");
                 query_statement.setLong(2, 1003);
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
                 Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
                 Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
@@ -182,7 +188,8 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hi");
                 query_statement.setLong(2, 1002);
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
                 Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
                 Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
@@ -193,7 +200,8 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "world");
                 query_statement.setLong(2, 1003);
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
                 Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
                 Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
@@ -207,7 +215,8 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hello");
                 query_statement.setLong(2, 1003);
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
                 Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
                 Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
@@ -221,7 +230,8 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "word");
                 query_statement.setLong(2, 1003);
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
                 Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
                 Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
@@ -247,7 +257,7 @@ public class SQLRouterSmokeTest {
     @Test(dataProvider = "executor")
     public void testParameterizedQueryFail(SqlExecutor router) {
         try {
-            String dbname = "db" + random.nextInt(100000);
+            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
@@ -262,7 +272,8 @@ public class SQLRouterSmokeTest {
             // missing 2nd parameter
             {
                 query_statement.setString(1, "hi");
-                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement.executeQuery();
+                com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
+                        .executeQuery();
                 Assert.fail("executeQuery is expected to throw exception");
                 rs4.close();
             }
@@ -273,7 +284,7 @@ public class SQLRouterSmokeTest {
 
     @Test(dataProvider = "executor")
     public void testInsertMeta(SqlExecutor router) {
-        String dbname = "db" + random.nextInt(100000);
+        String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
         // create db
         router.dropDB(dbname);
         boolean ok = router.createDB(dbname);
@@ -315,7 +326,7 @@ public class SQLRouterSmokeTest {
     @Test(dataProvider = "executor")
     public void testInsertPreparedState(SqlExecutor router) {
         try {
-            String dbname = "db" + random.nextInt(100000);
+            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
@@ -335,12 +346,12 @@ public class SQLRouterSmokeTest {
             String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
-            Object[][] datas = new Object[][]{
-                    {1000L, d1, "guangdong", "广州", 1},
-                    {1001L, d2, "jiangsu", "nanjing", 2},
-                    {1002L, d3, "sandong", "jinan", 3},
-                    {1003L, d4, "zhejiang", "hangzhou", 4},
-                    {1004L, d5, "henan", "zhenzhou", 5},
+            Object[][] datas = new Object[][] {
+                    { 1000L, d1, "guangdong", "广州", 1 },
+                    { 1001L, d2, "jiangsu", "nanjing", 2 },
+                    { 1002L, d3, "sandong", "jinan", 3 },
+                    { 1003L, d4, "zhejiang", "hangzhou", 4 },
+                    { 1004L, d5, "henan", "zhenzhou", 5 },
             };
             // insert placeholder
             String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth() + 1, d2.getDate());
@@ -403,7 +414,8 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select1);
             Assert.assertEquals(5, rs1.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
             Assert.assertEquals("kTypeDate", rs1.GetInternalSchema().GetColumnType(1).toString());
@@ -427,7 +439,8 @@ public class SQLRouterSmokeTest {
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select2);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
             Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
             rs2.close();
@@ -449,16 +462,16 @@ public class SQLRouterSmokeTest {
 
     @Test(dataProvider = "executor")
     public void testInsertPreparedStateBatch(SqlExecutor router) {
-        Object[][] batchData = new Object[][]{
+        Object[][] batchData = new Object[][] {
                 {
                         "insert into tsql1010 values(?, ?, 'zhao', 1.0, null, 'z');",
-                        new Object[][]{
-                                {1000l, 1l}, {1001l, 2l}, {1002l, 3l}, {1003l, 4l},}
+                        new Object[][] {
+                                { 1000l, 1l }, { 1001l, 2l }, { 1002l, 3l }, { 1003l, 4l }, }
                 },
                 {
                         "insert into tsql1010 values(?, ?, 'zhao', 1.0, null, 'z');",
-                        new Object[][]{
-                                {1004l, 5l}, {1005l, 6l}, {1006l, 7l}, {1007l, 8l},}
+                        new Object[][] {
+                                { 1004l, 5l }, { 1005l, 6l }, { 1006l, 7l }, { 1007l, 8l }, }
                 },
                 {
                         "insert into tsql1010 values(?, ?, ?, 2.0, null, ?);",
@@ -468,7 +481,7 @@ public class SQLRouterSmokeTest {
                 }
         };
         try {
-            String dbname = "db" + random.nextInt(100000);
+            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
@@ -511,7 +524,8 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select1 = "select * from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select1);
             Assert.assertEquals(6, rs1.GetInternalSchema().GetColumnCnt());
             rs1.close();
             i++;
@@ -557,7 +571,8 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(result, expected);
 
             String select2 = "select * from tsql1010;";
-            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router.executeSQL(dbname, select1);
+            com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
+                    .executeSQL(dbname, select1);
             Assert.assertEquals(6, rs2.GetInternalSchema().GetColumnCnt());
             int recordCnt = 0;
             while (rs2.next()) {
@@ -621,7 +636,8 @@ public class SQLRouterSmokeTest {
         List<String> res1 = SqlClusterExecutor.genDDL("select not_exist from t1;", schemaMaps);
         Assert.assertEquals(res1.size(), 1);
         Assert.assertFalse(res1.get(0).contains("index"));
-        // if parse fails, the output schema result is empty, can't convert to sdk.Schema
+        // if parse fails, the output schema result is empty, can't convert to
+        // sdk.Schema
         try {
             SqlClusterExecutor.genOutputSchema("select not_exist from t1;", schemaMaps);
         } catch (SQLException ignored) {

@@ -29,6 +29,7 @@
 #include "absl/strings/substitute.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
+#include "base/glog_wrapper.h"
 #include "boost/none.hpp"
 #include "boost/property_tree/ini_parser.hpp"
 #include "boost/property_tree/ptree.hpp"
@@ -221,6 +222,14 @@ SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
 bool SQLClusterRouter::Init() {
+    // set log first(If setup before, setup below won't work, e.g. router in tablet server, router in CLI)
+    if (cluster_sdk_ == nullptr) {
+        // glog setting for SDK
+        FLAGS_minloglevel = options_->min_glog_level;
+        FLAGS_openmldb_log_dir = options_->glog_dir;
+    }
+    base::SetupGLog();
+
     if (cluster_sdk_ == nullptr) {
         // init cluster_sdk_, require options_ or standalone_options_ is set
         if (is_cluster_mode_) {
@@ -269,6 +278,7 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
+
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
     std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
@@ -2003,8 +2013,8 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
-                                                      is_cluster_mode, &sql_status);
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num, is_cluster_mode,
+                                                      &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }

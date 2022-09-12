@@ -14,20 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BASE_GLOG_WAPPER_H_
-#define SRC_BASE_GLOG_WAPPER_H_
+#ifndef SRC_BASE_GLOG_WRAPPER_H_
+#define SRC_BASE_GLOG_WRAPPER_H_
 
 #include <cstdarg>
 #include <iostream>
+#include <mutex>
 #include <string>
 
+#include "boost/filesystem.hpp"
+#include "boost/format.hpp"
 #include "glog/logging.h"
-#include <boost/format.hpp>
 
 using google::ERROR;
 using google::FATAL;
 using google::INFO;
 using google::WARNING;
+
+DECLARE_string(openmldb_log_dir);
+DECLARE_string(role);
 
 namespace openmldb {
 namespace base {
@@ -45,13 +50,32 @@ inline std::string FormatArgs(const char* fmt, const Arguments&... args) {
 
 inline void SetLogLevel(int level) { log_level = level; }
 
-inline void SetLogFile(std::string path) {
-    ::google::InitGoogleLogging(path.c_str());
-    std::string info_log_path = path + ".info.log.";
-    std::string warning_log_path = path + ".warning.log.";
-    FLAGS_logbufsecs = 0;
-    ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
-    ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
+// DO NOT use this func, to avoid init glog twice coredump
+// For compatibility, use openmldb_log_dir instead of glog log_dir
+// If we want write log to stdout, set it empty
+inline void UnprotectedSetupGlog() {
+    if (!FLAGS_openmldb_log_dir.empty()) {
+        boost::filesystem::create_directories(FLAGS_openmldb_log_dir);
+        // CLI/SDK set a new role name
+        if (FLAGS_role.empty()) {
+            FLAGS_role = "client";
+        }
+        std::string path = FLAGS_openmldb_log_dir + "/" + FLAGS_role;
+        ::google::InitGoogleLogging(path.c_str());
+        std::string info_log_path = path + ".info.log.";
+        std::string warning_log_path = path + ".warning.log.";
+        FLAGS_logbufsecs = 0;
+        ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
+        ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
+    }
+}
+
+// This func will init glog, use once_flag to avoid init glog twice
+// It'll use FLAGS_openmldb_log_dir and FLAGS_role to set log dir, 
+// and it's better to set FLAGS_minloglevel before it
+inline void SetupGLog() {
+    static std::once_flag oc;
+    std::call_once(oc, [] { UnprotectedSetupGlog(); });
 }
 
 }  // namespace base
@@ -68,4 +92,4 @@ using ::openmldb::base::DEBUG;
     }                                                                                      \
     while (0)
 
-#endif  // SRC_BASE_GLOG_WAPPER_H_
+#endif  // SRC_BASE_GLOG_WRAPPER_H_

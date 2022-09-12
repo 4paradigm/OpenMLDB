@@ -32,7 +32,7 @@
 
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/proto_util.h"
 #include "base/status.h"
 #include "base/strings.h"
