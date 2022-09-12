@@ -20,7 +20,6 @@
 #include <time.h>
 #include <map>
 #include <set>
-#include <array>
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
