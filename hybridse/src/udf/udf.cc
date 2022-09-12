@@ -20,6 +20,7 @@
 #include <time.h>
 #include <map>
 #include <set>
+#include <array>
 #include <utility>
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
@@ -66,7 +67,8 @@ void hex(StringRef *str, StringRef *output) {
 
 void unhex(StringRef *str, StringRef *output) {
     std::ostringstream ss;
-    uint32_t arr[str->size_];
+    uint32_t* arr = new uint32_t[str->size_];
+    memset(arr, 0, str->size_);
     uint32_t flag = 0;
     for (uint32_t i=0; i < str->size_; i++) {
         // only recognize 'A' to 'F' and 'a' to 'f' and '0' to '9', otherwise return null.
@@ -100,6 +102,7 @@ void unhex(StringRef *str, StringRef *output) {
         output->size_ = 4;
         output->data_ = "NULL";
     }
+    delete [] arr;
 }
 
 // TODO(chenjing): 时区统一配置

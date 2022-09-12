@@ -1,0 +1,248 @@
+[==========] Running 120 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 120 tests from UdfIRBuilderTest
+[ RUN      ] UdfIRBuilderTest.HexIntUdfTest
+[       OK ] UdfIRBuilderTest.HexIntUdfTest (45 ms)
+[ RUN      ] UdfIRBuilderTest.HexDoubleUdfTest
+[       OK ] UdfIRBuilderTest.HexDoubleUdfTest (31 ms)
+[ RUN      ] UdfIRBuilderTest.HexFloatUdfTest
+[       OK ] UdfIRBuilderTest.HexFloatUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.HexStringUdfTest
+[       OK ] UdfIRBuilderTest.HexStringUdfTest (15 ms)
+[ RUN      ] UdfIRBuilderTest.UnhexTest
+[       OK ] UdfIRBuilderTest.UnhexTest (121 ms)
+[ RUN      ] UdfIRBuilderTest.DayofmonthDateUdfTest
+[       OK ] UdfIRBuilderTest.DayofmonthDateUdfTest (13 ms)
+[ RUN      ] UdfIRBuilderTest.MonthDateUdfTest
+[       OK ] UdfIRBuilderTest.MonthDateUdfTest (12 ms)
+[ RUN      ] UdfIRBuilderTest.YearDateUdfTest
+[       OK ] UdfIRBuilderTest.YearDateUdfTest (14 ms)
+[ RUN      ] UdfIRBuilderTest.DayofweekDateUdfTest
+[       OK ] UdfIRBuilderTest.DayofweekDateUdfTest (8 ms)
+[ RUN      ] UdfIRBuilderTest.DayofyearDateUdfTest
+[       OK ] UdfIRBuilderTest.DayofyearDateUdfTest (69 ms)
+[ RUN      ] UdfIRBuilderTest.WeekofyearDateUdfTest
+[       OK ] UdfIRBuilderTest.WeekofyearDateUdfTest (64 ms)
+[ RUN      ] UdfIRBuilderTest.LastdayDateUdfTest
+[       OK ] UdfIRBuilderTest.LastdayDateUdfTest (40 ms)
+[ RUN      ] UdfIRBuilderTest.MinuteTimestampUdfTest
+[       OK ] UdfIRBuilderTest.MinuteTimestampUdfTest (7 ms)
+[ RUN      ] UdfIRBuilderTest.SecondTimestampUdfTest
+[       OK ] UdfIRBuilderTest.SecondTimestampUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.HourTimestampUdfTest
+[       OK ] UdfIRBuilderTest.HourTimestampUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.DayofmonthTimestampUdfTest
+[       OK ] UdfIRBuilderTest.DayofmonthTimestampUdfTest (7 ms)
+[ RUN      ] UdfIRBuilderTest.DayofweekTimestampUdfTest
+[       OK ] UdfIRBuilderTest.DayofweekTimestampUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.DayofyearTimestampUdfTest
+[       OK ] UdfIRBuilderTest.DayofyearTimestampUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.WeekofyearTimestampUdfTest
+[       OK ] UdfIRBuilderTest.WeekofyearTimestampUdfTest (5 ms)
+[ RUN      ] UdfIRBuilderTest.LastdayTimestampUdfTest
+[       OK ] UdfIRBuilderTest.LastdayTimestampUdfTest (12 ms)
+[ RUN      ] UdfIRBuilderTest.MonthTimestampUdfTest
+[       OK ] UdfIRBuilderTest.MonthTimestampUdfTest (5 ms)
+[ RUN      ] UdfIRBuilderTest.YearTimestampUdfTest
+[       OK ] UdfIRBuilderTest.YearTimestampUdfTest (8 ms)
+[ RUN      ] UdfIRBuilderTest.MinuteInt64UdfTest
+[       OK ] UdfIRBuilderTest.MinuteInt64UdfTest (5 ms)
+[ RUN      ] UdfIRBuilderTest.SecondInt64UdfTest
+[       OK ] UdfIRBuilderTest.SecondInt64UdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.HourInt64UdfTest
+[       OK ] UdfIRBuilderTest.HourInt64UdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.DayofmonthInt64UdfTest
+[       OK ] UdfIRBuilderTest.DayofmonthInt64UdfTest (5 ms)
+[ RUN      ] UdfIRBuilderTest.MonthInt64UdfTest
+[       OK ] UdfIRBuilderTest.MonthInt64UdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.YearInt64UdfTest
+[       OK ] UdfIRBuilderTest.YearInt64UdfTest (5 ms)
+[ RUN      ] UdfIRBuilderTest.DayofweekInt64UdfTest
+[       OK ] UdfIRBuilderTest.DayofweekInt64UdfTest (23 ms)
+[ RUN      ] UdfIRBuilderTest.DayofyearInt64UdfTest
+[       OK ] UdfIRBuilderTest.DayofyearInt64UdfTest (30 ms)
+[ RUN      ] UdfIRBuilderTest.WeekofyearInt64UdfTest
+[       OK ] UdfIRBuilderTest.WeekofyearInt64UdfTest (75 ms)
+[ RUN      ] UdfIRBuilderTest.LastdayInt64UdfTest
+[       OK ] UdfIRBuilderTest.LastdayInt64UdfTest (32 ms)
+[ RUN      ] UdfIRBuilderTest.IncInt32UdfTest
+[       OK ] UdfIRBuilderTest.IncInt32UdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.DistinctCountUdfTest
+[       OK ] UdfIRBuilderTest.DistinctCountUdfTest (14 ms)
+[ RUN      ] UdfIRBuilderTest.MinUdfTest
+[       OK ] UdfIRBuilderTest.MinUdfTest (6 ms)
+[ RUN      ] UdfIRBuilderTest.MaxUdfTest
+[       OK ] UdfIRBuilderTest.MaxUdfTest (8 ms)
+[ RUN      ] UdfIRBuilderTest.MaxTimestampUdfTest
+[       OK ] UdfIRBuilderTest.MaxTimestampUdfTest (7 ms)
+[ RUN      ] UdfIRBuilderTest.MinTimestampUdfTest
+[       OK ] UdfIRBuilderTest.MinTimestampUdfTest (9 ms)
+[ RUN      ] UdfIRBuilderTest.LogUdfTest
+[       OK ] UdfIRBuilderTest.LogUdfTest (48 ms)
+[ RUN      ] UdfIRBuilderTest.AbsUdfTest
+[       OK ] UdfIRBuilderTest.AbsUdfTest (62 ms)
+[ RUN      ] UdfIRBuilderTest.AcosUdfTest
+[       OK ] UdfIRBuilderTest.AcosUdfTest (50 ms)
+[ RUN      ] UdfIRBuilderTest.AsinUdfTest
+[       OK ] UdfIRBuilderTest.AsinUdfTest (53 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest0
+[       OK ] UdfIRBuilderTest.AtanUdfTest0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest1
+[       OK ] UdfIRBuilderTest.AtanUdfTest1 (8 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest2
+[       OK ] UdfIRBuilderTest.AtanUdfTest2 (8 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest3
+[       OK ] UdfIRBuilderTest.AtanUdfTest3 (7 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest4
+[       OK ] UdfIRBuilderTest.AtanUdfTest4 (7 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest5
+[       OK ] UdfIRBuilderTest.AtanUdfTest5 (6 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest6
+[       OK ] UdfIRBuilderTest.AtanUdfTest6 (7 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest7
+[       OK ] UdfIRBuilderTest.AtanUdfTest7 (5 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest8
+[       OK ] UdfIRBuilderTest.AtanUdfTest8 (7 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest9
+[       OK ] UdfIRBuilderTest.AtanUdfTest9 (6 ms)
+[ RUN      ] UdfIRBuilderTest.AtanUdfTest10
+[       OK ] UdfIRBuilderTest.AtanUdfTest10 (6 ms)
+[ RUN      ] UdfIRBuilderTest.Atan2UdfTest15
+[       OK ] UdfIRBuilderTest.Atan2UdfTest15 (6 ms)
+[ RUN      ] UdfIRBuilderTest.CeilUdfTest
+[       OK ] UdfIRBuilderTest.CeilUdfTest (41 ms)
+[ RUN      ] UdfIRBuilderTest.CeilingUdfTest
+[       OK ] UdfIRBuilderTest.CeilingUdfTest (44 ms)
+[ RUN      ] UdfIRBuilderTest.CosUdfTest
+[       OK ] UdfIRBuilderTest.CosUdfTest (28 ms)
+[ RUN      ] UdfIRBuilderTest.CotUdfTest
+[       OK ] UdfIRBuilderTest.CotUdfTest (28 ms)
+[ RUN      ] UdfIRBuilderTest.ExpUdfTest
+[       OK ] UdfIRBuilderTest.ExpUdfTest (28 ms)
+[ RUN      ] UdfIRBuilderTest.FloorUdfTest
+[       OK ] UdfIRBuilderTest.FloorUdfTest (41 ms)
+[ RUN      ] UdfIRBuilderTest.PowUdfTest
+[       OK ] UdfIRBuilderTest.PowUdfTest (31 ms)
+[ RUN      ] UdfIRBuilderTest.PowerUdfTest
+[       OK ] UdfIRBuilderTest.PowerUdfTest (33 ms)
+[ RUN      ] UdfIRBuilderTest.RoundUdfTest
+[       OK ] UdfIRBuilderTest.RoundUdfTest (32 ms)
+[ RUN      ] UdfIRBuilderTest.SinUdfTest
+[       OK ] UdfIRBuilderTest.SinUdfTest (32 ms)
+[ RUN      ] UdfIRBuilderTest.SqrtUdfTest
+[       OK ] UdfIRBuilderTest.SqrtUdfTest (34 ms)
+[ RUN      ] UdfIRBuilderTest.TanUdfTest
+[       OK ] UdfIRBuilderTest.TanUdfTest (31 ms)
+[ RUN      ] UdfIRBuilderTest.TruncUdfTest
+[       OK ] UdfIRBuilderTest.TruncUdfTest (31 ms)
+[ RUN      ] UdfIRBuilderTest.SubstringPosLenUdfTest
+[       OK ] UdfIRBuilderTest.SubstringPosLenUdfTest (40 ms)
+[ RUN      ] UdfIRBuilderTest.SubstringPosUdfTest
+[       OK ] UdfIRBuilderTest.SubstringPosUdfTest (38 ms)
+[ RUN      ] UdfIRBuilderTest.UpperUcase
+[       OK ] UdfIRBuilderTest.UpperUcase (52 ms)
+[ RUN      ] UdfIRBuilderTest.LowerLcase
+[       OK ] UdfIRBuilderTest.LowerLcase (84 ms)
+[ RUN      ] UdfIRBuilderTest.ConcatStrUdfTest
+[       OK ] UdfIRBuilderTest.ConcatStrUdfTest (36 ms)
+[ RUN      ] UdfIRBuilderTest.ConcatAnytypeUdfTest
+[       OK ] UdfIRBuilderTest.ConcatAnytypeUdfTest (30 ms)
+[ RUN      ] UdfIRBuilderTest.ConcatWsAnytypeUdfTest
+[       OK ] UdfIRBuilderTest.ConcatWsAnytypeUdfTest (30 ms)
+[ RUN      ] UdfIRBuilderTest.ToStringTest
+[       OK ] UdfIRBuilderTest.ToStringTest (72 ms)
+[ RUN      ] UdfIRBuilderTest.TimestampFormatTest
+[       OK ] UdfIRBuilderTest.TimestampFormatTest (23 ms)
+[ RUN      ] UdfIRBuilderTest.DateFormatTest
+[       OK ] UdfIRBuilderTest.DateFormatTest (19 ms)
+[ RUN      ] UdfIRBuilderTest.StrcmpUdfTest
+[       OK ] UdfIRBuilderTest.StrcmpUdfTest (71 ms)
+[ RUN      ] UdfIRBuilderTest.NullProcessTest
+[       OK ] UdfIRBuilderTest.NullProcessTest (82 ms)
+[ RUN      ] UdfIRBuilderTest.DateToTimestampTest0
+[       OK ] UdfIRBuilderTest.DateToTimestampTest0 (8 ms)
+[ RUN      ] UdfIRBuilderTest.DateToTimestampTestNull0
+[       OK ] UdfIRBuilderTest.DateToTimestampTestNull0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.DateToTimestampTestNull1
+[       OK ] UdfIRBuilderTest.DateToTimestampTestNull1 (8 ms)
+[ RUN      ] UdfIRBuilderTest.DateToTimestampTestNull2
+[       OK ] UdfIRBuilderTest.DateToTimestampTestNull2 (7 ms)
+[ RUN      ] UdfIRBuilderTest.DateToTimestampTestNull3
+[       OK ] UdfIRBuilderTest.DateToTimestampTestNull3 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToTimestampTest0
+[       OK ] UdfIRBuilderTest.StringToTimestampTest0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToTimestampTest1
+[       OK ] UdfIRBuilderTest.StringToTimestampTest1 (8 ms)
+[ RUN      ] UdfIRBuilderTest.StringToTimestampTest2
+[       OK ] UdfIRBuilderTest.StringToTimestampTest2 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToTimestampTest3
+[       OK ] UdfIRBuilderTest.StringToTimestampTest3 (8 ms)
+[ RUN      ] UdfIRBuilderTest.TimestampToDateTest0
+[       OK ] UdfIRBuilderTest.TimestampToDateTest0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.TimestampToDateTestNull0
+[       OK ] UdfIRBuilderTest.TimestampToDateTestNull0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDateTest0
+[       OK ] UdfIRBuilderTest.StringToDateTest0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDateTest1
+[       OK ] UdfIRBuilderTest.StringToDateTest1 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDateTest2
+[       OK ] UdfIRBuilderTest.StringToDateTest2 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDateTest3
+[       OK ] UdfIRBuilderTest.StringToDateTest3 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToSmallint0
+[       OK ] UdfIRBuilderTest.StringToSmallint0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToSmallint1
+[       OK ] UdfIRBuilderTest.StringToSmallint1 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToSmallint2
+[       OK ] UdfIRBuilderTest.StringToSmallint2 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToInt0
+[       OK ] UdfIRBuilderTest.StringToInt0 (6 ms)
+[ RUN      ] UdfIRBuilderTest.StringToInt1
+[       OK ] UdfIRBuilderTest.StringToInt1 (8 ms)
+[ RUN      ] UdfIRBuilderTest.StringToInt2
+[       OK ] UdfIRBuilderTest.StringToInt2 (6 ms)
+[ RUN      ] UdfIRBuilderTest.StringToBigint0
+[       OK ] UdfIRBuilderTest.StringToBigint0 (6 ms)
+[ RUN      ] UdfIRBuilderTest.StringToBigint1
+[       OK ] UdfIRBuilderTest.StringToBigint1 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToBigint2
+[       OK ] UdfIRBuilderTest.StringToBigint2 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDouble0
+[       OK ] UdfIRBuilderTest.StringToDouble0 (7 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDouble1
+[       OK ] UdfIRBuilderTest.StringToDouble1 (6 ms)
+[ RUN      ] UdfIRBuilderTest.StringToDouble2
+[       OK ] UdfIRBuilderTest.StringToDouble2 (9 ms)
+[ RUN      ] UdfIRBuilderTest.StringToFloat0
+[       OK ] UdfIRBuilderTest.StringToFloat0 (6 ms)
+[ RUN      ] UdfIRBuilderTest.StringToFloat1
+[       OK ] UdfIRBuilderTest.StringToFloat1 (8 ms)
+[ RUN      ] UdfIRBuilderTest.StringToFloat2
+[       OK ] UdfIRBuilderTest.StringToFloat2 (6 ms)
+[ RUN      ] UdfIRBuilderTest.LikeMatch
+[       OK ] UdfIRBuilderTest.LikeMatch (99 ms)
+[ RUN      ] UdfIRBuilderTest.IlikeMatch
+[       OK ] UdfIRBuilderTest.IlikeMatch (93 ms)
+[ RUN      ] UdfIRBuilderTest.rlike_match
+[       OK ] UdfIRBuilderTest.rlike_match (120 ms)
+[ RUN      ] UdfIRBuilderTest.Reverse
+[       OK ] UdfIRBuilderTest.Reverse (50 ms)
+[ RUN      ] UdfIRBuilderTest.Degrees
+[       OK ] UdfIRBuilderTest.Degrees (48 ms)
+[ RUN      ] UdfIRBuilderTest.CharTest
+[       OK ] UdfIRBuilderTest.CharTest (45 ms)
+[ RUN      ] UdfIRBuilderTest.CharLengthUdfTest
+[       OK ] UdfIRBuilderTest.CharLengthUdfTest (26 ms)
+[ RUN      ] UdfIRBuilderTest.DegreeToRadiusCheck
+[       OK ] UdfIRBuilderTest.DegreeToRadiusCheck (29 ms)
+[ RUN      ] UdfIRBuilderTest.Replace
+[       OK ] UdfIRBuilderTest.Replace (33 ms)
+[ RUN      ] UdfIRBuilderTest.ReplaceWithoutReplaceStr
+[       OK ] UdfIRBuilderTest.ReplaceWithoutReplaceStr (27 ms)
+[ RUN      ] UdfIRBuilderTest.ReplaceNullable
+[       OK ] UdfIRBuilderTest.ReplaceNullable (73 ms)
+[----------] 120 tests from UdfIRBuilderTest (2977 ms total)
+
+[----------] Global test environment tear-down
+[==========] 120 tests from 1 test suite ran. (2977 ms total)
+[  PASSED  ] 120 tests.
