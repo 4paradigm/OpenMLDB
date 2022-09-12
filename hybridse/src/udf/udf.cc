@@ -66,9 +66,9 @@ void hex(StringRef *str, StringRef *output) {
 
 void unhex(StringRef *str, StringRef *output) {
     std::ostringstream ss;
-    uint32_t* arr = new uint32_t[str->size_];
+    uint8_t* arr = new uint8_t[str->size_];
     memset(arr, 0, str->size_);
-    uint32_t flag = 0;
+    bool flag = 0;
     for (uint32_t i=0; i < str->size_; i++) {
         // only recognize 'A' to 'F' and 'a' to 'f' and '0' to '9', otherwise return null.
         if (str->data_[i] <= 'F' && str->data_[i] >= 'A') {
@@ -82,7 +82,7 @@ void unhex(StringRef *str, StringRef *output) {
             break;
         }
     }
-    if (flag == 0) {
+    if (flag == 0) {    // every character is valid hex character
         if (str->size_ % 2 == 0) {
             for (uint32_t i=0; i < str->size_; i+=2) {
                 ss << char(arr[i] << 4 | arr[i+1]);
