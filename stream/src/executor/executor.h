@@ -1,0 +1,62 @@
+/*
+ *  Copyright 2021 4Paradigm
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef STREAM_SRC_EXECUTOR_EXECUTOR_H_
+#define STREAM_SRC_EXECUTOR_EXECUTOR_H_
+
+#include <glog/logging.h>
+
+#include <atomic>
+#include <memory>
+#include <thread>
+
+namespace streaming {
+namespace interval_join {
+
+class Executor {
+ public:
+    explicit Executor(int id = 0) : id_(id) {}
+    virtual ~Executor() {}
+    int Run() {
+        thread_ = std::make_unique<std::thread>(&Executor::Process, this);
+        return 0;
+    }
+
+    void Join() {
+        if (thread_) {
+            thread_->join();
+        } else {
+            LOG(WARNING) << "thread is not inited";
+        }
+    }
+
+    inline int id() const { return id_; }
+
+    void Stop() { stop_ = true; }
+
+ protected:
+    virtual int Process() = 0;
+    volatile bool stop_ = false;
+
+ private:
+    std::unique_ptr<std::thread> thread_;
+    int id_;
+};
+
+}  // namespace interval_join
+}  // namespace streaming
+
+#endif  // STREAM_SRC_EXECUTOR_EXECUTOR_H_

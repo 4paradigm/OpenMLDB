@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.13)
+project(interval_join)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "" FORCE)
+
+set(CMAKE_C_FLAGS "-Wall -Wextra" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-g" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "" FORCE)
+
+if (TESTING_ENABLE)
+    enable_testing()
+endif ()
+
+include_directories(
+        ${PROJECT_SOURCE_DIR}/../include
+        ${PROJECT_SOURCE_DIR}/../src
+        ${CMAKE_CURRENT_BINARY_DIR}/../src
+)
+
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_BINARY_DIR}")
+
+add_subdirectory(src)
