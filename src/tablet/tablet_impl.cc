@@ -767,16 +767,19 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         if (request->ts_dimensions_size() > 0) {
             entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
-        replicator->AppendEntry(entry);
-    } while (false);
 
-    ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                     request->dimensions(), entry.log_index());
-    if (!ok) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg("update aggr failed");
-        return;
-    }
+        auto update_aggr = [this, &request, &ok, log_offset = entry.log_index()]() {
+            ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
+                               request->dimensions(), log_offset);
+        };
+        UpdateAggrClosure closure(update_aggr);
+        replicator->AppendEntry(entry, &closure);
+        if (!ok) {
+            response->set_code(::openmldb::base::ReturnCode::kError);
+            response->set_msg("update aggr failed");
+            return;
+        }
+    } while (false);
 
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_put_slow_log_threshold < end_time) {
