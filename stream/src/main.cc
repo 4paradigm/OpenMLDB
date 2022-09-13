@@ -66,7 +66,7 @@ DEFINE_int32(print_out_num, 10, "number of output to print out");
 DEFINE_bool(time_record, true, "whether do time recording");
 DEFINE_int32(hash_size, 1024, "the hash size of BalancedPartitionStrategy");
 DEFINE_bool(latency_record, true, "whether do latency recording");
-DEFINE_string(latency_output_file, "data/latency.csv", "file path for output of latency analysis");
+DEFINE_string(latency_output_file, "latency.csv", "file path for output of latency analysis");
 DEFINE_bool(accuracy_check, true, "whether do accuracy check");
 DEFINE_bool(overlapping, false, "whether use the overlapping technique");
 DEFINE_bool(overlapping_record, false, "whether do overlapping recording");
