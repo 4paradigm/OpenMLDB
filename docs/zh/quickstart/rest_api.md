@@ -85,7 +85,7 @@ The request body example:
 {
     "mode": "online",
     "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
-    "parameter": {
+    "input": {
       "schema": ["Int32", "String"],
       "data": [1, "aaa"]
     }
@@ -100,7 +100,7 @@ The response:
 {
     "code":0,
     "msg":"ok",
-    "result": {
+    "data": {
       "schema": ["Int32", "String", "Float"],
       "data": [[1, "aaa", 1.2], [1, "aaa", 3.4]]
     }

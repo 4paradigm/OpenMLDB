@@ -178,7 +178,7 @@ TEST_F(APIServerTest, query) {
         {
             "code": 0,
             "msg": "ok",
-            "result": {
+            "data": {
                 "schema": ["Int32", "String"],
                 "data": [[1, "bb"]]
             }
@@ -186,13 +186,13 @@ TEST_F(APIServerTest, query) {
         */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(2, document["result"]["schema"].Size());
-        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
-        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
-        ASSERT_EQ(1, document["result"]["data"].Size());
-        ASSERT_EQ(2, document["result"]["data"][0].Size());
-        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
@@ -217,7 +217,9 @@ TEST_F(APIServerTest, parameterizedQuery) {
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
         cntl.request_attachment().append(R"({
-            "sql": "select c1, c2 from demo where c2 = ?;", "mode": "online", "parameters": {
+            "sql": "select c1, c2 from demo where c2 = ?;",
+            "mode": "online", 
+            "input": {
                 "schema": ["STRING"],
                 "data": ["bb"]
             }
@@ -236,7 +238,7 @@ TEST_F(APIServerTest, parameterizedQuery) {
         {
             "code": 0,
             "msg": "ok",
-            "result": {
+            "data": {
                 "schema": ["Int32", "String"],
                 "data": [[1, "bb"], [2, "bb"]]
             }
@@ -244,23 +246,25 @@ TEST_F(APIServerTest, parameterizedQuery) {
         */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(2, document["result"]["schema"].Size());
-        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
-        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
-        ASSERT_EQ(2, document["result"]["data"].Size());
-        ASSERT_EQ(2, document["result"]["data"][0].Size());
-        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
-        ASSERT_EQ(2, document["result"]["data"][1].Size());
-        ASSERT_EQ(2, document["result"]["data"][1][0].GetInt());
-        ASSERT_STREQ("bb", document["result"]["data"][1][1].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
+        ASSERT_EQ(2, document["data"]["data"][1].Size());
+        ASSERT_EQ(2, document["data"]["data"][1][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][1][1].GetString());
     }
     {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
         cntl.request_attachment().append(R"({
-            "sql": "select c1, c2 from demo where c2 = ? and c1 = ?;", "mode": "online", "parameters": {
+            "sql": "select c1, c2 from demo where c2 = ? and c1 = ?;",
+            "mode": "online",
+            "input": {
                 "schema": ["STRING", "INT"],
                 "data": ["bb", 1]
             }
@@ -279,7 +283,7 @@ TEST_F(APIServerTest, parameterizedQuery) {
         {
             "code": 0,
             "msg": "ok",
-            "result": {
+            "data": {
                 "schema": ["Int32", "String"],
                 "data": [[1, "bb"]]
             }
@@ -287,13 +291,13 @@ TEST_F(APIServerTest, parameterizedQuery) {
         */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(2, document["result"]["schema"].Size());
-        ASSERT_STREQ("Int32", document["result"]["schema"][0].GetString());
-        ASSERT_STREQ("String", document["result"]["schema"][1].GetString());
-        ASSERT_EQ(1, document["result"]["data"].Size());
-        ASSERT_EQ(2, document["result"]["data"][0].Size());
-        ASSERT_EQ(1, document["result"]["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["result"]["data"][0][1].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));

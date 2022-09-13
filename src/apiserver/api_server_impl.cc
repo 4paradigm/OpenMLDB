@@ -638,15 +638,16 @@ JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
     // mode is not optional
     ar.Member("mode") & s.mode;
     ar.Member("sql") & s.sql;
-    if (ar.HasMember("parameters")) {
-        ar.Member("parameters") & s.parameter;
+    if (ar.HasMember("input")) {
+        ar.Member("input") & s.parameter;
     }
     return ar.EndObject();
 }
 
 JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
-    ar.StartObject();                                                                              // start "parameter"
-    if (!ar.HasMember("schema") || !ar.HasMember("data")) return ar;
+    ar.StartObject();
+
+    if (!ar.HasMember("schema") || !ar.HasMember("data")) return ar.EndObject();
 
     ::hybridse::vm::Schema schema;
     {
@@ -772,7 +773,7 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
         ar.EndArray();  // end second iter "data"
     }
 
-    return ar.EndObject();  // end "parameter"
+    return ar.EndObject();
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
@@ -1113,68 +1114,66 @@ JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;
     if (s.rs) {
-        ar.Member("result");
-        ar.StartObject();  // start result
-        {
-            ar.Member("schema");
-            ar.StartArray();  // start schema
-            auto& rs = s.rs;
-            rs->Reset();
-            auto& schema = *rs->GetSchema();
-            for (auto n = schema.GetColumnCnt(), i = 0; i < n; i++) {
-                std::string type;
-                switch (schema.GetColumnType(i)) {
-                    case hybridse::sdk::kTypeBool:
-                        type = "Bool";
-                        break;
-                    case hybridse::sdk::kTypeInt16:
-                        type = "Int16";
-                        break;
-                    case hybridse::sdk::kTypeInt32:
-                        type = "Int32";
-                        break;
-                    case hybridse::sdk::kTypeInt64:
-                        type = "Int64";
-                        break;
-                    case hybridse::sdk::kTypeFloat:
-                        type = "Float";
-                        break;
-                    case hybridse::sdk::kTypeDouble:
-                        type = "Double";
-                        break;
-                    case hybridse::sdk::kTypeString:
-                        type = "String";
-                        break;
-                    case hybridse::sdk::kTypeDate:
-                        type = "Date";
-                        break;
-                    case hybridse::sdk::kTypeTimestamp:
-                        type = "Timestamp";
-                        break;
-                    default:
-                        type = "Unknown";
-                        break;
-                }
-                ar& type;
+        auto& rs = s.rs;
+        auto& schema = *rs->GetSchema();
+
+        ar.Member("data");
+        ar.StartObject();  // start data
+
+        ar.Member("schema");
+        ar.StartArray();  // start schema
+        rs->Reset();
+        for (auto n = schema.GetColumnCnt(), i = 0; i < n; i++) {
+            std::string type;
+            switch (schema.GetColumnType(i)) {
+                case hybridse::sdk::kTypeBool:
+                    type = "Bool";
+                    break;
+                case hybridse::sdk::kTypeInt16:
+                    type = "Int16";
+                    break;
+                case hybridse::sdk::kTypeInt32:
+                    type = "Int32";
+                    break;
+                case hybridse::sdk::kTypeInt64:
+                    type = "Int64";
+                    break;
+                case hybridse::sdk::kTypeFloat:
+                    type = "Float";
+                    break;
+                case hybridse::sdk::kTypeDouble:
+                    type = "Double";
+                    break;
+                case hybridse::sdk::kTypeString:
+                    type = "String";
+                    break;
+                case hybridse::sdk::kTypeDate:
+                    type = "Date";
+                    break;
+                case hybridse::sdk::kTypeTimestamp:
+                    type = "Timestamp";
+                    break;
+                default:
+                    type = "Unknown";
+                    break;
             }
-            ar.EndArray();  // end schema
+            ar& type;
         }
-        {
-            ar.Member("data");
+        ar.EndArray();  // end schema
+
+        ar.Member("data");
+        ar.StartArray();  // start data
+        rs->Reset();
+        while (rs->Next()) {
             ar.StartArray();
-            auto& rs = s.rs;
-            rs->Reset();
-            auto& schema = *rs->GetSchema();
-            while (rs->Next()) {
-                ar.StartArray();
-                for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-                    WriteValue(ar, rs, i);
-                }
-                ar.EndArray();
+            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                WriteValue(ar, rs, i);
             }
             ar.EndArray();
         }
-        ar.EndObject();  // end result
+        ar.EndArray();  // end data
+
+        ar.EndObject();  // end data
     }
     return ar.EndObject();
 }
