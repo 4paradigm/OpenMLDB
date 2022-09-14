@@ -50,6 +50,8 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
     std::string spark_conf_path;
+    uint32_t zk_log_level = 3; // PY/JAVA SDK default info log
+    std::string zk_log_file;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
