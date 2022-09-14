@@ -187,7 +187,8 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
             const auto& column_desc = table_meta.added_column_desc(idx);
             ::openmldb::type::DataType type = column_desc.data_type();
             const std::string& name = column_desc.name();
-            auto col = std::make_shared<ColumnDef>(name, idx + table_meta.column_desc_size(), type, column_desc.not_null());
+            auto col = std::make_shared<ColumnDef>(name, idx + table_meta.column_desc_size(),
+                    type, column_desc.not_null());
             col_map.emplace(name, col);
             if (ts_col_set.find(name) != ts_col_set.end()) {
                 if (!ColumnDef::CheckTsType(type)) {
