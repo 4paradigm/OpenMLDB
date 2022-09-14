@@ -1,98 +1,95 @@
-# TalkingData 广告欺诈检测
+# OpenMLDB + XGBoost: TalkingData Ad Tracking Fraud Detection
 
-我们将演示如何使用 [OpenMLDB](https://github.com/4paradigm/OpenMLDB) 与其他开源软件一起开发一个完整的机器学习应用程序，完成 TalkingData 广告欺诈检测挑战（有关此挑战的更多信息请参阅 [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)）。
+We will demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) together with other open source software to develop a machine learning script in order to complete the TalkingData AD Fraud Detection challenge (see more information on this challenge in [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)).
 
-## 准备工作
+## 1 Preparations
 
-### OpenMLDB
+### 1.1 Download OpenMLDB
 
-#### 在 Docker 中运行
+#### 1.1.1 Run in Docker
 
-我们建议您使用docker来运行此 Demo。OpenMLDB 和依赖项都已安装完毕。
+It is recommended to run this Demo in Docker. Please make sure that OpenMLDB and its dependencies are installed.
 
-**启动 Docker**
+**Start the OpenMLDB Docker Image**
 
 ```
 docker run -it 4pdosc/openmldb:0.6.1 bash
 ```
 
-#### 在本地运行
+#### 1.1.2 Run Locally
 
-下载 OpenMLDB 服务器 pkg，版本>=0.5.0。
-
-安装所有依赖项：
-
+If you want to run this demo locally, please run following command to install all dependencies after downloading OpenMLDB Server pkg and make sure your version is higher than 0.5.0:
 ```
 pip install pandas xgboost==1.4.2 sklearn tornado "openmldb>=0.5.0" requests
 ```
 
-### 准备数据
 
-我们只使用 `train.csv` 的前10000行作为示例数据，请参见 `demo/talkingdata-adtracking-fraud-detection/train_sample.csv`。
+### 1.2 Data Preparation
 
-如果你想要测试完整数据，请通过以下方式下载
-
+In this example, only the first 10000 rows in the training set provided by Kaggle will be used, see the data in [train\_sample.csv](https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection).
+To download the complete dataset, please run the command:
 ```
 kaggle competitions download -c talkingdata-adtracking-fraud-detection
 ```
+After download, please extract the data to `demo/talkingdata-adtracking-fraud-detection/data` and call the `cut_data()` function in the [train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py) to make new dataset for training.
 
-并将数据解压缩到 `demo/talkingdata-adtracking-fraud-detection/data` 。然后调用 `train_and_serve.py` 中的 `cut_data()` 方法，制作新的csv样本用于训练。
 
-## 过程
-
-### 启动 OpenMLDB 集群
+### 1.3 Start the OpenMLDB Cluster
 
 ```
 /work/init.sh
 ```
 
-### 启动预测服务器
+### 1.4 Start the Prediction Server
 
-即使您还没有部署预测服务器，您可以启动它，使用选项 `--no-init`。
+Even if you haven't deployed the prediction server, you can start it with the option `--no-init`.
 
 ```
 python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
-训练完毕后，您可以发送 post 请求至 `<ip>:<port>/update` 更新预测服务器。
+```{tip}
+- To stop the prediction server, please use `pkill -9 python3` command.
+- You can send the post request `<ip>:<port>/update` to update the prediction server after training.
+```
 
-您可以运行 `pkill -9 python3` 命令，关闭后台预测服务器。
 
-### 训练并应用
+## 2 Training and Serving
 
 ```
 cd /work/talkingdata
 python3 train_and_serve.py
 ```
+The python script [train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py) uses the OpenMLDB for feature extraction and the XGBoost model for training. 
+The script completes the following tasks:
 
-我们使用 OpenMLDB 提取特征，并通过 xgboost 进行训练，请参见[train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py)。
+1. Loading the data into the offline storage.
+2. Extracting the features offline:
+   * Number of clicks of the 'ip-day-hour' group in 1h window.
+   * Number of clicks of the 'ip-app' group in unlimited window.
+   * Number of clicks of the 'ip-app-os' group in unlimited window.
+3. Training and saving the model.
+4. Deploying the SQL.
+5. Loading the data into the online storage.
+6. Updating the model on the prediction server.
 
-1. 将数据加载到离线存储
-2. 离线特征提取；
-   * ip-day-hour 组合的点击次数 -> 窗口期 1h
-   * ip-app 组合的点击次数 -> 无限窗口期
-   * ip-app-os 组合的点击次数 -> 无限窗口期 
-3. 训练并保存模型
-4. 部署sql
-5. 加载数据到在线存储
-6. 更新预测服务器上的模型
+## 3 Prediction
 
-### 预测
-
-向预测服务器发送post请求 `<ip>:<port>/predict` 即可进行一次预测。或者您也可以运行下面的python脚本。
-
+For prediction, send the post request  `<ip>:<port>/predict` to the prediction server, or you can run the python script through the command below:
 ```
 python3 predict.py
 ```
 
-## 注意
+## 4 Note
 
 ```{note}
-预构建的 xgboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容，可能会出现该报错：
+The pre-installed xgboost python wheel may be incompatible with the openmldb python sdk on your computer, which may lead to the following error:
 `train\_and\_serve.py core dump at SetGPUAttribute...`
-通过源代码构建xgboost可解决该问题：进入 xgboost 源代码所在的目录，并执行
+
+Installing the XGBoost by the source code may resolve the problem. Please switch to the path of the XGBoost source code and execute:
 `cd python-package && python setup.py install`
-或者构建 wheel ：
+
+Another solution is to construct the wheel by:
 `python setup.py bdist_wheel`
 ```
 
