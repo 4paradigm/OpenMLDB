@@ -184,6 +184,20 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
                 }
             }
         }
+        for (int idx = 0; idx < table_meta.added_column_desc_size(); idx++) {
+            const auto& column_desc = table_meta.added_column_desc(idx);
+            std::shared_ptr<ColumnDef> col;
+            ::openmldb::type::DataType type = column_desc.data_type();
+            const std::string& name = column_desc.name();
+            col = std::make_shared<ColumnDef>(name, idx + table_meta.column_desc_size(), type, column_desc.not_null());
+            col_map.emplace(name, col);
+            if (ts_col_set.find(name) != ts_col_set.end()) {
+                if (!ColumnDef::CheckTsType(type)) {
+                    LOG(WARNING) << "type mismatch, col " << name << " is can not set ts col, tid " << tid;
+                    return -1;
+                }
+            }
+        }
         uint32_t key_idx = 0;
         for (int pos = 0; pos < table_meta.column_key_size(); pos++) {
             const auto& column_key = table_meta.column_key(pos);
