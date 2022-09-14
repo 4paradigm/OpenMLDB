@@ -768,9 +768,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
 
-        auto update_aggr = [this, &request, &ok, log_offset = entry.log_index()]() {
+        auto update_aggr = [this, &request, &ok, &entry]() {
             ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                               request->dimensions(), log_offset);
+                               request->dimensions(), entry.log_index());
         };
         UpdateAggrClosure closure(update_aggr);
         replicator->AppendEntry(entry, &closure);
