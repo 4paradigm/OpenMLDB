@@ -21,7 +21,7 @@ import com._4paradigm.hybridse.node.JoinType
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.functions.monotonically_increasing_id
+import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.slf4j.LoggerFactory
@@ -161,6 +161,25 @@ object SparkUtil {
   def disableSparkLog(): Unit = {
     Logger.getLogger("org").setLevel(Level.OFF);
     Logger.getLogger("akka").setLevel(Level.OFF);
+  }
+
+  /**
+   * Union the dataframe even if they have different schema by dropping the left columns of the larger dataframe.
+   *
+   * @param df1 the first dataframe
+   * @param df2 the seocnd dataframe
+   * @return the output union dataframe
+   */
+  def compatibleUnion(df1: DataFrame, df2: DataFrame): DataFrame = {
+    if (df1.schema.size == df2.schema.size) {
+      df1.union(df2)
+    } else if (df1.schema.size > df2.schema.size) {
+      // Select last columns from df1
+      df1.select(df1.columns.takeRight(df2.schema.size).map(c=>col(c)): _*).union(df2)
+    } else {
+      // Select last columns from df2
+      df1.union(df2.select(df2.columns.takeRight(df1.schema.size).map(c=>col(c)): _*))
+    }
   }
 
 }

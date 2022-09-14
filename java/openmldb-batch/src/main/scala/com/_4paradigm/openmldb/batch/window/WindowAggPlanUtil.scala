@@ -88,7 +88,8 @@ object WindowAggPlanUtil {
     val leftTable = inputDf.withColumn(uniqueColName, functions.lit(true))
 
     // Union the left and right tables
-    rightTables.foldLeft(leftTable)((x, y) => x.union(y))
+    // Use compatible union becasue of https://github.com/4paradigm/OpenMLDB/issues/1807
+    rightTables.foldLeft(leftTable)((x, y) => SparkUtil.compatibleUnion(x, y))
   }
 
 

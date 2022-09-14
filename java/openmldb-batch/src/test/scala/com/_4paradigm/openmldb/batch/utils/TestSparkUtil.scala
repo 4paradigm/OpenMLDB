@@ -20,10 +20,10 @@ import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.utils.SparkUtil.{addColumnByMonotonicallyIncreasingId, addColumnByZipWithIndex,
-  addColumnByZipWithUniqueId, addIndexColumn, checkSchemaIgnoreNullable,
-  rddInternalRowToDf, smallDfEqual, supportNativeLastJoin, approximateDfEqual}
+  addColumnByZipWithUniqueId, addIndexColumn, approximateDfEqual, checkSchemaIgnoreNullable, rddInternalRowToDf,
+  smallDfEqual, supportNativeLastJoin}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType, TimestampType}
 
 import java.sql.Timestamp
 import scala.collection.JavaConverters.seqAsJavaListConverter
@@ -160,6 +160,26 @@ class TestSparkUtil extends SparkTestSuite {
     assert(approximateDfEqual(tableTest1, tableTest1))
     assert(!approximateDfEqual(tableTest1, tableTest2))
     assert(!approximateDfEqual(tableTest1, tableTest3))
+  }
+
+  test("Test compatibleUnion") {
+    val spark: SparkSession = getSparkSession
+
+    val data1 = Seq(Row("str1", "str2", Timestamp.valueOf("2014-01-01 23:00:01")))
+    val schema1 = StructType(List(
+      StructField("c1", StringType),
+      StructField("c2", StringType),
+      StructField("c3", TimestampType)))
+    val df1 = spark.createDataFrame(spark.sparkContext.makeRDD(data1), schema1)
+
+    val data2 = Seq(Row("str3", Timestamp.valueOf("2014-01-03 23:00:01")))
+    val schema2 = StructType(List(
+      StructField("c2", StringType),
+      StructField("c3", TimestampType)))
+    val df2 = spark.createDataFrame(spark.sparkContext.makeRDD(data2), schema2)
+
+    assert(SparkUtil.compatibleUnion(df1, df2).count() == 2)
+    assert(SparkUtil.compatibleUnion(df2, df1).count() == 2)
   }
 
 }
