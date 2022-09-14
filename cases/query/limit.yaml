@@ -14,6 +14,8 @@
 # - where clause
 # - group by
 #
+# limit clause is not supported in online serving mode
+#
 # cases:
 # - limit(table) -> 0
 # - limit(filter) -> 1*
