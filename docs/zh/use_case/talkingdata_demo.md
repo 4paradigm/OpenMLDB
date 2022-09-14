@@ -85,8 +85,14 @@ python3 train_and_serve.py
 python3 predict.py
 ```
 
-## 问答
+## 注意
 
-问：train\_and\_serve.py core dump at SetGPUAttribute...答：预构建的 xgboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容。您应该通过源代码构建xgboost。
+```{note}
+预构建的 xgboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容，可能会出现该报错：
+`train\_and\_serve.py core dump at SetGPUAttribute...`
+通过源代码构建xgboost可解决该问题：进入 xgboost 源代码所在的目录，并执行
+`cd python-package && python setup.py install`
+或者构建 wheel ：
+`python setup.py bdist_wheel`
+```
 
-进入 xgboost 源代码所在的目录，并执行 `cd python-package && python setup.py install` 或者构建 wheel `python setup.py bdist_wheel`.
