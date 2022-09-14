@@ -3500,7 +3500,7 @@ TEST_P(TabletImplTest, AbsAndLat) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
-    uint32_t id = 101;
+    uint32_t id = counter++;
     ::openmldb::api::CreateTableRequest request;
     auto table_meta = request.mutable_table_meta();
     {
@@ -4172,7 +4172,7 @@ TEST_P(TabletImplTest, AbsOrLat) {
     TabletImpl tablet;
     tablet.Init("");
     MockClosure closure;
-    uint32_t id = 102;
+    uint32_t id = counter++;
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
     {
