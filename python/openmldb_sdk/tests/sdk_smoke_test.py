@@ -90,9 +90,7 @@ def test_sdk_smoke():
     assert rs.Size() == 4
 
     # reset the request timeout
-    options = sdk_module.OpenMLDBClusterSdkOptions(
-        case_conf.OpenMLDB_ZK_CLUSTER,
-        case_conf.OpenMLDB_ZK_PATH,
+    options = sdk_module.OpenMLDBClusterSdkOptions(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH,
         request_timeout=1)
     sdk = sdk_module.OpenMLDBSdk(options, True)
     assert sdk.init()
