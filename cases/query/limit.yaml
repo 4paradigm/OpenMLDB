@@ -157,7 +157,7 @@ cases:
         - actionTime timestamp
       data: |
 
-  - id: 2
+  - id: 2-0
     mode: request-unsupport
     desc: |
       limit (window)
