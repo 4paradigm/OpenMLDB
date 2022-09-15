@@ -767,16 +767,22 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         if (request->ts_dimensions_size() > 0) {
             entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
-        replicator->AppendEntry(entry);
-    } while (false);
 
-    ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                     request->dimensions(), entry.log_index());
-    if (!ok) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg("update aggr failed");
-        return;
-    }
+        // Aggregator update assumes that binlog_offset is strictly increasing
+        // so the update should be protected within the replicator lock
+        // in case there will be other Put jump into the middle
+        auto update_aggr = [this, &request, &ok, &entry]() {
+            ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
+                               request->dimensions(), entry.log_index());
+        };
+        UpdateAggrClosure closure(update_aggr);
+        replicator->AppendEntry(entry, &closure);
+        if (!ok) {
+            response->set_code(::openmldb::base::ReturnCode::kError);
+            response->set_msg("update aggr failed");
+            return;
+        }
+    } while (false);
 
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_put_slow_log_threshold < end_time) {
