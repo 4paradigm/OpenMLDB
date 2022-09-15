@@ -1646,7 +1646,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> result;
             std::stringstream ss;
-            ::openmldb::cmd::PrintSchema(table->column_desc(), ss);
+            ::openmldb::cmd::PrintSchema(table->column_desc(), table->added_column_desc(), ss);
             std::vector<std::string> vec = {ss.str()};
             result.emplace_back(std::move(vec));
             ss.str("");

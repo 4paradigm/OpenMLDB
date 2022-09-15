@@ -79,7 +79,7 @@ __attribute__((unused)) static void PrintSchema(
 
     for (int i = 0; i < added_column_desc.size(); i++) {
         const auto& column = added_column_desc.Get(i);
-        t.add(std::to_string(i + 1));
+        t.add(std::to_string(column_desc.size() + i + 1));
         t.add(column.name());
         // kXXX discard k
         t.add(DataType_Name(column.data_type()).substr(1));

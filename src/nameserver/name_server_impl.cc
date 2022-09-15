@@ -3180,7 +3180,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<openmldb::common::Column
     uint32_t field_count = table_info->column_desc_size() + table_info->added_column_desc_size();
     version_id++;
     new_pair->set_id(version_id);
-    new_pair->set_field_count(field_count);
+    new_pair->set_field_count(field_count + cols.size());
 
     uint32_t tid = table_info->tid();
     std::string msg;
@@ -3228,15 +3228,6 @@ void NameServerImpl::AddTableField(RpcController* controller, const AddTableFiel
         // judge if field exists in table_info
         const std::string& col_name = request->column_desc().name();
         if (table_info->column_desc_size() > 0) {
-            for (const auto& column : table_info->column_desc()) {
-                if (column.name() == col_name) {
-                    response->set_code(ReturnCode::kFieldNameRepeatedInTableInfo);
-                    response->set_msg("field name repeated in table_info!");
-                    LOG(WARNING) << "field name[" << col_name << "] repeated in table_info!";
-                    return;
-                }
-            }
-        } else {
             for (const auto& column : table_info->column_desc()) {
                 if (column.name() == col_name) {
                     response->set_code(ReturnCode::kFieldNameRepeatedInTableInfo);
