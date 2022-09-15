@@ -768,6 +768,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
 
+        // Aggregator update assumes that binlog_offset is strictly increasing
+        // so the update should be protected within the replicator lock
+        // in case there will be other Put jump into the middle
         auto update_aggr = [this, &request, &ok, &entry]() {
             ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
                                request->dimensions(), entry.log_index());
