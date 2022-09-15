@@ -141,6 +141,10 @@ class SQLRouter {
                                                                  int offline_job_timeout,
                                                                  hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
+        const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+        bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
         hybridse::sdk::Status* status) = 0;
