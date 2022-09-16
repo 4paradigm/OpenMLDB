@@ -87,10 +87,10 @@ class OpenMLDBSdk(object):
         # common options
         if 'requestTimeout' in self.options_map:
             options.request_timeout = int(self.options_map['requestTimeout'])
-        if 'minLogLevel' in self.options_map:
-            options.min_glog_level = self.options_map['minLogLevel']
-        if 'logDir' in self.options_map:
-            options.glog_dir = self.options_map['logDir']
+        if 'glogLevel' in self.options_map:
+            options.glog_level = self.options_map['glogLevel']
+        if 'glogDir' in self.options_map:
+            options.glog_dir = self.options_map['glogDir']
 
         self.sdk = sql_router_sdk.NewClusterSQLRouter(
             options) if is_cluster_mode else sql_router_sdk.NewStandaloneSQLRouter(options)

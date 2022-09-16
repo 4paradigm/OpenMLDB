@@ -79,14 +79,20 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
 ```
 
-### 4. 如何配置客户端日志？
+### 4. 如何配置客户端的core日志？
 
-客户端日志主要有两种，zk日志和sdk日志，两者是独立的。
+客户端core日志主要有两种，zk日志和sdk日志（glog日志），两者是独立的。
 
 zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
+- `zk_log_level`(int, 默认=3, 即INFO): 
+打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
+
 sdk日志（glog日志）：
-1. CLI：启动时配置`--glog_level`调整level,`--openmldb_log_dir`配置日志保存文件。
-2. JAVA/Python SDK：Option或url中使用`minLogLevel`调整level，`logDir`配置日志保存文件。
+1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
+2. JAVA/Python SDK：Option或url中使用`gLogLevel`调整level，`glogDir`配置日志保存文件。
+
+- `glog_level`(int, 默认=0, 即INFO):
+打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。

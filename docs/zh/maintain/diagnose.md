@@ -69,7 +69,7 @@ openmldb_tool --dist_conf=/tmp/standalone_dist.yml
 - --exclude 不检查其中某一项。只有check设置为ALL才会生效。可以配置为CONF/LOG/SQL/VERSION
 - --log_level 设置日志级别，默认为info。可以设置为debug/warn/info
 - --log_dir 设置结果输出路径，默认为标准输出
-- --env 如果用start-all.sh启动的集群，需要指定为onbox, 其他情况不需要指定
+- --env 如果用start-all.sh启动的集群，需要指定为onebox, 其他情况不需要指定
 
 例如指定只检查配置文件，并且结果输出到当前目录下
 ```

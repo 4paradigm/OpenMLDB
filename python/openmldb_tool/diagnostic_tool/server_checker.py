@@ -29,7 +29,7 @@ class ServerChecker:
         connect_args = {'database': self.db_name}
         if not print_sdk_log:
             connect_args['zkLogLevel'] = 0
-            connect_args['minLogLevel'] = 2
+            connect_args['glogLevel'] = 2
 
         if conf_dict['mode'] == 'cluster':
             connect_args['zk'] = conf_dict['zookeeper']['zk_cluster']

@@ -44,7 +44,7 @@ struct BasicRouterOptions {
     // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
     // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
-    int min_glog_level = 0;
+    int glog_level = 0;
     // empty means to stderr
     std::string glog_dir = "";
 };

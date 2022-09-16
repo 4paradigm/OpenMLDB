@@ -24,6 +24,7 @@
 
 #include "boost/filesystem.hpp"
 #include "boost/format.hpp"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 using google::ERROR;
@@ -33,6 +34,7 @@ using google::WARNING;
 
 DECLARE_string(openmldb_log_dir);
 DECLARE_string(role);
+DECLARE_string(glog_dir);
 
 namespace openmldb {
 namespace base {
@@ -54,9 +56,13 @@ inline void SetLogLevel(int level) { log_level = level; }
 // For compatibility, use openmldb_log_dir instead of glog log_dir
 // If we want write log to stdout, set it empty
 inline void UnprotectedSetupGlog() {
+    // client only set the glog_dir, not openmldb_log_dir, it's ok to update the openmldb_log_dir
+    if (!FLAGS_glog_dir.empty()) {
+        FLAGS_openmldb_log_dir = FLAGS_glog_dir;
+    }
     if (!FLAGS_openmldb_log_dir.empty()) {
         boost::filesystem::create_directories(FLAGS_openmldb_log_dir);
-        // CLI/SDK set a new role name
+        // CLI/SDK may set a new role name
         if (FLAGS_role.empty()) {
             FLAGS_role = "client";
         }
@@ -71,7 +77,7 @@ inline void UnprotectedSetupGlog() {
 }
 
 // This func will init glog, use once_flag to avoid init glog twice
-// It'll use FLAGS_openmldb_log_dir and FLAGS_role to set log dir, 
+// It'll use FLAGS_openmldb_log_dir and FLAGS_role to set log dir,
 // and it's better to set FLAGS_minloglevel before it
 inline void SetupGLog() {
     static std::once_flag oc;

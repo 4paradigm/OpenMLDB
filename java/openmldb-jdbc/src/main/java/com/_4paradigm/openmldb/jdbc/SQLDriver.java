@@ -158,11 +158,11 @@ public class SQLDriver implements Driver {
         if (prop != null) {
             option.setZkLogFile(prop);
         }
-        prop = properties.getProperty("minLogLevel");
+        prop = properties.getProperty("glogLevel");
         if (prop != null) {
-            option.setMinGlogLevel(Integer.parseInt(prop));
+            option.setGlogLevel(Integer.parseInt(prop));
         }
-        prop = properties.getProperty("logDir");
+        prop = properties.getProperty("glogDir");
         if (prop != null) {
             option.setGlogDir(prop);
         }

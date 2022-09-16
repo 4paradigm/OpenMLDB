@@ -72,5 +72,6 @@ P.S. 如果你实时改动了代码，由于install到本地仓库存在之前�
 
 如果只想运行java测试：
 ```
-mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest" ?
+mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest"
+mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest#AnyMethod"
 ```

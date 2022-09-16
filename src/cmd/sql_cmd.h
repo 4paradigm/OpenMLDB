@@ -244,9 +244,9 @@ bool InitClusterSDK() {
 }
 
 void ClusterSQLClient() {
-    // use another flag to set minloglevel, cuz we don't want print info log by default.
+    // use another flag glog_level to set minloglevel, cuz we don't want print info log in client by default.
     FLAGS_minloglevel = FLAGS_glog_level;
-    // setup here cuz init sdk will print log too
+    // setup here cuz init xx sdk will print log too
     base::SetupGLog();
     if (!InitClusterSDK()) {
         return;
