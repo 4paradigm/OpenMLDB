@@ -80,7 +80,7 @@ public class JDBCDriverTest {
 
         log.info("can't see log below");
         connection = DriverManager.getConnection(String
-                .format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0&minLogLevel=1", dbName, zk, zkPath));
+                .format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0&glogLevel=1", dbName, zk, zkPath));
     }
 
     @Test
