@@ -178,8 +178,13 @@ class TestSparkUtil extends SparkTestSuite {
       StructField("c3", TimestampType)))
     val df2 = spark.createDataFrame(spark.sparkContext.makeRDD(data2), schema2)
 
-    assert(SparkUtil.compatibleUnion(df1, df2).count() == 2)
-    assert(SparkUtil.compatibleUnion(df2, df1).count() == 2)
+    val outputDf = SparkUtil.compatibleUnion(df1, df2)
+    assert(outputDf.count() == 2)
+    assert(outputDf.schema.size == 3)
+
+    val outputDf2 = SparkUtil.compatibleUnion(df2, df1)
+    assert(outputDf2.count() == 2)
+    assert(outputDf2.schema.size == 3)
   }
 
 }

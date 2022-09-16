@@ -21,10 +21,11 @@ import com._4paradigm.hybridse.node.JoinType
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
+import org.apache.spark.sql.functions.{col, lit, monotonically_increasing_id}
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import org.slf4j.LoggerFactory
+import scala.collection.mutable.ArrayBuffer
 
 
 object SparkUtil {
@@ -164,7 +165,7 @@ object SparkUtil {
   }
 
   /**
-   * Union the dataframe even if they have different schema by dropping the left columns of the larger dataframe.
+   * Union the dataframes even if they have different schema by adding left columns from the larger dataframe.
    *
    * @param df1 the first dataframe
    * @param df2 the seocnd dataframe
@@ -175,10 +176,20 @@ object SparkUtil {
       df1.union(df2)
     } else if (df1.schema.size > df2.schema.size) {
       // Select last columns from df1
-      df1.select(df1.columns.takeRight(df2.schema.size).map(c=>col(c)): _*).union(df2)
+      val newCols = ArrayBuffer[Column]()
+      for (i <- 0 until df1.schema.size - df2.schema.size) {
+        newCols.append(lit(null))
+      }
+      newCols.append(col("*"))
+      df1.union(df2.select(newCols.toList: _*))
     } else {
       // Select last columns from df2
-      df1.union(df2.select(df2.columns.takeRight(df1.schema.size).map(c=>col(c)): _*))
+      val newCols = ArrayBuffer[Column]()
+      for (i <- 0 until df2.schema.size - df1.schema.size) {
+        newCols.append(lit(null))
+      }
+      newCols.append(col("*"))
+      df1.select(newCols.toList: _*).union(df2)
     }
   }
 
