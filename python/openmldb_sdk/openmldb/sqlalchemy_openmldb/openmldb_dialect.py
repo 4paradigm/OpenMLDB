@@ -17,7 +17,6 @@
 import sys
 
 from pathlib import Path
-from typing import overload
 
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
