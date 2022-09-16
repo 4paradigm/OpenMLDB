@@ -70,7 +70,7 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
                 --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk hybridse_flags sqlite3
-                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
+                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${OS_LIBS} ${g_libs})
         if (TESTING_ENABLE_STRIP)
             strip_exe(${TEST_TARGET_NAME})
         endif()

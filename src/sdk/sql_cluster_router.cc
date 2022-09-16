@@ -1656,7 +1656,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> result;
             std::stringstream ss;
-            ::openmldb::cmd::PrintSchema(table->column_desc(), ss);
+            ::openmldb::cmd::PrintSchema(table->column_desc(), table->added_column_desc(), ss);
             std::vector<std::string> vec = {ss.str()};
             result.emplace_back(std::move(vec));
             ss.str("");
@@ -2450,6 +2450,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                                                                        bool is_online_mode, bool is_sync_job,
                                                                        int offline_job_timeout,
                                                                        hybridse::sdk::Status* status) {
+    return ExecuteSQL(db, sql, {}, is_online_mode, is_sync_job, offline_job_timeout, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
+    const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+    bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) {
     if (status == nullptr) {
         return {};
     }
@@ -2558,7 +2564,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
         case hybridse::node::kPlanTypeQuery: {
             if (!cluster_sdk_->IsClusterMode() || is_online_mode) {
                 // Run online query
-                return ExecuteSQLParameterized(db, sql, {}, status);
+                return ExecuteSQLParameterized(db, sql, parameter, status);
             } else {
                 // Run offline query
                 return ExecuteOfflineQuery(db, sql, is_sync_job, offline_job_timeout, status);
@@ -2568,7 +2574,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
             if (!cluster_sdk_->IsClusterMode() || is_online_mode) {
                 auto* select_into_plan_node = dynamic_cast<hybridse::node::SelectIntoPlanNode*>(node);
                 const std::string& query_sql = select_into_plan_node->QueryStr();
-                auto rs = ExecuteSQLParameterized(db, query_sql, {}, status);
+                auto rs = ExecuteSQLParameterized(db, query_sql, parameter, status);
                 if (!rs) {
                     return {};
                 }

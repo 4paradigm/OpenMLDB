@@ -67,7 +67,7 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
 在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
 
-### 3. 离线查询结果显示中文乱码
+### 3. 离线查询结果显示中文为什么乱码？
 
 在使用离线查询时，可能出现包含中文的查询结果乱码，主要和系统默认编码格式与Spark任务编码格式参数有关。
 
@@ -79,7 +79,15 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
 ```
 
-### 4. 如何配置客户端的core日志？
+### 4. 如何配置TaskManager来访问开启Kerberos的Yarn集群？
+
+如果Yarn集群开启Kerberos认证，TaskManager可以通过添加以下配置来访问开启Kerberos认证的Yarn集群。注意请根据实际配置修改keytab路径以及principal账号。
+
+```
+spark.default.conf=spark.yarn.keytab=/tmp/test.keytab;spark.yarn.principal=test@EXAMPLE.COM
+```
+
+### 5. 如何配置客户端的core日志？
 
 客户端core日志主要有两种，zk日志和sdk日志（glog日志），两者是独立的。
 
