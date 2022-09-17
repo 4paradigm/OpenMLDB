@@ -52,7 +52,7 @@ cp /work/talkingdata/train_sample.csv /tmp/
 ```
 
 ### 步骤1: 启动OpenMLDB与Airflow
-以下命令，将启动OpenMLDB cluster，支持上线并测试的predict server，与Airflow standalone。
+以下命令将启动OpenMLDB cluster，支持上线并测试的predict server，与Airflow standalone。
 ```
 /work/init.sh
 python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
