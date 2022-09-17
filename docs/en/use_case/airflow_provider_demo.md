@@ -1,6 +1,6 @@
 # Airflow OpenMLDB Provider 
 We provide the [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb) to use the OpenMLDB in Airflow DAG more easily.
-This example will use the Airflow to manage the training and deployment tasks in the [TalkingData Demo](talkingdata_demo).
+This manual will use the Airflow to manage the training and deployment tasks in the [TalkingData Demo](talkingdata_demo).
 
 ## TalkingData DAG
 
@@ -8,12 +8,11 @@ We will use the DAG created by [example_openmldb_complex.py](https://github.com/
 You can import the DAG into the Airflow and run it directly.
 ![airflow dag](images/airflow_dag.png)
 
-DAG流程如上图所示，首先建表，然后进行离线数据导入与特征抽取，如果效果良好(auc>=99.0)，就进行SQL和模型的上线。反之，则报告失败。
-The workflow of the DAG is shown above. The tables will be created at first, then offline data will be imported and processed for feature extraction
+The workflow of the DAG is shown above. The tables will be created at first, then offline data will be imported and processed for feature extraction. After training, if the AUC of the model is greater than 99.0, then the SQL script and the model can be deployed. Otherwise, the workflow will report failure. 
 
 ## Example
 
-我们导入上述的DAG完成TalkingData Demo中的特征计算与上线，并使用TalkingData Demo的predict server来进行上线后的实时推理测试。
+We will use the DAG above to complete the feature extraction and deployment work in the [TalkingData Demo](talkingdata_demo), and the predict_server in this demo is responsible for the real-time prediction after deployment.
 
 ### Preparations
 
