@@ -9,7 +9,7 @@ Airflow中需要编写DAG文件，本案例使用example中的[example_openmldb_
 
 ![airflow dag](images/airflow_dag.png)
 
-DAG流程如上图所示，首先建表，然后进行离线数据导入与特征抽取，如果效果良好(auc>=99.0)，就进行SQL和模型的上线。反之，则报告失败。
+DAG流程如上图所示，首先建表，然后进行离线数据导入与特征抽取，如果训练的模型效果良好(auc>=99.0)，就进行SQL和模型的上线。反之，则报告失败。
 
 在接下来的演示中，可以将这个DAG直接导入Airflow并运行。
 

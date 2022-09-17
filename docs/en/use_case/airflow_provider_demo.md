@@ -1,17 +1,15 @@
 # Airflow OpenMLDB Provider 
-我们提供了[Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb)，使得在Airflow DAG中能更容易地使用OpenMLDB。
-
-本案例将通过Airflow编排[TalkingData](talkingdata_demo)的训练与上线过程。
+We provide the [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb) to use the OpenMLDB in Airflow DAG more easily.
+This example will use the Airflow to manage the training and deployment tasks in the [TalkingData Demo](talkingdata_demo).
 
 ## TalkingData DAG
 
-Airflow中需要编写DAG文件，本案例使用example中的[example_openmldb_complex.py](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags/example_openmldb_complex.py)。
-
+We will use the DAG created by [example_openmldb_complex.py](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags/example_openmldb_complex.py) in the Airflow.
+You can import the DAG into the Airflow and run it directly.
 ![airflow dag](images/airflow_dag.png)
 
 DAG流程如上图所示，首先建表，然后进行离线数据导入与特征抽取，如果效果良好(auc>=99.0)，就进行SQL和模型的上线。反之，则报告失败。
-
-在接下来的演示中，可以将这个DAG直接导入Airflow并运行。
+The workflow of the DAG is shown above. The tables will be created at first, then offline data will be imported and processed for feature extraction
 
 ## Example
 
