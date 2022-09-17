@@ -10,3 +10,4 @@ Use Cases
     kafka_connector_demo
     dolphinscheduler_task_demo
     JD_recommendation_en
+    airflow_provider_demo
