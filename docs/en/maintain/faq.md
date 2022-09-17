@@ -68,7 +68,7 @@ This is because the `addr` side actively disconnected, and the address of `addr`
 In version 0.5.0 and later, the taskmanager's `server.channel_keep_alive_time` can be increased to increase the tolerance of inactive channels. The default value is 1800s (0.5h), especially when using synchronous offline commands, this value may need to be adjusted appropriately.
 In versions before 0.5.0, this configuration cannot be changed, please upgrade the taskmanager version.
 
-### 3. Unrecognizable code of offline queries
+### 3. Why we get unrecognizable result of offline queries?
 
 When we are using offline queries, the result which contains Chinese may be printed as unrecognizable code. It is related with default system encoding and encoding configuration of Saprk jobs. 
 
@@ -78,4 +78,12 @@ Here is the way to configure client in [Spark Client Config](../reference/client
 
 ```
 spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
+```
+
+### 4. How to config TaskManager to access Kerberos-enabled Yarn cluster?
+
+If Yarn cluster enables Kerberos authentication, we can add the following configuration to access the Kerberos-enabled Yarn cluster. Notice that we need to update the actual keytab file path and principle account.
+
+```
+spark.default.conf=spark.yarn.keytab=/tmp/test.keytab;spark.yarn.principal=test@EXAMPLE.COM
 ```

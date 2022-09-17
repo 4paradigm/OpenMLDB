@@ -45,7 +45,7 @@ public class JDBCDriverTest {
         String zkPath = TestConfig.ZK_PATH;
         try {
             Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
-            // No database in jdbcUrl
+            // No database in jdbcUrl, and print zk log
             connection = DriverManager.getConnection(String.format("jdbc:openmldb:///?zk=%s&zkPath=%s", zk, zkPath));
             Statement stmt = connection.createStatement();
             try {
@@ -55,8 +55,8 @@ public class JDBCDriverTest {
             }
 
             connection.close();
-            // Set database in jdbcUrl, so we don't need to execute 'use db'
-            connection = DriverManager.getConnection(String.format("jdbc:openmldb:///%s?zk=%s&zkPath=%s", dbName, zk, zkPath));
+            // Set database in jdbcUrl, so we don't need to execute 'use db', no zk log
+            connection = DriverManager.getConnection(String.format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0", dbName, zk, zkPath));
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
             Assert.fail("jdbc connection failed");

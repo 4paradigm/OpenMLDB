@@ -21,7 +21,6 @@ from diagnostic_tool.log_analysis import LogAnalysis
 from diagnostic_tool.server_checker import ServerChecker
 import diagnostic_tool.util as util
 import sys
-import os
 import logging
 from absl import app
 from diagnostic_tool.conf_option import ConfOption
@@ -77,8 +76,8 @@ def check_log(yaml_conf_dict, log_map):
     if flag:
         log.info('check log ok')
 
-def run_test_sql(dist_conf : DistConf):
-    checker = ServerChecker(dist_conf.full_conf)
+def run_test_sql(dist_conf : DistConf, print_sdk_log):
+    checker = ServerChecker(dist_conf.full_conf, print_sdk_log)
     if checker.run_test_sql():
         log.info('test sql execute ok.')
 
@@ -127,7 +126,7 @@ def main(argv):
     if conf_opt.check_log():
         check_log(dist_conf.full_conf, file_map['log'])
     if conf_opt.check_sql():
-        run_test_sql(dist_conf)
+        run_test_sql(dist_conf, conf_opt.print_sdk_log())
 
 def run():
     app.run(main)

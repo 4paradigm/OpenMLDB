@@ -258,7 +258,7 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.3
 ```
 
 
-### 部署apiserver
+### 部署 APIServer
 
 APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无状态的，而且并不是OpenMLDB必须部署的组件。
 运行前需确保OpenMLDB cluster已经启动，否则APIServer将初始化失败并退出进程。

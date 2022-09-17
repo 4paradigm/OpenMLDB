@@ -72,14 +72,14 @@ class JsonReader {
 
     JsonReader& SetNull();
 
+    void Next();
+
     static const bool IsReader = true;
     static const bool IsWriter = !IsReader;
 
  private:
     JsonReader(const JsonReader&);
     JsonReader& operator=(const JsonReader&);
-
-    void Next();
 
     // PIMPL
     void* document_;  ///< DOM result of parsing.

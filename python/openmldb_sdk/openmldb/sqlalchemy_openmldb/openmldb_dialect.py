@@ -122,6 +122,8 @@ class OpenmldbDialect(default.DefaultDialect):
         self._zk = url.query.get("zk")
         self._zkPath = url.query.get("zkPath")
         self._requestTimeout = url.query.get("requestTimeout")
+        self._zkLogLevel = url.query.get("zkLogLevel")
+        self._zkLogFile = url.query.get("zkLogFile")
 
         qargs["db"] = self._db
         qargs.update(url.query)

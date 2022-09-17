@@ -66,11 +66,13 @@ object RunOpenmldbSqlWithJson {
     // Read config
     val sparkBuilder = SparkSession.builder()
     val configsJson = jsonElement.getAsJsonArray("config")
-    for (i <- 0 until configsJson.size) {
-      val configJson = configsJson.get(i).getAsJsonObject()
-      configJson.entrySet().forEach(map => {
-        sparkBuilder.config(map.getKey, map.getValue.getAsString())
-      })
+    if (configsJson != null) {
+      for (i <- 0 until configsJson.size) {
+        val configJson = configsJson.get(i).getAsJsonObject()
+        configJson.entrySet().forEach(map => {
+          sparkBuilder.config(map.getKey, map.getValue.getAsString())
+        })
+      }
     }
 
     val spark = sparkBuilder.getOrCreate()
@@ -78,11 +80,13 @@ object RunOpenmldbSqlWithJson {
 
     // Read tables
     val tablesJson = jsonElement.getAsJsonArray("tables")
-    for (i <- 0 until tablesJson.size) {
-      val tableJson = tablesJson.get(i).getAsJsonObject()
-      tableJson.entrySet().forEach(map => {
-        sess.registerTable(map.getKey, spark.read.parquet(map.getValue.getAsString()))
-      })
+    if (tablesJson != null) {
+      for (i <- 0 until tablesJson.size) {
+        val tableJson = tablesJson.get(i).getAsJsonObject()
+        tableJson.entrySet().forEach(map => {
+          sess.registerTable(map.getKey, spark.read.parquet(map.getValue.getAsString()))
+        })
+      }
     }
 
     // Read SQL
