@@ -1,10 +1,10 @@
-#  OpenMLDB + Byzer: 基于 SQL 打造端到端机器学习应用
+#  Build End-to-end Machine Learning Applications Based on SQL (OpenMLDB + Byzer)
 
-本文示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [Byzer]([A Programming Language Designed For Big Data and AI (byzer.org)](https://www.byzer.org/home)) 联合完成一个完整的机器学习应用。OpenMLDB在本例中接收Byzer发送的指令和数据，完成数据的实时特征计算，并经特征工程处理后的数据集返回Byzer，供其进行后续的机器学习训练和预测。
+本文示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [Byzer](https://www.byzer.org/home) 联合完成一个完整的机器学习应用。OpenMLDB在本例中接收Byzer发送的指令和数据，完成数据的实时特征计算，并经特征工程处理后的数据集返回Byzer，供其进行后续的机器学习训练和预测。
 
-## 1. 准备工作
+## 1. Preparations
 
-### 1.1 安装 OpenMLDB 引擎
+### 1.1 Install OpenMLDB
 
 1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart.md)。
 2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](../reference/ip_tips.md)。
