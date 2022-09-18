@@ -121,7 +121,7 @@ class MemTableSnapshot : public Snapshot {
     void RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
-    uint64_t CollectDeletedKey(uint64_t end_offset);
+    uint64_t CollectDeletedKey(std::shared_ptr<Table> table, uint64_t end_offset);
 
     int DecodeData(std::shared_ptr<Table> table, const openmldb::api::LogEntry& entry, uint32_t maxIdx,
                    std::vector<std::string>& row);  // NOLINT

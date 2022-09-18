@@ -203,7 +203,7 @@ bool Table::CheckTsInIndex(uint32_t idx, uint32_t* ts_id) {
         *ts_id = ts_col->GetId();
         return true;
     }
-    return false;
+    return false; 
 }
 
 }  // namespace storage

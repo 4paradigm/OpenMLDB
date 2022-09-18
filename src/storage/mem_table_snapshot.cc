@@ -272,7 +272,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
     return 0;
 }
 
-uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
+uint64_t MemTableSnapshot::CollectDeletedKey(std::shared_ptr<Table> table, uint64_t end_offset) {
     deleted_keys_.clear();
     ::openmldb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
@@ -312,12 +312,40 @@ uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
                     PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, cur_offset);
                     continue;
                 }
-                std::string combined_key = entry.dimensions(0).key() + "|" + std::to_string(entry.dimensions(0).idx());
-                if (entry.has_ts()) {
-                    combined_key += "|" + std::to_string(entry.ts());
+                uint32_t ts_index = UINT32_MAX;
+                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                    bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
+                    std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
+                    if (!use_ts) {
+                        std::string buff;
+                        openmldb::base::Slice data;
+                        if (table->GetCompressType() == openmldb::type::kSnappy) {
+                            snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
+                            data.reset(buff.data(), buff.size());
+                        } else {
+                            data.reset(entry.value().data(), entry.value().size());
+                        }
+                        const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
+                        uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
+                        std::vector<std::string> value_vec;
+                        std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
+                        if (schema == nullptr) {
+                            LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
+                            return 0;
+                        }
+                        // TODO(XLC-2): decode only required properties.
+                        bool ok = openmldb::codec::RowCodec::DecodeRow(*schema, data, value_vec);
+                        if (!ok) {
+                            DLOG(WARNING) << "decode data error";
+                            return 0;
+                        }
+                        combined_key += "|" + value_vec[ts_index];
+                    } else if (entry.has_ts()) {
+                        combined_key += "|" + std::to_string(entry.ts());
+                    }
+                    deleted_keys_[combined_key] = cur_offset;
+                    DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
                 }
-                deleted_keys_[combined_key] = cur_offset;
-                DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
             }
         } else if (status.IsEof()) {
             continue;
@@ -369,7 +397,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
-    uint64_t collected_offset = CollectDeletedKey(end_offset);
+    uint64_t collected_offset = CollectDeletedKey(table, end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::openmldb::api::Manifest manifest;
@@ -535,6 +563,7 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
             bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
             std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
+            std::string combined_key_ts = "";
             if (!use_ts) {
                 std::string buff;
                 openmldb::base::Slice data;
@@ -558,14 +587,20 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
                     DLOG(WARNING) << "decode data error";
                     return 0;
                 }
-                combined_key += "|" + value_vec[ts_index];
+                combined_key_ts = combined_key + "|" + value_vec[ts_index];
             } else if (entry.has_ts()) {
-                combined_key += "|" + std::to_string(entry.ts());
+                combined_key_ts = combined_key + "|" + std::to_string(entry.ts());
             }
             auto iter = deleted_keys_.find(combined_key);
             if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
                 deleted_index.count(entry.dimensions(pos).idx())) {
                 deleted_pos_set.insert(pos);
+            } else {
+                iter = deleted_keys_.find(combined_key_ts);
+                if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
+                    deleted_index.count(entry.dimensions(pos).idx())) {
+                    deleted_pos_set.insert(pos);
+                }
             }
         }
         if (!deleted_pos_set.empty()) {
@@ -1149,7 +1184,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table,
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
-    uint64_t collected_offset = CollectDeletedKey(0);
+    uint64_t collected_offset = CollectDeletedKey(table, 0);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::openmldb::api::Manifest manifest;
@@ -1246,7 +1281,7 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
-    uint64_t collected_offset = CollectDeletedKey(0);
+    uint64_t collected_offset = CollectDeletedKey(table, 0);
     uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::openmldb::api::Manifest manifest;
@@ -1694,7 +1729,7 @@ bool MemTableSnapshot::DumpIndexData(std::shared_ptr<Table> table, const ::openm
         }
     }
     index_cols.push_back(cols);
-    uint64_t collected_offset = CollectDeletedKey(0);
+    uint64_t collected_offset = CollectDeletedKey(table, 0);
     uint64_t snapshot_offset = 0;
     bool ret = true;
     if (!DumpSnapshotIndexData(table, index_cols, max_idx, idx, whs, &snapshot_offset) ||

@@ -1937,7 +1937,7 @@ TEST_P(TableTest, SingleTsDelete) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
-    int id = 1;
+    int id = 1, count = 0;
     if (storageMode == ::openmldb::common::kHDD) {
         id = ++counter;
         table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
@@ -1955,23 +1955,17 @@ TEST_P(TableTest, SingleTsDelete) {
 
     ASSERT_TRUE(table->Delete("pk0", 0, 9523));
     TableIterator* it = table->NewTraverseIterator(0);
-    it = table->NewTraverseIterator(0);
     it->Seek("pk0", 9523);
-    ASSERT_FALSE(it->Valid());
-    it->Seek("pk0", 9524);
     ASSERT_TRUE(it->Valid());
+    ASSERT_NE(it->GetKey(), 9523);
+    it = table->NewTraverseIterator(0);
     it->SeekToFirst();
-    ASSERT_TRUE(it->Valid());
-    ASSERT_STREQ("pk0", it->GetPK().c_str());
-    ASSERT_EQ(9522, (int64_t)it->GetKey());
-    it->Next();
-    ASSERT_TRUE(it->Valid());
-    ASSERT_STREQ("pk0", it->GetPK().c_str());
-    ASSERT_EQ(9524, (int64_t)it->GetKey());
-    it->Next();
-    ASSERT_TRUE(it->Valid());
-    ASSERT_STREQ("pk10", it->GetPK().c_str());
-    ASSERT_EQ(9525, (int64_t)it->GetKey());
+    while (it->Valid()) {
+        ++count;
+        it->Next();
+        ASSERT_NE(it->GetKey(), 9523);
+    }
+    ASSERT_TRUE(count == 5);
 
     delete it;
     delete table;

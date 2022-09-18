@@ -459,7 +459,7 @@ void Segment::GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& 
         node = entry_free_list_->Split(version);
     }
     while (node != NULL) {
-        ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+        ::openmldb::base::Node<Slice, void*>* entry_node = node->GetValue();
         FreeEntry(entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         delete entry_node;
         ::openmldb::base::Node<uint64_t, ::openmldb::base::Node<Slice, void*>*>* tmp = node;
@@ -477,6 +477,8 @@ void Segment::FreeTsEntry(::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry
     }
     if (ts_entry_node->GetValue()->dim_cnt_down <= 1) {
         delete ts_entry_node->GetValue();
+    } else {
+        ts_entry_node->GetValue()->dim_cnt_down--;
     }
     // TODO(XLC-2): record statistics.
 }
