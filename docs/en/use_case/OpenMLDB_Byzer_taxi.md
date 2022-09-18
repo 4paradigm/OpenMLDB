@@ -2,33 +2,34 @@
 
 This tutorial will show you how to complete a machine learning workflow with the help of [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [Byzer](https://www.byzer.org/home).
 The OpenMLDB will compute the features of the real-time data in terms of the commands and data sent by Byzer and will return the dataset been processed to Byzer for later training and prediction.
+
 ## 1. Preparations
 
 ### 1.1 Install OpenMLDB
 
-1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart.md)。
-2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](../reference/ip_tips.md)。
+1. The demo will use the OpenMLDB cluster version running in Docker. See [OpenMLDB Quickstart](../quickstart/openmldb_quickstart.md) for detail installation procedures.
+2. Please modify the OpenMLDB IP configuration in order to enable the Byzer engine to access the OpenMLDB service out of the container. See [IP Configuration](../reference/ip_tips.md) for detail guidance.
 
 ### 1.2 Install the Byzer Engine and the Byzer Notebook 
 
-1. Byzer 引擎的安装步骤详见[Byzer Language官方文档](https://docs.byzer.org/#/byzer-lang/zh-cn/)
+1. For detail installation procedures of Byzer engine, see [Byzer Language Doc](https://docs.byzer.org/#/byzer-lang/en-us/).
 
-2. 本例需要使用 Byzer 提供的[OpenMLDB 插件](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb)完成与 OpenMLDB 的消息传递。在Byzer中使用插件必须配置`streaming.datalake.path`项，详见[Byzer引擎配置说明-常用参数](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration)。
+2. We have to use the [OpenMLDB plugin](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) developed by Byzer to transmit messages between two platforms. To use plugin in Byzer, please configure `streaming.datalake.path`, see [the manual of Byzer Configuration](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration) for detail.
 
-3. 本文使用 Byzer Notebook 进行演示，Byzer 引擎安装完成后，请安装Byzer Notebook（您也可以使用[VSCode中的Byzer插件](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/vscode/byzer-vscode-extension-installation)连接您的Byzer 引擎）。关于Byzer Notebook，详见[Byzer Notebook官方文档](https://docs.byzer.org/#/byzer-notebook/zh-cn/)。其界面如下。
+3. Byzer Notebook is used in this demo. Please install it after the installation of Byzer engine. You can also use the [VSCode Byzer plugin](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/vscode/byzer-vscode-extension-installation) to connect your Byzer engine. The interface of Byzer Notebook is shown below, see [Byzer Notebook Doc](https://docs.byzer.org/#/byzer-notebook/zh-cn/) for more about it. 
 
 ![Byzer_Notebook](images/Byzer_Notebook.jpg)
 
 ### 1.3 Dataset Preparation
+In this case, the dataset comes from the Kaggle taxi trip duration prediction problem. If it is not in your Byzer `Deltalake`, [download](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) it first. Please remember to import it into Byzer Notebook after download.
 
-本文使用的是Kaggle出租车行车时间数据集，若您的Byzer数据湖中没有该数据集，可以从以下网址获得：[Kaggle出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)。将数据集下载到本地后，需要将其导入Byzer Notebook。
 
 ## 2. The Workflow of Machine Learning
 
 ### 2.1 Load the Dataset
 
-将原始数据集导入到 Byzer Notebook 数据目录的File System后，自动生成了`tmp/upload`存储路径。使用Byzer Lang的`load`命令加载该数据集。
-
+Please import the origin dataset into the `File System` of Byzer Notebook, it will automatically generate the storage path `tmp/upload`.
+Use the `load` Byzer Lang command as below to load this dataset.
 ```sql
 load csv.`tmp/upload/train.csv` where delimiter=","
 and header = "true"
@@ -37,13 +38,13 @@ as taxi_tour_table_train_simple;
 
 ### 2.2 Import the Dataset into OpenMLDB
 
-安装 OpenMLDB 插件
+Install the OpenMLDB plugin in Byzer.
 
 ```sql
 !plugin app add - "byzer-openmldb-3.0";
 ```
 
-使用该插件连接 OpenMLDB 引擎。在Byzer Notebook中运行该代码块前，请确保OpenMLDB引擎已启动，并创建了名为`db1`的数据库。
+Now you can use this plugin to connect OpenMLDB. **Please make sure the OpenMLDB engine has started and there is a database named `db1` before you run the following code block in Byzer Notebook.**
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -65,13 +66,11 @@ and db="db1"
 and action="ddl";
 ```
 
-````
 ```{note}
 1. zkAddress的端口号应与配置IP时的conf文件夹下各相关文件保持一致
 2. 可以通过$BYZER_HOME\conf路径下的\byzer.properties.override文件中的属性`streaming.plugin.clzznames`检查byzer-openmldb-3.0插件是否成功安装。如果成功安装了该插件，可以看到主类名`tech.mlsql.plugins.openmldb.ByzerApp`。
 3. 若未成功安装，可以手动下载jar包再以[离线方式](https://docs.byzer.org/#/byzer-lang/zh-cn/extension/installation/offline_install)安装配置。
 ```
-````
 
 ### 2.3 Real-time Feature Extractions
 

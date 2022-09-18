@@ -65,13 +65,13 @@ and db="db1"
 and action="ddl";
 ```
 
-````
 ```{note}
 1. zkAddress的端口号应与配置IP时的conf文件夹下各相关文件保持一致
 2. 可以通过$BYZER_HOME\conf路径下的\byzer.properties.override文件中的属性`streaming.plugin.clzznames`检查byzer-openmldb-3.0插件是否成功安装。如果成功安装了该插件，可以看到主类名`tech.mlsql.plugins.openmldb.ByzerApp`。
 3. 若未成功安装，可以手动下载jar包再以[离线方式](https://docs.byzer.org/#/byzer-lang/zh-cn/extension/installation/offline_install)安装配置。
 ```
-````
+
+
 
 ### 2.3 进行实时特征计算
 
