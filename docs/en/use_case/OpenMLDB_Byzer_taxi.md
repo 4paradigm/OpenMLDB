@@ -1,7 +1,7 @@
 # Build End-to-end Machine Learning Applications Based on SQL (OpenMLDB + Byzer)
 
-本文示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [Byzer](https://www.byzer.org/home) 联合完成一个完整的机器学习应用。OpenMLDB在本例中接收Byzer发送的指令和数据，完成数据的实时特征计算，并经特征工程处理后的数据集返回Byzer，供其进行后续的机器学习训练和预测。
-
+This tutorial will show you how to complete a machine learning workflow with the help of [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [Byzer](https://www.byzer.org/home).
+The OpenMLDB will compute the features of the real-time data in terms of the commands and data sent by Byzer and will return the dataset been processed to Byzer for later training and prediction.
 ## 1. Preparations
 
 ### 1.1 Install OpenMLDB
