@@ -359,7 +359,17 @@ jobs:
       - name: start server
         run: ./openmldb/bin/start-standalone.sh
 
+      - name: init test database
+        env:
+          OPENMLDB_NS_HOST: 127.0.0.1
+          OPENMLDB_NS_PORT: 6527
+        run: |
+          echo "CREATE DATABASE test_db;" | ./openmldb/bin/openmldb --host=$OPENMLDB_NS_HOST --port=$OPENMLDB_NS_PORT
+
       - name: go test
+        env:
+          OPENMLDB_APISERVER_HOST: 127.0.0.1
+          OPENMLDB_APISERVER_PORT: 8080
         working-directory: go
         run: go test ./...
 
