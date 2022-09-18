@@ -14,9 +14,9 @@ The workflow of the DAG is shown above. The tables will be created at first, the
 
 The DAG mentioned above will be used to complete the feature extraction and deployment work in the [TalkingData Demo](talkingdata_demo), and the predict_server in this demo is responsible for the real-time prediction after deployment.
 
-### Preparations
+### 0 Preparations
 
-#### 1 Download DAG
+#### 0.1 Download DAG
 Both the DAG and the training script can be gained by downloading [airflow_demo_files](https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz). 
 
 ```
@@ -27,7 +27,7 @@ ls airflow_demo_files
 For the newest version, please visit [GitHub example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags).
 
 
-#### 2 启动镜像
+#### 0.2 启动镜像
 
 - It is recommended to install and start the OpenMLDB image and the Airflow in Docker. 
 - The port of the container needs to be exposed for the Airflow Web login.
@@ -37,20 +37,20 @@ For the newest version, please visit [GitHub example_dags](https://github.com/4p
 docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.1 bash
 ```
 
-#### 3 Download and Install the Airflow and the Airflow OpenMLDB Provider 
+#### 0.3 Download and Install the Airflow and the Airflow OpenMLDB Provider 
 Run the following command in Docker.
 ```
 pip3 install airflow-provider-openmldb
 ```
 Since the Airflow OpenMLDB Provider relies on the Airflow, they will be downloaded together.
 
-#### 4 Prepare the Dataset
+#### 0.4 Prepare the Dataset
 Since the data import path of the DAG is `/tmp/train_sample.csv`, we have to copy the data file to `/tmp` directory.
 ```
 cp /work/talkingdata/train_sample.csv /tmp/
 ```
 
-### Step 1: Start the OpenMLDB and the Airflow
+### 1 Start the OpenMLDB and the Airflow
 The following commands will start the OpenMLDB cluster, the predict_server supporting deployment and test, and the standalone Airflow.
 
 ```
@@ -69,17 +69,17 @@ Please visit `http://localhost:8080`, enter the username and the password as sho
 
 ```{caution}
 `Airflow standalone` is a foreground process, the exit will lead to the whole termiantion of the process.
-You can quit the Airflow after the DAG is finished then go for Step 3 or just put the Airflow process to the background.
+You can quit the Airflow after the DAG is finished then go for [Step 3](#3-test) or just put the Airflow process to the background.
 ```
 
-### Step 2: Run the DAG 
+### 2 Run the DAG 
 Open the DAG example_openmldb_complex in the Airflow Web and click the `Code` to check the detail of the DAG.
 ![dag home](images/dag_home.png)
 
 You can see the `openmldb_conn_id` which is used in `Code`. The DAG doesn't use the address of OpenMLDB but use the connection. We need to create a new connection and name it the same. 
 ![dag code](images/dag_code.png)
 
-#### Create the Connection 
+#### 2.1 Create the Connection 
 Click the 'connection' in the 'Admin'.
 ![connection](images/connection.png)
 
@@ -93,15 +93,15 @@ Please use the address of the OpenMLDB Api Server rather than the address of zoo
 The created connection is shown as the picture below.
 ![display](images/connection_display.png)
 
-#### Run the DAG 
+#### 2.2 Run the DAG 
 Run the DAG to complete a turn of model training, SQL and model deployment.
 A successful run should look like the following figure.
 ![dag run](images/dag_run.png)
 
-### Step 3: Test
+### 3 Test
 
 If you run the Airflow foreground, you can quit the Airflow as the subsequent procedures do not depend on it.
-#### Import the Online Data
+#### 3.1 Import the Online Data
 Although the DAG has deployed the SQL and the model, there is no data in the online storage. 
 Run the following command to import the online data.
 ```
@@ -113,7 +113,7 @@ If you want to check the execution state of the command, please use `SHOW JOBS`.
 curl -X POST http://127.0.0.1:9080/dbs/example_db -d'{"mode":"online", "sql":"show jobs"}'
 ```
 
-#### Prediction
+#### 3.2 Prediction
 Run the following prediction script which will use the latest deployed SQL and model. 
 ```
 python3  /work/talkingdata/predict.py
