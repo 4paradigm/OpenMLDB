@@ -9,6 +9,7 @@ import (
 
 	// register openmldb driver
 	_ "github.com/4paradigm/OpenMLDB/go/openmldb"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -31,6 +32,27 @@ func Test_driver(t *testing.T) {
 	ctx := context.Background()
 	if err := db.PingContext(ctx); err != nil {
 		t.Errorf("fail to ping connect: %s", err)
+	}
+
+	createTableStmt := "CREATE TABLE demo(c1 int, c2 string);"
+	if _, err := db.ExecContext(ctx, createTableStmt); err != nil {
+		t.Errorf("fail to exec %s: %v", createTableStmt, err)
+	}
+
+	insertValueStmt := `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`
+	if _, err := db.ExecContext(ctx, insertValueStmt); err != nil {
+		t.Errorf("fail to exec %s: %v", insertValueStmt, err)
+	}
+
+	queryStmt := `SELECT c1, c2 FROM demo`
+	if rows, err := db.QueryContext(ctx, queryStmt); err != nil {
+		t.Errorf("fail to exec %s: %v", queryStmt, err)
+	} else {
+		types, err := rows.ColumnTypes()
+		if err != nil {
+			t.Errorf("column types not available: %v", err)
+		}
+		assert.Len(t, types, 2)
 	}
 
 	if _, err = db.ExecContext(ctx, "create database db;"); err != nil {
