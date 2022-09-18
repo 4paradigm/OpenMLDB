@@ -10,7 +10,7 @@ You can import the DAG into the Airflow and run it directly.
 
 The workflow of the DAG is shown above. The tables will be created at first, then the offline data will be imported and processed for feature extraction. After training, if the AUC of the model is greater than 99.0, then the SQL script and the model can be deployed. Otherwise, the workflow will report failure. 
 
-## Example
+## Demo
 
 The DAG mentioned above will be used to complete the feature extraction and deployment work in the [TalkingData Demo](talkingdata_demo), and the predict_server in this demo is responsible for the real-time prediction after deployment.
 
