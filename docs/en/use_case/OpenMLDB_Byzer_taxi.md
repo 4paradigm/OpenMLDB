@@ -74,7 +74,8 @@ and action="ddl";
 
 ### 2.3 Real-time Feature Extractions
 
-本例借用[OpenMLDB + LightGBM：出租车行程时间预测](./taxi_tour_duration_prediction.md)2.3节中设计的特征进行特征计算，并将处理后的数据集导出为本地csv文件。
+The features designed in the [OpenMLDB + LightGBM: Taxi Trip Duration Prediction](./lightgbm_demo.md) Section 2.3 will be used in this demo. 
+The processed data will be exported to a local `csv` file.
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -108,8 +109,7 @@ and action="ddl";
 
 
 ### 2.4 Data Vectorization 
-
-在Byzer Noetbbook中将所有int 类型字段都转化为 double。
+Convert all `int` type fields to `double` in Byzer Notebook.
 
 ```sql
 select *, 
@@ -120,7 +120,7 @@ from feature_data
 as new_feature_data;
 ```
 
-接着把所有字段合并成一个向量。
+Then merge all the fields into a vector.
 
 ```sql
 select vec_dense(array(
@@ -145,7 +145,7 @@ as trainning_table;
 
 ### 2.5 Training
 
-使用Byzer Lang的train命令和其[内置的线性回归算法](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)训练模型，并将训练好的模型保存到/model/tax-trip路径下。
+Use the `train` Byzer Lang command and its [inbuilt Linear Regression Algorithm](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression) to train the model, and save it to `/model/tax-trip`.
 
 ```sql
 train trainning_table as LinearRegression.`/model/tax-trip` where
@@ -160,13 +160,13 @@ and `fitParam.0.maxIter`="50";
 ```
 
 ```{note}
-可以使用`!show et/params/LinearRegression;`命令查看Byzer内置的线性回归模型的相关参数。 
+To check the parameters of Byzer's inbuilt Linear Regression Algorithm, please use `!show et/params/LinearRegression;` command.
 ```
 
 ### 2.6 Feature Deployment
 
-将特征计算逻辑部署到OpenMLDB上：将最满意的一次特征计算的代码拷贝后修改执行模式为online即可。本例使用的是前文展示的特征工程中的代码。
-
+Deploy the feature extraction script onto OpenMLDB: copy the best performance code and set the `execute_mode` to `online`.
+The following example uses the code the same as that in the feature extraction, which might not be the 'best'.
 ```sql
 run command as FeatureStoreExt.`` where
 zkAddress="172.17.0.2:7527"
@@ -197,7 +197,7 @@ and action="ddl";
 
 ```
 
-导入在线数据，本例使用的是原始数据集中的test集。生产环境中可以接入实时数据源。
+Import the online data: the following example uses the test set from Kaggle, real-time data source can be connected instead in production.
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -223,7 +223,7 @@ and action="ddl";
 
 ### 2.7 Model Deployment
 
-在Byzer Noetbook中将之前保存的、训练好的模型注册为一个可以直接使用的函数。
+Register the previously trained and saved model as a UDF function in Byzer Notebook in order to use it more conveniently.
 
 ```sql
 register LinearRegression.`/model/tax-trip` as tax_trip_model_predict;
@@ -231,7 +231,7 @@ register LinearRegression.`/model/tax-trip` as tax_trip_model_predict;
 
 ### 2.8 Prediction
 
-将经OpenMLDB处理后的数据集所有int类型字段转成double。
+Convert all `int` type fields of the online dataset, after processed by OpenMLDB, to `double`.
 
 ```sql
 select *, 
@@ -242,7 +242,8 @@ from feature_data_test
 as new_feature_data_test;
 ```
 
-再进行向量化。
+Then merge all the fields into a vector.
+
 
 ```sql
 select vec_dense(array(
@@ -262,7 +263,7 @@ from new_feature_data_test
 as testing_table;
 ```
 
-使用处理后的训练集进行预测。
+Use this processed test set to predict.
 
 ```sql
 select tax_trip_model_predict(testing_table) as predict_label;

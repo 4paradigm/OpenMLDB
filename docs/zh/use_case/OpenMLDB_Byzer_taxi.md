@@ -110,7 +110,7 @@ and action="ddl";
 
 ### 2.4 数据向量化
 
-在Byzer Noetbbook中将所有int 类型字段都转化为 double。
+在Byzer Notebook中将所有int 类型字段都转化为 double。
 
 ```sql
 select *, 
@@ -146,7 +146,7 @@ as trainning_table;
 
 ### 2.5 模型训练
 
-使用Byzer Lang的train命令和其[内置的线性回归算法](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)训练模型，并将训练好的模型保存到/model/tax-trip路径下。
+使用Byzer Lang的`train`命令和其[内置的线性回归算法](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)训练模型，并将训练好的模型保存到/model/tax-trip路径下。
 
 ```sql
 train trainning_table as LinearRegression.`/model/tax-trip` where
@@ -166,7 +166,7 @@ and `fitParam.0.maxIter`="50";
 
 ### 2.6 特征部署
 
-将特征计算逻辑部署到OpenMLDB上：将最满意的一次特征计算的代码拷贝后修改执行模式为online即可。本例使用的是前文展示的特征工程中的代码。
+将特征计算逻辑部署到OpenMLDB上：将最满意的一次特征计算的代码拷贝后修改执行模式为online即可。本例使用的是前文展示的特征工程中的代码，仅作展示，或许并非表现最优。
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -224,7 +224,7 @@ and action="ddl";
 
 ### 2.7 模型部署
 
-在Byzer Noetbook中将之前保存的、训练好的模型注册为一个可以直接使用的函数。
+在Byzer Notebook中将之前保存的、训练好的模型注册为一个可以直接使用的函数。
 
 ```sql
 register LinearRegression.`/model/tax-trip` as tax_trip_model_predict;
@@ -232,7 +232,7 @@ register LinearRegression.`/model/tax-trip` as tax_trip_model_predict;
 
 ### 2.8 预测
 
-将经OpenMLDB处理后的数据集所有int类型字段转成double。
+将经OpenMLDB处理后的在线数据集的所有int类型字段转成double。
 
 ```sql
 select *, 
@@ -263,7 +263,7 @@ from new_feature_data_test
 as testing_table;
 ```
 
-使用处理后的训练集进行预测。
+使用处理后的测试集进行预测。
 
 ```sql
 select tax_trip_model_predict(testing_table) as predict_label;
