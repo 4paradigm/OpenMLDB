@@ -67,9 +67,9 @@ and action="ddl";
 ```
 
 ```{note}
-1. zkAddress的端口号应与配置IP时的conf文件夹下各相关文件保持一致
-2. 可以通过$BYZER_HOME\conf路径下的\byzer.properties.override文件中的属性`streaming.plugin.clzznames`检查byzer-openmldb-3.0插件是否成功安装。如果成功安装了该插件，可以看到主类名`tech.mlsql.plugins.openmldb.ByzerApp`。
-3. 若未成功安装，可以手动下载jar包再以[离线方式](https://docs.byzer.org/#/byzer-lang/zh-cn/extension/installation/offline_install)安装配置。
+1. The port number of zkAddress should correspond with the files' IP configuration under the OpenMLDB `conf/` path.
+2. You can check the `streaming.plugin.clzznames` of the `\byzer.properties.override` file, which is under the `$BYZER_HOME\conf` path of Byzer, to see if the `byzer-openmldb-3.0` plugin is successfully installed. You can see the main class name `tech.mlsql.plugins.openmldb.ByzerApp` after installation. 
+3. If the plugin installation fail, download the `.jar` files and [install it offline](https://docs.byzer.org/#/byzer-lang/zh-cn/extension/installation/offline_install). 
 ```
 
 ### 2.3 Real-time Feature Extractions
