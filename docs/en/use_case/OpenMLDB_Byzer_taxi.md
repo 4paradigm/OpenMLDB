@@ -23,9 +23,9 @@
 
 本文使用的是Kaggle出租车行车时间数据集，若您的Byzer数据湖中没有该数据集，可以从以下网址获得：[Kaggle出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)。将数据集下载到本地后，需要将其导入Byzer Notebook。
 
-## 2. 机器学习全流程
+## 2. The Workflow of Machine Learning
 
-### 2.1 加载原始数据集
+### 2.1 Load the Dataset
 
 将原始数据集导入到 Byzer Notebook 数据目录的File System后，自动生成了`tmp/upload`存储路径。使用Byzer Lang的`load`命令加载该数据集。
 
@@ -35,7 +35,7 @@ and header = "true"
 as taxi_tour_table_train_simple;
 ```
 
-### 2.2 将数据导入 OpenMLDB
+### 2.2 Import the Dataset into OpenMLDB
 
 安装 OpenMLDB 插件
 
@@ -73,7 +73,7 @@ and action="ddl";
 ```
 ````
 
-### 2.3 进行实时特征计算
+### 2.3 Real-time Feature Extractions
 
 本例借用[OpenMLDB + LightGBM：出租车行程时间预测](./taxi_tour_duration_prediction.md)2.3节中设计的特征进行特征计算，并将处理后的数据集导出为本地csv文件。
 
@@ -108,7 +108,7 @@ and action="ddl";
 
 
 
-### 2.4 数据向量化
+### 2.4 Data Vectorization 
 
 在Byzer Noetbbook中将所有int 类型字段都转化为 double。
 
@@ -144,7 +144,7 @@ as trainning_table;
 
 
 
-### 2.5 模型训练
+### 2.5 Training
 
 使用Byzer Lang的train命令和其[内置的线性回归算法](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)训练模型，并将训练好的模型保存到/model/tax-trip路径下。
 
@@ -164,7 +164,7 @@ and `fitParam.0.maxIter`="50";
 可以使用`!show et/params/LinearRegression;`命令查看Byzer内置的线性回归模型的相关参数。 
 ```
 
-### 2.6 特征部署
+### 2.6 Feature Deployment
 
 将特征计算逻辑部署到OpenMLDB上：将最满意的一次特征计算的代码拷贝后修改执行模式为online即可。本例使用的是前文展示的特征工程中的代码。
 
@@ -222,7 +222,7 @@ and action="ddl";
 
 
 
-### 2.7 模型部署
+### 2.7 Model Deployment
 
 在Byzer Noetbook中将之前保存的、训练好的模型注册为一个可以直接使用的函数。
 
@@ -230,7 +230,7 @@ and action="ddl";
 register LinearRegression.`/model/tax-trip` as tax_trip_model_predict;
 ```
 
-### 2.8 预测
+### 2.8 Prediction
 
 将经OpenMLDB处理后的数据集所有int类型字段转成double。
 
