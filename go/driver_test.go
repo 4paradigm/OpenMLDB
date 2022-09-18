@@ -1,39 +1,25 @@
-package openmldb_test
+package openmldb
 
-import (
-	// register openmldb driver
-	"context"
-	"database/sql"
-	"fmt"
-	"os"
-	"testing"
+import "testing"
 
-	_ "github.com/4paradigm/OpenMLDB/go/openmldb"
-)
-
-var (
-	OPENMLDB_APISERVER_HOST = os.Getenv("OPENMLDB_APISERVER_HOST")
-	OPENMLDB_APISERVER_PORT = os.Getenv("OPENMLDB_APISERVER_PORT")
-)
-
-func Test_driver(t *testing.T) {
-	db, err := sql.Open("openmldb", fmt.Sprintf("openmldb://%s:%s/test_db", OPENMLDB_APISERVER_HOST, OPENMLDB_APISERVER_PORT))
-	if err != nil {
-		t.Errorf("fail to open connect: %s", err)
-	}
-
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("fail to close connection: %s", err)
+func Test_parseDsn(t *testing.T) {
+	for _, tc := range []struct {
+		dsn  string
+		host string
+		db   string
+		err  error
+	}{
+		{"openmldb://127.0.0.1:8080/test_db", "127.0.0.1:8080", "test_db", nil},
+	} {
+		host, db, err := parseDsn(tc.dsn)
+		if err != tc.err {
+			t.Errorf("Expect error: %e, but got: %s", tc.err, err)
 		}
-	}()
-
-	ctx := context.Background()
-	if err := db.PingContext(ctx); err != nil {
-		t.Errorf("fail to ping connect: %s", err)
-	}
-
-	if _, err = db.ExecContext(ctx, "create database db;"); err != nil {
-		t.Errorf("fail to execute create database: %s", err)
+		if db != tc.db {
+			t.Errorf("Expect db: %s, but got: %s", tc.db, db)
+		}
+		if host != tc.host {
+			t.Errorf("Expect host: %s, but got: %s", tc.host, host)
+		}
 	}
 }

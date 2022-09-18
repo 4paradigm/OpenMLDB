@@ -32,7 +32,8 @@ func parseDsn(dsn string) (host string, db string, err error) {
 		return "", "", fmt.Errorf("invalid URL: unknown schema '%s'", u.Scheme)
 	}
 
-	p := strings.Split(u.Path, "/")
+	p := strings.Split(strings.TrimLeft(u.Path, "/"), "/")
+
 	if len(p) == 0 {
 		return "", "", fmt.Errorf("invalid URL: DB name not found")
 	}
