@@ -1,4 +1,4 @@
-#  Build End-to-end Machine Learning Applications Based on SQL (OpenMLDB + Byzer)
+# Build End-to-end Machine Learning Applications Based on SQL (OpenMLDB + Byzer)
 
 本文示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [Byzer](https://www.byzer.org/home) 联合完成一个完整的机器学习应用。OpenMLDB在本例中接收Byzer发送的指令和数据，完成数据的实时特征计算，并经特征工程处理后的数据集返回Byzer，供其进行后续的机器学习训练和预测。
 
@@ -9,7 +9,7 @@
 1. 本例使用的是运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart.md)。
 2. 本例中，Byzer引擎需要从容器外部访问OpenMLDB服务，需要修改OpenMLDB的原始IP配置，修改方式详见[IP配置文档](../reference/ip_tips.md)。
 
-### 1.2 安装 Byzer 引擎和Byzer Notebook 
+### 1.2 Install the Byzer Engine and the Byzer Notebook 
 
 1. Byzer 引擎的安装步骤详见[Byzer Language官方文档](https://docs.byzer.org/#/byzer-lang/zh-cn/)
 
@@ -19,7 +19,7 @@
 
 ![Byzer_Notebook](images/Byzer_Notebook.jpg)
 
-### 1.3 准备数据集
+### 1.3 Dataset Preparation
 
 本文使用的是Kaggle出租车行车时间数据集，若您的Byzer数据湖中没有该数据集，可以从以下网址获得：[Kaggle出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)。将数据集下载到本地后，需要将其导入Byzer Notebook。
 
