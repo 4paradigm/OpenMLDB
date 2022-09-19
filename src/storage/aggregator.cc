@@ -291,7 +291,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     bool aggr_empty = !it->Valid();
     // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
     if (aggr_empty) {
-        PDLOG(INFO, "aggregator recovery skipped");
+        PDLOG(WARNING, "aggregator recovery skipped");
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
     }

@@ -46,6 +46,7 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(recycle_bin_ssd_root_path);
 DECLARE_string(recycle_bin_hdd_root_path);
+DECLARE_uint32(get_table_status_interval);
 
 ::openmldb::sdk::StandaloneEnv env;
 
@@ -874,7 +875,7 @@ TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
     CreateDBTableForLongWindow(base_db, base_table);
 
     PrepareDataForLongWindow(base_db, base_table);
-    sleep(3);
+    sleep(2);
 
     std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
         " sum(i64_col) over w1 as w1_sum_i64_col,"
@@ -2412,7 +2413,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (date_col)")
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (date_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
@@ -2442,7 +2443,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (t_col)")
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (t_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }

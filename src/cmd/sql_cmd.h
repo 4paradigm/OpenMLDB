@@ -42,7 +42,6 @@ DEFINE_string(spark_conf, "", "The config file of Spark job");
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
-DECLARE_uint32(get_table_status_interval);
 DECLARE_uint32(zk_log_level);
 DECLARE_string(zk_log_file);
 
