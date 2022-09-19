@@ -155,7 +155,7 @@ TEST_F(LogReplicatorTest, LogReader) {
     // as the checking logic is: (wh_->GetSize() / (1024 * 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size
     FLAGS_binlog_single_file_max_size = 1;
     std::map<std::string, std::string> map;
-    std::string folder = "/tmp/" + GenRand() + "/";
+    std::filesystem::path folder = std::filesystem::temp_directory_path() / GenRand();
     absl::Cleanup clean = [&folder]() { std::filesystem::remove_all(folder); };
 
     std::map<std::string, uint32_t> mapping;

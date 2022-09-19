@@ -853,7 +853,7 @@ TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL(base_db, deploy_sql, &status);
-    ASSERT_TRUE(!status.IsOK()) << status.msg;
+    ASSERT_TRUE(!status.IsOK());
 
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
     ASSERT_TRUE(ok) << status.msg;
