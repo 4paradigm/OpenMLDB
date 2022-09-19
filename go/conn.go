@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 var (
@@ -96,6 +97,40 @@ type queryInput struct {
 	Data   []interfaces.Value `json:"data"`
 }
 
+func parseRespJson(respBody io.Reader) (*GeneralResp, error) {
+	var r GeneralResp
+	if err := json.NewDecoder(respBody).Decode(&r); err != nil {
+		return nil, err
+	}
+
+	if r.Data != nil {
+		for _, row := range r.Data.Data {
+			for i, col := range row {
+				switch strings.ToLower(r.Data.Schema[i]) {
+				case "bool":
+					row[i] = col.(bool)
+				case "int16":
+					row[i] = int16(col.(float64))
+				case "int32":
+					row[i] = int32(col.(float64))
+				case "int64":
+					row[i] = int64(col.(float64))
+				case "float":
+					row[i] = float32(col.(float64))
+				case "double":
+					row[i] = float64(col.(float64))
+				case "string":
+					row[i] = col.(string)
+				default:
+					return nil, fmt.Errorf("unknown type %s at index %d", r.Data.Schema[i], i)
+				}
+			}
+		}
+	}
+
+	return &r, nil
+}
+
 func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.Value) (rows interfaces.Rows, err error) {
 	if c.closed {
 		return nil, interfaces.ErrBadConn
@@ -151,16 +186,11 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 		return nil, err
 	}
 
-	var r GeneralResp
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return nil, fmt.Errorf("unexpected response: %w", err)
-	}
-
-	if r.Code != 0 {
+	if r, err := parseRespJson(resp.Body); err != nil {
+		return nil, err
+	} else if r.Code != 0 {
 		return nil, fmt.Errorf("conn error: %s", r.Msg)
-	}
-
-	if r.Data != nil {
+	} else if r.Data != nil {
 		return &respDataRows{*r.Data, 0}, nil
 	}
 
