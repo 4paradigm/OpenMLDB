@@ -444,7 +444,7 @@ LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compresse
         min_offset_ = it->GetValue();
     } else {
         min_offset_ = UINT64_MAX;
-        PDLOG(ERROR, "empty log reader");
+        PDLOG(WARNING, "empty log reader");
     }
 }
 
@@ -456,7 +456,7 @@ LogReader::~LogReader() {
 bool LogReader::SetOffset(uint64_t start_offset) {
     start_offset_ = start_offset;
     if (start_offset < min_offset_) {
-        LOG(ERROR) << "SetOffset is smaller than the minimum offset in the logs";
+        PDLOG(WARNING, "SetOffset %lu is smaller than the minimum offset %lu in the logs", start_offset, min_offset_);
         return false;
     }
     return true;

@@ -285,12 +285,11 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
 
     auto it = aggr_table_->NewTraverseIterator(0);
     it->SeekToFirst();
-    uint64_t recovery_offset = UINT64_MAX;
+    uint64_t recovery_offset = 0;
     uint64_t aggr_latest_offset = 0;
 
     bool aggr_empty = !it->Valid();
-    // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
-    if (aggr_empty) {
+    if (aggr_empty && log_parts->IsEmpty()) {
         PDLOG(WARNING, "aggregator recovery skipped");
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
@@ -324,15 +323,14 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         }
         it->NextPK();
     }
-    if (recovery_offset == 0 || recovery_offset == UINT64_MAX) {
-        PDLOG(ERROR, "aggregator recovery failed, recovery_offset=%lu", recovery_offset);
-        return false;
-    }
 
+    // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
+    // for now, only recover the data of latest binlog file
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
     if (!log_reader.SetOffset(recovery_offset)) {
-        PDLOG(ERROR, "create log_reader failed, recovery_offset=%lu", recovery_offset);
-        return false;
+        PDLOG(WARNING, "create log_reader with smaller recovery_offset=%lu", recovery_offset);
+        recovery_offset = log_reader.GetMinOffset();
+        log_reader.SetOffset(recovery_offset);
     }
     ::openmldb::api::LogEntry entry;
     uint64_t cur_offset = recovery_offset;
