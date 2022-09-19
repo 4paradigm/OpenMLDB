@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.2] - 2022-09-20
+
+### Features
+- Add tools to run OpenMLDB offline with jar file (#2423 @tobegit3hub)
+- Support zk log settings and disable zk log in diagnostic tool (#2451 @vagetablechicken)
+- Add query parameters to the sql query api (#2277 @qsliu2017)
+- Improve the documents (#2406 @aceforeverd, #2408 #2414 @vagetablechicken, #2410 #2402 #2356 #2374 #2396 #2376 #2419 @michelle-qinqin, #2424 #2418 @dl239, #2455 @lumianph, #2458 @tobegit3hub)
+- Other minor features (#2420 @aceforeverd, #2411 @wuyou10206, #2446 #2452 @vagetablechicken, #2475 @tobegit3hub)
+
+### Bug Fixes
+- Create table success if `partitionnum` is set 0 in create statment (#2220 dl239)
+- Thread races in aggregator if there are concurrent Puts (#2472 @zhanghaohit)
+- Limit clause dose not work if conjunction with where clause or group by clause (#2447 @aceforeverd)
+- `TaskManager` process will exit if `ZooKeeper` disconnected (#2494 tobegit3hub)
+- Replica cluster dose not create database if the database created in leader cluster (#2488 @dl239)
+- Long window deploy success if there is data in the base table (#2501 @zhanghaohit)
+- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 dl239, #2466 @vagetablechicken)
+
+### Code Refactoring
+#2413 @dl239, #2470 #2467 #2468 @vagetablechicken
+
 ## [0.6.1] - 2022-08-30
 
 ### Features
@@ -325,6 +346,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.2...v0.5.3

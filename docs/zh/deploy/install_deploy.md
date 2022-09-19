@@ -170,6 +170,7 @@ OpenMLDB集群版需要部署zookeeper、nameserver、tablet等模块。其中zo
 #### 1. 下载zookeeper安装包
 ```
 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
+tar -zxvf zookeeper-3.4.14.tar.gz
 cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
