@@ -25,7 +25,7 @@ CREATE TABLE t1(col0 STRING);
 -- SUCCEED: Create successfully
 ```
 
-部署表t1的查询语句到OnlineServing:
+Online Request模式下，部署表t1的查询语句:
 
 ```sql
 DEPLOY demo_deploy select col0 from t1;
