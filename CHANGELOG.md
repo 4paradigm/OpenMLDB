@@ -10,13 +10,13 @@
 - Other minor features (#2420 @aceforeverd, #2411 @wuyou10206, #2446 #2452 @vagetablechicken, #2475 @tobegit3hub)
 
 ### Bug Fixes
-- Create table success if `partitionnum` is set 0 in create statment (#2220 dl239)
+- Create table success if `partitionnum` is set 0 in create statment (#2220 @dl239)
 - Thread races in aggregator if there are concurrent Puts (#2472 @zhanghaohit)
 - Limit clause dose not work if conjunction with where clause or group by clause (#2447 @aceforeverd)
 - `TaskManager` process will exit if `ZooKeeper` disconnected (#2494 @tobegit3hub)
 - Replica cluster dose not create database if the database created in leader cluster (#2488 @dl239)
 - Long window deploy success if there is data in the base table (#2501 @zhanghaohit)
-- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 dl239, #2466 @vagetablechicken)
+- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 @dl239, #2466 @vagetablechicken)
 
 ### Code Refactoring
 #2413 @dl239, #2470 #2467 #2468 @vagetablechicken
