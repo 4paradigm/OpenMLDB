@@ -570,35 +570,6 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, DeployOptions) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("create database test2;");
-    HandleSQL("use test2;");
-    std::string create_sql =
-        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
-    HandleSQL(create_sql);
-    if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
-    }
-
-    std::string deploy_sql =
-        "deploy demo OPTIONS(long_windows='w1:100') SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
-        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    hybridse::sdk::Status status;
-    sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo_w1_sum_c4;", &status);
-    ASSERT_TRUE(ok);
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
-}
-
 TEST_P(DBSDKTest, Delete) {
     auto cli = GetParam();
     sr = cli->sr;
@@ -658,9 +629,6 @@ TEST_P(DBSDKTest, DeployLongWindows) {
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
     HandleSQL(create_sql);
-    if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
-    }
 
     std::string deploy_sql =
         "deploy demo1 OPTIONS(long_windows='w1:100,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
