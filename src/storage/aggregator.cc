@@ -325,13 +325,13 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         it->NextPK();
     }
     if (recovery_offset == 0 || recovery_offset == UINT64_MAX) {
-        PDLOG(INFO, "aggregator recovery failed, recovery_offset=%lu", recovery_offset);
+        PDLOG(ERROR, "aggregator recovery failed, recovery_offset=%lu", recovery_offset);
         return false;
     }
 
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
     if (!log_reader.SetOffset(recovery_offset)) {
-        PDLOG(INFO, "create log_reader failed, recovery_offset=%lu", recovery_offset);
+        PDLOG(ERROR, "create log_reader failed, recovery_offset=%lu", recovery_offset);
         return false;
     }
     ::openmldb::api::LogEntry entry;
