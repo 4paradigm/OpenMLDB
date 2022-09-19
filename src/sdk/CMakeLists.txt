@@ -189,3 +189,132 @@ if(SQL_JAVASDK_ENABLE)
             DESTINATION taskmanager/lib/
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
+
+add_library(openmldb_api STATIC openmldb_api.cc)
+target_include_directories (
+    openmldb_api
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/sdk
+    ${PROJECT_SOURCE_DIR}/hybridse/src
+    ${PROJECT_SOURCE_DIR}/hybridse/include
+    ${PROJECT_SOURCE_DIR}/.deps/usr/include
+)
+
+# To get the final SDK, we need some libraries
+# Below, we will find and integrate these required libraries
+
+# We need hybridse_flags, but it hasn't been mentioned and needs to be added manually
+list(APPEND required_libs ${BIN_LIBS} ${SDK_LIBS} ${LINK_LIBS} hybridse_flags)
+
+# In required_libs, some libraries do not need or require different path lookup methods
+# ${ABSL_LIBS} ${LLVM_LIBS} : we need to recursively look up all the libraries they depend on
+# ${file_based_test_driver_LIBS} : we don't need the libraries, so we remove them
+# unwind : in ${LINK_LIBS}, we can get it by ${UNWIND_LIBRARY} which in ${BRPC_LIBS}
+# common tcmalloc_minimal : in ${BIN_LIBS}, we don't need them
+# zookeeper_mt : we get it by ${zookeeper_mt_LIBRARY}
+# zetasql : we get it by ${zetasql_LIBRARY}
+# re2 : we get it by ${re2_LIBRARY}
+# date_proto timeofday_proto latlng_proto : we don't need them
+# -lpthread : in zookeeper_mt
+# dl :we get it by ${dl_LIBRARY}
+# pthread : we get it by ${pthread_LIBRARY}
+# rt : we get it by ${rt_LIBRARY}
+list(REMOVE_ITEM required_libs ${ABSL_LIBS} ${LLVM_LIBS} ${file_based_test_driver_LIBS} unwind    common tcmalloc_minimal zookeeper_mt    zetasql re2 date_proto timeofday_proto latlng_proto    -lpthread dl pthread rt)
+
+# Process libraries in required_libs :
+# 1. with path itself
+# 2. get path by $<TARGET_FILE:${X}>
+# libraries_path sava paths of  the all libraries
+foreach(X  IN LISTS required_libs)
+    if(EXISTS ${X})
+        list(APPEND libraries_path ${X})
+        continue()
+    else()
+    list(APPEND libraries_path $<TARGET_FILE:${X}>)
+    endif()
+endforeach()
+
+# get path by ${X_LIBRARY}
+list(APPEND libraries_path ${zetasql_LIBRARY} ${zookeeper_mt_LIBRARY} ${re2_LIBRARY} ${dl_LIBRARY} ${pthread_LIBRARY} ${rt_LIBRARY} ${m_LIBRARY})
+
+# lib_name is the name of a library
+# all_libs save all the libraries name of absl and LLVM which find recursively
+function(get_link_libraries lib_name all_libs)
+    # Determine whether it is an absl... library or a LLVM... library according to the first four digits of the ${lib_name}
+    string(SUBSTRING ${lib_name} 0 4 filter)
+    # Get ${lib_name}'s link library
+    get_property(_links TARGET ${lib_name} PROPERTY INTERFACE_LINK_LIBRARIES)
+    # We should filter out libraries in the form of $<LINK_ONLY:...>, and don't include absl or LLVM, like $<LINK_ONLY:$<$<BOOL:>:"advapi32">>
+    list(FILTER _links INCLUDE REGEX ".*${filter}.*")
+    foreach(X IN LISTS _links)
+        # Some libraries exist in the form similar to $<LINK_ONLY:absl::base>. We need to filter them out through regular expressions
+        string(REGEX MATCH "${filter}[^>]+" Y ${X})
+        list(FIND ${all_libs} ${Y} _index)
+        # If there is no ${Y} in ${all_libs}, we recursively look for B
+        if(_index EQUAL -1)
+            get_link_libraries(${Y} ${all_libs})
+        endif()
+    endforeach()
+    set(${all_libs} "${${all_libs}};${lib_name}" PARENT_SCOPE)
+endfunction(get_link_libraries)
+
+# ${ABSL_LIBS} and ${LLVM_LIBS} need to recursively look up
+# We need absl::statusor, but it's not mentioned
+list(APPEND ABSL_AND_LLVM ${ABSL_LIBS} absl::statusor ${LLVM_LIBS})
+foreach(X IN LISTS ABSL_AND_LLVM)
+    get_link_libraries(${X} absl_llvm_libs)
+endforeach()
+# Remove null values
+list(REMOVE_ITEM absl_llvm_libs "")
+
+# Find path of libraries in ${absl_llvm_libs}
+foreach(X  IN LISTS absl_llvm_libs)
+    get_property(_loc TARGET ${X} PROPERTY LOCATION)
+    list(APPEND absl_llvm_path ${_loc})
+endforeach()
+
+list(APPEND to_openmldbsdk $<TARGET_FILE:openmldb_api> ${absl_llvm_path} ${libraries_path})
+
+add_custom_command(OUTPUT libopenmldbsdk.a
+COMMAND ar crsT libopenmldbsdk.a
+    ${to_openmldbsdk}
+)
+add_custom_target(_openmldbsdk ALL DEPENDS libopenmldbsdk.a)
+add_library(openmldbsdk STATIC IMPORTED GLOBAL)
+
+set_target_properties(openmldbsdk PROPERTIES
+IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
+)
+
+if(TESTING_ENABLE)
+    add_executable(openmldb_api_test openmldb_api_test.cc)
+    target_link_libraries(openmldb_api_test openmldbsdk base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+endif()
+
+FILE(GLOB USER_HEADER 
+    "${PROJECT_SOURCE_DIR}/src/sdk/openmldb_api.h"
+)
+FILE(GLOB USER_HEADER_SDK
+    "${PROJECT_SOURCE_DIR}/src/sdk/result_set.h"
+    "${PROJECT_SOURCE_DIR}/src/sdk/base_schema.h"
+)
+FILE(GLOB USER_LIB
+    "${PROJECT_SOURCE_DIR}/build/src/sdk/libopenmldbsdk.a"
+)
+
+install(
+    FILES ${USER_HEADER}
+    DESTINATION include
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+)
+install(
+    FILES ${USER_HEADER_SDK}
+    DESTINATION include/sdk
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+)
+install(
+    FILES ${USER_LIB}
+    DESTINATION lib
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+)
