@@ -1,10 +1,11 @@
 # 删除 DEPLOYMENT 
 
+`DROP DEPLOYMENT`语句用于删除一个Online Request模式下的部署。
+
 ```SQL
 DROP DEPLOYMENT deployment_name
 ```
 
-`DROP DEPLOYMENT`语句用于删除一个OnlineServing的部署。
 
 ## Example:
 
@@ -12,24 +13,23 @@ DROP DEPLOYMENT deployment_name
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 USE db1;
 -- SUCCEED: Database changed
 ```
 
 创建一张表`t1`:
 
-```
+```sql
 CREATE TABLE t1(col0 STRING);
 -- SUCCEED: Create successfully
-
 ```
 
 部署表t1的查询语句到OnlineServing:
 
 ```sql
-> DEPLOY demo_deploy select col0 from t1;
-SUCCEED: deploy successfully
+DEPLOY demo_deploy select col0 from t1;
+-- SUCCEED
 ```
 
 查看当前数据库下所有的deployments:
@@ -51,15 +51,18 @@ SHOW DEPLOYMENTS;
 DROP DEPLOYMENT demo_deploy;
 -- Drop deployment demo_deploy? yes/no
 -- yes
--- SUCCEED: Drop successfully
-
+-- SUCCEED
 ```
 
-删除后，再次查看数据库下的deployments，应为是空列表：
+删除后，再次查看数据库下的deployments，应为空列表：
 
 ```sql
 SHOW DEPLOYMENTS;
-Empty set
+ ---- ------------
+  DB   Deployment
+ ---- ------------
+
+0 rows in set
 ```
 
 
