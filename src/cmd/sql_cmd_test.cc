@@ -861,7 +861,7 @@ class DeployLongWindowEnv {
     std::string dp_;
 };
 
-TEST_P(DBSDKTest, DeployLongWindowsWithData) {
+TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;

@@ -3405,6 +3405,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
         }
         if (!new_indexs.empty()) {
             if (cluster_sdk_->IsClusterMode()) {
+                // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
                 uint64_t record_cnt = 0;
                 for (int idx = 0; idx < table.table_partition_size(); idx++) {
                     record_cnt += table.table_partition(idx).record_cnt();
@@ -3538,6 +3539,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         for (int idx = 0; idx < table.table_partition_size(); idx++) {
             record_cnt += table.table_partition(idx).record_cnt();
         }
+        // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
         if (record_cnt > 0) {
             return {::hybridse::common::StatusCode::kUnSupport,
                     "table " + table.name() +
