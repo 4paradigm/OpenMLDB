@@ -283,15 +283,18 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     auto log_parts = base_replicator->GetLogPart();
 
-    // TODO(nauta): support base table that existing data to init aggregator when deploy
-    if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
-        status_.store(AggrStat::kInited, std::memory_order_relaxed);
-        return true;
-    }
     auto it = aggr_table_->NewTraverseIterator(0);
     it->SeekToFirst();
     uint64_t recovery_offset = UINT64_MAX;
     uint64_t aggr_latest_offset = 0;
+
+    bool aggr_empty = !it->Valid();
+    // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
+    if (aggr_empty) {
+        PDLOG(INFO, "aggregator recovery skipped");
+        status_.store(AggrStat::kInited, std::memory_order_relaxed);
+        return true;
+    }
     while (it->Valid()) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
@@ -321,12 +324,16 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         }
         it->NextPK();
     }
-    if (aggr_table_->GetRecordCnt() == 0) {
-        recovery_offset = 0;
+    if (recovery_offset == 0 || recovery_offset == UINT64_MAX) {
+        PDLOG(INFO, "aggregator recovery failed, recovery_offset=%lu", recovery_offset);
+        return false;
     }
 
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
-    log_reader.SetOffset(recovery_offset);
+    if (!log_reader.SetOffset(recovery_offset)) {
+        PDLOG(INFO, "create log_reader failed, recovery_offset=%lu", recovery_offset);
+        return false;
+    }
     ::openmldb::api::LogEntry entry;
     uint64_t cur_offset = recovery_offset;
     std::string buffer;

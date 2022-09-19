@@ -437,6 +437,15 @@ LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compresse
     log_part_index_ = -1;
     start_offset_ = 0;
     compressed_ = compressed;
+
+    auto it = logs_->NewIterator();
+    it->SeekToLast();
+    if (it->Valid()) {
+        min_offset_ = it->GetValue();
+    } else {
+        min_offset_ = UINT64_MAX;
+        PDLOG(ERROR, "empty log reader");
+    }
 }
 
 LogReader::~LogReader() {
@@ -444,7 +453,14 @@ LogReader::~LogReader() {
     delete reader_;
 }
 
-void LogReader::SetOffset(uint64_t start_offset) { start_offset_ = start_offset; }
+bool LogReader::SetOffset(uint64_t start_offset) {
+    start_offset_ = start_offset;
+    if (start_offset < min_offset_) {
+        LOG(ERROR) << "SetOffset is smaller than the minimum offset in the logs";
+        return false;
+    }
+    return true;
+}
 
 void LogReader::GoBackToLastBlock() {
     if (sf_ == NULL || reader_ == NULL) {

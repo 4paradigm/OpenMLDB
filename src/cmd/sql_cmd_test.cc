@@ -650,6 +650,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
     std::string create_sql =
@@ -667,7 +668,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
@@ -859,6 +860,37 @@ class DeployLongWindowEnv {
     std::string table_;
     std::string dp_;
 };
+
+TEST_P(DBSDKTest, DeployLongWindowsWithData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    PrepareDataForLongWindow(base_db, base_table);
+    sleep(3);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(!status.IsOK()) << status.msg;
+
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok) << status.msg;
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
 
 TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     auto cli = GetParam();
@@ -3228,6 +3260,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
+    FLAGS_get_table_status_interval = 1000;
     // enable disk table flags
     std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb";
     absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
