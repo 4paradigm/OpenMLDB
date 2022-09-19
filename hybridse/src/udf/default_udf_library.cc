@@ -2679,14 +2679,14 @@ void DefaultUdfLibrary::InitUdaf() {
 
             |value|
             |--|
-            |0|
             |1|
             |2|
             |3|
             |4|
+            |4|
             @code{.sql}
                 SELECT top(value, 3) OVER w;
-                -- output "2,3,4"
+                -- output "4,4,3"
             @endcode
             @since 0.1.0
         )")
