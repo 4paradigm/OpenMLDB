@@ -3335,7 +3335,7 @@ void NameServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
-            response->set_msg( "nameserver is for follower cluster, and request has no zone info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
         }
