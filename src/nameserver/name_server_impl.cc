@@ -2974,6 +2974,18 @@ void NameServerImpl::DropTableFun(const DropTableRequest* request, GeneralRespon
     }
 }
 
+::openmldb::base::Status NameServerImpl::CheckZoneInfo(const ::openmldb::nameserver::ZoneInfo& zone_info) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (zone_info.zone_name() != zone_info_.zone_name() || zone_info.zone_term() != zone_info_.zone_term()) {
+        PDLOG(WARNING, "zone_info mismathch, expect zone name[%s], zone term [%lu], "
+              "but zone name [%s], zone term [%u]",
+              zone_info_.zone_name().c_str(), zone_info_.zone_term(),
+              zone_info.zone_name().c_str(), zone_info.zone_term());
+        return {::openmldb::base::ReturnCode::kZoneInfoMismathch, "zone_info mismathch"};
+    }
+    return {};
+}
+
 void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest* request, GeneralResponse* response,
                                Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -2984,53 +2996,41 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::openmldb::base::ReturnCode::kZoneInfoMismathch);
-            response->set_msg("zone_info mismathch");
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], "
-                  "but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     }
-    {
-        // if table is associated with deployment, drop it fail
-        if (!request->db().empty()) {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto db_iter = db_table_sp_map_.find(request->db());
-            if (db_iter != db_table_sp_map_.end()) {
-                auto& table_sp_map = db_iter->second;
-                auto table_iter = table_sp_map.find(request->name());
-                if (table_iter != table_sp_map.end()) {
-                    const auto& sp_vec = table_iter->second;
-                    if (!sp_vec.empty()) {
-                        std::stringstream ss;
-                        ss << "table has associated deployment: ";
-                        for (uint32_t i = 0; i < sp_vec.size(); i++) {
-                            ss << sp_vec[i].first << "." << sp_vec[i].second;
-                            if (i != sp_vec.size() - 1) {
-                                ss << ", ";
-                            }
+    // if table is associated with deployment, drop it fail
+    if (!request->db().empty()) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto db_iter = db_table_sp_map_.find(request->db());
+        if (db_iter != db_table_sp_map_.end()) {
+            auto& table_sp_map = db_iter->second;
+            auto table_iter = table_sp_map.find(request->name());
+            if (table_iter != table_sp_map.end()) {
+                const auto& sp_vec = table_iter->second;
+                if (!sp_vec.empty()) {
+                    std::stringstream ss;
+                    ss << "table has associated deployment: ";
+                    for (uint32_t i = 0; i < sp_vec.size(); i++) {
+                        ss << sp_vec[i].first << "." << sp_vec[i].second;
+                        if (i != sp_vec.size() - 1) {
+                            ss << ", ";
                         }
-                        std::string err_msg = ss.str();
-                        response->set_code(::openmldb::base::ReturnCode::kDropTableError);
-                        response->set_msg(err_msg);
-                        LOG(WARNING) << err_msg;
-                        return;
                     }
+                    std::string err_msg = ss.str();
+                    response->set_code(::openmldb::base::ReturnCode::kDropTableError);
+                    response->set_msg(err_msg);
+                    LOG(WARNING) << err_msg;
+                    return;
                 }
             }
         }
@@ -3120,11 +3120,8 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                     continue;
                 }
                 if (DropTableRemoteOP(name, db, kv.first, INVALID_PARENT_ID,
-                                      FLAGS_name_server_task_concurrency_for_replica_cluster) <  // NOLINT
-                    0) {
-                    PDLOG(WARNING,
-                          "create DropTableRemoteOP for replica cluster "
-                          "failed, table_name: %s, alias: %s",
+                                      FLAGS_name_server_task_concurrency_for_replica_cluster) <  0) {
+                    PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s",
                           name.c_str(), kv.first.c_str());
                     code = 505;
                     continue;
@@ -3336,25 +3333,15 @@ void NameServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_msg( "nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::openmldb::base::ReturnCode::kZoneInfoMismathch);
-            response->set_msg("zone_info mismathch");
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], "
-                  "but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     }
@@ -3406,25 +3393,15 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller, const Crea
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::openmldb::base::ReturnCode::kZoneInfoMismathch);
-            response->set_msg("zone_info mismathch");
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], "
-                  "but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     } else {
@@ -3512,25 +3489,15 @@ void NameServerImpl::CreateTableInfo(RpcController* controller, const CreateTabl
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
-            response->set_msg(
-                "nameserver is for follower cluster, and request has no zone "
-                "info");
-            PDLOG(WARNING,
-                  "nameserver is for follower cluster, and request has no zone "
-                  "info");
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::openmldb::base::ReturnCode::kZoneInfoMismathch);
-            response->set_msg("zone_info mismathch");
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], "
-                  "but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     } else {
@@ -3690,19 +3657,15 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         return;
     }
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (!request->has_zone_info()) {
             base::SetResponseStatus(base::ReturnCode::kNoZoneInfo,
                                     "nameserver is for follower cluster, and request has no zone info", response);
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            base::SetResponseStatus(base::ReturnCode::kZoneInfoMismathch, "zone_info mismathch", response);
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     }
@@ -4280,25 +4243,20 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller, const Add
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
         if (!request->has_zone_info()) {
             response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
             response->set_msg("nameserver is for follower cluster, and request has no zone info");
             PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
             return;
-        } else if (request->zone_info().zone_name() != zone_info_.zone_name() ||
-                   request->zone_info().zone_term() != zone_info_.zone_term()) {
-            response->set_code(::openmldb::base::ReturnCode::kZoneInfoMismathch);
-            response->set_msg("zone_info mismathch");
-            PDLOG(WARNING,
-                  "zone_info mismathch, expect zone name[%s], zone term [%lu], "
-                  "but zone name [%s], zone term [%u]",
-                  zone_info_.zone_name().c_str(), zone_info_.zone_term(), request->zone_info().zone_name().c_str(),
-                  request->zone_info().zone_term());
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
             return;
         }
     }
+    std::lock_guard<std::mutex> lock(mu_);
     uint32_t pid = request->pid();
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
@@ -9578,6 +9536,19 @@ void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatab
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        if (!request->has_zone_info()) {
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
+            return;
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
+            return;
+        }
+    }
     auto status = CreateDatabase(request->db(), request->if_not_exists());
     SetResponseStatus(status, response);
 }
@@ -9601,6 +9572,25 @@ base::Status NameServerImpl::CreateDatabase(const std::string& db_name, bool if_
         if (IsClusterMode() && !zk_client_->CreateNode(zk_path_.db_path_ + "/" + db_name, "")) {
             PDLOG(WARNING, "create db node[%s/%s] failed!", zk_path_.db_path_.c_str(), db_name.c_str());
             return {::openmldb::base::ReturnCode::kSetZkFailed, "set zk failed"};
+        }
+        if (mode_.load(std::memory_order_acquire) == kLEADER) {
+            decltype(nsc_) tmp_nsc;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                tmp_nsc = nsc_;
+            }
+            for (const auto& kv : tmp_nsc) {
+                if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                    PDLOG(WARNING, "cluster[%s] is not Healthy", kv.first.c_str());
+                    continue;
+                }
+                auto status = std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)
+                        ->CreateDatabaseRemote(db_name, zone_info_);
+                if (!status.OK()) {
+                    PDLOG(WARNING, "create remote database failed, msg is [%s]", status.msg.c_str());
+                    return status;
+                }
+            }
         }
         PDLOG(INFO, "create database %s success", db_name.c_str());
     }
@@ -9658,34 +9648,68 @@ void NameServerImpl::DropDatabase(RpcController* controller, const DropDatabaseR
         PDLOG(WARNING, "cannot drop internal database");
         return;
     }
+    if (mode_.load(std::memory_order_acquire) == kFOLLOWER) {
+        if (!request->has_zone_info()) {
+            response->set_code(::openmldb::base::ReturnCode::kNoZoneInfo);
+            response->set_msg("nameserver is for follower cluster, and request has no zone info");
+            PDLOG(WARNING, "nameserver is for follower cluster, and request has no zone info");
+            return;
+        }
+        auto status = CheckZoneInfo(request->zone_info());
+        if (!status.OK()) {
+            ::openmldb::base::SetResponseStatus(status, response);
+            return;
+        }
+    }
     if (request->db() == INTERNAL_DB || request->db() == INFORMATION_SCHEMA_DB) {
         response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
         response->set_msg("database not found");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    if (databases_.find(request->db()) == databases_.end()) {
-        response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-        response->set_msg("database not found");
-        return;
-    }
-    auto db_it = db_table_info_.find(request->db());
-    if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
-        response->set_code(::openmldb::base::ReturnCode::kDatabaseNotEmpty);
-        response->set_msg("database not empty");
-        return;
-    }
-    if (IsClusterMode()) {
-        if (!zk_client_->DeleteNode(zk_path_.db_path_ + "/" + request->db())) {
-            PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
-            response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
-            response->set_msg("set zk failed");
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (databases_.find(request->db()) == databases_.end()) {
+            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
             return;
         }
+        auto db_it = db_table_info_.find(request->db());
+        if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
+            response->set_code(::openmldb::base::ReturnCode::kDatabaseNotEmpty);
+            response->set_msg("database not empty");
+            return;
+        }
+        if (IsClusterMode()) {
+            if (!zk_client_->DeleteNode(zk_path_.db_path_ + "/" + request->db())) {
+                PDLOG(WARNING, "drop db node[%s/%s] failed!", zk_path_.db_path_.c_str(), request->db().c_str());
+                response->set_code(::openmldb::base::ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                return;
+            }
+        }
+        databases_.erase(request->db());
     }
-    databases_.erase(request->db());
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    response->set_msg("ok");
+    if (mode_.load(std::memory_order_acquire) == kLEADER) {
+        decltype(nsc_) tmp_nsc;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            tmp_nsc = nsc_;
+        }
+        for (const auto& kv : tmp_nsc) {
+            if (kv.second->state_.load(std::memory_order_relaxed) != kClusterHealthy) {
+                PDLOG(WARNING, "cluster[%s] is not Healthy", kv.first.c_str());
+                continue;
+            }
+            auto status = std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)
+                    ->DropDatabaseRemote(request->db(), zone_info_);
+            if (!status.OK()) {
+                PDLOG(WARNING, "drop remote database failed, msg is [%s]", status.msg.c_str());
+                ::openmldb::base::SetResponseStatus(status, response);
+                return;
+            }
+        }
+    }
+    ::openmldb::base::SetResponseOK(response);
 }
 
 void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpointRequest* request,
