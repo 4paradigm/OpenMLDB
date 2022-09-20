@@ -76,14 +76,15 @@ func (r *respDataRows) Close() error {
 // should be taken when closing Rows not to modify
 // a buffer held in dest.
 func (r *respDataRows) Next(dest []interfaces.Value) error {
-	if r.i < len(r.Data) {
-		for i := 0; i < len(r.Data[r.i]); i++ {
-			dest[i] = r.Data[i]
-		}
-		r.i++
-		return nil
+	if r.i >= len(r.Data) {
+		return io.EOF
 	}
-	return io.EOF
+
+	for i, data := range r.Data[r.i] {
+		dest[i] = data
+	}
+	r.i++
+	return nil
 }
 
 type QueryReq struct {
@@ -242,11 +243,19 @@ func (c *conn) IsValid() bool {
 
 // ExecContext implements driver.ExecerContext.
 func (c *conn) ExecContext(ctx context.Context, query string, args []interfaces.NamedValue) (interfaces.Result, error) {
-	_, err := c.query(ctx, query)
+	parameters := make([]interfaces.Value, len(args))
+	for i, arg := range args {
+		parameters[i] = arg.Value
+	}
+	_, err := c.query(ctx, query, parameters...)
 	return &result{}, err
 }
 
 // QueryContext implements driver.QueryerContext.
 func (c *conn) QueryContext(ctx context.Context, query string, args []interfaces.NamedValue) (interfaces.Rows, error) {
-	return c.query(ctx, query)
+	parameters := make([]interfaces.Value, len(args))
+	for i, arg := range args {
+		parameters[i] = arg.Value
+	}
+	return c.query(ctx, query, parameters...)
 }

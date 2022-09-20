@@ -44,7 +44,6 @@ func Test_driver(t *testing.T) {
 	}
 
 	t.Run("query", func(t *testing.T) {
-		t.Parallel()
 		queryStmt := `SELECT c1, c2 FROM demo`
 		rows, err := db.QueryContext(ctx, queryStmt)
 		assert.NoError(t, err, "fail to query %s", queryStmt)
@@ -55,7 +54,7 @@ func Test_driver(t *testing.T) {
 		}
 		{
 			assert.True(t, rows.Next())
-			assert.NoError(t, rows.Scan(demo))
+			assert.NoError(t, rows.Scan(&demo.c1, &demo.c2))
 			assert.Equal(t, struct {
 				c1 int32
 				c2 string
@@ -63,7 +62,7 @@ func Test_driver(t *testing.T) {
 		}
 		{
 			assert.True(t, rows.Next())
-			assert.NoError(t, rows.Scan(demo))
+			assert.NoError(t, rows.Scan(&demo.c1, &demo.c2))
 			assert.Equal(t, struct {
 				c1 int32
 				c2 string
@@ -72,9 +71,8 @@ func Test_driver(t *testing.T) {
 	})
 
 	t.Run("query with parameter", func(t *testing.T) {
-		t.Parallel()
-		parameterQueryStmt := `SELECT c1, c2 FROM demo WHERE c1 = ?;`
-		rows, err := db.QueryContext(ctx, parameterQueryStmt, 1)
+		parameterQueryStmt := `SELECT c1, c2 FROM demo WHERE c2 = ? AND c1 = ?;`
+		rows, err := db.QueryContext(ctx, parameterQueryStmt, "bb", 1)
 		assert.NoError(t, err, "fail to query %s", parameterQueryStmt)
 
 		var demo struct {
@@ -83,7 +81,7 @@ func Test_driver(t *testing.T) {
 		}
 		{
 			assert.True(t, rows.Next())
-			assert.NoError(t, rows.Scan(demo))
+			assert.NoError(t, rows.Scan(&demo.c1, &demo.c2))
 			assert.Equal(t, struct {
 				c1 int32
 				c2 string
