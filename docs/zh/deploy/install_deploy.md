@@ -165,7 +165,7 @@ OpenMLDB集群版需要部署zookeeper、nameserver、tablet等模块。其中zo
 **注意:** 最好把不同的组件部署在不同的目录里，便于单独升级。如果在同一台机器部署多个tablet也需要部署在不同的目录里
 
 ### 部署zookeeper
-建议部署3.4.14版本。如果已有可用zookeeper集群可略过此步骤
+zookeeper 要求版本在 3.4 到 3.6 之间, 建议部署3.4.14版本。如果已有可用zookeeper集群可略过此步骤。
 
 #### 1. 下载zookeeper安装包
 ```
