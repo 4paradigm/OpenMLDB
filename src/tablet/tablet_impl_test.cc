@@ -5544,6 +5544,7 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         // pre aggr table
         id = counter++;
         aggr_table_id = id;
+        DLOG(INFO) << "base_table_id: " << base_table_id << ", aggr_table_id: " << aggr_table_id;
         table_meta = request.mutable_table_meta();
         table_meta->Clear();
         table_meta->set_tid(id);
@@ -5617,7 +5618,7 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
         ::openmldb::storage::AggrBuffer* aggr_buffer;
-        aggr->GetAggrBuffer("id1", &aggr_buffer);
+        ASSERT_TRUE(aggr->GetAggrBuffer("id1", &aggr_buffer));
         ASSERT_EQ(aggr_buffer->aggr_cnt_, 1);
         ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 1);
         ASSERT_EQ(aggr_buffer->binlog_offset_, 1);

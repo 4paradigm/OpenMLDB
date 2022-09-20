@@ -161,7 +161,10 @@ class LogReader {
     int GetLogIndex();
     int GetEndLogIndex();
     uint64_t GetLastRecordEndOffset();
-    void SetOffset(uint64_t start_offset);
+    bool SetOffset(uint64_t start_offset);
+    uint64_t GetMinOffset() const {
+        return min_offset_;
+    }
     LogReader(const LogReader&) = delete;
     LogReader& operator=(const LogReader&) = delete;
 
@@ -169,6 +172,7 @@ class LogReader {
     std::string log_path_;
     int log_part_index_;
     uint64_t start_offset_;
+    uint64_t min_offset_;
     SequentialFile* sf_;
     Reader* reader_;
     LogParts* logs_;
