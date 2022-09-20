@@ -47,14 +47,14 @@ func TestParseReqToJson(t *testing.T) {
 func TestParseRespFromJson(t *testing.T) {
 	for _, tc := range []struct {
 		resp   string
-		expect GeneralResp
+		expect queryResp
 	}{
 		{
 			`{
 				"code": 0,
 				"msg": "ok"
 			}`,
-			GeneralResp{
+			queryResp{
 				Code: 0,
 				Msg:  "ok",
 				Data: nil,
@@ -69,7 +69,7 @@ func TestParseRespFromJson(t *testing.T) {
 					"data": [[1, "bb"], [2, "bb"]]
 				}
 			}`,
-			GeneralResp{
+			queryResp{
 				Code: 0,
 				Msg:  "ok",
 				Data: &respData{
@@ -90,7 +90,7 @@ func TestParseRespFromJson(t *testing.T) {
 					"data": [[true, 1, 1, 1, 1, 1, "bb"]]
 				}
 			}`,
-			GeneralResp{
+			queryResp{
 				Code: 0,
 				Msg:  "ok",
 				Data: &respData{

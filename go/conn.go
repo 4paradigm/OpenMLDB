@@ -5,6 +5,7 @@ import (
 	"context"
 	interfaces "database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,8 @@ var (
 
 	_ interfaces.ExecerContext  = (*conn)(nil)
 	_ interfaces.QueryerContext = (*conn)(nil)
+
+	_ interfaces.Rows = (*respDataRows)(nil)
 )
 
 type conn struct {
@@ -34,7 +37,7 @@ type conn struct {
 	closed bool
 }
 
-type GeneralResp struct {
+type queryResp struct {
 	Code int       `json:"code"`
 	Msg  string    `json:"msg"`
 	Data *respData `json:"data,omitempty"`
@@ -44,8 +47,6 @@ type respData struct {
 	Schema []string             `json:"schema"`
 	Data   [][]interfaces.Value `json:"data"`
 }
-
-var _ interfaces.Rows = (*respDataRows)(nil)
 
 type respDataRows struct {
 	respData
@@ -80,14 +81,12 @@ func (r *respDataRows) Next(dest []interfaces.Value) error {
 		return io.EOF
 	}
 
-	for i, data := range r.Data[r.i] {
-		dest[i] = data
-	}
+	copy(dest, r.Data[r.i])
 	r.i++
 	return nil
 }
 
-type QueryReq struct {
+type queryReq struct {
 	Mode  string      `json:"mode"`
 	SQL   string      `json:"sql"`
 	Input *queryInput `json:"input,omitempty"`
@@ -99,7 +98,7 @@ type queryInput struct {
 }
 
 func parseReqToJson(mode, sql string, input ...interfaces.Value) ([]byte, error) {
-	req := QueryReq{
+	req := queryReq{
 		Mode: mode,
 		SQL:  sql,
 	}
@@ -135,8 +134,8 @@ func parseReqToJson(mode, sql string, input ...interfaces.Value) ([]byte, error)
 	return json.Marshal(req)
 }
 
-func parseRespFromJson(respBody io.Reader) (*GeneralResp, error) {
-	var r GeneralResp
+func parseRespFromJson(respBody io.Reader) (*queryResp, error) {
+	var r queryResp
 	if err := json.NewDecoder(respBody).Decode(&r); err != nil {
 		return nil, err
 	}
@@ -207,7 +206,7 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 
 // Prepare implements driver.Conn.
 func (c *conn) Prepare(query string) (interfaces.Stmt, error) {
-	return &stmt{}, nil
+	return nil, errors.New("Prepare is not implemented, use QueryContext instead")
 }
 
 // Close implements driver.Conn.
@@ -218,7 +217,7 @@ func (c *conn) Close() error {
 
 // Begin implements driver.Conn.
 func (c *conn) Begin() (interfaces.Tx, error) {
-	return &tx{}, nil
+	return nil, errors.New("begin not implemented")
 }
 
 // Ping implements driver.Pinger.
@@ -247,8 +246,10 @@ func (c *conn) ExecContext(ctx context.Context, query string, args []interfaces.
 	for i, arg := range args {
 		parameters[i] = arg.Value
 	}
-	_, err := c.query(ctx, query, parameters...)
-	return &result{}, err
+	if _, err := c.query(ctx, query, parameters...); err != nil {
+		return nil, err
+	}
+	return interfaces.ResultNoRows, nil
 }
 
 // QueryContext implements driver.QueryerContext.
