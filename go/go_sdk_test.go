@@ -30,32 +30,64 @@ func Test_driver(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	if err := db.PingContext(ctx); err != nil {
-		t.Errorf("fail to ping connect: %s", err)
+	assert.NoError(t, db.PingContext(ctx), "fail to ping connect")
+
+	{
+		createTableStmt := "CREATE TABLE demo(c1 int, c2 string);"
+		_, err := db.ExecContext(ctx, createTableStmt)
+		assert.NoError(t, err, "fail to exec %s", createTableStmt)
+	}
+	{
+		insertValueStmt := `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`
+		_, err := db.ExecContext(ctx, insertValueStmt)
+		assert.NoError(t, err, "fail to exec %s", insertValueStmt)
 	}
 
-	createTableStmt := "CREATE TABLE demo(c1 int, c2 string);"
-	if _, err := db.ExecContext(ctx, createTableStmt); err != nil {
-		t.Errorf("fail to exec %s: %v", createTableStmt, err)
-	}
+	t.Run("query", func(t *testing.T) {
+		t.Parallel()
+		queryStmt := `SELECT c1, c2 FROM demo`
+		rows, err := db.QueryContext(ctx, queryStmt)
+		assert.NoError(t, err, "fail to query %s", queryStmt)
 
-	insertValueStmt := `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`
-	if _, err := db.ExecContext(ctx, insertValueStmt); err != nil {
-		t.Errorf("fail to exec %s: %v", insertValueStmt, err)
-	}
-
-	queryStmt := `SELECT c1, c2 FROM demo`
-	if rows, err := db.QueryContext(ctx, queryStmt); err != nil {
-		t.Errorf("fail to exec %s: %v", queryStmt, err)
-	} else {
-		types, err := rows.ColumnTypes()
-		if err != nil {
-			t.Errorf("column types not available: %v", err)
+		var demo struct {
+			c1 int32
+			c2 string
 		}
-		assert.Len(t, types, 2)
-	}
+		{
+			assert.True(t, rows.Next())
+			assert.NoError(t, rows.Scan(demo))
+			assert.Equal(t, struct {
+				c1 int32
+				c2 string
+			}{1, "bb"}, demo)
+		}
+		{
+			assert.True(t, rows.Next())
+			assert.NoError(t, rows.Scan(demo))
+			assert.Equal(t, struct {
+				c1 int32
+				c2 string
+			}{2, "bb"}, demo)
+		}
+	})
 
-	if _, err = db.ExecContext(ctx, "create database db;"); err != nil {
-		t.Errorf("fail to execute create database: %s", err)
-	}
+	t.Run("query with parameter", func(t *testing.T) {
+		t.Parallel()
+		parameterQueryStmt := `SELECT c1, c2 FROM demo WHERE c1 = ?;`
+		rows, err := db.QueryContext(ctx, parameterQueryStmt, 1)
+		assert.NoError(t, err, "fail to query %s", parameterQueryStmt)
+
+		var demo struct {
+			c1 int32
+			c2 string
+		}
+		{
+			assert.True(t, rows.Next())
+			assert.NoError(t, rows.Scan(demo))
+			assert.Equal(t, struct {
+				c1 int32
+				c2 string
+			}{1, "bb"}, demo)
+		}
+	})
 }

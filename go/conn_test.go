@@ -66,7 +66,7 @@ func TestParseRespJson(t *testing.T) {
 			},
 		},
 	} {
-		actual, err := parseRespJson(strings.NewReader(tc.resp))
+		actual, err := parseRespFromJson(strings.NewReader(tc.resp))
 		assert.NoError(t, err)
 		assert.Equal(t, &tc.expect, actual)
 	}

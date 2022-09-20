@@ -87,9 +87,9 @@ func (r *respDataRows) Next(dest []interfaces.Value) error {
 }
 
 type QueryReq struct {
-	Mode  string `json:"mode"`
-	SQL   string `json:"sql"`
-	Input *queryInput
+	Mode  string      `json:"mode"`
+	SQL   string      `json:"sql"`
+	Input *queryInput `json:"input"`
 }
 
 type queryInput struct {
@@ -97,7 +97,8 @@ type queryInput struct {
 	Data   []interfaces.Value `json:"data"`
 }
 
-func parseRespJson(respBody io.Reader) (*GeneralResp, error) {
+
+func parseRespFromJson(respBody io.Reader) (*GeneralResp, error) {
 	var r GeneralResp
 	if err := json.NewDecoder(respBody).Decode(&r); err != nil {
 		return nil, err
@@ -186,7 +187,7 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 		return nil, err
 	}
 
-	if r, err := parseRespJson(resp.Body); err != nil {
+	if r, err := parseRespFromJson(resp.Body); err != nil {
 		return nil, err
 	} else if r.Code != 0 {
 		return nil, fmt.Errorf("conn error: %s", r.Msg)
