@@ -24,6 +24,7 @@
 #include "storage/record.h"
 
 DECLARE_int32(gc_safe_offset);
+DECLARE_uint32(time_series_pool_block_size);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
@@ -39,6 +40,8 @@ Segment::Segment()
       pk_cnt_(0),
       ts_cnt_(1),
       gc_version_(0),
+      pool_(FLAGS_time_series_pool_block_size),
+      pools_(NULL),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
@@ -54,6 +57,8 @@ Segment::Segment(uint8_t height)
       key_entry_max_height_(height),
       ts_cnt_(1),
       gc_version_(0),
+      pool_(FLAGS_time_series_pool_block_size),
+      pools_(NULL),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
@@ -68,6 +73,8 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       key_entry_max_height_(height),
       ts_cnt_(ts_idx_vec.size()),
       gc_version_(0),
+      pool_(FLAGS_time_series_pool_block_size),
+      pools_(NULL),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
@@ -159,7 +166,7 @@ void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t si
     if (ts_cnt_ > 1) {
         return;
     }
-    auto* db = new DataBlock(1, data, size);
+    auto* db = new DataBlock(1, data, size, time, this->pool_);
     Put(key, time, db);
 }
 
@@ -176,6 +183,8 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
     uint32_t byte_size = 0;
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
+        // use time series pool
+        // char* pk = pool_.Alloc(key.size(), time);
         char* pk = new char[key.size()];
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
@@ -244,6 +253,7 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         if (pos == ts_idx_map_.end()) {
             continue;
         }
+        uint8_t heights;
         if (entry_arr == NULL) {
             int ret = entries_->Get(key, entry_arr);
             if (ret < 0 || entry_arr == NULL) {
@@ -252,6 +262,13 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
                 Slice skey(pk, key.size());
                 KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    if(this->pools_.size() <= i){
+                        ::openmldb::base::TimeSeriesPool pool_tmp = new ::openmldb::base::TimeSeriesPool(FLAGS_time_series_pool_block_size);
+                        this.pools_.push_back(pool_tmp);
+                    }
+                    DataBlock* block_tmp = new DataBlock(1, row->data, row->size, this->pools_[i]);
+                    uint8_t heights = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+                    kv.second, block_tmp);
                     entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
                 }
                 entry_arr = (void*)entry_arr_tmp;  // NOLINT
@@ -260,11 +277,9 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
                 pk_cnt_.fetch_add(1, std::memory_order_relaxed);
             }
         }
-        uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
-            kv.second, row);
         ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
             1, std::memory_order_relaxed);
-        byte_size += GetRecordTsIdxSize(height);
+        byte_size += GetRecordTsIdxSize(heights);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
@@ -312,6 +327,7 @@ bool Segment::Delete(const Slice& key) {
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
+        // gc insert should not use timepool
         entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     return true;
@@ -658,6 +674,11 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
                 entry_node = entries_->Remove(key);
             }
         }
+        for (uint32_t i = 0; i < ts_cnt_; i++) {
+            // TODO 这里应该提供一个接口来把所有的小于time的pool给删掉
+            this->pools_[i].Free(time);
+        }
+        
         if (entry_node != NULL) {
             std::lock_guard<std::mutex> lock(gc_mu_);
             entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);

@@ -29,6 +29,7 @@
 #include "storage/iterator.h"
 #include "storage/schema.h"
 #include "storage/ticket.h"
+#include "base/time_series_pool.h"
 
 namespace openmldb {
 namespace storage {
@@ -46,8 +47,9 @@ struct DataBlock {
     uint32_t size;
     char* data;
 
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
-        data = new char[len];
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len, uint64_t time, ::openmldb::base::TimeSeriesPool pool) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        // data = new char[len];
+        data = (char*)pool.Alloc(len, time);
         memcpy(data, input, len);
     }
 
@@ -120,7 +122,8 @@ class KeyEntry {
             }
             it->Next();
         }
-        entries.Clear();
+        // not clearing for using pool for time entry
+        // entries.Clear();
         delete it;
         return cnt;
     }
@@ -257,7 +260,9 @@ class Segment {
     void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt,  // NOLINT
                    uint64_t& gc_record_cnt,         // NOLINT
                    uint64_t& gc_record_byte_size);  // NOLINT
-
+ public:
+    ::openmldb::base::TimeSeriesPool pool_;
+    std::vector<::openmldb::base::TimeSeriesPool> pools_;
  private:
     KeyEntries* entries_;
     // only Put need mutex
@@ -272,6 +277,7 @@ class Segment {
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
+
     uint64_t ttl_offset_;
 };
 

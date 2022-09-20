@@ -194,6 +194,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     if (ts_map.empty()) {
         return false;
     }
+    real_ref_cnt = 1；
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
@@ -211,7 +212,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                 seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
+            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block, segment->pool_);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
