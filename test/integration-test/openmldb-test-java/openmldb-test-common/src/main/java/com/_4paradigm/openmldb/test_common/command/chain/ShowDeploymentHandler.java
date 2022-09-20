@@ -34,15 +34,15 @@ public class ShowDeploymentHandler extends AbstractSQLHandler{
 
     @Override
     public OpenMLDBResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         List<String> result = OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
         boolean ok = CommandResultUtil.success(result);
-        fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(ok);
-        fesqlResult.setDbName(dbName);
+        openMLDBResult.setMsg(Joiner.on("\n").join(result));
+        openMLDBResult.setOk(ok);
+        openMLDBResult.setDbName(dbName);
         if (ok && result.size()>9) {
-            fesqlResult.setDeployment(CommandResultUtil.parseDeployment(result));
+            openMLDBResult.setDeployment(CommandResultUtil.parseDeployment(result));
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 }

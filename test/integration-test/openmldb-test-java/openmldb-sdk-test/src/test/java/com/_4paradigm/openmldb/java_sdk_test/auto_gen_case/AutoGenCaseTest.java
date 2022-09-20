@@ -25,8 +25,10 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
+import com.google.common.collect.Lists;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
@@ -62,17 +64,24 @@ public class AutoGenCaseTest extends OpenMLDBTest {
         }else{
             //测试调试用
             String verion = "2.2.2";
-            OpenMLDBInfo fedbInfo = OpenMLDBInfo.builder()
-                    .basePath("/home/zhaowei01/fedb-auto-test/2.2.2")
-                    .openMLDBPath("/home/zhaowei01/fedb-auto-test/2.2.2/fedb-ns-1/bin/fedb")
-                    .zk_cluster("172.24.4.55:10006")
-                    .zk_root_path("/fedb")
-                    .nsNum(2).tabletNum(3)
-                    .nsEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10007", "172.24.4.55:10008"))
-                    .tabletEndpoints(com.google.common.collect.Lists.newArrayList("172.24.4.55:10009", "172.24.4.55:10010", "172.24.4.55:10011"))
-                    .build();
-            executorMap.put(verion, new OpenMLDBClient(fedbInfo.getZk_cluster(),fedbInfo.getZk_root_path()).getExecutor());
-            fedbInfoMap.put(verion, fedbInfo);
+            OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+            openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
+            openMLDBInfo.setNsNum(2);
+            openMLDBInfo.setTabletNum(3);
+            openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_root_path("/openmldb");
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
+            openMLDBInfo.setNsNames(Lists.newArrayList());
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30001", "172.24.4.55:30002", "172.24.4.55:30003"));
+            openMLDBInfo.setTabletNames(Lists.newArrayList());
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30006"));
+            openMLDBInfo.setApiServerNames(Lists.newArrayList());
+            openMLDBInfo.setTaskManagerEndpoints(Lists.newArrayList("172.24.4.55:30007"));
+            openMLDBInfo.setOpenMLDBPath("/home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1/bin/openmldb");
+
+            executorMap.put(verion, new OpenMLDBClient(openMLDBInfo.getZk_cluster(),openMLDBInfo.getZk_root_path()).getExecutor());
+            fedbInfoMap.put(verion, openMLDBInfo);
             fedbInfoMap.put("mainVersion", OpenMLDBGlobalVar.mainInfo);
         }
     }

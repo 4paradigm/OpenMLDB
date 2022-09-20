@@ -42,7 +42,7 @@ public class DeploymentContainsCheckerByCli extends BaseChecker {
         if (expectDeployment == null) {
             return;
         }
-        List<OpenmldbDeployment> actualDeployments = fesqlResult.getDeployments();
+        List<OpenmldbDeployment> actualDeployments = openMLDBResult.getDeployments();
         long count = actualDeployments.stream()
                 .filter(d -> d.getDbName().equals(expectDeployment.getDbName()) && d.getName().equals(expectDeployment.getName()))
                 .count();

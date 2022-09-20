@@ -24,6 +24,8 @@ public class SdkOption {
     private String zkCluster;
     private String zkPath;
     private String sparkConfPath = "";
+    private int zkLogLevel = 3;
+    private String zkLogFile = "";
 
     // options for standalone mode
     private String host;

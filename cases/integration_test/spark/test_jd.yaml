@@ -1,0 +1,307 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_db
+cases:
+- id: 1
+  desc: 多表-京东数据场景
+  inputs:
+  - columns:
+    - "id int32"
+    - "user_id int32"
+    - "sku_id int32"
+    - "date timestamp"
+    - "label int32"
+    indexs: ["index1:user_id:date"]
+    rows:
+    - - 459992740
+      - -1311478396
+      - 659918340
+      - 1611146000000
+      - -1939588571
+    - - -543207062
+      - 507763171
+      - 954458270
+      - 1611146000000
+      - -1603336561
+    - - -1304001546
+      - -769990921
+      - -2013336026
+      - 1611146000000
+      - -159697690
+    - - 158625020
+      - -945166892
+      - -74761189
+      - 1611146000000
+      - -93625855
+    - - 658374105
+      - -1246658137
+      - -1487653472
+      - 1611146000000
+      - -2042844456
+    - - -1036345552
+      - -1145428983
+      - -322971158
+      - 1611146000000
+      - -2141990920
+    - - -1454270183
+      - 653071136
+      - -1843758289
+      - 1611146000000
+      - -685391703
+    - - -27071105
+      - 630100915
+      - 314469207
+      - 1611146000000
+      - 993761881
+    - - 38809088
+      - -1539014266
+      - 295127280
+      - 1611146000000
+      - -1518440147
+    - - -1037180916
+      - -1318776756
+      - 244202015
+      - 1611146000000
+      - -2111130440
+    name: all
+  - columns:
+    - "user_id int32"
+    - "age string"
+    - "sex int32"
+    - "user_lv_cd int32"
+    - "user_reg_tm timestamp"
+    indexs: ["index_user:user_id:user_reg_tm"]
+    rows:
+    - - -1275547367
+      - "age_KGJgiSMgcx"
+      - -1321603784
+      - 679568701
+      - 1611146001000
+    - - 193784185
+      - "age_z7XwDlSdzE"
+      - -918521235
+      - -1839640562
+      - 1611146001000
+    - - -1500008039
+      - "age_UxLHj6n5iG"
+      - -490726213
+      - -2044459492
+      - 1611146001000
+    name: user
+  - columns:
+    - "sku_id int32"
+    - "a1 int32"
+    - "a2 int32"
+    - "a3 int32"
+    - "cate int32"
+    - "brand int32"
+    indexs: ["index_pdt:sku_id"]
+    rows:
+    - - 200135598
+      - 620202989
+      - -1819873162
+      - 944811254
+      - -1016957005
+      - -348886786
+    - - -1812792532
+      - -548438081
+      - 408684499
+      - -546175077
+      - 18157988
+      - -1619495426
+    - - 740971942
+      - -995983125
+      - -74505618
+      - 875561670
+      - -1701622561
+      - -2066012196
+    - - -1953481289
+      - 394506620
+      - -871334434
+      - -1883922132
+      - 337664649
+      - -678183716
+    - - 690079825
+      - -124658147
+      - -2013081012
+      - 514316543
+      - -1892105452
+      - -398640514
+    - - -1357806486
+      - -1866091467
+      - -848394605
+      - -1321197691
+      - 1037826917
+      - 576025216
+    name: product
+  - columns:
+    - "user_id int32"
+    - "sku_id int32"
+    - "time timestamp"
+    - "model_id int32"
+    - "type int32"
+    - "cate int32"
+    - "brand int32"
+    indexs: ["index:user_id:time"]
+    rows:
+    - - -946359508
+      - -784482204
+      - 1611146001000
+      - 831631177
+      - 50026040
+      - 125260267
+      - -1212429112
+    - - 674634423
+      - -608174802
+      - 1611146001000
+      - -1094861038
+      - -1421894956
+      - -3671335
+      - -1054215935
+    - - 548059146
+      - -271665164
+      - 1611146001000
+      - 81808312
+      - -1996872304
+      - 660746138
+      - 786421686
+    - - -1970341445
+      - -900311277
+      - 1611146001000
+      - -107428720
+      - 746853108
+      - -805673533
+      - -860397196
+    name: action
+  - columns:
+    - "sku_id int32"
+    - "comment_num int32"
+    - "has_bad_comment int32"
+    - "bad_comment_rate double"
+    - "dt timestamp"
+    indexs: ["index1:sku_id:dt"]
+    rows:
+    - - -2009402124
+      - -130694795
+      - -377940874
+      - -38.93
+      - 1611146001000
+    - - -284125685
+      - 216789062
+      - 520778695
+      - -73.75
+      - 1611146001000
+    - - -2059682888
+      - 865555637
+      - -370172128
+      - -62.3
+      - 1611146001000
+    - - -1747089957
+      - -720960620
+      - -113399911
+      - -109.97
+      - 1611146001000
+    - - -1446988855
+      - 964829781
+      - -796129056
+      - 43.56
+      - 1611146001000
+    - - -931224783
+      - 784179322
+      - -1570583655
+      - 7.31
+      - 1611146001000
+    - - -986441723
+      - -1938361365
+      - -986946742
+      - 98.82
+      - 1611146001000
+    name: comment
+  sql: |-
+    select * from
+    (
+    select
+        id as id_1,
+        `id` as all_id_original_0,
+        `user_id` as all_user_id_original_1,
+        `sku_id` as all_sku_id_original_2,
+        `date` as all_date_original_3,
+        `label` as all_label_original_4,
+        fz_top1_ratio(`id`) over all_user_id_date_0s_2764800s as all_id_window_top1_ratio_28,
+        fz_top1_ratio(`sku_id`) over all_user_id_date_0s_2764800s as all_sku_id_window_top1_ratio_29,
+        distinct_count(`sku_id`) over all_user_id_date_0s_2764800s as all_sku_id_window_unique_count_30,
+        fz_top1_ratio(`sku_id`) over all_user_id_date_0s_5529600s as all_sku_id_window_top1_ratio_31,
+        fz_top1_ratio(`id`) over all_user_id_date_0s_5529600s as all_id_window_top1_ratio_32,
+        `sku_id` as all_sku_id_combine_33,
+        `sku_id` as all_sku_id_combine_34,
+        `sku_id` as all_sku_id_combine_35,
+        `sku_id` as all_sku_id_combine_36,
+        `sku_id` as all_sku_id_combine_37,
+        `sku_id` as all_sku_id_combine_38,
+        `sku_id` as all_sku_id_combine_39
+    from
+        `all`
+        window all_user_id_date_0s_2764800s as (partition by `user_id` order by `date` rows_range between 2764800s preceding and 0s preceding),
+        all_user_id_date_0s_5529600s as (partition by `user_id` order by `date` rows_range between 5529600s preceding and 0s preceding))
+    as out0
+    last join
+    (
+    select
+        `all`.id as id_6,
+        `comment_sku_id__date_0s_1209600s`.`bad_comment_rate` as comment_bad_comment_rate_multi_last_value_5,
+        `comment_sku_id__date_0s_1209600s`.`comment_num` as comment_comment_num_multi_last_value_6,
+        `comment_sku_id__date_0s_1209600s`.`dt` as comment_dt_multi_last_value_7,
+        `comment_sku_id__date_0s_1209600s`.`has_bad_comment` as comment_has_bad_comment_multi_last_value_8,
+        `product_sku_id`.`a1` as product_a1_multi_direct_9,
+        `product_sku_id`.`a2` as product_a2_multi_direct_10,
+        `product_sku_id`.`a3` as product_a3_multi_direct_11,
+        `product_sku_id`.`brand` as product_brand_multi_direct_12,
+        `product_sku_id`.`cate` as product_cate_multi_direct_13,
+        `user_user_id`.`age` as user_age_multi_direct_14,
+        `user_user_id`.`sex` as user_sex_multi_direct_15,
+        `user_user_id`.`user_lv_cd` as user_user_lv_cd_multi_direct_16,
+        `user_user_id`.`user_reg_tm` as user_user_reg_tm_multi_direct_17
+    from
+        `all`
+        last join `comment` as `comment_sku_id__date_0s_1209600s` order by comment_sku_id__date_0s_1209600s.`dt` on `all`.`sku_id` = `comment_sku_id__date_0s_1209600s`.`sku_id` and comment_sku_id__date_0s_1209600s.`dt` < `all`.`date` - 0 and comment_sku_id__date_0s_1209600s.`dt` > `all`.`date` - 1209600000
+        last join `product` as `product_sku_id` on `all`.`sku_id` = `product_sku_id`.`sku_id`
+        last join `user` as `user_user_id` on `all`.`user_id` = `user_user_id`.`user_id`)
+    as out1
+    on out0.id_1 = out1.id_6
+    last join
+    (
+    select
+        id as id_19,
+        fz_topn_frequency(`brand`, 3) over action_user_id_time_0s_32d as action_brand_multi_top3frequency_18,
+        distinct_count(`brand`) over action_user_id_time_0_100 as action_brand_multi_unique_count_19,
+        distinct_count(`cate`) over action_user_id_time_0_100 as action_cate_multi_unique_count_20,
+        distinct_count(`cate`) over action_user_id_time_0s_32d as action_cate_multi_unique_count_21,
+        fz_topn_frequency(`model_id`, 3) over action_user_id_time_0s_32d as action_model_id_multi_top3frequency_22,
+        distinct_count(`model_id`) over action_user_id_time_0_100 as action_model_id_multi_unique_count_23,
+        distinct_count(`sku_id`) over action_user_id_time_0_100 as action_sku_id_multi_unique_count_24,
+        distinct_count(`sku_id`) over action_user_id_time_0s_32d as action_sku_id_multi_unique_count_25,
+        fz_topn_frequency(`type`, 3) over action_user_id_time_0s_32d as action_type_multi_top3frequency_26,
+        fz_topn_frequency(`type`, 3) over action_user_id_time_0_100 as action_type_multi_top3frequency_27
+    from
+        (select `user_id` as `user_id`, int(0) as `sku_id`, `date` as `time`, int(0) as `model_id`, int(0) as `type`, int(0) as `cate`, int(0) as `brand`, id from `all`)
+        window action_user_id_time_0s_32d as (
+    UNION (select `user_id`, `sku_id`, `time`, `model_id`, `type`, `cate`, `brand`, int(0) as id from `action`) partition by `user_id` order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        action_user_id_time_0_100 as (
+    UNION (select `user_id`, `sku_id`, `time`, `model_id`, `type`, `cate`, `brand`, int(0) as id from `action`) partition by `user_id` order by `time` rows between 100 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW))
+    as out2
+    on out0.id_1 = out2.id_19
+    ;
+  expect:
+    success: true

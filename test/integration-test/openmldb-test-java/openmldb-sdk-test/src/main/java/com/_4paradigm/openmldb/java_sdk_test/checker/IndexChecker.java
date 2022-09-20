@@ -46,7 +46,7 @@ public class IndexChecker extends BaseChecker {
     public void check() throws Exception {
         logger.info("index check");
         List<TableIndex> expectIndexs = expect.getIdxs();
-        List<OpenMLDBIndex> actualIndexs = fesqlResult.getSchema().getIndexs();
+        List<OpenMLDBIndex> actualIndexs = openMLDBResult.getSchema().getIndexs();
         Assert.assertEquals(actualIndexs.size(),expectIndexs.size(),"index count 不一致");
         for(int i=0;i<expectIndexs.size();i++){
             TableIndex tableIndex = expectIndexs.get(i);

@@ -38,7 +38,7 @@ public class CountChecker extends BaseChecker {
     public void check() throws Exception {
         log.info("count check");
         int expectCount = expect.getCount();
-        int actual = fesqlResult.getCount();
+        int actual = openMLDBResult.getCount();
         Assert.assertEquals(actual,expectCount,"count验证失败");
     }
 

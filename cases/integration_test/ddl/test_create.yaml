@@ -1,0 +1,559 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 创建所有类型的表
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+         - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 1
+    desc: 创建两个相同时间列的索引的表
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+            create table {0} (
+            c1 string,
+            c2 int,
+            c3 timestamp,
+            c4 timestamp,
+            index(key=(c1),ts=c4),
+            index(key=(c2),ts=c4));
+        insert: |
+          insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - ["aa", 1, 1590738990000, 1590738989000]
+  -
+    id: 2
+    desc: 创建两个不同时间列的索引的表
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4","index2:c2:c3"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
+  -
+    id: 3
+    desc: 创建一个联合索引的表
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1|c2:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
+  -
+    id: 4
+    desc: NotNull的列为index
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
+        create: |
+          create table {0} (
+          c1 string NOT NULL,
+          c2 int,
+          c3 timestamp,
+          c4 timestamp,
+          index(key=(c1),ts=c4));
+        insert: |
+          insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
+  -
+    id: 5
+    desc: 表名以数字开头
+    sqlDialect: ["HybridSQL"]
+    sql: create table 1aaa(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 6-1
+    desc: 表名为保留关键字
+    sqlDialect: ["HybridSQL"]
+    sql: create table order(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 6-2
+    desc: 表名为非保留关键字
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - name: table
+    sql: create table table(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: true
+  -
+    id: 7
+    desc: 列名以数字开头
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(1c string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 8
+    desc: 列名为保留关键字
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(use string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 9
+    desc: 语句缺少分号
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: true
+  -
+    id: 10
+    desc: 列的类型不存在
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 varchar2 NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 11
+    desc: index指定的col不存在
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c5),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 12
+    desc: index指定的ts不存在
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c5,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 13
+    desc: 创建的index不指定ts
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1)));
+    expect:
+      success: true
+  -
+    id: 14
+    desc: 创建index不指定col
+    mode: standalone-unsupport
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0m));
+    expect:
+      success: true
+  -
+    id: 15
+    desc: ts边界-指定的ts为string
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 string,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 16
+    desc: ts边界-指定的ts为int
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 17
+    desc: ts边界-指定的ts为smallint
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 smallint,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 18
+    desc: ts边界-指定的ts为date
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 date,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 19
+    desc: ts边界-指定的ts为float
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 float,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 20
+    desc: ts边界-指定的ts为double
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 double,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 21
+    desc: ts边界-指定的ts为bool
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1 string NOT NULL,c2 bool,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 22
+    desc: 表名使用特殊字符
+    sqlDialect: ["HybridSQL"]
+    sql: create table auto$#kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 23
+    desc: 列名使用特殊字符
+    sqlDialect: ["HybridSQL"]
+    sql: create table {auto}(c1$# string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 24
+    desc: 指定的ts为bigint
+    inputs:
+      -
+        columns : ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c2"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
+  -
+    id: 25
+    desc: 指定的ts为bigint+ttl
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: create table {0} (c1 string NOT NULL,c2 bigint,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0m));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
+  -
+    id: 26
+    desc: 创建已经存在的表
+    inputs:
+      -
+        columns : ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+    sql: create table {0}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: false
+  -
+    id: 27
+    desc: key边界-bigint为索引列
+    inputs:
+      -
+        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c4:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 28
+    desc: key边界-int为索引列
+    inputs:
+      -
+        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 29
+    desc: key边界-timestamp为索引列
+    inputs:
+      -
+        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c7:c4"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 30
+    desc: key边界-date为索引列
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c8),ts=c7));
+    expect:
+      success: true
+  -
+    id: 31
+    desc: key边界-float为索引列
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c5),ts=c7));
+    expect:
+      success: false
+  -
+    id: 32
+    desc: key边界-double为索引列
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c6),ts=c7));
+    expect:
+      success: false
+  -
+    id: 33
+    desc: key边界-smallint为索引列
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c2:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 34
+    desc: key边界-bool类型为索引列
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c9:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 35
+    desc: key边界-key和ts为同一列
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c4));
+    expect:
+      success: true
+  - id: 36
+    desc: create col with __prefix
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      __c1 string, __c3 int, __ts bigint,
+      index(key=__c1, ts=__ts));
+    expect:
+      success: true
+  -
+    id: 37
+    desc: create with replica num
+    sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4))
+      options (
+      replicanum = 2
+      );
+    expect:
+      success: true
+  -
+    id: 38
+    desc: create with replica num and distribution
+    mode: standalone-unsupport
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4))
+      options (
+      replicanum = 2,
+      distribution = [ ('{tb_endpoint_0}', ['{tb_endpoint_1}'])]
+      );
+    expect:
+      success: true
+  -
+    id: 39
+    desc: create with replica num and distribution
+    mode: standalone-unsupport
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4))
+      options (
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', ['{tb_endpoint_1}'])]
+      );
+    expect:
+      success: false
+  -
+    id: 40
+    desc: create with replica num and distribution
+    mode: standalone-unsupport
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4))
+      options (
+      replicanum = 2,
+      distribution = [ ('{tb_endpoint_0}', ['{tb_endpoint_0}'])]
+      );
+    expect:
+      success: false
+  -
+    id: 41
+    desc: create with partition num
+    sqlDialect: ["HybridSQL"]
+#    mode: standalone-unsupport
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4))
+      options (
+      partitionnum = 8
+      );
+    expect:
+      success: true
+  -
+    id: 42
+    desc: create with partition num
+    sqlDialect: ["HybridSQL"]
+    mode: standalone-unsupport
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4))
+      options (
+      replicanum = 2,
+      partitionnum = 8
+      );
+    expect:
+      success: true
+  -
+    id: 43
+    desc: no index
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date);
+    expect:
+      success: true
+  -
+    id: 44
+    desc: bool-insert-1
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",1]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 45
+    desc: create with two no ts index
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 46
+    desc: one has ts and another has not
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ts=c4, ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 47
+    desc: create with only key
+    sqlDialect: ["HybridSQL"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3)),
+      index(key=(c4)));
+    expect:
+      success: true
+  -
+    id: 48
+    desc: insert min int and max int
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} (
+            id int64,
+            order_0_timestamp timestamp,
+            c_2_int32 int32,
+            index(key=(id),ts=order_0_timestamp));
+        insert: |
+          insert into {0} values
+          (0,1538443518561,-2147483648);
+    sql: select * from {0};
+    expect:
+      success: true

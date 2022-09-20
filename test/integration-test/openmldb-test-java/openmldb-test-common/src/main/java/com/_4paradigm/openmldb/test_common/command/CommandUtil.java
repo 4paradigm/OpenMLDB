@@ -19,7 +19,7 @@ public class CommandUtil {
         List<String> result;
         do{
             result = ExecutorUtil.run(command);
-            if((result.size()==0)||(result.size()==1&&result.get(0).equals("zk client init failed"))){
+            if((result.size()==0)||(result.contains("zk client init failed"))){
                 num++;
                 Tool.sleep(time);
                 logger.info("command retry:"+num);

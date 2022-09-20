@@ -1,0 +1,151 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: bank
+version: 0.5.0
+cases:
+  - desc: bank test
+    id: 0
+    inputs:
+      - columns: [ reqId string, eventTime timestamp, main_id string, new_user_id string,
+                 loan_ts bigint, split_id int, time1 string ]
+        indexs: [ "index1:new_user_id:eventTime" ]
+        name: flattenRequest
+      - columns: [reqId string, eventTime timestamp, ingestionTime timestamp, actionValue
+                                                                                int]
+        indexs: ["index1:reqId:eventTime"]
+        name: action
+      - columns: [ingestionTime timestamp, new_user_id string, trx_ts bigint, trx_typ
+                                                                                string, trx_amt double, is_slry string]
+        indexs: ["index1:new_user_id:ingestionTime"]
+        name: bo_detail
+      - columns: [ingestionTime timestamp, new_user_id string, bill_ts bigint, bank_id string,
+          lst_bill_amt double, lst_repay_amt double, card_limit double, cur_blc double, cur_bill_min_repay double,
+          buy_cnt double, cur_bill_amt double, adj_amt double, rev_credit double, avl_amt double, advc_limit double, repay_status string]
+        indexs: ["index1:new_user_id:ingestionTime"]
+        name: bo_bill_detail
+      - columns: [ingestionTime timestamp, new_user_id string, sex string, prof string,
+                  edu string, marriage string, hukou_typ string]
+        indexs: ["index1:new_user_id:ingestionTime"]
+        name: bo_user
+      - columns: [ingestionTime timestamp, new_user_id string, bws_ts bigint, action string,
+                  subaction string]
+        indexs: ["index1:new_user_id:ingestionTime"]
+        name: bo_browse_history
+    batch_request:
+      columns: [reqId string, eventTime timestamp, main_id string, new_user_id string,
+                loan_ts bigint, split_id int, time1 string]
+      indexs: ["index1:new_user_id:eventTime"]
+      common_column_indices: [1, 2, 3, 4, 5]
+      rows:
+        - [reqId1, 1609894067190, "main_id1", "new_user_id1", 1609894067190, 1, "time1_1"]
+    expect:
+      success: true
+    sql: "select * from \n(\nselect\n    reqId as reqId_1,\n    `reqId` as flattenRequest_reqId_original_0,\n\
+    \    `eventTime` as flattenRequest_eventTime_original_1,\n    `main_id` as flattenRequest_main_id_original_2,\n\
+    \    `new_user_id` as flattenRequest_new_user_id_original_3\nfrom\n    `flattenRequest`\n\
+    \    )\nas out0\nlast join\n(\nselect\n    flattenRequest.reqId as reqId_5,\n\
+    \    `action_reqId`.`actionValue` as action_actionValue_multi_direct_4,\n    `bo_user_new_user_id`.`edu`\
+    \ as bo_user_edu_multi_direct_5,\n    `bo_user_new_user_id`.`hukou_typ` as bo_user_hukou_typ_multi_direct_6,\n\
+    \    `bo_user_new_user_id`.`ingestionTime` as bo_user_ingestionTime_multi_direct_7,\n\
+    \    `bo_user_new_user_id`.`marriage` as bo_user_marriage_multi_direct_8,\n  \
+    \  `bo_user_new_user_id`.`prof` as bo_user_prof_multi_direct_9,\n    `bo_user_new_user_id`.`sex`\
+    \ as bo_user_sex_multi_direct_10\nfrom\n    `flattenRequest`\n    last join `action`\
+    \ as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`\n   \
+    \ last join `bo_user` as `bo_user_new_user_id` on `flattenRequest`.`new_user_id`\
+    \ = `bo_user_new_user_id`.`new_user_id`)\nas out1\non out0.reqId_1 = out1.reqId_5\n\
+    last join\n(\nselect\n    reqId as reqId_12,\n    max(`adj_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_adj_amt_multi_max_11,\n    min(`adj_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_adj_amt_multi_min_12,\n    max(`advc_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_advc_limit_multi_max_13,\n    avg(`advc_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_advc_limit_multi_avg_14,\n    min(`avl_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_avl_amt_multi_min_15,\n    avg(`avl_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_avl_amt_multi_avg_16,\n    min(`buy_cnt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_buy_cnt_multi_min_17,\n    min(`buy_cnt`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_bill_detail_buy_cnt_multi_min_18,\n    max(`card_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_card_limit_multi_max_19,\n    min(`card_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_card_limit_multi_min_20,\n    max(`cur_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_cur_bill_amt_multi_max_21,\n    max(`cur_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_bill_detail_cur_bill_amt_multi_max_22,\n    min(`cur_bill_min_repay`)\
+    \ over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_cur_bill_min_repay_multi_min_23,\n\
+    \    max(`cur_bill_min_repay`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_cur_bill_min_repay_multi_max_24,\n    max(`cur_blc`) over\
+    \ bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_cur_blc_multi_max_25,\n\
+    \    max(`cur_blc`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_bill_detail_cur_blc_multi_max_26,\n    max(`lst_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_lst_bill_amt_multi_max_27,\n    avg(`lst_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_bill_detail_lst_bill_amt_multi_avg_28,\n    avg(`lst_repay_amt`) over\
+    \ bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_lst_repay_amt_multi_avg_29,\n\
+    \    max(`lst_repay_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_lst_repay_amt_multi_max_30,\n    min(`rev_credit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_rev_credit_multi_min_31,\n    avg(`rev_credit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_rev_credit_multi_avg_32,\n    fz_topn_frequency(`bank_id`,\
+    \ 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_bank_id_multi_top3frequency_33,\n\
+    \    distinct_count(`bank_id`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_bank_id_multi_unique_count_34,\n    fz_topn_frequency(`repay_status`,\
+    \ 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_repay_status_multi_top3frequency_35,\n\
+    \    distinct_count(`repay_status`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as bo_bill_detail_repay_status_multi_unique_count_36\nfrom\n    (select `eventTime`\
+    \ as `ingestionTime`, `new_user_id` as `new_user_id`, bigint(0) as `bill_ts`,\
+    \ '' as `bank_id`, double(0) as `lst_bill_amt`, double(0) as `lst_repay_amt`,\
+    \ double(0) as `card_limit`, double(0) as `cur_blc`, double(0) as `cur_bill_min_repay`,\
+    \ double(0) as `buy_cnt`, double(0) as `cur_bill_amt`, double(0) as `adj_amt`,\
+    \ double(0) as `rev_credit`, double(0) as `avl_amt`, double(0) as `advc_limit`,\
+    \ '' as `repay_status`, reqId from `flattenRequest`)\n    window bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
+    \ as (\nUNION (select `ingestionTime`, `new_user_id`, `bill_ts`, `bank_id`, `lst_bill_amt`,\
+    \ `lst_repay_amt`, `card_limit`, `cur_blc`, `cur_bill_min_repay`, `buy_cnt`, `cur_bill_amt`,\
+    \ `adj_amt`, `rev_credit`, `avl_amt`, `advc_limit`, `repay_status`, '' as reqId\
+    \ from `bo_bill_detail`) partition by `new_user_id` order by `ingestionTime` rows_range\
+    \ between 2764801s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),\n    bo_bill_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as (\nUNION (select `ingestionTime`, `new_user_id`, `bill_ts`, `bank_id`, `lst_bill_amt`,\
+    \ `lst_repay_amt`, `card_limit`, `cur_blc`, `cur_bill_min_repay`, `buy_cnt`, `cur_bill_amt`,\
+    \ `adj_amt`, `rev_credit`, `avl_amt`, `advc_limit`, `repay_status`, '' as reqId\
+    \ from `bo_bill_detail`) partition by `new_user_id` order by `ingestionTime` rows_range\
+    \ between 5529601s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))\nas out2\n\
+    on out0.reqId_1 = out2.reqId_12\nlast join\n(\nselect\n    reqId as reqId_38,\n\
+    \    distinct_count(`action`) over bo_browse_history_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_browse_history_action_multi_unique_count_37,\n    distinct_count(`action`)\
+    \ over bo_browse_history_new_user_id_ingestionTime_0_10 as bo_browse_history_action_multi_unique_count_38,\n\
+    \    distinct_count(`subaction`) over bo_browse_history_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_browse_history_subaction_multi_unique_count_39,\n    distinct_count(`subaction`)\
+    \ over bo_browse_history_new_user_id_ingestionTime_0_10 as bo_browse_history_subaction_multi_unique_count_40\n\
+    from\n    (select `eventTime` as `ingestionTime`, `new_user_id` as `new_user_id`,\
+    \ bigint(0) as `bws_ts`, '' as `action`, '' as `subaction`, reqId from `flattenRequest`)\n\
+    \    window bo_browse_history_new_user_id_ingestionTime_0s_5529601s as (\nUNION\
+    \ (select `ingestionTime`, `new_user_id`, `bws_ts`, `action`, `subaction`, ''\
+    \ as reqId from `bo_browse_history`) partition by `new_user_id` order by `ingestionTime`\
+    \ rows_range between 5529601s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),\n\
+    \    bo_browse_history_new_user_id_ingestionTime_0_10 as (\nUNION (select `ingestionTime`,\
+    \ `new_user_id`, `bws_ts`, `action`, `subaction`, '' as reqId from `bo_browse_history`)\
+    \ partition by `new_user_id` order by `ingestionTime` rows_range between 10 preceding\
+    \ and 0 preceding INSTANCE_NOT_IN_WINDOW))\nas out3\non out0.reqId_1 = out3.reqId_38\n\
+    last join\n(\nselect\n    reqId as reqId_42,\n    max(`trx_amt`) over bo_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_detail_trx_amt_multi_max_41,\n    avg(`trx_amt`) over bo_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as bo_detail_trx_amt_multi_avg_42,\n    distinct_count(`is_slry`) over bo_detail_new_user_id_ingestionTime_0_10\
+    \ as bo_detail_is_slry_multi_unique_count_43,\n    distinct_count(`is_slry`) over\
+    \ bo_detail_new_user_id_ingestionTime_0s_5529601s as bo_detail_is_slry_multi_unique_count_44,\n\
+    \    distinct_count(`trx_typ`) over bo_detail_new_user_id_ingestionTime_0_10 as\
+    \ bo_detail_trx_typ_multi_unique_count_45,\n    distinct_count(`trx_typ`) over\
+    \ bo_detail_new_user_id_ingestionTime_0s_5529601s as bo_detail_trx_typ_multi_unique_count_46\n\
+    from\n    (select `eventTime` as `ingestionTime`, `new_user_id` as `new_user_id`,\
+    \ bigint(0) as `trx_ts`, '' as `trx_typ`, double(0) as `trx_amt`, '' as `is_slry`,\
+    \ reqId from `flattenRequest`)\n    window bo_detail_new_user_id_ingestionTime_0s_5529601s\
+    \ as (\nUNION (select `ingestionTime`, `new_user_id`, `trx_ts`, `trx_typ`, `trx_amt`,\
+    \ `is_slry`, '' as reqId from `bo_detail`) partition by `new_user_id` order by\
+    \ `ingestionTime` rows_range between 5529601s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),\n\
+    \    bo_detail_new_user_id_ingestionTime_0_10 as (\nUNION (select `ingestionTime`,\
+    \ `new_user_id`, `trx_ts`, `trx_typ`, `trx_amt`, `is_slry`, '' as reqId from `bo_detail`)\
+    \ partition by `new_user_id` order by `ingestionTime` rows_range between 10 preceding\
+    \ and 0 preceding INSTANCE_NOT_IN_WINDOW))\nas out4\non out0.reqId_1 = out4.reqId_42\n\
+    ;"

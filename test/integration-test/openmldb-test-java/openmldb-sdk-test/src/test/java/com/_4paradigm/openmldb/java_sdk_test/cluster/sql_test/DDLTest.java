@@ -34,13 +34,13 @@ import org.testng.annotations.Test;
 @Feature("DDL")
 public class DDLTest extends OpenMLDBTest {
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create.yaml")
     @Story("create")
     public void testCreate(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
-    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create.yaml")
     @Story("create")
     @Test(dataProvider = "getCase",enabled = false)
     public void testCreateByCli(SQLCase testCase){
@@ -48,53 +48,53 @@ public class DDLTest extends OpenMLDBTest {
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_ttl.yaml")
     @Story("ttl")
     public void testTTL(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_ttl.yaml")
     @Story("ttl")
     public void testTTLByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create_index.yaml")
     @Story("create_index")
     public void testCreateIndex(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create_index.yaml")
     @Story("create_index")
     public void testCreateIndexByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_options.yaml")
     @Story("options")
     public void testOptions(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_options.yaml")
     @Story("options")
     public void testOptionsByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
 
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create_no_index.yaml")
     @Story("create_no_index")
     public void testCreateNoIndex(SQLCase testCase){
         ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
     }
 
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Yaml(filePaths = "integration_test/ddl/test_create_no_index.yaml")
     @Story("create_no_index")
     public void testCreateNoIndexByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();

@@ -18,7 +18,6 @@ package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
@@ -40,15 +39,15 @@ public class DeploymentCheckerByCli extends BaseChecker {
         log.info("deployment check");
         OpenmldbDeployment expectDeployment = expect.getDeployment();
         String name = expectDeployment.getName();
-        name = SQLUtil.formatSql(name, fesqlResult.getTableNames());
+        name = SQLUtil.formatSql(name, openMLDBResult.getTableNames());
         expectDeployment.setName(name);
         String sql = expectDeployment.getSql();
-        sql = SQLUtil.formatSql(sql, fesqlResult.getTableNames());
+        sql = SQLUtil.formatSql(sql, openMLDBResult.getTableNames());
         expectDeployment.setSql(sql);
         if (expectDeployment == null) {
             return;
         }
-        OpenmldbDeployment actualDeployment = fesqlResult.getDeployment();
+        OpenmldbDeployment actualDeployment = openMLDBResult.getDeployment();
         Assert.assertEquals(actualDeployment,expectDeployment);
     }
 }

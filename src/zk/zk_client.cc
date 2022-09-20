@@ -122,7 +122,7 @@ bool ZkClient::Init(int log_level, const std::string& log_file) {
     std::unique_lock<std::mutex> lock(mu_);
     zoo_set_debug_level(ZooLogLevel(log_level));
     if (!log_file.empty()) {
-        zk_log_stream_file_ = fopen(log_file.c_str(), "w");
+        zk_log_stream_file_ = fopen(log_file.c_str(), "a");
         zoo_set_log_stream(zk_log_stream_file_);
     }
 

@@ -24,9 +24,10 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/glog
   INSTALL_DIR ${DEPS_INSTALL_DIR}
+  DEPENDS gflags
   BUILD_IN_SOURCE TRUE
   CONFIGURE_COMMAND
     ./autogen.sh
-    COMMAND CXXFLAGS=-fPIC ./configure --prefix=<INSTALL_DIR> --enable-shared=no
+    COMMAND CXXFLAGS=-fPIC ./configure --prefix=<INSTALL_DIR> --enable-shared=no --with-gflags=<INSTALL_DIR>
   BUILD_COMMAND ${MAKE_EXE}
   INSTALL_COMMAND ${MAKE_EXE} install)

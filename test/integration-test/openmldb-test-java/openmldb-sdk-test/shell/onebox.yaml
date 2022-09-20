@@ -1,0 +1,24 @@
+mode: cluster
+zookeeper:
+  zk_cluster: 172.24.4.55:30019
+  zk_root_path: /onebox
+nameserver:
+  -
+    endpoint: 172.24.4.55:31000
+    path: /home/zhaowei01/openmldb-auto-test/onebox/openmldb-0.5.3-linux
+    is_local: true
+tablet:
+  -
+    endpoint: 172.24.4.55:31001
+    path: /home/zhaowei01/openmldb-auto-test/onebox/openmldb-0.5.3-linux
+    is_local: true
+  -
+    endpoint: 172.24.4.55:31002
+    path: /home/zhaowei01/openmldb-auto-test/onebox/openmldb-0.5.3-linux
+    is_local: true
+taskmanager:
+  -
+    endpoint: 172.24.4.55:31004
+    path: /home/zhaowei01/openmldb-auto-test/onebox/openmldb-0.5.3-linux
+    spark_master: local
+    is_local: true
