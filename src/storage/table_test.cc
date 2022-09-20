@@ -1965,7 +1965,7 @@ TEST_P(TableTest, SingleTsDelete) {
         it->Next();
         ASSERT_NE(it->GetKey(), 9523);
     }
-    ASSERT_TRUE(count == 5);
+    ASSERT_EQ(count, 5);
 
     delete it;
     delete table;

@@ -415,7 +415,6 @@ TEST_F(DiskTableTest, TsDelete) {
     }
     ASSERT_EQ(count, 10);
     delete it;
-    
     table->Delete("test6", 0, base_ts);
     it = table->NewIterator("test6", ticket);
     it->SeekToFirst();

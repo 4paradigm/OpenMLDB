@@ -315,7 +315,8 @@ uint64_t MemTableSnapshot::CollectDeletedKey(std::shared_ptr<Table> table, uint6
                 uint32_t ts_index = UINT32_MAX;
                 for (int pos = 0; pos < entry.dimensions_size(); pos++) {
                     bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
-                    std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
+                    std::string combined_key = entry.dimensions(pos).key() + "|" +
+                                               std::to_string(entry.dimensions(pos).idx());
                     if (!use_ts) {
                         std::string buff;
                         openmldb::base::Slice data;
