@@ -3,8 +3,8 @@
 #include <memory>
 #include <atomic>
 
-namespace hybridse {
-namespace storage {
+namespace openmldb {
+namespace base {
 
 constexpr uint16_t MAX_LIST_LEN = 1000;
 
@@ -115,10 +115,47 @@ class ConcurrentList {
         pos_node->SetNext(NULL);
         return result;
     }
+    ListNode<K, V>* SplitByKeyAndPos(const K& key, uint64_t pos) {
+        ListNode<K, V>* pos_node = head_->GetNext();
+        bool find_key = false;
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) {  // doesnt find pos, just return
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) {  // find key before pos, mark it
+                find_key = true;
+            }
+            pos_node = pos_node->GetNext();
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        if (find_key) {  // find key before pos, split by pos
+            ListNode<K, V>* result = pos_node->GetNext();
+            pos_node->SetNext(NULL);
+            return result;
+        } else {  // find pos without key, split by key
+            return Split(key);
+        }
+    }
 
+    ListNode<K, V>* GetLast() {
+        ListNode<K, V>* tmp = head_;
+        while(tmp->GetNext() != NULL) {
+            tmp = tmp->GetNext();
+        }
+        return tmp;
+    }
+
+    virtual bool IsEmpty() {
+        if (head_->GetNextNoBarrier() == NULL) {
+            return true;
+        }
+        return false;
+    }
     class ListIterator {
      public:
-        explicit ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
+        ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
         ~ListIterator() = default;
@@ -193,6 +230,10 @@ class ConcurrentList {
             Next();
         }
 
+        void SeekToLast() {
+            node_ = list_->GetLast();
+        }
+
         uint32_t GetSize() { return list_->GetSize(); }
 
      private:
@@ -208,9 +249,19 @@ class ConcurrentList {
         return ListIterator(nullptr);
     }
 
+    void Clear() {
+        ListNode<K, V>* node = head_->GetNext();
+        head_->SetNext(NULL);
+        while (node != NULL) {
+            ListNode<K, V>* tmp = node;
+            node = node->GetNext();
+            delete tmp;
+        }
+    }
+
     uint32_t GetSize() {
         uint32_t cnt = 0;
-        ListNode<K, V>* node = head_.load();
+        ListNode<K, V>* node = head_;
         while (node != NULL) {
             cnt++;
             ListNode<K, V>* tmp = node->GetNext();
@@ -223,10 +274,11 @@ class ConcurrentList {
         return cnt;
     }
 
+
     void GC() {
         if (GetSize() > MAX_LIST_LEN) {
             uint32_t cnt = 0;
-            ListNode<K, V> *node = head_.load();
+            ListNode<K, V> *node = head_;
             while (node != NULL) {
                 if (cnt >= MAX_LIST_LEN) {
                     ListNode<K, V> *delete_node = node->GetNext();
@@ -253,7 +305,7 @@ class ConcurrentList {
 
  private:
     Comparator const compare_;
-    std::atomic<ListNode<K, V> *> head_;
+    ListNode<K, V> *head_;
 };
 
 }  // namespace storage

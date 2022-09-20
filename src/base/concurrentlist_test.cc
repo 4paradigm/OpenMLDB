@@ -4,10 +4,10 @@
 #include "gtest/gtest.h"
 #include "base/skiplist.h"
 
-namespace hybridse {
-namespace storage {
+namespace openmldb {
+namespace base {
 
-using ::hybridse::base::DefaultComparator;
+using ::openmldb::base::DefaultComparator;
 DefaultComparator cmp;
 
 TEST(ConcurrentListTest, ShouldPushNewValue) {
