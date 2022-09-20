@@ -97,6 +97,42 @@ type queryInput struct {
 	Data   []interfaces.Value `json:"data"`
 }
 
+func parseReqToJson(mode, sql string, input ...interfaces.Value) ([]byte, error) {
+	req := QueryReq{
+		Mode: mode,
+		SQL:  sql,
+	}
+
+	if len(input) > 0 {
+		schema := make([]string, len(input))
+		for i, v := range input {
+			switch v.(type) {
+			case bool:
+				schema[i] = "bool"
+			case int16:
+				schema[i] = "int16"
+			case int32:
+				schema[i] = "int32"
+			case int64:
+				schema[i] = "int64"
+			case float32:
+				schema[i] = "float"
+			case float64:
+				schema[i] = "double"
+			case string:
+				schema[i] = "string"
+			default:
+				return nil, fmt.Errorf("unknown type at index %d", i)
+			}
+		}
+		req.Input = &queryInput{
+			Schema: schema,
+			Data:   input,
+		}
+	}
+
+	return json.Marshal(req)
+}
 
 func parseRespFromJson(respBody io.Reader) (*GeneralResp, error) {
 	var r GeneralResp
@@ -137,40 +173,10 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 		return nil, interfaces.ErrBadConn
 	}
 
-	queryReq := QueryReq{
-		Mode: "offsync",
-		SQL:  sql,
+	reqBody, err := parseReqToJson("offsync", sql, parameters...)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(parameters) != 0 {
-		var schema []string
-		for _, parameter := range parameters {
-			var typeName string
-			switch parameter.(type) {
-			case bool:
-				typeName = "Bool"
-			case int16:
-				typeName = "Int16"
-			case int32:
-				typeName = "Int32"
-			case int64:
-				typeName = "Int64"
-			case float32:
-				typeName = "Float"
-			case float64:
-				typeName = "Double"
-			case string:
-				typeName = "String"
-			}
-			schema = append(schema, typeName)
-		}
-		queryReq.Input = &queryInput{
-			Schema: schema,
-			Data:   parameters,
-		}
-	}
-
-	reqBody, _ := json.Marshal(queryReq)
 
 	req, err := http.NewRequestWithContext(
 		ctx,

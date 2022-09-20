@@ -8,7 +8,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseRespJson(t *testing.T) {
+func TestParseReqToJson(t *testing.T) {
+	for _, tc := range []struct {
+		mode   string
+		sql    string
+		input  []interfaces.Value
+		expect string
+	}{
+		{
+			"offsync",
+			"SELECT 1;",
+			nil,
+			`{
+				"mode": "offsync",
+				"sql": "SELECT 1;"
+			}`,
+		},
+		{
+			"offsync",
+			"SELECT c1, c2 FROM demo WHERE c1 = ? AND c2 = ?;",
+			[]interfaces.Value{int32(1), "bb"},
+			`{
+				"mode": "offsync",
+				"sql": "SELECT c1, c2 FROM demo WHERE c1 = ? AND c2 = ?;",
+				"input": {
+					"schema": ["int32", "string"],
+					"data": [1, "bb"]
+				}
+			}`,
+		},
+	} {
+		actual, err := parseReqToJson(tc.mode, tc.sql, tc.input...)
+		assert.NoError(t, err)
+		assert.JSONEq(t, tc.expect, string(actual))
+	}
+}
+
+func TestParseRespFromJson(t *testing.T) {
 	for _, tc := range []struct {
 		resp   string
 		expect GeneralResp
