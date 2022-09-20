@@ -54,7 +54,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
 cd taxi-trip
-../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
+/work/openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
 以下截图显示了以上 docker 内命令正确执行以及 OpenMLDB CLI 正确启动以后的画面
@@ -202,9 +202,8 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB CLI客户端
 
 ```bash
-cd taxi-trip
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 以下截图显示正确启动集群版OpenMLDB CLI 以后的画面
