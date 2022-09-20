@@ -37,7 +37,7 @@ type conn struct {
 type GeneralResp struct {
 	Code int       `json:"code"`
 	Msg  string    `json:"msg"`
-	Data *respData `json:"data"`
+	Data *respData `json:"data,omitempty"`
 }
 
 type respData struct {
@@ -89,7 +89,7 @@ func (r *respDataRows) Next(dest []interfaces.Value) error {
 type QueryReq struct {
 	Mode  string      `json:"mode"`
 	SQL   string      `json:"sql"`
-	Input *queryInput `json:"input"`
+	Input *queryInput `json:"input,omitempty"`
 }
 
 type queryInput struct {
