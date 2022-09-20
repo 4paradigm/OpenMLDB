@@ -64,11 +64,10 @@ void hex(StringRef *str, StringRef *output) {
     output->data_ = buffer;
 }
 
-void unhex(StringRef *str, StringRef *output) {
+void unhex(StringRef *str, StringRef *output, bool* is_null) {
     std::ostringstream ss;
     uint8_t* arr = new uint8_t[str->size_];
     memset(arr, 0, str->size_);
-    bool flag = 0;
     for (uint32_t i=0; i < str->size_; i++) {
         // only recognize 'A' to 'F' and 'a' to 'f' and '0' to '9', otherwise return null.
         if (str->data_[i] <= 'F' && str->data_[i] >= 'A') {
@@ -78,11 +77,11 @@ void unhex(StringRef *str, StringRef *output) {
         } else if (str->data_[i] <= '9' && str->data_[i] >= '0') {
             arr[i] = str->data_[i] - '0';
         } else {
-            flag = 1;
+            *is_null = true;
             break;
         }
     }
-    if (flag == 0) {    // every character is valid hex character
+    if (!*is_null) {    // every character is valid hex character
         if (str->size_ % 2 == 0) {
             for (uint32_t i=0; i < str->size_; i+=2) {
                 ss << char(arr[i] << 4 | arr[i+1]);
@@ -98,8 +97,8 @@ void unhex(StringRef *str, StringRef *output) {
         memcpy(buffer, ss.str().data(), output->size_);
         output->data_ = buffer;
     } else {
-        output->size_ = 4;
-        output->data_ = "NULL";
+        output->size_ = NULL;
+        output->data_ = NULL;
     }
     delete [] arr;
 }

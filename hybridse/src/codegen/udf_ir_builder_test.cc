@@ -136,14 +136,14 @@ TEST_F(UdfIRBuilderTest, UnhexTest) {
     CheckUdf<StringRef, StringRef>("unhex", "7&", StringRef("537061726"));
     // The following are invalid tests that contain the non-hex characters, the 'NULL' should
     // be returned.
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("Z"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("Zzzz"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("zfk"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("zf"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("fk"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("3k"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("4k"));
-    CheckUdf<StringRef, StringRef>("unhex", "NULL", StringRef("6k"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Z"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Zzzz"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("zfk"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("zf"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("fk"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("3k"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("4k"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("6k"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("unhex", nullptr, nullptr);
 }
 

@@ -342,7 +342,7 @@ struct ToHex {
 };
 void hex(StringRef *str, StringRef *output);
 
-void unhex(StringRef *str, StringRef *output);
+void unhex(StringRef *str, StringRef *output, bool* is_null);
 
 }  // namespace v1
 
