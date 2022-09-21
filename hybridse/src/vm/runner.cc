@@ -3028,7 +3028,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
 
         if (cond_ == nullptr) {
-            int64_t ts_start = agg_it->GetKey();
+            const uint64_t ts_start = agg_it->GetKey();
             const Row& row = agg_it->GetValue();
             if (prev_ts_start == ts_start) {
                 DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
@@ -3058,7 +3058,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             start_base = ts_start;
             agg_it->Next();
         } else {
-            const int64_t ts_start = agg_it->GetKey();
+            const uint64_t ts_start = agg_it->GetKey();
 
             // for agg rows has filter_key
             // max_size check should happen after iterate all agg rows for the same key
