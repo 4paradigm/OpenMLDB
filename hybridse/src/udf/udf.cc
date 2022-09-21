@@ -96,10 +96,7 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
         char *buffer = AllocManagedStringBuf(output->size_);
         memcpy(buffer, ss.str().data(), output->size_);
         output->data_ = buffer;
-    } else {
-        output->size_ = NULL;
-        output->data_ = NULL;
-    }
+    } 
     delete [] arr;
 }
 
