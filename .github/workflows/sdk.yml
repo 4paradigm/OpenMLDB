@@ -346,6 +346,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OPENMLDB_BUILD_TARGET: "openmldb"
     steps:
       - uses: actions/checkout@v2
 
@@ -379,7 +381,15 @@ jobs:
           OPENMLDB_APISERVER_HOST: 127.0.0.1
           OPENMLDB_APISERVER_PORT: 9080
         working-directory: go
-        run: go test ./...
+        run: go test ./... | tee test.out
+
+      - name: upload golang ut results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-ut-result-golang-${{ github.sha }}
+          path: |
+            go/test.out
 
       - name: stop server
         run: |
