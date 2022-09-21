@@ -86,35 +86,37 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 Among them, the most basic and indispensable elements include:
 
-- `UNION other_table`： `other_table` refers to the secondary table for WINDOW UNIOB. The primary and secondary tables need to keep the schema consistent. In most cases, the schema of the primary table and the secondary table are different. Therefore, we can ensure that the schema of the primary and secondary tables involved in window calculation is consistent by column filtering and default column configuration for the primary and secondary tables. Column filtering can also remove useless columns and only do WINDOW UNION and aggregation on key columns.
+- `UNION other_table`: `other_table` refers to the secondary table for WINDOW UNION. The primary and secondary tables' schemas need to keep consistent. In most cases, the schema of the primary table and the secondary table are different. We can ensure the schema consistency of the primary and secondary tables involved in window calculation by column filtering and default column configuration. Column filtering can also remove useless columns and only do WINDOW UNION and aggregation on important columns.
 
-- `PARTITION BY key_col`: Indicates by column `key_col` splice matching data from the secondary table.
+- `PARTITION BY key_col`: Indicates that data is spliced by column `key_col` from the secondary table.
 
-- `ORDER BY order_col`: Indicates that the sub table splicing data set is in accordance with`order_col`sorting columns
+- `ORDER BY order_col`: Indicates that the sub table is sorted in accordance with`order_col` columns.
 
-- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the sub table splicing window
+- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the sub table splicing window.
 
-- - `StartFrameBound`Represents the upper bound of the window.
+  - `StartFrameBound` represents the upper bound of the window.
 
-  - - `UNBOUNDED PRECEDING`: No upper bound.
-    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset. For example, `30d preceding` means that the upper bound of the window is the time of the current line - 30 days.
+    - `UNBOUNDED PRECEDING`: There is no upper bound.
+    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset. For example, `30d preceding` means that the upper bound of the window is 30 days before the time of the current line.
 
-  - `EndFrameBound`Represents the lower bound of the time window.
+  - `EndFrameBound` Represents the lower bound of the time window.
 
-  - - `CURRENT ROW`： Current row
-    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is the time of the current line - 1 day.
+    - `CURRENT ROW`: The lower bound is current row.
+    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is 1 day before the time of the current line. 
 
 - `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the sub table splicing window.
 
-- - `StartFrameBound`Represents the upper bound of the window.
+  - `StartFrameBound` represents the upper bound of the window.
 
-  - - `UNBOUNDED PRECEDING`: No upper bound.
-    - `number PRECEDING`: If it is a number interval, you can define the number of time items. For example, `100 PRECEDING` indicates the first 100 lines of the current line whose upper bound is.
+    - `UNBOUNDED PRECEDING`: There is no upper bound.
+    - `number PRECEDING`: If it is a number interval, you can define the number of rows. For example, `100 PRECEDING` indicates that the upper bound is 100 lines before the current line.
+ 
+  - `EndFrameBound` Represents the lower bound of the window.
 
-  - `EndFrameBound`Represents the lower bound of the time window.
+    - `CURRENT ROW`: The lower bound is current row.
+    - `number PRECEDING`: If it is a number interval, you can define the number of rows. For example, `1 PRECEDING`  indicates that the lower bound is 1 line before the current line.
 
-  - - `CURRENT ROW`： Current row
-    - `number PRECEDING`: If it is a number window, you can define the number of time bars. For example,`1 PRECEDING` indicates the first line of the current line whose upper bound is
+  
 
 
 ```{note}
@@ -123,15 +125,18 @@ Among them, the most basic and indispensable elements include:
   - Lower bound time  must be > = Upper bound time
   - The row number of lower bound must be < = The row number of upper bound
 - `INSTANCE_NOT_IN_WINDOW`: It indicates that except for the current row, other data in the main table will not enter the window.
-- For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](../reference/sql/dql/WINDOW_CLAUSE.md)。
-
+- For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](../reference/sql/dql/WINDOW_CLAUSE.md).
 ```
 
 ### Example
 
-The following describes the splicing window definition operation of WINDOW UNION through specific examples. For the user transaction table t1 mentioned above, we need to define the splicing window on the sub table of merchant flow table t2, which is based on `mid`. Because the schemas of t1 and t2 are different, we first extract the same columns from t1 and t2 respectively. For non-existent columns, you can configure default values. Among them, `mid` column is used for the splicing of two tables, so it is necessary. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window; The remaining columns are filtered and retained as required by the aggregation function.
+The following describes the splicing window definition operation of WINDOW UNION through specific examples. 
+For the user transaction table t1 mentioned above, we need to define the splicing window on the sub table of merchant flow table t2, which is based on `mid`.
+Because the schemas of t1 and t2 are different, we first extract the same columns from t1 and t2 respectively.
+For non-existent columns, you can configure default values. Among them, `mid` column is used for the splicing of two tables, so it is necessary. 
+Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window; The remaining columns are filtered and retained as required by the aggregation function.
 
-The following SQL and schematic diagrams extract the necessary columns from t1 to generate t11.
+The following SQL and images show how to extract necessary columns from t1 to generate t11.
 
 ```sql
 (select id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchase_type from t1) as t11
@@ -330,10 +335,3 @@ SELECT * FROM
    window w7d_merchant as (UNION (select 0L as id, mid, card, purchase_time, purchase_amt, purchase_type from t2) as t22 PARTITION BY mid ORDER BY purchase_time ROWS_RANGE BETWEEN 30d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ) as out3 ON out1.id = out3.out3id;
 ```
-
-## 5. Extended Reading
-
-- [Open-source Machine Learning Database OpenMLDB v0.4.0 Product Introduction](https://zhuanlan.zhihu.com/p/462559609)
-- Want to quickly try the OpenMLDB to start writing feature calculation scripts? Let's take a look at [OpenMLDB Quick Start](http://docs-cn.openmldb.ai/2620852)
-- Complete SQL syntax reference document: [China Mirror Site](http://docs-cn.openmldb.ai/2620876) and  [International Site](https://docs.openmldb.ai/)
-- The first part of this series of tutorials: [4PD Developer Community: In Simple Terms, Feature Engineering - Practice Guide based on OpenMLDB (Part 1)](https://zhuanlan.zhihu.com/p/467625760)
