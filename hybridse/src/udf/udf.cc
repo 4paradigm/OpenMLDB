@@ -65,7 +65,6 @@ void hex(StringRef *str, StringRef *output) {
 }
 
 void unhex(StringRef *str, StringRef *output, bool* is_null) {
-    std::ostringstream ss;
     char *buffer = AllocManagedStringBuf(str->size_ / 2 + str->size_ % 2);
     uint8_t* arr = new uint8_t[str->size_];
     memset(arr, 0, str->size_);
@@ -85,16 +84,15 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
     if (!*is_null) {    // every character is valid hex character
         if (str->size_ % 2 == 0) {
             for (uint32_t i=0; i < str->size_; i+=2) {
-                ss << char(arr[i] << 4 | arr[i+1]);
+                buffer[i/2] = char(arr[i] << 4 | arr[i+1]);
             }
         } else {
-            ss << char(arr[0]);
+            buffer[0] = char(arr[0]);
             for (uint32_t i=1; i < str->size_; i+=2) {
-                ss << char(arr[i] << 4 | arr[i+1]);
+                buffer[i/2+1] = char(arr[i] << 4 | arr[i+1]);
             }
         }
         output->size_ = str->size_ / 2 + str->size_ % 2;
-        memcpy(buffer, ss.str().data(), output->size_);
         output->data_ = buffer;
     }
     delete [] arr;
