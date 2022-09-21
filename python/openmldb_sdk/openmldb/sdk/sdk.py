@@ -36,16 +36,19 @@ class OpenMLDBClusterSdkOptions(object):
     def __init__(self,
                  zk_cluster,
                  zk_path,
-                 session_timeout=3000,
-                 spark_conf_path="",
-                 request_timeout=None):
+                 session_timeout=None,
+                 spark_conf_path=None,
+                 request_timeout=None,
+                 zk_log_level=None,
+                 zk_log_file=None):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
         # all timeout unit ms
         self.zk_session_timeout = session_timeout
         self.spark_conf_path = spark_conf_path
-        self.request_timeout = int(
-            request_timeout) if request_timeout else 60000
+        self.request_timeout = request_timeout
+        self.zk_log_level = zk_log_level
+        self.zk_log_file = zk_log_file
 
 
 class OpenMLDBStandaloneSdkOptions(object):
@@ -69,7 +72,12 @@ class OpenMLDBSdk(object):
             options = sql_router_sdk.SQLRouterOptions()
             options.zk_cluster = self.options.zk_cluster
             options.zk_path = self.options.zk_path
-            options.request_timeout = self.options.request_timeout
+            if self.options.request_timeout is not None:
+                options.request_timeout = int(self.options.request_timeout)
+            if self.options.zk_log_level is not None:
+                options.zk_log_level = int(self.options.zk_log_level)
+            if self.options.zk_log_file is not None:
+                options.zk_log_file = self.options.zk_log_file
             self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
             if not self.sdk:
                 logger.error(
@@ -83,7 +91,8 @@ class OpenMLDBSdk(object):
             options = sql_router_sdk.StandaloneOptions()
             options.host = self.options.host
             options.port = self.options.port
-            options.request_timeout = self.options.request_timeout
+            if self.options.request_timeout is not None:
+                options.request_timeout = int(self.options.request_timeout)
             self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
             if not self.sdk:
                 logger.error(

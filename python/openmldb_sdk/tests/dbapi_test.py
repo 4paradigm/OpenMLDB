@@ -21,7 +21,7 @@ from openmldb.dbapi import connect
 from openmldb.dbapi import DatabaseError
 import pytest
 
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 

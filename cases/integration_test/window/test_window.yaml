@@ -641,7 +641,6 @@ cases:
   -
     id: 22
     desc: 两个窗口相同的pk,不同的ts,相同的聚合函数
-    tags: ["TODO","@chenjing by@zhaowei","sql执行失败","http://jira.4paradigm.com/browse/FEX-924"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -754,11 +753,10 @@ cases:
   -
     id: 26
     desc: 两个窗口不同的ts,一个都在窗口内，一个都不进入窗口
-    tags: ["TODO","@chenjing by@zhaowei","sql执行失败,应该和 22 case是一个问题"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c1:c7","index1:c1:c4"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-01"]
@@ -775,11 +773,11 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
       rows:
-        - [1,"aa",30,0]
-        - [2,"aa",61,0]
-        - [3,"aa",93,0]
-        - [4,"aa",126,0]
-        - [5,"aa",160,0]
+        - [1,"aa",30,null]
+        - [2,"aa",61,null]
+        - [3,"aa",93,null]
+        - [4,"aa",126,null]
+        - [5,"aa",160,null]
   -
     id: 27
     desc: 两个窗口,一个union，一个不union

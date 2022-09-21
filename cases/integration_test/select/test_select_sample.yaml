@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["limit 0","结合limit","limit 1","limit条数大于表的条数"]
 version: 0.5.0
 cases:
   - id: 0
@@ -135,6 +135,7 @@ cases:
         - [NULL,2,NULL,1590738989000]
   - id: 10
     desc: 结合limit
+    mode: request-unsupport
     tags: ["TODO", "@zhaowei"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -145,11 +146,13 @@ cases:
           - ["cc",41,51,1590738991000]
     sql: select c1,c2,c3,c4 from {0} limit 2;
     expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa",2,3,1590738989000]
         - ["cc",41,51,1590738991000]
   - id: 11
     desc: limit 1
+    mode: request-unsupport
     tags: ["TODO", "@zhaowei"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -160,9 +163,11 @@ cases:
           - ["cc",41,51,1590738991000]
     sql: select c1,c2,c3,c4 from {0} limit 1;
     expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       rows:
         - ["aa",2,3,1590738989000]
   - id: 12
+    mode: request-unsupport
     desc: limit 0
     tags: ["TODO", "@zhaowei"]
     inputs:
@@ -182,6 +187,7 @@ cases:
         - ["cc",41,51,1590738991000]
   - id: 13
     desc: limit条数大于表的条数
+    mode: request-unsupport
     tags: ["TODO","@zhaoweiLIMIT单独测，现在先别测"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]

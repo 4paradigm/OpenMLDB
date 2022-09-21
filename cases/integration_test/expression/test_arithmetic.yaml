@@ -451,7 +451,7 @@ cases:
       success: false
   - id: 17
     desc: "int_DIV_int_正确"
-    tags: ["TODO","bug,@baoxinqi,DIV 0有问题"]
+    tags: ["TODO","bug,@baoxinqi,DIV 0有问题，30 DIV 0 期望是 null"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -470,19 +470,19 @@ cases:
       0:
         columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [null,1,1,null]
       1:
         columns: ["b2 int","b3 int","b4 bigint","b9 int"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [null,1,1,null]
       2:
         columns: ["b2 bigint","b3 bigint","b4 bigint","b9 bigint"]
         rows:
-          - [Infinity,0,0,Infinity]
+          - [null,0,0,null]
       3:
         columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [null,1,1,null]
   - id: 18
     desc: "int_DIV_各种类型_错误"
     level: 5

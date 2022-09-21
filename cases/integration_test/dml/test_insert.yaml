@@ -205,3 +205,28 @@ cases:
         - [ "aa",18,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
         - [ "aa",19,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
         - [ "aa",20,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+  -
+    id: 11
+    desc: index列为null
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [ null,1,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - [null,1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 12
+    desc: ts列为null
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+    sql: insert into {0} values('aa',1,2,3,1.1,2.1,null,'2020-05-01');
+    expect:
+      success: false
+

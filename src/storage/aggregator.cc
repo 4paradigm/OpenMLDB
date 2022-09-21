@@ -165,7 +165,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         if (recover) {
             return true;
         } else {
-            PDLOG(ERROR, "logical error: current offset is smaller than binlog offset");
+            PDLOG(ERROR, "logical error: current offset %lu is smaller than binlog offset %lu",
+                  offset, aggr_buffer.binlog_offset_);
             return false;
         }
     }
@@ -523,7 +524,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
             return false;
         }
         tmp_buffer.aggr_cnt_ += 1;
-        tmp_buffer.binlog_offset_ = offset;
+        tmp_buffer.binlog_offset_ = std::max(tmp_buffer.binlog_offset_, offset);
         break;
     }
 

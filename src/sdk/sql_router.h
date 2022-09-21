@@ -50,6 +50,8 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
     std::string spark_conf_path;
+    uint32_t zk_log_level = 3; // PY/JAVA SDK default info log
+    std::string zk_log_file;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
@@ -138,6 +140,10 @@ class SQLRouter {
                                                                  bool is_online_mode, bool is_sync_job,
                                                                  int offline_job_timeout,
                                                                  hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
+        const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+        bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
