@@ -31,9 +31,24 @@ var (
 	_ interfaces.Rows = (*respDataRows)(nil)
 )
 
+type queryMode string
+
+const (
+	ModeOffsync  queryMode = "offsync"
+	ModeOffasync queryMode = "offasync"
+	ModeOnline   queryMode = "online"
+)
+
+var allQueryMode = map[string]queryMode{
+	"offsync":  ModeOffsync,
+	"offasync": ModeOffasync,
+	"online":   ModeOnline,
+}
+
 type conn struct {
 	host   string // host or host:port
 	db     string // database name
+	mode   queryMode
 	closed bool
 }
 
@@ -173,7 +188,7 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 		return nil, interfaces.ErrBadConn
 	}
 
-	reqBody, err := parseReqToJson("offsync", sql, parameters...)
+	reqBody, err := parseReqToJson(string(c.mode), sql, parameters...)
 	if err != nil {
 		return nil, err
 	}

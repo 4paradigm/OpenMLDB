@@ -22,39 +22,49 @@ var (
 
 type driver struct{}
 
-func parseDsn(dsn string) (host string, db string, err error) {
+func parseDsn(dsn string) (host string, db string, mode queryMode, err error) {
 	u, err := url.Parse(dsn)
 	if err != nil {
-		return "", "", fmt.Errorf("invlaid URL: %w", err)
+		return "", "", "", fmt.Errorf("invlaid URL: %w", err)
 	}
 
 	if u.Scheme != "openmldb" && u.Scheme != "" {
-		return "", "", fmt.Errorf("invalid URL: unknown schema '%s'", u.Scheme)
+		return "", "", "", fmt.Errorf("invalid URL: unknown schema '%s'", u.Scheme)
 	}
 
 	p := strings.Split(strings.TrimLeft(u.Path, "/"), "/")
 
-	if len(p) == 0 {
-		return "", "", fmt.Errorf("invalid URL: DB name not found")
+	mode = ModeOffsync
+	if u.Query().Has("mode") {
+		m := u.Query().Get("mode")
+		if _, ok := allQueryMode[m]; !ok {
+			return "", "", "", fmt.Errorf("invalid mode: %s", m)
+		}
+		mode = allQueryMode[m]
 	}
 
-	return u.Host, p[0], nil
+	if len(p) == 0 {
+		return "", "", "", fmt.Errorf("invalid URL: DB name not found")
+	}
+
+	return u.Host, p[0], mode, nil
 }
 
 // Open implements driver.Driver.
 func (driver) Open(name string) (interfaces.Conn, error) {
 	// name should be the URL of the api server, e.g. openmldb://localhost:6543/db
-	host, db, err := parseDsn(name)
+	host, db, mode, err := parseDsn(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &conn{host: host, db: db, closed: false}, nil
+	return &conn{host: host, db: db, mode: mode, closed: false}, nil
 }
 
 type connecter struct {
 	host string
 	db   string
+	mode queryMode
 }
 
 // Connect implements driver.Connector.
@@ -73,10 +83,10 @@ func (connecter) Driver() interfaces.Driver {
 
 // OpenConnector implements driver.DriverContext.
 func (driver) OpenConnector(name string) (interfaces.Connector, error) {
-	host, db, err := parseDsn(name)
+	host, db, mode, err := parseDsn(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &connecter{host, db}, nil
+	return &connecter{host, db, mode}, nil
 }
