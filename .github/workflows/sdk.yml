@@ -362,12 +362,16 @@ jobs:
         env:
           ZK_PORT: 2181
         run: |
-          sed -i "s/^clientPort=.*$/clientPort=$ZK_PORT/g" thirdsrc/zookeeper-*/conf/zoo.cfg
+          sed -i "s/^clientPort=.*$/clientPort=$ZK_PORT/g" steps/zoo.cfg
 
       - name: start server
         run: |
           sh steps/ut_zookeeper.sh start
-          ./openmldb/bin/start-all.sh
+          COMPONENTS=("tablet" "tablet2" "nameserver" "apiserver")
+          for COMPONENT in ${COMPONENTS[@]}; do
+            ./openmldb/bin/start.sh start "$COMPONENT"
+            sleep 1
+          done
 
       - name: init test database
         env:
@@ -394,7 +398,11 @@ jobs:
       - name: stop server
         run: |
           sh steps/ut_zookeeper.sh stop
-          ./openmldb/bin/stop-all.sh
+          COMPONENTS=("tablet" "tablet2" "nameserver" "apiserver")
+          for COMPONENT in ${COMPONENTS[@]}; do
+            ./openmldb/bin/start.sh stop "$COMPONENT"
+            sleep 1
+          done
 
   publish-test-results:
     runs-on: ubuntu-latest
