@@ -130,29 +130,32 @@ Among them, the most basic and indispensable elements include:
 
 ### Example
 
-The following describes the splicing window definition operation of WINDOW UNION through specific examples. 
-For the user transaction table t1 mentioned above, we need to define the splicing window on the sub table of merchant flow table t2, which is based on `mid`.
-Because the schemas of t1 and t2 are different, we first extract the same columns from t1 and t2 respectively.
-For non-existent columns, you can configure default values. Among them, `mid` column is used for the splicing of two tables, so it is necessary. 
-Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window; The remaining columns are filtered and retained as required by the aggregation function.
+Let's see the usage of WINDOW UNION through specific examples. 
+
+For the user transaction table t1 mentioned above, we define a window over the sub table, that is merchant flow table t2, based on `mid`.
+Because the schemas of t1 and t2 are different, we extract the same columns from t1 and t2 respectively. For non-existent columns, we set default values. 
+Among them, `mid` column is used as the splicing condition of two tables, so it must be included. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window. The remaining columns are filtered and retained as required according to the aggregation function.
+
+
 
 The following SQL and images show how to extract necessary columns from t1 to generate t11.
-
 ```sql
 (select id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchase_type from t1) as t11
 ```
 
 ![img](images/t1_to_t11.jpg)
 
-The following SQL and diagram extract the necessary columns from t2 to generate t22.
-
+The following SQL extracts the necessary columns from t2 to generate t22.
 ```sql
 (select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
 ![img](images/t2_to_t22.png)
 
-It can be seen that the tables t11 and t22 generated after extraction have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really for the UNION operation in the traditional database, but to build the time window on the sub table t22 for each sample row in t11. According to the merchant ID `mid` ，we obtain the corresponding splicing data from t22 for each row of data in t11, and then sort it according to the consumption time (`purchase_time`) to construct the sub table splicing window. For example, we define a `w_t2_10d` window: It does not include the data rows of the main table except the current row, plus the data within ten days spliced by the sub table through `mid`. The schematic diagram is as follows. It can be seen that the yellow and blue shaded parts define the sub table splicing windows of sample 6 and sample 9 respectively.
+It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the sub table t22 for each row in t11. 
+According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the sub table splicing window. 
+For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data spliced according to `mid` from the sub table within ten days. 
+The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the sub table splicing windows of sample 6 and sample 9.
 
 ![img](images/t11_t22.jpg)
 
