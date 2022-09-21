@@ -66,6 +66,7 @@ void hex(StringRef *str, StringRef *output) {
 
 void unhex(StringRef *str, StringRef *output, bool* is_null) {
     std::ostringstream ss;
+    char *buffer = AllocManagedStringBuf(str->size_ / 2 + str->size_ % 2);
     uint8_t* arr = new uint8_t[str->size_];
     memset(arr, 0, str->size_);
     for (uint32_t i=0; i < str->size_; i++) {
@@ -92,13 +93,9 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
                 ss << char(arr[i] << 4 | arr[i+1]);
             }
         }
-        output->size_ = ss.str().size();
-        char *buffer = AllocManagedStringBuf(output->size_);
+        output->size_ = str->size_ / 2 + str->size_ % 2;
         memcpy(buffer, ss.str().data(), output->size_);
         output->data_ = buffer;
-    } else {
-        output->size_ = NULL;
-        output->data_ = NULL;
     }
     delete [] arr;
 }

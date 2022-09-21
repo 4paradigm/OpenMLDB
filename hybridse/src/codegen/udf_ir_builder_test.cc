@@ -126,6 +126,7 @@ TEST_F(UdfIRBuilderTest, HexStringUdfTest) {
 TEST_F(UdfIRBuilderTest, UnhexTest) {
     // The following are normal tests.
     CheckUdf<StringRef, StringRef>("unhex", "Spark SQL", StringRef("537061726B2053514C"));
+    CheckUdf<StringRef, StringRef>("unhex", "Spark SQLSpark", StringRef("537061726B2053514C537061726B"));
     CheckUdf<StringRef, StringRef>("unhex", "OpenMLDB", StringRef("4F70656E4D4C4442"));
     CheckUdf<StringRef, StringRef>("unhex", "OpenMLDB", StringRef("4f70656e4d4c4442"));
     // The following are valid character but not string unhex tests and the length of
@@ -134,6 +135,7 @@ TEST_F(UdfIRBuilderTest, UnhexTest) {
     CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("7B"));
     CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("47B"));
     CheckUdf<StringRef, StringRef>("unhex", "7&", StringRef("537061726"));
+    CheckUdf<StringRef, StringRef>("unhex", "7&�5", StringRef("537061726B2053514"));
     // The following are invalid tests that contain the non-hex characters, the 'NULL' should
     // be returned.
     CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Z"));
