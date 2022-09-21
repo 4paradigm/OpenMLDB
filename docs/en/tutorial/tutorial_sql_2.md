@@ -40,13 +40,13 @@ In feature engineering, in order to obtain enough effective information, data ne
 | purchase_amt  | DOUBLE    | Purchase Amount                  |
 | purchase_type | STRING    | Purchase Type: Cash, Credit Card |
 
-In the traditional relational database, in order to obtain the information of multiple tables, the most common way is to use join for splicing. However, for the requirements of feature engineering, the database join can not meet the requirements very efficiently. The main reason is that our main table sample table has a label column for model training, and each value can only correspond to one row of data records. Therefore, in practice, we hope that after join, the number of rows in the result table should be consistent with that in the main table.
+In the traditional relational database, the most common way to obtain the information from multiple tables is to use JOIN. However, in feature engineering, JOIN of common database can not meet the efficiency requirement. The main reason is that our main sample table has a **label** column for training, and each value of this column only correspond to one row of the data records. We hope that the number of rows in the result table should be consistent with that in the main table after JOIN operation.
 
-## 2. Sub Table Single Line Feature
+## 2. Single Line Feature in Sub Table 
 
 ## 2.1 LAST JOIN
 
-OpenMLDB currently supports`LAST JOIN`to perform database like join operations. LAST JOIN can be regarded as a special LEFT JOIN. On the premise of meeting the JOIN conditions, each row of the left table will spell the last row that meets the conditions. LAST JOIN is divided into disordered splicing and ordered splicing. Let's take a simpler table as an example and assume that the schemas of tables s1 and s2 are
+OpenMLDB supports`LAST JOIN` to perform common JOIN operation in traditional database. LAST JOIN can be regarded as a special LEFT JOIN. Each row of the left table will concat the last row that meets the conditions of the right table. There are two types of LAST JOIN: disordered splicing and ordered splicing. Let's take a simple table as an example and assume that both the schemas of tables s1 and s2 are
 
 ```sql
 (id int, col1 string, std_ts timestamp)
@@ -55,22 +55,24 @@ OpenMLDB currently supports`LAST JOIN`to perform database like join operations. 
 Then, we can do the following join operation:
 
 ```sql
--- des c: In view of LAST JOIN splicing based on ORDER BY
 SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
 ```
 
-As shown below, when `LAST JOIN` configure in `ORDER BY`，right click `std_ts` sort and splice the last hit data row. Take the second behavior of the left table as an example. There are 2 qualified right tables. Press `std_ts` after sorting and select the last item `3, b, 2020-05-20 10:11:13` .
+As shown below, left table `LAST JOIN` right table with `ORDER BY` and right table is sorted by  `std_ts`. Take the second row of the left table as an example. There are 2 qualified rows in right table. After sorting by `std_ts` the last row `3, b, 2020-05-20 10:11:13` is selected.
 
 ![img](images/lastjoin_1.jpg)
 
 ![img](images/lastjoin_2.jpg)
 
-## 3. Multi-Row Aggregation Feature of Sub Table
+## 3. Multi-Row Aggregation of Sub Table
 
-For the sub table splicing scenario, OpenMLDB extends the standard window syntax and adds [WINDOW UNION]( http://docs-cn.openmldb.ai/2620896) characteristic. It supports splicing multiple pieces of data from the sub table to form a sub table window. Based on the sub table splicing window, it is convenient to construct the multi-row aggregation feature of the sub table. Similarly, two steps need to be completed to construct the multi-row aggregation feature of the sub table:
+For the sub table splicing scenario, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) syntax. 
+WINDOW UNION supports splicing multiple pieces of data from the sub table to form a window on sub table.
+Based on the sub table splicing window, it is convenient to construct the multi-row aggregation feature of the sub table. 
+Similarly, two steps need to be completed to construct the multi-row aggregation feature of the sub table:
 
 - Step 1: Define the sub table splicing window.
-- Step 2: Construct the multi-row aggregation feature of the sub table on the sub table splicing window.
+- Step 2: Construct the multi-row aggregation feature of the sub table on the window constructed in Step 1.
 
 ## 3.1 Step 1: Define the Sub Table Splicing Window
 
