@@ -27,7 +27,7 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"

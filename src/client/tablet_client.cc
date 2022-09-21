@@ -20,7 +20,7 @@
 #include <iostream>
 #include <set>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "brpc/channel.h"
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"

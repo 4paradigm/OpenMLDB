@@ -38,7 +38,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
 DECLARE_uint32(traverse_cnt_limit);
