@@ -2,16 +2,20 @@
 
 ## 1. Preliminary Knowledge
 
-In the previous series of articles [Hands-On Tutorial for Feature Engineering Based on OpenMLDB (Part 1)](./tutorial_sql_1.md)）, we introduce the basic concepts and practical tools of Feature Engineering, as well as the basic feature script development based on single table. In this article, we will introduce in detail the more complex and powerful feature script development of the multi-table based on the main table and sub table. At the same time, we still rely on the SQL syntax provided by OpenMLDB for Feature Engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](http://docs-cn.openmldb.ai/).
+In the previous series of articles [SQL for Feature Extraction (Part 1)](./tutorial_sql_1.md), we introduce the basic concepts and practical tools of feature engineering, as well as the basic feature processing script development based on single table. In this article, we will introduce more complex and more powerful feature processing script development on multi-tables. 
+At the same time, we still rely on the SQL syntax provided by OpenMLDB in feature engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](https://openmldb.ai/docs/en/main/).
 
-If you want to run the SQL illustrated in this tutorial, please follow the following two steps to prepare:
+If you want to run the SQL in this tutorial, please follow the following two steps to prepare:
 
-- It is recommended to use the OpenMLDB docker image to run this tutorial under **Stand-alone Version**. Refer to [OpenMLDB Quick Start](http://docs-cn.openmldb.ai/2620852) for the operation mode. If using the clustered version, please use the offline mode（`SET @@execute_mode='offline'` ）. The common online mode of the cluster version only supports the simple data preview function, so most of the SQL in the tutorial cannot be run.
+- It is recommended to use the OpenMLDB docker image under **Stand-alone Version**. Refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md) for the operation mode. If using the cluster version, please use the **Offline** mode (`SET @@execute_mode='offline'` ). The CLI tool of cluster version is only available under **Offline** mode and **Online Preview** mode. The Online Preview mode only can be used for simple data preview, so most of the SQL in the tutorial cannot run in this mode.
 - All data related to this tutorial and the import operation script can be downloaded [here](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip).
 
-In this article, we will use the main table and sub table to illustrate. We still use the sample data of anti-fraud transactions in the previous article, including a main table user transaction table (Table 1, t1) and a sub table merchant flow table (Table 2, t2). In order to avoid the consistency of multiple data tables in the database design, it is necessary to store multiple data tables in the database design according to the general design principle. In Feature Engineering, in order to obtain enough effective information, data needs to be extracted from multiple tables thus, Feature Engineering needs to be carried out based on multiple tables.
+In this article, we will use the main table and sub table to illustrate. We still use the sample data of anti-fraud transactions in the previous article, including a main table: user transaction table (Table 1, t1) and a sub table: merchant flow table (Table 2, t2). 
+In the design of relational database, in order to avoid data redundancy and ensure data consistency, commonly, the data are stored in multiple tables according to design principles (database design paradigm). 
+In feature engineering, in order to obtain enough effective information, data needs to be extracted from multiple tables. As a result, feature engineering needs to be carried out based on multiple tables.
 
-**Table 1: Main Table, User Transaction Table t1**
+
+**Main Table: User Transaction Table, t1**
 
 | Field      | Type      | Description                             |
 | ---------- | --------- | --------------------------------------- |
@@ -26,7 +30,7 @@ In this article, we will use the main table and sub table to illustrate. We stil
 | city       | STRING    | City                                    |
 | label      | BOOL      | Sample label, true\|false               |
 
-**Sub Table: Table 2, Merchant Flow Table t2**
+**Table 2: Merchant Flow Table, t2**
 
 | Field         | Type      | Description                      |
 | ------------- | --------- | -------------------------------- |
@@ -36,7 +40,7 @@ In this article, we will use the main table and sub table to illustrate. We stil
 | purchase_amt  | DOUBLE    | Purchase Amount                  |
 | purchase_type | STRING    | Purchase Type: Cash, Credit Card |
 
-In the traditional relational database, in order to obtain the information of multiple tables, the most common way is to use join for splicing. However, for the requirements of Feature Engineering, the database join can not meet the requirements very efficiently. The main reason is that our main table sample table has a label column for model training, and each value can only correspond to one row of data records. Therefore, in practice, we hope that after join, the number of rows in the result table should be consistent with that in the main table.
+In the traditional relational database, in order to obtain the information of multiple tables, the most common way is to use join for splicing. However, for the requirements of feature engineering, the database join can not meet the requirements very efficiently. The main reason is that our main table sample table has a label column for model training, and each value can only correspond to one row of data records. Therefore, in practice, we hope that after join, the number of rows in the result table should be consistent with that in the main table.
 
 ## 2. Sub Table Single Line Feature
 
@@ -112,7 +116,7 @@ Among them, the most basic and indispensable grammatical elements include:
 
 - When configuring the window interval boundary, please note:
 
-- - At present, OpenMLDB cannot support the time after the current row as the upper and lower bounds. For example, `1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of Feature Engineering.
+- - At present, OpenMLDB cannot support the time after the current row as the upper and lower bounds. For example, `1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
   - Lower bound time of OpenMLDB must be > = Upper bound time
   - The number of lower bounds of OpenMLDB must be < = The number of upper bounds
 
@@ -136,7 +140,7 @@ The following SQL and diagram extract the necessary columns from t2 to generate 
 (select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
-![img](images/t2_to_t22.jpg)
+![img](images/t2_to_t22.png)
 
 It can be seen that the tables t11 and t22 generated after extraction have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really for the UNION operation in the traditional database, but to build the time window on the sub table t22 for each sample row in t11. According to the merchant ID `mid` ，we obtain the corresponding splicing data from t22 for each row of data in t11, and then sort it according to the consumption time (`purchase_time`) to construct the sub table splicing window. For example, we define a `w_t2_10d` window: It does not include the data rows of the main table except the current row, plus the data within ten days spliced by the sub table through `mid`. The schematic diagram is as follows. It can be seen that the yellow and blue shaded parts define the sub table splicing windows of sample 6 and sample 9 respectively.
 
