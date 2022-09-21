@@ -159,7 +159,7 @@ The schematic is shown below. It can be seen that the yellow and blue shaded par
 
 ![img](images/t11_t22.jpg)
 
-The SQL script of the window definition process is as follows (Note that this is not a complete SQL):
+The SQL script defining the above window is shown below (note that this is not a complete SQL):
 
 ```sql
 (SELECT id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchage_type FROM t1) as t11
@@ -171,8 +171,10 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 3.2 Step 2: Build Multi-Row Aggregation Feature of Sub Table
 
-For the sub table splicing window, the multi-row aggregation function is processed to construct the multi-row sub table aggregation feature, so that the number of rows finally generated is the same as that of the main table. Taking the simple aggregation function as an example, we can construct the sub table splicing feature of the sample: The total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. The following SQL constructs the multi-row aggregation feature based on the sub table splicing window defined in 3.1 above.
+Apply the multi-row aggregation function on the created window to construct aggregation features on multi-rows of sub table, so that the number of rows finally generated is the same as that of the main table. 
+For example, we can construct features from the sub table like: the total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. 
 
+The following SQL constructs the multi-row aggregation feature based on the sub table splicing window defined in [3.1](#31-step-1-define-the-sub-table-splicing-window).
 ```sql
 SELECT 
 id, 
@@ -190,17 +192,17 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 4. Feature Group Construction
 
-Generally speaking, a complete feature extraction script will extract dozens, hundreds or even ten of hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, these sub queries are spliced together according to the main table ID. In this section, we will continue the previous examples to demonstrate that if various features are spliced together to form a feature wide table.
+Generally speaking, a complete feature extraction script will extract dozens or even hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, these sub queries are spliced together according to the main table ID. In this section, we will continue the previous examples to demonstrate how to form a feature wide table splicing various features.
 
 First, we divide the features into 3 groups:
 
-| Feature Group | Feature Group Description                                    |
-| ------------- | ------------------------------------------------------------ |
-| 1             | Single line characteristics of sample users (primary table) and sample merchants (secondary table) |
-| 2             | Window aggregation characteristics of sample users (main table) in the last 30 days and window aggregation characteristics of users in the last 7 days |
-| 3             | Aggregation characteristics of sample merchants (sub table) in the last 30 days |
+| Feature Group | Description                                                                                                                                     |
+| ------------- |-------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1             | Single row features of users table (primary table) and merchants table (secondary table)                                                        |
+| 2             | Window aggregation features of users table (main table) in the last 30 days and the last 7 days |
+| 3             | Aggregation features of merchants table (sub table) in the last 30 days                                                                 |
 
-Then, we use OpenMLDB SQL to build the same set of features in the same sub query:
+Then, we use OpenMLDB SQL to create the features of the same group in one sub query:
 
 - Feature Group 1
 
