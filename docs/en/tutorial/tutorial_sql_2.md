@@ -76,15 +76,15 @@ Similarly, two steps need to be completed to construct the multi-row aggregation
 
 ## 3.1 Step 1: Define the Sub Table Splicing Window
 
-Each sample row of the main table can splice multiple rows of data according to a column from the sub table, and it is allowed to define the time interval or number interval of spliced data. We use the special window syntax WINDOW UNION to define the sub table splicing condition and interval range. For the convenience of understanding, we call this kind of window as sub table splicing window.
+Each row of the main table can splice multiple rows of data from the sub table according to a certain column, and it is allowed to define the time interval or number interval of spliced data. We use the WINDOW UNION to define the sub table splicing condition and interval range. To make it easier to understand, we call this kind of windows as sub table splicing windows.
 
-The syntax of sub table splicing window is defined as:
+The syntax of creating a sub table splicing window is defined as:
 
 ```sql
 window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
 ```
 
-Among them, the most basic and indispensable grammatical elements include:
+Among them, the most basic and indispensable elements include:
 
 - `UNION other_table`： `other_table` refers to the secondary table for WINDOW UNIOB. The primary and secondary tables need to keep the schema consistent. In most cases, the schema of the primary table and the secondary table are different. Therefore, we can ensure that the schema of the primary and secondary tables involved in window calculation is consistent by column filtering and default column configuration for the primary and secondary tables. Column filtering can also remove useless columns and only do WINDOW UNION and aggregation on key columns.
 
@@ -116,15 +116,18 @@ Among them, the most basic and indispensable grammatical elements include:
   - - `CURRENT ROW`： Current row
     - `number PRECEDING`: If it is a number window, you can define the number of time bars. For example,`1 PRECEDING` indicates the first line of the current line whose upper bound is
 
-- When configuring the window interval boundary, please note:
 
-- - At present, OpenMLDB cannot support the time after the current row as the upper and lower bounds. For example, `1d FOLLOWING`. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
-  - Lower bound time of OpenMLDB must be > = Upper bound time
-  - The number of lower bounds of OpenMLDB must be < = The number of upper bounds
+```{note}
+- When configuring the window interval boundary, please note that:
+  - At present, OpenMLDB cannot support the time after the current row as the upper and lower bounds. For example, `1d FOLLOWING` is not supported. In other words, we can only deal with the historical time window. This also basically meets most of the application scenarios of feature engineering.
+  - Lower bound time  must be > = Upper bound time
+  - The row number of lower bound must be < = The row number of upper bound
+- `INSTANCE_NOT_IN_WINDOW`: It indicates that except for the current row, other data in the main table will not enter the window.
+- For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](../reference/sql/dql/WINDOW_CLAUSE.md)。
 
-- `INSTANCE_NOT_IN_WINDOW`: Mark as a secondary table splicing window. Except for the current row, other data in the main table will not enter the window.
+```
 
-For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](https://link.zhihu.com/?target=http%3A//docs-cn.openmldb.ai/2620896).
+### Example
 
 The following describes the splicing window definition operation of WINDOW UNION through specific examples. For the user transaction table t1 mentioned above, we need to define the splicing window on the sub table of merchant flow table t2, which is based on `mid`. Because the schemas of t1 and t2 are different, we first extract the same columns from t1 and t2 respectively. For non-existent columns, you can configure default values. Among them, `mid` column is used for the splicing of two tables, so it is necessary. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window; The remaining columns are filtered and retained as required by the aggregation function.
 

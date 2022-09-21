@@ -117,7 +117,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
   - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界的条数必须<=上界条数
-- `INSTANCE_NOT_IN_WINDOW`: 标记为副表拼接窗口。主表除了当前行以外，其他数据不进入窗口。
+- `INSTANCE_NOT_IN_WINDOW`: 表示主表除了当前行以外，其他数据不进入窗口。
 - 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../reference/sql/dql/WINDOW_CLAUSE.md)。
 
 ```
@@ -141,7 +141,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 以下 SQL 和示意图展示了从 t2 抽取必要列，生成 t22。
 
 ```sql
-(select 0 as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
+(select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
 ![img](images/t2_to_t22.png)
