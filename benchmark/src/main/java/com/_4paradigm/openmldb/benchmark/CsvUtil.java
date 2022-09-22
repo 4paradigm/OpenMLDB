@@ -12,7 +12,12 @@ public class CsvUtil {
     public static List<List<String>> readCsvByCsvReader(String filePath) {
         List<List<String>> list = new ArrayList<>();
         try {
-            CsvReader reader = new CsvReader(filePath, ',', Charset.forName("UTF-8"));
+            CsvReader reader;
+            if (filePath.startsWith("/")) {
+                reader = new CsvReader(filePath, ',', Charset.forName("UTF-8"));
+            }else{
+                reader = new CsvReader(CsvUtil.class.getClassLoader().getResourceAsStream(filePath), ',', Charset.forName("UTF-8"));
+            }
             reader.readHeaders();
             while (reader.readRecord()) {
                 String[] values = reader.getValues();

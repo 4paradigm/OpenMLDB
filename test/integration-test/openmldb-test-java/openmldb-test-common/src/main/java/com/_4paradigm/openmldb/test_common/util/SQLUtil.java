@@ -111,6 +111,16 @@ public class SQLUtil {
     public static String formatSql(String sql) {
         return sql.replace("{root_path}", Tool.openMLDBDir().getAbsolutePath());
     }
+    public static void setExecuteMode(String sql){
+        sql = sql.toLowerCase();
+        if(sql.startsWith("set ")){
+            if (sql.contains("online")) {
+                OpenMLDBGlobalVar.EXECUTE_MODE="online";
+            }else{
+                OpenMLDBGlobalVar.EXECUTE_MODE="offline";
+            }
+        }
+    }
 
     public static String formatSql(String sql, List<String> tableNames) {
         return formatSql(sql,tableNames, OpenMLDBGlobalVar.mainInfo);

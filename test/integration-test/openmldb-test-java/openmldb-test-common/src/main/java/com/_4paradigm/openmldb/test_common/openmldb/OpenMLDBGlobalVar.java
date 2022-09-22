@@ -51,6 +51,8 @@ public class OpenMLDBGlobalVar {
     public static final String YAML_CASE_BASE_DIR;
     public static final Set<String> CREATE_DB_NAMES = Sets.newHashSet();
 
+    public static String EXECUTE_MODE = "offline";
+
     public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 
     static {

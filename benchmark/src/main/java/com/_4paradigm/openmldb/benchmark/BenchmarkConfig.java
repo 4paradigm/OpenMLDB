@@ -56,9 +56,9 @@ public class BenchmarkConfig {
             PK_NUM = Integer.valueOf(prop.getProperty("PK_NUM", "100000"));
             PK_MAX = Integer.valueOf(prop.getProperty("PK_MAX", "0"));
             CSV_PATH = prop.getProperty("CSV_PATH");
-            if(!CSV_PATH.startsWith("/")){
-                CSV_PATH=Util.getRootPath()+CSV_PATH;
-            }
+//            if(!CSV_PATH.startsWith("/")){
+//                CSV_PATH=Util.getRootPath()+CSV_PATH;
+//            }
         } catch (Exception e) {
             e.printStackTrace();
         }

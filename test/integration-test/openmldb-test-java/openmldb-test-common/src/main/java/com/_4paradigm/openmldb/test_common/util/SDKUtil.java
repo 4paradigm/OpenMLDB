@@ -1034,6 +1034,7 @@ public class SDKUtil {
         Statement statement = sqlExecutor.getStatement();
         try {
             statement.execute("SET @@execute_mode='online';");
+            OpenMLDBGlobalVar.EXECUTE_MODE="online";
         } catch (SQLException e) {
             e.printStackTrace();
         }

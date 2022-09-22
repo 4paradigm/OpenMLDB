@@ -33,6 +33,7 @@ public class SDKClient {
             openMLDBResult.setHaveResult(ok);
             openMLDBResult.setMsg("success");
             openMLDBResult.setOk(true);
+            SQLUtil.setExecuteMode(sql);
             if(ok){
                 ResultUtil.parseResultSet(statement,openMLDBResult);
                 ResultParserManager.of().parseResult(openMLDBResult);
@@ -100,6 +101,11 @@ public class SDKClient {
     }
     public void setOnline(){
         execute("SET @@execute_mode='online';");
+        OpenMLDBGlobalVar.EXECUTE_MODE="online";
+    }
+    public void setOffline(){
+        execute("SET @@execute_mode='offline';");
+        OpenMLDBGlobalVar.EXECUTE_MODE="offline";
     }
     public void useDB(String dbName){
         String sql = String.format("use %s",dbName);
