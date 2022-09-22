@@ -17,12 +17,20 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
+import com._4paradigm.openmldb.test_common.bean.OfflineInfo;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
+import com._4paradigm.openmldb.test_common.model.TableIndex;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.testng.Assert;
+
+import java.util.List;
 
 
 /**
@@ -30,18 +38,21 @@ import org.testng.Assert;
  * @date 2020/6/16 3:14 PM
  */
 @Slf4j
-public class IndexCountChecker extends BaseChecker {
+public class OfflineInfoChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-    public IndexCountChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+    public OfflineInfoChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
         super(expect,openMLDBResult);
     }
 
     @Override
     public void check() throws Exception {
-        logger.info("index count check");
-        int expectCount = expect.getIndexCount();
-        int actual = openMLDBResult.getSchema().getIndexs().size();
-        Assert.assertEquals(actual,expectCount,"index count验证失败");
+        logger.info("index check");
+        OfflineInfo expectOfflineInfo = expect.getOfflineInfo();
+        OfflineInfo actualOfflineInfo = openMLDBResult.getSchema().getOfflineInfo();
+        String expectPath = expectOfflineInfo.getPath();
+        expectPath = SQLUtil.formatSql(expectPath,openMLDBResult.getTableNames());
+        expectPath = SQLUtil.formatSql(expectPath);
+        Assert.assertEquals(actualOfflineInfo.getPath(),expectPath,"offline path 不一致");
     }
 
 }

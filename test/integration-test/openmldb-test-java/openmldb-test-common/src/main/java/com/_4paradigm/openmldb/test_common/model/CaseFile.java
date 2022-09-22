@@ -98,9 +98,10 @@ public class CaseFile {
 //            if(CollectionUtils.isNotEmpty(inputs)) {
 //                inputs.forEach(t -> t.setStorage(OpenMLDBGlobalVar.tableStorageMode));
 //            }
-            if (StringUtils.isEmpty(tmpCase.getDb())) {
-                tmpCase.setDb(getDb());
-            }
+
+//            if (StringUtils.isEmpty(tmpCase.getDb())) {
+//                tmpCase.setDb(getDb());
+//            }
             if (StringUtils.isEmpty(tmpCase.getVersion())) {
                 tmpCase.setVersion(this.getVersion());
             }

@@ -17,7 +17,8 @@ public enum SQLType {
     DROP,
     USE,
     SET,
-    DESC
+    DESC,
+    JOB
     ;
     public static final Set<SQLType> RESULT_SET = Sets.newHashSet(SELECT, SHOW, DEPLOY);
 //    public static final List<SQLType> VOID = Lists.newArrayList(CREATE,DROP,USE,INSERT);
@@ -38,6 +39,8 @@ public enum SQLType {
             return SET;
         }else if (sql.toLowerCase().startsWith("desc ")) {
             return DESC;
+        }else if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
+            return JOB;
         }
         throw new IllegalArgumentException("no match sql type,sql:"+sql);
     }

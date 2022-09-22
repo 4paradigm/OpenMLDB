@@ -83,7 +83,7 @@ public class JobExecutor extends BaseSQLExecutor {
         sdkClient.createAndUseDB(dbName);
         sdkClient.execute("SET @@global.sync_job = 'true';");
         sdkClient.execute("SET @@global.job_timeout = '600000';");
-
+        sdkClient.setOnline();
         // Create inputs' databasess if exist
 //        HashSet<String> dbNames = new HashSet<>();
 //        if (!StringUtils.isEmpty(dbName)) {
@@ -106,7 +106,8 @@ public class JobExecutor extends BaseSQLExecutor {
                 InputDesc input = inputs.get(i);
                 if (StringUtils.isNotEmpty(input.getDb())) {
                     sdkClient.createAndUseDB(input.getDb());
-                    OpenMLDBGlobalVar.CREATE_DB_NAMES.add(input.getDb());
+                }else{
+                    sdkClient.useDB(dbName);
                 }
                 String tableName = input.getName();
                 String createSql = input.extractCreate();

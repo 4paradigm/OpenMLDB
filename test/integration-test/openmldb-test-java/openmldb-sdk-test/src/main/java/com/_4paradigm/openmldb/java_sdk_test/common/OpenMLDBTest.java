@@ -22,6 +22,7 @@ import com._4paradigm.openmldb.test_common.common.BaseTest;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBClient;
 import com._4paradigm.openmldb.test_common.provider.YamlUtil;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
@@ -101,10 +102,15 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBGlobalVar.env = caseEnv;
         }
         log.info("openMLDB global var env: {}", env);
-        OpenMLDBClient fesqlClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
-        executor = fesqlClient.getExecutor();
+        OpenMLDBClient openMLDBClient = new OpenMLDBClient(OpenMLDBGlobalVar.mainInfo.getZk_cluster(), OpenMLDBGlobalVar.mainInfo.getZk_root_path());
+        executor = openMLDBClient.getExecutor();
         log.info("executor:{}",executor);
         Statement statement = executor.getStatement();
         statement.execute("SET @@execute_mode='online';");
+        // 创建out目录用于存放select...into的数据
+        File out = new File(Tool.openMLDBDir()+"/out");
+        if(!out.exists()){
+            out.mkdirs();
+        }
     }
 }

@@ -94,6 +94,9 @@ public class CheckerStrategy {
         if(CollectionUtils.isNotEmpty(expect.getPreAggList())){
             checkList.add(new PreAggListChecker(executor, expect, openMLDBResult));
         }
+        if(expect.getOfflineInfo()!=null){
+            checkList.add(new OfflineInfoChecker(expect, openMLDBResult));
+        }
         return checkList;
     }
 

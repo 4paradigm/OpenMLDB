@@ -22,6 +22,7 @@ public class CatCheckerByCli extends BaseChecker{
         CatFile expectCat = expect.getCat();
         String path = expectCat.getPath();
         path = SQLUtil.formatSql(path, openMLDBResult.getTableNames());
+        path = SQLUtil.formatSql(path);
         String command = "cat "+path;
         List<String> actualList = CommandUtil.run(command);
         List<String> expectList = expectCat.getLines();
