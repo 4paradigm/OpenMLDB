@@ -33,6 +33,19 @@ var (
 
 type queryMode string
 
+func (m queryMode) String() string {
+	switch m {
+	case ModeOffsync:
+		return "offsync"
+	case ModeOffasync:
+		return "offasync"
+	case ModeOnline:
+		return "online"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	ModeOffsync  queryMode = "offsync"
 	ModeOffasync queryMode = "offasync"
