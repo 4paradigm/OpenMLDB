@@ -21,7 +21,7 @@ DeploymentName
 `DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
 
 
-#### Example
+**Example**
 在集群版的在线请求模式下，部署上线一个SQL脚本。
 
 ```sql
@@ -140,7 +140,8 @@ interval_literal ::= int_literal 's'|'m'|'h'|'d'
 
      - where 关联的列 `<column ref>`，数据类型不能是 date 或者 timestamp
 
-#### Example
+**Example**
+
 ```sql
 DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM demo_table1
     WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
