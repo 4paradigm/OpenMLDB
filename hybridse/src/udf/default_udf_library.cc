@@ -602,7 +602,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 --output "{"
 
                 select unhex("zfk");
-                --output "NULL"
+                --output NULL
             @endcode
             @since 0.7.0)");
 
