@@ -15,9 +15,11 @@
 db: test_zw
 debugs: []
 sqlDialect: ["HybridSQL"]
+version: 0.5.0
 cases:
   - id: 0
     desc: "count(*)"
+    mode: request-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c7 timestamp"]
@@ -35,6 +37,7 @@ cases:
         - [5]
   - id: 1
     desc: "count(1)"
+    mode: request-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c7 timestamp"]
@@ -50,6 +53,7 @@ cases:
       success: false
   - id: 2
     desc: "count/sum/max/min/avg一个列"
+    mode: request-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 int","c7 timestamp"]
@@ -70,6 +74,7 @@ cases:
   - id: 3
     desc: "表是空的"
     tags: ["TODO","@chengjing,bug,"]
+    mode: request-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 int","c7 timestamp"]
@@ -82,6 +87,7 @@ cases:
         - [0,0,0,0,0]
   - id: 4
     desc: "列有null和空串"
+    mode: request-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 int","c7 timestamp"]

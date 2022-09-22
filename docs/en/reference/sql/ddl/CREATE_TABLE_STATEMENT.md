@@ -489,6 +489,11 @@ DESC t1;
   HDD
  --------------
 ```
+The following sql command create a table with specified distribution.
+```sql
+create table t1 (col0 string, col1 int) options (DISTRIBUTION=[('127.0.0.1:30921', ['127.0.0.1:30922', '127.0.0.1:30923']), ('127.0.0.1:30922', ['127.0.0.1:30921', '127.0.0.1:30923'])]);
+--SUCCEED
+```
 
 ## Related SQL
 

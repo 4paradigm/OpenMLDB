@@ -20,18 +20,24 @@ import openmldb.dbapi
 
 log = logging.getLogger(__name__)
 
+
 class ServerChecker:
-    def __init__(self, conf_dict):
+    def __init__(self, conf_dict, print_sdk_log):
         self.conf_dict = conf_dict
         self.db_name = '__test_db_xxx_aaa_diagnostic_tool__'
         self.table_name = '__test_table_xxx_aaa_diagnostic_tool__'
+        connect_args = {'database': self.db_name}
+        if not print_sdk_log:
+            connect_args['zkLogLevel'] = 0
+            connect_args['glogLevel'] = 2
+
         if conf_dict['mode'] == 'cluster':
-            zk_cluster = conf_dict['zookeeper']['zk_cluster']
-            zk_root_path = conf_dict['zookeeper']['zk_root_path']
-            self.db = openmldb.dbapi.connect(self.db_name, zk_cluster, zk_root_path)
+            connect_args['zk'] = conf_dict['zookeeper']['zk_cluster']
+            connect_args['zkPath'] = conf_dict['zookeeper']['zk_root_path']
         else:
-            host, port = conf_dict['nameserver'][0]['endpoint'].split(":")
-            self.db = openmldb.dbapi.connect(self.db_name, None, None, host, int(port))
+            connect_args['host'], connect_args['port'] = conf_dict['nameserver'][0]['endpoint'].split(
+                ":")
+        self.db = openmldb.dbapi.connect(**connect_args)
         self.cursor = self.db.cursor()
 
     def parse_component(self, component_list):
@@ -63,7 +69,8 @@ class ServerChecker:
                         has_found = True
                         break
                 if not has_found:
-                    log.warn(f'{component} endpoint {endpoint} has not startup')
+                    log.warn(
+                        f'{component} endpoint {endpoint} has not startup')
 
     def check_component(self):
         result = self.cursor.execute('SHOW COMPONENTS;').fetchall()
@@ -79,7 +86,8 @@ class ServerChecker:
 
     def get_job_status(self, job_id):
         try:
-            result = self.cursor.execute('SHOW JOB {};'.format(job_id)).fetchall()
+            result = self.cursor.execute(
+                'SHOW JOB {};'.format(job_id)).fetchall()
             return result[0][2]
         except Exception as e:
             log.warn(e)
@@ -90,7 +98,8 @@ class ServerChecker:
             log.info('no taskmanager installed. skip job test')
             return True
         self.cursor.execute('SET @@execute_mode=\'offline\';')
-        result = self.cursor.execute('SELECT * FROM {};'.format(self.table_name)).fetchall()
+        result = self.cursor.execute(
+            'SELECT * FROM {};'.format(self.table_name)).fetchall()
         if len(result) < 1:
             log.warn('run job failed. no job info returned')
             return False
@@ -110,13 +119,15 @@ class ServerChecker:
 
     def run_test_sql(self) -> bool:
         self.check_component()
-        self.cursor.execute('CREATE DATABASE IF NOT EXISTS {};'.format(self.db_name))
+        self.cursor.execute(
+            'CREATE DATABASE IF NOT EXISTS {};'.format(self.db_name))
         result = self.cursor.execute('SHOW DATABASES;').fetchall()
         if not self.is_exist(result, self.db_name):
             log.warn('create database failed')
             return False
         self.cursor.execute('USE {};'.format(self.db_name)).fetchall()
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS {} (col1 string, col2 string);'.format(self.table_name))
+        self.cursor.execute(
+            'CREATE TABLE IF NOT EXISTS {} (col1 string, col2 string);'.format(self.table_name))
         result = self.cursor.execute('SHOW TABLES;').fetchall()
         if not self.is_exist(result, self.table_name):
             log.warn('create table failed')
@@ -128,8 +139,10 @@ class ServerChecker:
                 flag = False
 
         self.cursor.execute('SET @@execute_mode=\'online\';')
-        self.cursor.execute('INSERT INTO {} VALUES (\'aa\', \'bb\');'.format(self.table_name))
-        result = self.cursor.execute('SELECT * FROM {};'.format(self.table_name)).fetchall()
+        self.cursor.execute(
+            'INSERT INTO {} VALUES (\'aa\', \'bb\');'.format(self.table_name))
+        result = self.cursor.execute(
+            'SELECT * FROM {};'.format(self.table_name)).fetchall()
         if len(result) != 1:
             log.warn('check select data failed')
             flag = False

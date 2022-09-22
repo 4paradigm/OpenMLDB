@@ -21,7 +21,7 @@ from openmldb.dbapi import connect
 from openmldb.dbapi import DatabaseError
 import pytest
 
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -31,7 +31,8 @@ class TestOpenmldbDBAPI:
 
     @classmethod
     def setup_class(cls):
-        db = connect('db_test', OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH)
+        db = connect(database='db_test', zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH)
         cls.cursor = db.cursor()
         cls.cursor.execute("create database if not exists db_test;")
         cls.cursor.execute('create table new_table (x string, y int);')
@@ -57,7 +58,8 @@ class TestOpenmldbDBAPI:
         assert 100 in result
 
         with pytest.raises(DatabaseError):
-            self.cursor.execute("insert into new_table values(1001, 'first1');")
+            self.cursor.execute(
+                "insert into new_table values(1001, 'first1');")
         with pytest.raises(DatabaseError):
             self.cursor.execute(
                 "insert into new_table values({'x':1001, 'y':'first1'});")
@@ -83,9 +85,9 @@ class TestOpenmldbDBAPI:
         """
         Note: this test works now(select > 1ms). If you can't reach the timeout, redesign the test.
         """
-        db = connect('db_test',
-                     OpenMLDB_ZK_CLUSTER,
-                     OpenMLDB_ZK_PATH,
+        db = connect(database='db_test',
+                     zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH,
                      requestTimeout=1)
         cursor = db.cursor()
         rs = cursor.execute(

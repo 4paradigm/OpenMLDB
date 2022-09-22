@@ -513,9 +513,8 @@ INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestFzTest, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_sql.yaml")));
 
-// INSTANTIATE_TEST_SUITE_P(
-//     EngineTestFzTempTest, EngineTest,
-//     testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_temp.yaml")));
+INSTANTIATE_TEST_SUITE_P(LimitClauseQuery, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("/cases/query/limit.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/simple_query.yaml")));

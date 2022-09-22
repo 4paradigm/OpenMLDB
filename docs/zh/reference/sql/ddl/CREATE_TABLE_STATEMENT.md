@@ -1,19 +1,21 @@
 # CREATE TABLE
- `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名在必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
+ `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
 
 ## Syntax
 
 ```sql
 CreateTableStmt ::=
-    'CREATE' 'TABLE' IfNotExists TableName ( 
-      TableElementList CreateTableSelectOpt | LikeTableWithOrWithoutParen ) OnCommitOpt
+    'CREATE' 'TABLE' IfNotExists TableName ( TableElementList CreateTableSelectOpt | LikeTableWithOrWithoutParen ) OnCommitOpt
+
 IfNotExists ::=
     ('IF' 'NOT' 'EXISTS')?
+    
 TableName ::=
     Identifier ('.' Identifier)?
     
 TableElementList ::=
     TableElement ( ',' TableElement )*
+    
 TableElement ::=
     ColumnDef | ColumnIndex
 ```
@@ -27,6 +29,7 @@ TableElement ::=
 ```SQL
 ColumnDef ::=
     ColumnName ( ColumnType ) [ColumnOptionList]
+    
 ColumnName ::=
     Identifier ( '.' Identifier ( '.' Identifier )? )?      
          
@@ -43,6 +46,7 @@ ColumnType ::=
 						
 ColumnOptionList ::= 
     ColumnOption*	
+    
 ColumnOption ::= 
     ['DEFAULT' DefaultValueExpr ] ['NOT' 'NULL']
 				 	  
@@ -455,6 +459,11 @@ DESC t1;
  --------------
   HDD
  --------------
+```
+创建一张表，指定分片的分布状态
+```sql
+create table t1 (col0 string, col1 int) options (DISTRIBUTION=[('127.0.0.1:30921', ['127.0.0.1:30922', '127.0.0.1:30923']), ('127.0.0.1:30922', ['127.0.0.1:30921', '127.0.0.1:30923'])]);
+--SUCCEED
 ```
 
 ## 相关SQL
