@@ -53,7 +53,7 @@ inline std::string FormatArgs(const char* fmt, const Arguments&... args) {
 inline void SetLogLevel(int level) { log_level = level; }
 
 // DO NOT use this func, to avoid init glog twice coredump
-// For compatibility, use openmldb_log_dir instead of glog log_dir
+// For compatibility, use openmldb_log_dir instead of glog log_dir for server
 // If we want write log to stdout, set it empty
 inline void UnprotectedSetupGlog() {
     // client: role == "" or "sql_client", use glog_dir
