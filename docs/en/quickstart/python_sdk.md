@@ -17,7 +17,7 @@ When creating the connection, the database name is not required to exist. If it 
 ````python
 import openmldb.dbapi
 
-db = openmldb.dbapi.connect("db1", "$zkcluster", "$zkpath")
+db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
 
 cursor = db.cursor()
 ````
@@ -178,7 +178,7 @@ OpenMLDB Python SDK supports Notebook magic function extension, you can use the 
 ````python
 import openmldb
 
-db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
+db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
 openmldb.sql_magic.register(db)
 ````
 

@@ -57,13 +57,15 @@ class TestSqlalchemyAPI:
             assert 100 in list(row)
 
     def test_request_timeout(self):
-        engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=1'.format(
-                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
-        connection = engine.connect()
-        connection.execute(
+        self.connection.execute(
             "insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
         )
+
+        engine = db.create_engine(
+            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=0'.format(
+                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        connection = engine.connect()
+
         with pytest.raises(DatabaseError) as e:
             connection.execute(
                 "select * from test_table where x='b'").fetchall()

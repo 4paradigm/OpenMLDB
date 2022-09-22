@@ -33,6 +33,6 @@ class FedbClient:
         # connect = engine.connect()
         # return connect
 
-        db = openmldb.dbapi.connect(self.dbName, self.zkCluster, self.zkRootPath)
+        db = openmldb.dbapi.connect(database=self.dbName, zk=self.zkCluster, zkPath=self.zkRootPath)
         cursor = db.cursor()
         return cursor
