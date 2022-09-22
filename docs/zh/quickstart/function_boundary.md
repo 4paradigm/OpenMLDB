@@ -20,7 +20,7 @@
 
 - `offline.data.prefix`：可配置为file或hdfs。生产环境建议配置hdfs路径，测试环境（特指onebox型，例如openmldb docker容器内启动的集群版）可以配置file本地存储。file作为offline存储，将无法支持多taskmanager分布式部署（taskmanager之间不会传输数据）。如果想在多台主机上部署taskmanager，请使用hdfs等多机可同时访问到的存储介质。如果想测试多taskmanager工作协同，可以在一台主机上部署多个taskmanager，此时可以使用file作为offline存储。
 
-- `spark.master=local` https://github.com/4paradigm/OpenMLDB/issues/2390 ：spark local模式仅单线程工作，如果发现离线任务比较慢，可以改为`local[32]`（任一整数）或`local[*]`（自动绑定cpu core数）。改变配置后重启taskmanager生效。更多配置可参考[master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.html#master-urls)
+- `spark.master=local[*]` ：spark默认配置为local[*]模式（自动绑定cpu core数，如果发现离线任务比较慢，建议使用yarn模式，改变配置后重启taskmanager生效。更多配置可参考[master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.html#master-urls)
 
 #### spark.default.conf
 
