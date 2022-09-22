@@ -25,7 +25,7 @@ SelectInfoOptionItem
 `SELECT INTO OUTFILE`分为三个部分。
 
 - 第一部分是一个普通的`SELECT`语句，通过这个`SELECT`语句来查询所需要的数据；
-- 第二部分是`filePath`，定义将查询的记录导出到哪个文件中；
+- 第二部分是`filePath`，定义将查询的记录导出到哪个文件中（集群版离线`filePath`是输出文件夹，不是文件）；
 - 第三部分是`SelectIntoOptionList`为可选选项，其可能的取值有：
 
 | 配置项     | 类型    | 默认值          | 描述                                                                                                                                                                                 |
@@ -35,7 +35,9 @@ SelectInfoOptionItem
 | null_value | String  | null            | NULL填充值，默认填充`"null"`                                                                                                                                                               |
 | format     | String  | csv             | 输出文件格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版还支持导出parquet格式文件，单机版不支持                                                                                                    |
 | mode       | String  | error_if_exists | 输出模式:<br />`error_if_exists`: 表示若文件已经在则报错。<br />`overwrite`: 表示若文件已存在，数据将覆盖原文件内容。<br />`append`：表示若文件已存在，数据将追加到原文件后面。<br />不显示配置时，默认为`error_if_exists`。                            |
-| quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1, 1.0, This is a string, with comma}。输出的文本为`1, 1.0, #This is a string, with comma#。` |
+| quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1, 1.0, This is a string, with comma}。输出的文本为`1, 1.0, #This is a string, with comma#`。 |
+| coalesce   | Int     | N/A             | 仅集群版离线支持，默认不配置（可能输出多个文件），可指定输出几个文件。例如，coalesce=1，会将所有part合并为1个文件。 |
+
 
 ````{important}
 请注意，目前仅有集群版支持quote字符的转义。所以，如果您使用的是单机版，请谨慎选择quote字符，保证原始字符串内并不包含quote字符。
