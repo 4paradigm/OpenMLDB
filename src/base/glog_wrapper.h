@@ -56,17 +56,20 @@ inline void SetLogLevel(int level) { log_level = level; }
 // For compatibility, use openmldb_log_dir instead of glog log_dir
 // If we want write log to stdout, set it empty
 inline void UnprotectedSetupGlog() {
-    // client only set the glog_dir, not openmldb_log_dir, it's ok to update the openmldb_log_dir
-    if (!FLAGS_glog_dir.empty()) {
-        FLAGS_openmldb_log_dir = FLAGS_glog_dir;
+    // client: role == "" or "sql_client", use glog_dir
+    // server: others, use openmldb_log_dir
+    std::string log_dir = FLAGS_openmldb_log_dir;
+    if (FLAGS_role.empty()) {
+        // give sdk or standalone client a name
+        FLAGS_role = "client";
+        log_dir = FLAGS_glog_dir;
+    } else if (FLAGS_role == "sql_client") {
+        log_dir = FLAGS_glog_dir;
     }
-    if (!FLAGS_openmldb_log_dir.empty()) {
-        boost::filesystem::create_directories(FLAGS_openmldb_log_dir);
-        // CLI/SDK may set a new role name
-        if (FLAGS_role.empty()) {
-            FLAGS_role = "client";
-        }
-        std::string path = FLAGS_openmldb_log_dir + "/" + FLAGS_role;
+
+    if (!log_dir.empty()) {
+        boost::filesystem::create_directories(log_dir);
+        std::string path = log_dir + "/" + FLAGS_role;
         ::google::InitGoogleLogging(path.c_str());
         std::string info_log_path = path + ".info.log.";
         std::string warning_log_path = path + ".warning.log.";
@@ -77,7 +80,7 @@ inline void UnprotectedSetupGlog() {
 }
 
 // This func will init glog, use once_flag to avoid init glog twice
-// It'll use FLAGS_openmldb_log_dir and FLAGS_role to set log dir,
+// It'll use FLAGS_glog_dir/FLAGS_openmldb_log_dir and FLAGS_role to set log dir,
 // and it's better to set FLAGS_minloglevel before it
 inline void SetupGLog() {
     static std::once_flag oc;
