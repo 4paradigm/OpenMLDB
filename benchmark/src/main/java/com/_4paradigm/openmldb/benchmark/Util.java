@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.benchmark;
 
+import java.io.File;
 import java.sql.*;
 import java.sql.Date;
 import java.text.ParseException;
@@ -24,6 +25,7 @@ import java.util.*;
 
 import com._4paradigm.openmldb.proto.Type;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import org.apache.commons.lang3.StringUtils;
 
 public class Util {
 
@@ -358,6 +360,11 @@ public class Util {
                     throw new RuntimeException("fail to build request row: invalid data type:"+columnType);
             }
         }
+    }
+    public static String getRootPath(){
+        File currentFile = new File(".");
+        String currentPath = currentFile.getAbsolutePath();
+        return StringUtils.substringBefore(currentPath,"OpenMLDB/")+"OpenMLDB/";
     }
 
 }

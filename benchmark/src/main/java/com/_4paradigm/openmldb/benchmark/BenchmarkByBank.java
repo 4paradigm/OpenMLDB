@@ -44,7 +44,6 @@ public class BenchmarkByBank {
     private Random random = new Random();
     private Map<String, TableSchema> tableSchema = new HashMap<>();
 
-    private String csvPath = "/Users/zhaowei/code/4paradigm/OpenMLDB/benchmark/src/main/resources/data/bank_flattenRequest.csv";
 
     private List<List<String>> requestList;
 
@@ -56,7 +55,7 @@ public class BenchmarkByBank {
 
     @Setup
     public void initEnv() {
-        requestList = CsvUtil.readCsvByCsvReader(csvPath);
+        requestList = CsvUtil.readCsvByCsvReader(BenchmarkConfig.CSV_PATH);
     }
 
     @TearDown
