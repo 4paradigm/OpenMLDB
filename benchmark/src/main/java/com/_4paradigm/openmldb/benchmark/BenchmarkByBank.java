@@ -17,14 +17,12 @@
 package com._4paradigm.openmldb.benchmark;
 
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -54,18 +52,6 @@ public class BenchmarkByBank {
         executor = BenchmarkConfig.GetSqlExecutor(false);
         deployName = BenchmarkConfig.DEPLOY_NAME;
         database = BenchmarkConfig.DATABASE;
-//        joinNum = BenchmarkConfig.JOIN_NUM;
-//        windowNum = BenchmarkConfig.WINDOW_NUM;
-//        windowSize = BenchmarkConfig.WINDOW_SIZE;
-//        random = new Random(System.currentTimeMillis());
-//        if (BenchmarkConfig.PK_MAX > 0) {
-//            for (int i = 0; i < BenchmarkConfig.PK_NUM; i++) {
-//                int pk = random.nextInt(BenchmarkConfig.PK_MAX);
-//                if (!pkList.contains(pk)) {
-//                    pkList.add(pk);
-//                }
-//            }
-//        }
     }
 
     @Setup
@@ -84,9 +70,9 @@ public class BenchmarkByBank {
         try(CallablePreparedStatement rps = executor.getCallablePreparedStmt(database, deployName)) {
             Util.setRequestData(rps, values);
             ResultSet resultSet = rps.executeQuery();
-            resultSet.next();
-            Map<String, String> val = Util.extractResultSet(resultSet);
-            System.out.println("val = " + val);
+//            resultSet.next();
+//            Map<String, String> val = Util.extractResultSet(resultSet);
+//            System.out.println("val = " + val);
         } catch (SQLException e) {
             e.printStackTrace();
         }

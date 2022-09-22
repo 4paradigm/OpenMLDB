@@ -69,7 +69,7 @@ public class DateUtil {
     }
     public static long parseDateToLong(String str){
         try {
-            DateFormat df = new SimpleDateFormat(DEFAULT_PATTERN);
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS+08:00");
             Date date = df.parse(str);
             return date.getTime();
         } catch (ParseException e) {
