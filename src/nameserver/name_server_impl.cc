@@ -10336,7 +10336,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         }
         if (sp_map.find(sp_name) == sp_map.end()) {
             response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("sp not found");
+            response->set_msg("not found");
             PDLOG(WARNING, "db %s sp[%s] not found", db_name, sp_name);
             return;
         }
