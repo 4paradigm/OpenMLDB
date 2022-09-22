@@ -358,32 +358,20 @@ jobs:
       - name: build openmldb
         run: make build install
 
-      - name: modify config
-        env:
-          ZK_PORT: 2181
-        run: |
-          sed -i "s/^clientPort=.*$/clientPort=$ZK_PORT/g" steps/zoo.cfg
-
       - name: start server
-        run: |
-          sh steps/ut_zookeeper.sh start
-          COMPONENTS=("tablet" "tablet2" "nameserver" "apiserver")
-          for COMPONENT in ${COMPONENTS[@]}; do
-            ./openmldb/bin/start.sh start "$COMPONENT"
-            sleep 1
-          done
+        run: ./openmldb/bin/start-standalone.sh
 
       - name: init test database
         env:
           OPENMLDB_NS_HOST: 127.0.0.1
-          OPENMLDB_NS_PORT: 7527
+          OPENMLDB_NS_PORT: 6527
         run: |
           echo "CREATE DATABASE test_db;" | ./openmldb/bin/openmldb --host=$OPENMLDB_NS_HOST --port=$OPENMLDB_NS_PORT
 
       - name: go test
         env:
           OPENMLDB_APISERVER_HOST: 127.0.0.1
-          OPENMLDB_APISERVER_PORT: 9080
+          OPENMLDB_APISERVER_PORT: 8080
         working-directory: go
         run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
 
@@ -396,13 +384,7 @@ jobs:
           verbose: true
 
       - name: stop server
-        run: |
-          sh steps/ut_zookeeper.sh stop
-          COMPONENTS=("tablet" "tablet2" "nameserver" "apiserver")
-          for COMPONENT in ${COMPONENTS[@]}; do
-            ./openmldb/bin/start.sh stop "$COMPONENT"
-            sleep 1
-          done
+        run: ./openmldb/bin/stop-standalone.sh
 
   publish-test-results:
     runs-on: ubuntu-latest
