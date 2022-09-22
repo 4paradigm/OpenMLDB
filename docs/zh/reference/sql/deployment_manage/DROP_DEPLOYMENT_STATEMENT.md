@@ -1,6 +1,6 @@
 # 删除 DEPLOYMENT 
 
-`DROP DEPLOYMENT`语句用于删除一个Online Request模式下的部署。
+`DROP DEPLOYMENT`语句用于删除一个在线请求模式下的部署。
 
 ```SQL
 DROP DEPLOYMENT deployment_name
@@ -25,14 +25,14 @@ CREATE TABLE t1(col0 STRING);
 -- SUCCEED: Create successfully
 ```
 
-Online Request模式下，部署表t1的查询语句:
+在线请求模式下，部署表t1的查询语句:
 
 ```sql
 DEPLOY demo_deploy select col0 from t1;
 -- SUCCEED
 ```
 
-查看当前数据库下所有的deployments:
+查看当前数据库下所有的 deployments:
 
 ```sql
 SHOW DEPLOYMENTS;
@@ -45,7 +45,7 @@ SHOW DEPLOYMENTS;
 
 ```
 
-删除指定的deployment:
+删除指定的 deployment:
 
 ```sql
 DROP DEPLOYMENT demo_deploy;
@@ -54,7 +54,7 @@ DROP DEPLOYMENT demo_deploy;
 -- SUCCEED
 ```
 
-删除后，再次查看数据库下的deployments，应为空列表：
+删除后，再次查看数据库下的 deployments，应为空列表：
 
 ```sql
 SHOW DEPLOYMENTS;
