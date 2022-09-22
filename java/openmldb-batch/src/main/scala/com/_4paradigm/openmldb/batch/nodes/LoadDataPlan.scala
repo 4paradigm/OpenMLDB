@@ -38,7 +38,7 @@ object LoadDataPlan {
     require(storage == "offline" || storage == "online")
 
     // read settings
-    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node)
+    val (format, options, mode, deepCopyOpt,_) = HybridseUtil.parseOptions(node)
     require(deepCopyOpt.nonEmpty)
     val deepCopy = deepCopyOpt.get
     logger.info("load data to storage {}, reader[format {}, options {}], writer[mode {}], is deep? {}", storage, format,

@@ -157,6 +157,14 @@ object HybridseUtil {
     }
   }
 
+  def getIntOrNone(node: ConstNode): Option[Int] = {
+    if (node != null) {
+      Option(node.GetInt())
+    } else {
+      None
+    }
+  }
+
   def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
     String): Unit = {
     if (node != null) {
@@ -188,7 +196,7 @@ object HybridseUtil {
     }
   }
 
-  def parseOptions[T](node: T): (String, Map[String, String], String, Option[Boolean]) = {
+  def parseOptions[T](node: T): (String, Map[String, String], String, Option[Boolean], Option[Int]) = {
     // load data: read format, select into: write format
     val format = parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
     require(format.equals("csv") || format.equals("parquet"))
@@ -209,8 +217,7 @@ object HybridseUtil {
 
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
-    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", HybridseUtil
-      .getStringOrDefault).toLowerCase
+    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
     val mode = modeStr match {
       case "error_if_exists" => "errorifexists"
       // append/overwrite, stay the same
@@ -223,7 +230,13 @@ object HybridseUtil {
     if (node.isInstanceOf[PhysicalLoadDataNode]) {
       deepCopy = Option(parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault).toBoolean)
     }
-    (format, options.toMap, mode, deepCopy)
+
+    // only for select into
+    var coalesce: Option[Int] = None
+    if (node.isInstanceOf[PhysicalSelectIntoNode]) {
+        coalesce = getIntOrNone(getOptionFromNode(node, "coalesce"))
+    }
+    (format, options.toMap, mode, deepCopy, coalesce)
   }
 
   // result 'readSchema' & 'tsCols' is only for csv format, may not be used

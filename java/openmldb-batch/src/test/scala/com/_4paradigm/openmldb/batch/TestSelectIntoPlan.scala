@@ -58,5 +58,9 @@ class TestSelectIntoPlan extends SparkTestSuite {
     } catch {
       case e: AnalysisException => println("It should catch this: " + e.toString)
     }
+
+    // only save one file by coalesce option
+    planner.plan(s"select id from t1 into outfile '$filePath' " +
+      "options(format='csv', foo='bar', coalesce=1, mode='overwrite');", Map("t1" -> t1))
   }
 }

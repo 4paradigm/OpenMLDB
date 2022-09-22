@@ -33,13 +33,18 @@ object SelectIntoPlan {
     }
 
     // write options don't need deepCopy
-    val (format, options, mode, _) = HybridseUtil.parseOptions(node)
+    val (format, options, mode, _, coalesce) = HybridseUtil.parseOptions(node)
     logger.info("select into offline storage: format[{}], options[{}], write mode[{}], out path {}", format, options,
       mode, outPath)
     if (input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
     } else {
-      input.getDf().write.format(format).options(options).mode(mode).save(outPath)
+      var ds = input.getDf()
+      if (coalesce.nonEmpty){
+        ds = ds.coalesce(coalesce.get)
+        logger.info("coalesce to {} part", coalesce.get)
+      }
+      ds.write.format(format).options(options).mode(mode).save(outPath)
     }
 
     SparkInstance.fromDataFrame(ctx.getSparkSession.emptyDataFrame)
