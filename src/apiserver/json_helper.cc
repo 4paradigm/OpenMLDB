@@ -167,7 +167,7 @@ JsonReader& JsonReader::operator&(unsigned& u) {  // NOLINT
 JsonReader& JsonReader::operator&(int16_t& i) {  // NOLINT
     if (!error_) {
         if (CURRENT.IsInt()) {
-            i = (int16_t)CURRENT.GetInt();
+            i = static_cast<int16_t>(CURRENT.GetInt());
             Next();
         } else {
             error_ = true;
@@ -203,7 +203,7 @@ JsonReader& JsonReader::operator&(int64_t& i) {  // NOLINT
 JsonReader& JsonReader::operator&(float& f) {  // NOLINT
     if (!error_) {
         if (CURRENT.IsNumber()) {
-            f = (float)CURRENT.GetDouble();
+            f = static_cast<float>(CURRENT.GetDouble());
             Next();
         } else {
             error_ = true;
