@@ -10209,7 +10209,6 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
 bool NameServerImpl::RecoverProcedureInfo() {
     db_table_sp_map_.clear();
     db_sp_table_map_.clear();
-    // TODO(hw): db_sp_info_map_ can't recover now
     db_sp_info_map_.clear();
 
     std::vector<std::string> db_sp_vec;
@@ -10254,6 +10253,8 @@ bool NameServerImpl::RecoverProcedureInfo() {
                 //          -> (sp_db_name, sp_name)
                 table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
+            auto& sp_info_map = db_sp_info_map_[sp_db_name];
+            sp_info_map.emplace(sp_name, sp_info);
             LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << sp_db_name;
         } else {
             LOG(WARNING) << "db " << sp_db_name << " not exist for sp " << sp_name;
