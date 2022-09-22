@@ -69,7 +69,7 @@ type connecter struct {
 
 // Connect implements driver.Connector.
 func (c connecter) Connect(ctx context.Context) (interfaces.Conn, error) {
-	conn := &conn{host: c.host, db: c.db, closed: false}
+	conn := &conn{host: c.host, db: c.db, mode: c.mode, closed: false}
 	if err := conn.Ping(ctx); err != nil {
 		return nil, err
 	}
