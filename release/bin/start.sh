@@ -126,7 +126,7 @@ case $OP in
         shift
         cd "$CURDIR" || exit 1
         sh "$0" stop "${@}"
-        sleep 10
+        sleep 15
         sh "$0" start "${@}"
         ;;
     *)
