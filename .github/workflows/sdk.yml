@@ -385,15 +385,15 @@ jobs:
           OPENMLDB_APISERVER_HOST: 127.0.0.1
           OPENMLDB_APISERVER_PORT: 9080
         working-directory: go
-        run: go test ./... | tee test.out
+        run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
 
-      - name: upload golang ut results
-        if: always()
-        uses: actions/upload-artifact@v2
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          name: linux-ut-result-golang-${{ github.sha }}
-          path: |
-            go/test.out
+          name: coverage
+          files: go/coverage.out
+          fail_ci_if_error: true
+          verbose: true
 
       - name: stop server
         run: |
