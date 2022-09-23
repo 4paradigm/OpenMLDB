@@ -2781,7 +2781,6 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
         return;
     }
     bool find_op = false;
-    std::shared_ptr<OPData> op_data;
     std::vector<std::shared_ptr<TabletClient>> client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2789,11 +2788,10 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
             if (op_list.empty()) {
                 continue;
             }
-            for (const auto& op_data : op_list)
+            for (auto& op_data : op_list) {
                 if (op_data->op_info_.op_id() == request->op_id()) {
                     if (op_data->op_info_.task_status() == ::openmldb::api::kInited ||
                          (op_data->op_info_.task_status() == ::openmldb::api::kDoing)) {
-                        op_data = *iter;
                         op_data->op_info_.set_task_status(::openmldb::api::kCanceled);
                         for (auto& task : op_data->task_list_) {
                             task->task_info_->set_status(::openmldb::api::kCanceled);
