@@ -217,7 +217,7 @@ list(APPEND MERGED_LIBS ${BIN_LIBS} ${SDK_LIBS} ${LINK_LIBS})
 # Some libraries have their own paths
 foreach(X  IN LISTS MERGED_LIBS)
     if(EXISTS ${X})
-        message(STATUS ${X})
+        # message(STATUS ${X})
         list(APPEND LIBRARIES_PATH ${X})
     endif()
 endforeach()
@@ -225,7 +225,7 @@ endforeach()
 # Some third party libraries, get path by ${X_LIBRARY}
 set(THIRD_PARTY_LIBS zetasql zookeeper_mt re2 pthread rt m dl)
 foreach(X  IN LISTS THIRD_PARTY_LIBS)
-    message(STATUS ${${X}_LIBRARY})
+    # message(STATUS ${${X}_LIBRARY})
     find_library(${X}_LIBRARY ${X})
     list(APPEND LIBRARIES_PATH ${${X}_LIBRARY})
 endforeach()
@@ -269,21 +269,22 @@ endforeach()
 
 list(APPEND to_openmldbsdk $<TARGET_FILE:openmldb_api> ${ABSL_LLVM_PATH} ${LIBRARIES_PATH})
 
-add_custom_command(OUTPUT libopenmldbsdk.a
+add_custom_target(_openmldbsdk)
+add_custom_command(TARGET _openmldbsdk
 COMMAND ar crsT libopenmldbsdk.a
     ${to_openmldbsdk}
 )
-add_custom_target(_openmldbsdk ALL DEPENDS libopenmldbsdk.a)
-add_library(openmldbsdk STATIC IMPORTED GLOBAL)
 
-set_target_properties(openmldbsdk PROPERTIES
+add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)
+add_dependencies(openmldb_cxx_sdk _openmldbsdk)
+set_target_properties(openmldb_cxx_sdk PROPERTIES
 IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
 )
 
 if(TESTING_ENABLE)
     add_executable(openmldb_api_test openmldb_api_test.cc)
     # add ${BIN_LIBS} because minicluster
-    target_link_libraries(openmldb_api_test openmldbsdk ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(openmldb_api_test openmldb_cxx_sdk ${BIN_LIBS} ${GTEST_LIBRARIES})
 endif()
 
 FILE(GLOB USER_HEADER 
