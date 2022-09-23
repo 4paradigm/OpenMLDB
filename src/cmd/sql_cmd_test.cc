@@ -449,8 +449,17 @@ TEST_P(DBSDKTest, Deploy) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
     hybridse::sdk::Status status;
+
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    // offline mode doesn't allow `deploy` in cluster mode
+    if (cs->IsClusterMode()) {
+        ASSERT_FALSE(status.IsOK());
+
+        HandleSQL("set @@execute_mode = 'online';");
+        sr->ExecuteSQL(deploy_sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+
     std::string deploy_sql1 =
         "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
@@ -630,13 +639,42 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL(create_sql);
 
     std::string deploy_sql =
-        "deploy demo1 OPTIONS(long_windows='w1:100,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
-        " max(c5) over w2 as w2_max_c5 FROM trans"
+        "deploy demo1 OPTIONS(long_windows='w1:1d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+    auto rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with same long window meta but different bucket
+    // it will not create a new aggregator/pre-aggr table, but re-use the existing one
+    deploy_sql =
+        "deploy demo2 OPTIONS(long_windows='w1:2d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
+        " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with different long window meta will create a new aggregator/pre-agg table
+    deploy_sql =
+        "deploy demo3 OPTIONS(long_windows='w1:2d') SELECT c1, count_where(c4, c3=1) over w1,"
+        " count_where(c4, c3=2) over w1 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(3, rs->Size());
+
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
@@ -644,6 +682,8 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }

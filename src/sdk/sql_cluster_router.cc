@@ -947,7 +947,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         std::string select_aggr_info =
             absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
                          meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
-        auto rs = ExecuteSQL("", select_aggr_info, status);
+        auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
         if (!status->IsOK()) {
             return false;
         }
@@ -2554,6 +2554,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {
+            if (cluster_sdk_->IsClusterMode() && !is_online_mode) {
+                // avoid run deploy in offline mode
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                           "Can not deploy in offline mode, please set @@SESSION.execute_mode='online'"};
+                return {};
+            }
+
             *status = HandleDeploy(db, dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (status->IsOK()) {
                 RefreshCatalog();
@@ -3681,22 +3688,16 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, ";");
     auto rs = ExecuteSQL("", select_sql, status);
     if (!status->IsOK()) {
+        LOG(ERROR) << "Select from " << meta_db << "." << meta_table << "  failed: " << status->msg;
         return false;
     }
 
-    // Check if the bucket_size equal to the one in meta table with the same meta info.
-    // Currently, we create pre-aggregated table for pre-aggr meta info that have different
-    // bucket_size but the same other meta info.
-    while (rs->Next()) {
-        std::string exist_bucket_size;
-        rs->GetString(0, &exist_bucket_size);
-        if (exist_bucket_size == lw.bucket_size_) {
-            LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
-            return true;
-        }
+    if (rs->Size() > 0) {
+        LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
+        return true;
+    } else {
+        return false;
     }
-
-    return false;
 }
 
 static const std::initializer_list<std::string> GetComponetSchema() {
