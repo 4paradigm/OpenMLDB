@@ -41,7 +41,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -63,7 +63,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -85,7 +85,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -111,7 +111,7 @@ namespace openmldb::client {
         }
         return {response.code(), ""};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -141,7 +141,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -156,7 +156,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (const auto & it : config) {
+    for (const auto& it : config) {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
@@ -171,7 +171,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -186,7 +186,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (const auto & it : config) {
+    for (const auto& it : config) {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
@@ -201,7 +201,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -216,7 +216,7 @@ namespace openmldb::client {
     request.set_sql(sql);
     request.set_default_db(default_db);
     request.set_sync_job(sync_job);
-    for (const auto & it : config) {
+    for (const auto& it : config) {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
@@ -231,7 +231,7 @@ namespace openmldb::client {
         }
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
@@ -249,7 +249,7 @@ namespace openmldb::client {
     if (ok) {
         return {response.code(), response.msg()};
     } else {
-        return {-1, "RPC request (to TaskManager) failed"};
+        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
 }
 
