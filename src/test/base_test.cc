@@ -17,6 +17,7 @@
 #include "test/base_test.h"
 
 #include "boost/lexical_cast.hpp"
+#include "schema/schema_adapter.h"
 #include "glog/logging.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
@@ -132,48 +133,9 @@ void SQLCaseTest::CheckSchema(const hybridse::vm::Schema &exp_schema, const hybr
     ASSERT_EQ(schema.GetColumnCnt(), exp_schema.size());
     for (int i = 0; i < schema.GetColumnCnt(); i++) {
         ASSERT_EQ(exp_schema.Get(i).name(), schema.GetColumnName(i));
-        switch (exp_schema.Get(i).type()) {
-            case hybridse::type::kInt32: {
-                ASSERT_EQ(hybridse::sdk::kTypeInt32, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kInt64: {
-                ASSERT_EQ(hybridse::sdk::kTypeInt64, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kInt16: {
-                ASSERT_EQ(hybridse::sdk::kTypeInt16, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kFloat: {
-                ASSERT_EQ(hybridse::sdk::kTypeFloat, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kDouble: {
-                ASSERT_EQ(hybridse::sdk::kTypeDouble, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kVarchar: {
-                ASSERT_EQ(hybridse::sdk::kTypeString, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kTimestamp: {
-                ASSERT_EQ(hybridse::sdk::kTypeTimestamp, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kDate: {
-                ASSERT_EQ(hybridse::sdk::kTypeDate, schema.GetColumnType(i));
-                break;
-            }
-            case hybridse::type::kBool: {
-                ASSERT_EQ(hybridse::sdk::kTypeBool, schema.GetColumnType(i));
-                break;
-            }
-            default: {
-                FAIL() << "Invalid Column Type";
-                break;
-            }
-        }
+        hybridse::type::Type type;
+        ASSERT_TRUE(::openmldb::schema::SchemaAdapter::ConvertType(schema.GetColumnType(i), &type));
+        ASSERT_EQ(type, schema.GetColumnType(i));
     }
 }
 
