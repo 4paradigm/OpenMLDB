@@ -30,6 +30,7 @@
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
+#include "storage/table.h"
 
 using ::openmldb::api::LogEntry;
 namespace openmldb {

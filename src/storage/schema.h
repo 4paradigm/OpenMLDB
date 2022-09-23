@@ -207,6 +207,7 @@ class IndexDef {
     inline void SetInnerPos(int32_t inner_pos) { inner_pos_ = inner_pos; }
     inline uint32_t GetInnerPos() const { return inner_pos_; }
     ::openmldb::common::ColumnKey GenColumnKey();
+    bool GetTsColumnIdx(uint32_t *ts_idx);
 
  private:
     std::string name_;

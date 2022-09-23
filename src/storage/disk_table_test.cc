@@ -56,23 +56,23 @@ class DiskTableTest : public ::testing::Test {
 };
 
 TEST_F(DiskTableTest, ParseKeyAndTs) {
-    std::string combined_key = CombineKeyTs("abcdexxx11", 1552619498000);
+    std::string combine_key = CombineKeyTs("abcdexxx11", 1552619498000);
     std::string key;
     uint64_t ts;
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1552619498000, (int64_t)ts);
-    combined_key = CombineKeyTs("abcdexxx11", 1);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("abcdexxx11", 1);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1, (int64_t)ts);
-    combined_key = CombineKeyTs("0", 0);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("0", 0);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("0", key);
     ASSERT_EQ(0, (int64_t)ts);
     ASSERT_EQ(-1, ParseKeyAndTs("abc", key, ts));
-    combined_key = CombineKeyTs("", 1122);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("", 1122);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_TRUE(key.empty());
     ASSERT_EQ(1122, (int64_t)ts);
 }

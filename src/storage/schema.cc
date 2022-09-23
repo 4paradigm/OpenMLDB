@@ -73,6 +73,15 @@ void TableColumn::AddColumn(std::shared_ptr<ColumnDef> column_def) {
     return column_key;
 }
 
+bool IndexDef::GetTsColumnIdx(uint32_t *ts_idx) {
+    auto ts_col = this->GetTsColumn();
+    if (ts_col && !ts_col->IsAutoGenTs()) {
+        *ts_idx = ts_col->GetId();
+        return true;
+    }
+    return false;
+}
+
 IndexDef::IndexDef(const std::string& name, uint32_t id)
     : name_(name),
       index_id_(id),

@@ -314,38 +314,15 @@ uint64_t MemTableSnapshot::CollectDeletedKey(std::shared_ptr<Table> table, uint6
                 }
                 uint32_t ts_index = UINT32_MAX;
                 for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
-                    std::string combined_key = entry.dimensions(pos).key() + "|" +
+                    bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index) ? 
+                                  false : true;
+                    std::string combine_key = entry.dimensions(pos).key() + "|" +
                                                std::to_string(entry.dimensions(pos).idx());
-                    if (!use_ts) {
-                        std::string buff;
-                        openmldb::base::Slice data;
-                        if (table->GetCompressType() == openmldb::type::kSnappy) {
-                            snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
-                            data.reset(buff.data(), buff.size());
-                        } else {
-                            data.reset(entry.value().data(), entry.value().size());
-                        }
-                        const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-                        uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
-                        std::vector<std::string> value_vec;
-                        std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
-                        if (schema == nullptr) {
-                            LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
-                            return 0;
-                        }
-                        // TODO(XLC-2): decode only required properties.
-                        bool ok = openmldb::codec::RowCodec::DecodeRow(*schema, data, value_vec);
-                        if (!ok) {
-                            DLOG(WARNING) << "decode data error";
-                            return 0;
-                        }
-                        combined_key += "|" + value_vec[ts_index];
-                    } else if (entry.has_ts()) {
-                        combined_key += "|" + std::to_string(entry.ts());
+                    if (use_ts && entry.has_ts()) {
+                        combine_key += "|" + std::to_string(entry.ts());
                     }
-                    deleted_keys_[combined_key] = cur_offset;
-                    DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
+                    deleted_keys_[combine_key] = cur_offset;
+                    DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combine_key.c_str(), cur_offset, tid_, pid_);
                 }
             }
         } else if (status.IsEof()) {
@@ -549,11 +526,11 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
                                        std::string* buffer) {
     uint64_t cur_offset = entry.log_index();
     if (entry.dimensions_size() == 0) {
-        std::string combined_key = entry.pk() + "|0";
+        std::string combine_key = entry.pk() + "|0";
         if (entry.has_ts()) {
-            combined_key += "|" + std::to_string(entry.ts());
+            combine_key += "|" + std::to_string(entry.ts());
         }
-        auto iter = deleted_keys_.find(combined_key);
+        auto iter = deleted_keys_.find(combine_key);
         if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
             DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
             return 1;
@@ -561,8 +538,10 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
     } else {
         uint32_t ts_index = UINT32_MAX;
         std::set<int> deleted_pos_set;
+        std::string ts = "";
+        openmldb::base::Slice data;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-            bool use_ts = table->CheckTsInIndex(entry.dimensions(pos).idx(), &ts_index) ? false : true;
+            bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index) ? false : true;
             std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
             std::string combined_key_ts = "";
             if (!use_ts) {
@@ -583,12 +562,12 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
                     return 0;
                 }
                 // TODO(XLC-2): decode only required properties.
-                bool ok = openmldb::codec::RowCodec::DecodeRow(*schema, data, value_vec);
+                bool ok = openmldb::codec::RowCodec::DecodeRowTs(*schema, data, ts_index, ts);
                 if (!ok) {
                     DLOG(WARNING) << "decode data error";
                     return 0;
                 }
-                combined_key_ts = combined_key + "|" + value_vec[ts_index];
+                combined_key_ts = combined_key + "|" + ts;
             } else if (entry.has_ts()) {
                 combined_key_ts = combined_key + "|" + std::to_string(entry.ts());
             }
@@ -660,8 +639,8 @@ int MemTableSnapshot::CheckDeleteAndUpdate(std::shared_ptr<Table> table, openmld
     // deleted key
     std::set<int> deleted_pos_set;
     for (int pos = 0; pos < entry->dimensions_size(); pos++) {
-        std::string combined_key = entry->dimensions(pos).key() + "|" + std::to_string(entry->dimensions(pos).idx());
-        if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
+        std::string combine_key = entry->dimensions(pos).key() + "|" + std::to_string(entry->dimensions(pos).idx());
+        if (deleted_keys_.find(combine_key) != deleted_keys_.end() ||
             !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) {
             deleted_pos_set.insert(pos);
         }
@@ -897,17 +876,17 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(std::shared_ptr<Table> table, con
         // deleted key
         std::string tmp_buf;
         if (entry.dimensions_size() == 0) {
-            std::string combined_key = entry.pk() + "|0";
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
+            std::string combine_key = entry.pk() + "|0";
+            if (deleted_keys_.find(combine_key) != deleted_keys_.end()) {
                 deleted_key_num++;
                 continue;
             }
         } else {
             std::set<int> deleted_pos_set;
             for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                std::string combined_key =
+                std::string combine_key =
                     entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
+                if (deleted_keys_.find(combine_key) != deleted_keys_.end() ||
                     !table->GetIndex(entry.dimensions(pos).idx())->IsReady()) {
                     deleted_pos_set.insert(pos);
                 }
@@ -1367,8 +1346,8 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
             }
             std::string tmp_buf;
             if (entry.dimensions_size() == 0) {
-                std::string combined_key = entry.pk() + "|0";
-                auto iter = deleted_keys_.find(combined_key);
+                std::string combine_key = entry.pk() + "|0";
+                auto iter = deleted_keys_.find(combine_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
                     DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
                     deleted_key_num++;
@@ -1377,9 +1356,9 @@ int MemTableSnapshot::ExtractIndexData(std::shared_ptr<Table> table, const ::ope
             } else {
                 std::set<int> deleted_pos_set;
                 for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    std::string combined_key =
+                    std::string combine_key =
                         entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
-                    auto iter = deleted_keys_.find(combined_key);
+                    auto iter = deleted_keys_.find(combine_key);
                     if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
                         !table->GetIndex(entry.dimensions(pos).idx())->IsReady()) {
                         deleted_pos_set.insert(pos);
@@ -1531,16 +1510,16 @@ bool MemTableSnapshot::PackNewIndexEntry(std::shared_ptr<Table> table,
                                          uint32_t idx, uint32_t partition_num, ::openmldb::api::LogEntry* entry,
                                          uint32_t* index_pid) {
     if (entry->dimensions_size() == 0) {
-        std::string combined_key = entry->pk() + "|0";
-        if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
+        std::string combine_key = entry->pk() + "|0";
+        if (deleted_keys_.find(combine_key) != deleted_keys_.end()) {
             return false;
         }
     } else {
         bool has_main_index = false;
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
             if (entry->dimensions(pos).idx() == 0) {
-                std::string combined_key = entry->dimensions(pos).key() + "|0";
-                if (deleted_keys_.find(combined_key) == deleted_keys_.end()) {
+                std::string combine_key = entry->dimensions(pos).key() + "|0";
+                if (deleted_keys_.find(combine_key) == deleted_keys_.end()) {
                     has_main_index = true;
                 }
                 break;
