@@ -72,7 +72,7 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >>  "$LOG_DIR"."$COMPONENT".log 2>&1 &
             PID=$!
             sleep 3
             ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
@@ -126,7 +126,7 @@ case $OP in
         shift
         cd "$CURDIR" || exit 1
         sh "$0" stop "${@}"
-        sleep 10
+        sleep 15
         sh "$0" start "${@}"
         ;;
     *)

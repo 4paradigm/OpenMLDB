@@ -785,6 +785,8 @@ class NameServerImpl : public NameServer {
 
     bool RecoverExternalFunction();
 
+    ::openmldb::base::Status CheckZoneInfo(const ::openmldb::nameserver::ZoneInfo& zone_info);
+
  private:
     std::mutex mu_;
     Tablets tablets_;

@@ -32,11 +32,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DECLARE_bool(interactive);
-DEFINE_string(cmd, "", "Set cmd");
-DECLARE_string(host);
-DECLARE_int32(port);
-
 ::openmldb::sdk::StandaloneEnv env;
 ::openmldb::sdk::MiniCluster mc(6181);
 
@@ -162,9 +157,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::cluster_cli.sr->Init();
 
     env.SetUp();
-    FLAGS_host = "127.0.0.1";
-    FLAGS_port = env.GetNsPort();
-    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK("127.0.0.1", env.GetNsPort());
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
