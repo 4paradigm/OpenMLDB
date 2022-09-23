@@ -21,10 +21,10 @@
 
 #include "gtest/gtest.h"
 
-namespace fs = boost::filesystem;
-
 namespace openmldb {
 namespace base {
+
+namespace fs = boost::filesystem;
 
 class GlogWrapperTest : public ::testing::Test {
  public:
@@ -36,7 +36,7 @@ TEST_F(GlogWrapperTest, UnprotectedSetGlog) {
     ::openmldb::base::SetLogLevel(DEBUG);
     std::string path = "hello";
     FLAGS_openmldb_log_dir = "/tmp/glog_wrapper_test1";
-    FLAGS_role = "tester1";
+    FLAGS_role = "tester1"; // role != empty/sql_client, use openmldb_log_dir
     fs::remove_all(FLAGS_openmldb_log_dir);
     UnprotectedSetupGlog();
     PDLOG(INFO, "hello %d %f", 290, 3.1);
@@ -61,16 +61,17 @@ TEST_F(GlogWrapperTest, UnprotectedSetGlog) {
 
 TEST_F(GlogWrapperTest, ProtectedSetGlog) {
     std::string log_path = "/tmp/glog_wrapper_test2";
-    FLAGS_openmldb_log_dir = log_path;
-    FLAGS_role = "";
+    FLAGS_openmldb_log_dir = "";
+    FLAGS_glog_dir = log_path;
+    FLAGS_role = ""; // role is empty, use glog_dir, not openmldb_log_dir
     fs::remove_all(log_path);
     ASSERT_TRUE(!fs::exists(log_path));
     SetupGLog();
     // haven't write log
     ASSERT_TRUE(fs::is_empty(log_path));
-    FLAGS_openmldb_log_dir = "";
+    FLAGS_glog_dir = "";
     SetupGLog(); // won't work, still write to log_path
-    LOG(INFO) << "test";
+    LOG(INFO) << "you can't see me";
     ASSERT_TRUE(fs::exists(log_path) && fs::is_directory(log_path));
     fs::remove_all(log_path);
     ASSERT_TRUE(!fs::exists(log_path));
