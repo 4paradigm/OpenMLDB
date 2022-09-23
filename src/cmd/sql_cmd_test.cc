@@ -434,6 +434,7 @@ TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -451,14 +452,7 @@ TEST_P(DBSDKTest, Deploy) {
     hybridse::sdk::Status status;
 
     sr->ExecuteSQL(deploy_sql, &status);
-    // offline mode doesn't allow `deploy` in cluster mode
-    if (cs->IsClusterMode()) {
-        ASSERT_FALSE(status.IsOK());
-
-        HandleSQL("set @@execute_mode = 'online';");
-        sr->ExecuteSQL(deploy_sql, &status);
-        ASSERT_TRUE(status.IsOK());
-    }
+    ASSERT_TRUE(status.IsOK());
 
     std::string deploy_sql1 =
         "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
@@ -480,6 +474,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -679,6 +674,8 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
+    ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
     ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
