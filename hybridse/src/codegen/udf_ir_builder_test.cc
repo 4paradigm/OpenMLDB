@@ -135,9 +135,8 @@ TEST_F(UdfIRBuilderTest, UnhexTest) {
     CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("7B"));
     CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("47B"));
     CheckUdf<StringRef, StringRef>("unhex", "7&", StringRef("537061726"));
-    CheckUdf<StringRef, StringRef>("unhex", "7&�5", StringRef("537061726B2053514")); // NOLINT
-    CheckUdf<StringRef, StringRef>("unhex", "�", StringRef("a2")); // NOLINT
-    CheckUdf<StringRef, StringRef>("unhex", "�", StringRef("8a")); // NOLINT
+    CheckUdf<StringRef, StringRef>("unhex", "7&\xb25", StringRef("537061726B2053514")); // NOLINT
+    CheckUdf<StringRef, StringRef>("unhex", "\x8a", StringRef("8a")); // NOLINT
     // The following are invalid tests that contain the non-hex characters, the 'NULL' should
     // be returned.
     CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Z"));
