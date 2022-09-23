@@ -2781,6 +2781,7 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
         return;
     }
     bool find_op = false;
+    std::shared_ptr<OPData> op_data;
     std::vector<std::shared_ptr<TabletClient>> client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2788,13 +2789,17 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
             if (op_list.empty()) {
                 continue;
             }
-            for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
-                if ((*iter)->op_info_.op_id() == request->op_id()) {
-                    (*iter)->op_info_.set_task_status(::openmldb::api::kCanceled);
-                    for (auto& task : (*iter)->task_list_) {
-                        task->task_info_->set_status(::openmldb::api::kCanceled);
+            for (const auto& op_data : op_list)
+                if (op_data->op_info_.op_id() == request->op_id()) {
+                    if (op_data->op_info_.task_status() == ::openmldb::api::kInited ||
+                         (op_data->op_info_.task_status() == ::openmldb::api::kDoing)) {
+                        op_data = *iter;
+                        op_data->op_info_.set_task_status(::openmldb::api::kCanceled);
+                        for (auto& task : op_data->task_list_) {
+                            task->task_info_->set_status(::openmldb::api::kCanceled);
+                        }
+                        find_op = true;
                     }
-                    find_op = true;
                     break;
                 }
             }
@@ -2957,9 +2962,7 @@ void NameServerImpl::DropTableFun(const DropTableRequest* request, GeneralRespon
                 response->set_msg("add task in replica cluster ns failed");
                 return;
             }
-            PDLOG(INFO,
-                  "add task in replica cluster ns success, op_id [%lu] "
-                  "task_tpye [%s] task_status [%s]",
+            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
                   task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                   ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
@@ -3120,7 +3123,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                     continue;
                 }
                 if (DropTableRemoteOP(name, db, kv.first, INVALID_PARENT_ID,
-                                      FLAGS_name_server_task_concurrency_for_replica_cluster) <  0) {
+                                      FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                     PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s",
                           name.c_str(), kv.first.c_str());
                     code = 505;
