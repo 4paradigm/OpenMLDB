@@ -200,10 +200,12 @@ target_include_directories (
     ${PROJECT_SOURCE_DIR}/hybridse/include
     ${PROJECT_SOURCE_DIR}/.deps/usr/include
 )
+target_link_libraries(openmldb_api ${BIN_LIBS})
 
 # To get the final SDK, we need some libraries
 # Below, we will find and integrate these required libraries
 # LIBRARIES_PATH save all required libraries path
+# TODO(hw): we should use openmldb_api target link libs, not list them manually
 
 # Get path by $<TARGET_FILE:${X}> for some libraries built in OpenMLDB
 set(SELF_LIBS ${BUILTIN_LIBS} openmldb_sdk openmldb_flags hybridse_sdk hybridse_core hybridse_flags)
