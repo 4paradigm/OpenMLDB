@@ -1,53 +1,16 @@
 # OpenMLDB C++ SDK 快速上手
 
-# 请先安装 C++ SDK 包
+## 1. 请先安装 C++ SDK 包
 
-# 部署 OpenMLDB 
-# 详细文件配置及步骤请参考：https://openmldb.ai/docs/zh/main/deploy/install_deploy.html
-# 1. 配置环境
-# 1.1 关闭操作系统 swap :     swapoff --all
-# 1.2 关闭THP(Transparent Huge Pages) :
-#       $ echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
-#       $ echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
+## 2. 部署 OpenMLDB Server
+### 详细文件配置及步骤请参考：https://openmldb.ai/docs/zh/v0.6/quickstart/openmldb_quickstart.html
 
-# 2. 部署 server
+## 3. 编译 C++ 代码文件：
+### gcc XXX.cxx -o XXX -lstdc++ -std=c++17 -I.../include  -L.../lib -lopenmldbsdk -lpthread
 
-# 2.1 部署单机版
-# （1）启动 tablet
-#     sh bin/start.sh start standalone_tablet
-# （2）启动nameserver
-#     sh bin/start.sh start  standalone_nameserver
-# （3）检查服务是否启动
-#     $ ./bin/openmldb --host=172.27.128.33 --port=6527
-# （4）启动 apiserver  （APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无状态的，而且并不是OpenMLDB必须部署的组件。 运行前需确保OpenMLDB cluster已经启动，否则APIServer将初始化失败并退出进程）
-#     sh bin/start.sh start standalone_apiserver
-
-# 2.2 部署集群版
-# （1）部署zookeeper
-#     sh bin/zkServer.sh start
-#     （部署zookeeper集群参考：https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper）
-# （2）启动 tablet
-#     sh bin/start.sh start tablet
-# （3）启动 nameserver
-#     sh bin/start.sh start nameserver
-# （4）检查服务是否启动
-#     ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=ns_client
-# （5）启动 apiserver   （APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无状态的，而且并不是OpenMLDB必须部署的组件。 运行前需确保OpenMLDB cluster已经启动，否则APIServer将初始化失败并退出进程）
-#     sh bin/start.sh start apiserver
-# （6）启动 taskmanager
-#     bin/start.sh start taskmanager
-# （7）检查服务是否启动
-#     ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
-
-
-# 编译 C++ 代码文件：
-# gcc XXX.cxx -o XXX -lstdc++ -std=c++17 -I.../include  -L.../lib -lopenmldbsdk -lpthread
-
-
-
-# openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件，其中包含了使用 OpenMLDB 需要的各种函数。
-# 由于文件包含关系，不能单独 include openmldb_api.h。
-
+## 4. openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件，其中包含了使用 OpenMLDB 需要的各种函数。
+### 注：由于文件包含关系，不能单独 include openmldb_api.h。
+```xml
 #include <openmldb_api.h>
 #include <sdk/result_set.h>
 #include <ctime>
@@ -139,3 +102,4 @@ int main()
       //      | Hi~  | 5                 |
       //      +------+--------------------+
 }
+```

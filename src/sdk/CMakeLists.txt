@@ -280,6 +280,7 @@ IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
 
 if(TESTING_ENABLE)
     add_executable(openmldb_api_test openmldb_api_test.cc)
+    # add ${BIN_LIBS} because minicluster
     target_link_libraries(openmldb_api_test openmldbsdk ${BIN_LIBS} ${GTEST_LIBRARIES})
 endif()
 
