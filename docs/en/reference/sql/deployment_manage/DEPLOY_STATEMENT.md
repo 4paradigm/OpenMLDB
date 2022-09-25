@@ -4,23 +4,27 @@
 
 ```sql
 CreateDeploymentStmt
-						::= 'DEPLOY' [DeployOptions] DeploymentName SelectStmt
+				::= 'DEPLOY' [DeployOptionList] DeploymentName SelectStmt
 
-DeployOptions（可选）
-						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
-
+DeployOptionList
+				::= DeployOption*
+				    
+DeployOption
+				::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
+				    
 DeploymentName
-						::= identifier
-```
-Please refer to [DEPLOYMENT Property DeployOptions (optional)](#DEPLOYMENT Property DeployOptions (optional)) for the definition of `DeployOptions`.
-
-The `DEPLOY` statement is used to deploy SQL to online. It supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md)，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
-
-```SQL
-DEPLOY deployment_name SELECT clause
+				::= identifier
 ```
 
-### Example: Deploy SQL onto Online
+Please refer to [DEPLOYMENT Property DeployOptions (optional)](#deployment-property-deployoptionsoptional) for the definition of `DeployOptions`.
+Please refer to [Select Statement](../dql/SELECT_STATEMENT.md) for the definition of `SelectStmt`.
+
+The `DEPLOY` statement is used to deploy SQL online. 
+OpenMLDB supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md), and the SQL script should meet the requirements in [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+
+
+
+**Example**
 
 ```sql
 CREATE DATABASE db1;
@@ -143,6 +147,10 @@ The current long window optimization has the following limitations:
      - Supported where op: `>, <, >=, <=, =, !=`
 
      - The `<column ref>` should not be type of date or timestamp
+
+**Example**
+
+
 
 ## Relevant SQL
 

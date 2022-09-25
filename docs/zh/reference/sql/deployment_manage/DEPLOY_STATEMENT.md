@@ -22,8 +22,8 @@ DeploymentName
 
 
 **Example**
-在集群版的在线请求模式下，部署上线一个SQL脚本。
 
+在集群版的在线请求模式下，部署上线一个SQL脚本。
 ```sql
 CREATE DATABASE db1;
 -- SUCCEED
