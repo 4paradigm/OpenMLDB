@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <memory>
 #include <atomic>
+#include <stdint.h>
+#include <iostream>
 
 namespace openmldb {
 namespace base {
@@ -115,11 +117,12 @@ class ConcurrentList {
         pos_node->SetNext(NULL);
         return result;
     }
+
     ListNode<K, V>* SplitByKeyAndPos(const K& key, uint64_t pos) {
         ListNode<K, V>* pos_node = head_->GetNext();
         bool find_key = false;
         for (uint64_t idx = 0; idx < pos; idx++) {
-            if (pos_node == NULL) {  // doesnt find pos, just return
+            if (pos_node == NULL) {  // does not find pos, just return
                 return NULL;
             }
             if (compare_(pos_node->GetKey(), key) >= 0) {  // find key before pos, mark it
@@ -131,12 +134,48 @@ class ConcurrentList {
             return NULL;
         }
         if (find_key) {  // find key before pos, split by pos
-            ListNode<K, V>* result = pos_node->GetNext();
-            pos_node->SetNext(NULL);
-            return result;
+            return SplitOnPosNode(pos, pos_node);
         } else {  // find pos without key, split by key
             return Split(key);
         }
+    }
+
+    ListNode<K, V>* SplitByKeyOrPos(const K& key, uint64_t pos) {
+        ListNode<K, V>* pos_node = head_->GetNext();
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) {
+                return NULL;
+            }
+            if (compare_(pos_node->GetKey(), key) >= 0) {  // find key before pos, use key
+                return Split(pos_node->GetKey());
+            }
+            pos_node = pos_node->GetNext();
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
+        return SplitOnPosNode(pos, pos_node);
+    }
+
+    ListNode<K, V>* SplitOnPosNode(uint64_t pos, ListNode<K, V>* pos_node) {
+        ListNode<K, V>* node = head_;
+        ListNode<K, V>* pre = head_;
+        pos++;
+        uint64_t cnt = 0;
+        while (node != NULL) {
+            if (cnt == pos) {
+                pre->SetNext(NULL);
+                return node;
+            }
+            ListNode<K, V>* next = node->GetNext();
+            if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
+                node->SetNext( NULL);
+            }
+            pre = node;
+            node = node->GetNext();
+            cnt++;
+        }
+        return NULL;
     }
 
     ListNode<K, V>* GetLast() {
@@ -308,5 +347,5 @@ class ConcurrentList {
     ListNode<K, V> *head_;
 };
 
-}  // namespace storage
-}  // namespace hybridse
+}  // namespace base
+}  // namespace openmldb
