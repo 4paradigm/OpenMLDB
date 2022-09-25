@@ -118,6 +118,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+          sha256sum ${{ env.OPENMLDB_PREFIX }}.tar.gz > ${{ env.OPENMLDB_PREFIX }}-sha256sum
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
@@ -194,6 +195,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+          sha256sum ${{ env.OPENMLDB_PREFIX }}.tar.gz > ${{ env.OPENMLDB_PREFIX }}-sha256sum
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
@@ -219,5 +221,6 @@ jobs:
         with:
           files: |
             openmldb-*.tar.gz
+            openmldb-*-sha256sum
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
