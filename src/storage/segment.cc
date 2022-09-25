@@ -1,17 +1,17 @@
 /*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+* Copyright 2021 4Paradigm
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
  */
 
 #include "storage/segment.h"
@@ -39,27 +39,29 @@ Segment::Segment()
       pk_cnt_(0),
       ts_cnt_(1),
       gc_version_(0),
+      is_skiplist_(true),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
-Segment::Segment(uint8_t height)
+Segment::Segment(uint8_t height, bool is_skiplist)
     : entries_(NULL),
       mu_(),
       idx_cnt_(0),
       idx_byte_size_(0),
       pk_cnt_(0),
       key_entry_max_height_(height),
-      ts_cnt_(1),
+      ts_cnt_(1),  // ts cnt 就是1 一个索引
       gc_version_(0),
+      is_skiplist_(is_skiplist),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
-Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
+Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, const std::vector<bool>& is_skiplist_vec)
     : entries_(NULL),
       mu_(),
       idx_cnt_(0),
@@ -68,12 +70,14 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       key_entry_max_height_(height),
       ts_cnt_(ts_idx_vec.size()),
       gc_version_(0),
+      is_skiplist_(true),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
     for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
         ts_idx_map_[ts_idx_vec[i]] = i;
         idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+        is_skiplist_vec_.push_back(is_skiplist_vec(i));
     }
 }
 
@@ -92,13 +96,19 @@ uint64_t Segment::Release() {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    cnt += entry_arr[i]->Release();
+                    if (IsSkipList(i))
+                        cnt += (SkipListKeyEntry*)entry_arr[i]->Release();
+                    else
+                        cnt += (ListKeyEntry*)entry_arr[i]->Release();
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-                cnt += entry->Release();
+                if (IsSkipList())
+                    cnt += (SkipListKeyEntry*)entry->Release();
+                else
+                    cnt += (ListKeyEntry*)entry->Release();
                 delete entry;
             }
         }
@@ -115,13 +125,20 @@ uint64_t Segment::Release() {
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
             for (uint32_t i = 0; i < ts_cnt_; i++) {
+                if (IsSkipList(i))
+                    (SkipListKeyEntry*)entry_arr[i]->Release();
+                else
+                    (ListKeyEntry*)entry_arr[i]->Release();
                 entry_arr[i]->Release();
                 delete entry_arr[i];
             }
             delete[] entry_arr;
         } else {
             KeyEntry* entry = (KeyEntry*)node->GetValue();  // NOLINT
-            entry->Release();
+            if (IsSkipList())
+                (SkipListKeyEntry*)entry->Release();
+            else
+                (ListKeyEntry*)entry->Release();
             delete entry;
         }
         delete node;
@@ -171,6 +188,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     PutUnlock(key, time, row);
 }
 
+// ts_cnt == 1 执行此put
 void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
     void* entry = nullptr;
     uint32_t byte_size = 0;
@@ -180,16 +198,24 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
         Slice skey(pk, key.size());
-        entry = (void*)new KeyEntry(key_entry_max_height_);  // NOLINT
+        if (IsSkipList())
+            entry = (void*)new SkipListKeyEntry(key_entry_max_height_);  // NOLINT
+        else
+            entry = (void*)new ListKeyEntry();  // NOLINT
         uint8_t height = entries_->Insert(skey, entry);
-        byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
+        byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_, IsSkipList());
         pk_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
-    uint8_t height = ((KeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
-    ((KeyEntry*)entry)                                               // NOLINT
-        ->count_.fetch_add(1, std::memory_order_relaxed);
-    byte_size += GetRecordTsIdxSize(height);
+    uint8_t height = 0;
+    if (IsSkipList()) {
+        height = ((SkipListKeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
+        ((SkipListKeyEntry*)entry)->count_.fetch_add(1, std::memory_order_relaxed);
+    } else {
+        height = ((ListKeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
+        ((ListKeyEntry*)entry)->count_.fetch_add(1, std::memory_order_relaxed);
+    }
+    byte_size += GetRecordTsIdxSize(height, IsSkipList());
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
 
@@ -207,17 +233,24 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
             Slice skey(pk, key.size());
             auto** entry_arr_tmp = new KeyEntry*[ts_cnt_];
             for (uint32_t i = 0; i < ts_cnt_; i++) {
-                entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+                if (IsSkipList(i))
+                    entry_arr_tmp[i] = new SkipListKeyEntry(key_entry_max_height_);
+                else
+                    entry_arr_tmp[i] = new ListKeyEntry();
             }
             auto entry_arr = (void*)entry_arr_tmp;  // NOLINT
             uint8_t height = entries_->Insert(skey, entry_arr);
-            byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+            byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_, GetSkipListVec()); // TODO 这里传递的是一个数组
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
-        uint8_t height = ((KeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(  // NOLINT
-            time, row);
-        ((KeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(  // NOLINT
-            1, std::memory_order_relaxed);
+        uint8_t height = 0;
+        if (IsSkipList(key_entry_id)) {
+            height = ((SkipListKeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(time, row);
+            ((SkipListKeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            height = ((ListKeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(time, row);
+            ((ListKeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+        }
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[key_entry_id]->fetch_add(1, std::memory_order_relaxed);
@@ -230,7 +263,7 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         return;
     }
     if (ts_cnt_ == 1) {
-        auto pos = ts_map.find(ts_idx_map_.begin()->first);
+        auto pos = ts_map.find(ts_idx_map_.begin()->first);  // ts_map second is time
         if (pos != ts_map.end()) {
             Put(key, pos->second, row);
         }
@@ -252,19 +285,30 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
                 Slice skey(pk, key.size());
                 KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+                    if (IsSkipList(i))
+                        entry_arr_tmp[i] = new SkipListKeyEntry(key_entry_max_height_);
+                    else
+                        entry_arr_tmp[i] = new ListKeyEntry();
                 }
                 entry_arr = (void*)entry_arr_tmp;  // NOLINT
                 uint8_t height = entries_->Insert(skey, entry_arr);
-                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_, GetSkipListVec());
                 pk_cnt_.fetch_add(1, std::memory_order_relaxed);
             }
         }
-        uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
-            kv.second, row);
-        ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
-            1, std::memory_order_relaxed);
-        byte_size += GetRecordTsIdxSize(height);
+        uint8_t height = 0;
+        if (IsSkipList(pos->second)) {
+            height = ((SkipListKeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+                kv.second, row);
+            ((SkipListKeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+                1, std::memory_order_relaxed);
+        } else {
+            height = ((ListKeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+                kv.second, row);
+            ((ListKeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+                1, std::memory_order_relaxed);
+        }
+        byte_size += GetRecordTsIdxSize(height, IsSkipList(pos->second));
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
@@ -291,7 +335,7 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint6
     while (node != NULL) {
         gc_idx_cnt++;
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
-        idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height(), true));
         node = node->GetNextNoBarrier(0);
         DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
         if (tmp->GetValue()->dim_cnt_down > 1) {
@@ -306,6 +350,27 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint6
     }
 }
 
+//重载
+void Segment::FreeList(::openmldb::base::ListNode<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
+                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    while (node != NULL) {
+        gc_idx_cnt++; // 删除一个二层list节点 gc_idx_cnt++
+        ::openmldb::base::ListNode<uint64_t, DataBlock*>* tmp = node;
+        idx_byte_size_.fetch_sub(GetRecordTsIdxSize(0, false));
+        node = node->GetNextNoBarrier();
+        DEBUGLOG("delete key %lu", tmp->GetKey());
+        if (tmp->GetValue()->dim_cnt_down > 1) {  // tmp value 保存的是Datablock 可能有多个指针指向dataBlock
+            tmp->GetValue()->dim_cnt_down--;
+        } else {
+            DEBUGLOG("delele data block for key %lu", tmp->GetKey());
+            gc_record_byte_size += GetRecordSize(tmp->GetValue()->size); // 获取记录的大小
+            delete tmp->GetValue();
+            gc_record_cnt++;  // 删除记录加一 这里的记录 是row
+        }
+        delete tmp;  // 删除节点
+    }
+}
+
 void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                         uint64_t& gc_record_byte_size) {
     if (entry_node == NULL) {
@@ -317,8 +382,40 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();  // NOLINT
         for (uint32_t i = 0; i < ts_cnt_; i++) {
             uint64_t old = gc_idx_cnt;
-            KeyEntry* entry = entry_arr[i];
-            TimeEntries::Iterator* it = entry->entries.NewIterator();
+            if (IsSkipList(i)) {
+                SkipListKeyEntry* entry = (SkipListTimeEntries*)entry_arr[i];
+                SkipListTimeEntries::Iterator* it = entry->entries.NewIterator();
+                it->SeekToFirst();
+                if (it->Valid()) {
+                    uint64_t ts = it->GetKey();
+                    ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+                    FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                }
+                delete it;
+                delete entry;
+            } else {
+                ListKeyEntry* entry = (ListKeyEntry*)entry_arr[i];
+                ListTimeEntries::ListIterator* it = entry->entries.NewIterator();
+                it->SeekToFirst();
+                if (it->Valid()) {
+                    uint64_t ts = it->GetKey();
+                    ::openmldb::base::ListNode<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+                    FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                }
+                delete it;
+                delete entry;
+            }
+            idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
+        }
+        delete[] entry_arr;
+        uint64_t byte_size =
+            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_, GetSkipListVec());
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+    } else {
+        uint64_t old = gc_idx_cnt;
+        if (IsSkipList()) {
+            SkipListKeyEntry* entry = (SkipListKeyEntry*)entry_node->GetValue();  // NOLINT
+            SkipListTimeEntries::Iterator* it = entry->entries.NewIterator();
             it->SeekToFirst();
             if (it->Valid()) {
                 uint64_t ts = it->GetKey();
@@ -327,26 +424,20 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
             }
             delete it;
             delete entry;
-            idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
+        } else {
+            ListKeyEntry* entry = (ListKeyEntry*)entry_node->GetValue();  // NOLINT
+            ListTimeEntries::ListIterator* it = entry->entries.NewIterator();
+            it->SeekToFirst();
+            if (it->Valid()) {
+                uint64_t ts = it->GetKey();
+                ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+                FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            }
+            delete it;
+            delete entry;
         }
-        delete[] entry_arr;
         uint64_t byte_size =
-            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_);
-        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-    } else {
-        uint64_t old = gc_idx_cnt;
-        KeyEntry* entry = (KeyEntry*)entry_node->GetValue();  // NOLINT
-        TimeEntries::Iterator* it = entry->entries.NewIterator();
-        it->SeekToFirst();
-        if (it->Valid()) {
-            uint64_t ts = it->GetKey();
-            ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
-            FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        }
-        delete it;
-        delete entry;
-        uint64_t byte_size =
-            GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
+            GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, IsSkipList());
         idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
@@ -453,17 +544,30 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                node = entry->entries.SplitByPos(keep_cnt);
-            }
-        }
         uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+        if (IsSkipList()) {  // TODO
+            SkipListKeyEntry* entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByPos(keep_cnt);
+                }
+            }
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+        } else {
+            ListKeyEntry* entry = (ListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByPos(keep_cnt);
+                }
+            }
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+        }
         gc_idx_cnt += entry_gc_idx_cnt;
         it->Next();
     }
@@ -492,77 +596,153 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
             if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_) {
                 continue;
             }
-            KeyEntry* entry = entry_arr[pos->second];
-            ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
-            bool continue_flag = false;
-            switch (kv.second.ttl_type) {
-                case ::openmldb::storage::TTLType::kAbsoluteTime: {
-                    node = entry->entries.GetLast();
-                    if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
-                        continue_flag = true;
-                    } else {
-                        node = NULL;
-                        std::lock_guard<std::mutex> lock(mu_);
-                        SplitList(entry, kv.second.abs_ttl, &node);
-                        if (entry->entries.IsEmpty()) {
-                            empty_cnt++;
-                        }
-                    }
-                    break;
-                }
-                case ::openmldb::storage::TTLType::kLatestTime: {
-                    std::lock_guard<std::mutex> lock(mu_);
-                    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                        node = entry->entries.SplitByPos(kv.second.lat_ttl);
-                    }
-                    break;
-                }
-                case ::openmldb::storage::TTLType::kAbsAndLat: {
-                    node = entry->entries.GetLast();
-                    if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
-                        continue_flag = true;
-                    } else {
-                        node = NULL;
-                        std::lock_guard<std::mutex> lock(mu_);
-                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                            node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl, kv.second.lat_ttl);
-                        }
-                    }
-                    break;
-                }
-                case ::openmldb::storage::TTLType::kAbsOrLat: {
-                    node = entry->entries.GetLast();
-                    if (node == NULL) {
-                        continue_flag = true;
-                    } else {
-                        node = NULL;
-                        std::lock_guard<std::mutex> lock(mu_);
-                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                            if (kv.second.abs_ttl == 0) {
-                                node = entry->entries.SplitByPos(kv.second.lat_ttl);
-                            } else if (kv.second.lat_ttl == 0) {
-                                node = entry->entries.Split(kv.second.abs_ttl);
-                            } else {
-                                node = entry->entries.SplitByKeyOrPos(kv.second.abs_ttl, kv.second.lat_ttl);
+            KeyEntry* entry = NULL;
+            if (IsSkipList(pos->second)) {
+                entry = (SkipListKeyEntry*)entry_arr[pos->second];
+                ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
+                bool continue_flag = false;
+                switch (kv.second.ttl_type) {
+                    case ::openmldb::storage::TTLType::kAbsoluteTime: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            SplitList(entry, kv.second.abs_ttl, &node);
+                            if (entry->entries.IsEmpty()) {
+                                empty_cnt++;
                             }
                         }
-                        if (entry->entries.IsEmpty()) {
-                            empty_cnt++;
-                        }
+                        break;
                     }
-                    break;
+                    case ::openmldb::storage::TTLType::kLatestTime: {
+                        std::lock_guard<std::mutex> lock(mu_);
+                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                            node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                        }
+                        break;
+                    }
+                    case ::openmldb::storage::TTLType::kAbsAndLat: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                                node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                            }
+                        }
+                        break;
+                    }
+                    case ::openmldb::storage::TTLType::kAbsOrLat: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                                if (kv.second.abs_ttl == 0) {
+                                    node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                                } else if (kv.second.lat_ttl == 0) {
+                                    node = entry->entries.Split(kv.second.abs_ttl);
+                                } else {
+                                    node = entry->entries.SplitByKeyOrPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                                }
+                            }
+                            if (entry->entries.IsEmpty()) {
+                                empty_cnt++;
+                            }
+                        }
+                        break;
+                    }
+                    default:
+                        return;
                 }
-                default:
-                    return;
+                if (continue_flag) {
+                    continue;
+                }
+                uint64_t entry_gc_idx_cnt = 0;
+                FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+                idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+                gc_idx_cnt += entry_gc_idx_cnt;
+            }  // TODO 需要优化
+            else {
+                entry = (ListKeyEntry*)entry_arr[pos->second];
+                ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = NULL;
+                bool continue_flag = false;
+                switch (kv.second.ttl_type) {
+                    case ::openmldb::storage::TTLType::kAbsoluteTime: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            SplitList(entry, kv.second.abs_ttl, &node);
+                            if (entry->entries.IsEmpty()) {
+                                empty_cnt++;
+                            }
+                        }
+                        break;
+                    }
+                    case ::openmldb::storage::TTLType::kLatestTime: {
+                        std::lock_guard<std::mutex> lock(mu_);
+                        if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                            node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                        }
+                        break;
+                    }
+                    case ::openmldb::storage::TTLType::kAbsAndLat: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL || node->GetKey() > kv.second.abs_ttl) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                                node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                            }
+                        }
+                        break;
+                    }
+                    case ::openmldb::storage::TTLType::kAbsOrLat: {
+                        node = entry->entries.GetLast();
+                        if (node == NULL) {
+                            continue_flag = true;
+                        } else {
+                            node = NULL;
+                            std::lock_guard<std::mutex> lock(mu_);
+                            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                                if (kv.second.abs_ttl == 0) {
+                                    node = entry->entries.SplitByPos(kv.second.lat_ttl);
+                                } else if (kv.second.lat_ttl == 0) {
+                                    node = entry->entries.Split(kv.second.abs_ttl);
+                                } else {
+                                    node = entry->entries.SplitByKeyOrPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                                }
+                            }
+                            if (entry->entries.IsEmpty()) {
+                                empty_cnt++;
+                            }
+                        }
+                        break;
+                    }
+                    default:
+                        return;
+                }
+                if (continue_flag) {
+                    continue;
+                }
+                uint64_t entry_gc_idx_cnt = 0;
+                FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+                idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+                gc_idx_cnt += entry_gc_idx_cnt;
             }
-            if (continue_flag) {
-                continue;
-            }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
         }
         if (empty_cnt == ts_cnt_) {
             bool is_empty = true;
@@ -570,9 +750,16 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    if (!entry_arr[i]->entries.IsEmpty()) {
-                        is_empty = false;
-                        break;
+                    if (IsSkipList(i)) {
+                        if (!(SkipListKeyEntry*)entry_arr[i]->entries.IsEmpty()) {
+                            is_empty = false;
+                            break;
+                        }
+                    } else {
+                        if (!(ListKeyEntry*)entry_arr[i]->entries.IsEmpty()) {
+                            is_empty = false;
+                            break;
+                        }
                     }
                 }
                 if (is_empty) {
@@ -590,10 +777,17 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
     delete it;
 }
 
-void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
+void Segment::SplitList(SkipListKeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
-    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-        *node = entry->entries.Split(ts);
+    if (entry->refs_.load(std::memory_order_acquire) <= 0) {  // 如果entry refs_ 小于0 执行按时间分割
+        *node = entry->entries.Split(ts);  // 返回分割后的 后面一个skiplist的头指针
+    }
+}
+
+void Segment::SplitList(ListKeyEntry* entry, uint64_t ts, ::openmldb::base::ListNode<uint64_t, DataBlock*>** node) {
+    // skip entry that ocupied by reader
+    if (entry->refs_.load(std::memory_order_acquire) <= 0) {  // 如果entry refs_ 小于0 执行按时间分割
+        *node = entry->entries.Split(ts);  // 返回分割后的 后面一个skiplist的头指针
     }
 }
 
@@ -605,36 +799,71 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        Slice key = it->GetKey();
-        it->Next();
-        ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
-        if (node == NULL) {
-            continue;
-        } else if (node->GetKey() > time) {
-            DEBUGLOG(
-                "[Gc4TTL] segment gc with key %lu need not ttl, last node "
-                "key %lu",
-                time, node->GetKey());
-            continue;
-        }
-        node = NULL;
-        ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            SplitList(entry, time, &node);
-            if (entry->entries.IsEmpty()) {
-                entry_node = entries_->Remove(key);
+        KeyEntry* entry = NULL;
+        if (IsSkipList()) {
+            entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
+            Slice key = it->GetKey();
+            it->Next();
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > time) {
+                DEBUGLOG(
+                    "[Gc4TTL] segment gc with key %lu need not ttl, last node "
+                    "key %lu",
+                    time, node->GetKey());
+                continue;
             }
+            node = NULL;
+            ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                SplitList(entry, time, &node);
+                if (entry->entries.IsEmpty()) {
+                    entry_node = entries_->Remove(key);
+                }
+            }
+            if (entry_node != NULL) {
+                std::lock_guard<std::mutex> lock(gc_mu_);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
+        }   // TODO  优化
+        else {
+            entry = (ListKeyEntry*)it->GetValue();  // NOLINT
+            Slice key = it->GetKey();
+            it->Next();
+            ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > time) {
+                DEBUGLOG(
+                    "[Gc4TTL] segment gc with key %lu need not ttl, last node "
+                    "key %lu",
+                    time, node->GetKey());
+                continue;
+            }
+            node = NULL;
+            ::openmldb::base::ListNode<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                SplitList(entry, time, &node);
+                if (entry->entries.IsEmpty()) {
+                    entry_node = entries_->Remove(key);
+                }
+            }
+            if (entry_node != NULL) {
+                std::lock_guard<std::mutex> lock(gc_mu_);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
         }
-        if (entry_node != NULL) {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
-        }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
     }
     DEBUGLOG("[Gc4TTL] segment gc with key %lu ,consumed %lu, count %lu", time,
              (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
@@ -653,29 +882,56 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
-        it->Next();
-        if (node == NULL) {
-            continue;
-        } else if (node->GetKey() > time) {
-            DEBUGLOG(
-                "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last "
-                "node key %lu",
-                time, node->GetKey());
-            continue;
-        }
-        node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+        KeyEntry* entry = NULL;
+        if (IsSkipList()) {
+            entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            it->Next();
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > time) {
+                DEBUGLOG(
+                    "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last "
+                    "node key %lu",
+                    time, node->GetKey());
+                continue;
             }
+            node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+                }
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
+        } else {
+            entry = (ListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            it->Next();
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > time) {
+                DEBUGLOG(
+                    "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last "
+                    "node key %lu",
+                    time, node->GetKey());
+                continue;
+            }
+            node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+                }
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
         }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
     }
     DEBUGLOG(
         "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, "
@@ -702,32 +958,62 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-        Slice key = it->GetKey();
-        it->Next();
-        ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
-        if (node == NULL) {
-            continue;
-        }
-        node = NULL;
-        ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                node = entry->entries.SplitByKeyOrPos(time, keep_cnt);
+        KeyEntry* entry = NULL;
+        if (IsSkipList()) {
+            entry = (KeyEntry*)it->GetValue();  // NOLINT
+            Slice key = it->GetKey();
+            it->Next();
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
             }
-            if (entry->entries.IsEmpty()) {
-                entry_node = entries_->Remove(key);
+            node = NULL;
+            ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByKeyOrPos(time, keep_cnt);
+                }
+                if (entry->entries.IsEmpty()) {
+                    entry_node = entries_->Remove(key);
+                }
             }
+            if (entry_node != NULL) {
+                std::lock_guard<std::mutex> lock(gc_mu_);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
+        } else {
+            entry = (ListKeyEntry*)it->GetValue();  // NOLINT
+            Slice key = it->GetKey();
+            it->Next();
+            ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            if (node == NULL) {
+                continue;
+            }
+            node = NULL;
+            ::openmldb::base::ListNode<Slice, void*>* entry_node = NULL;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    node = entry->entries.SplitByKeyOrPos(time, keep_cnt);
+                }
+                if (entry->entries.IsEmpty()) {
+                    entry_node = entries_->Remove(key);
+                }
+            }
+            if (entry_node != NULL) {
+                std::lock_guard<std::mutex> lock(gc_mu_);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+            }
+            uint64_t entry_gc_idx_cnt = 0;
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            gc_idx_cnt += entry_gc_idx_cnt;
         }
-        if (entry_node != NULL) {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
-        }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
     }
     DEBUGLOG(
         "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, "
@@ -745,7 +1031,11 @@ int Segment::GetCount(const Slice& key, uint64_t& count) {
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return -1;
     }
-    count = ((KeyEntry*)entry)->count_.load(std::memory_order_relaxed);  // NOLINT
+    if (IsSkipList()) {
+        count = ((SkipListKeyEntry*)entry)->count_.load(std::memory_order_relaxed);  // NOLINT
+    } else {
+        count = ((ListKeyEntry*)entry)->count_.load(std::memory_order_relaxed);  // NOLINT
+    }
     return 0;
 }
 
@@ -761,87 +1051,14 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
         return -1;
     }
-    count = ((KeyEntry**)entry_arr)[pos->second]->count_.load(  // NOLINT
-        std::memory_order_relaxed);
+    if (IsSkipList(pos->second)) {
+        count = ((SkipListKeyEntry**)entry_arr)[pos->second]->count_.load(  // NOLINT
+            std::memory_order_relaxed);
+    } else {
+        count = ((ListKeyEntry**)entry_arr)[pos->second]->count_.load(  // NOLINT
+            std::memory_order_relaxed);
+    }
     return 0;
-}
-
-// Iterator
-MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
-    if (entries_ == NULL || ts_cnt_ > 1) {
-        return new MemTableIterator(NULL);
-    }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return new MemTableIterator(NULL);
-    }
-    ticket.Push((KeyEntry*)entry);                                           // NOLINT
-    return new MemTableIterator(((KeyEntry*)entry)->entries.NewIterator());  // NOLINT
-}
-
-MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
-    auto pos = ts_idx_map_.find(idx);
-    if (pos == ts_idx_map_.end()) {
-        return new MemTableIterator(NULL);
-    }
-    if (ts_cnt_ == 1) {
-        return NewIterator(key, ticket);
-    }
-    void* entry_arr = NULL;
-    if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
-        return new MemTableIterator(NULL);
-    }
-    ticket.Push(((KeyEntry**)entry_arr)[pos->second]);                                         // NOLINT
-    return new MemTableIterator(((KeyEntry**)entry_arr)[pos->second]->entries.NewIterator());  // NOLINT
-}
-
-MemTableIterator::MemTableIterator(TimeEntries::Iterator* it) : it_(it) {}
-
-MemTableIterator::~MemTableIterator() {
-    if (it_ != NULL) {
-        delete it_;
-    }
-}
-
-void MemTableIterator::Seek(const uint64_t time) {
-    if (it_ == NULL) {
-        return;
-    }
-    it_->Seek(time);
-}
-
-bool MemTableIterator::Valid() {
-    if (it_ == NULL) {
-        return false;
-    }
-    return it_->Valid();
-}
-
-void MemTableIterator::Next() {
-    if (it_ == NULL) {
-        return;
-    }
-    it_->Next();
-}
-
-::openmldb::base::Slice MemTableIterator::GetValue() const {
-    return ::openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
-}
-
-uint64_t MemTableIterator::GetKey() const { return it_->GetKey(); }
-
-void MemTableIterator::SeekToFirst() {
-    if (it_ == NULL) {
-        return;
-    }
-    it_->SeekToFirst();
-}
-
-void MemTableIterator::SeekToLast() {
-    if (it_ == NULL) {
-        return;
-    }
-    it_->SeekToLast();
 }
 
 }  // namespace storage

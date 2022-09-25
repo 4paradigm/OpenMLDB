@@ -1,17 +1,17 @@
 /*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+* Copyright 2021 4Paradigm
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
  */
 
 #ifndef SRC_STORAGE_SEGMENT_H_
@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "base/skiplist.h"
+#include "base/concurrentlist.h"
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
@@ -38,7 +39,7 @@ typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimen
 using ::openmldb::base::Slice;
 
 class Segment;
-class Ticket;
+//class Ticket;
 
 struct DataBlock {
     // dimension count down
@@ -80,34 +81,88 @@ struct TimeComparator {
 };
 
 static const TimeComparator tcmp;
-typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator> TimeEntries;
+// 二层数据结构
+typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator> SkipListTimeEntries;
+typedef ::openmldb::base::ConcurrentList<uint64_t, DataBlock*, TimeComparator> ListTimeEntries;
 
+template<class T>
 class MemTableIterator : public TableIterator {
  public:
-    explicit MemTableIterator(TimeEntries::Iterator* it);
-    virtual ~MemTableIterator();
-    void Seek(const uint64_t time) override;
-    bool Valid() override;
-    void Next() override;
-    openmldb::base::Slice GetValue() const override;
-    uint64_t GetKey() const override;
-    void SeekToFirst() override;
-    void SeekToLast() override;
+    explicit MemTableIterator(T* it) : it_(it) {}
+    virtual ~MemTableIterator() {
+        if (it_ != NULL) {
+            delete it_;
+        }
+    }
+    void Seek(const uint64_t time) {
+        if (it_ == NULL) {
+            return;
+        }
+        it_->Seek(time);
+    }
+    bool Valid() {
+        if (it_ == NULL) {
+            return false;
+        }
+        return it_->Valid();
+    }
+    void Next() {
+        if (it_ == NULL) {
+            return;
+        }
+        it_->Next();
+    }
+    openmldb::base::Slice GetValue() {
+        return ::openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+    }
+    uint64_t GetKey() const {
+        return it_->GetKey();
+    }
+    void SeekToFirst() {
+        if (it_ == NULL) {
+            return;
+        }
+        it_->SeekToFirst();
+    }
+    void SeekToLast() {
+        if (it_ == NULL) {
+            return;
+        }
+        it_->SeekToLast();
+    }
 
  private:
-    TimeEntries::Iterator* it_;
+    T* it_;   //TimeEntries::Iterator* it_;
 };
 
 class KeyEntry {
  public:
-    KeyEntry() : entries(12, 4, tcmp), refs_(0), count_(0) {}
-    explicit KeyEntry(uint8_t height) : entries(height, 4, tcmp), refs_(0), count_(0) {}
-    ~KeyEntry() {}
+    KeyEntry(): refs_(0), count_(0), entries(12, 4, tcmp){}
+    KeyEntry(uint8_t height): refs_(0), count_(0), entries(height, 4, tcmp){}
+    virtual ~KeyEntry() {}
+    virtual uint64_t Release() {}
 
-    // just return the count of datablock
+    void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
+
+    void UnRef() { refs_.fetch_sub(1, std::memory_order_relaxed); }
+
+    uint64_t GetCount() { return count_.load(std::memory_order_relaxed); }
+
+ public:
+    std::atomic<uint64_t> refs_;
+    std::atomic<uint64_t> count_;
+    SkipListTimeEntries entries;
+    friend Segment;
+};
+
+class SkipListKeyEntry : public KeyEntry {
+ public:
+    SkipListKeyEntry() : KeyEntry(){}
+    explicit SkipListKeyEntry(uint8_t height) : KeyEntry(height){}
+
     uint64_t Release() {
         uint64_t cnt = 0;
-        TimeEntries::Iterator* it = entries.NewIterator();
+        SkipListTimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while (it->Valid()) {
             cnt += 1;
@@ -124,18 +179,33 @@ class KeyEntry {
         delete it;
         return cnt;
     }
+};
 
-    void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
-
-    void UnRef() { refs_.fetch_sub(1, std::memory_order_relaxed); }
-
-    uint64_t GetCount() { return count_.load(std::memory_order_relaxed); }
-
+class ListKeyEntry : public KeyEntry {
  public:
-    TimeEntries entries;
-    std::atomic<uint64_t> refs_;
-    std::atomic<uint64_t> count_;
-    friend Segment;
+    ListKeyEntry() : entries(tcmp) , KeyEntry(){}
+
+    uint64_t Release() {
+        uint64_t cnt = 0;
+        ListTimeEntries::ListIterator* it = entries.NewIterator();
+        it->SeekToFirst();
+        while (it->Valid()) {
+            cnt += 1;
+            DataBlock* block = it->GetValue();
+            // Avoid double free
+            if (block->dim_cnt_down > 1) {
+                block->dim_cnt_down--;
+            } else {
+                delete block;
+            }
+            it->Next();
+        }
+        entries.Clear();
+        delete it;
+        return cnt;
+    }
+ public:
+    ListTimeEntries entries;
 };
 
 struct SliceComparator {
@@ -148,7 +218,7 @@ typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*
 class Segment {
  public:
     Segment();
-    explicit Segment(uint8_t height);
+    explicit Segment(uint8_t height, bool is_skiplist);
     Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec);
     ~Segment();
 
@@ -189,10 +259,11 @@ class Segment {
     void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
                    uint64_t& gc_record_cnt,                                            // NOLINT
                    uint64_t& gc_record_byte_size);                                     // NOLINT
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
-    MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
-                                  Ticket& ticket);  // NOLINT
-
+    template<class T>
+    MemTableIterator<T>* NewIterator(const Slice& key, Ticket& ticket);
+    template<class T>
+    MemTableIterator<T>* NewIterator(const Slice& key, uint32_t idx,
+                                     Ticket& ticket);  // NOLINT
     inline uint64_t GetIdxCnt() {
         return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
                            : idx_cnt_.load(std::memory_order_relaxed);
@@ -207,6 +278,14 @@ class Segment {
         return 0;
     }
 
+    inline bool IsSkipList() { return is_skiplist_; }
+    inline bool IsSkipList(uint32_t idx) {
+        return is_skiplist_vec_[idx];
+    }
+
+    std::vector<bool> GetSkipListVec() {
+        return is_skiplist_vec_;
+    }
     inline uint64_t GetTsCnt() { return ts_cnt_; }
 
     int GetTsIdx(uint32_t raw_idx, uint32_t& real_idx) {  // NOLINT
@@ -244,7 +323,14 @@ class Segment {
     void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT
                   uint64_t& gc_record_cnt,         // NOLINT
                   uint64_t& gc_record_byte_size);  // NOLINT
-    void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
+
+    void FreeList(::openmldb::base::ListNode<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT 重载 TODO 释放第二层list节点
+                  uint64_t& gc_record_cnt,         // NOLINT
+                  uint64_t& gc_record_byte_size);  // NOLINT
+
+    void SplitList(SkipListKeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node); //
+    void SplitList(ListKeyEntry* entry, uint64_t ts, ::openmldb::base::ListNode<uint64_t, DataBlock*>** node);  // TODO 重载了
+
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
                          uint64_t& gc_record_cnt,                 // NOLINT
@@ -268,7 +354,50 @@ class Segment {
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
     uint64_t ttl_offset_;
+    bool is_skiplist_;   // 判断第二层结构是否是跳表
+    std::vector<bool> is_skiplist_vec_; // 判断多个ts_cnt_ 中是否是跳表
 };
+
+// Iterator
+template<class T>
+MemTableIterator<T>* Segment::NewIterator(const Slice& key, Ticket& ticket) {
+    if (entries_ == NULL || ts_cnt_ > 1) {
+        return new MemTableIterator<T>(NULL);
+    }
+    void* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
+        return new MemTableIterator<T>(NULL);
+    }
+    if (typeid(T) == typeid(SkipListTimeEntries::Iterator)) {
+        ticket.Push((SkipListKeyEntry*)entry);                                           // NOLINT
+        return new MemTableIterator<T>(((SkipListKeyEntry*)entry)->entries.NewIterator());  // NOLINT
+    } else {
+        ticket.Push((ListKeyEntry*)entry);                                           // NOLINT
+        return new MemTableIterator<T>(((ListKeyEntry*)entry)->entries.NewIterator());  // NOLINT
+    }
+}
+
+template<class T>
+MemTableIterator<T>* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
+    auto pos = ts_idx_map_.find(idx);
+    if (pos == ts_idx_map_.end()) {
+        return new MemTableIterator<T>(NULL);
+    }
+    if (ts_cnt_ == 1) {
+        return NewIterator<T>(key, ticket);
+    }
+    void* entry_arr = NULL;
+    if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
+        return new MemTableIterator<T>(NULL);
+    }
+    if (IsSkipList(pos->second)) {
+        ticket.Push(((SkipListKeyEntry**)entry_arr)[pos->second]);
+        return new MemTableIterator<T>(((SkipListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
+    } else {
+        ticket.Push(((ListKeyEntry**)entry_arr)[pos->second]);
+        return new MemTableIterator<T>(((ListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
+    }
+}
 
 }  // namespace storage
 }  // namespace openmldb

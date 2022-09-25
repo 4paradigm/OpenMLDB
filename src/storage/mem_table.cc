@@ -1,17 +1,17 @@
 /*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+* Copyright 2021 4Paradigm
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
  */
 
 #include "storage/mem_table.h"
@@ -28,16 +28,12 @@
 #include "storage/window_iterator.h"
 
 DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
 DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(latest_default_skiplist_height);
-DECLARE_uint32(max_traverse_cnt);
 
 namespace openmldb {
 namespace storage {
-
-static const uint32_t SEED = 0xe17a1465;
 
 MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
                    const std::map<std::string, uint32_t>& mapping, uint64_t ttl, ::openmldb::type::TTLType ttl_type)
@@ -105,15 +101,29 @@ bool MemTable::Init() {
                                                                                  FLAGS_latest_default_skiplist_height);
         }
         Segment** seg_arr = new Segment*[seg_cnt_];
+        const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
         if (!ts_vec.empty()) {
+            // 有多个索引列
+            vector<bool> is_skiplist_vec;
+            for (auto index : index_vec) {
+                if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
+                    is_skiplist_vec.push_back(false);
+                }else {
+                    is_skiplist_vec.push_back(true);
+                }
+            }
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec);
+                seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec, is_skiplist_vec);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", i, j,
                       cur_key_entry_max_height, ts_vec.size(), id_, pid_);
             }
         } else {
+            // 只有一个索引列
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                seg_arr[j] = new Segment(cur_key_entry_max_height);
+                if (index_vec.at(0)->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)  // ts为1 只有一个索引列
+                    seg_arr[j] = new Segment(cur_key_entry_max_height, false);
+                else
+                    seg_arr[j] = new Segment(cur_key_entry_max_height, true);
                 PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", i, j, cur_key_entry_max_height, id_, pid_);
             }
         }
@@ -596,7 +606,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
                   FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
         }
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
-                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
+                                               IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
@@ -607,7 +617,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
         } else {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
-                        ::openmldb::type::kTimestamp, true));
+                                                               ::openmldb::type::kTimestamp, true));
         }
         if (column_key.has_ttl()) {
             index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));

@@ -23,25 +23,43 @@ namespace openmldb {
 namespace storage {
 
 static const uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
-static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
+static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);   // KeyEntry 和 SkipListKeyEntry 大小一样这里可以先不动
+static const uint32_t LIST_KEY_ENTRY_BYTE_SIZE = sizeof(ListKeyEntry);  // 这样可能有些不准 listkeyentr继承了一些没用到的
 static const uint32_t ENTRY_NODE_SIZE = sizeof(::openmldb::base::Node<::openmldb::base::Slice, void*>);
 static const uint32_t DATA_NODE_SIZE = sizeof(::openmldb::base::Node<uint64_t, void*>);
-static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
+static const uint32_t LIST_DATA_NODE_SIZE = sizeof(::openmldb::base::ListNode<uint64_t, void*>);  // list 节点尺寸
+static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);  // 指针大小都一样
 
 static inline uint32_t GetRecordSize(uint32_t value_size) { return value_size + DATA_BLOCK_BYTE_SIZE; }
 
 // the input height which is the height of skiplist node
-static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height) {
-    return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size + key_entry_max_height * 8 + DATA_NODE_SIZE;
+static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height, bool is_skiplist) {
+    if (is_skiplist)
+        return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size + key_entry_max_height * 8 + DATA_NODE_SIZE;
+    else
+        return height * 8 + ENTRY_NODE_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + key_size + LIST_DATA_NODE_SIZE;
 }
 
 static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height,
-                                               uint32_t ts_cnt) {
-    return height * 8 + ENTRY_NODE_SIZE + key_size +
-           (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE) * ts_cnt;
+                                               uint32_t ts_cnt, const vector<int>& is_skiplist_vec) {
+    uint32_t sumSize = 0;
+    for (int i = 0; i < ts_cnt; i++) {
+        if (is_skiplist_vec(i))
+            sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
+                   (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE);
+        else
+            sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
+                   (KEY_ENTRY_PTR_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + LIST_DATA_NODE_SIZE) ;
+    }
+    return sumSize;
 }
 
-static inline uint32_t GetRecordTsIdxSize(uint8_t height) { return height * 8 + DATA_NODE_SIZE; }
+static inline uint32_t GetRecordTsIdxSize(uint8_t height, bool is_skiplist) {
+    if (is_skiplist)
+        return height * 8 + DATA_NODE_SIZE;
+    else
+        return LIST_DATA_NODE_SIZE;
+}
 
 }  // namespace storage
 }  // namespace openmldb
