@@ -62,45 +62,43 @@ class OpenMLDBStandaloneSdkOptions(object):
 
 class OpenMLDBSdk(object):
 
-    def __init__(self, options, is_cluster_mode):
-        self.is_cluster_mode = is_cluster_mode
-        self.options = options
+    def __init__(self, **options_map):
+        self.options_map = options_map
         self.sdk = None
 
     def init(self):
-        if self.is_cluster_mode:
+        is_cluster_mode = True if 'zkPath' in self.options_map else False
+        if is_cluster_mode:
             options = sql_router_sdk.SQLRouterOptions()
-            options.zk_cluster = self.options.zk_cluster
-            options.zk_path = self.options.zk_path
-            if self.options.request_timeout is not None:
-                options.request_timeout = int(self.options.request_timeout)
-            if self.options.zk_log_level is not None:
-                options.zk_log_level = int(self.options.zk_log_level)
-            if self.options.zk_log_file is not None:
-                options.zk_log_file = self.options.zk_log_file
-            self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
-            if not self.sdk:
-                logger.error(
-                    "fail to init OpenMLDB sdk with zk cluster %s and zk path %s"
-                    % (options.zk_cluster, options.zk_path))
-                return False
-            logger.info(
-                "init OpenMLDB sdk done with zk cluster %s and zk path %s" %
-                (options.zk_cluster, options.zk_path))
+            options.zk_cluster = self.options_map['zk']
+            options.zk_path = self.options_map['zkPath']
+            # optionals
+            if 'zkLogLevel' in self.options_map:
+                options.zk_log_level = int(self.options_map['zkLogLevel'])
+            if 'zkLogFile' in self.options_map:
+                options.zk_log_file = self.options_map['zkLogFile']
         else:
             options = sql_router_sdk.StandaloneOptions()
-            options.host = self.options.host
-            options.port = self.options.port
-            if self.options.request_timeout is not None:
-                options.request_timeout = int(self.options.request_timeout)
-            self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
-            if not self.sdk:
-                logger.error(
-                    "fail to init OpenMLDB sdk with host %s and port %s" %
-                    (options.host, options.port))
-                return False
-            logger.info("init openmldb sdk done with host %s and port %s" %
-                        (options.host, options.port))
+            # use host
+            if 'zkPath' not in self.options_map:
+                options.host = self.options_map['host']
+                options.port = int(self.options_map['port'])
+
+        # common options
+        if 'requestTimeout' in self.options_map:
+            options.request_timeout = int(self.options_map['requestTimeout'])
+        if 'glogLevel' in self.options_map:
+            options.glog_level = self.options_map['glogLevel']
+        if 'glogDir' in self.options_map:
+            options.glog_dir = self.options_map['glogDir']
+
+        self.sdk = sql_router_sdk.NewClusterSQLRouter(
+            options) if is_cluster_mode else sql_router_sdk.NewStandaloneSQLRouter(options)
+        if not self.sdk:
+            logger.error(
+                "fail to init OpenMLDB sdk with %s, is cluster mode %s" % (self.options_map, is_cluster_mode))
+            return False
+        logger.info("init openmldb sdk done with %s, is cluster mode %s" % (self.options_map, is_cluster_mode))
         status = sql_router_sdk.Status()
         self.sdk.ExecuteSQL("SET @@execute_mode='online'", status)
         return True

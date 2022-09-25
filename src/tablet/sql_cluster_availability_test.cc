@@ -18,7 +18,7 @@
 #include <gflags/gflags.h>
 #include <unistd.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "client/ns_client.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
