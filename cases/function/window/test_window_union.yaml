@@ -2017,7 +2017,7 @@ cases:
        from t1 window
           w1 as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 0s preceding),
           w2 as (union t3 partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
-          w3 as (partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+          w3 as (partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     batch_plan: |
       PROJECT(type=WindowAggregation)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
@@ -2102,7 +2102,7 @@ cases:
        from t1 window
           w1 as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 0s preceding),
           w2 as (union t3 partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
-          w3 as (union t4 partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+          w3 as (union t4 partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     batch_plan: |
       PROJECT(type=WindowAggregation)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
