@@ -118,7 +118,6 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
-          sha256sum ${{ env.OPENMLDB_PREFIX }}.tar.gz > ${{ env.OPENMLDB_PREFIX }}-sha256sum
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
@@ -195,7 +194,6 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
-          sha256sum ${{ env.OPENMLDB_PREFIX }}.tar.gz > ${{ env.OPENMLDB_PREFIX }}-sha256sum
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
@@ -215,12 +213,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: release-artifacts
+
+      - name: generate signature
+        run: |
+          sha256sum openmldb-*.tar.gz > SHA256SUM
+
       - name: Release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
             openmldb-*.tar.gz
-            openmldb-*-sha256sum
+            SHA256SUM
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
