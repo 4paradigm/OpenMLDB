@@ -103,16 +103,16 @@ LongWindowOption
 #### 长窗口优化
 ```sql
 LongWindowDefinitions
-						::= 'LongWindowDefinition (, LongWindowDefinition)*'
+					::= 'LongWindowDefinition (, LongWindowDefinition)*'
 
 LongWindowDefinition
-						::= WindowName':'[BucketSize]
+					::= WindowName':'[BucketSize]
 
 WindowName
-						::= string_literal
+					::= string_literal
 
 BucketSize
-						::= int_literal | interval_literal
+					::= int_literal | interval_literal
 
 interval_literal ::= int_literal 's'|'m'|'h'|'d'
 ```
