@@ -42,14 +42,27 @@ Status RowFnLetIRBuilder::Build(
     CHECK_TRUE(module->getFunction(name) == NULL, kCodegenError, "function ",
                name, " already exists");
 
+    // Compute function for SQL query, with five parameters (first four input and last output).
+    // Called for each row(`key` & `row`), with window and parameter info,
+    // output the result row(`output_buf`).
+    // Function returns int32
+    //
+    // Function is built with the information of query SQL, including
+    // select list (all column names, expressions and function calls),
+    // window definitions, group by infos, parameters etc
+    //
+    // key::int64
+    // row::int8*
+    // window::int8*
+    // parameter::int8*
+    // output_buf::int8**
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
     args_llvm_type.push_back(::llvm::Type::getInt64Ty(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
-    args_llvm_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module->getContext())->getPointerTo());
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext())->getPointerTo());
 
     std::string output_ptr_name = "output_ptr_name";
     args.push_back("@row_key");

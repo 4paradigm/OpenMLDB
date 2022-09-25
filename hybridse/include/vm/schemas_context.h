@@ -213,6 +213,7 @@ class SchemasContext {
 
     /**
      * Add schema sources from child and inherit column identifiers.
+     * New source is appended to the back.
      */
     void Merge(size_t child_idx, const SchemasContext* child);
 
