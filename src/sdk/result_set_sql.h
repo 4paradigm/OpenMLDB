@@ -23,6 +23,7 @@
 
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
+#include "schema/index_util.h"
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/codec_sdk.h"
@@ -53,6 +54,10 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
         const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        ::hybridse::sdk::Status* status);
+
+    static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
+        const ::openmldb::schema::PBSchema& schema, const std::vector<std::vector<std::string>>& records,
         ::hybridse::sdk::Status* status);
 
     bool Init();
@@ -91,6 +96,12 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     int32_t Size() override { return result_set_base_->Size(); }
 
+    void SetReadableTime(bool readable_time) {
+        readable_time_ = readable_time;
+    }
+
+    const bool GetAsString(uint32_t idx, std::string& val) override;
+
  private:
     ::hybridse::vm::Schema schema_;
     uint32_t record_cnt_;
@@ -98,6 +109,7 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
     std::shared_ptr<brpc::Controller> cntl_;
     ResultSetBase* result_set_base_;
     std::shared_ptr<butil::IOBuf> io_buf_;
+    bool readable_time_;
 };
 
 class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
@@ -195,6 +207,8 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     const ::hybridse::sdk::Schema* GetSchema() override { return result_set_base_->GetSchema(); }
 
+    const bool GetAsString(uint32_t idx, std::string& val) override;
+
     int32_t Size() override {
         int total_size = 0;
         for (size_t i = 0 ; i < result_set_list_.size(); i++) {
@@ -206,12 +220,17 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         return total_size;
     }
 
+    void SetReadableTime(bool readable_time) {
+        readable_time_ = readable_time;
+    }
+
  private:
     std::vector<std::shared_ptr<ResultSetSQL>> result_set_list_;
     uint32_t result_set_idx_;
     uint32_t limit_cnt_;
     uint32_t result_idx_;
     std::shared_ptr<ResultSetSQL> result_set_base_;
+    bool readable_time_;
 };
 }  // namespace sdk
 }  // namespace openmldb

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/status.h"
+#include "base/time.h"
 #include "catalog/sdk_catalog.h"
 #include "codec/fe_schema_codec.h"
 #include "codec/row_codec.h"
@@ -34,11 +35,12 @@ namespace sdk {
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
     : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr),
-        io_buf_() {}
+        io_buf_(), readable_time_(false) {}
 
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt,
                            const std::shared_ptr<butil::IOBuf>& io_buf)
-    : schema_(schema), record_cnt_(record_cnt), cntl_(), result_set_base_(nullptr), io_buf_(io_buf) {
+    : schema_(schema), record_cnt_(record_cnt), cntl_(), result_set_base_(nullptr), io_buf_(io_buf),
+        readable_time_(false) {
     if (io_buf_) {
         buf_size_ = io_buf_->length();
     }
@@ -113,32 +115,64 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
-        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        const ::openmldb::schema::PBSchema& schema, const std::vector<std::vector<std::string>>& records,
         ::hybridse::sdk::Status* status) {
-    auto com_schema = ::openmldb::schema::SchemaAdapter::BuildSchema(fields);
     auto io_buf = std::make_shared<butil::IOBuf>();
     std::string buf;
     for (const auto& row : records) {
         buf.clear();
-        auto ret = ::openmldb::codec::RowCodec::EncodeRow(row, com_schema, 0, buf);
+        auto ret = ::openmldb::codec::RowCodec::EncodeRow(row, schema, 0, buf);
         if (!ret.OK()) {
             *status = {::hybridse::common::StatusCode::kCmdError, ret.msg};
             return {};
         }
         io_buf->append(buf);
     }
-    ::hybridse::vm::Schema schema;
-    if (!::openmldb::schema::SchemaAdapter::ConvertSchema(com_schema, &schema)) {
+    ::hybridse::vm::Schema vm_schema;
+    if (!::openmldb::schema::SchemaAdapter::ConvertSchema(schema, &vm_schema)) {
         *status = {::hybridse::common::StatusCode::kCmdError, "fail to convert schema"};
         return {};
     }
     *status = {};
-    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, records.size(), io_buf);
+    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(vm_schema, records.size(), io_buf);
     if (rs->Init()) {
         return rs;
     }
     *status = {::hybridse::common::StatusCode::kCmdError, "fail to init ResultSetSQL"};
     return {};
+}
+
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        ::hybridse::sdk::Status* status) {
+    auto schema = ::openmldb::schema::SchemaAdapter::BuildSchema(fields);
+    return MakeResultSet(schema, records, status);
+}
+
+const bool ResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
+    if (readable_time_ && GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
+        int64_t ts = 0;
+        if (!GetTime(idx, &ts) || ts < 0) {
+            return false;
+        }
+        val = ::openmldb::base::Convert2FormatTime(ts);
+        return true;
+    } else {
+        return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
+    }
+}
+
+const bool MultipleResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
+    if (readable_time_ && GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
+        int64_t ts = 0;
+        if (!GetTime(idx, &ts) || ts < 0) {
+            return false;
+        }
+        val = ::openmldb::base::Convert2FormatTime(ts);
+        return true;
+    } else {
+        return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
+    }
 }
 
 }  // namespace sdk
