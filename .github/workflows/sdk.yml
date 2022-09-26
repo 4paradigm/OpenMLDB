@@ -126,7 +126,7 @@ jobs:
           ./mvnw --batch-mode scoverage:report
 
       - name: upload maven coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
           name: coverage
@@ -275,7 +275,7 @@ jobs:
             python/openmldb_sdk/openmldb/tests/pytest.xml
 
       - name: upload python coverage to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           name: coverage
           files: python/openmldb_sdk/tests/coverage.xml
