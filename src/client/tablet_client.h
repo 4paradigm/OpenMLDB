@@ -32,9 +32,6 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
-
-
 namespace openmldb {
 
 // forward decl
