@@ -826,7 +826,7 @@ class NameServerImpl : public NameServer {
         db_sp_table_map_;
     // database
     //      -> table
-    //          -> (da_name, procedure_name)
+    //          -> (db_name, procedure_name)
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>>
         db_table_sp_map_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
