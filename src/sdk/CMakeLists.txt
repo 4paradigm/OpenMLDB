@@ -269,10 +269,11 @@ endforeach()
 
 list(APPEND to_openmldbsdk $<TARGET_FILE:openmldb_api> ${ABSL_LLVM_PATH} ${LIBRARIES_PATH})
 
+# must rm lib first, otherwise err 'Malformed archive', or don't make thin?
 add_custom_target(_openmldbsdk)
 add_custom_command(TARGET _openmldbsdk
-COMMAND ar crsT libopenmldbsdk.a
-    ${to_openmldbsdk}
+COMMAND rm -f libopenmldbsdk.a
+COMMAND ar crusT libopenmldbsdk.a ${to_openmldbsdk}
 )
 
 add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)

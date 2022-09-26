@@ -75,6 +75,7 @@ using openmldb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"
+%include "sdk/base_schema.h"
 %include "sdk/base.h"
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"

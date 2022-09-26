@@ -196,7 +196,7 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
-# add absl::statusor, same as hybridse cmake
+# TODO(hw): dup with hybridse root cmake, need cleanup
 list(
         APPEND
         ABSL_LIBS

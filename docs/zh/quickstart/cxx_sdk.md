@@ -1,21 +1,28 @@
 # OpenMLDB C++ SDK 快速上手
 
-## 1. 请先安装 C++ SDK 包
+## 1. 请先编译安装或下载 C++ SDK 包
+
+编译：
+```
+cd OpenMLDB
+make && make install
+```
 
 ## 2. 部署 OpenMLDB Server
-### 详细文件配置及步骤请参考：https://openmldb.ai/docs/zh/v0.6/quickstart/openmldb_quickstart.html
 
-## 3. 编译 C++ 代码文件：
-### gcc XXX.cxx -o XXX -lstdc++ -std=c++17 -I.../include  -L.../lib -lopenmldbsdk -lpthread
+详细文件配置及步骤请参考：https://openmldb.ai/docs/zh/v0.6/quickstart/openmldb_quickstart.html
 
-## 4. openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件，其中包含了使用 OpenMLDB 需要的各种函数。
-### 注：由于文件包含关系，不能单独 include openmldb_api.h。
-```xml
-#include <openmldb_api.h>
-#include <sdk/result_set.h>
+## 3. 编写用户代码
+
+openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件。
+
+```
 #include <ctime>
 #include <iostream>
 #include <string>
+
+#include "openmldb_api.h"
+#include "sdk/result_set.h"
 
 int main()
 {
@@ -102,4 +109,10 @@ int main()
       //      | Hi~  | 5                 |
       //      +------+--------------------+
 }
+```
+
+## 4. 编译与运行
+```
+gcc <user_code>.cxx -o <bin_name> -lstdc++ -std=c++17 -I<install_path>/include  -L<install_path>/lib -lopenmldbsdk -lpthread
+./<bin_name>
 ```
