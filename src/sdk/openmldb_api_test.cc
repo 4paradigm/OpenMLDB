@@ -40,7 +40,7 @@ class OpenmldbApiTest : public ::testing::Test {
     }
     ~OpenmldbApiTest() {}
 
- private:
+ protected:
     std::string db_;
 };
 
