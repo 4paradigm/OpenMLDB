@@ -116,7 +116,8 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
  public:
     explicit MultipleResultSetSQL(const std::vector<std::shared_ptr<ResultSetSQL>>& result_set_list,
             const int limit_cnt = 0)
-        : result_set_list_(result_set_list), result_set_idx_(0), limit_cnt_(limit_cnt), result_idx_(0) {}
+        : result_set_list_(result_set_list), result_set_idx_(0), limit_cnt_(limit_cnt), result_idx_(0),
+            readable_time_(false) {}
     ~MultipleResultSetSQL() {}
 
     static std::shared_ptr<::hybridse::sdk::ResultSet> MakeResultSet(
