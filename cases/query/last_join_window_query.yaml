@@ -213,7 +213,7 @@ cases:
         partition by itemId
         order by actionTime
         rows_range between 3000 preceding and current row
-      )
+      );
     request_plan: |
       PROJECT(type=Aggregation)
         JOIN(type=LastJoin, right_sort=(ASC), condition=actionTime <= tm, left_keys=(), right_keys=(), index_keys=(actions.itemId))
