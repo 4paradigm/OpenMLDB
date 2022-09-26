@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H
-#define HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H
+#ifndef HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H_
+#define HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H_
 
 #include <stdint.h>
 
@@ -77,4 +77,4 @@ class Schema {
 };
 }  // namespace sdk
 }  // namespace hybridse
-#endif  // HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H
+#endif  // HYBRIDSE_INCLUDE_SDK_BASE_SCHEMA_H_

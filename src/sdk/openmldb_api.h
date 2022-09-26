@@ -20,13 +20,14 @@
  *we create some classes that users need here.
  */
 
-#ifndef OPENMLDB_API_H
-#define OPENMLDB_API_H
+#ifndef OPENMLDB_API_H_
+#define OPENMLDB_API_H_
 
 #include <stdint.h>
 
 #include <any>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "sdk/result_set.h"
@@ -54,7 +55,7 @@ static std::shared_ptr<hybridse::sdk::ResultSet> resultset_last;
 // constructor : only one parameter of type int_64
 class TimeStamp {
  public:
-    TimeStamp(int64_t _val) : value(_val) {}
+    explicit TimeStamp(int64_t _val) : value(_val) {}
     ~TimeStamp() {}
     int64_t get_Timestamp() const;
 
@@ -211,4 +212,4 @@ std::shared_ptr<hybridse::sdk::ResultSet> get_resultset();
 // only one parameter,  a object of type shared_ptr<hybridse::sdk::ResultSet>
 void print_resultset(std::shared_ptr<hybridse::sdk::ResultSet> rs);
 
-#endif
+#endif  // OPENMLDB_API_H_

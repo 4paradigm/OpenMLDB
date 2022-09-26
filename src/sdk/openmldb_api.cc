@@ -17,6 +17,7 @@
 #include "sdk/openmldb_api.h"
 
 #include <any>
+#include <string>
 #include <vector>
 
 #include "base/texttable.h"
