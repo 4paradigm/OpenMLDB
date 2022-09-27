@@ -1,6 +1,6 @@
 # View DEPLOYMENT Details
 
-The `SHOW DEPLOYMENT` statement is used to display the details of a specific task that have been deployed under Online Request mode.
+The `SHOW DEPLOYMENT` statement is used to display the detail of a specific task that has been deployed under Online Request mode.
 
 
 ```SQL
