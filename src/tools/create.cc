@@ -117,6 +117,10 @@ bool ConvertTableInfo(const ::openmldb::rtidb_nameserver::TableInfo& table_info,
     openmldb_table_info->set_name(table_info.name());
     openmldb_table_info->set_partition_num(FLAGS_partition_num);
     openmldb_table_info->set_replica_num(FLAGS_replica_num);
+    if (table_info.has_compress_type() &&
+            table_info.compress_type() == ::openmldb::rtidb_nameserver::CompressType::kSnappy) {
+        openmldb_table_info->set_compress_type(::openmldb::type::CompressType::kSnappy);
+    }
     ::openmldb::common::TTLSt table_ttl;
     std::map<std::string, ::openmldb::common::TTLSt> ttl_map;
     if (table_info.has_ttl_desc()) {

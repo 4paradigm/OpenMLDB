@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <snappy.h>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -27,6 +28,7 @@
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "schema/index_util.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_cluster_router.h"
@@ -43,6 +45,8 @@ std::string DEFAULT_DB = "default_db";
 
 namespace openmldb {
 namespace tools {
+
+using ::openmldb::schema::PBSchema;
 
 class DataImporter {
   public:
@@ -73,6 +77,11 @@ class DataImporter {
         if (EncodeRow(fields, start_idx, value) < 0) {
             LOG(WARNING) << "encode row failed. record is " << record;
             return;
+        }
+        if (table_info_.compress_type() == ::openmldb::type::CompressType::kSnappy) {
+            std::string compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
         }
         for (const auto& kv : dimensions) {
             uint32_t pid = kv.first;
@@ -110,7 +119,7 @@ class DataImporter {
         return 0;
     }
 
-    int32_t CalStrLength(const std::vector<std::string>& input_value, int start_idx, const Schema& schema) {
+    int32_t CalStrLength(const std::vector<std::string>& input_value, int start_idx, const PBSchema& schema) {
         if ((int)(input_value.size() - start_idx) != schema.size()) {
             return -1;
         }
