@@ -377,6 +377,9 @@ TEST_P(DBSDKTest, Desc) {
         }
         count++;
     }
+    rs = sr->ExecuteSQL(absl::StrCat("desc ", db, ".trans;"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(3, rs->Size());
     sr->ExecuteSQL("drop table trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL("drop database " + db + ";", &status);
