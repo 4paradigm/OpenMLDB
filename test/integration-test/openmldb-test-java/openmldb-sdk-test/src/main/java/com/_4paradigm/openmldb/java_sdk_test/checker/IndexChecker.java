@@ -17,9 +17,8 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.entity.OpenMLDBIndex;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.TableIndex;
@@ -39,7 +38,7 @@ import java.util.List;
 @Slf4j
 public class IndexChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-    public IndexChecker(ExpectDesc expect, FesqlResult fesqlResult){
+    public IndexChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
         super(expect,fesqlResult);
     }
 
@@ -47,7 +46,7 @@ public class IndexChecker extends BaseChecker {
     public void check() throws Exception {
         logger.info("index check");
         List<TableIndex> expectIndexs = expect.getIdxs();
-        List<OpenMLDBIndex> actualIndexs = fesqlResult.getSchema().getIndexs();
+        List<OpenMLDBIndex> actualIndexs = openMLDBResult.getSchema().getIndexs();
         Assert.assertEquals(actualIndexs.size(),expectIndexs.size(),"index count 不一致");
         for(int i=0;i<expectIndexs.size();i++){
             TableIndex tableIndex = expectIndexs.get(i);

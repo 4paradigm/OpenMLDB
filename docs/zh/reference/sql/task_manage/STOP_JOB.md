@@ -1,32 +1,34 @@
 # STOP JOB
 
+`STOP JOB`语句停止已经提交的单个任务。
+
+
 ```SQL
-STOP JOB;
+STOP JOB job_id;
 ```
 
-`STOP JOB`语句停止已经提交的单个任务。
 
 ## Example
 
 提交在线数据导入任务:
 
-```
-LOAD DATA INFIEL 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');
+```sql
+LOAD DATA INFILE 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');
 
  ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
-  1    ImportOnlineData   Submitted   0            1641981373227   LOAD DATA INFIEL 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');           local
+  1    ImportOnlineData   Submitted   0            1641981373227   LOAD DATA INFILE 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');           local
  ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
 ```
 
 停止Job ID为1的任务:
 
-```
+```sql
 STOP JOB 1;
 
 ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
   id   job_type           state       start_time   end_time        parameter                                                                                                                    cluster   application_id   error
  ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
-  1    ImportOnlineData   STOPPED     0            1641981373227   LOAD DATA INFIEL 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');           local
+  1    ImportOnlineData   STOPPED     0            1641981373227   LOAD DATA INFILE 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');           local
  ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
 ```
 

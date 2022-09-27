@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "base/slice.h"
 #include "common/timer.h"

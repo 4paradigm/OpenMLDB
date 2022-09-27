@@ -38,7 +38,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
 DECLARE_uint32(traverse_cnt_limit);
@@ -46,6 +45,7 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(recycle_bin_ssd_root_path);
 DECLARE_string(recycle_bin_hdd_root_path);
+DECLARE_uint32(get_table_status_interval);
 
 ::openmldb::sdk::StandaloneEnv env;
 
@@ -569,35 +569,6 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, DeployOptions) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    HandleSQL("create database test2;");
-    HandleSQL("use test2;");
-    std::string create_sql =
-        "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute));";
-    HandleSQL(create_sql);
-    if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
-    }
-
-    std::string deploy_sql =
-        "deploy demo OPTIONS(long_windows='w1:100') SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
-        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    hybridse::sdk::Status status;
-    sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo_w1_sum_c4;", &status);
-    ASSERT_TRUE(ok);
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
-}
-
 TEST_P(DBSDKTest, Delete) {
     auto cli = GetParam();
     sr = cli->sr;
@@ -650,15 +621,13 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
     HandleSQL("create database test2;");
     HandleSQL("use test2;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c1, ts=c4, ttl=0, ttl_type=latest));";
     HandleSQL(create_sql);
-    if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
-    }
 
     std::string deploy_sql =
         "deploy demo1 OPTIONS(long_windows='w1:100,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
@@ -667,7 +636,7 @@ TEST_P(DBSDKTest, DeployLongWindows) {
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
@@ -859,6 +828,37 @@ class DeployLongWindowEnv {
     std::string table_;
     std::string dp_;
 };
+
+TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    ::hybridse::sdk::Status status;
+    sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+    std::string base_table = "t_lw" + GenRand();
+    std::string base_db = "d_lw" + GenRand();
+    bool ok;
+    std::string msg;
+    CreateDBTableForLongWindow(base_db, base_table);
+
+    PrepareDataForLongWindow(base_db, base_table);
+    sleep(2);
+
+    std::string deploy_sql = "deploy test_aggr options(LONG_WINDOWS='w1:2') select col1, col2,"
+        " sum(i64_col) over w1 as w1_sum_i64_col,"
+        " from " + base_table +
+        " WINDOW w1 AS (PARTITION BY " + base_table + ".col1," + base_table + ".col2 ORDER BY col3"
+        " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    sr->ExecuteSQL(base_db, deploy_sql, &status);
+    ASSERT_TRUE(!status.IsOK());
+
+    ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
+    ASSERT_TRUE(ok) << status.msg;
+    ok = sr->DropDB(base_db, &status);
+    ASSERT_TRUE(ok);
+}
 
 TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
     auto cli = GetParam();
@@ -2380,7 +2380,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (date_col)")
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (date_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
@@ -2410,7 +2410,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filer column (t_col)")
+                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (t_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
@@ -2549,6 +2549,10 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("create table t4 (id string) options (partitionnum = 1, replicanum = 0);", &status);
+    ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL("create table t4 (id string) options (partitionnum = 0, replicanum = 1);", &status);
+    ASSERT_FALSE(status.IsOK());
 
     // Run create again and do not get error
     sr->ExecuteSQL(create_sql, &status);
@@ -3224,6 +3228,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
+    FLAGS_get_table_status_interval = 1000;
     // enable disk table flags
     std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb";
     absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };

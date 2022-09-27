@@ -9,3 +9,4 @@ Use Cases
     pulsar_connector_demo
     kafka_connector_demo
     dolphinscheduler_task_demo
+    JD_recommendation_en

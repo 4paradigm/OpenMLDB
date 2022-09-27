@@ -88,7 +88,6 @@ function(compile_test DIR)
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
-compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(common ${PROJECT_SOURCE_DIR})
 compile_proto(tablet ${PROJECT_SOURCE_DIR})
 compile_proto(name_server ${PROJECT_SOURCE_DIR})

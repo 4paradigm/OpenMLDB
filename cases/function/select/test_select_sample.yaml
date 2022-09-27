@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: 查询所有列
@@ -291,3 +292,17 @@ cases:
       order: sum_col1
       rows: 
         - [15, 5, 5, 1, 3]
+  -
+    id: 14
+    desc: 不指定索引，插入数据，可查询
+    tags: ["TODO","CPP ut不支持 id int not null 解析"]
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+    sql: select * from {0};
+    expect:
+      columns : ["id int","c1 int","c2 smallint","c3 float","c4 double","c5 bigint","c6 string","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,1,2,3.3,4.4,5,"aa",12345678,"2020-05-21",true]

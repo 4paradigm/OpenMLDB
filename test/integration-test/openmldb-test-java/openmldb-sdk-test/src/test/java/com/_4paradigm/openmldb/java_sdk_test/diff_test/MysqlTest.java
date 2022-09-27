@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.java_sdk_test.diff_test;
 
 import com._4paradigm.openmldb.java_sdk_test.common.JDBCTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
+import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -38,7 +38,7 @@ public class MysqlTest extends JDBCTest {
 
     @DataProvider()
     public Object[] getCreateData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{"/integration/v1/test_create.yaml"});
         return dp.getCases().toArray();
     }
@@ -51,7 +51,7 @@ public class MysqlTest extends JDBCTest {
 
     @DataProvider()
     public Object[] getInsertData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{"/integration/v1/test_insert.yaml"});
         return dp.getCases().toArray();
     }
@@ -64,7 +64,7 @@ public class MysqlTest extends JDBCTest {
 
     @DataProvider()
     public Object[] getSelectData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{
                         "/integration/v1/select/test_select_sample.yaml",
                         "/integration/v1/select/test_sub_select.yaml"
@@ -80,7 +80,7 @@ public class MysqlTest extends JDBCTest {
 
     @DataProvider()
     public Object[] getFunctionData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{
                         "/integration/v1/function/",
                 });
@@ -95,7 +95,7 @@ public class MysqlTest extends JDBCTest {
 
     @DataProvider()
     public Object[] getExpressionData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{
                         "/integration/v1/expression/",
                 });

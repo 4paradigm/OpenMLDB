@@ -35,3 +35,43 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 所以，理论上讲，开发者只需要用户层的设计与实现，实现中调用SDK核心层。
 
 但考虑到代码复用，可能会一定程度地改动SDK核心层的代码，或者是调整SDK核心代码结构（比如，暴露SDK核心层的部分头文件等）。
+
+## SDK核心层-细节介绍
+
+由于历史原因，SQLClusterRouter的创建方式有多种。下面一一介绍。
+首先是使用两种Option创建，分别会创建连接Cluster和Standalone两种OpenMLDB服务端。
+```
+    explicit SQLClusterRouter(const SQLRouterOptions& options);
+    explicit SQLClusterRouter(const StandaloneOptions& options);
+```
+这两种常见方式，不会暴露元数据相关的DBSDK，通常给普通用户使用。Java与Python SDK底层也是使用这两种方式。
+
+第三种是基于DBSDK创建：
+```
+    explicit SQLClusterRouter(DBSDK* sdk);
+```
+DBSDK有分为Cluster和Standalone两种，因此也可连接两种OpenMLDB服务端。
+这种方式方便用户额外地读取操作元数据，否则DBSDK在SQLClusterRouter内部不会对外暴露。
+
+例如，由于CLI可以直接通过DBSDK获得nameserver等元数据信息，我们在启动ClusterSQLClient或StandAloneSQLClient时是先创建BDSDK再创建SQLClusterRouter。
+
+## Java Test
+
+如果希望只在submodule中测试，可能会需要其他submodule依赖，比如openmldb-spark-connector依赖openmldb-jdbc。你需要先install编译好的包
+```
+make SQL_JAVASDK_ENABLE=ON
+# 或者
+cd java
+mvn install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true -Dgpg.skip
+```
+然后再
+```
+mvn test -pl openmldb-spark-connector -Dsuites=com._4paradigm.openmldb.spark.TestWrite
+```
+P.S. 如果你实时改动了代码，由于install到本地仓库存在之前的代码编译的jar包，会导致无法测试最新代码。请谨慎使用`-pl`的写法。
+
+如果只想运行java测试：
+```
+mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest"
+mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest#AnyMethod"
+```

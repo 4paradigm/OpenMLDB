@@ -1,33 +1,35 @@
 # CREATE TABLE
+ `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
 
 ## Syntax
 
 ```sql
 CreateTableStmt ::=
-    'CREATE' 'TABLE' IfNotExists TableName ( 
-      TableElementList CreateTableSelectOpt | LikeTableWithOrWithoutParen ) OnCommitOpt
+    'CREATE' 'TABLE' IfNotExists TableName ( TableElementList CreateTableSelectOpt | LikeTableWithOrWithoutParen ) OnCommitOpt
+
 IfNotExists ::=
     ('IF' 'NOT' 'EXISTS')?
+    
 TableName ::=
     Identifier ('.' Identifier)?
     
 TableElementList ::=
     TableElement ( ',' TableElement )*
+    
 TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
- `CREATE TABLE` 语句用于创建一张表。同一个数据库下，表名在必须是唯一的，在同一个数据库下，重复创建同名表，会发生错误。
+建表语句中需要定义`TableElementList`，即`TableElement`列表。`TableElement`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`TableElement`列表中至少包含一个`ColumnDef`。
 
-建表语句中需要定义`table_element`列表。`table_element`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`table_element`列表中至少包含一个`ColumnDef`。
 
-### 相关语法元素
 
-#### 列描述ColumnDef（必要）
+### 列描述ColumnDef（必要）
 
 ```SQL
 ColumnDef ::=
     ColumnName ( ColumnType ) [ColumnOptionList]
+    
 ColumnName ::=
     Identifier ( '.' Identifier ( '.' Identifier )? )?      
          
@@ -39,10 +41,12 @@ ColumnType ::=
 						|'DOUBLE'
 						|'TIMESTAMP'
 						|'DATE'
+						|'BOOL'
 						|'STRING' | 'VARCHAR'
 						
 ColumnOptionList ::= 
     ColumnOption*	
+    
 ColumnOption ::= 
     ['DEFAULT' DefaultValueExpr ] ['NOT' 'NULL']
 				 	  
@@ -50,15 +54,15 @@ DefaultValueExpr ::=
     int_literal | float_literal | double_literal | string_literal
 ```
 
-一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及类配置。
+一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及列约束配置。
 
 - 列名：列在表中的名字。同一张表内的列名必须是唯一的。
-- 列类型：列的类型。想要了解OpenMLDB支持的数据类型，可以参考[数据类型](https://openmldb.ai/docs/zh/main/reference/sql/data_types/index.html)。
+- 列类型：列的类型。关于OpenMLDB支持的数据类型，详见[数据类型](../data_types)。
 - 列约束配置：
   - `NOT NULL`: 该列的取值不允许为空。
   - `DEFAULT`: 设置该列的默认值。`NOT NULL`的属性推荐同时配置`DEFAULT`默认值，在插入数据时，若没有定义该列的值，会插入默认值。若设置了`NOT NULL`属性但没有配置`DEFAULT`值，插入语句中未定义该列值时，OpenMLDB会抛出错误。
 
-##### Example
+#### Example
  **示例1：创建一张表**
 
 将当前数据库设为`db1`，在当前数据库中创建一张表`t1`，包含列`col0`，列类型为STRING
@@ -170,7 +174,7 @@ desc t4;
 ```
 
 
-#### 列索引ColumnIndex（可选）
+### 列索引ColumnIndex（可选）
 
 ```sql
 ColumnIndex ::= 
@@ -192,7 +196,7 @@ IndexOption ::=
 | `TTL_TYPE` | 淘汰规则（可选）。包括四种类型，当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。                                                   | 支持的expr如下：`ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                           | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                                          |
 | `TTL`      | 最大存活时间/条数（可选）。依赖于`TTL_TYPE`，不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。 | 支持数值：`int_literal`<br/>  或数值带时间单位(`S,M,H,D`)：`interval_literal`<br/>或元组形式：`( interval_literal , int_literal )` |具体用法可以参考下文“TTL和TTL_TYPE的配置细则” |
 
-TTL和TTL_TYPE的配置细则：
+**TTL和TTL_TYPE的配置细则：**
 
 | TTL_TYPE    | TTL                                                          | 描述                                                 | 用法示例                                                     |
 | ----------- | ------------------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------ |
@@ -201,7 +205,7 @@ TTL和TTL_TYPE的配置细则：
 | `ABSORLAT`  | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当且仅当记录过期**或**记录超过最大条数时，才会淘汰。 | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`。当记录超过100条，**或者**当记录过期时，会被淘汰 |
 | `ABSANDLAT` | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当记录过期**且**记录超过最大条数时，记录会被淘汰。   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`。当记录超过100条，**而且**记录过期时，会被淘汰 |
 
-##### Example
+#### Example
 **示例1：创建一张带单列索引的表**
 
 ```sql
@@ -378,7 +382,7 @@ desc t1;
  --- -------------------- ------ ---------- ------ ---------------
 ```
 
-#### 表属性TableOptions（可选）
+### 表属性TableOptions（可选）
 
 ```sql
 TableOptions
@@ -423,13 +427,14 @@ StorageMode
 | `DISTRIBUTION` | 配置分布式的节点endpoint。一般包含一个Leader节点和若干Follower节点。`(leader, [follower1, follower2, ..])`。不显式配置时，OpenMLDB会自动根据环境和节点来配置`DISTRIBUTION`。                                  | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE` | 表的存储模式，支持的模式有`Memory`、`HDD`或`SSD`。不显式配置时，默认为`Memory`。<br/>如果需要支持非`Memory`模式的存储模式，`tablet`需要额外的配置选项，具体可参考[tablet配置文件 conf/tablet.flags](../../../deploy/conf.md)。 | `OPTIONS (STORAGE_MODE='HDD')`                                                |
 
-##### 磁盘表（`STORAGE_MODE` == `HDD`|`SSD`）与内存表（`STORAGE_MODE` == `Memory`）区别
+#### 磁盘表与内存表区别
+- 磁盘表对应`STORAGE_MODE`的取值为`HDD`或`SSD`。内存表对应的`STORAGE_MODE`取值为`Memory`。
 - 目前磁盘表不支持GC操作
 - 磁盘表插入数据，同一个索引下如果（`key`, `ts`）相同，会覆盖旧的数据；内存表则会插入一条新的数据
 - 磁盘表不支持`addindex`和`deleteindex`操作，所以创建磁盘表的时候需要定义好所有需要的索引
 （`deploy`命令会自动添加需要的索引，所以对于磁盘表，如果创建的时候缺失对应的索引，则`deploy`会失败）
 
-##### Example
+#### Example
 创建一张表，配置分片数为8，副本数为3，存储模式为HDD
 ```sql
 USE db1;
@@ -454,6 +459,11 @@ DESC t1;
  --------------
   HDD
  --------------
+```
+创建一张表，指定分片的分布状态
+```sql
+create table t1 (col0 string, col1 int) options (DISTRIBUTION=[('127.0.0.1:30921', ['127.0.0.1:30922', '127.0.0.1:30923']), ('127.0.0.1:30922', ['127.0.0.1:30921', '127.0.0.1:30923'])]);
+--SUCCEED
 ```
 
 ## 相关SQL

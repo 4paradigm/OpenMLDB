@@ -17,7 +17,7 @@
 #include "storage/disk_table.h"
 #include <utility>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "config.h"  // NOLINT
 

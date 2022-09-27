@@ -16,12 +16,10 @@
 package com._4paradigm.openmldb.http_test.common;
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbClient;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBDeployType;
-import com._4paradigm.openmldb.test_common.util.FEDBDeploy;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBDeployType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
+import com._4paradigm.qa.openmldb_deploy.common.OpenMLDBDeploy;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,21 +40,25 @@ public class StandaloneTest extends BaseTest{
         }
         log.info("openmldb global var env: {}", RestfulGlobalVar.env);
         if(env.equalsIgnoreCase("standalone")){
-            FEDBDeploy fedbDeploy = new FEDBDeploy(version);
-            fedbDeploy.setFedbPath(fedbPath);
-            RestfulGlobalVar.mainInfo = fedbDeploy.deployFEDBByStandalone();
+            OpenMLDBDeploy fedbDeploy = new OpenMLDBDeploy(version);
+            fedbDeploy.setOpenMLDBPath(fedbPath);
+            RestfulGlobalVar.mainInfo = fedbDeploy.deployStandalone();
         }else{
-            RestfulGlobalVar.mainInfo = FEDBInfo.builder()
-                    .deployType(OpenMLDBDeployType.STANDALONE)
-                    .basePath("/home/zhaowei01/fedb-auto-test/standalone")
-                    .fedbPath("/home/zhaowei01/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb")
-                    .nsNum(1).tabletNum(1)
-                    .nsEndpoints(Lists.newArrayList("172.24.4.55:10018"))
-                    .tabletEndpoints(Lists.newArrayList("172.24.4.55:10019"))
-                    .apiServerEndpoints(Lists.newArrayList("172.24.4.55:10020"))
-                    .host("172.24.4.55")
-                    .port(10018)
-                    .build();
+            OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
+            openMLDBInfo.setDeployType(OpenMLDBDeployType.STANDALONE);
+            openMLDBInfo.setHost("172.24.4.55");
+            openMLDBInfo.setPort(30013);
+            openMLDBInfo.setNsNum(1);
+            openMLDBInfo.setTabletNum(1);
+            openMLDBInfo.setBasePath("/home/wangkaidong/fedb-auto-test/standalone");
+            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_root_path("/openmldb");
+            openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30013"));
+            openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30014"));
+            openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"));
+            openMLDBInfo.setOpenMLDBPath("/home/wangkaidong/fedb-auto-test/standalone/openmldb-standalone/bin/openmldb");
+
+            RestfulGlobalVar.mainInfo = openMLDBInfo;
         }
     }
 }

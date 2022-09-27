@@ -18,7 +18,7 @@
 
 #include <gflags/gflags.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "common/timer.h"
 #include "storage/record.h"
@@ -268,37 +268,6 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
-}
-
-bool Segment::Get(const Slice& key, const uint64_t time, DataBlock** block) {
-    if (block == NULL || ts_cnt_ > 1) {
-        return false;
-    }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return false;
-    }
-    *block = ((KeyEntry*)entry)->entries.Get(time);  // NOLINT
-    return true;
-}
-
-bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock** block) {
-    if (block == NULL) {
-        return false;
-    }
-    auto pos = ts_idx_map_.find(idx);
-    if (pos == ts_idx_map_.end()) {
-        return false;
-    }
-    if (ts_cnt_ == 1) {
-        return Get(key, time, block);
-    }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return false;
-    }
-    *block = ((KeyEntry**)entry)[pos->second]->entries.Get(time);  // NOLINT
-    return true;
 }
 
 bool Segment::Delete(const Slice& key) {

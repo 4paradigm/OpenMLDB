@@ -18,6 +18,9 @@ src/hyhridse_version.h
 # ignore docgen
 tools/documentation/udf_doxygen/html
 tools/documentation/udf_doxygen/udfs
+tools/documentation/udf_doxygen/udf
+tools/documentation/udf_doxygen/udfgen
+tools/documentation/udf_doxygen/xml
 style.xml
 hybridse_version.h
 intermediate_cicd_artifact_.tar.gz
@@ -35,6 +38,3 @@ tools/documentation/java_api/doxybook2_home
 tools/documentation/java_api/html
 tools/documentation/java_api/xml
 tools/documentation/java_api/java
-tools/documentation/udf_doxygen/udf
-tools/documentation/udf_doxygen/doxybook2_home
-tools/documentation/udf_doxygen/xml

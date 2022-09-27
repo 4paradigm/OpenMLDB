@@ -30,6 +30,9 @@ if(TESTING_ENABLE)
     add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
     target_link_libraries(sql_standalone_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 
+    add_executable(node_adapter_test node_adapter_test.cc)
+    target_link_libraries(node_adapter_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES} )
 

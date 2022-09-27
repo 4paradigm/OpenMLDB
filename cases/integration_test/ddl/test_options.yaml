@@ -1,0 +1,455 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 创建表时没有options
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+    expect:
+      success: true
+  -
+    id: 1
+    desc: 冒烟测试
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_1}', [ '{tb_endpoint_0}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 2
+    desc: 创建表时没有partitionnum
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 1
+  -
+    id: 3
+    desc: 创建表时没有replicanum
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      distribution = [ ('{tb_endpoint_0}',['{tb_endpoint_1}','{tb_endpoint_2}'])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 4
+    desc: 创建表时没有distribution
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 3
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 5
+    desc: distribution多个
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 2,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 2
+        replicaNum: 3
+  -
+    id: 6
+    desc: partitionnum=0，指定distribution
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 0,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      success: false
+  -
+    id: 7
+    desc: partitionnum=10
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 10,
+      replicanum = 3
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 10
+        replicaNum: 3
+  -
+    id: 8
+    desc: replicanum=0
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 0,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 9
+    desc: replicanum=1
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 1
+  -
+    id: 10
+    desc: replicanum=4
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 4,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 11
+    desc: distribution小于replicanum
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 2,
+      distribution = [ ('{tb_endpoint_0}')]
+      );
+    expect:
+      success: false
+  -
+    id: 12
+    desc: distribution大于replicanum
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',['{tb_endpoint_1}'])]
+      );
+    expect:
+      success: false
+  -
+    id: 13
+    desc: distribution的个数和partitionnum对不上
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',[]),('{tb_endpoint_1}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 14
+    desc: distribution=[]
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 1,
+      distribution = []
+      );
+    expect:
+      success: false
+  -
+    id: 15
+    desc: partitionnum为字符
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = a,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 16
+    desc: replicanum为字符
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = a,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 17
+    desc: 只有partitionnum
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 18
+    desc: 只有replicanum
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      replicanum = 1
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 8
+        replicaNum: 1
+  -
+    id: 19
+    desc: 没有replicaNum，distribution的个数和tablet数量不一致
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      distribution = [ ('{tb_endpoint_0}', [])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 1
+  -
+    id: 20
+    desc: distribution指定的tablet不存在
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}1',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 21
+    desc: partitionnum大于distribution的个数
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 4,
+      replicanum = 1,
+      distribution = [ ('{tb_endpoint_0}',[])]
+      );
+    expect:
+      success: false
+  -
+    id: 22
+    desc: test-case
+    mode: standalone-unsupport
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        replicaNum: 3
+        partitionNum: 1
+        distribution:
+          - leader: "{tb_endpoint_1}"
+            followers:  [ "{tb_endpoint_0}","{tb_endpoint_2}" ]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+    sql: select * from {0};
+    expect:
+      name: "{0}"
+      success: true
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 23
+    desc: partitionnum=0，没有指定distribution
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 0,
+      replicanum = 3
+      );
+    expect:
+      success: false
+  -
+    id: 24
+    desc: 没有partitionnum和replicanum，指定distribution
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      name: t3
+      success: true
+      options:
+        partitionNum: 1
+        replicaNum: 3
+  -
+    id: 25
+    desc: distribution多于partitionnum
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 1,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      success: false
+  -
+    id: 26
+    desc: distribution小于partitionnum
+    mode: standalone-unsupport
+    inputs:
+      - name: t3
+    sql: |
+      create table t3 (c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0m))
+      options (
+      partitionnum = 3,
+      replicanum = 3,
+      distribution = [ ('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ]),('{tb_endpoint_0}', [ '{tb_endpoint_1}','{tb_endpoint_2}' ])]
+      );
+    expect:
+      success: false
+
+
+
+
+
+
+
+
+
+
+
+
