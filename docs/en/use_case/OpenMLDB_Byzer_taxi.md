@@ -1,7 +1,7 @@
 # Build End-to-end Machine Learning Applications Based on SQL (OpenMLDB + Byzer)
 
 This tutorial will show you how to complete a machine learning workflow with the help of [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [Byzer](https://www.byzer.org/home).
-The OpenMLDB will compute the features of the real-time data in terms of the commands and data sent by Byzer and will return the dataset been processed to Byzer for later training and prediction.
+OpenMLDB will compute real-time features based on the data and queries from Byzer, and then return results to Byzer for subsequent model training and inference.
 
 ## 1. Preparations
 
@@ -14,11 +14,15 @@ The OpenMLDB will compute the features of the real-time data in terms of the com
 
 1. For detail installation procedures of Byzer engine, see [Byzer Language Doc](https://docs.byzer.org/#/byzer-lang/en-us/).
 
-2. We have to use the [OpenMLDB plugin](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) developed by Byzer to transmit messages between two platforms. To use plugin in Byzer, please configure `streaming.datalake.path`, see [the manual of Byzer Configuration](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration) for detail.
+2. We have to use the [OpenMLDB plugin](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) developed by Byzer to transmit messages between two platforms. To use a plugin in Byzer, please configure `streaming.datalake.path`, see [the manual of Byzer Configuration](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/configuration/byzer-lang-configuration) for detail.
 
 3. Byzer Notebook is used in this demo. Please install it after the installation of Byzer engine. You can also use the [VSCode Byzer plugin](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/vscode/byzer-vscode-extension-installation) to connect your Byzer engine. The interface of Byzer Notebook is shown below, see [Byzer Notebook Doc](https://docs.byzer.org/#/byzer-notebook/zh-cn/) for more about it. 
 
 ![Byzer_Notebook](images/Byzer_Notebook.jpg)
+
+```{note}
+Please note that some Byzer docs metioned in this tutorial don't have English version yet,
+```
 
 ### 1.3 Dataset Preparation
 In this case, the dataset comes from the Kaggle taxi trip duration prediction problem. If it is not in your Byzer `Deltalake`, [download](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) it first. Please remember to import it into Byzer Notebook after download.
@@ -74,7 +78,7 @@ and action="ddl";
 
 ### 2.3 Real-time Feature Extractions
 
-The features designed in the [OpenMLDB + LightGBM: Taxi Trip Duration Prediction](./lightgbm_demo.md) Section 2.3 will be used in this demo. 
+The features developed in the [OpenMLDB + LightGBM: Taxi Trip Duration Prediction](./lightgbm_demo.md) Section 2.3 will be used in this demo. 
 The processed data will be exported to a local `csv` file.
 
 ```sql
@@ -145,7 +149,7 @@ as trainning_table;
 
 ### 2.5 Training
 
-Use the `train` Byzer Lang command and its [inbuilt Linear Regression Algorithm](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression) to train the model, and save it to `/model/tax-trip`.
+Use the `train` Byzer Lang command and its [built-in Linear Regression Algorithm](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression) to train the model, and save it to `/model/tax-trip`.
 
 ```sql
 train trainning_table as LinearRegression.`/model/tax-trip` where
