@@ -654,7 +654,7 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
         ar.Member("schema");
         size_t size;
         ar.StartArray(&size);  // start "schema"
-        for (auto i = 0; i < size; i++) {
+        for (size_t i = 0; i < size; i++) {
             std::string type;
             ar& type;
             // uppercase
@@ -689,7 +689,7 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
     int32_t str_length = 0;
     {
         ar.Member("data");
-        size_t size;
+        int size;
         ar.StartArray(&size);  // start first iter "data"
         if (size != schema.size()) return ar;
 
