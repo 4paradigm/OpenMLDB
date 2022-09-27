@@ -297,7 +297,7 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
     request->set_db(db);
 
     std::unordered_set<std::string> column_set;
-    for (size_t i = 0; i < schema.columns().size(); i++) {
+    for (int i = 0; i < schema.columns().size(); i++) {
         column_set.insert(schema.columns(i).name());
     }
     std::map<std::string, node::ConstNode*> column_value_map;

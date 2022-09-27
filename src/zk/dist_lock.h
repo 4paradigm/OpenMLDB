@@ -26,11 +26,9 @@
 #include "common/thread_pool.h"
 #include "zk/zk_client.h"
 
-using ::baidu::common::ThreadPool;
-using ::openmldb::zk::ZkClient;
-
 namespace openmldb {
 namespace zk {
+using ::baidu::common::ThreadPool;
 
 enum LockState { kLocked, kLostLock, kTryLock };
 

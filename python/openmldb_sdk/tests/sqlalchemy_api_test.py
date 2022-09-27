@@ -26,7 +26,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.exc import DatabaseError
 # fmt:on
 
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -38,6 +38,7 @@ class TestSqlalchemyAPI:
             'openmldb:///db_test?zk={}&zkPath={}'.format(
                 OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         self.connection = self.engine.connect()
+        self.connection.execute('create database if not exists db_test')
         self.metadata = MetaData()
         self.test_table = Table('test_table', self.metadata,
                                 Column('x', String), Column('y', Integer))
@@ -56,17 +57,34 @@ class TestSqlalchemyAPI:
             assert 100 in list(row)
 
     def test_request_timeout(self):
-        engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=1'.format(
-                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
-        connection = engine.connect()
-        connection.execute(
+        self.connection.execute(
             "insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
         )
+
+        engine = db.create_engine(
+            'openmldb:///db_test?zk={}&zkPath={}&requestTimeout=0'.format(
+                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        connection = engine.connect()
+
         with pytest.raises(DatabaseError) as e:
             connection.execute(
                 "select * from test_table where x='b'").fetchall()
         assert 'select fail' in str(e.value)
+    
+    def test_zk_log(self):
+        # disable zk log
+        engine = db.create_engine(
+            'openmldb:///db_test?zk={}&zkPath={}&zkLogLevel=0'.format(
+                OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        connection = engine.connect()
+        connection.execute("select 1;")
+
+        # redirect to /tmp/test_openmldb_zk.log, may core dump when client close
+        # engine = db.create_engine(
+        #     'openmldb:///db_test?zk={}&zkPath={}&zkLogFile=/tmp/test_openmldb_zk.log'.format(
+        #         OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        # connection = engine.connect()
+        # connection.execute("select 1;")
 
     def teardown_class(self):
         self.connection.execute("drop table test_table;")

@@ -26,7 +26,7 @@ import openmldb
 import sqlalchemy as db
 from sqlalchemy.exc import DatabaseError
 # fmt:on
-from case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 logging.basicConfig(level=logging.DEBUG)
 

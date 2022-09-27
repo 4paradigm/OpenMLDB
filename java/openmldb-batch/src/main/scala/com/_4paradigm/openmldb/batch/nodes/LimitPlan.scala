@@ -23,7 +23,7 @@ import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 object LimitPlan {
 
   def gen(ctx: PlanContext, node: PhysicalLimitNode, input: SparkInstance): SparkInstance = {
-    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCnt())
+    val outputDf = input.getDfConsideringIndex(ctx, node.GetNodeId()).limit(node.GetLimitCntValue())
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), outputDf)
   }
