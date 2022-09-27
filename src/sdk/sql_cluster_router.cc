@@ -1804,13 +1804,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
             std::vector<api::ProcedureInfo> sps;
-            auto sp = cluster_sdk_->GetProcedureInfo(db_name, deploy_name, &msg);
+            if (!ns_ptr->ShowProcedure(db, deploy_name, &sps, &msg)) {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+                return {};
+            }
             // check if deployment
-            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
-                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "not found"};
+            if (sps.empty() || sps[0].type() != type::kReqDeployment) {
+                *status = {::hybridse::common::StatusCode::kCmdError, sps.empty() ? "not found" : "not a deployment"};
                 return {};
             }
             std::stringstream ss;
+            auto sp = std::make_shared<catalog::ProcedureInfoImpl>(sps[0]);
             ::openmldb::cmd::PrintProcedureInfo(*sp, ss);
             std::vector<std::vector<std::string>> result;
             std::vector<std::string> vec = {ss.str()};
