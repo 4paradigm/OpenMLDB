@@ -149,16 +149,40 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 const bool ReadableResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
-    if (GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
-        int64_t ts = 0;
-        if (!GetTime(idx, &ts) || ts < 0) {
-            return false;
+    auto data_type = GetSchema()->GetColumnType(idx);
+    switch (data_type) {
+        case hybridse::sdk::kTypeTimestamp: {
+            int64_t ts = 0;
+            if (!GetTime(idx, &ts) || ts < 0) {
+                return false;
+            }
+            val = ::openmldb::base::Convert2FormatTime(ts);
+            break;
         }
-        val = ::openmldb::base::Convert2FormatTime(ts);
-        return true;
-    } else {
-        return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
+        case hybridse::sdk::kTypeDate: {
+            int32_t year = 0;
+            int32_t month = 0;
+            int32_t day = 0;
+            if (!GetDate(idx, &year, &month, &day)) {
+                return false;
+            }
+            std::stringstream ss;
+            ss << year << "-";
+            if (month < 10) {
+                ss << "0";
+            }
+            ss << month << "-";
+            if (day < 10) {
+                ss << "0";
+            }
+            ss << day;
+            val = ss.str();
+            break;
+        }
+        default:
+            return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
     }
+    return true;
 }
 
 }  // namespace sdk
