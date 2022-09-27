@@ -7,7 +7,9 @@ public class ResultParserManager {
     private ResultParserManager() {
         DescResultParser descResultParser = new DescResultParser();
         JobResultParser jobResultParser = new JobResultParser();
+        OfflineSelectResultParser offlineSelectResultParser = new OfflineSelectResultParser();
         descResultParser.setNextHandler(jobResultParser);
+        jobResultParser.setNextHandler(offlineSelectResultParser);
         resultHandler = descResultParser;
     }
 

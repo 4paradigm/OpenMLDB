@@ -39,4 +39,6 @@ public class ExpectDesc extends Table {
     private PreAggTable preAgg;
     private List<PreAggTable> preAggList;
     private OfflineInfo offlineInfo;
+    private List<String> offlineColumns;
+    private List<List<Object>> offlineRows;
 }

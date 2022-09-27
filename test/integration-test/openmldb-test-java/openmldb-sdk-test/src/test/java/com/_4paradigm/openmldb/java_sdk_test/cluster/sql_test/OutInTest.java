@@ -18,6 +18,7 @@ public class OutInTest extends OpenMLDBTest {
     @Yaml(filePaths = "integration_test/out_in/test_select_into_load_data.yaml")
     @Story("LOAD DATA")
     public void testOutInByOffline(SQLCase testCase){
+        System.out.println("testCase = " + testCase);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kJob).run();
     }
 

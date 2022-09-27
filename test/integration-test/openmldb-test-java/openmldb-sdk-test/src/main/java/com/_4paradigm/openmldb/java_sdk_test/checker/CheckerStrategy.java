@@ -97,6 +97,12 @@ public class CheckerStrategy {
         if(expect.getOfflineInfo()!=null){
             checkList.add(new OfflineInfoChecker(expect, openMLDBResult));
         }
+        if(CollectionUtils.isNotEmpty(expect.getOfflineColumns())){
+            checkList.add(new ColumnsCheckerByOffline(expect, openMLDBResult));
+        }
+        if(CollectionUtils.isNotEmpty(expect.getOfflineRows())){
+            checkList.add(new ResultCheckerByOffline(expect, openMLDBResult));
+        }
         return checkList;
     }
 

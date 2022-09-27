@@ -45,6 +45,8 @@ public class OpenMLDBResult {
     private List<OpenmldbDeployment> deployments;
     private Integer deploymentCount;
     private OpenMLDBJob openMLDBJob;
+    private List<String> offlineColumns;
+    private List<List<Object>> offlineResult;
 
     @Override
     public String toString() {
