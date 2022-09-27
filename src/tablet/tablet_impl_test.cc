@@ -3573,10 +3573,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(80, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(100, (signed)srp.count());
     }
     // ts3 has 30 expire
     {
@@ -3621,10 +3621,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index5");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(100, (signed)srp.count());
     }
     // //// Scan Count test
     ::openmldb::api::ScanRequest sr;
