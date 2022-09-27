@@ -844,7 +844,8 @@ bool PhysicalWindowAggrerationNode::AddWindowUnion(PhysicalOpNode* node) {
     //    producer schema starts with union schema
     // 2. otherwise, always expec producer schema equals union schema
     if (producers_[0]->GetOpType() == kPhysicalOpProject &&
-        dynamic_cast<PhysicalProjectNode*>(producers_[0])->project_type_ == kWindowAggregation) {
+        dynamic_cast<PhysicalProjectNode*>(producers_[0])->project_type_ == kWindowAggregation &&
+        dynamic_cast<PhysicalWindowAggrerationNode*>(producers_[0])->need_append_input()) {
         auto s = SchemaStartWith(*producers_[0]->GetOutputSchema(), *node->GetOutputSchema());
         if (!s.isOK()) {
             LOG(WARNING) << s;
