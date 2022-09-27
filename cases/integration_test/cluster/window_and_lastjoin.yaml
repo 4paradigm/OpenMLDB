@@ -1,0 +1,620 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 简单拼表
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",2, 1590738990000, 3.3]
+          - [4, "cc",3, 1590738990000, 4.0]
+          - [5, "cc",3, 1590738991000, 5.0]
+          - [6, "cc",3, 1590738992000, 6.0]
+          - [7, "cc",2, 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1]
+          - [1590738990000, 1]
+          - [1590738991000, 2]
+          - [1590738989000, 3]
+          - [1590738992000, 3]
+    sql: |
+      select id, card_no, merchant_id, trx_time, crd_lst_isu_dte, merchant_nbr from {0}
+      last join {1} order by {1}.crd_lst_isu_dte on {0}.merchant_id = {1}.merchant_nbr and {0}.trx_time >= {1}.crd_lst_isu_dte;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "trx_time timestamp",
+                "crd_lst_isu_dte timestamp", "merchant_nbr int"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, 1590738989000, 1590738988000, 1]
+        - [2, "aaaaaaaaaa", 1, 1590738990000, 1590738990000, 1]
+        - [3, "bb", 2, 1590738990000, null, null]
+        - [4, "cc", 3, 1590738990000, 1590738989000, 3]
+        - [5, "cc", 3, 1590738991000, 1590738989000, 3]
+        - [6, "cc", 3, 1590738992000, 1590738992000, 3]
+        - [7, "cc", 2, 1590738993000, 1590738991000, 2]
+  -
+    id: 1
+    desc: 三表拼表
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, "user1", 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, "user2", 1590738990000, 2.2]
+          - [3, "bb",2, "user3", 1590738990000, 3.3]
+          - [4, "cc",3, "user4", 1590738990000, 4.0]
+          - [5, "cc",3, "user5", 1590738991000, 5.0]
+          - [6, "cc",3, "user6", 1590738992000, 6.0]
+          - [7, "cc",2, "user7", 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1]
+          - [1590738990000, 1]
+          - [1590738991000, 2]
+          - [1590738989000, 3]
+          - [1590738992000, 3]
+      - columns: [ "std_ts timestamp", "username string" ]
+        indexs: [ "index2:username:std_ts" ]
+        rows:
+          - [ 1590738988000, "user1"]
+          - [ 1590738990000, "user1"]
+          - [ 1590738991000, "user2"]
+          - [ 1590738989000, "user2"]
+          - [ 1590738992000, "user3" ]
+    sql: |
+      select id, card_no, merchant_id, user, trx_time, crd_lst_isu_dte, merchant_nbr, std_ts, username from {0}
+      last join {1} order by {1}.crd_lst_isu_dte on {0}.merchant_id = {1}.merchant_nbr and {0}.trx_time >= {1}.crd_lst_isu_dte
+      last join {2} order by {2}.std_ts on {0}.user = {2}.username;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "user string", "trx_time timestamp",
+                "crd_lst_isu_dte timestamp", "merchant_nbr int", "std_ts timestamp", "username string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, "user1", 1590738989000, 1590738988000, 1, 1590738990000, "user1"]
+        - [2, "aaaaaaaaaa", 1, "user2", 1590738990000, 1590738990000, 1, 1590738991000, "user2"]
+        - [3, "bb", 2, "user3", 1590738990000, null, null, 1590738992000, "user3", ]
+        - [4, "cc", 3, "user4", 1590738990000, 1590738989000, 3, null, null]
+        - [5, "cc", 3, "user5", 1590738991000, 1590738989000, 3, null, null]
+        - [6, "cc", 3, "user6", 1590738992000, 1590738992000, 3, null, null]
+        - [7, "cc", 2, "user7", 1590738993000, 1590738991000, 2, null, null]
+  -
+    id: 2
+    desc: 三表拼表2
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, "user1", 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, "user2", 1590738990000, 2.2]
+          - [3, "bb",2, "user3", 1590738990000, 3.3]
+          - [4, "cc",3, "user4", 1590738990000, 4.0]
+          - [5, "cc",3, "user5", 1590738991000, 5.0]
+          - [6, "cc",3, "user6", 1590738992000, 6.0]
+          - [7, "cc",2, "user7", 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int", "product_nbr bigint"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1, 1001]
+          - [1590738990000, 1, 1002]
+          - [1590738991000, 2, 1003]
+          - [1590738989000, 3, 1004]
+          - [1590738992000, 3, 1005]
+      - columns: [ "std_ts timestamp", "product_id bigint" ]
+        indexs: [ "index2:product_id:std_ts" ]
+        rows:
+          - [ 1590738988000, 1001]
+          - [ 1590738990000, 1001]
+          - [ 1590738991000, 1001]
+          - [ 1590738989000, 1002]
+          - [ 1590738992000, 1002]
+          - [ 1590738993000, 1005]
+    sql: |
+      select id, card_no, merchant_id, user, trx_time, crd_lst_isu_dte, merchant_nbr, product_nbr, std_ts, product_id from {0}
+      last join {1} order by {1}.crd_lst_isu_dte on {0}.merchant_id = {1}.merchant_nbr and {0}.trx_time >= {1}.crd_lst_isu_dte
+      last join {2} order by {2}.std_ts on {1}.product_nbr = {2}.product_id;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "user string", "trx_time timestamp",
+                "crd_lst_isu_dte timestamp", "merchant_nbr int", "product_nbr bigint", "std_ts timestamp", "product_id bigint"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, "user1", 1590738989000, 1590738988000, 1, 1001, 1590738991000, 1001]
+        - [2, "aaaaaaaaaa", 1, "user2", 1590738990000, 1590738990000, 1, 1002, 1590738992000, 1002]
+        - [3, "bb", 2, "user3", 1590738990000, null, null, null,  null, null]
+        - [4, "cc", 3, "user4", 1590738990000, 1590738989000, 3, 1004, null, null]
+        - [5, "cc", 3, "user5", 1590738991000, 1590738989000, 3, 1004, null, null]
+        - [6, "cc", 3, "user6", 1590738992000, 1590738992000, 3, 1005, 1590738993000, 1005]
+        - [7, "cc", 2, "user7", 1590738993000, 1590738991000, 2, 1003, null, null]
+  -
+    id: 3
+    desc: 窗口特征拼接副表
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",2, 1590738990000, 3.3]
+          - [4, "cc",3, 1590738990000, 4.0]
+          - [5, "cc",3, 1590738991000, 5.0]
+          - [6, "cc",3, 1590738992000, 6.0]
+          - [7, "cc",2, 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1]
+          - [1590738990000, 1]
+          - [1590738991000, 2]
+          - [1590738989000, 3]
+          - [1590738992000, 3]
+    sql: select * from
+      (select
+      id,
+      card_no,
+      merchant_id,
+      trx_time,
+      sum(trx_amt) over w30d as sum_trx_amt,
+      count(merchant_id) over w10d as count_merchant_id
+      from  {0}
+      window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+      last join {1} order by {1}.crd_lst_isu_dte on trx_fe.merchant_id = {1}.merchant_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "trx_time timestamp",
+                "sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp",
+                "merchant_nbr int"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, 1590738989000, 1.1, 1, 1590738988000, 1]
+        - [2, "aaaaaaaaaa", 1, 1590738990000, 3.3, 2, 1590738990000, 1]
+        - [3, "bb", 2, 1590738990000, 3.3, 1, null, null]
+        - [4, "cc", 3, 1590738990000, 4.0, 1, 1590738989000, 3]
+        - [5, "cc", 3, 1590738991000, 9.0, 2, 1590738989000, 3]
+        - [6, "cc", 3, 1590738992000, 15.0, 3, 1590738992000, 3]
+        - [7, "cc", 2, 1590738993000, 22.0, 4, 1590738991000, 2]
+  -
+    id: 4
+    desc: 3组窗口特征ID拼接
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+    sql: |
+      select * from
+      (
+        select id as out1_id, c1, c6 from {0}
+      ) as out1 last join
+      (
+        select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6 from {0}
+        window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out2 on out1_id=out2_id last join
+      (
+        select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6 from {0}
+        window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out3 on out1_id=out3_id last join
+      (
+        select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6 from {0}
+        window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out4 on out1_id=out4_id;
+    expect:
+      columns: ["out1_id int", "c1 string", "c6 double",
+                "out2_id int", "c2 string", "w2_sum_c6 double",
+                "out3_id int", "c3 string", "w3_sum_c6 double",
+                "out4_id int", "c4 string", "w4_sum_c6 double",]
+      order: out1_id
+      rows:
+        - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
+        - [ 2, "a", 1.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
+        - [ 3, "a", 1.0, 3, "aa", 3.0, 3, "aaa", 3.0, 3, "bbbb", 1.0]
+        - [ 4, "a", 1.0, 4, "aa", 4.0, 4, "aaa", 4.0, 4, "bbbb", 2.0]
+        - [ 5, "a", 1.0, 5, "aa", 5.0, 5, "bbb", 1.0, 5, "bbbb", 3.0]
+        - [ 6, "a", 1.0, 6, "aa", 6.0, 6, "bbb", 2.0, 6, "bbbb", 4.0]
+        - [ 7, "a", 1.0, 7, "bb", 1.0, 7, "bbb", 3.0, 7, "bbbb", 5.0]
+        - [ 8, "a", 1.0, 8, "bb", 2.0, 8, "bbb", 4.0, 8, "bbbb", 6.0]
+        - [ 9, "b", 1.0, 9, "bb", 3.0, 9, "bbb", 5.0, 9, "bbbb", 7.0]
+        - [10, "b", 1.0, 10, "bb", 4.0, 10, "bbb", 6.0, 10, "bbbb", 8.0]
+  -
+    id: 5
+    desc: 4组窗口特征ID拼接
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+    sql: |
+      select * from
+      (
+        select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6 from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out1 last join
+      (
+        select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6 from {0}
+        window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out2 on out1_id=out2_id last join
+      (
+        select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6 from {0}
+        window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out3 on out1_id=out3_id last join
+      (
+        select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6 from {0}
+        window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out4 on out1_id=out4_id;
+    request_plan: |
+      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
+          REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
+            REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
+              RENAME(name=out1)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+              RENAME(name=out2)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c2))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
+            RENAME(name=out3)
+              PROJECT(type=Aggregation)
+                REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c3))
+                  DATA_PROVIDER(request=auto_t0)
+                  DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
+          RENAME(name=out4)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c4))
+                DATA_PROVIDER(request=auto_t0)
+                DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
+
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
+          REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
+            REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
+              RENAME(name=out1)
+                SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6))
+                  REQUEST_JOIN(type=kJoinTypeConcat)
+                    SIMPLE_PROJECT(sources=(id -> out1_id, c1))
+                      DATA_PROVIDER(request=auto_t0)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                        DATA_PROVIDER(request=auto_t0)
+                        DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+              RENAME(name=out2)
+                SIMPLE_PROJECT(sources=(out2_id, c2, w2_sum_c6))
+                  REQUEST_JOIN(type=kJoinTypeConcat)
+                    SIMPLE_PROJECT(sources=(id -> out2_id, c2))
+                      DATA_PROVIDER(request=auto_t0)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c2))
+                        DATA_PROVIDER(request=auto_t0)
+                        DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
+            RENAME(name=out3)
+              SIMPLE_PROJECT(sources=(out3_id, c3, w3_sum_c6))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  SIMPLE_PROJECT(sources=(id -> out3_id, c3))
+                    DATA_PROVIDER(request=auto_t0)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c3))
+                      DATA_PROVIDER(request=auto_t0)
+                      DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
+          RENAME(name=out4)
+            SIMPLE_PROJECT(sources=(out4_id, c4, w4_sum_c6))
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                SIMPLE_PROJECT(sources=(id -> out4_id, c4))
+                  DATA_PROVIDER(request=auto_t0)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c4))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
+    expect:
+      columns: ["out1_id int", "c1 string", "w1_sum_c6 double",
+                "out2_id int", "c2 string", "w2_sum_c6 double",
+                "out3_id int", "c3 string", "w3_sum_c6 double",
+                "out4_id int", "c4 string", "w4_sum_c6 double",]
+      order: out1_id
+      rows:
+        - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
+        - [ 2, "a", 2.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
+        - [ 3, "a", 3.0, 3, "aa", 3.0, 3, "aaa", 3.0, 3, "bbbb", 1.0]
+        - [ 4, "a", 4.0, 4, "aa", 4.0, 4, "aaa", 4.0, 4, "bbbb", 2.0]
+        - [ 5, "a", 5.0, 5, "aa", 5.0, 5, "bbb", 1.0, 5, "bbbb", 3.0]
+        - [ 6, "a", 6.0, 6, "aa", 6.0, 6, "bbb", 2.0, 6, "bbbb", 4.0]
+        - [ 7, "a", 7.0, 7, "bb", 1.0, 7, "bbb", 3.0, 7, "bbbb", 5.0]
+        - [ 8, "a", 8.0, 8, "bb", 2.0, 8, "bbb", 4.0, 8, "bbbb", 6.0]
+        - [ 9, "b", 1.0, 9, "bb", 3.0, 9, "bbb", 5.0, 9, "bbbb", 7.0]
+        - [10, "b", 2.0, 10, "bb", 4.0, 10, "bbb", 6.0, 10, "bbbb", 8.0]
+  -
+    id: 6
+    desc: 窗口特征拼接多张副表, last join 条件表达式1
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "10.0", 1590738999000 ]
+      - columns: ["rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7", ]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000 ]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000 ]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000 ]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000 ]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000 ]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000 ]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590738998000 ]
+          - [ 10, "b", "bb", "bbb", "bbbb", "1.0",1590738999000 ]
+    sql: |
+      select id, c1, c2, c3, c4, c6, c7, cur_hour, today
+      , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
+      , t1.rid as t1_rid, t2.rid as t2_rid, t3.rid as t3_rid, t4.rid as t4_rid
+      from
+      (
+        select id, c1, c2, c3, c4, c6, c7, hour(c7) as cur_hour, day(c7) as today
+        , sum(c6) over w1 as w1_sum_c6
+        , max(c6) over w1 as w1_max_c6
+        , min(c6) over w1 as w1_min_c6
+        , avg(c6) over w1 as w1_avg_c6
+        , count(c6) over w1 as w1_cnt_c6
+        from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as w_out last join {1} as t1 order by t1.x7 on c1 = t1.x1 and c7 - 1000 >= t1.x7
+        last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - 2000 >= t2.x7
+        last join {1} as t3 order by t3.x7 on c3 = t3.x3 and c7 - 3000 >= t3.x7
+        last join {1} as t4 order by t4.x7 on c4 = t4.x4 and c7 - 4000 >= t4.x7;
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 4000 >= t4.x7, left_keys=(), right_keys=(), index_keys=(c4))
+          REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 3000 >= t3.x7, left_keys=(), right_keys=(), index_keys=(c3))
+            REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 2000 >= t2.x7, left_keys=(), right_keys=(), index_keys=(c2))
+              REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 1000 >= t1.x7, left_keys=(), right_keys=(), index_keys=(c1))
+                RENAME(name=w_out)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                      DATA_PROVIDER(request=auto_t0)
+                      DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                RENAME(name=t1)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              RENAME(name=t2)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            RENAME(name=t3)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          RENAME(name=t4)
+            DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            REQUEST_JOIN(type=kJoinTypeConcat)
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                RENAME(name=w_out)
+                  SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6))
+                    REQUEST_JOIN(type=kJoinTypeConcat)
+                      PROJECT(type=RowProject)
+                        DATA_PROVIDER(request=auto_t0)
+                      PROJECT(type=Aggregation)
+                        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                          DATA_PROVIDER(request=auto_t0)
+                          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 1000 >= #35, left_keys=(), right_keys=(), index_keys=(#9))
+                  SIMPLE_PROJECT(sources=(#9 -> c1, #14 -> c7))
+                    DATA_PROVIDER(request=auto_t0)
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 2000 >= #35, left_keys=(), right_keys=(), index_keys=(#10))
+                SIMPLE_PROJECT(sources=(#10 -> c2, #14 -> c7))
+                  DATA_PROVIDER(request=auto_t0)
+                RENAME(name=t2)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 3000 >= #35, left_keys=(), right_keys=(), index_keys=(#11))
+              SIMPLE_PROJECT(sources=(#11 -> c3, #14 -> c7))
+                DATA_PROVIDER(request=auto_t0)
+              RENAME(name=t3)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 4000 >= #35, left_keys=(), right_keys=(), index_keys=(#12))
+            SIMPLE_PROJECT(sources=(#12 -> c4, #14 -> c7))
+              DATA_PROVIDER(request=auto_t0)
+            RENAME(name=t4)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    expect:
+      columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp",
+                "cur_hour int32", "today int32", "w1_sum_c6 double", "w1_max_c6 double",
+                "w1_min_c6 double", "w1_avg_c6 double", "w1_cnt_c6 bigint",
+                "t1_rid int32", "t2_rid int32", "t3_rid int32", "t4_rid int32"]
+      order: id
+      rows:
+        - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
+        - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
+        - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
+        - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
+        - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
+        - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
+        - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
+        - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
+        - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
+        - [ 10, "b", "bb", "bbb", "bbbb", "10.0",1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]
+
+
+  -
+    id: 7
+    desc: 窗口特征拼接多张副表, last join 条件表达式2
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "10.0", 1590738999000 ]
+      - columns: ["rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"]
+        indexs: ["index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7", ]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000 ]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000 ]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000 ]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000 ]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000 ]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000 ]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590738998000 ]
+          - [ 10, "b", "bb", "bbb", "bbbb", "1.0",1590738999000 ]
+    sql: |
+      select id, c1, c2, c3, c4, c6, c7, cur_hour, today
+      , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
+      , t1.rid as t1_rid, t2.rid as t2_rid, t3.rid as t3_rid, t4.rid as t4_rid
+      from
+      (
+        select id, c1, c2, c3, c4, c6, c7, hour(c7) as cur_hour, day(c7) as today
+        , sum(c6) over w1 as w1_sum_c6
+        , max(c6) over w1 as w1_max_c6
+        , min(c6) over w1 as w1_min_c6
+        , avg(c6) over w1 as w1_avg_c6
+        , count(c6) over w1 as w1_cnt_c6
+        from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as w_out last join {1} as t1 order by t1.x7 on c1 = t1.x1 and c7 - 1000 >= t1.x7
+        last join {1} as t2 order by t2.x7 on w_out.c2 = t2.x2 and c7 - 2000 >= t2.x7
+        last join {1} as t3 order by t3.x7 on w_out.c3 = t3.x3 and c7 - 3000 >= t3.x7
+        last join {1} as t4 order by t4.x7 on w_out.c4 = t4.x4 and c7 - 4000 >= t4.x7;
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 4000 >= t4.x7, left_keys=(), right_keys=(), index_keys=(w_out.c4))
+          REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 3000 >= t3.x7, left_keys=(), right_keys=(), index_keys=(w_out.c3))
+            REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 2000 >= t2.x7, left_keys=(), right_keys=(), index_keys=(w_out.c2))
+              REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=c7 - 1000 >= t1.x7, left_keys=(), right_keys=(), index_keys=(c1))
+                RENAME(name=w_out)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                      DATA_PROVIDER(request=auto_t0)
+                      DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                RENAME(name=t1)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              RENAME(name=t2)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            RENAME(name=t3)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          RENAME(name=t4)
+            DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6, t1.rid -> t1_rid, t2.rid -> t2_rid, t3.rid -> t3_rid, t4.rid -> t4_rid))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            REQUEST_JOIN(type=kJoinTypeConcat)
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                RENAME(name=w_out)
+                  SIMPLE_PROJECT(sources=(id, c1, c2, c3, c4, c6, c7, cur_hour, today, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6))
+                    REQUEST_JOIN(type=kJoinTypeConcat)
+                      PROJECT(type=RowProject)
+                        DATA_PROVIDER(request=auto_t0)
+                      PROJECT(type=Aggregation)
+                        REQUEST_UNION(partition_keys=(), orders=(ASC), range=(auto_t0.c7, 864000000 PRECEDING, 0 CURRENT), index_keys=(auto_t0.c1))
+                          DATA_PROVIDER(request=auto_t0)
+                          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+                REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 1000 >= #35, left_keys=(), right_keys=(), index_keys=(#9))
+                  SIMPLE_PROJECT(sources=(#9 -> c1, #14 -> c7))
+                    DATA_PROVIDER(request=auto_t0)
+                  RENAME(name=t1)
+                    DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+              REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 2000 >= #35, left_keys=(), right_keys=(), index_keys=(#10))
+                SIMPLE_PROJECT(sources=(#10 -> w_out.c2, #14 -> c7))
+                  DATA_PROVIDER(request=auto_t0)
+                RENAME(name=t2)
+                  DATA_PROVIDER(type=Partition, table=auto_t1, index=index2)
+            REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 3000 >= #35, left_keys=(), right_keys=(), index_keys=(#11))
+              SIMPLE_PROJECT(sources=(#11 -> w_out.c3, #14 -> c7))
+                DATA_PROVIDER(request=auto_t0)
+              RENAME(name=t3)
+                DATA_PROVIDER(type=Partition, table=auto_t1, index=index3)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=#14 - 4000 >= #35, left_keys=(), right_keys=(), index_keys=(#12))
+            SIMPLE_PROJECT(sources=(#12 -> w_out.c4, #14 -> c7))
+              DATA_PROVIDER(request=auto_t0)
+            RENAME(name=t4)
+              DATA_PROVIDER(type=Partition, table=auto_t1, index=index4)
+    expect:
+      columns: ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp",
+                "cur_hour int32", "today int32", "w1_sum_c6 double", "w1_max_c6 double",
+                "w1_min_c6 double", "w1_avg_c6 double", "w1_cnt_c6 bigint",
+                "t1_rid int32", "t2_rid int32", "t3_rid int32", "t4_rid int32"]
+      order: id
+      rows:
+        - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
+        - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
+        - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
+        - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
+        - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
+        - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
+        - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
+        - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
+        - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
+        - [ 10, "b", "bb", "bbb", "bbbb", "10.0",1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]

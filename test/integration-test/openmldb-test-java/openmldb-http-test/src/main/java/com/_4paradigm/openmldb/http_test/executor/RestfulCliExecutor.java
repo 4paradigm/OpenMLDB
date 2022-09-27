@@ -20,10 +20,9 @@ import com._4paradigm.openmldb.http_test.check.CheckerStrategy;
 import com._4paradigm.openmldb.http_test.common.RestfulGlobalVar;
 import com._4paradigm.openmldb.http_test.config.FedbRestfulConfig;
 import com._4paradigm.openmldb.java_sdk_test.checker.ResultChecker;
-import com._4paradigm.openmldb.test_common.command.OpenMLDBComamndFacade;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.common.Checker;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
@@ -91,7 +90,7 @@ public class RestfulCliExecutor extends BaseExecutor{
                         return sql;
                     })
                     .collect(Collectors.toList());
-            OpenMLDBComamndFacade.sqls(RestfulGlobalVar.mainInfo,FedbRestfulConfig.DB_NAME,sqls);
+            OpenMLDBCommandFacade.sqls(RestfulGlobalVar.mainInfo,FedbRestfulConfig.DB_NAME,sqls);
         }
         logger.info("prepare end");
     }
@@ -125,7 +124,7 @@ public class RestfulCliExecutor extends BaseExecutor{
                             return sql;
                         })
                         .collect(Collectors.toList());
-                fesqlResult = OpenMLDBComamndFacade.sqls(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, sqls);
+                fesqlResult = OpenMLDBCommandFacade.sqls(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, sqls);
             }
         }
 
@@ -137,7 +136,7 @@ public class RestfulCliExecutor extends BaseExecutor{
             for (InputDesc table : tables) {
                 if(table.isDrop()) {
                     String drop = "drop table " + table.getName() + ";";
-                    OpenMLDBComamndFacade.sql(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, drop);
+                    OpenMLDBCommandFacade.sql(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, drop);
                 }
             }
         }
@@ -151,7 +150,7 @@ public class RestfulCliExecutor extends BaseExecutor{
                 List<String> sqls = afterAction.getSqls().stream()
                         .map(sql -> SQLUtil.formatSql(sql,tableNames, RestfulGlobalVar.mainInfo))
                         .collect(Collectors.toList());
-                fesqlResult = OpenMLDBComamndFacade.sqls(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, sqls);
+                fesqlResult = OpenMLDBCommandFacade.sqls(RestfulGlobalVar.mainInfo, FedbRestfulConfig.DB_NAME, sqls);
             }
             ExpectDesc expect = afterAction.getExpect();
             if(expect!=null){

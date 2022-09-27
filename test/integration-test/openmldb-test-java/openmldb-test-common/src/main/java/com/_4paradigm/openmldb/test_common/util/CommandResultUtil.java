@@ -2,6 +2,7 @@ package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBColumn;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBIndex;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBTable;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
@@ -122,5 +123,25 @@ public class CommandResultUtil {
             deployments.add(deployment);
         }
         return deployments;
+    }
+    //  ---------- ---------------- --------------- -------------- ------ ------------------ ---------------- ----------- ------------------- --------- --------------------------------------------------------------- ---------------- -------------------
+    //  Table_id   Table_name       Database_name   Storage_type   Rows   Memory_data_size   Disk_data_size   Partition   Partition_unalive   Replica   Offline_path                                                    Offline_format   Offline_deep_copy
+    // ---------- ---------------- --------------- -------------- ------ ------------------ ---------------- ----------- ------------------- --------- --------------------------------------------------------------- ---------------- -------------------
+    //  27         auto_AITzyByZ    default_db      ssd            1      0                  473414           2           0                   3         NULL                                                            NULL             NULL
+    //  19         auto_GlcndMiH    default_db      hdd            1      0                  515239           2           0                   3         NULL
+    public static void parseResult(List<String> lines, OpenMLDBResult openMLDBResult){
+        if(CollectionUtils.isNotEmpty(lines)&&lines.size()>=2) {
+            int count = 0;
+            List<List<Object>> rows = new ArrayList<>();
+            List<String> columnNames = Arrays.asList(lines.get(1).split("\\s+"));
+            for (int i = 3; i < lines.size() - 2; i++) {
+                count++;
+                List<Object> row = Arrays.asList(lines.get(i).split("\\s+"));
+                rows.add(row);
+            }
+            openMLDBResult.setColumnNames(columnNames);
+            openMLDBResult.setCount(count);
+            openMLDBResult.setResult(rows);
+        }
     }
 }

@@ -30,7 +30,7 @@ class LimitOptimized : public TransformUpPysicalPass {
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
+    static bool ApplyLimitCnt(PhysicalOpNode* node, std::optional<int32_t> limit_cnt);
 };
 }  // namespace passes
 }  // namespace hybridse

@@ -1,0 +1,176 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: template_name
+cases:
+- id: 1
+  desc: 单表-广告场景
+  inputs:
+  - columns:
+    - "id string"
+    - "time timestamp"
+    - "C1 string"
+    - "banner_pos int32"
+    - "site_id string"
+    - "site_domain string"
+    - "site_category string"
+    - "app_id string"
+    - "app_domain string"
+    - "app_category string"
+    - "device_id string"
+    - "device_ip string"
+    - "device_model string"
+    - "device_type string"
+    - "device_conn_type string"
+    - "C14 string"
+    - "C15 string"
+    - "C16 string"
+    - "C17 string"
+    - "C18 string"
+    - "C19 string"
+    - "C20 string"
+    - "C21 string"
+    - "click int32"
+    indexs: ["index1:device_ip:time"]
+    rows:
+    - - "id_XfRHH4kXfh"
+      - 1609398202000
+      - "C1_AXkRcXx3Kw"
+      - -2136663223
+      - "site_id_eDHW3HhKq1"
+      - "site_domain_BiGZfMhPi4"
+      - "site_category_fRuxhKkzG7"
+      - "app_id_qU7KTLhbfd"
+      - "app_domain_89LBfwJOX6"
+      - "app_category_6ZYuZwBFU8"
+      - "device_id_wblCHgZ5XS"
+      - "device_ip_QghSozyTkL"
+      - "device_model_npId0EBZlF"
+      - "device_type_FC6ZCotmB0"
+      - "device_conn_type_ZDYT1Ax9Ms"
+      - "C14_fp4R2g2zVQ"
+      - "C15_uMIOpZgomo"
+      - "C16_mdReYZ82da"
+      - "C17_BHAroEq4Oa"
+      - "C18_tg1duoMypp"
+      - "C19_Bk6GldZeSl"
+      - "C20_LHuXYsBnVj"
+      - "C21_JasNjK98O3"
+      - 13560844
+    - - "id_CcZoKjZdWh"
+      - 1609398202000
+      - "C1_xu9l18vaoM"
+      - -2064473435
+      - "site_id_JTwfcebGpx"
+      - "site_domain_DrGpN7fHxB"
+      - "site_category_VnKBVLPjCN"
+      - "app_id_fFOUOMIZb2"
+      - "app_domain_WEH14cif3z"
+      - "app_category_5SDJL3MMbz"
+      - "device_id_BYRnezWSFI"
+      - "device_ip_UzE2rMHw3i"
+      - "device_model_eEvfxxZu2H"
+      - "device_type_WSyKKMDHzw"
+      - "device_conn_type_ImtQtq1M0h"
+      - "C14_N6KNpoRxB7"
+      - "C15_NoqO6r3LI0"
+      - "C16_5SkwZizokc"
+      - "C17_Ubxmmk7l7D"
+      - "C18_mhmpWVGnvx"
+      - "C19_MEZPm43rbw"
+      - "C20_20PAS4g6pi"
+      - "C21_jBaglxDzWN"
+      - -1234570441
+  sql: |-
+    select
+        id as id_1,
+        id as t1_id_original_0,
+        `time` as t1_time_original_1,
+        C1 as t1_C1_original_2,
+        banner_pos as t1_banner_pos_original_3,
+        site_id as t1_site_id_original_4,
+        site_domain as t1_site_domain_original_5,
+        site_category as t1_site_category_original_6,
+        app_id as t1_app_id_original_7,
+        app_domain as t1_app_domain_original_8,
+        app_category as t1_app_category_original_9,
+        device_id as t1_device_id_original_10,
+        device_ip as t1_device_ip_original_11,
+        device_model as t1_device_model_original_12,
+        device_type as t1_device_type_original_13,
+        device_conn_type as t1_device_conn_type_original_14,
+        C14 as t1_C14_original_15,
+        C15 as t1_C15_original_16,
+        C16 as t1_C16_original_17,
+        C17 as t1_C17_original_18,
+        C18 as t1_C18_original_19,
+        C19 as t1_C19_original_20,
+        C20 as t1_C20_original_21,
+        C21 as t1_C21_original_22,
+        click as t1_click_original_23,
+        device_ip as t1_device_ip_combine_24,
+        device_model as t1_device_model_combine_24,
+        C17 as t1_C17_combine_24,
+        device_ip as t1_device_ip_combine_25,
+        device_model as t1_device_model_combine_25,
+        C19 as t1_C19_combine_25,
+        device_ip as t1_device_ip_combine_26,
+        device_model as t1_device_model_combine_26,
+        C21 as t1_C21_combine_26,
+        banner_pos as t1_banner_pos_combine_27,
+        device_ip as t1_device_ip_combine_27,
+        device_model as t1_device_model_combine_27,
+        C1 as t1_C1_combine_28,
+        banner_pos as t1_banner_pos_combine_28,
+        site_domain as t1_site_domain_combine_29,
+        device_ip as t1_device_ip_combine_29,
+        device_model as t1_device_model_combine_29,
+        site_id as t1_site_id_combine_30,
+        device_ip as t1_device_ip_combine_30,
+        device_model as t1_device_model_combine_30,
+        app_domain as t1_app_domain_combine_31,
+        device_ip as t1_device_ip_combine_31,
+        device_model as t1_device_model_combine_31,
+        site_category as t1_site_category_combine_32,
+        device_ip as t1_device_ip_combine_32,
+        device_model as t1_device_model_combine_32,
+        device_ip as t1_device_ip_combine_33,
+        device_model as t1_device_model_combine_33,
+        C18 as t1_C18_combine_33,
+        fz_top1_ratio(id) over t1_device_ip_time_0s_7200s as t1_id_window_top1_ratio_34,
+        fz_top1_ratio(id) over t1_device_ip_time_0s_36000s as t1_id_window_top1_ratio_35,
+        case when !isnull(lag(app_domain, 0)) over t1_device_ip_time_0s_7200s then count(app_domain) over t1_device_ip_time_0s_7200s else null end as t1_app_domain_window_count_36,
+        case when !isnull(lag(app_category, 0)) over t1_device_ip_time_0s_7200s then count(app_category) over t1_device_ip_time_0s_7200s else null end as t1_app_category_window_count_37,
+        case when !isnull(lag(device_model, 0)) over t1_device_ip_time_0s_36000s then count(device_model) over t1_device_ip_time_0s_36000s else null end as t1_device_model_window_count_38,
+        case when !isnull(lag(app_id, 0)) over t1_device_ip_time_0s_7200s then count(app_id) over t1_device_ip_time_0s_7200s else null end as t1_app_id_window_count_39,
+        case when !isnull(lag(C17, 0)) over t1_device_ip_time_0s_7200s then count(C17) over t1_device_ip_time_0s_7200s else null end as t1_C17_window_count_40,
+        case when !isnull(lag(C19, 0)) over t1_device_ip_time_0s_7200s then count(C19) over t1_device_ip_time_0s_7200s else null end as t1_C19_window_count_41,
+        case when !isnull(lag(banner_pos, 0)) over t1_device_ip_time_0s_7200s then count(banner_pos) over t1_device_ip_time_0s_7200s else null end as t1_banner_pos_window_count_42,
+        fz_top1_ratio(C14) over t1_device_ip_time_0s_7200s as t1_C14_window_top1_ratio_43,
+        case when !isnull(lag(app_id, 0)) over t1_device_ip_time_0s_36000s then count(app_id) over t1_device_ip_time_0s_36000s else null end as t1_app_id_window_count_44,
+        case when !isnull(lag(site_id, 0)) over t1_device_ip_time_0s_36000s then count(site_id) over t1_device_ip_time_0s_36000s else null end as t1_site_id_window_count_45,
+        case when !isnull(lag(site_domain, 0)) over t1_device_ip_time_0s_36000s then count(site_domain) over t1_device_ip_time_0s_36000s else null end as t1_site_domain_window_count_46,
+        case when !isnull(lag(site_category, 0)) over t1_device_ip_time_0s_36000s then count(site_category) over t1_device_ip_time_0s_36000s else null end as t1_site_category_window_count_47,
+        case when !isnull(lag(app_domain, 0)) over t1_device_ip_time_0s_36000s then count(app_domain) over t1_device_ip_time_0s_36000s else null end as t1_app_domain_window_count_48,
+        case when !isnull(lag(app_category, 0)) over t1_device_ip_time_0s_36000s then count(app_category) over t1_device_ip_time_0s_36000s else null end as t1_app_category_window_count_49,
+        case when !isnull(lag(device_id, 0)) over t1_device_ip_time_0s_36000s then count(device_id) over t1_device_ip_time_0s_36000s else null end as t1_device_id_window_count_50,
+        case when !isnull(lag(C18, 0)) over t1_device_ip_time_0s_36000s then count(C18) over t1_device_ip_time_0s_36000s else null end as t1_C18_window_count_51,
+        case when !isnull(lag(device_conn_type, 0)) over t1_device_ip_time_0s_36000s then count(device_conn_type) over t1_device_ip_time_0s_36000s else null end as t1_device_conn_type_window_count_52,
+        case when !isnull(lag(C19, 0)) over t1_device_ip_time_0s_36000s then count(C19) over t1_device_ip_time_0s_36000s else null end as t1_C19_window_count_53
+    from
+        {0}
+        window t1_device_ip_time_0s_7200s as ( partition by device_ip order by `time` rows_range between 7200s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t1_device_ip_time_0s_36000s as ( partition by device_ip order by `time` rows_range between 36000s preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
+  expect:
+    success: true

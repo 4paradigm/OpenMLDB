@@ -509,7 +509,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                                  " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
         router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
         router->ExecuteSQL(base_db, deploy_sql, &status);
-        ASSERT_EQ(status.code, -1);
+        ASSERT_EQ(status.code, ::hybridse::common::StatusCode::kSyntaxError);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
     {
@@ -519,7 +519,7 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
                                  " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
         router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
         router->ExecuteSQL(base_db, deploy_sql, &status);
-        ASSERT_EQ(status.code, -1);
+        ASSERT_EQ(status.code, ::hybridse::common::StatusCode::kSyntaxError);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);

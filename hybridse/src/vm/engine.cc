@@ -32,8 +32,6 @@
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 
-DECLARE_bool(logtostderr);
-DECLARE_string(log_dir);
 DECLARE_bool(enable_spark_unsaferow_format);
 
 namespace hybridse {

@@ -39,6 +39,8 @@ then
     exit 0
 fi
 echo "new version is ${VERSION}"
+MAIN_VERSION=$(echo "${VERSION}" | awk -F '.' '{print $1"."$2}')
+echo "main version is ${MAIN_VERSION}"
 
 upgrade_docker() {
     sed -i"" -e "s/4pdosc\/openmldb:[0-9]\.[0-9]\.[0-9]/4pdosc\/openmldb:${VERSION}/g" "$1"
@@ -60,6 +62,15 @@ upgrade_install_doc() {
     do
         sed -i"" -e "s/openmldb-${component}-[0-9]\.[0-9]\.[0-9]/openmldb-${component}-${VERSION}/g" "$1"
     done
+}
+
+upgrade_compile_doc() {
+    sed -i"" -e "s/OpenMLDB v[0-9]\.[0-9]\.[0-9]/OpenMLDB v${VERSION}/g" "$1"
+    sed -i"" -e "s/ v[0-9]\.[0-9]\.[0-9]/ v${VERSION}/g" "$1"
+    sed -i"" -e "s/v[0-9]\.[0-9]\.[0-9])/v${VERSION})/g" "$1"
+    sed -i"" -e "s/hybridsql:[0-9]\.[0-9]\.[0-9]/hybridsql:${VERSION}/g" "$1"
+    sed -i"" -e "s/4pdosc\/hybridsql:[0-9]\.[0-9]/4pdosc\/hybridsql:${MAIN_VERSION}/g" "$1"
+    sed -i"" -e "s/-openmldb[0-9]\.[0-9]\.[0-9]\//-openmldb${VERSION}\//g" "$1"
 }
 
 docker_version_files=(
@@ -84,9 +95,12 @@ for file in "${docker_version_files[@]}"
 do
     upgrade_docker "$file"
 done
-#upgrade_docker "docs/en/use_case/dolphinscheduler_task_demo.md"
+
 upgrade_java_sdk "docs/en/quickstart/java_sdk.md"
 upgrade_java_sdk "docs/zh/quickstart/java_sdk.md"
 
 upgrade_install_doc "docs/en/deploy/install_deploy.md"
 upgrade_install_doc "docs/zh/deploy/install_deploy.md"
+
+upgrade_compile_doc "docs/en/deploy/compile.md"
+upgrade_compile_doc "docs/zh/deploy/compile.md"

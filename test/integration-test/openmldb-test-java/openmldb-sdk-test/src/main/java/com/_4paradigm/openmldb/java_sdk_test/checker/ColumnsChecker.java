@@ -43,8 +43,8 @@ public class ColumnsChecker extends BaseChecker {
         if (expectColumns == null || expectColumns.size() == 0) {
             return;
         }
-        List<String> columnNames = fesqlResult.getColumnNames();
-        List<String> columnTypes = fesqlResult.getColumnTypes();
+        List<String> columnNames = openMLDBResult.getColumnNames();
+        List<String> columnTypes = openMLDBResult.getColumnTypes();
         Assert.assertEquals(expectColumns.size(),columnNames.size(), "Illegal schema size");
         for (int i = 0; i < expectColumns.size(); i++) {
             // Assert.assertEquals(columnNames.get(i)+" "+columnTypes.get(i),expectColumns.get(i));
