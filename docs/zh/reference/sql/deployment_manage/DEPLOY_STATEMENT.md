@@ -22,8 +22,8 @@ DeploymentName
 
 
 **Example**
-在集群版的在线请求模式下，部署上线一个SQL脚本。
 
+在集群版的在线请求模式下，部署上线一个SQL脚本。
 ```sql
 CREATE DATABASE db1;
 -- SUCCEED
@@ -103,16 +103,16 @@ LongWindowOption
 #### 长窗口优化
 ```sql
 LongWindowDefinitions
-						::= 'LongWindowDefinition (, LongWindowDefinition)*'
+					::= 'LongWindowDefinition (, LongWindowDefinition)*'
 
 LongWindowDefinition
-						::= WindowName':'[BucketSize]
+					::= WindowName':'[BucketSize]
 
 WindowName
-						::= string_literal
+					::= string_literal
 
 BucketSize
-						::= int_literal | interval_literal
+					::= int_literal | interval_literal
 
 interval_literal ::= int_literal 's'|'m'|'h'|'d'
 ```
