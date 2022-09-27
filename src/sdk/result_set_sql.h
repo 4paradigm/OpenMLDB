@@ -223,7 +223,7 @@ class ReadableResultSetSQL : public ::hybridse::sdk::ResultSet {
  public:
     explicit ReadableResultSetSQL(const std::shared_ptr<::hybridse::sdk::ResultSet>& rs) : rs_(rs) {}
 
-    ~ReadableResultSetSQL() {};
+    ~ReadableResultSetSQL() {}
 
     bool Reset() override { return rs_->Reset(); }
 
