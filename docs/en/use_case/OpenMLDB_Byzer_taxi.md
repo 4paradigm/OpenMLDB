@@ -20,9 +20,6 @@ OpenMLDB will compute real-time features based on the data and queries from Byze
 
 ![Byzer_Notebook](images/Byzer_Notebook.jpg)
 
-```{note}
-Please note that some Byzer docs metioned in this tutorial don't have English version yet,
-```
 
 ### 1.3 Dataset Preparation
 In this case, the dataset comes from the Kaggle taxi trip duration prediction problem. If it is not in your Byzer `Deltalake`, [download](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) it first. Please remember to import it into Byzer Notebook after download.
