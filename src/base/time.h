@@ -29,6 +29,7 @@ constexpr time_t TZ_OFFSET = TZ * 3600000;
 std::string Convert2FormatTime(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     char buf[64];
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &t);

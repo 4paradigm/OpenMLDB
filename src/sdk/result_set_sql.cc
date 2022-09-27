@@ -35,12 +35,11 @@ namespace sdk {
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
     : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr),
-        io_buf_(), readable_time_(false) {}
+        io_buf_() {}
 
 ResultSetSQL::ResultSetSQL(const ::hybridse::vm::Schema& schema, uint32_t record_cnt,
                            const std::shared_ptr<butil::IOBuf>& io_buf)
-    : schema_(schema), record_cnt_(record_cnt), cntl_(), result_set_base_(nullptr), io_buf_(io_buf),
-        readable_time_(false) {
+    : schema_(schema), record_cnt_(record_cnt), cntl_(), result_set_base_(nullptr), io_buf_(io_buf) {
     if (io_buf_) {
         buf_size_ = io_buf_->length();
     }
@@ -149,21 +148,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
     return MakeResultSet(schema, records, status);
 }
 
-const bool ResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
-    if (readable_time_ && GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
-        int64_t ts = 0;
-        if (!GetTime(idx, &ts) || ts < 0) {
-            return false;
-        }
-        val = ::openmldb::base::Convert2FormatTime(ts);
-        return true;
-    } else {
-        return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
-    }
-}
-
-const bool MultipleResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
-    if (readable_time_ && GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
+const bool ReadableResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
+    if (GetSchema()->GetColumnType(idx) == hybridse::sdk::kTypeTimestamp) {
         int64_t ts = 0;
         if (!GetTime(idx, &ts) || ts < 0) {
             return false;

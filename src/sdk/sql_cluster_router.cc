@@ -1893,9 +1893,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
             if (FLAGS_role == "sql_client" && rs) {
-                auto cur_rs = std::dynamic_pointer_cast<ResultSetSQL>(rs);
-                cur_rs->SetReadableTime(true);
-                return cur_rs;
+                return std::make_shared<ReadableResultSetSQL>(rs);
             }
             return rs;
         }
@@ -1923,9 +1921,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
             if (FLAGS_role == "sql_client") {
-                auto cur_rs = std::dynamic_pointer_cast<ResultSetSQL>(rs);
-                cur_rs->SetReadableTime(true);
-                return cur_rs;
+                return std::make_shared<ReadableResultSetSQL>(rs);
             }
             return rs;
         }
@@ -1998,9 +1994,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         case hybridse::node::kCmdShowComponents: {
             auto rs = ExecuteShowComponents(status);
             if (FLAGS_role == "sql_client" && status->IsOK() && rs) {
-                auto mult_rs = std::dynamic_pointer_cast<MultipleResultSetSQL>(rs);
-                mult_rs->SetReadableTime(true);
-                return mult_rs;
+                return std::make_shared<ReadableResultSetSQL>(rs);
             }
             return rs;
         }
