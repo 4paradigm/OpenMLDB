@@ -351,7 +351,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 }
             }
             if (!ok) {
-                throw new SQLException("append failed on currentDataIdx{curType}, current data"+data);
+                throw new SQLException("append failed on currentDataIdx: "+currentDataIdx+", curType: "+currentDatasType.get(currentDataIdx)+", current data: "+data);
             }
         }
         if (!currentRow.Build()) {
