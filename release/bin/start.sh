@@ -26,12 +26,11 @@ if [ $# -lt 2 ]; then
   echo "component: $COMPONENTS"
   exit 1
 fi
-cd "$(dirname "$0")"/../ || exit 1
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 RED='\E[1;31m'
 RES='\E[0m'
 
