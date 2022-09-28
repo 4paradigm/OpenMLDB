@@ -126,10 +126,10 @@ jobs:
           ./mvnw --batch-mode scoverage:report
 
       - name: upload maven coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
-          name: coverage
+          name: coverage-java
           fail_ci_if_error: true
           verbose: true
 
@@ -275,9 +275,9 @@ jobs:
             python/openmldb_sdk/openmldb/tests/pytest.xml
 
       - name: upload python coverage to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
-          name: coverage
+          name: coverage-python
           files: python/openmldb_sdk/tests/coverage.xml
           fail_ci_if_error: true
           verbose: true
@@ -378,7 +378,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          name: coverage
+          name: coverage-go
           files: go/coverage.out
           fail_ci_if_error: true
           verbose: true
