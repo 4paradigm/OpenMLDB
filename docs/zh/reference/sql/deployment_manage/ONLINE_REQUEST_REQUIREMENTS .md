@@ -60,7 +60,7 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - 仅支持`LAST JOIN`类型。
 - 至少有一个JOIN条件是形如`left_table.column=right_table.column`的EQUAL条件，**并且`rgith_table.column`列需要命中右表的索引**。
-- 带排序LAST JOIN的情况下，`ORDER BY`只能支持列表达式，**并且列需要命中右表索引的时间列**。
+- 带排序LAST JOIN的情况下，`ORDER BY`只支持列表达式，**并且列需要命中右表索引的时间列**。
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
@@ -118,5 +118,5 @@ desc t1;
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
 - 窗口`PARTITION BY`只支持列表达式，并且列需要命中索引
 - 窗口`ORDER BY`只支持列表达式，并且列需要命中索引的时间列
-- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制。
+- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](openmldb特有的-windowspec-元素)。
 
