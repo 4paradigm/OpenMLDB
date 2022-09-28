@@ -67,7 +67,9 @@ void hex(StringRef *str, StringRef *output) {
 void unhex(StringRef *str, StringRef *output, bool* is_null) {
     char *buffer = AllocManagedStringBuf(str->size_ / 2 + str->size_ % 2);
     for (uint32_t i = 0; i < str->size_; ++i) {
-        if ((str->data_[i] >= 'A' && str->data_[i] <= 'F') || (str->data_[i] >= 'a' && str->data_[i] <= 'f') || (str->data_[i] >= '0' && str->data_[i] <= '9')) {
+        if ((str->data_[i] >= 'A' && str->data_[i] <= 'F') ||
+            (str->data_[i] >= 'a' && str->data_[i] <= 'f') ||
+            (str->data_[i] >= '0' && str->data_[i] <= '9')) {
             continue;
         } else {
             *is_null = true;
