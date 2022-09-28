@@ -35,6 +35,7 @@ using google::WARNING;
 DECLARE_string(openmldb_log_dir);
 DECLARE_string(role);
 DECLARE_string(glog_dir);
+DECLARE_int32(glog_level);
 
 namespace openmldb {
 namespace base {
@@ -54,37 +55,51 @@ inline void SetLogLevel(int level) { log_level = level; }
 
 // DO NOT use this func, to avoid init glog twice coredump
 // For compatibility, use openmldb_log_dir instead of glog log_dir for server
-// If we want write log to stdout, set it empty
-inline void UnprotectedSetupGlog() {
-    // client: role == "" or "sql_client", use glog_dir
-    // server: others, use openmldb_log_dir
-    std::string log_dir = FLAGS_openmldb_log_dir;
-    if (FLAGS_role.empty()) {
-        // give sdk or standalone client a name
-        FLAGS_role = "client";
-        log_dir = FLAGS_glog_dir;
-    } else if (FLAGS_role == "sql_client") {
-        log_dir = FLAGS_glog_dir;
+// If we want write log to stderr, set it empty
+inline void UnprotectedSetupGlog(bool origin_flags = false) {
+    std::string role = "unknown_possibly_a_test";
+    std::string log_dir;
+    if (!origin_flags) {
+        role = (FLAGS_role.empty() ? "client" : FLAGS_role);
+        // client: role == ""(client) or "sql_client", use glog_dir
+        // server: others, use openmldb_log_dir
+        log_dir = FLAGS_openmldb_log_dir;
+        if (role == "sql_client" || role == "client") {
+            log_dir = FLAGS_glog_dir;
+            FLAGS_minloglevel = FLAGS_glog_level;
+        }
+    } else {
+        // if origin_flags, use the original FLAGS_minloglevel, FLAGS_log_dir
+        // FLAGS_log_dir should be create first
+        log_dir = FLAGS_log_dir;
     }
 
-    if (!log_dir.empty()) {
+    if (log_dir.empty()) {
+        // If we don't set glog dir, it'll write to /tmp. So we'd set to stderr
+        FLAGS_logtostderr = true;
+    } else {
         boost::filesystem::create_directories(log_dir);
-        std::string path = log_dir + "/" + FLAGS_role;
-        ::google::InitGoogleLogging(path.c_str());
+        std::string path = log_dir + "/" + role;
         std::string info_log_path = path + ".info.log.";
         std::string warning_log_path = path + ".warning.log.";
         FLAGS_logbufsecs = 0;
         ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
         ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
     }
+    ::google::InitGoogleLogging(role.c_str());
 }
 
 // This func will init glog, use once_flag to avoid init glog twice
 // It'll use FLAGS_glog_dir/FLAGS_openmldb_log_dir and FLAGS_role to set log dir,
-// and it's better to set FLAGS_minloglevel before it
-inline void SetupGLog() {
+// and set FLAGS_minloglevel by FLAGS_glog_level(only for clients) in here
+inline bool SetupGlog(bool origin_flags = false) {
     static std::once_flag oc;
-    std::call_once(oc, [] { UnprotectedSetupGlog(); });
+    bool setup = false;
+    std::call_once(oc, [&setup, origin_flags] {
+        UnprotectedSetupGlog(origin_flags);
+        setup = true;
+    });
+    return setup;
 }
 
 }  // namespace base
