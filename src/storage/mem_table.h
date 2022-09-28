@@ -29,6 +29,7 @@
 #include "storage/segment.h"
 #include "storage/table.h"
 #include "storage/ticket.h"
+#include "base/concurrentlist.h"
 #include "vm/catalog.h"
 
 DECLARE_uint32(max_traverse_cnt);
@@ -43,8 +44,6 @@ static const uint32_t SEED = 0xe17a1465;
 
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
 
-// TODO  里面还需要修改
-template<class T>
 class MemTableTraverseIterator : public TraverseIterator {
 public:
    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
@@ -159,14 +158,15 @@ public:
        pk_it_->Seek(spk);  // 直接指向key 为 spk的节点
        if (pk_it_->Valid()) {
            if (segments_[seg_idx_]->GetTsCnt() > 1) {
-               KeyEntry* entry = NULL;
                if (segments_[seg_idx_]->IsSkipList(ts_idx_)) {
-                   entry = ((SkipListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                   SkipListKeyEntry* entry = ((SkipListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                   ticket_.Push(entry);
+                   it_ = entry->entries.NewIterator();
                } else {
-                   entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                   ListKeyEntry* entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                   ticket_.Push(entry);
+                   it_ = entry->entries.NewIterator();
                }
-               ticket_.Push(entry);
-               it_ = entry->entries.NewIterator();
            } else {
                if (segments_[seg_idx_]->IsSkipList()) {
                    ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());  // NOLINT
@@ -290,7 +290,7 @@ private:
    uint32_t const seg_cnt_;  // segment指针数组长度
    uint32_t seg_idx_;        // segment指针数组当前的索引
    KeyEntries::Iterator* pk_it_;  // 第一层跳表迭代器
-   T* it_;  // TODO 第二层结构的迭代器，TimeEntries::Iterator*
+   BaseTimeEntriesIterator* it_;  // 第二层结构的迭代器
    uint32_t record_idx_;  // 遍历的记录数
    uint32_t ts_idx_;      // ts index
    // uint64_t expire_value_;

@@ -29,12 +29,12 @@ class TableIterator {
     virtual ~TableIterator() {}
     TableIterator(const TableIterator&) = delete;
     TableIterator& operator=(const TableIterator&) = delete;
-    virtual bool Valid() = 0;
-    virtual void Next() = 0;
-    virtual openmldb::base::Slice GetValue() const = 0;
+    virtual bool Valid(){ };
+    virtual void Next(){ };
+    virtual openmldb::base::Slice GetValue() const {}; //
     virtual std::string GetPK() const { return std::string(); }
-    virtual uint64_t GetKey() const = 0;
-    virtual void SeekToFirst() = 0;
+    virtual uint64_t GetKey() const {};     //
+    virtual void SeekToFirst(){ };
     virtual void SeekToLast() {}
     virtual void Seek(const std::string& pk, uint64_t time) {}
     virtual void Seek(uint64_t time) {}

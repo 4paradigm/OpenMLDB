@@ -14,382 +14,297 @@
 * limitations under the License.
 */
 
-#include "storage/segment.h"
+#include "storage/schema.h"
 
-#include <iostream>
 #include <string>
 
-#include "base/glog_wapper.h"
-#include "base/slice.h"
+#include "base/glog_wrapper.h"
+#include "codec/schema_codec.h"
 #include "gtest/gtest.h"
-#include "storage/record.h"
-
-using ::openmldb::base::Slice;
 
 namespace openmldb {
 namespace storage {
 
-class SegmentTest : public ::testing::Test {
-public:
-   SegmentTest() {}
-   ~SegmentTest() {}
-};
+using ::openmldb::codec::SchemaCodec;
 
-TEST_F(SegmentTest, Size) {
-   ASSERT_EQ(16, (int64_t)sizeof(DataBlock));
-   ASSERT_EQ(40, (int64_t)sizeof(KeyEntry));
+class SchemaTest : public ::testing::Test {};
+
+void AssertIndex(const ::openmldb::storage::IndexDef& index, const std::string& name, const std::string& col,
+                const std::string& ts_col_name, uint32_t ts_index, uint64_t abs_ttl, uint64_t lat_ttl,
+                ::openmldb::storage::TTLType ttl_type) {
+   if (!name.empty()) {
+       ASSERT_EQ(index.GetName(), name);
+   }
+   auto ttl = index.GetTTL();
+   ASSERT_EQ(ttl->abs_ttl / 60 / 1000, abs_ttl);
+   ASSERT_EQ(ttl->ttl_type, ttl_type);
+   const auto& ts_col = index.GetTsColumn();
+   ASSERT_EQ(ts_col->GetName(), ts_col_name);
+   ASSERT_EQ(ts_col->GetId(), ts_index);
 }
 
-TEST_F(SegmentTest, DataBlock) {
-   const char* test = "test";
-   DataBlock* db = new DataBlock(1, test, 4);
-   ASSERT_EQ(4, (int64_t)db->size);
-   ASSERT_EQ('t', db->data[0]);
-   ASSERT_EQ('e', db->data[1]);
-   ASSERT_EQ('s', db->data[2]);
-   ASSERT_EQ('t', db->data[3]);
-   delete db;
-}
-
-TEST_F(SegmentTest, PutAndScan) {
-   Segment segment(12, true);
-   Slice pk("test1");
-   std::string value = "test0";
-   segment.Put(pk, 9527, value.c_str(), value.size());
-   segment.Put(pk, 9528, value.c_str(), value.size());
-   segment.Put(pk, 9528, value.c_str(), value.size());
-   segment.Put(pk, 9529, value.c_str(), value.size());
-   ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-   Ticket ticket;
-   MemTableIterator<ListTimeEntries::ListIterator>* it = segment.NewIterator("test1", ticket);
-   it->Seek(9530);
-   ASSERT_TRUE(it->Valid());
-   ASSERT_EQ(9529, (int64_t)it->GetKey());
-   ::openmldb::base::Slice val = it->GetValue();
-   std::string result(val.data(), val.size());
-   ASSERT_EQ("test0", result);
-   it->Next();
-   val = it->GetValue();
-   std::string result2(val.data(), val.size());
-   ASSERT_EQ("test0", result2);
-   it->Next();
-   ASSERT_TRUE(it->Valid());
-
-   if (segment.IsSkipList()) {
-       std::cout << "true99999999999999999" << endl;
+void AssertInnerIndex(const ::openmldb::storage::InnerIndexSt& inner_index, uint32_t id,
+                     const std::vector<std::string>& index_vec, const std::vector<uint32_t>& ts_vec) {
+   ASSERT_EQ(inner_index.GetId(), id);
+   const auto& indexes = inner_index.GetIndex();
+   ASSERT_EQ(indexes.size(), index_vec.size());
+   for (size_t i = 0; i < ts_vec.size(); i++) {
+       ASSERT_EQ(indexes[i]->GetName(), index_vec[i]);
+   }
+   const auto& ts_idx = inner_index.GetTsIdx();
+   ASSERT_EQ(ts_idx.size(), ts_vec.size());
+   for (size_t i = 0; i < ts_vec.size(); i++) {
+       ASSERT_EQ(ts_idx[i], ts_vec[i]);
    }
 }
 
-TEST_F(SegmentTest, Delete) {
-   Segment segment;
-   Slice pk("test1");
-   std::string value = "test0";
-   segment.Put(pk, 9527, value.c_str(), value.size());
-   segment.Put(pk, 9528, value.c_str(), value.size());
-   segment.Put(pk, 9528, value.c_str(), value.size());
-   segment.Put(pk, 9529, value.c_str(), value.size());
-   ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-   Ticket ticket;
-   if (segment.IsSkipList()) {
-       MemTableIterator<SkipListTimeEntries::Iterator>* it = segment.NewIterator<SkipListTimeEntries::Iterator>("test1", ticket);
-       int size = 0;
-       it->SeekToFirst();
-       while (it->Valid()) {
-           it->Next();
-           size++;
-       }
-       ASSERT_EQ(4, size);
-       delete it;
-       ASSERT_TRUE(segment.Delete(pk));
-       it = segment.NewIterator("test1", ticket);
-       ASSERT_FALSE(it->Valid());
-       delete it;
-   } else {
-       MemTableIterator<ListTimeEntries::ListIterator>* it = segment.NewIterator<ListTimeEntries::ListIterator>("test1", ticket);
-       int size = 0;
-       it->SeekToFirst();
-       while (it->Valid()) {
-           it->Next();
-           size++;
-       }
-       ASSERT_EQ(4, size);
-       delete it;
-       ASSERT_TRUE(segment.Delete(pk));
-       it = segment.NewIterator("test1", ticket);
-       ASSERT_FALSE(it->Valid());
-       delete it;
-   }
-
-   uint64_t gc_idx_cnt = 0;
-   uint64_t gc_record_cnt = 0;
-   uint64_t gc_record_byte_size = 0;
-   segment.IncrGcVersion();
-   segment.IncrGcVersion();
-   segment.GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-   ASSERT_EQ(4, (int64_t)gc_idx_cnt);
-   ASSERT_EQ(4, (int64_t)gc_record_cnt);
-   ASSERT_EQ(84, (int64_t)gc_record_byte_size);
+TEST_F(SchemaTest, TestNeedGc) {
+   ::openmldb::storage::TTLSt ttl_st(0, 0, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 1, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_TRUE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kLatestTime);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 0, ::openmldb::storage::kLatestTime);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kLatestTime);
+   ASSERT_TRUE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 0, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 1, ::openmldb::storage::kAbsAndLat);
+   ASSERT_TRUE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsOrLat);
+   ASSERT_FALSE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 0, ::openmldb::storage::kAbsOrLat);
+   ASSERT_TRUE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsOrLat);
+   ASSERT_TRUE(ttl_st.NeedGc());
+   ttl_st = ::openmldb::storage::TTLSt(1, 1, ::openmldb::storage::kAbsOrLat);
+   ASSERT_TRUE(ttl_st.NeedGc());
 }
-//
-//TEST_F(SegmentTest, GetCount) {
-//    Segment segment;
-//    Slice pk("test1");
-//    std::string value = "test0";
-//    uint64_t count = 0;
-//    segment.Put(pk, 9527, value.c_str(), value.size());
-//    segment.Put(pk, 9528, value.c_str(), value.size());
-//    segment.Put(pk, 9529, value.c_str(), value.size());
-//    ASSERT_EQ(0, segment.GetCount(pk, count)); // couunt 等于二级跳表的个数
-//    ASSERT_EQ(3, (int64_t)count);
-//    segment.Put(pk, 9530, value.c_str(), value.size()); // 又插入了一个新的节点
-//    ASSERT_EQ(0, segment.GetCount(pk, count));
-//    ASSERT_EQ(4, (int64_t)count);  //
-//
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size); // GC 9528
-//    ASSERT_EQ(0, segment.GetCount(pk, count));
-//    ASSERT_EQ(2, (int64_t)count);
-//
-//    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};  // ts_idx_vec
-//    Segment segment1(8, ts_idx_vec);
-//    Slice pk1("pk");
-//    std::map<int32_t, uint64_t> ts_map;
-//    for (int i = 0; i < 6; i++) {
-//        ts_map.emplace(i, 1100 + i); //{0:1100, 1:1101, 2:1102}
-//    }
-//    DataBlock db(1, "test1", 5);
-//    segment1.Put(pk1, ts_map, &db);
-//    ASSERT_EQ(-1, segment1.GetCount(pk1, 0, count));
-//    ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
-//    ASSERT_EQ(1, (int64_t)count);
-//    ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
-//    ASSERT_EQ(1, (int64_t)count);
-//
-//    ts_map.clear();
-//    for (int i = 0; i < 6; i++) {
-//        if (i == 3) {
-//            continue;
-//        }
-//        ts_map.emplace(i, 1200 + i);
-//    }
-//    segment1.Put(pk1, ts_map, &db);
-//    ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
-//    ASSERT_EQ(2, (int64_t)count);
-//    ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
-//    ASSERT_EQ(1, (int64_t)count);
-//}
-//
-//TEST_F(SegmentTest, Iterator) {
-//    Segment segment;
-//    Slice pk("test1");
-//    segment.Put(pk, 9768, "test1", 5);
-//    segment.Put(pk, 9768, "test1", 5);
-//    segment.Put(pk, 9768, "test1", 5);
-//    segment.Put(pk, 9769, "test2", 5);
-//    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-//    Ticket ticket;
-//    MemTableIterator* it = segment.NewIterator("test1", ticket);
-//    it->SeekToFirst();
-//    int size = 0;
-//    while (it->Valid()) {
-//        it->Next();
-//        size++;
-//    }
-//    ASSERT_EQ(4, size);
-//    it->Seek(9769);
-//    ASSERT_EQ(9769, (int64_t)it->GetKey());
-//    ::openmldb::base::Slice value = it->GetValue();
-//    std::string result(value.data(), value.size());
-//    ASSERT_EQ("test2", result);
-//    it->Next();
-//    value = it->GetValue();
-//    std::string result2(value.data(), value.size());
-//    ASSERT_EQ("test1", result2);
-//    it->Next();
-//    ASSERT_TRUE(it->Valid());
-//}
-//
-//TEST_F(SegmentTest, TestGc4Head) {
-//    Segment segment;
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    Slice pk("PK");
-//    segment.Put(pk, 9768, "test1", 5);
-//    segment.Put(pk, 9769, "test2", 5);
-//    segment.Gc4Head(1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    Ticket ticket;
-//    MemTableIterator* it = segment.NewIterator(pk, ticket);
-//    it->Seek(9769);
-//    ASSERT_TRUE(it->Valid());
-//    ASSERT_EQ(9769, (int64_t)it->GetKey());
-//    ::openmldb::base::Slice value = it->GetValue();
-//    std::string result(value.data(), value.size());
-//    ASSERT_EQ("test2", result);
-//    it->Next();
-//    ASSERT_FALSE(it->Valid());
-//}
-//
-//TEST_F(SegmentTest, TestGc4TTL) {
-//    Segment segment;
-//    segment.Put("PK", 9768, "test1", 5);
-//    segment.Put("PK", 9769, "test2", 5);
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-//}
-//
-//TEST_F(SegmentTest, TestGc4TTLAndHead) {
-//    Segment segment;
-//    segment.Put("PK1", 9766, "test1", 5);
-//    segment.Put("PK1", 9767, "test2", 5);
-//    segment.Put("PK1", 9768, "test3", 5);
-//    segment.Put("PK1", 9769, "test4", 5);
-//    segment.Put("PK2", 9765, "test1", 5);
-//    segment.Put("PK2", 9766, "test2", 5);
-//    segment.Put("PK2", 9767, "test3", 5);
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    segment.Gc4TTLAndHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLAndHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(3, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-//}
-//
-//TEST_F(SegmentTest, TestGc4TTLOrHead) {
-//    Segment segment;
-//    segment.Put("PK1", 9766, "test1", 5);
-//    segment.Put("PK1", 9767, "test2", 5);
-//    segment.Put("PK1", 9768, "test3", 5);
-//    segment.Put("PK1", 9769, "test4", 5);
-//    segment.Put("PK2", 9765, "test1", 5);
-//    segment.Put("PK2", 9766, "test2", 5);
-//    segment.Put("PK2", 9767, "test3", 5);
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    segment.Gc4TTLOrHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLOrHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-//    gc_idx_cnt = 0;
-//    gc_record_cnt = 0;
-//    gc_record_byte_size = 0;
-//    segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(3, (int64_t)gc_record_cnt);
-//    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-//}
-//
-//TEST_F(SegmentTest, TestStat) {
-//    Segment segment;
-//    segment.Put("PK", 9768, "test1", 5);
-//    segment.Put("PK", 9769, "test2", 5);
-//    uint64_t gc_idx_cnt = 0;
-//    uint64_t gc_record_cnt = 0;
-//    uint64_t gc_record_byte_size = 0;
-//    ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
-//    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-//    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-//    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(1, (int64_t)segment.GetIdxCnt());
-//    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-//    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-//    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-//    ASSERT_EQ(0, (int64_t)segment.GetIdxCnt());
-//}
-//
-//TEST_F(SegmentTest, GetTsIdx) {
-//    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
-//    Segment segment(8, ts_idx_vec);
-//    ASSERT_EQ(3, (int64_t)segment.GetTsCnt());
-//    uint32_t real_idx = UINT32_MAX;
-//    ASSERT_EQ(-1, segment.GetTsIdx(0, real_idx));
-//    ASSERT_EQ(0, segment.GetTsIdx(1, real_idx));
-//    ASSERT_EQ(0, (int64_t)real_idx);
-//    ASSERT_EQ(-1, segment.GetTsIdx(2, real_idx));
-//    ASSERT_EQ(0, segment.GetTsIdx(3, real_idx));
-//    ASSERT_EQ(1, (int64_t)real_idx);
-//    ASSERT_EQ(-1, segment.GetTsIdx(4, real_idx));
-//    ASSERT_EQ(0, segment.GetTsIdx(5, real_idx));
-//    ASSERT_EQ(2, (int64_t)real_idx);
-//}
+
+TEST_F(SchemaTest, TestIsExpired) {
+   ::openmldb::storage::TTLSt ttl_st(0, 0, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_FALSE(ttl_st.IsExpired(100, 1));
+   ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_FALSE(ttl_st.IsExpired(100, 1));
+   ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsoluteTime);
+   ASSERT_FALSE(ttl_st.IsExpired(200, 3));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 3));
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kLatestTime);
+   ASSERT_FALSE(ttl_st.IsExpired(200, 1));
+   ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kLatestTime);
+   ASSERT_FALSE(ttl_st.IsExpired(50, 1));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 0));
+   ASSERT_TRUE(ttl_st.IsExpired(200, 3));
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(0, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 0));
+   ttl_st = ::openmldb::storage::TTLSt(0, 2, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(0, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 1));
+   ttl_st = ::openmldb::storage::TTLSt(100, 0, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.IsExpired(200, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(0, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 0));
+   ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsAndLat);
+   ASSERT_FALSE(ttl_st.IsExpired(200, 3));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 1));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(200, 1));
+   ASSERT_FALSE(ttl_st.IsExpired(200, 0));
+   ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsOrLat);
+   ASSERT_FALSE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(0, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 0));
+   ttl_st = ::openmldb::storage::TTLSt(0, 2, ::openmldb::storage::kAbsOrLat);
+   ASSERT_TRUE(ttl_st.IsExpired(50, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(0, 0));
+   ASSERT_FALSE(ttl_st.IsExpired(50, 1));
+   ASSERT_TRUE(ttl_st.IsExpired(0, 3));
+   ttl_st = ::openmldb::storage::TTLSt(100, 0, ::openmldb::storage::kAbsOrLat);
+   ASSERT_FALSE(ttl_st.IsExpired(200, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(200, 0));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 3));
+   ASSERT_TRUE(ttl_st.IsExpired(0, 0));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 0));
+   ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsOrLat);
+   ASSERT_TRUE(ttl_st.IsExpired(50, 3));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 1));
+   ASSERT_TRUE(ttl_st.IsExpired(50, 0));
+   ASSERT_TRUE(ttl_st.IsExpired(200, 3));
+   ASSERT_FALSE(ttl_st.IsExpired(200, 1));
+   ASSERT_FALSE(ttl_st.IsExpired(200, 0));
+}
+
+TEST_F(SchemaTest, ParseEmpty) {
+   ::openmldb::api::TableMeta table_meta;
+   TableIndex table_index;
+   ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+   auto indexes = table_index.GetAllIndex();
+   ASSERT_EQ(indexes.size(), 1u);
+   auto index = table_index.GetPkIndex();
+   ASSERT_STREQ(index->GetName().c_str(), "idx0");
+}
+
+TEST_F(SchemaTest, ParseOld) {
+   ::openmldb::api::TableMeta table_meta;
+   TableIndex table_index;
+   ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+   auto indexs = table_index.GetAllIndex();
+   ASSERT_EQ(indexs.size(), 1u);
+   auto index = table_index.GetPkIndex();
+   ASSERT_STREQ(index->GetName().c_str(), "idx0");
+   index = table_index.GetIndex("idx0");
+   auto ttl = index->GetTTL();
+   ASSERT_EQ(ttl->abs_ttl / (60 * 1000), 0u);
+   ASSERT_EQ(ttl->ttl_type, ::openmldb::storage::kAbsoluteTime);
+}
+
+TEST_F(SchemaTest, ColumnKey) {
+   ::openmldb::api::TableMeta table_meta;
+   for (int i = 0; i < 10; i++) {
+       auto column_desc = table_meta.add_column_desc();
+       column_desc->set_name("col" + std::to_string(i));
+       column_desc->set_data_type(::openmldb::type::kString);
+       if (i == 6 || i == 7) {
+           column_desc->set_data_type(::openmldb::type::kBigInt);
+       }
+   }
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key1", "col1", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key2", "col1", "col7", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key3", "col2", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+   TableIndex table_index;
+   ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+   auto indexs = table_index.GetAllIndex();
+   ASSERT_EQ(indexs.size(), 3u);
+   auto index = table_index.GetPkIndex();
+   ASSERT_STREQ(index->GetName().c_str(), "key1");
+   auto aa = table_index.GetIndex("key1");
+   AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key1", 6)), "key1", "col1", "col6", 6, 10, 0,
+               ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   auto inner_index = table_index.GetAllInnerIndex();
+   ASSERT_EQ(inner_index->size(), 2u);
+   std::vector<std::string> index0 = {"key1", "key2"};
+   std::vector<uint32_t> ts_vec0 = {6, 7};
+   AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
+   std::vector<std::string> index1 = {"key3"};
+   std::vector<uint32_t> ts_vec1 = {6};
+   AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
+}
+
+TEST_F(SchemaTest, TsAndDefaultTs) {
+   ::openmldb::api::TableMeta table_meta;
+   for (int i = 0; i < 10; i++) {
+       auto column_desc = table_meta.add_column_desc();
+       column_desc->set_name("col" + std::to_string(i));
+       column_desc->set_data_type(::openmldb::type::kString);
+       if (i == 6 || i == 7) {
+           column_desc->set_data_type(::openmldb::type::kBigInt);
+       }
+   }
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key1", "col1", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key2", "col1", "col7", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key3", "col2", "col6", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key4", "col2", "", ::openmldb::type::kAbsoluteTime, 10, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key5", "col3", "", ::openmldb::type::kAbsoluteTime, 10, 0);
+   TableIndex table_index;
+   ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+   auto indexs = table_index.GetAllIndex();
+   ASSERT_EQ(indexs.size(), 5u);
+   auto index = table_index.GetPkIndex();
+   ASSERT_STREQ(index->GetName().c_str(), "key1");
+   auto aa = table_index.GetIndex("key1");
+   AssertIndex(*(table_index.GetIndex("key1")), "key1", "col1", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key1", 6)), "key1", "col1", "col6", 6, 10, 0,
+               ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+               10, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+               10, 0, ::openmldb::storage::kAbsoluteTime);
+   auto inner_index = table_index.GetAllInnerIndex();
+   ASSERT_EQ(inner_index->size(), 3u);
+   std::vector<std::string> index0 = {"key1", "key2"};
+   std::vector<uint32_t> ts_vec0 = {6, 7};
+   AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
+   std::vector<std::string> index1 = {"key3", "key4"};
+   std::vector<uint32_t> ts_vec1 = {6, DEFUALT_TS_COL_ID};
+   AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
+   std::vector<std::string> index2 = {"key5"};
+   std::vector<uint32_t> ts_vec2 = {DEFUALT_TS_COL_ID};
+   AssertInnerIndex(*(table_index.GetInnerIndex(2)), 2, index2, ts_vec2);
+}
+
+TEST_F(SchemaTest, ParseMultiTTL) {
+   ::openmldb::api::TableMeta table_meta;
+   for (int i = 0; i < 10; i++) {
+       auto column_desc = table_meta.add_column_desc();
+       column_desc->set_name("col" + std::to_string(i));
+       column_desc->set_data_type(::openmldb::type::kString);
+       if (i > 6) {
+           column_desc->set_data_type(::openmldb::type::kBigInt);
+       }
+   }
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key1", "col0", "col7", ::openmldb::type::kAbsoluteTime, 100, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key2", "col0", "col8", ::openmldb::type::kLatestTime, 0, 1);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key3", "col1", "col9", ::openmldb::type::kAbsAndLat, 100, 1);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key4", "col2", "col9", ::openmldb::type::kAbsOrLat, 200, 1);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key5", "col3", "col7", ::openmldb::type::kAbsoluteTime, 300, 0);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key6", "col1", "col8", ::openmldb::type::kAbsoluteTime, 0, 1);
+   SchemaCodec::SetIndex(table_meta.add_column_key(), "key7", "col5", "col8", ::openmldb::type::kAbsOrLat, 400, 2);
+   TableIndex table_index;
+   ASSERT_GE(table_index.ParseFromMeta(table_meta), 0);
+   auto indexs = table_index.GetAllIndex();
+   ASSERT_EQ(indexs.size(), 7u);
+   auto index = table_index.GetPkIndex();
+   AssertIndex(*index, "key1", "col0", "col7", 7, 100, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key1")), "key1", "col0", "col7", 7, 100, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key2")), "key2", "col0", "col8", 8, 0, 1, ::openmldb::storage::kLatestTime);
+   AssertIndex(*(table_index.GetIndex("key3")), "key3", "col1", "col9", 9, 100, 1, ::openmldb::storage::kAbsAndLat);
+   AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", "col9", 9, 200, 0, ::openmldb::storage::kAbsOrLat);
+   AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", "col7", 7, 300, 0, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key6")), "key6", "col1", "col8", 8, 0, 1, ::openmldb::storage::kAbsoluteTime);
+   AssertIndex(*(table_index.GetIndex("key7")), "key7", "col5", "col8", 8, 400, 2, ::openmldb::storage::kAbsOrLat);
+   auto inner_index = table_index.GetAllInnerIndex();
+   ASSERT_EQ(inner_index->size(), 5u);
+   std::vector<std::string> index0 = {"key1", "key2"};
+   std::vector<uint32_t> ts_vec0 = {7, 8};
+   AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
+   std::vector<std::string> index1 = {"key3", "key6"};
+   std::vector<uint32_t> ts_vec1 = {9, 8};
+   AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
+   std::vector<std::string> index2 = {"key4"};
+   std::vector<uint32_t> ts_vec2 = {9};
+   AssertInnerIndex(*(table_index.GetInnerIndex(2)), 2, index2, ts_vec2);
+   std::vector<std::string> index3 = {"key5"};
+   std::vector<uint32_t> ts_vec3 = {7};
+   AssertInnerIndex(*(table_index.GetInnerIndex(3)), 3, index3, ts_vec3);
+   std::vector<std::string> index4 = {"key7"};
+   std::vector<uint32_t> ts_vec4 = {8};
+   AssertInnerIndex(*(table_index.GetInnerIndex(4)), 4, index4, ts_vec4);
+   ASSERT_EQ(table_index.GetInnerIndexPos(0), 0);
+   ASSERT_EQ(table_index.GetInnerIndexPos(1), 0);
+   ASSERT_EQ(table_index.GetInnerIndexPos(2), 1);
+   ASSERT_EQ(table_index.GetInnerIndexPos(3), 2);
+   ASSERT_EQ(table_index.GetInnerIndexPos(4), 3);
+   ASSERT_EQ(table_index.GetInnerIndexPos(5), 1);
+   ASSERT_EQ(table_index.GetInnerIndexPos(6), 4);
+}
 
 }  // namespace storage
 }  // namespace openmldb

@@ -41,10 +41,10 @@ static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uin
 }
 
 static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height,
-                                              uint32_t ts_cnt, const vector<int>& is_skiplist_vec) {
+                                              uint32_t ts_cnt, const std::vector<bool>& is_skiplist_vec) {
    uint32_t sumSize = 0;
    for (int i = 0; i < ts_cnt; i++) {
-       if (is_skiplist_vec(i))
+       if (is_skiplist_vec[i])
            sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
                       (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE);
        else

@@ -39,7 +39,7 @@ typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimen
 using ::openmldb::base::Slice;
 
 class Segment;
-//class Ticket;
+class Ticket;
 
 struct DataBlock {
    // dimension count down
@@ -81,58 +81,26 @@ struct TimeComparator {
 };
 
 static const TimeComparator tcmp;
-// 二层数据结构
+
 typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator> SkipListTimeEntries;
 typedef ::openmldb::base::ConcurrentList<uint64_t, DataBlock*, TimeComparator> ListTimeEntries;
 
-template<class T>
-class MemTableIterator : public TableIterator {
-public:
-   explicit MemTableIterator(T* it) : it_(it) {}
-   virtual ~MemTableIterator() {
-       if (it_ != NULL) {
-           delete it_;
-       }
-   }
-   void Seek(const uint64_t time) {
-       if (it_ == NULL) {
-           return;
-       }
-       it_->Seek(time);
-   }
-   bool Valid() {
-       if (it_ == NULL) {
-           return false;
-       }
-       return it_->Valid();
-   }
-   void Next() {
-       if (it_ == NULL) {
-           return;
-       }
-       it_->Next();
-   }
-   openmldb::base::Slice GetValue() {
-       return ::openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
-   }
-   uint64_t GetKey() const {
-       return it_->GetKey();
-   }
-   void SeekToFirst() {
-       if (it_ == NULL) {
-           return;
-       }
-       it_->SeekToFirst();
-   }
-   void SeekToLast() {
-       if (it_ == NULL) {
-           return;
-       }
-       it_->SeekToLast();
-   }
+typedef ::openmldb::base::BaseIterator<uint64_t, DataBlock*> BaseTimeEntriesIterator;
 
-private:
-   T* it_;   //TimeEntries::Iterator* it_;
+class MemTableIterator : public TableIterator {
+ public:
+    explicit MemTableIterator(BaseTimeEntriesIterator* it);
+    virtual ~MemTableIterator();
+    void Seek(const uint64_t time) override;
+    bool Valid() override;
+    void Next() override;
+    openmldb::base::Slice GetValue() const override;
+    uint64_t GetKey() const override;
+    void SeekToFirst() override;
+    void SeekToLast() override;
+
+ private:
+    BaseTimeEntriesIterator* it_;
 };
 
 class KeyEntry {
@@ -183,7 +151,7 @@ public:
 
 class ListKeyEntry : public KeyEntry {
 public:
-   ListKeyEntry() : entries(tcmp) , KeyEntry(){}
+   ListKeyEntry() : KeyEntry(), entries(tcmp) {}
 
    uint64_t Release() {
        uint64_t cnt = 0;
@@ -219,7 +187,7 @@ class Segment {
 public:
    Segment();
    explicit Segment(uint8_t height, bool is_skiplist);
-   Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec);
+   Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, const std::vector<bool> is_skiplist_vec);
    ~Segment();
 
    // Put time data
@@ -259,10 +227,10 @@ public:
    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
                   uint64_t& gc_record_cnt,                                            // NOLINT
                   uint64_t& gc_record_byte_size);                                     // NOLINT
-   template<class T>
-   MemTableIterator<T>* NewIterator(const Slice& key, Ticket& ticket);
-   template<class T>
-   MemTableIterator<T>* NewIterator(const Slice& key, uint32_t idx,
+
+   MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);
+
+   MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
                                     Ticket& ticket);  // NOLINT
    inline uint64_t GetIdxCnt() {
        return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
@@ -357,47 +325,6 @@ private:
    bool is_skiplist_;   // 判断第二层结构是否是跳表
    std::vector<bool> is_skiplist_vec_; // 判断多个ts_cnt_ 中是否是跳表
 };
-
-// Iterator
-template<class T>
-MemTableIterator<T>* Segment::NewIterator(const Slice& key, Ticket& ticket) {
-   if (entries_ == NULL || ts_cnt_ > 1) {
-       return new MemTableIterator<T>(NULL);
-   }
-   void* entry = NULL;
-   if (entries_->Get(key, entry) < 0 || entry == NULL) {
-       return new MemTableIterator<T>(NULL);
-   }
-   if (typeid(T) == typeid(SkipListTimeEntries::Iterator)) {
-       ticket.Push((SkipListKeyEntry*)entry);                                           // NOLINT
-       return new MemTableIterator<T>(((SkipListKeyEntry*)entry)->entries.NewIterator());  // NOLINT
-   } else {
-       ticket.Push((ListKeyEntry*)entry);                                           // NOLINT
-       return new MemTableIterator<T>(((ListKeyEntry*)entry)->entries.NewIterator());  // NOLINT
-   }
-}
-
-template<class T>
-MemTableIterator<T>* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
-   auto pos = ts_idx_map_.find(idx);
-   if (pos == ts_idx_map_.end()) {
-       return new MemTableIterator<T>(NULL);
-   }
-   if (ts_cnt_ == 1) {
-       return NewIterator<T>(key, ticket);
-   }
-   void* entry_arr = NULL;
-   if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
-       return new MemTableIterator<T>(NULL);
-   }
-   if (IsSkipList(pos->second)) {
-       ticket.Push(((SkipListKeyEntry**)entry_arr)[pos->second]);
-       return new MemTableIterator<T>(((SkipListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
-   } else {
-       ticket.Push(((ListKeyEntry**)entry_arr)[pos->second]);
-       return new MemTableIterator<T>(((ListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
-   }
-}
 
 }  // namespace storage
 }  // namespace openmldb

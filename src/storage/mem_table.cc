@@ -102,9 +102,9 @@ bool MemTable::Init() {
        }
        Segment** seg_arr = new Segment*[seg_cnt_];
        const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
+       std::vector<bool> is_skiplist_vec;
        if (!ts_vec.empty()) {
            // 有多个索引列
-           vector<bool> is_skiplist_vec;
            for (auto index : index_vec) {
                if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
                    is_skiplist_vec.push_back(false);
@@ -128,6 +128,7 @@ bool MemTable::Init() {
            }
        }
        segments_[i] = seg_arr;
+       is_skiplist_vec.clear();  // clear !!!!
        key_entry_max_height_ = cur_key_entry_max_height;
    }
    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(), id_, pid_, seg_cnt_);
@@ -470,7 +471,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
    Segment* segment = segments_[real_idx][seg_idx];
    auto ts_col = index_def->GetTsColumn();
    if (ts_col) {
-       return segment->NewIterator(spk, ts_col->GetId(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket);
    }
    return segment->NewIterator(spk, ticket);
 }
@@ -588,6 +589,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
            col_vec.push_back(it->second);
        }
        std::vector<uint32_t> ts_vec;
+       std::vector<bool> is_skiplist_vec;
        if (!column_key.ts_name().empty()) {
            auto ts_iter = schema.find(column_key.ts_name());
            if (ts_iter == schema.end()) {
@@ -600,8 +602,13 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
        }
        uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
        Segment** seg_arr = new Segment*[seg_cnt_];
+       if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
+           is_skiplist_vec.push_back(false);
+       }else {
+           is_skiplist_vec.push_back(true);
+       }
        for (uint32_t j = 0; j < seg_cnt_; j++) {
-           seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+           seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec, is_skiplist_vec);
            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
                  FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
        }
@@ -678,7 +685,10 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
    if (ts_col) {
        ts_idx = ts_col->GetId();
    }
-   return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
+//   if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)
+       return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
+//   else
+//       return new MemTableKeyIterator<SkipListTimeEntries::Iterator>(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
 }
 
 TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
@@ -697,10 +707,18 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
    uint32_t real_idx = index_def->GetInnerPos();
    auto ts_col = index_def->GetTsColumn();
    if (ts_col) {
+//       if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)
        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
-                                           ts_col->GetId());
+                                               ts_col->GetId());
+//       else
+//           return new MemTableTraverseIterator<SkipListTimeEntries::Iterator>(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
+//                                               ts_col->GetId());
    }
+//   if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+//   } else {
+//       return new MemTableTraverseIterator<SkipListTimeEntries::Iterator>(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+//   }
 }
 
 bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {
@@ -783,215 +801,9 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
            }
        }
    }
-
    return true;
 }
 
-MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                                                  ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-                                                  uint64_t expire_cnt, uint32_t ts_index)
-   : segments_(segments),
-     seg_cnt_(seg_cnt),
-     seg_idx_(0),
-     pk_it_(NULL),
-     it_(NULL),
-     record_idx_(0),
-     ts_idx_(0),
-     expire_value_(expire_time, expire_cnt, ttl_type),
-     ticket_(),
-     traverse_cnt_(0) {
-   uint32_t idx = 0;
-   if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
-       ts_idx_ = idx;
-   }
-}
-
-MemTableTraverseIterator::~MemTableTraverseIterator() {
-   if (pk_it_ != NULL) delete pk_it_;
-   if (it_ != NULL) delete it_;
-}
-
-bool MemTableTraverseIterator::Valid() {
-   return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() &&
-          !expire_value_.IsExpired(it_->GetKey(), record_idx_);
-}
-
-void MemTableTraverseIterator::Next() {
-   it_->Next();
-   record_idx_++;
-   traverse_cnt_++;
-   if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-       NextPK();
-       return;
-   }
-}
-uint64_t MemTableTraverseIterator::GetCount() const { return traverse_cnt_; }
-
-void MemTableTraverseIterator::NextPK() {
-   delete it_;
-   it_ = NULL;
-   do {
-       ticket_.Pop();
-       if (pk_it_->Valid()) {
-           pk_it_->Next();
-       }
-       if (!pk_it_->Valid()) {
-           delete pk_it_;
-           pk_it_ = NULL;
-           seg_idx_++;
-           if (seg_idx_ < seg_cnt_) {
-               pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-               pk_it_->SeekToFirst();
-               if (!pk_it_->Valid()) {
-                   continue;
-               }
-           } else {
-               break;
-           }
-       }
-       if (it_ != NULL) {
-           delete it_;
-           it_ = NULL;
-       }
-       if (segments_[seg_idx_]->GetTsCnt() > 1) {
-           KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
-           it_ = entry->entries.NewIterator();
-           ticket_.Push(entry);
-       } else {
-           it_ = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                     ->entries.NewIterator();
-           ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-       }
-       it_->SeekToFirst();
-       record_idx_ = 1;
-       traverse_cnt_++;
-       if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-           break;
-       }
-   } while (it_ == NULL || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
-}
-
-void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
-   if (pk_it_ != NULL) {
-       delete pk_it_;
-       pk_it_ = NULL;
-   }
-   if (it_ != NULL) {
-       delete it_;
-       it_ = NULL;
-   }
-   ticket_.Pop();
-   if (seg_cnt_ > 1) {
-       seg_idx_ = ::openmldb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
-   }
-   Slice spk(key);
-   pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-   pk_it_->Seek(spk);
-   if (pk_it_->Valid()) {
-       if (segments_[seg_idx_]->GetTsCnt() > 1) {
-           KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-           ticket_.Push(entry);
-           it_ = entry->entries.NewIterator();
-       } else {
-           ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-           it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
-                     ->entries.NewIterator();
-       }
-       if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
-           it_->SeekToFirst();
-           traverse_cnt_++;
-           record_idx_ = 1;
-           if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-               NextPK();
-           }
-       } else {
-           if (expire_value_.ttl_type == ::openmldb::storage::TTLType::kLatestTime) {
-               it_->SeekToFirst();
-               record_idx_ = 1;
-               while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
-                   traverse_cnt_++;
-                   if (it_->GetKey() < ts) {
-                       return;
-                   }
-                   it_->Next();
-                   record_idx_++;
-               }
-               NextPK();
-           } else {
-               it_->Seek(ts);
-               traverse_cnt_++;
-               if (it_->Valid() && it_->GetKey() == ts) {
-                   it_->Next();
-               }
-               if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-                   NextPK();
-               }
-           }
-       }
-   } else {
-       NextPK();
-   }
-}
-
-openmldb::base::Slice MemTableTraverseIterator::GetValue() const {
-   return openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
-}
-
-uint64_t MemTableTraverseIterator::GetKey() const {
-   if (it_ != NULL && it_->Valid()) {
-       return it_->GetKey();
-   }
-   return UINT64_MAX;
-}
-
-std::string MemTableTraverseIterator::GetPK() const {
-   if (pk_it_ == NULL) {
-       return std::string();
-   }
-   return pk_it_->GetKey().ToString();
-}
-
-void MemTableTraverseIterator::SeekToFirst() {
-   ticket_.Pop();
-   if (pk_it_ != NULL) {
-       delete pk_it_;
-       pk_it_ = NULL;
-   }
-   if (it_ != NULL) {
-       delete it_;
-       it_ = NULL;
-   }
-   for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
-       pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-       pk_it_->SeekToFirst();
-       while (pk_it_->Valid()) {
-           if (segments_[seg_idx_]->GetTsCnt() > 1) {
-               KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-               ticket_.Push(entry);
-               it_ = entry->entries.NewIterator();
-           } else {
-               ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-               it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
-                         ->entries.NewIterator();
-           }
-           it_->SeekToFirst();
-           traverse_cnt_++;
-           if (it_->Valid() && !expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-               record_idx_ = 1;
-               return;
-           }
-           delete it_;
-           it_ = NULL;
-           pk_it_->Next();
-           ticket_.Pop();
-           if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-               return;
-           }
-       }
-       delete pk_it_;
-       pk_it_ = NULL;
-   }
-}
 
 }  // namespace storage
 }  // namespace openmldb

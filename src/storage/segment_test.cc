@@ -1,17 +1,17 @@
 /*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+* Copyright 2021 4Paradigm
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
  */
 
 #include "storage/segment.h"
@@ -37,7 +37,7 @@ class SegmentTest : public ::testing::Test {
 
 TEST_F(SegmentTest, Size) {
     ASSERT_EQ(16, (int64_t)sizeof(DataBlock));
-    ASSERT_EQ(40, (int64_t)sizeof(KeyEntry));
+    ASSERT_EQ(48, (int64_t)sizeof(KeyEntry));
 }
 
 TEST_F(SegmentTest, DataBlock) {
@@ -52,7 +52,7 @@ TEST_F(SegmentTest, DataBlock) {
 }
 
 TEST_F(SegmentTest, PutAndScan) {
-    Segment segment;
+    Segment segment(12, false);
     Slice pk("test1");
     std::string value = "test0";
     segment.Put(pk, 9527, value.c_str(), value.size());
@@ -74,10 +74,14 @@ TEST_F(SegmentTest, PutAndScan) {
     ASSERT_EQ("test0", result2);
     it->Next();
     ASSERT_TRUE(it->Valid());
+
+    if (!segment.IsSkipList()) {
+        std::cout << "true99999999999999999" << std::endl;
+    }
 }
 
 TEST_F(SegmentTest, Delete) {
-    Segment segment;
+    Segment segment(12, false);
     Slice pk("test1");
     std::string value = "test0";
     segment.Put(pk, 9527, value.c_str(), value.size());
@@ -86,6 +90,7 @@ TEST_F(SegmentTest, Delete) {
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
+    //   if (segment.IsSkipList()) {
     MemTableIterator* it = segment.NewIterator("test1", ticket);
     int size = 0;
     it->SeekToFirst();
@@ -99,6 +104,7 @@ TEST_F(SegmentTest, Delete) {
     it = segment.NewIterator("test1", ticket);
     ASSERT_FALSE(it->Valid());
     delete it;
+
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -118,25 +124,29 @@ TEST_F(SegmentTest, GetCount) {
     segment.Put(pk, 9527, value.c_str(), value.size());
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9529, value.c_str(), value.size());
-    ASSERT_EQ(0, segment.GetCount(pk, count));
+    ASSERT_EQ(0, segment.GetCount(pk, count)); // couunt 等于二级跳表的个数
     ASSERT_EQ(3, (int64_t)count);
-    segment.Put(pk, 9530, value.c_str(), value.size());
+    segment.Put(pk, 9530, value.c_str(), value.size()); // 又插入了一个新的节点
     ASSERT_EQ(0, segment.GetCount(pk, count));
-    ASSERT_EQ(4, (int64_t)count);
+    ASSERT_EQ(4, (int64_t)count);  //
 
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size); // GC 9528
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(2, (int64_t)count);
 
-    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
-    Segment segment1(8, ts_idx_vec);
+    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};  // ts_idx_vec
+    std::vector<bool> vec;
+    vec.push_back(true);
+    vec.push_back(false);
+    vec.push_back(true);
+    Segment segment1(8, ts_idx_vec, vec);
     Slice pk1("pk");
     std::map<int32_t, uint64_t> ts_map;
     for (int i = 0; i < 6; i++) {
-        ts_map.emplace(i, 1100 + i);
+        ts_map.emplace(i, 1100 + i); //{0:1100, 1:1101, 2:1102}
     }
     DataBlock db(1, "test1", 5);
     segment1.Put(pk1, ts_map, &db);
@@ -356,7 +366,11 @@ TEST_F(SegmentTest, TestStat) {
 
 TEST_F(SegmentTest, GetTsIdx) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
-    Segment segment(8, ts_idx_vec);
+    std::vector<bool> vec;
+    vec.push_back(true);
+    vec.push_back(false);
+    vec.push_back(true);
+    Segment segment(8, ts_idx_vec, vec);
     ASSERT_EQ(3, (int64_t)segment.GetTsCnt());
     uint32_t real_idx = UINT32_MAX;
     ASSERT_EQ(-1, segment.GetTsIdx(0, real_idx));

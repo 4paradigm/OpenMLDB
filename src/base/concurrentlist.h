@@ -11,6 +11,31 @@ namespace base {
 constexpr uint16_t MAX_LIST_LEN = 1000;
 
 template <class K, class V>
+class BaseIterator {
+ public:
+    BaseIterator() {}  // NOLINT
+    virtual ~BaseIterator() {}
+//    BaseIterator(const BaseIterator&) = delete;
+//    BaseIterator& operator=(const BaseIterator&) = delete;
+
+    virtual bool Valid() const = 0;
+
+    virtual void Next() = 0;
+
+    virtual const K& GetKey() const = 0;
+
+    virtual V& GetValue() = 0;
+
+    virtual void Seek(const K& k) = 0;
+
+    virtual void SeekToFirst() = 0;
+
+    virtual void SeekToLast() = 0;
+
+    virtual uint32_t GetSize() = 0;
+};
+
+template <class K, class V>
 class ListNode {
  public:
     ListNode(const K& key, V& value)  // NOLINT
@@ -180,7 +205,7 @@ class ConcurrentList {
 
     ListNode<K, V>* GetLast() {
         ListNode<K, V>* tmp = head_;
-        while(tmp->GetNext() != NULL) {
+        while(tmp != NULL && tmp->GetNext() != NULL) {
             tmp = tmp->GetNext();
         }
         return tmp;
@@ -192,12 +217,12 @@ class ConcurrentList {
         }
         return false;
     }
-    class ListIterator {
+    class ListIterator : public BaseIterator<K, V> {
      public:
         ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
-        ~ListIterator() = default;
+        ~ListIterator(){};
 
         ListIterator& operator=(ListIterator&& __iter) noexcept {
             node_ = __iter.node_;

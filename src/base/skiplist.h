@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "base/random.h"
+#include "base/concurrentlist.h"
 
 namespace openmldb {
 namespace base {
@@ -318,7 +319,7 @@ class Skiplist {
         return true;
     }
 
-    class Iterator {
+    class Iterator : public BaseIterator<K, V> {
      public:
         Iterator(Skiplist<K, V, Comparator>* list) : node_(NULL), list_(list) {}  // NOLINT
         ~Iterator() {}
