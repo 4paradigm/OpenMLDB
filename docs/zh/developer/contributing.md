@@ -11,3 +11,5 @@ Please refer to [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/b
 - pr checks，pr中有很多checks，只有`codecov/patch`和`codecov/project`可以不通过，其他checks都应该通过。如果其他checks不通过，而你无法修复或认为不应修复，可以在pr中留下评论。
 
 - pr说明，请在pr的第一个comment中说明pr的意图。我们提供了pr comment模板，你可以不遵守该模板，但也请保证有足够的解释。
+
+- pr files changed，请注意pr的`files changed`。不要包含pr意图以外的代码改动，如果你需要帮助，请在pr中评论。
