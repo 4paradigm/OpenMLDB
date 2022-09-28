@@ -33,7 +33,7 @@ db.ExecContext(ctx, "CREATE TABLE demo(c1 int, c2 string);")
 ### 2.3 Insert Value
 
 ```go
-db.ExecContext(`INSERT INTO demo VALUES (1, "bb"), (2, "bb");`)
+db.ExecContext(ctx, `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`)
 ```
 
 ### 2.4 Query
@@ -78,11 +78,11 @@ func main() {
 
   ctx := context.Background()
 
-  if _, err := db.ExecContext(`CREATE TABLE demo (c1 int, c2 string);`); err != nil {
+  if _, err := db.ExecContext(ctx, `CREATE TABLE demo (c1 int, c2 string);`); err != nil {
     panic(err)
   }
 
-  if _, err := db.ExecContext(`INSERT INTO demo VALUES (1, "bb"), (2, "bb");`); err != nil {
+  if _, err := db.ExecContext(ctx, `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`); err != nil {
     panic(err)
   }
 
