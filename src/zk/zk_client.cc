@@ -20,7 +20,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"

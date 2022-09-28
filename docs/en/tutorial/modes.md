@@ -90,7 +90,7 @@ The offline mode has following main features.
 
 + The feature extraction plan deploying command `DEPLOY` executes in offline mode as well. 
 :::{note}
-The deployment criterion has certain requirements for SQL, see [The Specification and Requirements of OpenMLDB SQL Deployment](https://openmldb.ai/docs/en/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html) for more details. 
+The deployment criterion has certain requirements for SQL, see [The Specification and Requirements of OpenMLDB SQL Deployment](../../reference/sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md) for more details. 
 :::
 The offline mode can be set in following ways:
 

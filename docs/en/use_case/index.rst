@@ -11,3 +11,4 @@ Use Cases
     dolphinscheduler_task_demo
     JD_recommendation_en
     airflow_provider_demo
+    OpenMLDB_Byzer_taxi

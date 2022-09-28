@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.2] - 2022-09-20
+
+### Features
+- Support independently executing the OpenMLDB offline engine without the OpenMLDB deployment (#2423 @tobegit3hub)
+- Support the log setting of ZooKeeper and disable ZooKeeper logs in the diagnostic tool (#2451 @vagetablechicken)
+- Support query parameters of the SQL query APIs (#2277 @qsliu2017)
+- Improve the documents (#2406 @aceforeverd, #2408 #2414 @vagetablechicken, #2410 #2402 #2356 #2374 #2396 #2376 #2419 @michelle-qinqin, #2424 #2418 @dl239, #2455 @lumianph, #2458 @tobegit3hub)
+- Other minor features (#2420 @aceforeverd, #2411 @wuyou10206, #2446 #2452 @vagetablechicken, #2475 @tobegit3hub)
+
+### Bug Fixes
+- Table creation succeeds even if `partitionnum` is set to 0, which should report an error. (#2220 @dl239)
+- There are thread races in aggregators if there are concurrent `puts`. (#2472 @zhanghaohit)
+- The `limit` clause dose not work if it is used with the `where` and `group by` clauses. (#2447 @aceforeverd)
+- The `TaskManager` process will terminate if ZooKeeper disconnects. (#2494 @tobegit3hub)
+- The replica cluster dose not create the database if a database is created in the leader cluster (#2488 @dl239)
+- When there is data in base tables, deployment with long windows still can be executed (which should report an error). (#2501 @zhanghaohit)
+- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 @dl239, #2466 @vagetablechicken)
+
+### Code Refactoring
+#2413 @dl239, #2470 #2467 #2468 @vagetablechicken
+
 ## [0.6.1] - 2022-08-30
 
 ### Features
@@ -325,6 +346,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.2...v0.5.3

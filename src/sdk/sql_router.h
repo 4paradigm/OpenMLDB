@@ -43,6 +43,10 @@ struct BasicRouterOptions {
     uint32_t max_sql_cache_size = 10;
     // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
+    // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
+    int glog_level = 0;
+    // empty means to stderr
+    std::string glog_dir = "";
 };
 
 struct SQLRouterOptions : BasicRouterOptions {

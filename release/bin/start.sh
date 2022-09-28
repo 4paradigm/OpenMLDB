@@ -18,8 +18,6 @@ set -e
 
 ulimit -c unlimited
 ulimit -n 655360
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -31,6 +29,8 @@ fi
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 RED='\E[1;31m'
 RES='\E[0m'
 
@@ -72,7 +72,7 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true > /dev/null 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >>  "$LOG_DIR"."$COMPONENT".log 2>&1 &
             PID=$!
             sleep 3
             ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
@@ -126,7 +126,7 @@ case $OP in
         shift
         cd "$CURDIR" || exit 1
         sh "$0" stop "${@}"
-        sleep 10
+        sleep 15
         sh "$0" start "${@}"
         ;;
     *)
