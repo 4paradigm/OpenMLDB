@@ -27,7 +27,7 @@ ls airflow_demo_files
 For the newest version, please visit [GitHub example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags).
 
 
-#### 0.2 启动镜像
+#### 0.2 Start the Docker Image
 
 - It is recommended to install and start the OpenMLDB image and the Airflow in Docker. 
 - The port of the container needs to be exposed for the Airflow Web login.
@@ -51,7 +51,7 @@ cp /work/talkingdata/train_sample.csv /tmp/
 ```
 
 ### 1 Start the OpenMLDB and the Airflow
-The following commands will start the OpenMLDB cluster, the predict_server supporting deployment and test, and the standalone Airflow.
+The following commands will start the OpenMLDB cluster. The `predict_server` supports deployment and test, and the standalone Airflow.
 
 ```
 /work/init.sh
@@ -61,7 +61,7 @@ cd /work/airflow
 airflow standalone
 ```
 
-The username and the password for the Airflow standalone is shown in the picture below.
+The username and the password for the Airflow standalone are shown in the picture below.
 
 ![airflow login](images/airflow_login.png)
 
@@ -76,7 +76,7 @@ You can quit the Airflow after the DAG is finished then go for [Step 3](#3-test)
 Open the DAG example_openmldb_complex in the Airflow Web and click the `Code` to check the detail of the DAG.
 ![dag home](images/dag_home.png)
 
-You can see the `openmldb_conn_id` which is used in `Code`. The DAG doesn't use the address of OpenMLDB but use the connection. We need to create a new connection and name it the same. 
+You can see the `openmldb_conn_id` that is used in `Code`. The DAG doesn't use the address of OpenMLDB but use the connection. We need to create a new connection and name it the same. 
 ![dag code](images/dag_code.png)
 
 #### 2.1 Create the Connection 
@@ -102,12 +102,12 @@ A successful run should look like the following figure.
 
 If you run the Airflow foreground, you can quit the Airflow as the subsequent procedures do not depend on it.
 #### 3.1 Import the Online Data
-Although the DAG has deployed the SQL and the model, there is no data in the online storage. 
-Run the following command to import the online data.
+Although the DAG has deployed the SQL and the model, there is no data in the online database. 
+You should run the following command to import the online data.
 ```
 curl -X POST http://127.0.0.1:9080/dbs/example_db -d'{"mode":"online", "sql":"load data infile \"file:///tmp/train_sample.csv\" into table example_table options(mode=\"append\");"}'
 ```
-This is an asynchronous operation, but it won't take too much time because the dataset is small.
+This is an asynchronous operation, but it won't take too long because of the small data size.
 If you want to check the execution state of the command, please use `SHOW JOBS`.
 ```
 curl -X POST http://127.0.0.1:9080/dbs/example_db -d'{"mode":"online", "sql":"show jobs"}'
