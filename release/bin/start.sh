@@ -18,8 +18,6 @@ set -e
 
 ulimit -c unlimited
 ulimit -n 655360
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -28,6 +26,9 @@ if [ $# -lt 2 ]; then
   echo "component: $COMPONENTS"
   exit 1
 fi
+cd "$(dirname "$0")"/../ || exit 1
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
