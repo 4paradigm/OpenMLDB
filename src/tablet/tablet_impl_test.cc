@@ -3576,7 +3576,7 @@ TEST_P(TabletImplTest, AbsAndLat) {
         ::openmldb::api::TraverseResponse srp;
         tablet.Traverse(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(100, (signed)srp.count());
+        ASSERT_EQ(80, (signed)srp.count());
     }
     // ts3 has 30 expire
     {
