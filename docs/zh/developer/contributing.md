@@ -12,4 +12,11 @@ Please refer to [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/b
 
 - pr说明，请在pr的第一个comment中说明pr的意图。我们提供了pr comment模板，你可以不遵守该模板，但也请保证有足够的解释。
 
-- pr files changed，请注意pr的`files changed`。不要包含pr意图以外的代码改动，如果你需要帮助，请在pr中评论。
+- pr files changed，请注意pr的`files changed`。不要包含pr意图以外的代码改动。基本可以通过`git merge origin/main`再`git push`到pr分支，来消除多余diff。如果你需要帮助，请在pr中评论。
+```{note}
+如果你不是在main分支的基础上修改代码，那么pr希望合入main分支时，`files changed`就会包含多余代码。比如，main分支已经是commit10，你从old main的commit9开始，增加了new_commit1，在new_commit1的基础上，增加new_commit2，实际上你只是想提交new_commit2，但pr中会包含new_commit1和new_commit2。
+这种情况，只需要`git merge origin/main`，再`git push`到pr分支，就可以只有改动部分。
+```
+```{seealso}
+如果你希望分支的代码更加clean，可以不用`git merge`，而是使用`git rebase -i origin/main`，它会将你的更改在main分支的基础上逐一增加。但它会改变commit，你需要`git push -f`来覆盖分支。
+```
