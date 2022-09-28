@@ -689,9 +689,9 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
     int32_t str_length = 0;
     {
         ar.Member("data");
-        int size;
+        size_t size;
         ar.StartArray(&size);  // start first iter "data"
-        if (size != schema.size()) return ar;
+        if (static_cast<int>(size) != schema.size()) return ar;
 
         for (auto col = schema.begin(); col != schema.end(); col++) {
             if (col->type() == ::hybridse::type::kVarchar) {
