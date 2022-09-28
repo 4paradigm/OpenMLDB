@@ -877,7 +877,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
     ::testing::InitGoogleTest(&argc, argv);
-    
+
     srand(time(NULL));
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
