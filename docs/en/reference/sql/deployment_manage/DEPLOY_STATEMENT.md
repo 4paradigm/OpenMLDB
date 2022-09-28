@@ -19,6 +19,7 @@ DeploymentName
 Please refer to [DEPLOYMENT Property DeployOptions (optional)](#deployoptions-optional) for the definition of `DeployOptions`.
 Please refer to [Select Statement](../dql/SELECT_STATEMENT.md) for the definition of `SelectStmt`.
 
+
 The `DEPLOY` statement is used to deploy SQL online. OpenMLDB supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md), and the SQL script should meet the requirements in [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
 
 
