@@ -94,7 +94,7 @@ void SetupLog() {
     } else {
         ::openmldb::base::SetLogLevel(INFO);
     }
-    ::openmldb::base::SetupGLog();
+    ::openmldb::base::SetupGlog();
 }
 
 void GetRealEndpoint(std::string* real_endpoint) {
