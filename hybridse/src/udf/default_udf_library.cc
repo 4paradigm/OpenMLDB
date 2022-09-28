@@ -585,6 +585,27 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.6.0)");
 
+    RegisterExternal("unhex")
+        .args<StringRef>(reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::unhex)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"(
+            @brief Convert hexadecimal to binary string.
+
+            Example:
+
+            @code{.sql}
+                select unhex("537061726B2053514C");
+                --output "Spark SQL"
+
+                select unhex("7B");
+                --output "{"
+
+                select unhex("zfk");
+                --output NULL
+            @endcode
+            @since 0.7.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
