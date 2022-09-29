@@ -26,7 +26,7 @@ namespace openmldb {
 namespace storage {
 
 class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
-public:
+ public:
     MemTableWindowIterator(BaseTimeEntriesIterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                            uint64_t expire_cnt)
         : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
@@ -47,7 +47,7 @@ public:
 
     bool IsSeekable() const override { return true; }
 
-private:
+ private:
     BaseTimeEntriesIterator* it_;
     uint32_t record_idx_;
     TTLSt expire_value_;
@@ -55,7 +55,7 @@ private:
 };
 
 class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
-public:
+ public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
                         uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
 
@@ -74,10 +74,10 @@ public:
 
     const hybridse::codec::Row GetKey() override;
 
-private:
+ private:
     void NextPK();
 
-private:
+ private:
     Segment** segments_;
     uint32_t const seg_cnt_;
     uint32_t seg_idx_;
