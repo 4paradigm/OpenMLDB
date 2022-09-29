@@ -327,9 +327,7 @@ TEST_F(ArithmeticIRBuilderTest, TestIntDivNull) {
     BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
                               Nullable<int64_t>>(nullptr, 1, nullptr,
                                                  ::hybridse::node::kFnOpDiv);
-    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
-                              Nullable<int64_t>>(10, 0L, nullptr,
-                                                 ::hybridse::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<int64_t, int64_t, Nullable<int64_t>>(10, 0L, nullptr, ::hybridse::node::kFnOpDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestFdivNull) {
     BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
