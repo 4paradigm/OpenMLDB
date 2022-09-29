@@ -32,6 +32,27 @@ Usage: ./data_exporter [--delimiter=<delimiter>] --db_name=<dbName>
 - `--table_name=<tableName>`: 表名。表名必须是存在的，如果不存在则报错：表不存在。
 - `--config_path=<configPath]`: OpenMLDB远程机器的配置文件，文件格式是yaml。
 
+### 2.3 配置文件用例：
+
+     mode: cluster
+     zookeeper:
+         zk_cluster: 172.17.0.2:2181
+         zk_root_path: /openmldb
+     nameserver:
+     - 
+         endpoint: 172.17.0.2:6527
+         path: /work/ns1
+     - 
+         endpoint: 172.17.0.2:6528
+         path: /work/ns2
+     tablet:
+     - 
+         endpoint: 172.17.0.2:10921
+         path: /work/openmldb
+     - 
+         endpoint: 172.17.0.2:10922
+         path: /work/openmldb
+
 ## 3. 错误处理
 
 如果数据导出失败，可以根据Glog的错误信息来判断错误原因。

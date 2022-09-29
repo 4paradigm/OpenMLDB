@@ -32,6 +32,27 @@ Descriptions of the important configurations:
 - `--table_name=<tableName>`: table name. The table must exist in the selected database, otherwise would return an error message: table not found.
 - `--config_path=<configPath]`: configuration file of the distrubution of OpenMLDB. The format of this file is yaml.
 
+### 2.3 Example of the Config File:
+
+     mode: cluster
+     zookeeper:
+         zk_cluster: 172.17.0.2:2181
+         zk_root_path: /openmldb
+     nameserver:
+     - 
+         endpoint: 172.17.0.2:6527
+         path: /work/ns1
+     - 
+         endpoint: 172.17.0.2:6528
+         path: /work/ns2
+     tablet:
+     - 
+         endpoint: 172.17.0.2:10921
+         path: /work/openmldb
+     - 
+         endpoint: 172.17.0.2:10922
+         path: /work/openmldb
+
 ## 3. Error Handling
 
 If data export fails, Glog would print possible causes of the errors.
