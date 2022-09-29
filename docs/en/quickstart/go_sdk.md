@@ -1,5 +1,9 @@
 # Go SDK Quickstart
 
+**Requirements**:
+- OpenMLDB Version >= 0.7.0
+- API server component is running
+
 ## 1. Install the Go SDK Package
 
 ```bash
@@ -19,7 +23,7 @@ db, err := sql.Open("openmldb", "openmldb://127.0.0.1:8080/test_db")
 The DSN schema is
 
 ```
-openmldb://HOST[:PORT]/DB_NAME
+openmldb://API_SERVER_HOST[:API_SERVER_PORT]/DB_NAME
 ```
 
 Note that an existed database is required.
