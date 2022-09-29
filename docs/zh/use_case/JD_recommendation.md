@@ -13,7 +13,7 @@ OneFlow工具依赖GPU的强大算力，所以请确保部署机器具备Nvidia 
 使用一下指令安装OneFlow：
 ```bash
 conda activate oneflow
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/support_oneembedding_serving/cu102
+python3 -m pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
 ```
 还需要安装以下Python工具包：
 ```bash
@@ -25,8 +25,8 @@ docker pull oneflowinc/oneflow-serving:nightly
 ```
 ```{note}
 注意，此处安装的为Oneflow nightly版本，此教程验证的版本commit如下：
-oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
-oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 ```
 
 ### 1.2 拉取和启动 OpenMLDB Docker 镜像

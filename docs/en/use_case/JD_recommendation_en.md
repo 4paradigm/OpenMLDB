@@ -14,7 +14,7 @@ OneFlow framework leverage on the great computational power from GPU. Therefore 
 Install OneFlow with the following commands：
 ```bash
 conda activate oneflow
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/support_oneembedding_serving/cu102
+python3 -m pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
 ```
 In addition, following Python packages need to be installed:
 ```bash
@@ -25,9 +25,9 @@ pip install psutil petastorm pandas sklearn
 docker pull oneflowinc/oneflow-serving:nightly
 ```
 ```{note}
-Note that we install Oneflow nightly version. The versions tested in this guide are as follows:
-oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
-oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+Note that we are installing Oneflow nightly versions here. The versions tested in this guide are as follows:
+Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 ```
 
 
