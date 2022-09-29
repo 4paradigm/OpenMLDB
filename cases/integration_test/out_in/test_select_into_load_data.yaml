@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["load data转义字符-csv-在线","load data转义字符-csv-离线","load data转义字符-parquet-在线","load data转义字符-parquet-离线"]
+debugs: ["数据里有null、空串、特殊字符,quote='#'"]
 cases:
   -
     id: 0-1
@@ -29,7 +29,7 @@ cases:
           - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
           - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
           - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
-          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@$%^#&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
         indexs: ["index1:c1:c7"]
@@ -47,7 +47,7 @@ cases:
       columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
         - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
         - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
         - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
