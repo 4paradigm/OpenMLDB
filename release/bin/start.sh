@@ -18,6 +18,8 @@ set -e
 
 ulimit -c unlimited
 ulimit -n 655360
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -29,8 +31,6 @@ fi
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
 RED='\E[1;31m'
 RES='\E[0m'
 
@@ -79,7 +79,9 @@ case $OP in
             COUNT=1
             while [ $COUNT -lt 12 ]
             do
-                if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
+                if ! curl "http://$ENDPOINT/status" > /tmp/server_status.log 2>&1; then
+                    echo "curl server status failed on $(</tmp/server_status.log)" 
+                    echo "retry"
                     sleep 1
                     (( COUNT+=1 ))
                 elif kill -0 "$PID" > /dev/null 2>&1; then
@@ -90,6 +92,8 @@ case $OP in
                     break
                 fi
             done
+            rm -f  /tmp/server_status.log
+            echo "no more try"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
