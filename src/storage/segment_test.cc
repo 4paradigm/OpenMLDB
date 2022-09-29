@@ -123,20 +123,20 @@ TEST_F(SegmentTest, GetCount) {
     segment.Put(pk, 9527, value.c_str(), value.size());
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9529, value.c_str(), value.size());
-    ASSERT_EQ(0, segment.GetCount(pk, count)); // couunt 等于二级跳表的个数
+    ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(3, (int64_t)count);
-    segment.Put(pk, 9530, value.c_str(), value.size()); // 又插入了一个新的节点
+    segment.Put(pk, 9530, value.c_str(), value.size());
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(4, (int64_t)count);  //
 
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size); // GC 9528
+    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(2, (int64_t)count);
 
-    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};  // ts_idx_vec
+    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     std::vector<bool> vec;
     vec.push_back(true);
     vec.push_back(false);
@@ -145,7 +145,7 @@ TEST_F(SegmentTest, GetCount) {
     Slice pk1("pk");
     std::map<int32_t, uint64_t> ts_map;
     for (int i = 0; i < 6; i++) {
-        ts_map.emplace(i, 1100 + i); //{0:1100, 1:1101, 2:1102}
+        ts_map.emplace(i, 1100 + i);
     }
     DataBlock db(1, "test1", 5);
     segment1.Put(pk1, ts_map, &db);

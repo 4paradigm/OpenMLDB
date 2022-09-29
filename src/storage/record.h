@@ -1,18 +1,18 @@
 /*
-* Copyright 2021 4Paradigm
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
@@ -23,12 +23,12 @@ namespace openmldb {
 namespace storage {
 
 static const uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
-static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);   // KeyEntry 和 SkipListKeyEntry 大小一样这里可以先不动
-static const uint32_t LIST_KEY_ENTRY_BYTE_SIZE = sizeof(ListKeyEntry);  // 这样可能有些不准 listkeyentr继承了一些没用到的
+static const uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
+static const uint32_t LIST_KEY_ENTRY_BYTE_SIZE = sizeof(ListKeyEntry);
 static const uint32_t ENTRY_NODE_SIZE = sizeof(::openmldb::base::Node<::openmldb::base::Slice, void*>);
 static const uint32_t DATA_NODE_SIZE = sizeof(::openmldb::base::Node<uint64_t, void*>);
-static const uint32_t LIST_DATA_NODE_SIZE = sizeof(::openmldb::base::ListNode<uint64_t, void*>);  // list 节点尺寸
-static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);  // 指针大小都一样
+static const uint32_t LIST_DATA_NODE_SIZE = sizeof(::openmldb::base::ListNode<uint64_t, void*>);
+static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
 
 static inline uint32_t GetRecordSize(uint32_t value_size) { return value_size + DATA_BLOCK_BYTE_SIZE; }
 

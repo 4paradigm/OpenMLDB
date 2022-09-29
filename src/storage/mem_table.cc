@@ -81,61 +81,61 @@ MemTable::~MemTable() {
 }
 
 bool MemTable::Init() {
-   key_entry_max_height_ = FLAGS_key_entry_max_height;
-   if (!InitFromMeta()) {
-       return false;
-   }
-   if (table_meta_->seg_cnt() > 0) {
-       seg_cnt_ = table_meta_->seg_cnt();
-   }
-   uint32_t global_key_entry_max_height = 0;
-   if (table_meta_->has_key_entry_max_height() && table_meta_->key_entry_max_height() <= FLAGS_skiplist_max_height &&
-       table_meta_->key_entry_max_height() > 0) {
-       global_key_entry_max_height = table_meta_->key_entry_max_height();
-   }
-   auto inner_indexs = table_index_.GetAllInnerIndex();
-   for (uint32_t i = 0; i < inner_indexs->size(); i++) {
-       const std::vector<uint32_t>& ts_vec = inner_indexs->at(i)->GetTsIdx();
-       uint32_t cur_key_entry_max_height = 0;
-       if (global_key_entry_max_height > 0) {
-           cur_key_entry_max_height = global_key_entry_max_height;
-       } else {
-           cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
+    key_entry_max_height_ = FLAGS_key_entry_max_height;
+    if (!InitFromMeta()) {
+        return false;
+    }
+    if (table_meta_->seg_cnt() > 0) {
+        seg_cnt_ = table_meta_->seg_cnt();
+    }
+    uint32_t global_key_entry_max_height = 0;
+    if (table_meta_->has_key_entry_max_height() && table_meta_->key_entry_max_height() <= FLAGS_skiplist_max_height &&
+        table_meta_->key_entry_max_height() > 0) {
+        global_key_entry_max_height = table_meta_->key_entry_max_height();
+    }
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    for (uint32_t i = 0; i < inner_indexs->size(); i++) {
+        const std::vector<uint32_t>& ts_vec = inner_indexs->at(i)->GetTsIdx();
+        uint32_t cur_key_entry_max_height = 0;
+        if (global_key_entry_max_height > 0) {
+            cur_key_entry_max_height = global_key_entry_max_height;
+        } else {
+            cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
                                                                                 FLAGS_latest_default_skiplist_height);
-       }
-       Segment** seg_arr = new Segment*[seg_cnt_];
-       const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
-       std::vector<bool> is_skiplist_vec;
-       if (!ts_vec.empty()) {
-           // 有多个索引列
-           for (auto index : index_vec) {
-               if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
-                   is_skiplist_vec.push_back(false);
-               }else {
-                   is_skiplist_vec.push_back(true);
-               }
-           }
-           for (uint32_t j = 0; j < seg_cnt_; j++) {
-               seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec, is_skiplist_vec);
-               PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", i, j,
-                     cur_key_entry_max_height, ts_vec.size(), id_, pid_);
-           }
-       } else {
-           // 只有一个索引列
-           for (uint32_t j = 0; j < seg_cnt_; j++) {
-               if (index_vec.at(0)->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)  // ts为1 只有一个索引列
-                   seg_arr[j] = new Segment(cur_key_entry_max_height, false);
-               else
-                   seg_arr[j] = new Segment(cur_key_entry_max_height, true);
-               PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", i, j, cur_key_entry_max_height, id_, pid_);
-           }
-       }
-       segments_[i] = seg_arr;
-       is_skiplist_vec.clear();  // clear !!!!
-       key_entry_max_height_ = cur_key_entry_max_height;
-   }
-   PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(), id_, pid_, seg_cnt_);
-   return true;
+        }
+        Segment** seg_arr = new Segment*[seg_cnt_];
+        const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
+        std::vector<bool> is_skiplist_vec;
+        if (!ts_vec.empty()) {
+            // 有多个索引列
+            for (auto index : index_vec) {
+                if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
+                    is_skiplist_vec.push_back(false);
+                }else {
+                    is_skiplist_vec.push_back(true);
+                }
+            }
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec, is_skiplist_vec);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", i, j,
+                      cur_key_entry_max_height, ts_vec.size(), id_, pid_);
+            }
+        } else {
+            // 只有一个索引列
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
+                if (index_vec.at(0)->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)  // ts为1 只有一个索引列
+                    seg_arr[j] = new Segment(cur_key_entry_max_height, false);
+                else
+                    seg_arr[j] = new Segment(cur_key_entry_max_height, true);
+                PDLOG(INFO, "init %u, %u segment. height %u tid %u pid %u", i, j, cur_key_entry_max_height, id_, pid_);
+            }
+        }
+        segments_[i] = seg_arr;
+        is_skiplist_vec.clear();  // clear !!!!
+        key_entry_max_height_ = cur_key_entry_max_height;
+    }
+    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(), id_, pid_, seg_cnt_);
+    return true;
 }
 
 void MemTable::SetCompressType(::openmldb::type::CompressType compress_type) { compress_type_ = compress_type; }
@@ -474,7 +474,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-         return segment->NewIterator(spk, ts_col->GetId(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket);
     }
     return segment->NewIterator(spk, ticket);
 }
@@ -708,9 +708,9 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
         return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
-                                               ts_col->GetId());
-   }
-   return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+                                            ts_col->GetId());
+    }
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
 }
 
 bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {
@@ -759,7 +759,7 @@ bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) 
 
 bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                         const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes) {
-   // data_block[i] is the block which id == i
+    // data_block[i] is the block which id == i
     for (int i = 0; i < indexes.size(); ++i) {
         const auto& inner_index = indexes.Get(i);
         auto real_idx = inner_index.inner_index_id();
@@ -788,10 +788,10 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                                 << time_entry.block_id();
                         block->dim_cnt_down++;
                         segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
-                   }
-               }
-           }
-       }
+                    }
+                }
+            }
+        }
     }
     return true;
 }
@@ -1026,7 +1026,7 @@ void MemTableTraverseIterator::SeekToFirst() {
             delete it_; // 如果it 无效或过期 释放内存
             it_ = NULL;
             pk_it_->Next();
-            ticket_.Pop(); // pop
+            ticket_.Pop();
             if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 return;
             }

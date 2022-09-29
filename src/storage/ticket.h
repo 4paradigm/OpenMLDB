@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "storage/segment.h"
-#include "base/concurrentlist.h"
 
 namespace openmldb {
 namespace storage {

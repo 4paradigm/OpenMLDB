@@ -234,9 +234,9 @@ TEST_F(SchemaTest, TsAndDefaultTs) {
     AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
-                10, 0, ::openmldb::storage::kAbsoluteTime);
+            10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
-                10, 0, ::openmldb::storage::kAbsoluteTime);
+            10, 0, ::openmldb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
     ASSERT_EQ(inner_index->size(), 3u);
     std::vector<std::string> index0 = {"key1", "key2"};

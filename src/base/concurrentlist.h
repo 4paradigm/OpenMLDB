@@ -220,7 +220,7 @@ class ConcurrentList {
         explicit ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
-        ~ListIterator() {};
+        ~ListIterator() {}
 
         ListIterator& operator=(ListIterator&& __iter) noexcept {
             node_ = __iter.node_;

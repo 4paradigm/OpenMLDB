@@ -108,7 +108,7 @@ class KeyEntry {
     KeyEntry(): refs_(0), count_(0), entries(12, 4, tcmp){}
     KeyEntry(uint8_t height): refs_(0), count_(0), entries(height, 4, tcmp){}
     virtual ~KeyEntry() {}
-    virtual uint64_t Release() {}
+    virtual uint64_t Release() = 0;
 
     void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
 

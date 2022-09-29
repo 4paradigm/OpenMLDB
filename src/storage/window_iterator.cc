@@ -160,7 +160,7 @@ std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
 
 const hybridse::codec::Row MemTableKeyIterator::GetKey() {
     return hybridse::codec::Row(
-        ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
+            ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
 }
 
 void MemTableKeyIterator::NextPK() {
