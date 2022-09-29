@@ -69,7 +69,7 @@ TEST_F(GlogWrapperTest, ProtectedSetGlog) {
     // haven't write log
     ASSERT_TRUE(fs::is_empty(log_path));
     FLAGS_openmldb_log_dir = "";
-    SetupGLog(); // won't work, still write to log_path
+    SetupGLog();  // won't work, still write to log_path
     LOG(INFO) << "test";
     ASSERT_TRUE(fs::exists(log_path) && fs::is_directory(log_path));
     fs::remove_all(log_path);
