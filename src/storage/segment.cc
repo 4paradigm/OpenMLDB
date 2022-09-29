@@ -475,12 +475,14 @@ void Segment::FreeTsEntry(::openmldb::base::Node<uint64_t, DataBlock*>* ts_entry
     if (ts_entry_node == NULL) {
         return;
     }
+    gc_idx_cnt++;
     if (ts_entry_node->GetValue()->dim_cnt_down <= 1) {
+        gc_record_byte_size += GetRecordSize(ts_entry_node->GetValue()->size);
         delete ts_entry_node->GetValue();
+        gc_record_cnt++;
     } else {
         ts_entry_node->GetValue()->dim_cnt_down--;
     }
-    // TODO(XLC-2): record statistics.
 }
 
 void Segment::GcTsEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,

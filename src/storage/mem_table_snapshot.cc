@@ -303,7 +303,8 @@ uint64_t MemTableSnapshot::CollectDeletedKey(std::shared_ptr<Table> table, uint6
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u",
+                        cur_offset + 1, entry.log_index(), tid_, pid_);
                 continue;
             }
             cur_offset = entry.log_index();
@@ -313,8 +314,9 @@ uint64_t MemTableSnapshot::CollectDeletedKey(std::shared_ptr<Table> table, uint6
                     continue;
                 }
                 uint32_t ts_index = UINT32_MAX;
+                ::openmldb::type::DataType type;
                 for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index) ? 
+                    bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index, &type) ?
                                   false : true;
                     std::string combine_key = entry.dimensions(pos).key() + "|" +
                                                std::to_string(entry.dimensions(pos).idx());
@@ -425,7 +427,8 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u",
+                        cur_offset + 1, entry.log_index(), tid_, pid_);
                 continue;
             }
             cur_offset = entry.log_index();
@@ -538,15 +541,15 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
     } else {
         uint32_t ts_index = UINT32_MAX;
         std::set<int> deleted_pos_set;
-        std::string ts = "";
+        int64_t ts = 0;
+        ::openmldb::type::DataType type;
         openmldb::base::Slice data;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-            bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index) ? false : true;
+            bool use_ts = table->GetIndex(entry.dimensions(pos).idx())->GetTsColumnIdx(&ts_index, &type) ? false : true;
             std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
             std::string combined_key_ts = "";
             if (!use_ts) {
                 std::string buff;
-                openmldb::base::Slice data;
                 if (table->GetCompressType() == openmldb::type::kSnappy) {
                     snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
                     data.reset(buff.data(), buff.size());
@@ -555,19 +558,14 @@ int MemTableSnapshot::RemoveDeletedKey(std::shared_ptr<Table> table, const ::ope
                 }
                 const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
                 uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
-                std::vector<std::string> value_vec;
-                std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
-                if (schema == nullptr) {
-                    LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
+                auto decoder = table->GetVersionDecoder(version);
+                if (decoder == nullptr) {
+                    DLOG(WARNING) << "invalid schema version " << static_cast<uint32_t>(version);
                     return 0;
                 }
-                // TODO(XLC-2): decode only required properties.
-                bool ok = openmldb::codec::RowCodec::DecodeRowTs(*schema, data, ts_index, ts);
-                if (!ok) {
-                    DLOG(WARNING) << "decode data error";
-                    return 0;
+                if (decoder->GetInteger(raw, ts_index, type, &ts) == 0) {
+                    combined_key_ts = combined_key + "|" + std::to_string(ts);
                 }
-                combined_key_ts = combined_key + "|" + ts;
             } else if (entry.has_ts()) {
                 combined_key_ts = combined_key + "|" + std::to_string(entry.ts());
             }

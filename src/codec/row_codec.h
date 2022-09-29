@@ -160,14 +160,6 @@ class RowCodec {
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
-    static bool DecodeRowTs(const Schema& schema,                   // NOLINT
-                            const ::openmldb::base::Slice& value,   // NOLINT
-                            uint32_t pos,                           // NOLINT
-                            std::string& ts) {                      // NOLINT
-        openmldb::codec::RowView rv(schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())), value.size());
-        return DecodeRowTs(schema, rv, pos, ts);
-    }
-
     static bool DecodeRow(const Schema& schema,
                           openmldb::codec::RowView& rv,  // NOLINT
                           bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec) {
@@ -186,20 +178,6 @@ class RowCodec {
                 col = EMPTY_STRING;
             }
             value_vec->emplace_back(std::move(col));
-        }
-        return true;
-    }
-
-    static bool DecodeRowTs(const Schema& schema,           // NOLINT
-                            openmldb::codec::RowView& rv,   // NOLINT
-                            uint32_t pos, std::string& ts) {// NOLINT
-        if ((uint32_t)schema.size() <= pos) {
-            return false;
-        }
-        rv.GetStrValue(pos, &ts);
-        if (ts.empty()) {
-            LOG(WARNING) << "get a empty ts";
-            return false;
         }
         return true;
     }
