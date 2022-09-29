@@ -26,7 +26,6 @@ import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
@@ -41,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 
-@Ignore
 public class SQLRouterSmokeTest {
     public static SqlExecutor clusterExecutor;
     public static SqlExecutor standaloneExecutor;
