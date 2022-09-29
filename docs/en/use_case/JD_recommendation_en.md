@@ -25,7 +25,7 @@ pip install psutil petastorm pandas sklearn
 docker pull oneflowinc/oneflow-serving:nightly
 ```
 ```{note}
-注意，此处安装的为Oneflow nightly版本，此教程验证的版本commit如下：
+Note that we install Oneflow nightly version. The versions tested in this guide are as follows:
 oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
 oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 ```
@@ -239,11 +239,13 @@ cd $demodir/openmldb_process/
 sh process_JD_out_full.sh $demodir/out/1
 ```
 The generated dataset will be placed at `$demodir/openmldb_process/out`. After generating parquet dataset, dataset information will also be printed. It contains the information about the number of samples and table size array, which is needed when training.
->train samples = 11073
->val samples = 1351
->test samples = 1492
->table size array:
->4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
+train samples = 11073
+val samples = 1351
+test samples = 1492
+table size array:
+4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
 
 ### 2.4 Launch OneFlow for Model Training
 ```{note}
@@ -433,7 +435,7 @@ Note that the cluster version `LOAD  DATA` is a non-blocking task. You can use t
 #### 3.3.1 Check Model Path (`$demodir/oneflow_process/model`)
 Check if model files are correctly organized and saved as shown below:
 ```
-$ tree  -L 3 model/
+$ tree  -L 5 model/
 model/
 └── embedding
     ├── 1
@@ -478,9 +480,10 @@ model/
     │       ├── module.embedding_layer.one_embedding.shadow
     │       │   ├── meta
     │       │   └── out
-    │       ├── one_embedding_options.json
+    │       └── one_embedding_options.json
     └── config.pbtxt
  ```   
+
 #### 3.3.2 Check `config.pbtxt` configurations.
 ```
 name: "embedding"
@@ -564,11 +567,13 @@ docker run --runtime=nvidia --rm --network=host \
   --model-repository=/models --backend-directory=/backends'
 ```
 If sucessful, the output will look like the following:
->...
->I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
->I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
->I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
+'''
+...
+I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
+I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
+I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
 
+'''
 
 #### 3.4.2 Start OpenMLDB Serving
 ```{note}

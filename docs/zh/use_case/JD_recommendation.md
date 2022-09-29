@@ -235,11 +235,13 @@ cd $demodir/openmldb_process/
 sh process_JD_out_full.sh $demodir/out/1
 ```
 对应生成parquet数据集将生成在 `$demodir/openmldb_process/out`。数据信息将被打印如下，该信息将被输入为训练的配置文件。
->train samples = 11073
->val samples = 1351
->test samples = 1492
->table size array:
->4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
+train samples = 11073
+val samples = 1351
+test samples = 1492
+table size array:
+4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
 
 ### 2.4 启动OneFlow进行模型训练
 ```{note}
@@ -426,7 +428,7 @@ show deployment demo;
 ### 3.3 配置OneFlow推理服务
 #### 3.3.1 检查模型路径（`$demodir/oneflow_process/model`）中模型文件及组织方式是否正确
 ```
-$ tree  -L 3 model/
+$ tree  -L 5 model/
 model/
 └── embedding
     ├── 1
@@ -471,9 +473,8 @@ model/
     │       ├── module.embedding_layer.one_embedding.shadow
     │       │   ├── meta
     │       │   └── out
-    │       ├── one_embedding_options.json
+    │       └── one_embedding_options.json
     └── config.pbtxt
-
  ```   
 #### 3.3.2 确认`config.pbtxt`中的配置正确。
  ```
@@ -560,11 +561,13 @@ docker run --runtime=nvidia --rm --network=host \
   bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
 ```
 若成功，将显示如下类似输出：
->...
->I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
->I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
->I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
+```
+...
+I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
+I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
+I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
 
+```
 #### 3.4.2 启动OpenMLDB推理服务
 ```{note}
 注意，以下命令在demo docker中运行。
