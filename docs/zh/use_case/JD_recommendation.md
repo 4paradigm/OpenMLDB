@@ -505,10 +505,10 @@ instance_group [
   }
 ]
  ```
- 其中name要和config.pbtxt所在目录的名字保持一致
+ 其中`name`要和`config.pbtxt`所在目录的名字保持一致
 
 #### 3.3.3 变更persistent路径
-变更one_embedding_options.json文件中的persistent table路径。将`embedding/kv_options/kv_store/persistent_table/path` 变更为映射到容器里面的persistent table的位置 `/root/demo/persistent`。
+变更`one_embedding_options.json`文件中的persistent table路径。将`embedding/kv_options/kv_store/persistent_table/path` 变更为映射到容器里面的persistent table的位置 `/root/demo/persistent`。
 ```
 {
     "embedding": [
