@@ -42,9 +42,8 @@ TEST(ConcurrentListTest, GC) {
     ASSERT_EQ(list.GetSize(), 1001);
 }
 
-}  // namespace storage
-}  // namespace hybridse
-
+}  // namespace base
+}  // namespace openmldb
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

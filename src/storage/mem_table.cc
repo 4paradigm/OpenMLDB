@@ -804,6 +804,245 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
    return true;
 }
 
+MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
+                                                   ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
+                                                   uint64_t expire_cnt, uint32_t ts_index)
+    : segments_(segments),
+      seg_cnt_(seg_cnt),
+      seg_idx_(0),
+      pk_it_(NULL),
+      it_(NULL),
+      record_idx_(0),
+      ts_idx_(0),
+      expire_value_(expire_time, expire_cnt, ttl_type),
+      ticket_(),
+      traverse_cnt_(0) {
+    uint32_t idx = 0;
+    if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
+        ts_idx_ = idx;
+    }
+}
+
+MemTableTraverseIterator::~MemTableTraverseIterator() {
+    if (pk_it_ != NULL) delete pk_it_;
+    if (it_ != NULL) delete it_;
+}
+
+bool MemTableTraverseIterator::Valid() {
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() &&
+           !expire_value_.IsExpired(it_->GetKey(), record_idx_);
+}
+
+void MemTableTraverseIterator::Next() {
+    it_->Next();
+    record_idx_++;
+    traverse_cnt_++;
+    if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+        NextPK();
+        return;
+    }
+}
+uint64_t MemTableTraverseIterator::GetCount() const { return traverse_cnt_; }
+
+void MemTableTraverseIterator::NextPK() {
+    delete it_;  // 此时释放之前的迭代器指针
+    it_ = NULL;
+    do {
+        ticket_.Pop();
+        if (pk_it_->Valid()) {  // 只要当前节点不为NULL 就是有效的
+            pk_it_->Next(); // pk_it 指向下一个节点
+        }
+        if (!pk_it_->Valid()) { // 如果此时pk_it 为空 则指向下一个segment
+            delete pk_it_;   // 释放pk_it_
+            pk_it_ = NULL;
+            seg_idx_++;   // seg_索引加1 指向下一个segment
+            if (seg_idx_ < seg_cnt_) {  // 如果当前索引小于 segment数 则继续遍历后面的segment
+                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();  // KeyEntries* entries_;
+                pk_it_->SeekToFirst();  // 主键指向
+                if (!pk_it_->Valid()) {
+                    continue;
+                }
+            } else {
+                break;
+            }
+        }
+        if (it_ != NULL) {
+            delete it_;
+            it_ = NULL;
+        }
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            KeyEntry* entry = NULL;
+            if (segments_[seg_idx_]->IsSkipList(0)) {
+                entry = ((SkipListKeyEntry**)pk_it_->GetValue())[0];
+            } else {
+                entry = ((ListKeyEntry**)pk_it_->GetValue())[0];
+            }
+            it_ = entry->entries.NewIterator();
+            ticket_.Push(entry);  // ticket_ 保存的是KeyEntry指针 用于引用计数
+        } else {
+            if (segments_[seg_idx_]->IsSkipList()) {
+                it_ = ((SkipListKeyEntry*)pk_it_->GetValue())
+                          ->entries.NewIterator();
+                ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());
+            } else {
+                it_ = ((ListKeyEntry*)pk_it_->GetValue())
+                          ->entries.NewIterator();
+                ticket_.Push((ListKeyEntry*)pk_it_->GetValue());
+            }
+        }
+        it_->SeekToFirst();
+        record_idx_ = 1;  // 记录第二层结构的索引  每次遍历不同的二级结构 都要重置
+        traverse_cnt_++;  // 保存所有遍历过的记录数
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {  // 如果遍历的节点数 超过了 给定的阈值 则跳出遍历
+            break;
+        }
+    } while (it_ == NULL || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
+}
+
+void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
+    if (pk_it_ != NULL) {  // seek 前需要将指针指向的内存释放掉，不然就造成了内存泄漏
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+    if (it_ != NULL) {
+        delete it_;
+        it_ = NULL;
+    }
+    ticket_.Pop();  // 引用计数减1
+    if (seg_cnt_ > 1) {
+        seg_idx_ = ::openmldb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(key);
+    pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+    pk_it_->Seek(spk);  // 直接指向key 为 spk的节点
+    if (pk_it_->Valid()) {
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            if (segments_[seg_idx_]->IsSkipList(ts_idx_)) {
+                SkipListKeyEntry* entry = ((SkipListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                ticket_.Push(entry);
+                it_ = entry->entries.NewIterator();
+            } else {
+                ListKeyEntry* entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                ticket_.Push(entry);
+                it_ = entry->entries.NewIterator();
+            }
+        } else {
+            if (segments_[seg_idx_]->IsSkipList()) {
+                ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                it_ = ((SkipListKeyEntry*)pk_it_->GetValue())         // NOLINT
+                          ->entries.NewIterator();
+            } else {
+                ticket_.Push((ListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                it_ = ((ListKeyEntry*)pk_it_->GetValue())         // NOLINT
+                          ->entries.NewIterator();
+            }
+        }
+        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+            it_->SeekToFirst();
+            traverse_cnt_++;
+            record_idx_ = 1;
+            if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+                NextPK();
+            }
+        } else {
+            if (expire_value_.ttl_type == ::openmldb::storage::TTLType::kLatestTime) {
+                it_->SeekToFirst();
+                record_idx_ = 1;
+                while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
+                    traverse_cnt_++;
+                    if (it_->GetKey() < ts) {
+                        return;
+                    }
+                    it_->Next();
+                    record_idx_++;
+                }
+                NextPK();
+            } else {
+                it_->Seek(ts);
+                traverse_cnt_++;
+                if (it_->Valid() && it_->GetKey() == ts) {
+                    it_->Next();
+                }
+                if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+                    NextPK();
+                }
+            }
+        }
+    } else {
+        NextPK();
+    }
+}
+
+openmldb::base::Slice MemTableTraverseIterator::GetValue() const {
+    return openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+}
+
+uint64_t MemTableTraverseIterator::GetKey() const {
+    if (it_ != NULL && it_->Valid()) {
+        return it_->GetKey();
+    }
+    return UINT64_MAX;
+}
+
+std::string MemTableTraverseIterator::GetPK() const {
+    if (pk_it_ == NULL) {
+        return std::string();
+    }
+    return pk_it_->GetKey().ToString();
+}
+
+void MemTableTraverseIterator::SeekToFirst() {
+    ticket_.Pop();
+    if (pk_it_ != NULL) {
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+    if (it_ != NULL) {
+        delete it_;
+        it_ = NULL;
+    }
+    for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
+        pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+        pk_it_->SeekToFirst();
+        while (pk_it_->Valid()) {
+            if (segments_[seg_idx_]->GetTsCnt() > 1) {
+                KeyEntry* entry = NULL;
+                if (segments_[seg_idx_]->IsSkipList(ts_idx_)) {
+                    entry = ((SkipListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                } else {
+                    entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                }
+                ticket_.Push(entry);
+                it_ = entry->entries.NewIterator();
+            } else {
+                if (segments_[seg_idx_]->IsSkipList()) {
+                    ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                    it_ = ((SkipListKeyEntry*)pk_it_->GetValue())         // NOLINT
+                              ->entries.NewIterator();
+                } else {
+                    ticket_.Push((ListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                    it_ = ((ListKeyEntry*)pk_it_->GetValue())         // NOLINT
+                              ->entries.NewIterator();
+                }
+            }
+            it_->SeekToFirst();
+            traverse_cnt_++;
+            if (it_->Valid() && !expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
+                record_idx_ = 1;
+                return;
+            }
+            delete it_; // 如果it 无效或过期 释放内存
+            it_ = NULL;
+            pk_it_->Next();
+            ticket_.Pop(); // pop
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                return;
+            }
+        }
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+}
 
 }  // namespace storage
 }  // namespace openmldb

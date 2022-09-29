@@ -1,8 +1,8 @@
 #pragma once
 #include <assert.h>
+#include <stdint.h>
 #include <memory>
 #include <atomic>
-#include <stdint.h>
 #include <iostream>
 
 namespace openmldb {
@@ -15,8 +15,6 @@ class BaseIterator {
  public:
     BaseIterator() {}  // NOLINT
     virtual ~BaseIterator() {}
-//    BaseIterator(const BaseIterator&) = delete;
-//    BaseIterator& operator=(const BaseIterator&) = delete;
 
     virtual bool Valid() const = 0;
 
@@ -194,7 +192,7 @@ class ConcurrentList {
             }
             ListNode<K, V>* next = node->GetNext();
             if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
-                node->SetNext( NULL);
+                node->SetNext(NULL);
             }
             pre = node;
             node = node->GetNext();
@@ -205,7 +203,7 @@ class ConcurrentList {
 
     ListNode<K, V>* GetLast() {
         ListNode<K, V>* tmp = head_;
-        while(tmp != NULL && tmp->GetNext() != NULL) {
+        while (tmp != NULL && tmp->GetNext() != NULL) {
             tmp = tmp->GetNext();
         }
         return tmp;
@@ -219,10 +217,10 @@ class ConcurrentList {
     }
     class ListIterator : public BaseIterator<K, V> {
      public:
-        ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
+        explicit ListIterator(ConcurrentList<K, V, Comparator>*  list) : node_(NULL), list_(list) {}
         ListIterator(const ListIterator&) = default;
         ListIterator& operator=(const ListIterator&) = delete;
-        ~ListIterator(){};
+        ~ListIterator() {};
 
         ListIterator& operator=(ListIterator&& __iter) noexcept {
             node_ = __iter.node_;
