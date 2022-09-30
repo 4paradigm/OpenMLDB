@@ -15,6 +15,7 @@
  */
 
 #include "storage/disk_table.h"
+#include <snappy.h>
 #include <utility>
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
@@ -217,6 +218,11 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
 
 bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions) {
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
@@ -229,7 +235,6 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
                   it->idx(), id_, pid_);
-            return false;
         }
         int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
