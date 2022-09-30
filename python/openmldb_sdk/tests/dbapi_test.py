@@ -100,6 +100,13 @@ class TestOpenmldbDBAPI:
             cursor.execute("select * from new_table where y=402;").fetchall()
         assert 'execute select fail' in str(e.value)
 
+    def test_connect_options(self):
+        db = connect(database='db_test',
+                     zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH,
+                     requestTimeout=100000,
+                     maxSqlCacheSize=100)
+
 
 if __name__ == "__main__":
     sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))
