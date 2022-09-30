@@ -126,9 +126,9 @@ uint64_t Segment::Release() {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
             for (uint32_t i = 0; i < ts_cnt_; i++) {
                 if (IsSkipList(i))
-                    (SkipListKeyEntry*)entry_arr[i]->Release();
+                    ((SkipListKeyEntry*)entry_arr[i])->Release();
                 else
-                    (ListKeyEntry*)entry_arr[i]->Release();
+                    ((ListKeyEntry*)entry_arr[i])->Release();
                 entry_arr[i]->Release();
                 delete entry_arr[i];
             }
@@ -136,9 +136,9 @@ uint64_t Segment::Release() {
         } else {
             KeyEntry* entry = (KeyEntry*)node->GetValue();  // NOLINT
             if (IsSkipList())
-                (SkipListKeyEntry*)entry->Release();
+                ((SkipListKeyEntry*)entry)->Release();
             else
-                (ListKeyEntry*)entry->Release();
+                ((ListKeyEntry*)entry)->Release();
             delete entry;
         }
         delete node;

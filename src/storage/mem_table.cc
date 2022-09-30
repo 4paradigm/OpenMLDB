@@ -101,7 +101,7 @@ bool MemTable::Init() {
             cur_key_entry_max_height = global_key_entry_max_height;
         } else {
             cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
-                                                                                FLAGS_latest_default_skiplist_height);
+                                                                                 FLAGS_latest_default_skiplist_height);
         }
         Segment** seg_arr = new Segment*[seg_cnt_];
         const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
@@ -616,7 +616,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
                   FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
         }
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
-                                               IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
+                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;

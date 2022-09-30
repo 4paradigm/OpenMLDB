@@ -29,8 +29,8 @@ class TableIterator {
     virtual ~TableIterator() {}
     TableIterator(const TableIterator&) = delete;
     TableIterator& operator=(const TableIterator&) = delete;
-    virtual bool Valid() {}
-    virtual void Next() {}
+    virtual bool Valid() = 0;
+    virtual void Next() = 0;
     virtual openmldb::base::Slice GetValue() const = 0;
     virtual std::string GetPK() const { return std::string(); }
     virtual uint64_t GetKey() const = 0;
