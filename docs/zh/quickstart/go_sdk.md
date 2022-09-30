@@ -62,7 +62,7 @@ for rows.Next() {
 ### 3. 完整示例
 
 ```go
-package demo
+package main
 
 import (
 	"context"

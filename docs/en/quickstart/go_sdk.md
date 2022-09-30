@@ -62,7 +62,7 @@ for rows.Next() {
 ### 3. An Example
 
 ```go
-package demo
+package main
 
 import (
 	"context"
