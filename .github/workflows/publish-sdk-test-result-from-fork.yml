@@ -9,8 +9,14 @@ on:
 
 jobs:
   test-results:
+    if: >
+      github.event.workflow_run.conclusion != 'skipped' && (
+         github.event.sender.login == 'dependabot[bot]' ||
+         github.event.workflow_run.head_repository.full_name != github.repository
+      )
     uses: ./.github/workflows/publish-test-result-from-fork-template.yml
     with:
-      name: Publish SDK UT Results
+      commit: ${{ github.event.workflow_run.head_sha }}
+      files: artifacts/linux-ut-result-*/**/*.xml
       check_name: SDK Test Report
       comment_title: SDK Test Report
