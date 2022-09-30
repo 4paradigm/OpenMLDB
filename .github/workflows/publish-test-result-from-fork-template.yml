@@ -1,7 +1,10 @@
 on:
   workflow_call:
     inputs:
-      name:
+      commit:
+        required: true
+        type: string
+      files:
         required: true
         type: string
       check_name:
@@ -15,12 +18,6 @@ jobs:
   test-results:
     name: Test Results
     runs-on: ubuntu-latest
-    if: >
-      github.event.workflow_run.conclusion != 'skipped' && (
-         github.event.sender.login == 'dependabot[bot]' ||
-         github.event.workflow_run.head_repository.full_name != github.repository
-      )
-
     steps:
       - name: Download Artifacts
         uses: actions/github-script@v3
@@ -59,10 +56,10 @@ jobs:
               unzip -d "$dir" "$file"
             fi
           done
-      - name: ${{ inputs.name }}
+      - name: Publish UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
-          commit: ${{ github.event.workflow_run.head_sha }}
-          files: artifacts/linux-ut-result-*/**/*.xml
+          commit: ${{ inputs.commit }}
+          files: ${{ inputs.files }}
           check_name: ${{ inputs.check_name }}
           comment_title: ${{ inputs.comment_title }}

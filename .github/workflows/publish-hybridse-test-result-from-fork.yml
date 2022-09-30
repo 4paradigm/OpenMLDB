@@ -9,21 +9,19 @@ on:
 
 jobs:
   test-results:
-    uses: ./.github/workflows/publish-test-result-from-fork-template.yml
-    with:
-      name: Publish Linux UT Results
-      check_name: Linux Test Report
-      comment_title: Linux Test Report
-
-  public-mac-ut-results:
-    name: Test Results
-    runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.conclusion != 'skipped' && (
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
     steps:
+      - name: Publish Linux UT Results
+        uses: ./.github/workflows/publish-test-result-from-fork-template.yml
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          files: artifacts/linux-ut-result-*/**/*.xml
+          check_name: Linux Test Report
+          comment_title: Linux Test Report
       - name: Publish Mac UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
