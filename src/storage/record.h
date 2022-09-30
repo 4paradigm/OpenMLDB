@@ -33,25 +33,27 @@ static const uint32_t KEY_ENTRY_PTR_SIZE = sizeof(KeyEntry*);
 static inline uint32_t GetRecordSize(uint32_t value_size) { return value_size + DATA_BLOCK_BYTE_SIZE; }
 
 // the input height which is the height of skiplist node
-static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height, bool is_skiplist) {
-   if (is_skiplist)
-       return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size + key_entry_max_height * 8 + DATA_NODE_SIZE;
-   else
-       return height * 8 + ENTRY_NODE_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + key_size + LIST_DATA_NODE_SIZE;
+static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height,
+                                          bool is_skiplist) {
+    if (is_skiplist)
+        return height * 8 + ENTRY_NODE_SIZE + KEY_ENTRY_BYTE_SIZE + key_size + key_entry_max_height * 8 +
+               DATA_NODE_SIZE;
+    else
+        return height * 8 + ENTRY_NODE_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + key_size + LIST_DATA_NODE_SIZE;
 }
 
 static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size, uint8_t key_entry_max_height,
                                               uint32_t ts_cnt, const std::vector<bool>& is_skiplist_vec) {
-   uint32_t sumSize = 0;
-   for (int i = 0; i < ts_cnt; i++) {
-       if (is_skiplist_vec[i])
-           sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
-                      (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE);
-       else
-           sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
-                      (KEY_ENTRY_PTR_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + LIST_DATA_NODE_SIZE) ;
-   }
-   return sumSize;
+    uint32_t sumSize = 0;
+    for (int i = 0; i < ts_cnt; i++) {
+        if (is_skiplist_vec[i])
+            sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
+                       (KEY_ENTRY_PTR_SIZE + KEY_ENTRY_BYTE_SIZE + key_entry_max_height * 8 + DATA_NODE_SIZE);
+        else
+            sumSize += height * 8 + ENTRY_NODE_SIZE + key_size +
+                       (KEY_ENTRY_PTR_SIZE + LIST_KEY_ENTRY_BYTE_SIZE + LIST_DATA_NODE_SIZE) ;
+    }
+    return sumSize;
 }
 
 static inline uint32_t GetRecordTsIdxSize(uint8_t height, bool is_skiplist) {
