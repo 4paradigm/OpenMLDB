@@ -111,7 +111,7 @@ bool MemTable::Init() {
             for (auto index : index_vec) {
                 if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
                     is_skiplist_vec.push_back(false);
-                }else {
+                } else {
                     is_skiplist_vec.push_back(true);
                 }
             }
@@ -848,9 +848,9 @@ void MemTableTraverseIterator::NextPK() {
             delete pk_it_;   // 释放pk_it_
             pk_it_ = NULL;
             seg_idx_++;   // seg_索引加1 指向下一个segment
-            if (seg_idx_ < seg_cnt_) {  // 如果当前索引小于 segment数 则继续遍历后面的segment
-                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();  // KeyEntries* entries_;
-                pk_it_->SeekToFirst();  // 主键指向
+            if (seg_idx_ < seg_cnt_) {
+                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+                pk_it_->SeekToFirst();
                 if (!pk_it_->Valid()) {
                     continue;
                 }
