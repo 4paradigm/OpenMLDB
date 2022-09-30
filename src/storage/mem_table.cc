@@ -627,7 +627,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
         } else {
             index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
-                                                               ::openmldb::type::kTimestamp, true));
+                        ::openmldb::type::kTimestamp, true));
         }
         if (column_key.has_ttl()) {
             index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
