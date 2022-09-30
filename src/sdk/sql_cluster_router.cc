@@ -3285,7 +3285,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    auto index_status = HandleIndex(db, table_pair, select_sql);
+    std::map<std::string, std::vector<::openmldb::common::ColumnKey>> remote_index_map;
+    auto index_status = HandleIndex(db, table_pair, select_sql, &remote_index_map);
     if (!index_status.IsOK()) {
         return index_status;
     }
@@ -3299,17 +3300,19 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         option->set_name(o.first);
         option->mutable_value()->set_value(o.second->GetExprString());
     }
-
-    auto status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_->request_timeout);
-    if (!status.OK()) {
-        return {::hybridse::common::StatusCode::kCmdError, status.msg};
+    if (remote_index_map.empty()) {
+        auto status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_->request_timeout);
+        if (!status.OK()) {
+            return {::hybridse::common::StatusCode::kCmdError, status.msg};
+        }
     }
     return {};
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
-                                                    const std::set<std::pair<std::string, std::string>>& table_pair,
-                                                    const std::string& select_sql) {
+        const std::set<std::pair<std::string, std::string>>& table_pair,
+        const std::string& select_sql,
+        std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* remote_index_map) {
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
@@ -3329,16 +3332,17 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
             }
         }
     }
-    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    auto get_index_status = GetNewIndex(table_map, index_map, &new_index_map);
+    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
+    auto get_index_status = GetNewIndex(table_map, index_map, &new_index_map, remote_index_map);
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
-
-    auto add_index_status = AddNewIndex(db, table_map, new_index_map);
-    if (!add_index_status.IsOK()) {
-        return add_index_status;
+    if (!new_index_map.empty()) {
+        auto add_index_status = AddNewIndex(db, table_map, new_index_map);
+        if (!add_index_status.IsOK()) {
+            return add_index_status;
+        }
     }
     return {};
 }
@@ -3346,7 +3350,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
-    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
+    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map,
+    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* remote_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : index_map) {
         std::string table_name = kv.first;
@@ -3449,9 +3454,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                     record_cnt += table.table_partition(idx).record_cnt();
                 }
                 if (record_cnt > 0) {
-                    return {::hybridse::common::StatusCode::kUnSupport,
-                            "table " + table_name +
-                                " has online data, cannot deploy. please drop this table and create a new one"};
+                    remote_index_map->emplace(table_name, std::move(new_indexs));
+                    continue;
                 }
             }
             new_index_map->emplace(table_name, std::move(new_indexs));
