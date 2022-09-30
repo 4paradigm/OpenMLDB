@@ -136,11 +136,8 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
     steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-
       - name: Publish Linux UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: ./.github/workflows/publish-test-results-action.yml
         with:
           files: linux-ut-result-*/**/*.xml
           check_name: Linux Test Report
