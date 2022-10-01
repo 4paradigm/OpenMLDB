@@ -41,4 +41,3 @@ OpenMLDB的[openmldb-import工具](../tutorial/data_import.md)，提供了bulk l
 1. 仅支持导入本地的csv多文件。
 1. 仅支持单机运行工具，单机内存要求较高，可能需要大于“导入数据的总量”。
 
-如果希望快速度导入，在满足条件的前提下，可以使用该工具。
