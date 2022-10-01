@@ -21,26 +21,26 @@ This tutorial will focus on the data import methods of cluster version.
 
 ```{note}
 表的离线数据地址如果是软链接，OpenMLDB 不支持追加（append）数据到该表离线存储中，因为我们无权修**软链接目录**下的数据。OpenMLDB 仅支持覆盖（overwrite）该表的离线数据地址。如果覆盖了，原软链接目录下的数据也不会被删除，仅仅是OpenMLDB中丢弃了该原始目录。
-If the offline path of the table is soft 
+If the offline path of the table is soft link, OpenMLDB doesn't support appending data to the table as it doesn't have write access to the files in the **soft link path**.
 ```
 
 ### 2 Online Import
 
-OpenMLDB集群版的在线模式提供自建的在线存储引擎（保存于内存中）。因此，在线导入**只有硬拷贝**。
+The online modes of OpenMLDB cluster version provide online storage engine (saved in memory). Only **hard copy** can be used in online import.
 
 #### 2.1 `LOAD DATA`
 
-在**在线预览模式**和**在线请求模式**下执行 [`LOAD DATA`命令](../reference/sql/dml/LOAD_DATA_STATEMENT.md)，支持读取csv和parquet格式的文件。
+[`LOAD DATA` command](../reference/sql/dml/LOAD_DATA_STATEMENT.md) can be used in **Online Request** and **Online Preview** mode to load `csv` files and `parquet` files.
 
 #### 2.2 Stream
 
-OpenMLDB支持从pulsar在线导入数据，详见[Pulsar Connector：接入实时数据流](../use_case/pulsar_connector_demo.md)。
+Data can be loaded from `pulsar` as well, see [Pulsar Connector](../use_case/pulsar_connector_demo.md) for detail.
 
 ## Note
 
-OpenMLDB的[openmldb-import工具](../tutorial/data_import.md)，提供了bulk load的导入方式，可以将数据快速导入到单机版或集群版的在线存储。
+The [openmldb-import tool](../tutorial/data_import.md) can be used for bulk load, importing the data quickly into the standalone or the online storage of cluster version.
 
-但该工具仍处于开发中，因此，目前有诸多限制。包括：
-1. 仅支持导入本地的csv多文件。
-1. 仅支持单机运行工具，单机内存要求较高，可能需要大于“导入数据的总量”。
+The bulk load tool is still in development. There are some restrictions for usage:
+1. Only `csv` files can be loaded.
+2. The tool is supported only on a single machine. The requirement for the memory of the single machine is high and maybe the memory should be larger than the size of the data to be imported.
 
