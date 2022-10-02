@@ -10,18 +10,14 @@ This tutorial will focus on the data import methods of cluster version.
 
 ### 1 Offline Import (`LOAD DATA`)
 
-- OpenMLDB本身不提供离线存储引擎，但需要指定离线存储的地址，即修改taskmanager配置项`offline.data.prefix`，可以是本地目录、hdfs、s3等存储介质。
-
-- **导入方式只有一个**，离线模式下执行[`LOAD DATA`](../reference/sql/dml/LOAD_DATA_STATEMENT.md)。默认为硬拷贝导入。
-
-- 默认情况下，OpenMLDB会将源数据拷贝到`offline.data.prefix`目录中。支持读取的文件格式有csv和parquet。
-
-- `LOAD DATA`还支持软链接模式，通过option`deep_copy=false`来配置。软链接导入时，只会将源数据地址写入OpenMLDB表信息中，不会做硬拷贝。也支持csv和parquet两种文件格式。
+- OpenMLDB doesn't have offline storage engine, but it requires user to specify the offline storage path, that is modifying the configuration option of taskmanager: `offline.data.prefix`. You can use storage medium like local directory, hdfs, s3 to configure.
+- There is only one way to import data offline: using [`LOAD DATA` command](../reference/sql/dml/LOAD_DATA_STATEMENT.md). Hard copy will be adopted as default.
+- OpenMLDB will copy the original data to the path of `offline.data.prefix` by default. The files of `csv` and `parquet` format are supported. 
+- `LOAD DATA` with a soft link is also supported, you can use the option `deep_copy=false` to configure. Only the storage path of the datasets will be saved in OpenMLDB in a soft link. Both the `csv` and `parquet` files are supported as well.
 
 
 ```{note}
-表的离线数据地址如果是软链接，OpenMLDB 不支持追加（append）数据到该表离线存储中，因为我们无权修**软链接目录**下的数据。OpenMLDB 仅支持覆盖（overwrite）该表的离线数据地址。如果覆盖了，原软链接目录下的数据也不会被删除，仅仅是OpenMLDB中丢弃了该原始目录。
-If the offline path of the table is soft link, OpenMLDB doesn't support appending data to the table as it doesn't have write access to the files in the **soft link path**.
+If the offline path of the table is soft link, OpenMLDB doesn't support appending data to the table as it doesn't have write access to the files in the **soft link path**. You can overwrire the offline path of the table. If the path has been overwritten, the data in the original directory will not be removed, only the directory in the OpenMLDB will change.
 ```
 
 ### 2 Online Import
