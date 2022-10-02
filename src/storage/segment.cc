@@ -335,6 +335,7 @@ bool Segment::Delete(const Slice& key) {
 
 bool Segment::Delete(const Slice& key, uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (ts_cnt_ > 1) {
@@ -348,16 +349,26 @@ bool Segment::Delete(const Slice& key, uint64_t time) {
         if (entry_ts_node == NULL) {
             return false;
         }
+        if (((KeyEntry*)entry)->entries.IsEmpty()) {
+            entry_node = entries_->Remove(key);
+            if (entry_node == NULL) {
+                return false;
+            }
+        }
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
+        if (entry_node != NULL) {
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+        }
     }
     return true;
 }
 
 bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
     ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
     {
         auto pos = ts_idx_map_.find(idx);
         if (pos == ts_idx_map_.end()) {
@@ -375,11 +386,20 @@ bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
             if (entry_ts_node == NULL) {
                 return false;
             }
+            if (((KeyEntry*)entry)->entries.IsEmpty()) {
+                entry_node = entries_->Remove(key);
+                if (entry_node == NULL) {
+                    return false;
+                }
+            }
         }
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
+        if (entry_node != NULL) {
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+        }
     }
     return true;
 }
