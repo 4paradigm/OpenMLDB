@@ -1,82 +1,82 @@
 
-# 代码结构
+# Code Structure
 
-## Hybridse SQL 引擎
+## Hybridse SQL Engine
 ```
 hybridse/
-├── examples          // demo db和hybrisde集成测试
-├── include           // 代码的include目录，里边结构和src基本一致
+├── examples          // demo db and hybrisde integration tests
+├── include           // the include directory of codes, whose structure is similar to src
 ├── src
-│   ├── base          // 基础库目录
-│   ├── benchmark     // benchmark相关
-│   ├── case          // 测试case相关
-│   ├── cmd           // 封装的demo等
-│   ├── codec         // 编解码相关
-│   ├── codegen       // llvm代码生成相关
-│   ├── llvm_ext      // llvm符号解析相关
-│   ├── node          // 逻辑计划、物理计划中的节点定义, 表达式、类型节点定义
-│   ├── passes        // sql优化器
-│   ├── plan          // 生成逻辑计划
-│   ├── planv2        // zetasql语法树转化成节点
-│   ├── proto         // protobuf定义
-│   ├── sdk           // sdk相关
-│   ├── testing       // 测试相关
-│   ├── udf           // udf和udaf的注册生成等
-│   └── vm            // sql物理计划和执行计划的生成以及sql编译和执行人口
-└── tools     // benchmark相关
+│   ├── base          // basic libraries catalogue
+│   ├── benchmark     
+│   ├── case          // cases for testing
+│   ├── cmd           // packaged demo 
+│   ├── codec         // decode and encode 
+│   ├── codegen       // llvm codes generation
+│   ├── llvm_ext      // llvm characters parsing
+│   ├── node          // the definition of logic plans', physical plans' and expressions' nodes and type nodes.
+│   ├── passes        // sql optimizer
+│   ├── plan          // logic execution plan generation
+│   ├── planv2        // the transformation from zetasql syntax tree to nodes
+│   ├── proto         // the difinition of protobuf
+│   ├── sdk           
+│   ├── testing       
+│   ├── udf           // the registration and generation of udf and udaf
+│   └── vm            // the generation of sql physical plan and execution plan, the compilation and execution entries of sql 
+└── tools     // codes related to benchmark 
 ```
 
-## 在线存储引擎和对外服务接口
+## Online Storage Engine and External Service Interface 
 ```
 src/
-├── apiserver      // apiserver相关
-├── base           // 基础库目录
-├── catalog        // catalog相关
-├── client         // ns/tablet/taskmanager client的接口定义和实现
-├── cmd            // CLI以及openmldb二进制生成相关
-├── codec          // 编解码相关
-├── log            // binlog和snapshot格式以及读写
-├── nameserver     // nameserver相关
-├── proto          // protobuf相关定义
-├── replica        // 主从同步
-├── rpc            // 封装brpc请求
-├── schema         // shema和索引解析生成
-├── sdk            // sdk相关
-├── storage        // 存储引擎
-├── tablet         // tablet中接口的实现
-├── test           // 测试相关
-├── tools          // 封装一些小工具
-└── zk             // zookeeper client的一些封装
+├── apiserver      
+├── base           // basic libraries catalogue
+├── catalog        
+├── client         // the difinition and implementation of ns/tablet/taskmanager client interfaces 
+├── cmd            // CLI and OpenMLDB binary generation
+├── codec          // decode and encode 
+├── log            // the formats, reading and writing of binlog and snapshot
+├── nameserver     
+├── proto          // definition of protobuf
+├── replica        // the synchronization between leader and followers
+├── rpc            // brpc request package
+├── schema         // generate the resolution of schema and index 
+├── sdk            
+├── storage        // storage engine 
+├── tablet         // the implementation of tablet interface
+├── test           
+├── tools          // packages of some gadgets 
+└── zk             // packages of zookeeper client
 ```
 
-## Java 模块
+## Java Modules
 ```
 java/
-├── hybridse-native          // sql引擎swig自动生成的代码
-├── hybridse-proto           // sql引擎相关proto
-├── hybridse-sdk             // sql引擎封装的sdk
-├── openmldb-batch           // 离线的planner，把sql的逻辑翻译成spark的计划
-├── openmldb-batchjob        // 执行离线任务相关
-├── openmldb-common          // java sdk中的一些公用代码，基础库
-├── openmldb-import          // 数据导入工具
+├── hybridse-native          // codes generated automatically by SQL engine swig
+├── hybridse-proto           // proto of SQL engine 
+├── hybridse-sdk             // packaged sdk of SQL engine 
+├── openmldb-batch           // offline planner which translates the SQL logic to the spark execution plan
+├── openmldb-batchjob        // codes related to offline tasks execution 
+├── openmldb-common          // some public codes and basic libraries of java sdk
+├── openmldb-import          // data import tools
 ├── openmldb-jdbc            // java sdk
-├── openmldb-jmh             // 用作性能和稳定性测试相关
-├── openmldb-native          // swig自动生成的代码
-├── openmldb-spark-connector // spark的connector实现，用来读写OpenMLDB
-└── openmldb-taskmanager     // 离线任务管理模块
+├── openmldb-jmh             // used for performance and stability testing
+├── openmldb-native          // codes generated automatically by swig
+├── openmldb-spark-connector // the implementation of spark connector used for reading from and writing into OpenMLDB
+└── openmldb-taskmanager     // offline tasks management module 
 ```
 
 ## Python SDK
 ```
 python
 ├── openmldb
-│   ├── dbapi                // dbapi接口封装
-│   ├── native               // swig自动生成的代码
-│   ├── sdk                  // 调用底层c++接口代码
-│   ├── sqlalchemy_openmldb  // sqlalchemy接口封装
+│   ├── dbapi                // dbapi interface 
+│   ├── native               // codes generated automatically by swig
+│   ├── sdk                  // calling the underlying c++ interface
+│   ├── sqlalchemy_openmldb  // sqlalchemy interface
 │   ├── sql_magic            // notebook magic
-│   └── test                 // 测试相关
+│   └── test                 
 ```
 
-## 离线执行引擎
+## Offline Execution Engine 
 https://github.com/4paradigm/spark
