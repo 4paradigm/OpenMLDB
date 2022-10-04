@@ -6,7 +6,7 @@ OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依
 ![sdk layers](images/sdk_layers.png)
 
 ### SDK核心层
-最下层是SDK核心层，具体实现为[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用SQLClusterRouter的方法可以完成对OpenMLDB集群的所有操作。
+最下层是SDK核心层，具体实现为[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用`SQLClusterRouter`的方法可以完成对OpenMLDB集群的所有操作。
 
 开发者需要注意，它的方法中最核心的三个方法。
 1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160)，支持执行所有sql，包括DDL，DML，DQL等等。
