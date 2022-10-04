@@ -96,25 +96,29 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
     ```
 - 每个tablet的目录都需要拷贝
 - 在DROP FUNCTION之前不能删除此目录里的动态库
-### 2.4 注册、删除和查看函数
-注册函数使用[CREATE FUNCTION](../reference/sql/ddl/FUNCTION_STATEMENT.md)
+### 2.4 Register, Drop and Show the Functions
+For registering, please use [CREATE FUNCTION](../reference/sql/ddl/FUNCTION_STATEMENT.md).
 ```sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 ```
-**注**:
-- 参数类型和返回值类型必须和代码的实现保持一致
-- 一个udf函数只能对一种类型起作用。如果想用于多种类型，需要创建多个函数
-- `FILE` 指定动态库的文件名，不需要包含路径
 
-成功注册后就可以使用函数了
+```{note}
+- The types of parameters and return values must be consistent with the implementation of the code.
+- `FILE` specifies the file name of the dynamic library. It is not necessary to include a path.
+- A UDF function can only work on one type. Please create multiple functions for multiple types.
+```
+
+After successful registration, the function can be used.
 ```sql
 SELECT cut2(c1) FROM t1;
 ```
-可以通过SHOW FUNCTIONS查看注册的函数
+
+You can view registered functions through `SHOW FUNCTIONS`.
 ```sql
 SHOW FUNCTIONS;
 ```
-通过DROP FUNCTION删除已经注册的函数
+
+Please use the `DROP FUNCTION` to delete a registered function.
 ```sql
 DROP FUNCTION cut2;
 ```
