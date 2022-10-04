@@ -1,28 +1,29 @@
-# SDK 开发指南
+# SDK Development Guidelines
 
-## 概述
+## Overview
 
-OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依次介绍。
+The OpenMLDB SDK can be divided into several layers, as shown in the figure. The introduction will go from the bottom up.
 ![sdk layers](images/sdk_layers.png)
 
-### SDK核心层
-最下层是SDK核心层，具体实现为[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用SQLClusterRouter的方法可以完成对OpenMLDB集群的所有操作。
+### SDK Layer
+The lowest layer is the SDK core layer, which is implemented as[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用SQLClusterRouter的方法可以完成对OpenMLDB集群的所有操作。
 
-开发者需要注意，它的方法中最核心的三个方法。
-1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160)，支持执行所有sql，包括DDL，DML，DQL等等。
-2. [ExecuteSQLParameterized](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L166)，支持参数化的sql形式。
+Developers need to be aware of the three core methods of it.
+
+1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160) supports the execution of all SQL commands, including DDL, DML and DQL.
+2. [ExecuteSQLParameterized](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L166)supports parameterized SQL.
 3. [ExecuteSQLRequest](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L156)，这是OpenMLDB特有的[Request模式](../tutorial/modes.md#4-请求模式)，不是普通sql，因此需要一个专用的方法。
 
 其他方法，比如CreateDB/DropDB/DropTable，由于历史原因，还没有及时删除，开发者不需要关心。
 
-### Wrapper层
+### Wrapper Layer
 由于SDK核心层的实现较复杂，我们提供Java和Python SDK的时候，没有选择从零开发，而是使用Java和Python调用**SDK核心层**。具体来说，我们使用swig做了一层wrapper。
 
 Java Wrapper具体实现为[SqlClusterExecutor](https://github.com/4paradigm/OpenMLDB/blob/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java)。可以看到，它仅仅是对`sql_router_sdk`调用的简单封装，比如，对输入类型的转换，对返回结果的封装，对返回错误的封装。
 
 Python Wrapper具体实现为[OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sdk/sdk.py)。和Java Wrapper类似，它也只是简单的封装。
 
-### 用户层
+### User Layer
 Wrapper层是可以直接使用的，但不够方便。所以，我们再提供了一层，Java/Python SDK的用户层。
 
 Java用户层，支持了Java中比较流行的JDBC，具体实现见[jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/jdbc)，使得用户可以使用JDBC协议来访问OpenMLDB，降低接入成本。
@@ -36,7 +37,7 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 
 但考虑到代码复用，可能会一定程度地改动SDK核心层的代码，或者是调整SDK核心代码结构（比如，暴露SDK核心层的部分头文件等）。
 
-## SDK核心层-细节介绍
+## Details of SDK Layer 
 
 由于历史原因，SQLClusterRouter的创建方式有多种。下面一一介绍。
 首先是使用两种Option创建，分别会创建连接Cluster和Standalone两种OpenMLDB服务端。
@@ -48,7 +49,7 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 
 第三种是基于DBSDK创建：
 ```
-    explicit SQLClusterRouter(DBSDK* sdk);
+explicit SQLClusterRouter(DBSDK* sdk);
 ```
 DBSDK有分为Cluster和Standalone两种，因此也可连接两种OpenMLDB服务端。
 这种方式方便用户额外地读取操作元数据，否则DBSDK在SQLClusterRouter内部不会对外暴露。
