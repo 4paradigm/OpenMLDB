@@ -1,25 +1,28 @@
-# 自定义函数开发
-## 1. 背景
-虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，以往只能通过开发内置函数来实现。内置函数开发需要重新编译二进制文件等待版本发布，周期相对较长。为了便于用户快速灵活实现特定的特征计算需求，我们实现了用户动态注册函数的机制。
+# UDF Function Development Guideline
+## 1. Background
+Although there already are hundreds of built-in functions, they can not satisfy the needs in some cases. In the past, this could only be done by developing new built-in functions. Built-in function development requires a relatively long cycle because it needs to recompile binary files and wait for new version release.
+In order to help users quickly and flexibly resolve specific feature computing requirements, we develop the mechanism of user dynamic registration function.
 
-一般SQL函数分为单行函数和聚合函数，目前我们只支持单行函数的自定义开发，预计下个版本会支持开发自定义聚合函数。关于单行函数和聚合函数的介绍可以参考[这里](./built_in_function_develop_guide.md)
-## 2. 开发步骤
-### 2.1 开发自定义函数
-#### 2.1.1 C++函数名规范
-- C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
-- 要求函数名能清晰表达函数功能
-- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../reference/sql/functions_and_operators/Files/udfs_8h.md)
-#### 2.1.2 C++类型与SQL类型对应关系
-内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
+SQL functions can be divided into single-line functions and aggregate functions. At present, only the custom development of single-line functions is supported. An introduction to single-line functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
+## 2. Development Procedures
+### 2.1 Develop UDF functions
+#### 2.1.1 Naming Specification of C++ Built-in Function
+- The naming of C++ built-in function should follow the [snake_case](https://en.wikipedia.org/wiki/Snake_case) style.
+- The name should clearly express the function's purpose.
+- The name of a function should not be the same as the name of a built-in function or other custom functions. The list of all built-in functions can be seen [here](../reference/sql/functions_and_operators/Files/udfs_8h.md).
 
-| SQL类型   | C/C++ 类型         |
-| :-------- | :----------------- |
-| BOOL      | `bool`             |
-| SMALLINT  | `int16_t`          |
-| INT       | `int32_t`          |
-| BIGINT    | `int64_t`          |
-| FLOAT     | `float`            |
-| DOUBLE    | `double`           |
+#### 2.1.2 
+The types of the built-in C++ functions' parameters should be BOOL, NUMBER, TIMESTAMP, DATE, or STRING.
+The SQL types corresponding to C++ types are shown as follows:
+
+| SQL Type  | C/C++ Type  |
+|:----------|:------------|
+| BOOL      | `bool`      |
+| SMALLINT  | `int16_t`   |
+| INT       | `int32_t`   |
+| BIGINT    | `int64_t`   |
+| FLOAT     | `float`     |
+| DOUBLE    | `double`    |
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
@@ -34,15 +37,16 @@
 
 **Parameters**: 
 
-* 如果输入字段是基本类型，通过值传递
-* 如果输入字段是string, timestamp, date, 通过指针传递
-* 函数的第一个参数必须是UDFContext* ctx，不能更改。[UDFContext](../../../include/udf/openmldb_udf.h)的定义如下:
-    ```c++
+* If the parameter is basic type, it will be passed as value. 
+* If the output type of the UDF is STRING, TIMESTAMP or DATE, it will be passed by pointer. 
+* The first parameter must be `UDFContext* ctx`. The definition of [UDFContext](../../../include/udf/openmldb_udf.h) is:
+
+```c++
     struct UDFContext {
         ByteMemoryPool* pool;  // 用来分配内存
         void* ptr;             // 用来存储临时变量。目前单行函数用不到
     };
-    ```
+```
 
 **Function Declaration**:
   
