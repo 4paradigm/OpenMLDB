@@ -53,7 +53,7 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 DBSDK有分为Cluster和Standalone两种，因此也可连接两种OpenMLDB服务端。
 这种方式方便用户额外地读取操作元数据，否则DBSDK在SQLClusterRouter内部不会对外暴露。
 
-例如，由于CLI可以直接通过DBSDK获得nameserver等元数据信息，我们在启动ClusterSQLClient或StandAloneSQLClient时是先创建BDSDK再创建SQLClusterRouter。
+例如，由于CLI可以直接通过DBSDK获得nameserver等元数据信息，我们在启动ClusterSQLClient或StandAloneSQLClient时是先创建DBSDK再创建SQLClusterRouter。
 
 ## Java Test
 
