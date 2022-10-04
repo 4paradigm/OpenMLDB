@@ -41,14 +41,15 @@ However, in consideration of code reuse, the SDK Layer code may be changed to so
 ## Details of SDK Layer 
 
 There are many ways to create a `SQLClusterRouter`.
-首先是使用两种Option创建，分别会创建连接Cluster和Standalone两种OpenMLDB服务端。
+The first two methods are using two options, which create a server connecting Cluster and Standalone respectively, respectively.
 ```
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(const StandaloneOptions& options);
 ```
-These two methods, which do not expose the metadata related DBSDK, which are suitable for ordinary users. The underlayers of Java and Python SDK also use these two approaches.
-Another way is to create based on DBSDK:
+These two methods, which do not expose the metadata related DBSDK, are suitable for ordinary users. The underlayers of Java and Python SDK also use these two approaches.
 
+
+Another way is to create based on DBSDK:
 ```
 explicit SQLClusterRouter(DBSDK* sdk);
 ```
