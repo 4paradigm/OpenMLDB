@@ -23,12 +23,17 @@
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
-#### 2.1.3 函数参数和返回值
-返回值:  
-* 如果udf输出类型是基本类型，通过函数返回值返回
-* 如果udf输出类型是string, timestamp, date, 通过函数**最后一个参数**返回
 
-参数: 
+
+#### 2.1.3 函数参数和返回值
+
+**Return Value**:
+
+* If the output type of the UDF is basic type, it will be processed as return value.
+* If the output type of the UDF is STRING, TIMESTAMP or DATE, it will return through the last parameter of the function.
+
+**Parameters**: 
+
 * 如果输入字段是基本类型，通过值传递
 * 如果输入字段是string, timestamp, date, 通过指针传递
 * 函数的第一个参数必须是UDFContext* ctx，不能更改。[UDFContext](../../../include/udf/openmldb_udf.h)的定义如下:
@@ -39,20 +44,26 @@
     };
     ```
 
-函数声明:  
-* 函数必须用extern "C"来声明
+**Function Declaration**:
+  
+* The functions must be declared by extern "C".
 
-#### 2.1.4 内存管理
+#### 2.1.4 Memory Management
 
-- 在自定义函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。
-- 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口。函数执行完OpenMLDB会自动释放内存.
-    ```c++
+- It is not allowed to use `new` operator or `malloc` function to request new memory space in UDF functions.
+- If you need to request additional memory space dynamically, please use the memory management interface provided by OpenMLDB. OpenMLDB will automatically free the memory space after the function is executed. 
+
+```c++
     char *buffer = ctx->pool->Alloc(size);
-    ```
-- 一次分配空间的最大长度不能超过2M字节
-#### 2.1.5 函数实现
-- 包含头文件udf/openmldb_udf.h 
-- 实现自定义函数逻辑
+```
+
+- The maximum size of the space allocated at a time cannot exceed 2M bytes.
+
+
+#### 2.1.5 Implement the Function
+- The head file `udf/openmldb_udf.h` should be included.
+- Realize the logic of the function.
+
 ```c++
 #include "udf/openmldb_udf.h"  // 必须包含此头文件
  
@@ -70,16 +81,26 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
     output->data_ = buffer;
 }
 ```
-更多udf实现参考[这里](../../../src/examples/test_udf.cc)
-### 2.2 编译动态库
-- 拷贝include目录 https://github.com/4paradigm/OpenMLDB/tree/main/include 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
-- 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
+
+For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
+
+
+### 2.2 Compile the Dynamic Library 
+
+- Copy the `include` directory (https://github.com/4paradigm/OpenMLDB/tree/main/include) to a certain path (like `/work/OpenMLDB/`) for later compiling. 
+- Run the compiling command. `-I` specifies the path of `include` directory. `-o` specifies the name of the dynamic library.
+
 ```shell
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
-### 2.3 拷贝动态库
-- 需要把编译好的动态库拷贝到部署OpenMLDB tablet/taskmanager目录中的udf目录下。如果没有此目录需要创建一个。 需要注意的是tablet的udf目录和bin/conf目录平级，taskmanager是放到taskmanager/bin/udf目录里。如tablet和taskmanager的部署目录都是/work/openmldb，目录结构如下：
-    ```
+
+### 2.3 Copy the Dynamic Library
+- The compiled dynamic libraries should be copied into the `udf` directory of the path which OpenMLDB `tablet/taskmanager` is deployed. Please create one if this directory does not exist.  
+- Please note that the `udf` directory of `tablet` is level with the `bin/conf` directory.
+- The `taskmanager` should be placed in `taskmanager/bin/udf`. 
+- If the deployment paths of `tablet` and `taskmanager` are both `/work/openmldb`, the structure of the directory is shown below:
+
+```
     /work/openmldb/
     ├── bin
     ├── conf
@@ -93,9 +114,12 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
     ├── tools
     └── udf
         └── libtest_udf.so
-    ```
-- 每个tablet的目录都需要拷贝
-- 在DROP FUNCTION之前不能删除此目录里的动态库
+```
+- Each tablet's directory needs to be copied.
+- Dynamic libraries in this directory cannot be dropped before the execution of `DROP FUNCTION`.
+
+
+
 ### 2.4 Register, Drop and Show the Functions
 For registering, please use [CREATE FUNCTION](../reference/sql/ddl/FUNCTION_STATEMENT.md).
 ```sql
