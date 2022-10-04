@@ -68,7 +68,10 @@ mvn install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.tes
 ```
 mvn test -pl openmldb-spark-connector -Dsuites=com._4paradigm.openmldb.spark.TestWrite
 ```
-P.S. 如果你实时改动了代码，由于install到本地仓库存在之前的代码编译的jar包，会导致无法测试最新代码。请谨慎使用`-pl`的写法。
+
+```{warning}
+如果你实时改动了代码，由于本地仓库存在之前的代码编译的jar包，会导致无法测试最新代码。请谨慎使用`-pl`写法。
+```
 
 如果只想运行java测试：
 ```
