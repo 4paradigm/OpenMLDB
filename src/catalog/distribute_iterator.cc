@@ -40,6 +40,10 @@ bool FullTableIterator::Valid() const {
 }
 
 void FullTableIterator::Next() {
+    // reset the buffered key and value
+    key_ = 0;
+    value_.Reset(nullptr, 0);
+
     if (NextFromLocal()) {
         return;
     }
@@ -155,6 +159,10 @@ bool FullTableIterator::NextFromRemote() {
 }
 
 const ::hybridse::codec::Row& FullTableIterator::GetValue() {
+    if (!value_.empty()) {
+        return value_;
+    }
+
     if (it_ && it_->Valid()) {
         value_ = ::hybridse::codec::Row(
             ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));

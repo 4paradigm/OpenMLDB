@@ -66,7 +66,7 @@ void PutKey(const std::string& key, std::shared_ptr<openmldb::storage::Table> ta
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     codec::SDKCodec codec(*(table->GetTableMeta()));
     for (int j = 0; j < cnt; j++) {
-        std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+        std::vector<std::string> row = {key , "mcc", std::to_string(1 + j)};
         ::openmldb::api::PutRequest request;
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
@@ -82,7 +82,7 @@ void PutKey(const std::string& key, const ::openmldb::api::TableMeta& table_meta
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     codec::SDKCodec codec(table_meta);
     for (int j = 0; j < cnt; j++) {
-        std::vector<std::string> row = {key , "mcc", std::to_string(now - j * (60 * 1000))};
+        std::vector<std::string> row = {key , "mcc", std::to_string(1 + j)};
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
@@ -92,7 +92,7 @@ void PutKey(const std::string& key, const ::openmldb::api::TableMeta& table_meta
 
 void PutData(std::shared_ptr<openmldb::storage::Table> table) {
     for (int i = 0; i < 5; i++) {
-        std::string key = "card" + std::to_string(table->GetId()) + std::to_string(i);
+        std::string key = "card" + std::to_string(table->GetPid()) + "|" + std::to_string(i);
         PutKey(key, table);
     }
 }
@@ -100,7 +100,7 @@ void PutData(std::shared_ptr<openmldb::storage::Table> table) {
 void PutData(const ::openmldb::api::TableMeta& table_meta,
         std::shared_ptr<openmldb::client::TabletClient> client) {
     for (int i = 0; i < 5; i++) {
-        std::string key = "card" + std::to_string(table_meta.tid()) + std::to_string(i);
+        std::string key = "card" + std::to_string(table_meta.pid()) + "|" + std::to_string(i);
         PutKey(key, table_meta, client);
     }
 }
@@ -216,6 +216,20 @@ TEST_F(DistributeIteratorTest, Hybrid) {
     count = 0;
     while (it.Valid()) {
         count++;
+        // multiple calls to GetKey/GetValue will get the same and valid result
+        auto key = it.GetKey();
+        auto buf = it.GetValue().buf();
+        auto size = it.GetValue().size();
+        codec::RowView row_view(*table1->GetSchema(), buf, size);
+        std::string col1, col2;
+        int64_t col3;
+        row_view.GetStrValue(0, &col1);
+        row_view.GetStrValue(1, &col2);
+        row_view.GetInt64(2, &col3);
+        LOG(INFO) << "row " << count << ": " << col1 << "," << col2 << ", " << col3;
+        ASSERT_EQ(col1.substr(0, 4), "card");
+        ASSERT_EQ(col2, "mcc");
+        ASSERT_TRUE(col3 > 0 && col3 <= 10);
         it.Next();
     }
     ASSERT_EQ(count, 200);
