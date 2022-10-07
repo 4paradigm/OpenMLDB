@@ -1,21 +1,21 @@
 # SQL for Feature Extraction (Part 1)
 
 
-## 1. What is the Feature Engineering of Machine Learning
+## 1. What is Feature Engineering in machine learning, and Why
 
-A real-world machine learning application generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model. For example, from the classic logistic regression and decision tree models to the deep learning models, we all focus on how to develop high-quality models. We may pay less attention to feature engineering. However, you must have heard a famous saying that data and features determine the upper limit of machine learning, while models and algorithms only approach this upper limit. It can be seen that we have long agreed on the importance of Feature Engineering.
+A real-world machine learning application generally includes two phases: **Feature Engineering** and designing a **Machine Learning Model** (or **Model**). There are a variety of famous machine learning models, including classic logistic regression, decision trees, or neural networks. Nonetheless, as the saying goes, it was data and features that determine the upper limit of a performance, while models and algorithms only try to approach it. We have long agreed upon the importance of Feature Engineering.
 
-In one sentence, Feature Engineering is defined as: using domain knowledge to extract useful feature information from the original data. It emphasizes domain knowledge, that is to say, feature extraction is not a standardized process, but has different experience and methodology based on different scenarios. For a simple example, for the real-time recommendation system, the original data may only be the search keywords entered by users, such as "washing machine", and the corresponding user and commodity data tables stored in the database. In order to make better real-time recommendation, the following more meaningful features can be produced:
+A one-sentence definition for Feature Engineering is: using domain knowledge to extract useful feature information from original data. Feature Engineering is not a standardized process, but heavily emphasizes domain knowledge. Different sets of experience and methodology are required by different scenarios. As a simple example, consider a real-time recommendation system whose original database may only consist of users data, commodities data, and users' searching keywords ("washing machine"). From these raw data, and to make a good real-time recommendation, useful feature extractions may include:
 
 - The home appliance brand that the user purchased the most in the past year
 - The average consumption level of the user in the past three years
 - In the past hour, the discount on the platform has been more than 70%, which is in line with the top three washing machine models purchased by users in this user gender and age group
 
-As can be seen from the above example, features can be made quite complex and can have very high timeliness. So how to extract good features according to specific scenes is what data scientists need. At the same time, they need to be equipped with powerful tools to do feature engineering well. This tutorial will introduce you to how to do feature engineering in practice.
+As you can see, high-permormance machine learning applications demand complex features be extracted online within reasonable time. Meanwhile, data scientists need a powerful feature-engineering tool, such as OpenMLDB, to decide what features they extract in a specific scenario. 
 
 ## 2. Feature Engineering Development Tool – OpenMLDB
 
-Before introducing the feature engineering algorithm, it is necessary to understand the development and deployment tools of feature engineering. According to experience, we roughly categorize them and summarize their advantages and disadvantages.
+The Opensource Machine Learning DataBase (OpenMLDB) is a highly optimized clustered database especially tuned for production-level feature engineering. According to experience, we list below its pros and cons against most traditional developing tools:
 
 | Development Tool                                             | Usability                                                    | Functional Support                                           | Engineering Effort                                           |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -24,7 +24,7 @@ Before introducing the feature engineering algorithm, it is necessary to underst
 | The hybrid approach, such as using Python for offline, and database or C++ for online | The development cost is very high and requires two development skillsets. | Based on development and customization, the functional requirements can be met. | Acceptable but costly. In addition to the development and operation cost, it is also necessary to verify the online and offline consistency. |
 | OpenMLDB                                                     | Medium; development based on SQL                             | The standard SQL is extended and highly optimized to fully support feature engineering workload. | Low cost and high efficiency. Based on SQL development with efficient design, SQL can be directly deployed to online, which naturally ensure the online and offline consistency. |
 
-From the above table, we can see that OpenMLDB has unique advantages for feature engineering in production. Especially for real-time feature extraction based on time-series data, OpenMLDB has a lot of targeted optimization. If you want to learn more about OpenMLDB, you can visit our [GitHub repo of OpenMLDB]( https://github.com/4paradigm/OpenMLDB).
+We can see from above that OpenMLDB has unique advantages for production-level feature engineering, especially for real-time feature extraction based on time-series data, where OpenMLDB performed a variety of targeted optimization. To learn more about OpenMLDB, please visit our [GitHub repo]( https://github.com/4paradigm/OpenMLDB).
 
 ## 3. From 0 to 1, Feature Engineering Practice
 
