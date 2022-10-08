@@ -79,9 +79,8 @@ case $OP in
             COUNT=1
             while [ $COUNT -lt 12 ]
             do
-                if ! curl "http://$ENDPOINT/status" > /tmp/server_status.log 2>&1; then
-                    echo "curl server status failed on $(</tmp/server_status.log)" 
-                    echo "retry"
+                if ! curl --show-error --silent -o /dev/null "http://$ENDPOINT/status"; then
+                    echo "curl server status failed, retry later"
                     sleep 1
                     (( COUNT+=1 ))
                 elif kill -0 "$PID" > /dev/null 2>&1; then
@@ -92,7 +91,6 @@ case $OP in
                     break
                 fi
             done
-            rm -f  /tmp/server_status.log
             echo "no more try"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
