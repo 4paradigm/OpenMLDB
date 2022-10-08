@@ -2,68 +2,71 @@
 
 ## Operator Precedence
 
-```sql
-!
-- (unary minus), ~ (unary bit inversion)
-^
-*, /, DIV, %, MOD
--, +
-<<, >>
-&
-|
-= (comparison), <=>, >=, >, <=, <, <>, !=, IS, LIKE, REGEXP, IN
-BETWEEN, CASE, WHEN, THEN, ELSE
-NOT
-AND, &&
-XOR
-OR, ||
-= (assignment), :=
+```yacc
+%left "OR"
+%left "AND"
+%left "XOR"
+%left UNARY_NOT_PRECEDENCE // (NOT / !)
+%nonassoc "=" "==" "<>" ">" "<" ">=" "<=" "!=" "LIKE" "ILIKE" "RLIKE" "IN" "DISTINCT" "BETWEEN" "IS" "NOT_SPECIAL"
+%nonassoc "ESCAPE"
+%left "|"
+%left "^"
+%left "&"
+%left "<<" ">>"
+%left "+" "-"
+%left "||"
+%left "*" "/" "DIV" "%" "MOD"
+%left UNARY_PRECEDENCE  // For all unary operators, +, -, ~
 ```
 
 ## Various Operations
 
 ### 1. Comparison Operation
 
-| operator name        | function description               |
-| :-------------- | :--------------------- |
-| `>`             | greater than                   |
-| `>=`            | greater than or equal to               |
-| `<=`            | less than or equal to               |
-| `!=` , `<>`     | not equal to                 |
-| `=`             | equal                   |
-| `BEWTEEN...AND` | between...and...之间       |
-| `IN`            | in the collection            |
-| `LIKE`          | comparison，case sensitive   |
-| `ILIKE`         | comparison, not case sensitive |
+| operator name   | function description         |
+| :-------------- | :--------------------------  |
+| `>`             | Greater than                 |
+| `>=`            | Greater than or equal to     |
+| `<`             | Less than                    |
+| `<=`            | Less than or equal to        |
+| `!=`, `<>`      | Not equal to                 |
+| `=`, `==`       | Equal                        |
+| `BEWTEEN...AND` | Between left and right       |
+| `IN`            | In the collection            |
+| `LIKE`          | Comparison, case sensitive   |
+| `ILIKE`         | Comparison, case insensitive |
+| `RLIKE`         | Regular expression comparison |
 
 ### 2. Logic Operation
 
 | operator name    | function description |
-| :---------- | :------- |
-| `AND`, `&&` | logical and   |
-| `OR`, `||`  | logical or   |
-| `XOR`       | logical and or |
-| `NOT`, `!`  | logical not   |
+| :----------      | :------- |
+| `AND`            | Logical and   |
+| `OR`             | Logical or   |
+| `XOR`            | Logical xor |
+| `NOT`, `!`       | Logical not, unary operator   |
 
 ### 3. Arithmetic Operations
 
-| operator name   | function description                                                 |
-| :--------- | :------------------------------------------------------- |
-| `%`, `MOD` | Modulo operator                                          |
-| `*`        | Multiplication operator                                  |
-| `+`        | Addition operator                                        |
-| `-`        | Minus operator                                           |
-| `-`        | Change the sign of the argument只支持数值型操作数-number |
-| `/`        | Division operator                                        |
-| `DIV`      | Integer division                                         |
+| operator name   | function description                                |
+| :---------      | :-------------------------------------------------- |
+| `%`, `MOD`      | Modulo                                              |
+| `*`             | Multiplication                                      |
+| `+`             | Addition                                            |
+| `-`             | Subtraction                                         |
+| `/`             | Float division                                      |
+| `DIV`           | Integer division                                    |
+| `+`             | Unary plus                                          |
+| `-`             | Unary minus, support only `-number`                 |
 
 ###  4. Bit Operation
 
 | operator name | Description |
-| :------- | :---------- |
-| `&`      | Bitwise AND |
-| `>>`     | Right shift |
-| `<<`     | Left shift  |
+| :-------      | :---------- |
+| `&`           | Bitwise AND |
+| `\|`          | Bitwise OR  |
+| `^`           | Bitwise XOR |
+| `~`           | Bitwise NOT, unary operator |
 
 ### 5. Type Operations and Functions
 
