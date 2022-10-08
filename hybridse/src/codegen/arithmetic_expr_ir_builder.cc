@@ -470,7 +470,7 @@ Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
                                          NativeValue* value_output) {  // NOLINT
     CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
         node::ExprNode::ModTypeAccept, left.GetType(), right.GetType()));
-    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullDivExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {

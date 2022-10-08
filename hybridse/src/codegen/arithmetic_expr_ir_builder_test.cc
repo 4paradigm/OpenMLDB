@@ -1041,6 +1041,8 @@ TEST_F(ArithmeticIRBuilderTest, TestModInt32XExpr) {
         ::hybridse::node::kInt32, ::hybridse::node::kDouble,
         ::hybridse::node::kDouble, 12, 5.1, fmod(12.0, 5.1),
         ::hybridse::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, double, Nullable<double>>(12, 0.0, nullptr, ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ArithmeticIRBuilderTest, TestModFloatXExpr) {
