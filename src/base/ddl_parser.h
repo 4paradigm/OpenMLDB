@@ -58,8 +58,18 @@ using LongWindowInfos = std::vector<LongWindowInfo>;
 
 class DDLParser {
  public:
+    /** core funcs(with arg ::hybridse::type::Database) **/
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
+    static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
+    static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
+    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql,
+                                                                    const hybridse::type::Database& db);
+    // returns
+    // 1. empty list: means valid
+    // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
+    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const hybridse::type::Database& db);
 
+    /** interfaces, the arg schema's type can be varied **/ 
     static IndexMap ExtractIndexes(
         const std::string& sql,
         const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
@@ -67,18 +77,14 @@ class DDLParser {
     static IndexMap ExtractIndexes(const std::string& sql,
                                    const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
-    static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
-
-    static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
-
-    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql,
-                                                                    const hybridse::type::Database& db);
     static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(
         const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
     static hybridse::sdk::Status ExtractLongWindowInfos(const std::string& sql,
                                                   const std::unordered_map<std::string, std::string>& window_map,
                                                   LongWindowInfos* infos);
+
+    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
  private:
     // tables are in one db, and db name will be rewritten for simplicity
@@ -89,7 +95,9 @@ class DDLParser {
     static IndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
 
     static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session);
-
+    // If you want the status, use this
+    static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session, hybridse::base::Status* status);
+    
     template <typename T>
     static void AddTables(const T& schema, hybridse::type::Database* db);
 

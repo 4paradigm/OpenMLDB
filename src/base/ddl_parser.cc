@@ -47,10 +47,10 @@ using hybridse::vm::PhysicalOpType;
 using hybridse::vm::SchemasContext;
 using hybridse::vm::Sort;
 
-constexpr const char* DB_NAME = "ddl_parser_db";
+constexpr const char* DB_NAME = "ddl_parser_single_db";
 
 // Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
-// // TODO(hw): hybridse should open this method
+// TODO(hw): hybridse should open this method
 bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
                                      std::string* source_name);
 
@@ -179,8 +179,7 @@ IndexMap DDLParser::ExtractIndexes(
     const std::string& sql,
     const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return ExtractIndexes(sql, db);
 }
@@ -188,8 +187,7 @@ IndexMap DDLParser::ExtractIndexes(
 IndexMap DDLParser::ExtractIndexes(const std::string& sql,
                                    const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return ExtractIndexes(sql, db);
 }
@@ -411,8 +409,7 @@ std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::str
 std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(
     const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return GetOutputSchema(sql, db);
 }
@@ -426,7 +423,6 @@ IndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
 }
 
 bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session) {
-    // TODO(hw): engine should be the input, do not create in here
     auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
     catalog->AddDatabase(db);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
@@ -435,10 +431,27 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     options.SetCompileOnly(true);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
+    // TODO(hw): ok and status may not be consistent? why engine always use '!ok || 0 != status.code'?
     ::hybridse::base::Status status;
     auto ok = engine->Get(sql, db.name(), *session, status);
     if (!(ok && status.isOK())) {
         LOG(WARNING) << "hybrid engine compile sql failed, " << status.str();
+        return false;
+    }
+    return true;
+}
+
+bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session, hybridse::base::Status* status) {
+    auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+    catalog->AddDatabase(db);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::EngineOptions options;
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
+    auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
+    auto ok = engine->Get(sql, db.name(), *session, *status);
+    if (!(ok && status->isOK())) {
+        LOG(WARNING) << "hybrid engine compile sql failed, " << status->str();
         return false;
     }
     return true;
@@ -458,6 +471,24 @@ void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
         }
     }
 }
+
+std::vector<std::string> DDLParser::ValidateSQLInBatch(const std::string& sql, const hybridse::type::Database& db) {
+    hybridse::vm::BatchRunSession session;
+    hybridse::base::Status status;
+    auto ok = GetPlan(sql, db, &session, &status);
+    if(!ok || !status.isOK()){
+        return {status.GetMsg(), status.GetTraces()};
+    }
+    return {};
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInBatch(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    db.set_name(DB_NAME);
+    AddTables(schemas, &db);
+    return ValidateSQLInBatch(sql, db);
+}
+
 
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                                   const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {
