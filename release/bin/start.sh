@@ -45,8 +45,8 @@ do
 done
 
 if [ "$HAS_COMPONENT" = "false" ]; then
-    echo "No component named $COMPONENT in [$COMPONENTS]";
-    exit 1;
+    echo "No component named $COMPONENT in [$COMPONENTS]"
+    exit 1
 fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
@@ -72,10 +72,10 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >>  "$LOG_DIR"."$COMPONENT".log 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"."$COMPONENT".log 2>&1 &
             PID=$!
-            sleep 3
             if [ -x "$(command -v curl)" ]; then
+                sleep 3
                 ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
                 COUNT=1
                 while [ $COUNT -lt 12 ]
@@ -92,7 +92,8 @@ case $OP in
                     fi
                 done
             else
-                sleep 2
+                echo "no curl, sleep 10s then check the process running status"
+                sleep 10
                 if kill -0 "$PID" > /dev/null 2>&1; then
                     echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
