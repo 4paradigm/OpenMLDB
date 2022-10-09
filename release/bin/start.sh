@@ -75,21 +75,30 @@ case $OP in
             ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >>  "$LOG_DIR"."$COMPONENT".log 2>&1 &
             PID=$!
             sleep 3
-            ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
-            COUNT=1
-            while [ $COUNT -lt 12 ]
-            do
-                if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
-                    sleep 1
-                    (( COUNT+=1 ))
-                elif kill -0 "$PID" > /dev/null 2>&1; then
+            if [ -x "$(command -v curl)" ]; then
+                ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+                COUNT=1
+                while [ $COUNT -lt 12 ]
+                do
+                    if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
+                        sleep 1
+                        (( COUNT+=1 ))
+                    elif kill -0 "$PID" > /dev/null 2>&1; then
+                        echo $PID > "$OPENMLDB_PID_FILE"
+                        echo "Start ${COMPONENT} success"
+                        exit 0
+                    else
+                        break
+                    fi
+                done
+            else
+                sleep 2
+                if kill -0 "$PID" > /dev/null 2>&1; then
                     echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
                     exit 0
-                else
-                    break
                 fi
-            done
+            fi
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties

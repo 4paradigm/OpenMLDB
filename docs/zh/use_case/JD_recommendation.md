@@ -224,7 +224,7 @@ INTO OUTFILE '/root/project/out/1';
 进入demo文件夹，运行以下指令进行数据处理
 ```bash
 cd $demodir/openmldb_process/
-sh process_JD_out_full.sh $demodir/out/1
+bash process_JD_out_full.sh $demodir/out/1
 ```
 对应生成parquet数据集将生成在 `$demodir/openmldb_process/out`。数据信息将被打印如下，该信息将被输入为训练的配置文件。
 >train samples = 4007924
