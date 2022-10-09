@@ -100,7 +100,7 @@ case $OP in
                     exit 0
                 fi
             fi
-            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log${RES}"
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
