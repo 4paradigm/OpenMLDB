@@ -672,28 +672,28 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::BasicBlock* block,
     *output = div_result;
     return true;
 }
-bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
-                                       llvm::Value* left, llvm::Value* right,
-                                       llvm::Value** output,
-                                       base::Status status) {
+
+// codegen for modulo
+//
+// result may not correct if any exception (e.g modulus-by-zero) happens,
+// use safely with `NullIRBuilder::SafeNullDivExpr`,
+// or `ArithmeticIRBuilder::BuildModExpr(const NativeValue& , const NativeValue& , NativeValue*)`
+bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
+                                       llvm::Value** output, base::Status status) {
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left,
-                                           &casted_right, status)) {
+    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
     if (casted_left->getType()->isIntegerTy()) {
-        // TODO(someone): fully and correctly handle arithmetic exception
-        ::llvm::Value* zero =
-            ::llvm::ConstantInt::get(casted_right->getType(), 0);
+        // val % 0 -> exception, exception handling is necessary
+        ::llvm::Value* zero = ::llvm::ConstantInt::get(casted_right->getType(), 0);
         ::llvm::Value* rem_is_zero = builder.CreateICmpEQ(casted_right, zero);
-        casted_right = builder.CreateSelect(
-            rem_is_zero, ::llvm::ConstantInt::get(casted_right->getType(), 1),
-            casted_right);
-        ::llvm::Value* srem_result =
-            builder.CreateSRem(casted_left, casted_right);
+        casted_right =
+            builder.CreateSelect(rem_is_zero, ::llvm::ConstantInt::get(casted_right->getType(), 1), casted_right);
+        ::llvm::Value* srem_result = builder.CreateSRem(casted_left, casted_right);
         srem_result = builder.CreateSelect(rem_is_zero, zero, srem_result);
         *output = srem_result;
     } else if (casted_left->getType()->isFloatingPointTy()) {
@@ -706,7 +706,6 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
     }
     return true;
 }
-
 
 }  // namespace codegen
 }  // namespace hybridse
