@@ -15,13 +15,13 @@
  */
 
 /*
- *In order to avoid the appearance of too many header files,
- *which makes it more difficult for users to use,
- *we create some classes that users need here.
+ * In order to avoid the appearance of too many header files,
+ * which makes it more difficult for users to use,
+ * we create some classes that users need here.
  */
 
-#ifndef OPENMLDB_API_H_
-#define OPENMLDB_API_H_
+#ifndef SRC_SDK_OPENMLDB_API_H_
+#define SRC_SDK_OPENMLDB_API_H_
 
 #include <stdint.h>
 
@@ -123,7 +123,7 @@ class OpenmldbHandler {
 // reset() is used to clear the inserted data in an object of type ParameterRow
 class ParameterRow {
  public:
-    ParameterRow(const OpenmldbHandler* _handler);
+    explicit ParameterRow(const OpenmldbHandler* _handler);
     std::shared_ptr<openmldb::sdk::SQLRequestRow> get_parameter_row() const;
     ParameterRow& operator<<(const bool& value);
     ParameterRow& operator<<(const int16_t value);
@@ -212,4 +212,4 @@ std::shared_ptr<hybridse::sdk::ResultSet> get_resultset();
 // only one parameter,  a object of type shared_ptr<hybridse::sdk::ResultSet>
 void print_resultset(std::shared_ptr<hybridse::sdk::ResultSet> rs);
 
-#endif  // OPENMLDB_API_H_
+#endif  // SRC_SDK_OPENMLDB_API_H_

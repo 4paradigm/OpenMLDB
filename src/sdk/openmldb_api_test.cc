@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "openmldb_api.h"
+#include "sdk/openmldb_api.h"
 
 #include <unistd.h>
 
