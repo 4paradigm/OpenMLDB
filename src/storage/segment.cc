@@ -32,7 +32,7 @@ namespace storage {
 
 static const SliceComparator scmp;
 Segment::Segment()
-   : entries_(NULL),
+    : entries_(NULL),
      mu_(),
      idx_cnt_(0),
      idx_byte_size_(0),
@@ -41,24 +41,24 @@ Segment::Segment()
      gc_version_(0),
      is_skiplist_(true),
      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
-   entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-   key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
-   entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
 Segment::Segment(uint8_t height, bool is_skiplist)
-   : entries_(NULL),
+    : entries_(NULL),
      mu_(),
      idx_cnt_(0),
      idx_byte_size_(0),
      pk_cnt_(0),
      key_entry_max_height_(height),
-     ts_cnt_(1),  // ts cnt 就是1 一个索引
+     ts_cnt_(1),
      gc_version_(0),
      is_skiplist_(is_skiplist),
      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
-   entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-   entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
 Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, const std::vector<bool> is_skiplist_vec)

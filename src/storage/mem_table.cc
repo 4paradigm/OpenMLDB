@@ -107,7 +107,6 @@ bool MemTable::Init() {
         const std::vector<std::shared_ptr<IndexDef>>& index_vec = inner_indexs->at(i)->GetIndex();
         std::vector<bool> is_skiplist_vec;
         if (!ts_vec.empty()) {
-            // 有多个索引列
             for (auto index : index_vec) {
                 if (index->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
                     is_skiplist_vec.push_back(false);
@@ -121,9 +120,8 @@ bool MemTable::Init() {
                       cur_key_entry_max_height, ts_vec.size(), id_, pid_);
             }
         } else {
-            // 只有一个索引列
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                if (index_vec.at(0)->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)  // ts为1 只有一个索引列
+                if (index_vec.at(0)->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime)
                     seg_arr[j] = new Segment(cur_key_entry_max_height, false);
                 else
                     seg_arr[j] = new Segment(cur_key_entry_max_height, true);
@@ -131,7 +129,7 @@ bool MemTable::Init() {
             }
         }
         segments_[i] = seg_arr;
-        is_skiplist_vec.clear();  // clear !!!!
+        is_skiplist_vec.clear();
         key_entry_max_height_ = cur_key_entry_max_height;
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(), id_, pid_, seg_cnt_);
@@ -837,17 +835,17 @@ void MemTableTraverseIterator::Next() {
 uint64_t MemTableTraverseIterator::GetCount() const { return traverse_cnt_; }
 
 void MemTableTraverseIterator::NextPK() {
-    delete it_;  // 此时释放之前的迭代器指针
+    delete it_;
     it_ = NULL;
     do {
         ticket_.Pop();
-        if (pk_it_->Valid()) {  // 只要当前节点不为NULL 就是有效的
-            pk_it_->Next(); // pk_it 指向下一个节点
+        if (pk_it_->Valid()) {
+            pk_it_->Next();
         }
-        if (!pk_it_->Valid()) { // 如果此时pk_it 为空 则指向下一个segment
-            delete pk_it_;   // 释放pk_it_
+        if (!pk_it_->Valid()) {
+            delete pk_it_;
             pk_it_ = NULL;
-            seg_idx_++;   // seg_索引加1 指向下一个segment
+            seg_idx_++;
             if (seg_idx_ < seg_cnt_) {
                 pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
                 pk_it_->SeekToFirst();
@@ -870,7 +868,7 @@ void MemTableTraverseIterator::NextPK() {
                 entry = ((ListKeyEntry**)pk_it_->GetValue())[0];
             }
             it_ = entry->entries.NewIterator();
-            ticket_.Push(entry);  // ticket_ 保存的是KeyEntry指针 用于引用计数
+            ticket_.Push(entry);
         } else {
             if (segments_[seg_idx_]->IsSkipList()) {
                 it_ = ((SkipListKeyEntry*)pk_it_->GetValue())
@@ -883,16 +881,16 @@ void MemTableTraverseIterator::NextPK() {
             }
         }
         it_->SeekToFirst();
-        record_idx_ = 1;  // 记录第二层结构的索引  每次遍历不同的二级结构 都要重置
-        traverse_cnt_++;  // 保存所有遍历过的记录数
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {  // 如果遍历的节点数 超过了 给定的阈值 则跳出遍历
+        record_idx_ = 1;
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
     } while (it_ == NULL || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
 }
 
 void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
-    if (pk_it_ != NULL) {  // seek 前需要将指针指向的内存释放掉，不然就造成了内存泄漏
+    if (pk_it_ != NULL) {
         delete pk_it_;
         pk_it_ = NULL;
     }
@@ -900,13 +898,13 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
         delete it_;
         it_ = NULL;
     }
-    ticket_.Pop();  // 引用计数减1
+    ticket_.Pop();
     if (seg_cnt_ > 1) {
         seg_idx_ = ::openmldb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
     }
     Slice spk(key);
     pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-    pk_it_->Seek(spk);  // 直接指向key 为 spk的节点
+    pk_it_->Seek(spk);
     if (pk_it_->Valid()) {
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
             if (segments_[seg_idx_]->IsSkipList(ts_idx_)) {
@@ -1023,7 +1021,7 @@ void MemTableTraverseIterator::SeekToFirst() {
                 record_idx_ = 1;
                 return;
             }
-            delete it_; // 如果it 无效或过期 释放内存
+            delete it_;
             it_ = NULL;
             pk_it_->Next();
             ticket_.Pop();

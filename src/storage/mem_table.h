@@ -56,17 +56,17 @@ class MemTableTraverseIterator : public TraverseIterator {
     uint64_t GetCount() const override;
 
  private:
-    Segment** segments_;      // segment指针数组
-    uint32_t const seg_cnt_;  // segment指针数组长度
-    uint32_t seg_idx_;        // segment指针数组当前的索引
-    KeyEntries::Iterator* pk_it_;  // 第一层跳表迭代器
-    BaseTimeEntriesIterator* it_;  // 第二层结构的迭代器
-    uint32_t record_idx_;  // 遍历的记录数
-    uint32_t ts_idx_;      // ts index
+    Segment** segments_;
+    uint32_t const seg_cnt_;
+    uint32_t seg_idx_;
+    KeyEntries::Iterator* pk_it_;
+    BaseTimeEntriesIterator* it_;
+    uint32_t record_idx_;
+    uint32_t ts_idx_;
     // uint64_t expire_value_;
-    TTLSt expire_value_;  // 过期值
-    Ticket ticket_;  // 保存it_ 用来进行引用计数
-    uint64_t traverse_cnt_;  // 记录遍历的所有节点
+    TTLSt expire_value_;
+    Ticket ticket_;
+    uint64_t traverse_cnt_;
 };
 
 class MemTable : public Table {
