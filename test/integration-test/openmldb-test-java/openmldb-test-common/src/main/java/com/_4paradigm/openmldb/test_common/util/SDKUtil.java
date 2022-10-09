@@ -442,9 +442,10 @@ public class SDKUtil {
             PreparedStatement rps = null;
             try {
                 rps = executor.getRequestPreparedStmt(dbName, selectSql);
-            } catch (SQLException throwables) {
+            } catch (SQLException e) {
                 openMLDBResult.setOk(false);
-                openMLDBResult.setMsg("Get Request PreparedStatement Fail");
+                openMLDBResult.setMsg(e.getMessage());
+                e.printStackTrace();
                 return openMLDBResult;
             }
             ResultSet resultSet = null;
