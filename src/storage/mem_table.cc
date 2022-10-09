@@ -16,6 +16,7 @@
 
 #include "storage/mem_table.h"
 
+#include <snappy.h>
 #include <algorithm>
 #include <utility>
 
@@ -162,6 +163,11 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     }
     uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
