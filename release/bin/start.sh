@@ -72,7 +72,7 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"."$COMPONENT".log 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
             PID=$!
             if [ -x "$(command -v curl)" ]; then
                 sleep 3
@@ -100,6 +100,7 @@ case $OP in
                     exit 0
                 fi
             fi
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log${RES}"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
@@ -115,8 +116,8 @@ case $OP in
                 echo "Start ${COMPONENT} success"
                 exit 0
             fi
+            echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         fi
-        echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         ;;
     stop)
         echo "Stopping $COMPONENT ... "
