@@ -92,7 +92,7 @@ case $OP in
                     fi
                 done
             else
-                echo "no curl, sleep 10s then check the process running status"
+                echo "no curl, sleep 10s and then check the process running status"
                 sleep 10
                 if kill -0 "$PID" > /dev/null 2>&1; then
                     echo $PID > "$OPENMLDB_PID_FILE"
