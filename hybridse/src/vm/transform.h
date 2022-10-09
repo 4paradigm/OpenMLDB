@@ -159,9 +159,6 @@ class BatchModeTransformer {
                                     PhysicalOpNode** output);
     virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
                                           PhysicalOpNode** output);
-    virtual Status TransformWindowOp(PhysicalOpNode* depend,
-                                     const node::WindowPlanNode* w_ptr,
-                                     PhysicalOpNode** output);
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
     virtual Status TransformGroupOp(const node::GroupPlanNode* node,
@@ -292,6 +289,15 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformGroupOp(const node::GroupPlanNode* node, PhysicalOpNode** output) override;
 
     Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
+
+    Status TransformWindowOp(PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
+
+ private:
+    // Optimize simple project node which is the producer of window project
+    Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend, const node::WindowPlanNode* w_ptr,
+                                                 PhysicalOpNode** output);
+    Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const node::WindowPlanNode* w_ptr,
+                                               PhysicalOpNode** output);
 
  private:
     bool enable_batch_request_opt_;
