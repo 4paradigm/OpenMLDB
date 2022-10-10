@@ -66,6 +66,17 @@ public class SQLRouterSmokeTest {
         }
     }
 
+    @Test
+    void testMoreOptions() throws Exception {
+        SdkOption option = new SdkOption();
+        option.setZkPath(TestConfig.ZK_PATH);
+        option.setZkCluster(TestConfig.ZK_CLUSTER);
+        option.setSessionTimeout(200000);
+        option.setMaxSqlCacheSize(100);
+        option.setZkLogLevel(2);
+        SqlExecutor tmp = new SqlClusterExecutor(option);
+    }
+
     @DataProvider(name = "executor")
     public Object[] executor() {
         return new Object[] { clusterExecutor, standaloneExecutor };
