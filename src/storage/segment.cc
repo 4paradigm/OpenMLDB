@@ -240,7 +240,7 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
             }
             auto entry_arr = (void*)entry_arr_tmp;  // NOLINT
             uint8_t height = entries_->Insert(skey, entry_arr);
-            byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_, GetSkipListVec()); // TODO 这里传递的是一个数组
+            byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_, GetSkipListVec());
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
         uint8_t height = 0;
@@ -263,7 +263,7 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         return;
     }
     if (ts_cnt_ == 1) {
-        auto pos = ts_map.find(ts_idx_map_.begin()->first);  // ts_map second is time
+        auto pos = ts_map.find(ts_idx_map_.begin()->first);
         if (pos != ts_map.end()) {
             Put(key, pos->second, row);
         }
@@ -350,24 +350,23 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint6
     }
 }
 
-//重载
 void Segment::FreeList(::openmldb::base::ListNode<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
                        uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     while (node != NULL) {
-        gc_idx_cnt++; // 删除一个二层list节点 gc_idx_cnt++
+        gc_idx_cnt++;
         ::openmldb::base::ListNode<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(0, false));
         node = node->GetNextNoBarrier();
         DEBUGLOG("delete key %lu", tmp->GetKey());
-        if (tmp->GetValue()->dim_cnt_down > 1) {  // tmp value 保存的是Datablock 可能有多个指针指向dataBlock
+        if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down--;
         } else {
             DEBUGLOG("delele data block for key %lu", tmp->GetKey());
-            gc_record_byte_size += GetRecordSize(tmp->GetValue()->size); // 获取记录的大小
+            gc_record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
-            gc_record_cnt++;  // 删除记录加一 这里的记录 是row
+            gc_record_cnt++;
         }
-        delete tmp;  // 删除节点
+        delete tmp;
     }
 }
 
