@@ -658,18 +658,18 @@ public class SQLRouterSmokeTest {
         dbSchema.put("t2", sch);
         schemaMaps.put("db2", dbSchema);
 
-        List<String> ret = SqlClusterExecutor.validateSQL("select c1 from t1;", schemaMaps);
+        List<String> ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
-        ret = SqlClusterExecutor.validateSQL("select c1 from t2;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t2;", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
-        ret = SqlClusterExecutor.validateSQL("select c1 from db1.t1;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("select c1 from db1.t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2); // db is unsupported
 
-        ret = SqlClusterExecutor.validateSQL("swlect c1 from t1;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("swlect c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2);
         Assert.assertTrue(ret.get(0).contains("Syntax error"));
 
-        ret = SqlClusterExecutor.validateSQL("select foo(c1) from t1;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("select foo(c1) from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2);
         Assert.assertTrue(ret.get(0).contains("Fail to resolve expression"));
 
@@ -683,17 +683,28 @@ public class SQLRouterSmokeTest {
         dbSchema.put("t1", sch2);
         schemaMaps.put("db2", dbSchema);
 
-        ret = SqlClusterExecutor.validateSQL("select c1 from t1;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
-        ret = SqlClusterExecutor.validateSQL("select c2 from t1;", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInBatch("select c2 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2);
 
         // if input schema is null or empty
         try {
-            SqlClusterExecutor.validateSQL("", null);
+            SqlClusterExecutor.validateSQLInBatch("", null);
             Assert.fail("null input schema will throw an exception");
         } catch (SQLException e) {
             Assert.assertEquals(e.getMessage(), "input schema is null or empty");
         }
+
+        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) from t1;", schemaMaps);
+        Assert.assertEquals(ret.size(), 2);
+        Assert.assertTrue(ret.get(0).contains("Aggregate over a table cannot be supported in online serving"));
+        dbSchema = new HashMap<>();
+        dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), 
+        new Column("c2", Types.BIGINT))));
+        schemaMaps.put("db3", dbSchema);
+        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
+        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+        Assert.assertEquals(ret.size(), 0);
     }
 }

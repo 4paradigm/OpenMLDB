@@ -198,7 +198,7 @@ std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
     return openmldb::base::DDLParser::GetOutputSchema(sql, table_desc_map);
 }
 
-std::vector<std::string> ValidateSQL(
+std::vector<std::string> ValidateSQLInBatch(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
     auto table_desc_map = convertSchema(schemas);
@@ -207,6 +207,17 @@ std::vector<std::string> ValidateSQL(
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
     return openmldb::base::DDLParser::ValidateSQLInBatch(sql, table_desc_map);
+}
+
+std::vector<std::string> ValidateSQLInRequest(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    auto table_desc_map = convertSchema(schemas);
+    if (table_desc_map.empty()) {
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        return {"schema convert failed(input schema may be empty)", "check convertSchema"};
+    }
+    return openmldb::base::DDLParser::ValidateSQLInRequest(sql, table_desc_map);
 }
 
 }  // namespace openmldb::sdk

@@ -368,7 +368,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     // returns
     // 1. empty list: means valid
     // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
-    public static List<String> validateSQL(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
@@ -380,7 +380,25 @@ public class SqlClusterExecutor implements SqlExecutor {
             Map<String, Schema> schemaMap = entry.getValue();
             tableColumnDescPairVector.addAll(convertSchema(schemaMap));
         }
-        List<String> err = sql_router_sdk.ValidateSQL(sql, tableColumnDescPairVector);
+        List<String> err = sql_router_sdk.ValidateSQLInBatch(sql, tableColumnDescPairVector);
+        tableColumnDescPairVector.delete();
+        return err;
+    }
+
+    // return: the same as validateSQLInBatch
+    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
+        if (null == tableSchema || tableSchema.isEmpty()) {
+            throw new SQLException("input schema is null or empty");
+        }
+        TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+        // TODO(hw): multi db is not supported now, so we add all db-tables here
+        for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            Map<String, Schema> schemaMap = entry.getValue();
+            tableColumnDescPairVector.addAll(convertSchema(schemaMap));
+        }
+        List<String> err = sql_router_sdk.ValidateSQLInRequest(sql, tableColumnDescPairVector);
         tableColumnDescPairVector.delete();
         return err;
     }

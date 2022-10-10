@@ -489,6 +489,23 @@ std::vector<std::string> DDLParser::ValidateSQLInBatch(const std::string& sql, c
     return ValidateSQLInBatch(sql, db);
 }
 
+std::vector<std::string> DDLParser::ValidateSQLInRequest(const std::string& sql, const hybridse::type::Database& db) {
+    hybridse::vm::MockRequestRunSession session;
+    hybridse::base::Status status;
+    auto ok = GetPlan(sql, db, &session, &status);
+    if(!ok || !status.isOK()){
+        return {status.GetMsg(), status.GetTraces()};
+    }
+    return {};
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInRequest(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    db.set_name(DB_NAME);
+    AddTables(schemas, &db);
+    return ValidateSQLInRequest(sql, db);
+}
+
 
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
                                   const hybridse::node::OrderByNode* ts, const SchemasContext* ctx) {

@@ -259,7 +259,11 @@ std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 
-std::vector<std::string> ValidateSQL(
+std::vector<std::string> ValidateSQLInBatch(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::vector<std::string> ValidateSQLInRequest(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 

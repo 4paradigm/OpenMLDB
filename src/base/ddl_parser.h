@@ -68,6 +68,7 @@ class DDLParser {
     // 1. empty list: means valid
     // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
     static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const hybridse::type::Database& db);
+    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const hybridse::type::Database& db);
 
     /** interfaces, the arg schema's type can be varied **/ 
     static IndexMap ExtractIndexes(
@@ -85,6 +86,8 @@ class DDLParser {
                                                   LongWindowInfos* infos);
 
     static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+
+    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
 
  private:
     // tables are in one db, and db name will be rewritten for simplicity
