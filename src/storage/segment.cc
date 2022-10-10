@@ -600,7 +600,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
                 continue;
             }
             if (IsSkipList(pos->second)) {
-                SkipListKeyEntry* entry = (SkipListKeyEntry*)entry_arr[pos->second];
+                SkipListKeyEntry* entry = reinterpret_cast<SkipListKeyEntry*>(entry_arr[pos->second]);
                 ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
                 bool continue_flag = false;
                 switch (kv.second.ttl_type) {
@@ -671,9 +671,8 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
                 entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
                 idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
                 gc_idx_cnt += entry_gc_idx_cnt;
-            }
-            else {
-                ListKeyEntry* entry = (ListKeyEntry*)entry_arr[pos->second];
+            } else {
+                ListKeyEntry* entry = reinterpret_cast<ListKeyEntry*>(entry_arr[pos->second]);
                 ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = NULL;
                 bool continue_flag = false;
                 switch (kv.second.ttl_type) {
@@ -753,12 +752,12 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
                 std::lock_guard<std::mutex> lock(mu_);
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
                     if (IsSkipList(i)) {
-                        if (!(SkipListKeyEntry*)entry_arr[i]->entries.IsEmpty()) {
+                        if (!reinterpret_cast<SkipListKeyEntry*>(entry_arr[i])->entries.IsEmpty()) {
                             is_empty = false;
                             break;
                         }
                     } else {
-                        if (!(ListKeyEntry*)entry_arr[i]->entries.IsEmpty()) {
+                        if (!reinterpret_cast<ListKeyEntry*>(entry_arr[i])->entries.IsEmpty()) {
                             is_empty = false;
                             break;
                         }
@@ -832,8 +831,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
-       }
-       else {
+       } else {
             ListKeyEntry* entry = (ListKeyEntry*)it->GetValue();  // NOLINT
             Slice key = it->GetKey();
             it->Next();
