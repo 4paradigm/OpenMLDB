@@ -873,8 +873,9 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     srand(time(NULL));
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
@@ -895,7 +896,6 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::router_ = router;
     ::openmldb::sdk::cs_ = cs;
 
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
     return ok;
 }

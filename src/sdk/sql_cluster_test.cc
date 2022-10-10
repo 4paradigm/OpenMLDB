@@ -991,16 +991,17 @@ TEST_F(SQLClusterTest, ClusterSelect) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-    ::testing::InitGoogleTest(&argc, argv);
     srand(time(nullptr));
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Test failed with NULL SQL router";
