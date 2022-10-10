@@ -24,6 +24,7 @@ import com._4paradigm.openmldb.StandaloneOptions;
 
 @Data
 public class SdkOption {
+    // TODO(hw): set isClusterMode automatically
     private boolean isClusterMode = true;
     // options for cluster mode
     private String zkCluster = "";
@@ -42,7 +43,7 @@ public class SdkOption {
     private long requestTimeout = 60000;
     private int glogLevel = 0;
     private String glogDir = "";
-    private int maxSqlCacheSize = 10;
+    private int maxSqlCacheSize = 50;
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
