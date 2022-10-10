@@ -910,7 +910,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::openmldb::base::SetupGlog(true);
-    
+
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
