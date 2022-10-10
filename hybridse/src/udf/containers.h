@@ -168,6 +168,10 @@ template <typename K, typename V,
           typename StorageV = typename ContainerStorageTypeTrait<V>::type>
 class BoundedGroupByDict {
  public:
+    // forward & export K & StorageV type
+    using Key = K;
+    using StorageValue = StorageV;
+
     // actual input type
     using InputK = typename DataTypeTrait<K>::CCallArgType;
     using InputV = typename DataTypeTrait<V>::CCallArgType;
@@ -182,12 +186,27 @@ class BoundedGroupByDict {
 
     struct PairCmp {
         // (4, 2), (1, 4), (2, 4)
-        bool operator()(const std::pair<StorageK, StorageV>& lhs, const std::pair<StorageK, StorageV>& rhs) const {
+        template <typename U = StorageV>
+        std::enable_if_t<!std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
+            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
             if (lhs.second == rhs.second) {
                 return lhs.first < rhs.first;
             }
 
             return lhs.second < rhs.second;
+        }
+
+        // StorageV is pair(int, double)
+        template <typename U = StorageV>
+        std::enable_if_t<std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
+            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
+            double lavg = lhs.second.second / lhs.second.first;
+            double ravg = rhs.second.second / rhs.second.first;
+            if (lavg == ravg) {
+                return lhs.first < rhs.first;
+            }
+
+            return lavg < ravg;
         }
     };
 

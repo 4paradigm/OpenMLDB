@@ -24,6 +24,7 @@
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/containers.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -56,6 +57,11 @@ struct CountCateDef {
                 .init("count_cate_init" + suffix, ContainerT::Init)
                 .update("count_cate_update" + suffix, Update)
                 .output("count_cate_output" + suffix, Output);
+        }
+
+        // FormatValueF
+        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+            return v1::format_string(val, buf, size);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -198,73 +204,13 @@ template <typename K>
 struct TopNValueCountCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNValueImpl<CountCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             // type of value
             // TODO(ace): support LiteralTypedRow as value
             .template args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>();
     }
-
-    template <typename V>
-    struct Impl {
-        using GroupContainerT = udf::container::BoundedGroupByDict<K, V, int64_t>;
-        using InputK = typename GroupContainerT::InputK;
-        using InputV = typename GroupContainerT::InputV;
-        // (key-value group, bound)
-        using ContainerT = std::pair<GroupContainerT*, int64_t>;
-
-        using CateImpl = typename CountCateDef<K>::template Impl<V>;
-
-        void operator()(UdafRegistryHelper& helper) {  // NOLINT
-            std::string suffix;
-            absl::string_view prefix = helper.name();
-
-            suffix = absl::StrCat(".i32_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
-                                  DataTypeTrait<V>::to_string());
-            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int32_t>()
-                .init(absl::StrCat(prefix, "_init", suffix), Init)
-                .update(absl::StrCat(prefix, "_update", suffix), UpdateI32Bound)
-                .output(absl::StrCat(prefix, "_output", suffix), Output);
-
-            suffix = absl::StrCat(".i64_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
-                                  DataTypeTrait<V>::to_string());
-            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int64_t>()
-                .init(absl::StrCat(prefix, "_init", suffix), Init)
-                .update(absl::StrCat(prefix, "_update", suffix), Update)
-                .output(absl::StrCat(prefix, "_output", suffix), Output);
-        }
-
-        static void Init(ContainerT* addr) {
-            new (addr) ContainerT();
-            addr->first = new GroupContainerT();
-            addr->second = 0;
-        }
-
-        static ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
-                                      bool is_cond_null, InputK key, bool is_key_null, int64_t bound) {
-            if (ptr->second == 0) {
-                ptr->second = bound;
-            }
-            if (cond && !is_cond_null) {
-                CateImpl::Update(ptr->first, value, is_value_null, key, is_key_null);
-            }
-            return ptr;
-        }
-
-        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
-                                          bool is_cond_null, InputK key, bool is_key_null, int32_t bound) {
-            return Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
-        }
-
-        static void Output(ContainerT* ptr, codec::StringRef* output) {
-            ptr->first->OutputTopNByValue(
-                ptr->second,
-                [](const int64_t& count, char* buf, size_t size) { return v1::format_string(count, buf, size); },
-                output);
-            GroupContainerT::Destroy(ptr->first);
-            ptr->~ContainerT();
-        }
-    };
 };
 
 void DefaultUdfLibrary::InitCountByCateUdafs() {
