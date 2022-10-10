@@ -210,10 +210,10 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
     uint8_t height = 0;
     if (IsSkipList()) {
         height = ((SkipListKeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
-        ((SkipListKeyEntry*)entry)->count_.fetch_add(1, std::memory_order_relaxed);
+        (reinterpret_cast<SkipListKeyEntry*>(entry))->count_.fetch_add(1, std::memory_order_relaxed);
     } else {
         ((ListKeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
-        ((ListKeyEntry*)entry)->count_.fetch_add(1, std::memory_order_relaxed);
+        (reinterpret_cast<ListKeyEntry*>(entry))->count_.fetch_add(1, std::memory_order_relaxed);
     }
     byte_size += GetRecordTsIdxSize(height, IsSkipList());
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
@@ -245,11 +245,11 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
         }
         uint8_t height = 0;
         if (IsSkipList(key_entry_id)) {
-            height = ((SkipListKeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(time, row);
-            ((SkipListKeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+            height = (reinterpret_cast<SkipListKeyEntry**>(key_entry_or_list))[key_entry_id]->entries.Insert(time, row);
+            (reinterpret_cast<SkipListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
         } else {
-            ((ListKeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(time, row);
-            ((ListKeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+            (reinterpret_cast<ListKeyEntry**>(key_entry_or_list))[key_entry_id]->entries.Insert(time, row);
+            (reinterpret_cast<ListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
         }
         byte_size += GetRecordTsIdxSize(height, IsSkipList(key_entry_id));
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
@@ -298,14 +298,14 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         }
         uint8_t height = 0;
         if (IsSkipList(pos->second)) {
-            height = ((SkipListKeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+            height = (reinterpret_cast<SkipListKeyEntry**>(entry_arr))[pos->second]->entries.Insert(  // NOLINT
                 kv.second, row);
-            ((SkipListKeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+            (reinterpret_cast<SkipListKeyEntry**>(entry_arr))[pos->second]->count_.fetch_add(  // NOLINT
                 1, std::memory_order_relaxed);
         } else {
-            ((ListKeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+            (reinterpret_cast<ListKeyEntry**>(entry_arr))[pos->second]->entries.Insert(  // NOLINT
                 kv.second, row);
-            ((ListKeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+            (reinterpret_cast<ListKeyEntry**>(entry_arr))[pos->second]->count_.fetch_add(  // NOLINT
                 1, std::memory_order_relaxed);
         }
         byte_size += GetRecordTsIdxSize(height, IsSkipList(pos->second));
