@@ -877,6 +877,8 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     srand(time(NULL));
+
+    ::openmldb::base::SetupGlog(true);
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
     // connect to nameserver
