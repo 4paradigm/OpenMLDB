@@ -416,6 +416,22 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
     int count = 0;
     while (it->Valid()) {
         count++;
+
+        // multiple calls to GetKey/GetValue will get the same and valid result
+        auto key = it->GetKey();
+        auto buf = it->GetValue().buf();
+        auto size = it->GetValue().size();
+        codec::RowView row_view(metas[0].column_desc(), buf, size);
+        std::string col1, col2;
+        int64_t col3;
+        row_view.GetStrValue(0, &col1);
+        row_view.GetStrValue(1, &col2);
+        row_view.GetInt64(2, &col3);
+        LOG(INFO) << "row " << count << ": " << col1 << "," << col2 << ", " << col3;
+        ASSERT_EQ(col1.substr(0, 4), "card");
+        ASSERT_EQ(col2, "mcc");
+        ASSERT_TRUE(col3 > now - 2000 && col3 <= now);
+
         it->Next();
     }
     ASSERT_EQ(count, 2000);

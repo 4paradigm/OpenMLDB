@@ -54,6 +54,13 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     bool NextFromRemote();
     void Reset();
     void EndLocal();
+    inline void ResetValue() {
+        value_.Reset(nullptr, 0);
+    }
+
+    inline bool ValidValue() {
+        return !value_.empty();
+    }
 
  private:
     uint32_t tid_;
@@ -96,6 +103,13 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
  private:
     void SetTs();
     void ScanRemote(uint64_t key, uint32_t ts_cnt);
+    inline void ResetValue() {
+        row_.Reset(nullptr, 0);
+    }
+
+    inline bool ValidValue() {
+        return !row_.empty();
+    }
 
  private:
     uint32_t tid_;

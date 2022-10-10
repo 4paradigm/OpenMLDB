@@ -40,9 +40,8 @@ bool FullTableIterator::Valid() const {
 }
 
 void FullTableIterator::Next() {
-    // reset the buffered key and value
-    key_ = 0;
-    value_.Reset(nullptr, 0);
+    // reset the buffered value
+    ResetValue();
 
     if (NextFromLocal()) {
         return;
@@ -55,6 +54,7 @@ void FullTableIterator::Reset() {
     kv_it_.reset();
     cur_pid_ = INVALID_PID;
     in_local_ = true;
+    ResetValue();
 }
 
 void FullTableIterator::EndLocal() {
@@ -159,7 +159,7 @@ bool FullTableIterator::NextFromRemote() {
 }
 
 const ::hybridse::codec::Row& FullTableIterator::GetValue() {
-    if (!value_.empty()) {
+    if (ValidValue()) {
         return value_;
     }
 
@@ -388,10 +388,14 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
 }
 
 const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
+    if (ValidValue()) {
+        return row_;
+    }
+
     auto slice_row = kv_it_->GetValue();
     size_t sz = slice_row.size();
     // for distributed environment, slice_row's data probably become invalid when the DistributeWindowIterator
-    // iterator goes out of scope. so copy action occured here
+    // iterator goes out of scope. so copy action occurred here
     int8_t* copyed_row_data = new int8_t[sz];
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
@@ -450,6 +454,8 @@ void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
 }
 
 void RemoteWindowIterator::Seek(const uint64_t& key) {
+    ResetValue();
+
     DLOG(INFO) << "RemoteWindowIterator seek " << key;
     if (!kv_it_) {
         return;
@@ -469,6 +475,8 @@ void RemoteWindowIterator::Seek(const uint64_t& key) {
 }
 
 void RemoteWindowIterator::Next() {
+    ResetValue();
+
     kv_it_->Next();
     if (kv_it_->Valid()) {
         if (is_traverse_data_ && kv_it_->GetPK() != pk_) {
