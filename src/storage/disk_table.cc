@@ -15,9 +15,10 @@
  */
 
 #include "storage/disk_table.h"
+#include <snappy.h>
 #include <utility>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "config.h"  // NOLINT
 
@@ -219,8 +220,13 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     rocksdb::WriteBatch batch;
     rocksdb::Status s;
     Dimensions::const_iterator it = dimensions.begin();
+    std::string uncompress_data;
+    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     for (; it != dimensions.end(); ++it) {
-        const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
         uint8_t version = codec::RowView::GetSchemaVersion(data);
         auto decoder = GetVersionDecoder(version);
         if (decoder == nullptr) {

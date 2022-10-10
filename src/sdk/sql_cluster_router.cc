@@ -29,6 +29,7 @@
 #include "absl/strings/substitute.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
+#include "base/glog_wrapper.h"
 #include "boost/none.hpp"
 #include "boost/property_tree/ini_parser.hpp"
 #include "boost/property_tree/ptree.hpp"
@@ -221,6 +222,14 @@ SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
 
 bool SQLClusterRouter::Init() {
+    // set log first(If setup before, setup below won't work, e.g. router in tablet server, router in CLI)
+    if (cluster_sdk_ == nullptr) {
+        // glog setting for SDK
+        FLAGS_glog_level = options_->glog_level;
+        FLAGS_glog_dir = options_->glog_dir;
+    }
+    base::SetupGlog();
+
     if (cluster_sdk_ == nullptr) {
         // init cluster_sdk_, require options_ or standalone_options_ is set
         if (is_cluster_mode_) {
@@ -269,6 +278,7 @@ bool SQLClusterRouter::Init() {
             }
         }
     }
+
     std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
     std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
     std::string sql = "select * from " + table;
@@ -937,7 +947,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         std::string select_aggr_info =
             absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
                          meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
-        auto rs = ExecuteSQL("", select_aggr_info, status);
+        auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
         if (!status->IsOK()) {
             return false;
         }
@@ -1633,13 +1643,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
 
         case hybridse::node::kCmdDescTable: {
-            if (db.empty()) {
+            std::string cur_db = db;
+            std::string table_name;
+            const auto& args = cmd_node->GetArgs();
+            if (args.size() > 1) {
+                cur_db = args[0];
+                table_name = args[1];
+            } else {
+                table_name = args[0];
+            }
+            if (cur_db.empty()) {
                 *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
                 return {};
             }
-            // TODO(denglong): Should support table name with database name
-            auto table_name = cmd_node->GetArgs()[0];
-            auto table = cluster_sdk_->GetTableInfo(db, table_name);
+            auto table = cluster_sdk_->GetTableInfo(cur_db, table_name);
             if (table == nullptr) {
                 *status = {::hybridse::common::StatusCode::kCmdError, "table " + table_name + " does not exist"};
                 return {};
@@ -1794,13 +1811,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
             std::vector<api::ProcedureInfo> sps;
-            auto sp = cluster_sdk_->GetProcedureInfo(db_name, deploy_name, &msg);
+            if (!ns_ptr->ShowProcedure(db, deploy_name, &sps, &msg)) {
+                *status = {::hybridse::common::StatusCode::kCmdError, msg};
+                return {};
+            }
             // check if deployment
-            if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
-                *status = {::hybridse::common::StatusCode::kCmdError, sp ? "not a deployment" : "not found"};
+            if (sps.empty() || sps[0].type() != type::kReqDeployment) {
+                *status = {::hybridse::common::StatusCode::kCmdError, sps.empty() ? "not found" : "not a deployment"};
                 return {};
             }
             std::stringstream ss;
+            auto sp = std::make_shared<catalog::ProcedureInfoImpl>(sps[0]);
             ::openmldb::cmd::PrintProcedureInfo(*sp, ss);
             std::vector<std::vector<std::string>> result;
             std::vector<std::string> vec = {ss.str()};
@@ -1872,11 +1893,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-            std::string db = "__INTERNAL_DB";
+            std::string db = openmldb::nameserver::INTERNAL_DB;
             std::string sql = "SELECT * FROM JOB_INFO";
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
-            if (status->code != 0) {
+            if (!status->IsOK()) {
                 return {};
+            }
+            if (FLAGS_role == "sql_client" && rs) {
+                return std::make_shared<ReadableResultSetSQL>(rs);
             }
             return rs;
         }
@@ -1891,17 +1915,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
 
-            std::string db = "__INTERNAL_DB";
+            std::string db = openmldb::nameserver::INTERNAL_DB;
             std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
-            if (status->code != 0) {
+            if (!status->IsOK()) {
                 return {};
             }
             if (rs->Size() == 0) {
                 status->code = ::hybridse::common::StatusCode::kCmdError;
                 status->msg = "Job not found: " + std::to_string(job_id);
                 return {};
+            }
+            if (FLAGS_role == "sql_client") {
+                return std::make_shared<ReadableResultSetSQL>(rs);
             }
             return rs;
         }
@@ -1972,7 +1999,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return {};
         }
         case hybridse::node::kCmdShowComponents: {
-            return ExecuteShowComponents(status);
+            auto rs = ExecuteShowComponents(status);
+            if (FLAGS_role == "sql_client" && status->IsOK() && rs) {
+                return std::make_shared<ReadableResultSetSQL>(rs);
+            }
+            return rs;
         }
         case hybridse::node::kCmdShowTableStatus: {
             return ExecuteShowTableStatus(db, status);
@@ -2003,8 +2034,8 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
     hybridse::base::Status sql_status;
     bool is_cluster_mode = cluster_sdk_->IsClusterMode();
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
-                                                      is_cluster_mode, &sql_status);
+    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num, is_cluster_mode,
+                                                      &sql_status);
     if (sql_status.code != 0) {
         return base::Status(sql_status.code, sql_status.msg);
     }
@@ -2544,6 +2575,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {
+            if (cluster_sdk_->IsClusterMode() && !is_online_mode) {
+                // avoid run deploy in offline mode
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                           "Can not deploy in offline mode, please set @@SESSION.execute_mode='online'"};
+                return {};
+            }
+
             *status = HandleDeploy(db, dynamic_cast<hybridse::node::DeployPlanNode*>(node));
             if (status->IsOK()) {
                 RefreshCatalog();
@@ -3405,12 +3443,13 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
         }
         if (!new_indexs.empty()) {
             if (cluster_sdk_->IsClusterMode()) {
+                // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
                 uint64_t record_cnt = 0;
                 for (int idx = 0; idx < table.table_partition_size(); idx++) {
                     record_cnt += table.table_partition(idx).record_cnt();
                 }
                 if (record_cnt > 0) {
-                    return {::hybridse::common::StatusCode::kCmdError,
+                    return {::hybridse::common::StatusCode::kUnSupport,
                             "table " + table_name +
                                 " has online data, cannot deploy. please drop this table and create a new one"};
                 }
@@ -3490,7 +3529,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
     std::unordered_map<std::string, std::string> long_window_map;
     if (!long_window_param.empty()) {
         if (table_pair.size() != 1) {
-            return {base::ReturnCode::kError, "unsupport multi tables with long window options"};
+            return {::hybridse::common::StatusCode::kUnsupportSql, "unsupport multi tables with long window options"};
         }
         std::string base_db = table_pair.begin()->first;
         std::string base_table = table_pair.begin()->second;
@@ -3505,7 +3544,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             } else if (window_info.size() == 1) {
                 long_window_map[window_info[0]] = FLAGS_bucket_size;
             } else {
-                return {base::ReturnCode::kError, "illegal long window format"};
+                return {::hybridse::common::StatusCode::kSyntaxError, "illegal long window format"};
             }
         }
         // extract long windows info from select_sql
@@ -3519,30 +3558,46 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             distinct_long_window.insert(info.window_name_);
         }
         if (distinct_long_window.size() != long_window_map.size()) {
-            return {base::ReturnCode::kError, "long_windows option doesn't match window in sql"};
+            return {::hybridse::common::StatusCode::kSyntaxError, "long_windows option doesn't match window in sql"};
         }
         auto ns_client = cluster_sdk_->GetNsClient();
         std::vector<::openmldb::nameserver::TableInfo> tables;
         std::string msg;
         ns_client->ShowTable(base_table, base_db, false, tables, msg);
         if (tables.size() != 1) {
-            return {base::ReturnCode::kError, "base table not found"};
+            return {::hybridse::common::StatusCode::kTableNotFound,
+                    absl::StrCat("base table", base_db, ".", base_table, "not found")};
         }
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string aggr_db = openmldb::nameserver::PRE_AGG_DB;
+
+        uint64_t record_cnt = 0;
+        auto& table = tables[0];
+        for (int idx = 0; idx < table.table_partition_size(); idx++) {
+            record_cnt += table.table_partition(idx).record_cnt();
+        }
+        // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
+        if (record_cnt > 0) {
+            return {::hybridse::common::StatusCode::kUnSupport,
+                    "table " + table.name() +
+                        " has online data, cannot deploy with long_windows option. please drop this table and create a "
+                        "new one"};
+        }
+
         for (const auto& lw : long_window_infos) {
             if (absl::EndsWithIgnoreCase(lw.aggr_func_, "_where")) {
                 // TOOD(ace): *_where op only support for memory base table
                 if (tables[0].storage_mode() != common::StorageMode::kMemory) {
-                    return {base::ReturnCode::kError,
+                    return {::hybridse::common::StatusCode::kUnSupport,
                             absl::StrCat(lw.aggr_func_, " only support over memory base table")};
                 }
 
                 // TODO(#2313): *_where for rows bucket should support later
                 if (openmldb::base::IsNumber(long_window_map.at(lw.window_name_))) {
-                    return {base::ReturnCode::kError, absl::StrCat("unsupport *_where op (", lw.aggr_func_,
-                                                                   ") for rows bucket type long window")};
+                    return {
+                        ::hybridse::common::StatusCode::kUnSupport,
+                        absl::StrCat("unsupport *_where op (", lw.aggr_func_, ") for rows bucket type long window")};
                 }
 
                 // unsupport filter col of date/timestamp
@@ -3551,8 +3606,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                         auto type = tables[0].column_desc(i).data_type();
                         if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
                             return {
-                                base::ReturnCode::kError,
-                                absl::Substitute("unsupport date or timestamp as filer column ($0)", lw.filter_col_)};
+                                ::hybridse::common::StatusCode::kUnSupport,
+                                absl::Substitute("unsupport date or timestamp as filter column ($0)", lw.filter_col_)};
                         }
                     }
                 }
@@ -3577,24 +3632,24 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 lw.order_col_, "', '", lw.bucket_size_, "', '", lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
-                return {base::ReturnCode::kError, "insert pre-aggr meta failed"};
+                return {::hybridse::common::StatusCode::kTablePutFailed, "insert pre-aggr meta failed"};
             }
 
             // create pre-aggr table
             auto create_status = CreatePreAggrTable(aggr_db, aggr_table, lw, tables[0], ns_client);
             if (!create_status.OK()) {
-                return {base::ReturnCode::kError, "create pre-aggr table failed"};
+                return {::hybridse::common::StatusCode::kRunError, "create pre-aggr table failed"};
             }
 
             // create aggregator
             std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
             bool ret = cluster_sdk_->GetTablet(base_db, base_table, &tablets);
             if (!ret || tablets.empty()) {
-                return {base::ReturnCode::kError, "get tablets failed"};
+                return {::hybridse::common::StatusCode::kRunError, "get tablets failed"};
             }
             auto base_table_info = cluster_sdk_->GetTableInfo(base_db, base_table);
             if (!base_table_info) {
-                return {base::ReturnCode::kError, "get table info failed"};
+                return {::hybridse::common::StatusCode::kTableNotFound, "get table info failed"};
             }
             auto aggr_id = cluster_sdk_->GetTableId(aggr_db, aggr_table);
             ::openmldb::api::TableMeta base_table_meta;
@@ -3623,16 +3678,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 }
             }
             if (!found_idx) {
-                return {base::ReturnCode::kError, "index that associate to aggregator not found"};
+                return {::hybridse::common::StatusCode::kIndexNotFound, "index associated with aggregator not found"};
             }
             for (uint32_t pid = 0; pid < tablets.size(); ++pid) {
                 auto tablet_client = tablets[pid]->GetClient();
                 if (tablet_client == nullptr) {
-                    return {base::ReturnCode::kError, "get tablet client failed"};
+                    return {::hybridse::common::StatusCode::kRunError, "get tablet client failed"};
                 }
                 base_table_meta.set_pid(pid);
                 if (!tablet_client->CreateAggregator(base_table_meta, aggr_id, pid, index_pos, lw)) {
-                    return {base::ReturnCode::kError, "create aggregator failed"};
+                    return {::hybridse::common::StatusCode::kRunError, "create aggregator failed"};
                 }
             }
         }
@@ -3654,26 +3709,36 @@ bool SQLClusterRouter::CheckPreAggrTableExist(const std::string& base_table, con
         absl::StrCat("select bucket_size from ", meta_db, ".", meta_table, " where ", meta_info, ";");
     auto rs = ExecuteSQL("", select_sql, status);
     if (!status->IsOK()) {
+        LOG(ERROR) << "Select from " << meta_db << "." << meta_table << "  failed: " << status->msg;
         return false;
     }
 
-    // Check if the bucket_size equal to the one in meta table with the same meta info.
-    // Currently, we create pre-aggregated table for pre-aggr meta info that have different
-    // bucket_size but the same other meta info.
-    while (rs->Next()) {
-        std::string exist_bucket_size;
-        rs->GetString(0, &exist_bucket_size);
-        if (exist_bucket_size == lw.bucket_size_) {
-            LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
-            return true;
-        }
+    if (rs->Size() > 0) {
+        LOG(INFO) << "Pre-aggregated table with same meta info already exist: " << meta_info;
+        return true;
+    } else {
+        return false;
     }
-
-    return false;
 }
 
-static const std::initializer_list<std::string> GetComponetSchema() {
-    static const std::initializer_list<std::string> schema = {"Endpoint", "Role", "Connect_time", "Status", "Ns_role"};
+static const ::openmldb::schema::PBSchema& GetComponetSchema() {
+    auto add_field = [] (const std::string& name, openmldb::type::DataType type,
+            openmldb::common::ColumnDesc* field) {
+        if (field != nullptr) {
+            field->set_name(name);
+            field->set_data_type(type);
+        }
+    };
+    auto build_schema = [&add_field]() {
+        ::openmldb::schema::PBSchema schema;
+        add_field("Endpoint", openmldb::type::DataType::kString, schema.Add());
+        add_field("Role", openmldb::type::DataType::kString, schema.Add());
+        add_field("Connect_time", openmldb::type::DataType::kTimestamp, schema.Add());
+        add_field("Status", openmldb::type::DataType::kString, schema.Add());
+        add_field("Ns_role", openmldb::type::DataType::kString, schema.Add());
+        return schema;
+    };
+    static ::openmldb::schema::PBSchema schema = build_schema();
     return schema;
 }
 

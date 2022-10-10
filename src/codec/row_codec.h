@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/container/deque.hpp"
 #include "codec/schema_codec.h"

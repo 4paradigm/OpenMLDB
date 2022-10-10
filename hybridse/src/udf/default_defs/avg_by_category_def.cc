@@ -271,8 +271,8 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
     RegisterUdafTemplate<TopKAvgCateWhereDef>("top_n_key_avg_cate_where")
         .doc(R"(
             @brief Compute average of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
             @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.

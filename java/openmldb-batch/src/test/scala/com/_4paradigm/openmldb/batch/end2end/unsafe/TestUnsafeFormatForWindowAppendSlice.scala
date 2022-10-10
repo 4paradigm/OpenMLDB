@@ -57,9 +57,9 @@ class TestUnsafeFormatForWindowAppendSlice extends UnsaferowoptSparkTestSuite {
         |
         |""".stripMargin
 
-    val outputDf = sess.sql(sqlText)
-    val sparksqlOutputDf = sess.sparksql(sqlText)
-    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    // val outputDf = sess.sql(sqlText)
+    // val sparksqlOutputDf = sess.sparksql(sqlText)
+    // assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
 }
