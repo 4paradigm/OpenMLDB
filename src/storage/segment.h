@@ -146,7 +146,7 @@ class SkipListKeyEntry : public KeyEntry {
         entries.Clear();
         delete it;
         return cnt;
-   }
+    }
 };
 
 class ListKeyEntry : public KeyEntry {
@@ -228,10 +228,10 @@ class Segment {
                    uint64_t& gc_record_cnt,                                            // NOLINT
                    uint64_t& gc_record_byte_size);                                     // NOLINT
 
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);
-
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
-                                    Ticket& ticket);  // NOLINT
+                                  Ticket& ticket);  // NOLINT
+
     inline uint64_t GetIdxCnt() {
         return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
                            : idx_cnt_.load(std::memory_order_relaxed);
