@@ -3266,6 +3266,8 @@ int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
+
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
     FLAGS_get_table_status_interval = 1000;
