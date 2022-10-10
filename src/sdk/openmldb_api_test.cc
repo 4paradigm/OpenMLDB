@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "base/glog_wapper.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -473,6 +474,10 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
 
 int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::testing::InitGoogleTest(&argc, argv);
+    srand(time(nullptr));
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
@@ -481,9 +486,7 @@ int main(int argc, char** argv) {
     sleep(5);
     ::openmldb::sdk::handler =
         new OpenmldbHandler(::openmldb::sdk::mc_->GetZkCluster(), ::openmldb::sdk::mc_->GetZkPath());
-    ::testing::InitGoogleTest(&argc, argv);
-    srand(time(nullptr));
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+
     ok = RUN_ALL_TESTS();
     delete ::openmldb::sdk::handler;
     ::openmldb::sdk::mc_->Close();
