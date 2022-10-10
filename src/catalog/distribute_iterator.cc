@@ -322,7 +322,7 @@ void DistributeWindowIterator::Next() {
             return;
         }
         uint32_t count = 0;
-        kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", cur_pk, last_ts, FLAGS_traverse_cnt_limit, true, count);
+        kv_it_ = iter->second->Traverse(tid_, cur_pid_, index_name_, cur_pk, last_ts, FLAGS_traverse_cnt_limit, true, count);
         DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk << " key " << last_ts << " count " << count;
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());
@@ -335,7 +335,7 @@ void DistributeWindowIterator::Next() {
             }
             cur_pid_ = iter->first;
             uint32_t count = 0;
-            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, count);
+            kv_it_ = iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, count);
             DLOG(INFO) << "count " << count;
             if (kv_it_ && kv_it_->Valid()) {
                 response_vec_.emplace_back(kv_it_->GetResponse());
