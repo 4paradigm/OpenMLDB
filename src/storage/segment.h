@@ -105,8 +105,8 @@ class MemTableIterator : public TableIterator {
 
 class KeyEntry {
  public:
-    KeyEntry(): refs_(0), count_(0), entries(12, 4, tcmp){}
-    KeyEntry(uint8_t height): refs_(0), count_(0), entries(height, 4, tcmp){}
+    KeyEntry(): refs_(0), count_(0), entries(12, 4, tcmp) {}
+    explicit KeyEntry(uint8_t height): refs_(0), count_(0), entries(height, 4, tcmp) {}
     virtual ~KeyEntry() {}
     virtual uint64_t Release() = 0;
 
@@ -125,8 +125,8 @@ class KeyEntry {
 
 class SkipListKeyEntry : public KeyEntry {
  public:
-    SkipListKeyEntry() : KeyEntry(){}
-    explicit SkipListKeyEntry(uint8_t height) : KeyEntry(height){}
+    SkipListKeyEntry() : KeyEntry() {}
+    explicit SkipListKeyEntry(uint8_t height) : KeyEntry(height) {}
 
     uint64_t Release() {
         uint64_t cnt = 0;

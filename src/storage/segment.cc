@@ -1091,11 +1091,12 @@ MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& t
     }
 
     if (IsSkipList(pos->second)) {
-        ticket.Push(((SkipListKeyEntry**)entry_arr)[pos->second]);
-        return new MemTableIterator(((SkipListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
+        ticket.Push((reinterpret_cast<SkipListKeyEntry**>(entry_arr))[pos->second]);
+        return new MemTableIterator((reinterpret_cast<SkipListKeyEntry**>(entry_arr))[pos->second]->entries
+                                        .NewIterator());
     } else {
-        ticket.Push(((ListKeyEntry**)entry_arr)[pos->second]);
-        return new MemTableIterator(((ListKeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
+        ticket.Push((reinterpret_cast<ListKeyEntry**>(entry_arr))[pos->second]);
+        return new MemTableIterator((reinterpret_cast<ListKeyEntry**>(entry_arr))[pos->second]->entries.NewIterator());
     }
 }
 
