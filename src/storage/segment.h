@@ -292,12 +292,12 @@ class Segment {
                   uint64_t& gc_record_cnt,         // NOLINT
                   uint64_t& gc_record_byte_size);  // NOLINT
 
-    void FreeList(::openmldb::base::ListNode<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT 重载 TODO 释放第二层list节点
+    void FreeList(::openmldb::base::ListNode<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT
                   uint64_t& gc_record_cnt,         // NOLINT
                   uint64_t& gc_record_byte_size);  // NOLINT
 
-    void SplitList(SkipListKeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node); //
-    void SplitList(ListKeyEntry* entry, uint64_t ts, ::openmldb::base::ListNode<uint64_t, DataBlock*>** node);  // TODO 重载了
+    void SplitList(SkipListKeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
+    void SplitList(ListKeyEntry* entry, uint64_t ts, ::openmldb::base::ListNode<uint64_t, DataBlock*>** node);
 
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
@@ -322,8 +322,8 @@ class Segment {
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
     uint64_t ttl_offset_;
-    bool is_skiplist_;   // 判断第二层结构是否是跳表
-    std::vector<bool> is_skiplist_vec_; // 判断多个ts_cnt_ 中是否是跳表
+    bool is_skiplist_;
+    std::vector<bool> is_skiplist_vec_;
 };
 
 }  // namespace storage

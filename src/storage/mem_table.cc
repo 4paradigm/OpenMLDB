@@ -871,13 +871,13 @@ void MemTableTraverseIterator::NextPK() {
             ticket_.Push(entry);
         } else {
             if (segments_[seg_idx_]->IsSkipList()) {
-                it_ = ((SkipListKeyEntry*)pk_it_->GetValue())
+                it_ = (reinterpret_cast<SkipListKeyEntry*>(pk_it_->GetValue()))
                           ->entries.NewIterator();
                 ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());
             } else {
                 it_ = ((ListKeyEntry*)pk_it_->GetValue())
                           ->entries.NewIterator();
-                ticket_.Push((ListKeyEntry*)pk_it_->GetValue());
+                ticket_.Push(reinterpret_cast<ListKeyEntry*>(pk_it_->GetValue()));
             }
         }
         it_->SeekToFirst();
@@ -918,7 +918,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             }
         } else {
             if (segments_[seg_idx_]->IsSkipList()) {
-                ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                ticket_.Push(reinterpret_cast<SkipListKeyEntry*>(pk_it_->GetValue()));  // NOLINT
                 it_ = ((SkipListKeyEntry*)pk_it_->GetValue())         // NOLINT
                           ->entries.NewIterator();
             } else {
@@ -1006,7 +1006,7 @@ void MemTableTraverseIterator::SeekToFirst() {
                 it_ = entry->entries.NewIterator();
             } else {
                 if (segments_[seg_idx_]->IsSkipList()) {
-                    ticket_.Push((SkipListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                    ticket_.Push(reinterpret_cast<SkipListKeyEntry*>(pk_it_->GetValue()));  // NOLINT
                     it_ = ((SkipListKeyEntry*)pk_it_->GetValue())         // NOLINT
                               ->entries.NewIterator();
                 } else {

@@ -24,7 +24,7 @@
 #include <iostream>
 
 #include "base/random.h"
-#include "base/concurrentlist.h"
+#include "base/base_iterator.h"
 
 namespace openmldb {
 namespace base {

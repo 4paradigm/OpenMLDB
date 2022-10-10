@@ -17,8 +17,8 @@
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
 
-#include "storage/segment.h"
 #include <vector>
+#include "storage/segment.h"
 
 namespace openmldb {
 namespace storage {

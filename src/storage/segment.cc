@@ -62,7 +62,7 @@ Segment::Segment(uint8_t height, bool is_skiplist)
 }
 
 Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, const std::vector<bool> is_skiplist_vec)
-   : entries_(NULL),
+    : entries_(NULL),
      mu_(),
      idx_cnt_(0),
      idx_byte_size_(0),
@@ -72,13 +72,13 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, const 
      gc_version_(0),
      is_skiplist_(true),
      ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
-   entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-   entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
-   for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
+    for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
        ts_idx_map_[ts_idx_vec[i]] = i;
        idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
        is_skiplist_vec_.push_back(is_skiplist_vec[i]);
-   }
+    }
 }
 
 Segment::~Segment() {
@@ -778,15 +778,15 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
 
 void Segment::SplitList(SkipListKeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
-    if (entry->refs_.load(std::memory_order_acquire) <= 0) {  // 如果entry refs_ 小于0 执行按时间分割
-        *node = entry->entries.Split(ts);  // 返回分割后的 后面一个skiplist的头指针
+    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+        *node = entry->entries.Split(ts);
     }
 }
 
 void Segment::SplitList(ListKeyEntry* entry, uint64_t ts, ::openmldb::base::ListNode<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
-    if (entry->refs_.load(std::memory_order_acquire) <= 0) {  // 如果entry refs_ 小于0 执行按时间分割
-        *node = entry->entries.Split(ts);  // 返回分割后的 后面一个skiplist的头指针
+    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+        *node = entry->entries.Split(ts);
     }
 }
 
