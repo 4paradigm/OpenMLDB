@@ -994,6 +994,7 @@ TEST_F(SQLClusterTest, ClusterSelect) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
+    // init google test first for gtest_xxx flags
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
@@ -1005,7 +1006,7 @@ int main(int argc, char** argv) {
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-    
+
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Test failed with NULL SQL router";
