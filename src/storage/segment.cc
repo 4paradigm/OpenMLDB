@@ -97,18 +97,18 @@ uint64_t Segment::Release() {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
                     if (IsSkipList(i))
-                        cnt += ((SkipListKeyEntry*)entry_arr[i])->Release();
+                        cnt += (reinterpret_cast<SkipListKeyEntry*>(entry_arr[i]))->Release();
                     else
-                        cnt += ((ListKeyEntry*)entry_arr[i])->Release();
+                        cnt += (reinterpret_cast<ListKeyEntry*>(entry_arr[i]))->Release();
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
                 if (IsSkipList())
-                    cnt += ((SkipListKeyEntry*)entry)->Release();
+                    cnt += (reinterpret_cast<SkipListKeyEntry*>(entry))->Release();
                 else
-                    cnt += ((ListKeyEntry*)entry)->Release();
+                    cnt += (reinterpret_cast<ListKeyEntry*>(entry))->Release();
                 delete entry;
             }
         }
@@ -126,9 +126,9 @@ uint64_t Segment::Release() {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
             for (uint32_t i = 0; i < ts_cnt_; i++) {
                 if (IsSkipList(i))
-                    ((SkipListKeyEntry*)entry_arr[i])->Release();
+                    (reinterpret_cast<SkipListKeyEntry*>(entry_arr[i]))->Release();
                 else
-                    ((ListKeyEntry*)entry_arr[i])->Release();
+                    (reinterpret_cast<ListKeyEntry*>(entry_arr[i]))->Release();
                 entry_arr[i]->Release();
                 delete entry_arr[i];
             }
@@ -136,9 +136,9 @@ uint64_t Segment::Release() {
         } else {
             KeyEntry* entry = (KeyEntry*)node->GetValue();  // NOLINT
             if (IsSkipList())
-                ((SkipListKeyEntry*)entry)->Release();
+                (reinterpret_cast<SkipListKeyEntry*>(entry))->Release();
             else
-                ((ListKeyEntry*)entry)->Release();
+                (reinterpret_cast<ListKeyEntry*>(entry))->Release();
             delete entry;
         }
         delete node;
@@ -436,7 +436,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
             delete entry;
         }
         uint64_t byte_size =
-           GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, IsSkipList());
+            GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, IsSkipList());
         idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
