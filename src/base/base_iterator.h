@@ -1,9 +1,5 @@
-//
-// Created by root on 22-10-10.
-//
+#pragma once
 
-#ifndef OPENMLDB_BASE_ITERATOR_H
-#define OPENMLDB_BASE_ITERATOR_H
 #include <string>
 
 namespace openmldb {
@@ -34,5 +30,3 @@ class BaseIterator {
 
 }  // namespace base
 }  // namespace openmldb
-
-#endif  // OPENMLDB_BASE_ITERATOR_H
