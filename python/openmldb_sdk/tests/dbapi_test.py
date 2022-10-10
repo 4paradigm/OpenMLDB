@@ -83,12 +83,13 @@ class TestOpenmldbDBAPI:
 
     def test_request_timeout(self):
         """
-        Note: this test works now(select > 1ms). If you can't reach the timeout, redesign the test.
+        Note: this test works now(select > 0ms). If you can't reach the timeout, redesign the test.
         """
+        # requestTimeout -1 means wait indefinitely
         db = connect(database='db_test',
                      zk=OpenMLDB_ZK_CLUSTER,
                      zkPath=OpenMLDB_ZK_PATH,
-                     requestTimeout=1)
+                     requestTimeout=0)
         cursor = db.cursor()
         rs = cursor.execute(
             "insert into new_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
@@ -99,6 +100,13 @@ class TestOpenmldbDBAPI:
         with pytest.raises(DatabaseError) as e:
             cursor.execute("select * from new_table where y=402;").fetchall()
         assert 'execute select fail' in str(e.value)
+
+    def test_connect_options(self):
+        db = connect(database='db_test',
+                     zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH,
+                     requestTimeout=100000,
+                     maxSqlCacheSize=100)
 
 
 if __name__ == "__main__":

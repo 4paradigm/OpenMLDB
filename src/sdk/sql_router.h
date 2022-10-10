@@ -40,7 +40,7 @@ namespace sdk {
 struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
-    uint32_t max_sql_cache_size = 10;
+    uint32_t max_sql_cache_size = 50;
     // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
     // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
