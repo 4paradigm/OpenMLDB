@@ -55,12 +55,12 @@ static std::shared_ptr<hybridse::sdk::ResultSet> resultset_last;
 // constructor : only one parameter of type int_64
 class TimeStamp {
  public:
-    explicit TimeStamp(int64_t _val) : value(_val) {}
+    explicit TimeStamp(int64_t val) : value_(val) {}
     ~TimeStamp() {}
-    int64_t get_Timestamp() const;
+    int64_t get_Timestamp() const { return value_; }
 
  private:
-    int64_t value;
+    int64_t value_;
 };
 
 // Date corresponds to DATE in SQL, as a parameter inserted into ParameterRow or RequestRow
@@ -69,16 +69,16 @@ class TimeStamp {
 //                    third parameter          int_32    day
 class Date {
  public:
-    Date(int32_t _year, int32_t _month, int32_t _day) : year(_year), month(_month), day(_day) {}
+    Date(int32_t year, int32_t month, int32_t day) : year_(year), month_(month), day_(day) {}
     ~Date() {}
-    int32_t get_year() const;
-    int32_t get_month() const;
-    int32_t get_day() const;
+    int32_t get_year() const { return year_; }
+    int32_t get_month() const { return month_; }
+    int32_t get_day() const { return day_; }
 
  private:
-    int32_t year;
-    int32_t month;
-    int32_t day;
+    int32_t year_;
+    int32_t month_;
+    int32_t day_;
 };
 
 // OpenmldbNull corresponds to NULL in SQL, as a parameter inserted into ParameterRow or RequestRow
@@ -97,21 +97,21 @@ class OpenmldbNull {
 //                    second parameter    string      format : "Port"        eg : 6527
 class OpenmldbHandler {
  public:
-    OpenmldbHandler(std::string _zk_cluster, std::string _zk_path);
-    OpenmldbHandler(std::string _host, uint32_t _port);
+    OpenmldbHandler(std::string zk_cluster, std::string zk_path);
+    OpenmldbHandler(std::string host, uint32_t _port);
     ~OpenmldbHandler();
-    openmldb::sdk::SQLClusterRouter* get_router() const;
-    hybridse::sdk::Status* get_status() const;
+    openmldb::sdk::SQLClusterRouter* get_router() const { return router_; }
+    hybridse::sdk::Status* get_status() const { return status_; }
 
  private:
     OpenmldbHandler(const OpenmldbHandler&);
     OpenmldbHandler& operator=(const OpenmldbHandler&);
 
  private:
-    openmldb::sdk::SQLRouterOptions* cluster = nullptr;
-    openmldb::sdk::StandaloneOptions* standalone = nullptr;
-    openmldb::sdk::SQLClusterRouter* router = nullptr;
-    hybridse::sdk::Status* status = nullptr;
+    openmldb::sdk::SQLRouterOptions* cluster_ = nullptr;
+    openmldb::sdk::StandaloneOptions* standalone_ = nullptr;
+    openmldb::sdk::SQLClusterRouter* router_ = nullptr;
+    hybridse::sdk::Status* status_ = nullptr;
 };
 
 // In the request with parameter and request mode of openmldb, the position of parameters to be filled is indicated by
@@ -123,7 +123,7 @@ class OpenmldbHandler {
 // reset() is used to clear the inserted data in an object of type ParameterRow
 class ParameterRow {
  public:
-    explicit ParameterRow(const OpenmldbHandler* _handler);
+    explicit ParameterRow(const OpenmldbHandler* handler);
     std::shared_ptr<openmldb::sdk::SQLRequestRow> get_parameter_row() const;
     ParameterRow& operator<<(const bool& value);
     ParameterRow& operator<<(const int16_t value);
@@ -133,17 +133,17 @@ class ParameterRow {
     ParameterRow& operator<<(const Date value);
     ParameterRow& operator<<(const float value);
     ParameterRow& operator<<(const double value);
-    ParameterRow& operator<<(const std::string value);
+    ParameterRow& operator<<(const std::string& value);
     ParameterRow& operator<<(const char* value);
     ParameterRow& operator<<(const OpenmldbNull value);
     void reset();
 
  private:
-    const OpenmldbHandler* handler;
-    mutable std::shared_ptr<hybridse::sdk::ColumnTypes> parameter_types = nullptr;
-    mutable std::shared_ptr<openmldb::sdk::SQLRequestRow> sql_parameter_row = nullptr;
-    std::vector<std::any> record;
-    uint32_t str_length = 0;
+    const OpenmldbHandler* handler_;
+    mutable std::shared_ptr<hybridse::sdk::ColumnTypes> parameter_types_ = nullptr;
+    mutable std::shared_ptr<openmldb::sdk::SQLRequestRow> sql_parameter_row_ = nullptr;
+    std::vector<std::any> record_;
+    uint32_t str_length_ = 0;
 };
 
 // RequestRow is used to create a request line. insert data into objects of type RequestRow, and replace the "?"
@@ -156,9 +156,9 @@ class RequestRow {
  public:
     RequestRow(OpenmldbHandler* _handler, const std::string& _db, const std::string& _sql);
     std::shared_ptr<openmldb::sdk::SQLRequestRow> get_request_row() const;
-    OpenmldbHandler* get_handler() const;
-    std::string get_db() const;
-    std::string get_sql() const;
+    OpenmldbHandler* get_handler() const { return handler_; }
+    const std::string& get_db() const { return db_; }
+    const std::string& get_sql() const { return sql_; }
     RequestRow& operator<<(const bool& value);
     RequestRow& operator<<(const int16_t value);
     RequestRow& operator<<(const int32_t value);
@@ -167,19 +167,19 @@ class RequestRow {
     RequestRow& operator<<(const Date value);
     RequestRow& operator<<(const float value);
     RequestRow& operator<<(const double value);
-    RequestRow& operator<<(const std::string value);
+    RequestRow& operator<<(const std::string& value);
     RequestRow& operator<<(const char* value);
     RequestRow& operator<<(const OpenmldbNull value);
     void reset();
 
  private:
-    OpenmldbHandler* handler;
-    mutable std::shared_ptr<hybridse::sdk::ColumnTypes> parameter_types = nullptr;
-    mutable std::shared_ptr<openmldb::sdk::SQLRequestRow> sql_request_row = nullptr;
-    std::vector<std::any> record;
-    std::string db;
-    std::string sql;
-    uint32_t str_length = 0;
+    OpenmldbHandler* handler_;
+    mutable std::shared_ptr<hybridse::sdk::ColumnTypes> parameter_types_ = nullptr;
+    mutable std::shared_ptr<openmldb::sdk::SQLRequestRow> sql_request_row_ = nullptr;
+    std::vector<std::any> record_;
+    std::string db_;
+    std::string sql_;
+    uint32_t str_length_ = 0;
 };
 
 // execute() is used to execute SQL statements without parameters

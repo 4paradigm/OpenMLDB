@@ -269,20 +269,19 @@ endforeach()
 
 list(APPEND to_openmldbsdk $<TARGET_FILE:openmldb_api> ${ABSL_LLVM_PATH} ${LIBRARIES_PATH})
 
-# must rm lib first, otherwise err 'Malformed archive', or don't make thin?
-add_custom_target(_openmldbsdk)
-add_custom_command(TARGET _openmldbsdk
-# COMMAND rm -f libopenmldbsdk.a
-COMMAND ar crus libopenmldbsdk.a ${to_openmldbsdk}
-)
-
-add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)
-add_dependencies(openmldb_cxx_sdk _openmldbsdk)
-set_target_properties(openmldb_cxx_sdk PROPERTIES
-IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
+# must rm lib first, otherwise err 'Malformed archive'
+add_custom_target(pack_openmldbsdk ALL 
+COMMAND rm -f libopenmldbsdk.a
+COMMAND ar -crsT libopenmldbsdk.a ${to_openmldbsdk}
+COMMENT "pack static cxx sdk and all depend static libs into one"
 )
 
 if(TESTING_ENABLE)
+    add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)
+    add_dependencies(openmldb_cxx_sdk pack_openmldbsdk)
+    set_target_properties(openmldb_cxx_sdk PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
+    )
     add_executable(openmldb_api_test openmldb_api_test.cc)
     # add ${BIN_LIBS} because minicluster
     target_link_libraries(openmldb_api_test openmldb_cxx_sdk ${BIN_LIBS} ${GTEST_LIBRARIES})
@@ -296,22 +295,22 @@ FILE(GLOB USER_HEADER_SDK
     "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/base_schema.h"
 )
 FILE(GLOB USER_LIB
-    "${PROJECT_SOURCE_DIR}/build/src/sdk/libopenmldbsdk.a"
+    "${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a"
 )
 
 install(
     FILES ${USER_HEADER}
-    DESTINATION include
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+    DESTINATION include/
+    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
 )
 install(
     FILES ${USER_HEADER_SDK}
-    DESTINATION include/sdk
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+    DESTINATION include/sdk/
+    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
 )
 install(
     FILES ${USER_LIB}
-    DESTINATION lib
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+    DESTINATION lib/
+    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
 )
 

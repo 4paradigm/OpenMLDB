@@ -31,38 +31,37 @@
 namespace openmldb {
 namespace sdk {
 ::openmldb::sdk::MiniCluster* mc_;
+OpenmldbHandler* handler;
 
 class OpenmldbApiTest : public ::testing::Test {
  public:
     OpenmldbApiTest() {
         std::time_t t = std::time(0);
         db_ = "cxx_api_db" + std::to_string(t);
+        std::string sql = "create database " + db_ + ";";
+        EXPECT_TRUE(execute(*handler, sql));
+        LOG(INFO) << "create db " << db_ << " succeed";
     }
-    ~OpenmldbApiTest() {}
+    ~OpenmldbApiTest() {
+        std::string sql = "drop database " + db_ + ";";
+        EXPECT_TRUE(execute(*handler, sql)) << handler->get_status()->msg;
+    }
 
  protected:
     std::string db_;
 };
 
-OpenmldbHandler* handler;
-
 TEST_F(OpenmldbApiTest, SimpleApiTest) {
-    // OpenmldbHandler handler(mc_->GetZkCluster(), mc_->GetZkPath());
     ASSERT_TRUE(execute(*handler, "SET @@execute_mode='online';"));
 
-    std::string sql = "create database " + db_ + ";";
-    ASSERT_TRUE(execute(*handler, sql));
-    LOG(INFO) << "create db " << db_ << " succeed";
-
-    sql = "use " + db_ + ";";
+    auto sql = "use " + db_ + ";";
     ASSERT_TRUE(execute(*handler, sql));
     LOG(INFO) << "use db succeed";
-
-    sql =
-        "create table test_table"
-        "("
-        "col1 string, col2 bigint,"
-        "index(key=col1, ts=col2));";
+    std::string table = "test_table";
+    sql = "create table " + table +
+          "("
+          "col1 string, col2 bigint,"
+          "index(key=col1, ts=col2));";
     ASSERT_TRUE(execute(*handler, sql));
     LOG(INFO) << "create table test_table succeed";
 
@@ -99,6 +98,8 @@ TEST_F(OpenmldbApiTest, SimpleApiTest) {
     ASSERT_EQ("Hi~, 5", res->GetRowString());
     ASSERT_FALSE(res->Next());
     print_resultset(res);
+
+    ASSERT_TRUE(execute(*handler, "drop table " + table));
 }
 
 // test execute() execute_parameterized() execute_request
@@ -220,6 +221,7 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
         ASSERT_EQ(3u, res->Size());
         print_resultset(res);
         LOG(INFO) << "test parameter_execute() succeed";
+        ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
     }
 
     //  test execute_request()
@@ -249,6 +251,7 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
         ASSERT_FALSE(res->Next());
         print_resultset(res);
         LOG(INFO) << "execute_request() succeed";
+        ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
     }
 }
 
@@ -416,6 +419,7 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ASSERT_FALSE(res->Next());
         print_resultset(res);
     }
+    ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
 
     table_name = "reqtypestest";
     sql = "create table " + table_name +
@@ -451,7 +455,7 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         TimeStamp timestamp(1590738994000);
         Date date(2020, 5, 5);
         // need to check short, disable cpplint
-        req << "bb" << (short)14 << 24 << 35l << 1.5f << 2.5 << timestamp << date; // NOLINT
+        req << "bb" << (short)14 << 24 << 35l << 1.5f << 2.5 << timestamp << date;  // NOLINT
         ASSERT_TRUE(execute_request(req));
         res = get_resultset();
         ASSERT_TRUE(res->Next());
@@ -460,6 +464,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         print_resultset(res);
         LOG(INFO) << "execute_request() succeed";
     }
+
+    ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
 }
 
 }  // namespace sdk
@@ -479,6 +485,7 @@ int main(int argc, char** argv) {
     srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
+    delete ::openmldb::sdk::handler;
     ::openmldb::sdk::mc_->Close();
     return ok;
 }
