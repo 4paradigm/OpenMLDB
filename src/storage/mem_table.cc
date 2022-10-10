@@ -912,7 +912,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 ticket_.Push(entry);
                 it_ = entry->entries.NewIterator();
             } else {
-                ListKeyEntry* entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
+                ListKeyEntry* entry = (reinterpret_cast<ListKeyEntry**>(pk_it_->GetValue()))[ts_idx_];
                 ticket_.Push(entry);
                 it_ = entry->entries.NewIterator();
             }
@@ -922,7 +922,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 it_ = ((SkipListKeyEntry*)pk_it_->GetValue())         // NOLINT
                           ->entries.NewIterator();
             } else {
-                ticket_.Push((ListKeyEntry*)pk_it_->GetValue());  // NOLINT
+                ticket_.Push(reinterpret_cast<ListKeyEntry*>(pk_it_->GetValue()));  // NOLINT
                 it_ = ((ListKeyEntry*)pk_it_->GetValue())         // NOLINT
                           ->entries.NewIterator();
             }

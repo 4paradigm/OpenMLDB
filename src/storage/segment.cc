@@ -246,10 +246,12 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
         uint8_t height = 0;
         if (IsSkipList(key_entry_id)) {
             height = (reinterpret_cast<SkipListKeyEntry**>(key_entry_or_list))[key_entry_id]->entries.Insert(time, row);
-            (reinterpret_cast<SkipListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+            (reinterpret_cast<SkipListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_
+                .fetch_add(1, std::memory_order_relaxed);
         } else {
             (reinterpret_cast<ListKeyEntry**>(key_entry_or_list))[key_entry_id]->entries.Insert(time, row);
-            (reinterpret_cast<ListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
+            (reinterpret_cast<ListKeyEntry**>(key_entry_or_list))[key_entry_id]->count_
+                .fetch_add(1, std::memory_order_relaxed);
         }
         byte_size += GetRecordTsIdxSize(height, IsSkipList(key_entry_id));
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
@@ -292,7 +294,8 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
                 }
                 entry_arr = (void*)entry_arr_tmp;  // NOLINT
                 uint8_t height = entries_->Insert(skey, entry_arr);
-                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_, GetSkipListVec());
+                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_,
+                                                     ts_cnt_, GetSkipListVec());
                 pk_cnt_.fetch_add(1, std::memory_order_relaxed);
             }
         }
@@ -382,7 +385,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         for (uint32_t i = 0; i < ts_cnt_; i++) {
             uint64_t old = gc_idx_cnt;
             if (IsSkipList(i)) {
-                SkipListKeyEntry* entry = (SkipListKeyEntry*)entry_arr[i];
+                SkipListKeyEntry* entry = reinterpret_cast<SkipListKeyEntry*>(entry_arr[i]);
                 SkipListTimeEntries::Iterator* it = entry->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
@@ -393,7 +396,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
                 delete it;
                 delete entry;
             } else {
-                ListKeyEntry* entry = (ListKeyEntry*)entry_arr[i];
+                ListKeyEntry* entry = reinterpret_cast<ListKeyEntry*>(entry_arr[i]);
                 ListTimeEntries::ListIterator* it = entry->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
@@ -408,7 +411,8 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         }
         delete[] entry_arr;
         uint64_t byte_size =
-            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_, GetSkipListVec());
+            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_,
+                                    ts_cnt_, GetSkipListVec());
         idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
     } else {
         uint64_t old = gc_idx_cnt;
@@ -544,7 +548,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     it->SeekToFirst();
     while (it->Valid()) {
         uint64_t entry_gc_idx_cnt = 0;
-        if (IsSkipList()) {  // TODO
+        if (IsSkipList()) {
             SkipListKeyEntry* entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
             ::openmldb::base::Node<uint64_t, DataBlock*>* node = NULL;
             {
