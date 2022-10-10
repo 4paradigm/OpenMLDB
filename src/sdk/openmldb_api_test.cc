@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "base/glog_wapper.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -477,7 +476,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::base::SetupGlog(true);
+
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
