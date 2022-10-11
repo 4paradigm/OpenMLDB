@@ -22,7 +22,6 @@ import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
-import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
@@ -39,7 +38,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
@@ -66,6 +64,17 @@ public class SQLRouterSmokeTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    void testMoreOptions() throws Exception {
+        SdkOption option = new SdkOption();
+        option.setZkPath(TestConfig.ZK_PATH);
+        option.setZkCluster(TestConfig.ZK_CLUSTER);
+        option.setSessionTimeout(200000);
+        option.setMaxSqlCacheSize(100);
+        option.setZkLogLevel(2);
+        SqlExecutor tmp = new SqlClusterExecutor(option);
     }
 
     @DataProvider(name = "executor")
