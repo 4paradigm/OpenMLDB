@@ -225,10 +225,10 @@ bool SQLClusterRouter::Init() {
     // set log first(If setup before, setup below won't work, e.g. router in tablet server, router in CLI)
     if (cluster_sdk_ == nullptr) {
         // glog setting for SDK
-        FLAGS_minloglevel = options_->glog_level;
+        FLAGS_glog_level = options_->glog_level;
         FLAGS_glog_dir = options_->glog_dir;
     }
-    base::SetupGLog();
+    base::SetupGlog();
 
     if (cluster_sdk_ == nullptr) {
         // init cluster_sdk_, require options_ or standalone_options_ is set
@@ -1893,7 +1893,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-            std::string db = "__INTERNAL_DB";
+            std::string db = openmldb::nameserver::INTERNAL_DB;
             std::string sql = "SELECT * FROM JOB_INFO";
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
             if (!status->IsOK()) {
@@ -1915,7 +1915,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
 
-            std::string db = "__INTERNAL_DB";
+            std::string db = openmldb::nameserver::INTERNAL_DB;
             std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
