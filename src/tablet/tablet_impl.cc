@@ -949,7 +949,8 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             continue;
         }
         uint64_t ts = combine_it->GetTs();
-        if (ts <= et) {
+        // et is inclusive
+        if (ts < et) {
             break;
         }
         last_time = ts;
@@ -1022,6 +1023,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
     combine_it->SeekToFirst();
     uint32_t skip_record_num = request->skip_record_num();
     while (combine_it->Valid()) {
+        LOG(INFO) << "ts = " << combine_it->GetTs();
         if (limit > 0 && tmp.size() >= limit) {
             *is_finish = false;
             break;
@@ -1036,7 +1038,8 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             continue;
         }
         uint64_t ts = combine_it->GetTs();
-        if (ts <= et) {
+        // et is inclusive
+        if (ts < et) {
             break;
         }
         last_time = ts;
@@ -1677,7 +1680,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         uint32_t count = 0;
         for (auto& output_row : output_rows) {
             if (byte_size > FLAGS_scan_max_bytes_size) {
-                LOG(WARNING) << "reach the max byte size truncate result";
+                LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " truncate result";
                 response->set_schema(session.GetEncodedSchema());
                 response->set_byte_size(byte_size);
                 response->set_count(count);

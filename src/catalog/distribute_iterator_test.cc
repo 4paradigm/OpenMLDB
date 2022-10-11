@@ -393,7 +393,7 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
     ASSERT_TRUE(client1->CreateTable(metas[0]));
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{0, client1}};
     codec::SDKCodec codec(metas[0]);
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    int64_t now = 1999;
     std::string key = "card0";
     for (int j = 0; j < 1000; j++) {
         std::vector<std::string> row = {key , "mcc", std::to_string(now)};
