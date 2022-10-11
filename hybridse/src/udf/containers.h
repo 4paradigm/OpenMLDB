@@ -184,10 +184,15 @@ class BoundedGroupByDict {
 
     using FormatValueF = std::function<uint32_t(const StorageV&, char*, size_t)>;
 
+    template <typename>
+    struct is_pair : std::false_type {};
+    template <typename... T>
+    struct is_pair<std::pair<T...>> : std::true_type {};
+
     struct PairCmp {
         // (4, 2), (1, 4), (2, 4)
         template <typename U = StorageV>
-        std::enable_if_t<!std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
+        std::enable_if_t<!is_pair<U>::value, bool> operator()(
             const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
             if (lhs.second == rhs.second) {
                 return lhs.first < rhs.first;
