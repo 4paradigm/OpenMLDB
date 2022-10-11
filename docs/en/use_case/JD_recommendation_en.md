@@ -226,7 +226,7 @@ According to [DeepFM paper](https://arxiv.org/abs/1703.04247), we treat both cat
 Change directory to demo directory and execute the following commands to process the data set.
 ```bash
 cd $demodir/openmldb_process/
-sh process_JD_out_full.sh $demodir/out/1
+bash process_JD_out_full.sh $demodir/out/1
 ```
 The generated dataset will be placed at `$demodir/openmldb_process/out`. After generating parquet dataset, dataset information will also be printed. It contains the information about the number of samples and table size array, which is needed when training.
 >train samples = 4007924
