@@ -63,8 +63,8 @@ std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
             column_desc_list.push_back(column_desc);
         }
         // if table name is already exists, insert will be prevented
-        const auto [it, success] = table_desc_map.insert(std::make_pair(table_name, column_desc_list));
-        if(!success) {
+        const auto[it, success] = table_desc_map.insert(std::make_pair(table_name, column_desc_list));
+        if (!success) {
             LOG(WARNING) << "insert to map failed, table " << table_name << " already exists";
         }
     }

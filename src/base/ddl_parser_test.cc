@@ -729,11 +729,22 @@ TEST_F(DDLParserTest, validateSQL) {
     ret = DDLParser::ValidateSQLInBatch(query, db);
     ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
-    LOG(INFO) << ret[0];
-    LOG(INFO) << ret[1];
+    LOG(INFO) << ret[0] << "\n" << ret[1];
 
     query = "SELECT * FROM t1;";
     ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_TRUE(ret.empty());
+
+    query = "SELECT foo(col1) from t1;";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0] << "\n" << ret[1];
+
+    query =
+        "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded preceding and "
+        "current row);";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
     ASSERT_TRUE(ret.empty());
 }
 }  // namespace openmldb::base
