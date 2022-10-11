@@ -1023,7 +1023,6 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
     combine_it->SeekToFirst();
     uint32_t skip_record_num = request->skip_record_num();
     while (combine_it->Valid()) {
-        LOG(INFO) << "ts = " << combine_it->GetTs();
         if (limit > 0 && tmp.size() >= limit) {
             *is_finish = false;
             break;
