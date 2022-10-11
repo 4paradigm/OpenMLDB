@@ -1,0 +1,71 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 冒烟测试
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        replicaNum: 1
+        partitionNum: 1
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+      - drop index {0}.index1;
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+#  -
+#    id: 1
+#    desc: 创建刚刚删除的index
+#    inputs:
+#      -
+#        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - [aa,1,1590738990000,1590738989000]
+#    sqls:
+#      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+#      - drop index {0}.index1;
+#      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+#      - desc {0};
+#    expect:
+#      success: true
+#      idxs:
+#        -
+#          keys: ["c1"]
+#          ts: "c4"
+#          ttl: 0min
+#          ttlType: kAbsoluteTime
+#        -
+#          keys: ["c2"]
+#          ts: "c4"
+#          ttl: 100min
+#          ttlType: kAbsoluteTime
+
+
+
+
