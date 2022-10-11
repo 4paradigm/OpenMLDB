@@ -906,9 +906,9 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::openmldb::base::SetupGlog(true);
 
     srand(time(NULL));
@@ -917,7 +917,6 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";
