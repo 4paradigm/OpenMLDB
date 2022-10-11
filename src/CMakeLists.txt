@@ -113,7 +113,9 @@ add_library(openmldb_proto STATIC ${PROTO_FILES})
 
 add_library(openmldb_flags STATIC flags.cc)
 
-set(BIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
+set(BUILTIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log ${RocksDB_LIB})
+set(BIN_LIBS ${BUILTIN_LIBS}
+common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}
