@@ -72,7 +72,7 @@ There are some advanced options can be specified as below:
 - --exclude: The item do not check. Only work if `check` option is `ALL`. It can be specified as `CONF/LOG/SQL/VERSION`
 - --log_level: The default value is `info`. It can be specified as `debug/warn/info`
 - --log_dir: Specific the output dir. It will print to stdout if not set
-- --env: If the cluster is started with `start-all.sh` script, `onbox` should be setted.
+- --env: If the cluster is started with `start-all.sh` script, `onebox` should be setted.
 
 For instance, we can check `conf` only and print the ouput to local dir as below:
 ```
@@ -80,3 +80,5 @@ openmldb_tool --dist_conf=/tmp/cluster_dist.yml --check=conf --log_dir=./
 ```
 
 **Note**: If you want to diagnostie standalone mode OpenMLDB, you need to run diagnostic tool on the OpenMLDB node.
+
+You can use `openmldb_tool --helpfull` to check all options. e.g. `--sdk_log` can print the log in sdk(zk, glog) for debug.

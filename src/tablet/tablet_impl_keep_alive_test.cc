@@ -18,7 +18,7 @@
 #include <unistd.h>
 #include <string>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/bind.hpp"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"

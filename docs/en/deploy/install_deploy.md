@@ -100,7 +100,7 @@ cd openmldb-tablet-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_tablet
+bash bin/start.sh start standalone_tablet
 ```
 
 **Notice**: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail.
@@ -131,7 +131,7 @@ cd openmldb-ns-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_nameserver
+bash bin/start.sh start standalone_nameserver
 ```
 
 #### 4. Verify the Running Status of the Service
@@ -176,7 +176,7 @@ cd openmldb-apiserver-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_apiserver
+bash bin/start.sh start standalone_apiserver
 ```
 
 ## Deploy Cluster Version
@@ -210,7 +210,7 @@ clientPort=7181
 #### 3. Start Zookeeper
 
 ```
-sh bin/zkServer.sh start
+bash bin/zkServer.sh start
 ```
 
 Deploy the Zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper).
@@ -250,7 +250,7 @@ cd openmldb-tablet-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start tablet
+bash bin/start.sh start tablet
 ```
 
 Repeat the above steps to deploy multiple tablets.
@@ -290,7 +290,7 @@ cd openmldb-ns-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start nameserver
+bash bin/start.sh start nameserver
 ```
 
 Repeat the above steps to deploy multiple nameservers.
@@ -340,7 +340,7 @@ cd openmldb-apiserver-0.6.2
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start apiserver
+bash bin/start.sh start apiserver
 ```
 
 **Notice:** If the program crashes when starting the nameserver/tablet/apiserver using the OpenMLDB release package, it is very likely that the instruction set is incompatible, and you need to compile OpenMLDB through the source code. For source code compilation, please refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
@@ -383,7 +383,7 @@ spark.home=
 #### 3. Start the Service
 
 ```bash
-bin/start.sh start taskmanager
+bash bin/start.sh start taskmanager
 ```
 
 #### 4. Verify the Running Status of the Service

@@ -52,6 +52,8 @@ DECLARE_int32(port);
 // rpc request timeout of CLI
 DECLARE_int32(request_timeout);
 
+DECLARE_int32(glog_level);
+
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
 
@@ -242,6 +244,8 @@ bool InitClusterSDK() {
 }
 
 void ClusterSQLClient() {
+    // setup here cuz init xx sdk will print log too
+    base::SetupGlog();
     if (!InitClusterSDK()) {
         return;
     }
@@ -272,6 +276,7 @@ bool InitStandAloneSDK() {
 }
 
 void StandAloneSQLClient() {
+    base::SetupGlog();
     if (!InitStandAloneSDK()) {
         return;
     }

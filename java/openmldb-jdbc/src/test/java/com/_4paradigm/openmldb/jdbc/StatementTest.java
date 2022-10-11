@@ -2,7 +2,6 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.sdk.impl.DeletePreparedStatementImpl;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;

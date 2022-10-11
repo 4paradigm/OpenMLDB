@@ -705,8 +705,6 @@ TEST_F(SQLRouterTest, testSqlInsertPlaceholderWithColumnKey2) {
     ASSERT_EQ(day, 22);
     ASSERT_EQ(789, rs->GetInt32Unsafe(3));
 
-
-
     ASSERT_FALSE(rs->Next());
 
     status = ::hybridse::sdk::Status();
@@ -1200,9 +1198,11 @@ TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+
+    ::openmldb::base::SetupGlog(true);
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;

@@ -20,14 +20,14 @@ conda activate oneflow
 
 cd openmldb_process
 ##pass in directory of openmldb results
-sh process_JD_out_full.sh $demodir/out/1
+bash process_JD_out_full.sh $demodir/out/1
 ##output data in $demodir/openmldb_process/out
 ##note output information, table_size_array
 
 3. Launch oneflow deepfm model training:
 cd oneflow_process/
 ##modify directory, sample size, table_size_array information in train_deepfm.sh accordingly
-sh train_deepfm.sh $demodir
+bash train_deepfm.sh $demodir
 
 
 #Model Serving
