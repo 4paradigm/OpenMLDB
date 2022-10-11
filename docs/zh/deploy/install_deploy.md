@@ -91,7 +91,7 @@ cd openmldb-tablet-0.6.2
 * 如果此处使用的域名, 所有使用openmldb的client所在的机器都得配上对应的host. 不然会访问不到
 #### 3 启动服务
 ```
-sh bin/start.sh start standalone_tablet
+bash bin/start.sh start standalone_tablet
 ```
 **注: 服务启动后会在bin目录下产生standalone_tablet.pid文件, 里边保存启动时的进程号。如果该文件内的pid正在运行则会启动失败**
 
@@ -113,7 +113,7 @@ cd openmldb-ns-0.6.2
 **注: endpoint不能用0.0.0.0和127.0.0.1**
 #### 3 启动服务
 ```
-sh bin/start.sh start  standalone_nameserver
+bash bin/start.sh start  standalone_nameserver
 ```
 #### 4 检查服务是否启动
 ```bash
@@ -156,7 +156,7 @@ cd openmldb-apiserver-0.6.2
 #### 3 启动服务
 
 ```
-sh bin/start.sh start standalone_apiserver
+bash bin/start.sh start standalone_apiserver
 ```
 
 ## 部署集群版
@@ -184,7 +184,7 @@ clientPort=7181
 
 #### 3. 启动Zookeeper
 ```
-sh bin/zkServer.sh start
+bash bin/zkServer.sh start
 ```
 部署zookeeper集群[参考这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)
 
@@ -215,7 +215,7 @@ cd openmldb-tablet-0.6.2
 * zk_cluster和zk_root_path配置和nameserver的保持一致
 #### 3 启动服务
 ```
-sh bin/start.sh start tablet
+bash bin/start.sh start tablet
 ```
 重复以上步骤部署多个tablet
 
@@ -245,7 +245,7 @@ cd openmldb-ns-0.6.2
 **注: endpoint不能用0.0.0.0和127.0.0.1**
 #### 3 启动服务
 ```
-sh bin/start.sh start nameserver
+bash bin/start.sh start nameserver
 ```
 重复上述步骤部署多个nameserver
 
@@ -294,7 +294,7 @@ cd openmldb-apiserver-0.6.2
 #### 3 启动服务
 
 ```
-sh bin/start.sh start apiserver
+bash bin/start.sh start apiserver
 ```
 
 **注**: 如果在linux平台通过发布包启动nameserver/tablet/apiserver时core掉，很可能时指令集不兼容问题，需要通过源码编译openmldb。源码编译参考[这里](./compile.md), 需要采用方式三完整源代码编译。
@@ -334,7 +334,7 @@ spark.home=
 
 #### 3 启动服务
 ```
-bin/start.sh start taskmanager
+bash bin/start.sh start taskmanager
 ```
 #### 4 检查服务是否启动
 ```bash

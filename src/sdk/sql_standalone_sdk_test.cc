@@ -873,12 +873,12 @@ TEST_F(SQLSDKTest, CreatePreAggrTable) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::base::SetupGlog(true);
     ::testing::InitGoogleTest(&argc, argv);
-
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     srand(time(NULL));
+
+    ::openmldb::base::SetupGlog(true);
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
     // connect to nameserver
