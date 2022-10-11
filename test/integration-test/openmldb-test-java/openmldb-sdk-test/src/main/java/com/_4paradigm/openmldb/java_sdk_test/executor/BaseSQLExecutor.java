@@ -32,6 +32,7 @@ import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,10 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         this.executor = executor;
         this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = Objects.isNull(sqlCase.getDb()) ? OpenMLDBConfig.TEST_DB : sqlCase.getDb();
+        if (StringUtils.isEmpty(sqlCase.getDb())) {
+            sqlCase.setDb(OpenMLDBConfig.TEST_DB);
+        }
+        dbName = sqlCase.getDb();
         if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
             for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
@@ -134,7 +138,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
-                SDKUtil.ddl(executor, tableDBName, drop);
+//                SDKUtil.ddl(executor, tableDBName, drop);
             }
         }
     }

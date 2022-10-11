@@ -36,15 +36,15 @@ import org.testng.annotations.Test;
 public class SelectTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"integration_test/select/test_limit.yaml"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"integration_test/select/test_sub_select.yaml"})
     public void testSelectRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
