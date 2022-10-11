@@ -303,7 +303,7 @@ sh bin/start.sh start apiserver
 
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
 ````
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.2/spark-3.2.1-bin-openmldbspark.tgz 
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.2/spark-3.2.1-bin-openmldbspark.tgz 
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.2/openmldb-0.6.2-linux.tar.gz
 tar -zxvf openmldb-0.6.2-linux.tar.gz
