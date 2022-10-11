@@ -742,8 +742,8 @@ TEST_F(DDLParserTest, validateSQL) {
     LOG(INFO) << ret[0] << "\n" << ret[1];
 
     query =
-        "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded preceding and "
-        "current row);";
+        "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded "
+        "preceding and current row);";
     ret = DDLParser::ValidateSQLInRequest(query, db);
     ASSERT_TRUE(ret.empty());
 }
