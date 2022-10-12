@@ -736,7 +736,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     NextPK();
                     break;
                 }
-                if (ts_ >= time) {
+                if (ts_ > time) {
                     continue;
                 }
             } else {
@@ -767,7 +767,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
                 }
-                if (ts_ >= time) {
+                if (ts_ > time) {
                     continue;
                 }
                 if (IsExpired()) {
