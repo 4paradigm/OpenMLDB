@@ -40,7 +40,6 @@ In feature engineering, in order to obtain enough effective information, data ne
 | purchase_amt  | DOUBLE    | Purchase Amount                  |
 | purchase_type | STRING    | Purchase Type: Cash, Credit Card |
 
-In the traditional relational database, the most common way to obtain the information from multiple tables is to use JOIN. However, in feature engineering, JOIN of common database can not meet the efficiency requirement. The main reason is that our main sample table has a **label** column for training, and each value of this column only correspond to one row of the data records. We hope that the number of rows in the result table should be consistent with that in the main table after JOIN operation.
 
 ## 2. LAST JOIN
 
