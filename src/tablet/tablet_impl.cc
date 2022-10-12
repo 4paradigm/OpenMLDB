@@ -1422,11 +1422,15 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     uint64_t last_time = 0;
     std::string last_pk;
+    uint32_t ts_pos = 0;
     if (request->has_pk() && request->pk().size() > 0) {
         DEBUGLOG("tid %u, pid %u seek pk %s ts %lu", tid, pid, request->pk().c_str(), request->ts());
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
+        if (request->has_ts_pos()) {
+            ts_pos = request->ts_pos();
+        }
         auto traverse_it = dynamic_cast<::openmldb::storage::TraverseIterator*>(it);
         if (traverse_it && traverse_it->Valid() && traverse_it->GetPK() == last_pk) {
             if (request->skip_current_pk()) {
@@ -1452,7 +1456,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
-    uint32_t ts_pos = 0;
     for (; it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             DEBUGLOG("reache the limit %u ", request->limit());

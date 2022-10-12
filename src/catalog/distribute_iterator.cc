@@ -131,7 +131,7 @@ bool FullTableIterator::NextFromRemote() {
                 kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", last_pk_, last_ts_,
                             FLAGS_traverse_cnt_limit, false, kv_it_->GetTSPos(), count);
                 DLOG(INFO) << "pid " << cur_pid_ << " last pk " << last_pk_ <<
-                    " key " << last_ts_ << " count " << count;
+                    " key " << last_ts_ << " ts_pos " << kv_it_->GetTSPos() << " count " << count;
             } else {
                 iter++;
                 kv_it_.reset();
