@@ -2,15 +2,15 @@
 
 ## 1. Preliminary Knowledge
 
-In the previous series of articles [SQL for Feature Extraction (Part 1)](./tutorial_sql_1.md), we introduce the basic concepts and practical tools of feature engineering, as well as the basic feature processing script development based on single table. In this article, we will introduce more complex and more powerful feature processing script development on multi-tables. 
-At the same time, we still rely on the SQL syntax provided by OpenMLDB in feature engineering script examples. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](https://openmldb.ai/docs/en/main/).
+In the previous series of articles [SQL for Feature Extraction (Part 1)](./tutorial_sql_1.md), we introduce the basic concepts and practical tools of feature engineering, as well as the basic feature processing script development based on a single table. In this article, we will introduce more complex and more powerful feature processing script development on multi-tables. 
+At the same time, we will take the SQL syntax of OpenMLDB as an example for SQL-based feature engineering development. For more information about OpenMLDB, please visit [GitHub repo of OpenMLDB](https://github.com/4paradigm/OpenMLDB), and the [document website](https://openmldb.ai/docs/en/main/).
 
 If you want to run the SQL in this tutorial, please follow the following two steps to prepare:
 
-- It is recommended to use the OpenMLDB docker image under **Stand-alone Version**. Refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md) for the operation mode. If using the cluster version, please use the **Offline** mode (`SET @@execute_mode='offline'` ). The CLI tool of cluster version is only available under **Offline** mode and **Online Preview** mode. The Online Preview mode only can be used for simple data preview, so most of the SQL in the tutorial cannot run in this mode.
+- It is recommended to use the OpenMLDB docker image under **Standalone Version**. Refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md) for the operation mode. If using the cluster version, please use the **Offline** mode (`SET @@execute_mode='offline'` ). The CLI tool of cluster version is only available under **Offline** mode and **Online Preview** mode. The Online Preview mode only can be used for simple data preview, so most of the SQL in the tutorial cannot run in this mode.
 - All data related to this tutorial and the import operation script can be downloaded [here](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip).
 
-In this article, we will use the main table and sub table to illustrate. We still use the sample data of anti-fraud transactions in the previous article, including a main table: user transaction table (Table 1, t1) and a sub table: merchant flow table (Table 2, t2). 
+In this article, the data set consists of a main table (holding the labels) and other secondary tables. We still use the sample data of anti-fraud transactions in the previous article, including a main table: user transaction table (Table 1, t1) and a secondary table: merchant flow table (Table 2, t2). 
 In the design of relational database, in order to avoid data redundancy and ensure data consistency, commonly, the data are stored in multiple tables according to design principles (database design paradigm). 
 In feature engineering, in order to obtain enough effective information, data needs to be extracted from multiple tables. As a result, feature engineering needs to be carried out based on multiple tables.
 
@@ -30,7 +30,7 @@ In feature engineering, in order to obtain enough effective information, data ne
 | city       | STRING    | City                                    |
 | label      | BOOL      | Sample label, true\|false               |
 
-**Table 2: Merchant Flow Table, t2**
+**Table 2: Merchant Transaction Table, t2**
 
 | Field         | Type      | Description                      |
 | ------------- | --------- | -------------------------------- |
@@ -42,11 +42,9 @@ In feature engineering, in order to obtain enough effective information, data ne
 
 In the traditional relational database, the most common way to obtain the information from multiple tables is to use JOIN. However, in feature engineering, JOIN of common database can not meet the efficiency requirement. The main reason is that our main sample table has a **label** column for training, and each value of this column only correspond to one row of the data records. We hope that the number of rows in the result table should be consistent with that in the main table after JOIN operation.
 
-## 2. Single Line Feature in Sub Table 
+## 2. LAST JOIN
 
-## 2.1 LAST JOIN
-
-OpenMLDB supports`LAST JOIN` to perform common JOIN operation in traditional database. LAST JOIN can be regarded as a special LEFT JOIN. Each row of the left table will concat the last row that meets the conditions of the right table. There are two types of LAST JOIN: disordered splicing and ordered splicing. Let's take a simple table as an example and assume that both the schemas of tables s1 and s2 are
+OpenMLDB supports`LAST JOIN` as a variant of LEFT JOIN that is supported in the standard SQL. For each record in the left table, when there are multiple records matched from the right table, only one record will be output as the result. There are two types of LAST JOIN: ordered and non-ordered LAST JOIN. Let's take a simple table as an example and assume that both the schemas of tables s1 and s2 are
 
 ```sql
 (id int, col1 string, std_ts timestamp)
@@ -58,27 +56,27 @@ Then, we can do the following join operation:
 SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
 ```
 
-As shown below, left table `LAST JOIN` right table with `ORDER BY` and right table is sorted by  `std_ts`. Take the second row of the left table as an example. There are 2 qualified rows in right table. After sorting by `std_ts` the last row `3, b, 2020-05-20 10:11:13` is selected.
+As shown below, left table `LAST JOIN` right table with `ORDER BY` and right table is sorted by  `std_ts`. Take the second row of the left table as an example. There are two matched rows in right table. After sorting by `std_ts` the last row `3, b, 2020-05-20 10:11:13` is selected.
 
 ![img](images/lastjoin_1.jpg)
 
 ![img](images/lastjoin_2.jpg)
 
-## 3. Multi-Row Aggregation of Sub Table
+## 3. Multi-Row Aggregation  over Multiple Tables
 
-For the sub table splicing scenario, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) syntax. 
-WINDOW UNION supports splicing multiple pieces of data from the sub table to form a window on sub table.
-Based on the sub table splicing window, it is convenient to construct the multi-row aggregation feature of the sub table. 
-Similarly, two steps need to be completed to construct the multi-row aggregation feature of the sub table:
+For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) syntax. 
+WINDOW UNION supports splicing multiple pieces of data from the secondary table to form a window on secondary table.
+Based on the secondary table splicing window, it is convenient to construct the multi-row aggregation feature of the secondary table. 
+Similarly, two steps need to be completed to construct the multi-row aggregation feature of the secondary table:
 
-- Step 1: Define the sub table splicing window.
-- Step 2: Construct the multi-row aggregation feature of the sub table on the window constructed in Step 1.
+- Step 1: Define the secondary table splicing window.
+- Step 2: Construct the multi-row aggregation feature of the secondary table on the window constructed in Step 1.
 
 ## 3.1 Step 1: Define the Sub Table Splicing Window
 
-Each row of the main table can splice multiple rows of data from the sub table according to a certain column, and it is allowed to define the time interval or number interval of spliced data. We use the WINDOW UNION to define the sub table splicing condition and interval range. To make it easier to understand, we call this kind of windows as sub table splicing windows.
+Each row of the main table can splice multiple rows of data from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of spliced data. We use the WINDOW UNION to define the secondary table splicing condition and interval range. To make it easier to understand, we call this kind of windows as secondary table splicing windows.
 
-The syntax of creating a sub table splicing window is defined as:
+The syntax of creating a secondary table splicing window is defined as:
 
 ```sql
 window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
@@ -90,9 +88,9 @@ Among them, the most basic and indispensable elements include:
 
 - `PARTITION BY key_col`: Indicates that data is spliced by column `key_col` from the secondary table.
 
-- `ORDER BY order_col`: Indicates that the sub table is sorted in accordance with`order_col` columns.
+- `ORDER BY order_col`: Indicates that the secondary table is sorted in accordance with`order_col` columns.
 
-- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the sub table splicing window.
+- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table splicing window.
 
   - `StartFrameBound` represents the upper bound of the window.
 
@@ -104,7 +102,7 @@ Among them, the most basic and indispensable elements include:
     - `CURRENT ROW`: The lower bound is current row.
     - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is 1 day before the time of the current line. 
 
-- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the sub table splicing window.
+- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table splicing window.
 
   - `StartFrameBound` represents the upper bound of the window.
 
@@ -132,7 +130,7 @@ Among them, the most basic and indispensable elements include:
 
 Let's see the usage of WINDOW UNION through specific examples. 
 
-For the user transaction table t1 mentioned above, we define a window over the sub table, that is merchant flow table t2, based on `mid`.
+For the user transaction table t1 mentioned above, we define a window over the secondary table, that is merchant flow table t2, based on `mid`.
 Because the schemas of t1 and t2 are different, we extract the same columns from t1 and t2 respectively. For non-existent columns, we set default values. 
 Among them, `mid` column is used as the splicing condition of two tables, so it must be included. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window. The remaining columns are filtered and retained as required according to the aggregation function.
 
@@ -152,10 +150,10 @@ The following SQL extracts the necessary columns from t2 to generate t22.
 
 ![img](images/t2_to_t22.png)
 
-It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the sub table t22 for each row in t11. 
-According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the sub table splicing window. 
-For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data spliced according to `mid` from the sub table within ten days. 
-The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the sub table splicing windows of sample 6 and sample 9.
+It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the secondary table t22 for each row in t11. 
+According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the secondary table splicing window. 
+For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data spliced according to `mid` from the secondary table within ten days. 
+The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the secondary table splicing windows of sample 6 and sample 9.
 
 ![img](images/t11_t22.jpg)
 
@@ -171,10 +169,10 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 3.2 Step 2: Build Multi-Row Aggregation Feature of Sub Table
 
-Apply the multi-row aggregation function on the created window to construct aggregation features on multi-rows of sub table, so that the number of rows finally generated is the same as that of the main table. 
-For example, we can construct features from the sub table like: the total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. 
+Apply the multi-row aggregation function on the created window to construct aggregation features on multi-rows of secondary table, so that the number of rows finally generated is the same as that of the main table. 
+For example, we can construct features from the secondary table like: the total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. 
 
-The following SQL constructs the multi-row aggregation feature based on the sub table splicing window defined in [3.1](#31-step-1-define-the-sub-table-splicing-window).
+The following SQL constructs the multi-row aggregation feature based on the secondary table splicing window defined in [3.1](#31-step-1-define-the-sub-table-splicing-window).
 ```sql
 SELECT 
 id, 
@@ -200,7 +198,7 @@ First, we divide the features into 3 groups:
 | ------------- |-------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1             | Single row features of users table (primary table) and merchants table (secondary table)                                                        |
 | 2             | Window aggregation features of users table (main table) in the last 30 days and the last 7 days |
-| 3             | Aggregation features of merchants table (sub table) in the last 30 days                                                                 |
+| 3             | Aggregation features of merchants table (secondary table) in the last 30 days                                                                 |
 
 Then, we use OpenMLDB SQL to create the features of the same group in one sub query:
 
