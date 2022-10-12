@@ -516,8 +516,6 @@ cases:
   -
     id: 19
     desc: union结合maxsize
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -545,8 +543,6 @@ cases:
   -
     id: 20
     desc: union结合maxsize-两个窗口
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -602,8 +598,6 @@ cases:
   -
     id: 22
     desc: union子查询结合maxsize
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -631,6 +625,7 @@ cases:
   -
     id: 23-1
     desc: lastjoin结合maxsize
+    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -669,6 +664,7 @@ cases:
         - [5,"bb",24,34,68]
   -
     id: 23-2
+    mode: cluster-unsupport
     desc: lastjoin结合maxsize, last join副表有ts列为null
     tags: ["TODO"]
     inputs:
@@ -710,8 +706,6 @@ cases:
   -
     id: 24
     desc: union多表结合maxsize
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -756,7 +750,6 @@ cases:
   -
     id: 26
     desc: 两个union,不同的maxsize
-    mode: cluster-unsupport
     tags: ["TODO", "@chenjing support online batch", "@chendihao support offline batch", "cluster-执行失败"]
     inputs:
       -
