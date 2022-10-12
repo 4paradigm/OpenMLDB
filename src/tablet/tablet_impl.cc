@@ -1518,8 +1518,8 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             continue;
         }
         for (const auto& pair : iter->second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", iter->first.c_str(), pair.first, pair.second.size());
-            ::openmldb::codec::EncodeFull(iter->first, pair.first, pair.second.data(), pair.second.size(), rbuffer,
+            DEBUGLOG("encode pk %s ts %lu size %u", key.c_str(), pair.first, pair.second.size());
+            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer,
                                           offset);
             offset += (4 + 4 + 8 + key.length() + pair.second.size());
         }
