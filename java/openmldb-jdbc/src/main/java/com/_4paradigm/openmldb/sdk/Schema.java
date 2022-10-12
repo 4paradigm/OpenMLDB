@@ -16,7 +16,11 @@
 
 package com._4paradigm.openmldb.sdk;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import com._4paradigm.openmldb.sdk.impl.Util;
 
 public class Schema {
     private List<Column> columnList;
@@ -32,5 +36,14 @@ public class Schema {
     public void setColumnList(List<Column> columnList) {
         this.columnList = columnList;
     }
-}
 
+    public String toString() {
+        return columnList.stream().map(t -> {
+            try {
+                return t.getColumnName() + ":" + Util.sqlTypeToString(t.getSqlType());
+            } catch (SQLException e) {
+                return t.getColumnName() + ":unknown";
+            }
+        }).collect(Collectors.joining(","));
+    }
+}
