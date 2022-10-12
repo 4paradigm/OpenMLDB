@@ -34,7 +34,6 @@
 
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_uint32(traverse_cnt_limit);
-DECLARE_string(openmldb_log_dir);
 
 namespace openmldb::sdk {
 
