@@ -683,6 +683,7 @@ cases:
         8, B, 4, 1590115450000, 5
         9, A, 5, 1590115460000, 7
   - id: 20
+    mode: cluster-unsupport
     desc: lastjoin+window ROWS and ROWS_RANGE merge, 包含纯历史小窗口
     sql: |
       SELECT id, pk1, col1, std_ts,
@@ -751,7 +752,7 @@ cases:
   - id: 21
     desc: window query after last join with a table, index hasn't been optimized
     db: db1
-    mode: performance-sensitive-unsupport
+    mode: performance-sensitive-unsupport, cluster-unsupport
     sql: |
        SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
        FROM t1
