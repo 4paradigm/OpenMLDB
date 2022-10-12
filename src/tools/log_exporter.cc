@@ -28,7 +28,7 @@
 #include <iostream>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/common.pb.h"
