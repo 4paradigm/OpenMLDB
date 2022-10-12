@@ -712,3 +712,25 @@ cases:
       columns: ["a string", "b string", "c string"]
       data: |
         aaa, bbb, ccc
+
+  - id: 100
+    desc: |
+      simple select(*) + column ref
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx:id:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select *, count(id) over w as cnt
+      from t1
+      window w as (
+      partition by id order by ts rows between 2 preceding and current row)
+    expect:
+      columns: ["id int32", "b int32", "ts int64", "cnt int64"]
+      order: id
+      data: |
+          1, 10, 1000, 1
+          2, 30, 2000, 1
