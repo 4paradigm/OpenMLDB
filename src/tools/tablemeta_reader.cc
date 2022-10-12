@@ -24,7 +24,7 @@
 #include <sstream>
 #include <string>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/schema_codec.h"
 #include "proto/name_server.pb.h"
 
