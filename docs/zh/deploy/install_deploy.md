@@ -240,7 +240,6 @@ cd openmldb-ns-0.6.2
 --endpoint=172.27.128.31:6527
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
 --zk_root_path=/openmldb_cluster
---enable_distsql=true
 ```
 **注: endpoint不能用0.0.0.0和127.0.0.1**
 #### 3 启动服务
