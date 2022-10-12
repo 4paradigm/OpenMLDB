@@ -196,6 +196,7 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
+# TODO(hw): dup with hybridse root cmake, need cleanup
 list(
         APPEND
         ABSL_LIBS
@@ -214,7 +215,8 @@ list(
         absl::strings_internal
         absl::synchronization
         absl::time
-        absl::status)
+        absl::status
+        absl::statusor)
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)

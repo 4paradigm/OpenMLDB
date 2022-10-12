@@ -166,6 +166,10 @@ public class SQLDriver implements Driver {
         if (prop != null) {
             option.setGlogDir(prop);
         }
+        prop = properties.getProperty("maxSqlCacheSize");
+        if (prop != null) {
+            option.setMaxSqlCacheSize(Integer.parseInt(prop));
+        }
         return option;
     }
 
