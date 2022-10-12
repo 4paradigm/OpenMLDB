@@ -164,33 +164,4 @@ object SparkUtil {
     Logger.getLogger("akka").setLevel(Level.OFF);
   }
 
-  /**
-   * Union the dataframes even if they have different schema by adding left columns from the larger dataframe.
-   *
-   * @param df1 the first dataframe
-   * @param df2 the seocnd dataframe
-   * @return the output union dataframe
-   */
-  def compatibleUnion(df1: DataFrame, df2: DataFrame): DataFrame = {
-    if (df1.schema.size == df2.schema.size) {
-      df1.union(df2)
-    } else if (df1.schema.size > df2.schema.size) {
-      // Select last columns from df1
-      val newCols = ArrayBuffer[Column]()
-      for (i <- 0 until df1.schema.size - df2.schema.size) {
-        newCols.append(lit(null))
-      }
-      newCols.append(col("*"))
-      df1.union(df2.select(newCols.toList: _*))
-    } else {
-      // Select last columns from df2
-      val newCols = ArrayBuffer[Column]()
-      for (i <- 0 until df2.schema.size - df1.schema.size) {
-        newCols.append(lit(null))
-      }
-      newCols.append(col("*"))
-      df1.select(newCols.toList: _*).union(df2)
-    }
-  }
-
 }

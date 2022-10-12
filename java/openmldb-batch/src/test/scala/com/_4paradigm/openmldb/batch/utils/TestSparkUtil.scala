@@ -162,30 +162,5 @@ class TestSparkUtil extends SparkTestSuite {
     assert(!approximateDfEqual(tableTest1, tableTest3))
   }
 
-  test("Test compatibleUnion") {
-    val spark: SparkSession = getSparkSession
-
-    val data1 = Seq(Row("str1", "str2", Timestamp.valueOf("2014-01-01 23:00:01")))
-    val schema1 = StructType(List(
-      StructField("c1", StringType),
-      StructField("c2", StringType),
-      StructField("c3", TimestampType)))
-    val df1 = spark.createDataFrame(spark.sparkContext.makeRDD(data1), schema1)
-
-    val data2 = Seq(Row("str3", Timestamp.valueOf("2014-01-03 23:00:01")))
-    val schema2 = StructType(List(
-      StructField("c2", StringType),
-      StructField("c3", TimestampType)))
-    val df2 = spark.createDataFrame(spark.sparkContext.makeRDD(data2), schema2)
-
-    val outputDf = SparkUtil.compatibleUnion(df1, df2)
-    assert(outputDf.count() == 2)
-    assert(outputDf.schema.size == 3)
-
-    val outputDf2 = SparkUtil.compatibleUnion(df2, df1)
-    assert(outputDf2.count() == 2)
-    assert(outputDf2.schema.size == 3)
-  }
-
 }
 

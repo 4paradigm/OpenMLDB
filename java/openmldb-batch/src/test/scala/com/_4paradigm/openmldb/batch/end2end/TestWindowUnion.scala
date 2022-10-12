@@ -127,4 +127,56 @@ class TestWindowUnion extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), compareDf, false))
   }
 
+
+  ignore("Test window union after window union") {
+
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val data = Seq(
+      Row(1, "tom", 100, 1),
+      Row(2, "amy", 200, 2),
+      Row(3, "tom", 300, 3),
+      Row(4, "amy", 400, 4),
+      Row(5, "tom", 500, 5),
+      Row(6, "amy", 600, 6),
+      Row(7, "tom", 700, 7),
+      Row(8, "amy", 800, 8),
+      Row(9, "tom", 900, 9),
+      Row(10, "amy", 1000, 10))
+    val schema = StructType(List(
+      StructField("id", IntegerType),
+      StructField("user", StringType),
+      StructField("trans_amount", IntegerType),
+      StructField("trans_time", IntegerType)))
+    val df = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
+    sess.registerTable("t1", df)
+
+    val data2 = Seq(
+      Row(1, "tom", 100, 1),
+      Row(10, "amy", 1000, 10))
+    val schema2 = StructType(List(
+      StructField("id", IntegerType),
+      StructField("user", StringType),
+      StructField("trans_amount", IntegerType),
+      StructField("trans_time", IntegerType)))
+    val df2 = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
+    sess.registerTable("t2", df2)
+
+    val sqlText ="""
+                   | SELECT
+                   |  sum(trans_amount) OVER w1 AS w1_sum_amount,
+                   |  sum(trans_amount) OVER w2 AS w2_sum_amount,
+                   | FROM t1
+                   | WINDOW
+                   | w1 AS (UNION t2 PARTITION BY user ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+                   | w2 AS (UNION t2 PARTITION BY user ORDER BY trans_amount ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+     """.stripMargin
+
+    val outputDf = sess.sql(sqlText)
+    val count = outputDf.count()
+    val expectedCount = data.size
+    assert(count == expectedCount)
+  }
+
 }
