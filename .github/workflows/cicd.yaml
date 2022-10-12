@@ -10,7 +10,7 @@ on:
       - 'demo/**'
       - 'docker/**'
       - 'image/**'
-      - 'release/**'
+      - 'release/bin/**'
       - 'tools/**'
       - '*.md'
     tags:
@@ -21,7 +21,7 @@ on:
       - 'demo/**'
       - 'docker/**'
       - 'image/**'
-      - 'release/**'
+      - 'release/bin/**'
       - 'tools/**'
       - '*.md'
   workflow_dispatch:
