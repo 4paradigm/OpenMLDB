@@ -62,7 +62,7 @@ The request body:
 
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 
@@ -84,7 +84,9 @@ The request URL: http://ip:port/dbs/{db_name}
 
 HTTP method: POST
 
-The request body example: 
+**Request Body Example**
+
+The query without parameter: 
 
 ```json
 {
@@ -101,6 +103,35 @@ The response:
 {
     "code":0,
     "msg":"ok"
+}
+```
+
+The query with parameters:
+
+```json
+{
+    "mode": "online",
+    "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+    "input": {
+      "schema": ["Int32", "String"],
+      "data": [1, "aaa"]
+    }
+}
+```
+
+all supported types (case-insensitive):
+`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
+
+The response:
+
+```json
+{
+    "code":0,
+    "msg":"ok",
+    "data": {
+      "schema": ["Int32", "String", "Float"],
+      "data": [[1, "aaa", 1.2], [1, "aaa", 3.4]]
+    }
 }
 ```
 

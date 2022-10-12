@@ -41,7 +41,7 @@ else
     ROOT_DIR=$(pwd)
     echo "WORK_DIR: ${ROOT_DIR}"
     echo "sql c++ sdk test : case_level ${CASE_LEVEL}, case_file ${CASE_NAME}"
-    GLOG_minloglevel=2 HYBRIDSE_LEVEL=${CASE_LEVEL} YAML_CASE_BASE_DIR=${ROOT_DIR} "./build/bin/${CASE_NAME}" "--gtest_output=xml:./reports/${CASE_NAME}.xml"
+    HYBRIDSE_LEVEL=${CASE_LEVEL} YAML_CASE_BASE_DIR=${ROOT_DIR} "./build/bin/${CASE_NAME}" "--gtest_output=xml:./reports/${CASE_NAME}.xml --minloglevel=2"
     RET=$?
     echo "${CASE_NAME} result code is: $RET"
     if [ $RET -ne 0 ];then

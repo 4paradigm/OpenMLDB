@@ -18,7 +18,7 @@
 
 #include <gflags/gflags.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "common/timer.h"
 #include "storage/record.h"

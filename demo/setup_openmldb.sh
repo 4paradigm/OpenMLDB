@@ -42,7 +42,7 @@ strip -s "${WORKDIR}/openmldb/bin/openmldb"
 
 mkdir -p "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark"
 tar xzf spark-3.0.0-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark" --strip-components 1
-rm -rf "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark/python"
+
 
 rm -f ./*.tar.gz
 rm -f ./*.tgz

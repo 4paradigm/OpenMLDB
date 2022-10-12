@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "brpc/channel.h"

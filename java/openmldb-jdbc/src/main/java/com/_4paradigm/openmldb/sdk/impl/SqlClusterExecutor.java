@@ -63,23 +63,11 @@ public class SqlClusterExecutor implements SqlExecutor {
         initJavaSdkLibrary(libraryPath);
 
         if (option.isClusterMode()) {
-            SQLRouterOptions sqlOpt = new SQLRouterOptions();
-            sqlOpt.setZk_session_timeout(option.getSessionTimeout());
-            sqlOpt.setZk_cluster(option.getZkCluster());
-            sqlOpt.setZk_path(option.getZkPath());
-            sqlOpt.setEnable_debug(option.getEnableDebug());
-            sqlOpt.setRequest_timeout(option.getRequestTimeout());
-            sqlOpt.setSpark_conf_path(option.getSparkConfPath());
-            sqlOpt.setZk_log_level(option.getZkLogLevel());
-            sqlOpt.setZk_log_file(option.getZkLogFile());
+            SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
         } else {
-            StandaloneOptions sqlOpt = new StandaloneOptions();
-            sqlOpt.setEnable_debug(option.getEnableDebug());
-            sqlOpt.setRequest_timeout(option.getRequestTimeout());
-            sqlOpt.setHost(option.getHost());
-            sqlOpt.setPort(option.getPort());
+            StandaloneOptions sqlOpt = option.buildStandaloneOptions();
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
             sqlOpt.delete();
         }
