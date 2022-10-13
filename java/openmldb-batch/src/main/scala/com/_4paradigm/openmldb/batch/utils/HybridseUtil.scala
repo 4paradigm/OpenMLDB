@@ -278,16 +278,28 @@ object HybridseUtil {
     longTsCols.toList
   }
 
+  def debugDf(df: DataFrame): Unit = {
+    if (logger.isDebugEnabled()) {
+      logger.debug("read dataframe count: {}", df.count())
+      df.show(10)
+    }
+  }
+
   // We want df with oriSchema, but if the file format is csv:
   // 1. we support two format of timestamp
   // 2. spark read may change the df schema to all nullable
   // So we should fix it.
-  def autoLoad(spark: SparkSession, file: String, format: String, options: Map[String, String], columns: util
+  def autoLoad(spark: SparkSession, file: String, fmt: String, options: Map[String, String], columns: util
   .List[Common.ColumnDesc]): DataFrame = {
+    val format = fmt.toLowerCase
     val reader = spark.read.options(options)
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
     if (format != "csv") {
-      return reader.schema(oriSchema).format(format).load(file)
+      val df = reader.format(format).load(file)
+      // check the schema
+      require(df.schema == oriSchema, "source schema must == table schema")
+      debugDf(df)
+      df
     }
     // csv should auto detect the timestamp format
 
@@ -311,11 +323,8 @@ object HybridseUtil {
       df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
     }
 
-    require(df.schema == oriSchema, "df schema must == table schema")
-    if (logger.isDebugEnabled()) {
-      logger.debug("read dataframe count: {}", df.count())
-      df.show(10)
-    }
+    require(df.schema == oriSchema, "csv source schema must == table schema")
+    debugDf(df)
     df
   }
 }

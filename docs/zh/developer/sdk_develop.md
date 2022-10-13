@@ -59,8 +59,8 @@ DBSDK有分为Cluster和Standalone两种，因此也可连接两种OpenMLDB服�
 
 如果希望只在submodule中测试，可能会需要其他submodule依赖，比如openmldb-spark-connector依赖openmldb-jdbc。你需要先install编译好的包
 ```
+# make jsdk.so and mvn package
 make SQL_JAVASDK_ENABLE=ON
-# 或者
 cd java
 mvn install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true -Dgpg.skip
 ```
