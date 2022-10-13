@@ -29,7 +29,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode({Mode.Throughput, Mode.SampleTime})
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
+//@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
 @Threads(10)
 @Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})

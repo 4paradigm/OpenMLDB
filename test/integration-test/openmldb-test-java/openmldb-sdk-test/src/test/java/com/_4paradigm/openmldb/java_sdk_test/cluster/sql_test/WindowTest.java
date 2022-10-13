@@ -44,9 +44,7 @@ public class WindowTest extends OpenMLDBTest {
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"integration_test/window/",
-            "integration_test/cluster/",
-            "integration_test/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/window/test_window_union.yaml"})
     public void testWindowRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }

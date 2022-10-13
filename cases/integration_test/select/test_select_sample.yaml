@@ -13,21 +13,24 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["limit 0","结合limit","limit 1","limit条数大于表的条数"]
+debugs: ["查询所有列"]
 version: 0.5.0
 cases:
   - id: 0
     desc: 查询所有列
     inputs:
-      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+      - columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:ts"]
         rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select c1,c3,c4,c5,c6,c7,c8 from {0};
+          - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
+    sql: select id,ts,c1,c2,c3,c4,c5,c6,c7,c8,c9 from {0};
     expect:
-      columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      order: id
+      columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
-        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+        - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
   - id: 1
     desc: 查询部分列
     inputs:
