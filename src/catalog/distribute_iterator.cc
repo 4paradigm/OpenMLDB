@@ -18,6 +18,7 @@
 #include "gflags/gflags.h"
 
 DECLARE_uint32(traverse_cnt_limit);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -36,12 +37,18 @@ void FullTableIterator::SeekToFirst() {
 }
 
 bool FullTableIterator::Valid() const {
-    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
+    return (cnt_ <= FLAGS_max_traverse_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
 }
 
 void FullTableIterator::Next() {
     // reset the buffered value
     ResetValue();
+    cnt_++;
+    if (cnt_ > FLAGS_max_traverse_cnt) {
+        DEBUGLOG("FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %u, max_traverse_cnt %u", cnt_,
+                 FLAGS_max_traverse_cnt, tid_);
+        return;
+    }
 
     if (NextFromLocal()) {
         return;
@@ -55,6 +62,7 @@ void FullTableIterator::Reset() {
     cur_pid_ = INVALID_PID;
     in_local_ = true;
     ResetValue();
+    cnt_ = 0;
 }
 
 void FullTableIterator::EndLocal() {
@@ -322,7 +330,8 @@ void DistributeWindowIterator::Next() {
             return;
         }
         uint32_t count = 0;
-        kv_it_ = iter->second->Traverse(tid_, cur_pid_, index_name_, cur_pk, last_ts, FLAGS_traverse_cnt_limit, true, count);
+        kv_it_ =
+            iter->second->Traverse(tid_, cur_pid_, index_name_, cur_pk, last_ts, FLAGS_traverse_cnt_limit, true, count);
         DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk << " key " << last_ts << " count " << count;
         if (kv_it_ && kv_it_->Valid()) {
             response_vec_.emplace_back(kv_it_->GetResponse());

@@ -32,6 +32,7 @@
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(traverse_cnt_limit);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -235,6 +236,67 @@ TEST_F(DistributeIteratorTest, Hybrid) {
         it.Next();
     }
     ASSERT_EQ(count, 200);
+}
+
+TEST_F(DistributeIteratorTest, FullTableTraverseLimit) {
+    uint32_t old_limit = FLAGS_max_traverse_cnt;
+    FLAGS_max_traverse_cnt = 100;
+    uint32_t tid = 3;
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    auto tables = std::make_shared<Tables>();
+    auto table1 = CreateTable(tid, 3);
+    auto table2 = CreateTable(tid, 7);
+    tables->emplace(3, table1);
+    tables->emplace(7, table2);
+    std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    brpc::Server tablet2;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[1], &tablet2));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
+    ASSERT_EQ(client2->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
+    FullTableIterator it(tid, tables, tablet_clients);
+    it.SeekToFirst();
+    ASSERT_FALSE(it.Valid());
+    PutData(metas[0], client1);
+    it.SeekToFirst();
+    int count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, 50);
+    PutData(metas[1], client2);
+    PutData((*tables)[3]);
+    PutData((*tables)[7]);
+    it.SeekToFirst();
+    count = 0;
+    while (it.Valid()) {
+        count++;
+        // multiple calls to GetKey/GetValue will get the same and valid result
+        auto key = it.GetKey();
+        auto buf = it.GetValue().buf();
+        auto size = it.GetValue().size();
+        codec::RowView row_view(*table1->GetSchema(), buf, size);
+        std::string col1, col2;
+        int64_t col3;
+        row_view.GetStrValue(0, &col1);
+        row_view.GetStrValue(1, &col2);
+        row_view.GetInt64(2, &col3);
+        DLOG(INFO) << "row " << count << ": " << col1 << "," << col2 << ", " << col3;
+        ASSERT_EQ(col1.substr(0, 4), "card");
+        ASSERT_EQ(col2, "mcc");
+        ASSERT_TRUE(col3 > 0 && col3 <= 10);
+        it.Next();
+    }
+    ASSERT_EQ(count, 100);
+    FLAGS_max_traverse_cnt = old_limit;
 }
 
 TEST_F(DistributeIteratorTest, TraverseLimitSingle) {

@@ -548,9 +548,7 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
 }
 
 // Un-support Ops:
-// - GROUP BY
-// - HAVING
-// - WINDOW
+// - Last Join
 //
 // Not Impl:
 // - Order By

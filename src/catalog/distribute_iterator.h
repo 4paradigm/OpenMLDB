@@ -75,6 +75,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     std::string last_pk_;
     ::hybridse::codec::Row value_;
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    int64_t cnt_ = 0;
 };
 
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
