@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 class openMLDB_sql_generator():
     def __init__(self, target, train_name, test_name, path, time_series=False, ts_unit=None, time_col=None,
                  metric='rmse', feature_type={}, relations=[], id=[], task_type='regression',
-                 Debug=False, image_info={}, target_map={},output_file_path="/tmp/"):
+                 Debug=False, image_info={}, target_map={},output_file_path="/tmp/",table_info_dict={},table_list=[]):
         self.Debug = Debug
         self.info_ = {}
         self.info_['id'] = id
@@ -31,8 +31,12 @@ class openMLDB_sql_generator():
         self.info_['time_col'] = time_col
         self.info_['image_info'] = image_info
         self.info_['target_map'] = target_map
-        self.output_file_path=output_file_path
+        self.info_['output_file_path'] = output_file_path
         self.original_column_name_list=[]
+        #self.table_list=table_list
+        self.info_['table_list']=table_list
+        self.info_['union_table_list'] = table_list
+        self.info_['table_info_dict'] = table_info_dict
         for k in self.info_['feature_type'][self.info_['train_name']]:
             self.original_column_name_list.append(k)
 
@@ -67,7 +71,9 @@ class openMLDB_sql_generator():
         for p, window_now in enumerate(self.window_list):
             sql += window_now["name"]
             sql += " AS ("
-            sql += "PARTITION BY " + window_now["PARTITION BY"]
+            if(not window_now["UNION"]==""):
+                sql += " UNION " + window_now["UNION"]
+            sql += " PARTITION BY " + window_now["PARTITION BY"]
             sql += " ORDER BY " + window_now["ORDER BY"]
             sql += " " + window_now["ROWS"]
             sql += " BETWEEN " + window_now["BETWEEN"]
@@ -116,38 +122,34 @@ class openMLDB_sql_generator():
                 function_list.append('lag' + str(lag_num))
                 function_list.append('lag' + str(lag_num) + '-0')
 
-        self.table_list = ['t1']
+        self.info_['table_list'] = [self.info_['table_list'][0]]
+
         '''
         w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
         w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
         '''
+
         shift_dict['window_range'] = [1, 2, 3, 7, 14, 21, 30, 60 , 90, 182, 365]
-        self.window_list = []
-        #TODO: to automatic generate window dict :
-        # (PARTITION BY all categoric columns,ORDER BY all time columns, BETWEEN more minutes/hours/days/months/years)
-        self.window_dict_t = {"name": "w1",
+        self.window_list = [{"name": "w1",
+                             "UNION": "",
                               "PARTITION BY": "vendor_id",
                               "ORDER BY": "pickup_datetime",
                               "ROWS": "ROWS_RANGE",
                               "BETWEEN": "1d",
                               "PRE": "PRECEDING AND CURRENT ROW"
-                              }
-        self.window_dict_t2 = {"name": "w2",
-                               "PARTITION BY": "passenger_count",
-                               "ORDER BY": "pickup_datetime",
-                               "ROWS": "ROWS_RANGE",
-                               "BETWEEN": "1d",
-                               "PRE": "PRECEDING AND CURRENT ROW"
-                               }
-        '''
-        window_dict_t['name']="w"
-        window_dict_t['PARTITION BY']="vendor_id"
-        window_dict_t['name']="w"
-        window_dict_t['name']="w"
-        window_dict_t['PRE']="w"
-        '''
-        self.window_list.append(self.window_dict_t)
-        self.window_list.append(self.window_dict_t2)
+                              },
+                            {"name": "w2",
+                             "UNION": "",
+                             "PARTITION BY": "passenger_count",
+                             "ORDER BY": "pickup_datetime",
+                             "ROWS": "ROWS_RANGE",
+                             "BETWEEN": "1d",
+                             "PRE": "PRECEDING AND CURRENT ROW"
+                             }
+                            ]
+        #TODO: to automatic generate window dict :
+        # (PARTITION BY all categoric columns,ORDER BY all time columns, BETWEEN more minutes/hours/days/months/years)
+
         sql = "SELECT "
         multi_operator_func_list = ['lag']
         # current_window_name="w1"
@@ -156,10 +158,22 @@ class openMLDB_sql_generator():
         self.processed_column_name_list =  pd.read_csv(
             self.info_['path'] + self.info_['train_name']).columns.values.tolist()
         self.column_name2sql_dict={}
+
+        ##union window definition
+        to_union=False
+        if to_union:
+            for union_table_i,union_table in enumerate(self.info_['union_table_list']):
+                if union_table_i>0:
+                    window_number_original=len(self.window_list)
+                    for w in range(window_number_original):
+                        self.window_list.append(self.window_list[w].copy())
+                        self.window_list[len(self.window_list)-1]["UNION"]=union_table
+                        self.window_list[len(self.window_list) - 1]["name"] = self.window_list[len(self.window_list) - 1]["name"]+"_union_"+union_table
+
         for w, window in enumerate(self.window_list):
             for data_type_in_col_name_list,v_in_col_name_dict in col_name_dict.items():
                 for col_name_i, col_name in enumerate(col_name_dict[data_type_in_col_name_list]):
-                    if w == 0:
+                    if w == 0 :#and not self.info_['table_info_dict'][self.info_['table_list'][0]]['column_type'][col_name]=='string': #string type will not counted as feature
                         sql += col_name
                         sql += ","
             '''for col_name_i, col_name in enumerate(col_name_dict['datetime']):
@@ -223,7 +237,7 @@ class openMLDB_sql_generator():
                                 pass
                         #sql += ') OVER '+window["name"]+" AS "
                         column_sql+= ') OVER '+window["name"]+" AS "
-                        new_column_name=(func_processed_name + "__" + col_name + "__" + window["name"])
+                        new_column_name=(self.info_['table_list'][0]+"__"+func_processed_name + "__" + col_name + "__" + window["name"])
                         #sql += new_column_name
                         column_sql+=new_column_name
                         sql += column_sql
@@ -237,9 +251,9 @@ class openMLDB_sql_generator():
                 '''
 
         sql += " FROM "
-        for k, table_name in enumerate(self.table_list):
+        for k, table_name in enumerate(self.info_['table_list']):
             sql += table_name
-            if k < len(self.table_list) - 1:
+            if k < len(self.info_['table_list']) - 1:
                 sql += ","
         sql += "\n "
 
@@ -247,9 +261,9 @@ class openMLDB_sql_generator():
         sql += self.print_windows()
 
         file_num = 2
-        file_name = "feature_data_test_auto_sql_generator-22-8-2-demo" + str(file_num)
+        file_name = "feature_data_test_auto_sql_generator-22-10-11-demo" + str(file_num)
 
-        save_sql="INTO OUTFILE '%s';" % (self.output_file_path+file_name)
+        save_sql="INTO OUTFILE '%s';" % (self.info_['output_file_path']+file_name)
         sql += save_sql
 
         print("*" * 50)
@@ -275,9 +289,9 @@ class openMLDB_sql_generator():
                 sql+=self.column_name2sql_dict[feature_column_name]+",\n"
 
         sql += " FROM "
-        for k, table_name in enumerate(self.table_list):
+        for k, table_name in enumerate(self.info_['table_list']):
             sql += table_name
-            if k < len(self.table_list) - 1:
+            if k < len(self.info_['table_list']) - 1:
                 sql += ","
         sql += "\n "
         sql += " WINDOW "
@@ -316,7 +330,7 @@ def list_dir(file_dir):
 if __name__ == '__main__':
     # demo dataset can be downloaded in the following website:
     # https://www.kaggle.com/c/nyc-taxi-trip-duration/overview
-
+    db_name="demo_db"
     path = './nyc-taxi-trip-duration/'  # '../../data/{data_name}'
     target_column_name = 'trip_duration'
     output_file_path='/tmp/'
@@ -324,6 +338,82 @@ if __name__ == '__main__':
     # id2875421	2	2016/3/14 17:24	2016/3/14 17:32	1	-73.98215485	40.76793671	-73.96463013	40.76560211	N	455
     # c1,c2,c3,c4,c5,c6,date
     # aaa,11,22,1.2,11.3,1.6361E+12,2021/7/20
+    relation_dict=[    # 表关系(可以包含为1-1, 1-M, M-1, M-M四种)
+        {
+            "related_to_main_table": "true",
+            "left_entity": "overdue",
+            "left_on": ["new_user_id"],
+            "left_time_col": "flag1",
+            "right_entity": "bank",
+            "right_on": ["new_user_id"],
+            "right_time_col": "flag1",
+            "type": "1-M"
+        },
+        {
+            "related_to_main_table": "true",  # 是否为和主表的关系
+            "left_entity": "overdue",  # 左表名字
+            "left_on": ["new_user_id"],  # 左表拼表键
+            "right_entity": "userinfo",  # 右表名字
+            "right_on": ["new_user_id"],  # 右表拼表键
+            "type": "1-1"  # 左表与右表的连接关系
+        },
+        {
+            "related_to_main_table": "true",
+            "left_entity": "overdue",
+            "left_on": ["new_user_id"],
+            "left_time_col": "flag1",
+            "right_entity": "browse",
+            "right_on": ["new_user_id"],
+            "right_time_col": "flag1",
+            "type": "1-M"
+        },
+        {
+            "related_to_main_table": "true",
+            "left_entity": "overdue",
+            "left_on": ["new_user_id"],
+            "left_time_col": "flag1",
+            "right_entity": "bill",
+            "right_on": ["new_user_id"],
+            "right_time_col": "flag1",
+            "type": "1-M"
+        }
+        
+    ]
+
+    #"(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);"
+
+    table_info_dict={
+        't1':{'filename':r"/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet",
+            'column_type':{'id':'string',
+                             'vendor_id': 'int',
+                             'pickup_datetime':'timestamp',
+                             'dropoff_datetime':'timestamp',
+                             'passenger_count': 'int',
+                             'pickup_longitude': 'double',
+                             'pickup_latitude':'double',
+                             'dropoff_longitude': 'double',
+                             'dropoff_latitude': 'double',
+                             'store_and_fwd_flag': 'string',
+                             'trip_duration': 'int'
+                            }
+        },
+        't3':{'filename': r"/work/taxi-trip/data/new-taxi-trip-pay-data-generated-by-xpc.csv",
+            'column_type': {'id':'string',
+                             'vendor_id': 'int',
+                             'pickup_datetime':'timestamp',
+                             'dropoff_datetime':'timestamp',
+                             'passenger_count': 'int',
+                             'pickup_longitude': 'double',
+                             'pickup_latitude':'double',
+                             'dropoff_longitude': 'double',
+                             'dropoff_latitude': 'double',
+                             'store_and_fwd_flag': 'string',
+                             'trip_duration': 'int',
+                              #'pay': 'int'#added
+                           }
+       }}
+
+    table_list = list(table_info_dict.keys())
     feature_type = {
         'test2.csv': {
             'id': 'cat',
@@ -357,7 +447,7 @@ if __name__ == '__main__':
                                                       test_name='test2.csv',
                                                       id=['id', 'vendor_id'], path=path, time_series=True,
                                                       ts_unit='min', time_col=['pickup_datetime', 'dropoff_datetime'],
-                                                      feature_type=feature_type,output_file_path=output_file_path)
+                                                      feature_type=feature_type,output_file_path=output_file_path,table_info_dict=table_info_dict,table_list=table_list)
 
     output_sql, output_save_sql,processsed_feature_type, file_name = myOpenMLDB_sql_generator.time_series_feature_sql()
     print("*" * 25 + "processed_feature_type" + "*" * 25)
@@ -371,15 +461,31 @@ if __name__ == '__main__':
     print(
         "*" * 40 + "following is the 1st generated sql to send query to OpenMLDB and get processed feature data csv file" + "*" * 40)
     #send query to OpenMLDB and get processed feature data csv file
-    url ='http://127.0.0.1:9080/dbs/demo_db' #：9080#demo_db/'#'http://127.0.0.1:8080/dbs/{db} '
+    url ='http://127.0.0.1:9080/dbs/'+db_name #：9080#demo_db/'#'http://127.0.0.1:8080/dbs/{db} '
     init_sql =  []
-    init_sql.append('CREATE DATABASE IF NOT EXISTS demo_db;')
-    init_sql.append('USE demo_db;')
+    init_sql.append('CREATE DATABASE IF NOT EXISTS '+db_name+';')
+    init_sql.append('USE '+db_name+';')
     init_sql.append('SET @@execute_mode="offline";')
     init_sql.append('SET @@sync_job = "true";')
-    init_sql.append("CREATE TABLE IF NOT EXISTS t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);")
-    #TODO: match the table name list here and in the class OpenMLDB_sql_generator()
-    init_sql.append("LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet' INTO TABLE t1 options(format='parquet', header=true, mode='append');")
+
+    for table_name,table_info in table_info_dict.items():
+        print(table_name)
+        print(table_info['filename'])
+        create_table_argument="("
+        count=0
+        for column_name, column_type in table_info_dict[table_name]['column_type'].items():
+            count+=1
+            create_table_argument+=(column_name+" "+column_type)
+            if count==len(table_info_dict[table_name]['column_type']):
+                create_table_argument += ");"
+            else:
+                create_table_argument += ", "
+        sql_create_table="CREATE TABLE IF NOT EXISTS "+table_name+create_table_argument
+        print(sql_create_table)
+        init_sql.append(sql_create_table)
+        #TODO: match the table name list here and in the class OpenMLDB_sql_generator()
+        sql_load_data="LOAD DATA INFILE '"+table_info['filename']+"' INTO TABLE "+table_name+" options(format='"+table_info['filename'].split(".")[-1]+"', header=true, mode='append');"
+        init_sql.append(sql_load_data)
 
     for init_sql_i in init_sql:
         print(init_sql_i)
@@ -485,10 +591,12 @@ if __name__ == '__main__':
     print(r.text)
     # TODO: To add request data for defined deployment
     ################train##########################################
+    #feature_path,model path
 
-    train_py_path="/work/taxi-trip/"
+    #train_py_path="/work/taxi-trip/"
 
-    sys.path.append(train_py_path)
-    import train
-    train()
+    #sys.path.append(train_py_path)
+    #import train
+    print("Now you can run \npython3 /work/taxi-trip/train.py "+output_file_path+file_name+ " /tmp/model.txt")
+    #train(output_file_path+file_name, "/tmp/model.txt")
     ##############################################################
