@@ -8,7 +8,7 @@
 - Support new build-in functions `unhex` (#2431 @aucker)
 - Display readable timestamp in CLI (#2568 @dl239)
 - Enhance the function of `last join` (#2569 @aceforeverd)
-- Upgrade Spark version to 3.2.1 (#2566 @tobegit3hub)
+- Upgrade Spark version to 3.2.1 (#2566 @tobegit3hub, #2635 @dl239)
 - Support setting SQL cache size in sdk (#2605 @vagetablechicken)
 - Add `ValidateSQL` interface to check SQL (#2626 @vagetablechicken)
 - Improve the documents (#2405 #2492 $2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
