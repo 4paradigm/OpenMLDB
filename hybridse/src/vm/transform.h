@@ -278,13 +278,10 @@ class RequestModeTransformer : public BatchModeTransformer {
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
-    Status TransformProjectOp(node::ProjectListNode* node,
-                                      PhysicalOpNode* depend, bool append_input,
-                                      PhysicalOpNode** output) override;
-    Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output) override;
-    Status TransformJoinOp(const node::JoinPlanNode* node,
-                                   PhysicalOpNode** output) override;
+    Status TransformProjectPlanOp(const node::ProjectPlanNode* node, PhysicalOpNode** output) override;
+    Status TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend, bool append_input,
+                              PhysicalOpNode** output) override;
+    Status TransformJoinOp(const node::JoinPlanNode* node, PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
     Status TransformGroupOp(const node::GroupPlanNode* node, PhysicalOpNode** output) override;
 

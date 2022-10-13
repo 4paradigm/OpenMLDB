@@ -714,8 +714,8 @@ cases:
         aaa, bbb, ccc
 
   # =============================================================#
-  #
-  #
+  # 100-103: test correct physical plan is generated for all project in cluster request mode
+  #   refer issue https://github.com/4paradigm/OpenMLDB/issues/2505
   # =============================================================
   - id: 100
     desc: |
@@ -733,7 +733,7 @@ cases:
       window w as (
         partition by id order by ts rows between 2 preceding and current row)
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(t1.id, t1.b, t1.ts, cnt))
+      SIMPLE_PROJECT(sources=(id, b, ts, cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
           DATA_PROVIDER(request=t1)
           PROJECT(type=Aggregation)
@@ -765,7 +765,7 @@ cases:
     cluster_request_plan: |
       SIMPLE_PROJECT(sources=(b, id, b, ts, cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
-          SIMPLE_PROJECT(sources=(b, t1.id, t1.b, t1.ts))
+          SIMPLE_PROJECT(sources=(b, id, b, ts))
             DATA_PROVIDER(request=t1)
           PROJECT(type=Aggregation)
             REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -790,7 +790,7 @@ cases:
           2, 30, 2000
     sql: |
       select
-        id, *, b,
+        id, t1.*, b,
         count(id) over w1 as cnt1,
         count(id) over w2 as cnt2
       from t1
@@ -798,11 +798,12 @@ cases:
         partition by id order by ts rows between 2 preceding and current row),
       w2 as (
         partition by b order by ts rows_range between 2s preceding and current row)
+    # TODO(ace): t1.col -> t1.col is redundant as output name
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(id, id, b, ts, b, cnt1, cnt2))
+      SIMPLE_PROJECT(sources=(id, t1.id -> t1.id, t1.b -> t1.b, t1.ts -> t1.ts, b, cnt1, cnt2))
         REQUEST_JOIN(type=kJoinTypeConcat)
           REQUEST_JOIN(type=kJoinTypeConcat)
-            SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
+            SIMPLE_PROJECT(sources=(id, t1.id -> t1.id, t1.b -> t1.b, t1.ts -> t1.ts, b))
               DATA_PROVIDER(request=t1)
             PROJECT(type=Aggregation)
               REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -813,7 +814,7 @@ cases:
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx2)
     expect:
-      columns: ["id int32", "id int32", "b int32", "ts int64", "b int32", "cnt1 int64", "cnt2 int64"]
+      columns: ["id int32", "t1.id int32", "t1.b int32", "t1.ts int64", "b int32", "cnt1 int64", "cnt2 int64"]
       order: id
       data: |
           1, 1, 10, 1000, 10, 1, 1
@@ -838,20 +839,20 @@ cases:
         partition by id order by ts rows between 2 preceding and current row),
       w2 as (
         partition by b order by ts rows_range between 2s preceding and current row)
-    # cluster_request_plan: |
-    #   SIMPLE_PROJECT(sources=(id, id, b, ts, b, cnt1, cnt2))
-    #     REQUEST_JOIN(type=kJoinTypeConcat)
-    #       REQUEST_JOIN(type=kJoinTypeConcat)
-    #         SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
-    #           DATA_PROVIDER(request=t1)
-    #         PROJECT(type=Aggregation)
-    #           REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
-    #             DATA_PROVIDER(request=t1)
-    #             DATA_PROVIDER(type=Partition, table=t1, index=idx1)
-    #       PROJECT(type=Aggregation)
-    #         REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
-    #           DATA_PROVIDER(request=t1)
-    #           DATA_PROVIDER(type=Partition, table=t1, index=idx2)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(cnt1, id, id, b, ts, b, cnt2))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            SIMPLE_PROJECT(sources=(id, id, b, ts, b))
+              DATA_PROVIDER(request=t1)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+                DATA_PROVIDER(request=t1)
+                DATA_PROVIDER(type=Partition, table=t1, index=idx1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx2)
     expect:
       columns: ["cnt1 int64", "id int32", "id int32", "b int32", "ts int64", "b int32", "cnt2 int64"]
       order: id
